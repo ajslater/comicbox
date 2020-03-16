@@ -1,0 +1,258 @@
+"""Metadata class for a comic archive."""
+import pycountry
+import regex
+
+
+IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$")
+
+
+class ComicBaseMetadata(object):
+    """Comicbox Metadata Class."""
+
+    class ReadingDirection(object):
+        """Reading direction enum."""
+
+        LTR = "ltr"
+        RTL = "rtl"
+
+        @classmethod
+        def parse(cls, val):
+            """Match a reading direction to an acceptable value."""
+            val = val.strip().lower()
+            if val == cls.RTL:
+                return cls.RTL
+            elif val == cls.LTR:
+                return cls.LTR
+
+    STR_SET_TAGS = set(("characters", "locations", "tags", "teams"))
+    FLOAT_TAGS = set(("price",))
+    DICT_LIST_TAGS = set(("credits", "pages"))
+    PYCOUNTRY_TAGS = set(("country", "language"))
+    INT_TAGS = set(
+        (
+            "alternate_issue",
+            "alternate_issue_count",
+            "day",
+            "issue",
+            "issue_count",
+            "last_mark",
+            "month",
+            "page_count",
+            "volume",
+            "volume_count",
+            "year",
+        )
+    )
+
+    def __init__(self, metadata=None):
+        """Initialize comicbox metadata dict."""
+        if metadata is None:
+            metadata = {}
+        self.metadata = metadata
+        self._page_filenames = []
+
+    @staticmethod
+    def _pycountry(tag, name, long_to_alpha2=True):
+        if tag == "country":
+            module = pycountry.countries
+        elif tag == "language":
+            module = pycountry.languages
+        else:
+            raise NotImplementedError(f"no pycountry module for {tag}")
+        obj = module.lookup(name.strip())
+        if obj:
+            if long_to_alpha2:
+                return obj.alpha_2
+            else:
+                return obj.name
+
+    def get_num_pages(self):
+        """Get the number of pages."""
+        return len(self._page_filenames)
+
+    def parse_page_names(self, archive_filenames):
+        """Parse the filenames that are comic pages."""
+        self._page_filenames = []
+        for filename in archive_filenames:
+            if IMAGE_EXT_RE.search(filename) is not None:
+                self._page_filenames.append(filename)
+
+    def get_pagename(self, index):
+        """Get the filename of the page by index."""
+        return self._page_filenames[index]
+
+    def _add_credit(self, person, role):
+        """Add a credit to the metadata."""
+        credit = {"person": person.strip(), "role": role.strip()}
+
+        if not credit["person"]:
+            return
+
+        if self.metadata.get("credits") is None:
+            self.metadata["credits"] = []
+
+        # if we've already added it, return
+        for old_credit in self.metadata["credits"]:
+            if (
+                old_credit["person"].lower() == credit["person"].lower()
+                and old_credit["role"].lower() == credit["role"].lower()
+            ):
+                return
+
+        self.metadata["credits"].append(credit)
+
+    def _get_cover_page_filenames_tagged(self):
+        return set()
+
+    def get_cover_page_filenames(self):
+        """Get indexes of cover pages."""
+        coverlist = self._get_cover_page_filenames_tagged()
+        tag_fn = self.metadata.get("cover_image")
+        if tag_fn:
+            coverlist.add(tag_fn)
+        if not coverlist and self.get_num_pages():
+            coverlist.add(self._page_filenames[0])
+
+        return coverlist
+
+    def get_pagenames_from(self, index_from):
+        """Return a list of page filenames from the given index onward."""
+        return self._page_filenames[index_from:]
+
+    @classmethod
+    def _compare_dict_list(cls, dl_a, dl_b):
+        # There's probably a slicker generic way to do this
+        for d_a in dl_a:
+            match = False
+            for d_b in dl_b:
+                if d_a == d_b:
+                    match = True
+                    break
+            if not match:
+                print("Could not find:", d_a)
+                return False
+        return True
+
+    @classmethod
+    def _compare_metadatas(cls, md_a, md_b):
+        for key, val in md_a.items():
+            if key in cls.DICT_LIST_TAGS:
+                res = cls._compare_dict_list(val, md_b[key])
+                if not res:
+                    return False
+                res = cls._compare_dict_list(md_b[key], val)
+                if not res:
+                    return False
+            elif isinstance(val, set):
+                for a, b in zip(sorted(val), sorted(md_b[key])):
+                    if a != b:
+                        print(f"{a} != {b}")
+                        return False
+            else:
+                print(f"{key}: {val}")
+                if md_b[key] != val:
+                    print(f"{key}: {md_b[key]} != {val}")
+                    return False
+        return True
+
+    def __eq__(self, obj):
+        """== operator."""
+        md = obj.metadata
+        return self._compare_metadatas(md, self.metadata) and self._compare_metadatas(
+            self.metadata, md
+        )
+
+    def synthesize_metadata(self, md_list):
+        """Overlay the metadatas in precedence order."""
+        for md in md_list:
+            self.metadata.update(md)
+
+        # synthesize credits
+        # NOT "pages", only comes from cix anyway
+        synth_dict_list = {}
+        for md in md_list:
+            dict_list = md.get("credits")
+            if not isinstance(dict_list, list):
+                continue
+            if dict_list:
+                synth_dict_list.update(dict_list)
+        md["credits"] = synth_dict_list
+
+        # synthesize sets of attributes
+        for tag in self.STR_SET_TAGS:
+            synth_str_set = set()
+            for md in md_list:
+                str_set = md.get(tag)
+                if str_set:
+                    synth_str_set.update(str_set)
+            md[tag] = synth_str_set
+
+    def compute_page_count(self):
+        """Compute the page count from the number of images."""
+        self.metadata["page_count"] = len(self._page_filenames)
+
+    # SCHEMA = {
+    #    # CIX, CBI AND COMET
+    #    "genre": str,
+    #    "issue": int,
+    #    "credits": [{"name": str, "role": str}],
+    #    "language": str,  # two letter iso code
+    #    "publisher": str,
+    #    "series": str,
+    #    "title": str,
+    #    "volume": int,
+    #    "year": int,
+    #    "month": int,
+    #    "day": int,
+    #    # CIX AND CBI ONLY
+    #    "comments": str,
+    #    "issue_count": int,
+    #    # CIX AND COMET ONLY
+    #    "characters": set,
+    #    "reading_direction": ReadingDirection,
+    #    # CBI AND COMET ONLY
+    #    "critical_rating": str,
+    #    # CIX ONLY
+    #    "alternate_issue": int,
+    #    "alternate_issue_count": int,
+    #    "alternate_series": str,
+    #    "black_and_white": bool,
+    #    "imprint": str,
+    #    "locations": set,
+    #    "manga": bool,
+    #    "maturity_rating": str,
+    #    "notes": str,
+    #    "pages": [{"page": int, "type": "PageType"}],
+    #    "scan_info": str,
+    #    "series_group": str,
+    #    "story_arc": str,
+    #    "teams": set,
+    #    "web": str,
+    #    # CBI_ONLY
+    #    "country": str,
+    #    "user_rating": str,
+    #    "volume_count": int,
+    #    "tags": set,
+    #    # COMET_ONLY
+    #    "cover_image": str,
+    #    "description": str,
+    #    "format": str,
+    #    "identifier": str,
+    #    "last_mark": int,
+    #    "price": float,
+    #    "maturity_rating": str,
+    #    "rights": str,
+    #    "page_count": int,
+    #    "is_version_of": str,
+    #    # COMICBOX_ONLY (none)
+    # }
+    # SPECIAL_TAGS = (
+    #    "credits",
+    #    "language",
+    #    "country",
+    #    "date",
+    #    "pages",
+    #    "reading_direction",
+    #    "manga",
+    # )
+    # BOOL_TAGS = ("black_and_white", "manga")
