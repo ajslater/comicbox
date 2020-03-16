@@ -210,6 +210,7 @@ class ComicBaseMetadata(object):
     #    # CIX AND COMET ONLY
     #    "characters": set,
     #    "reading_direction": ReadingDirection,
+    #    "maturity_rating": str,
     #    # CBI AND COMET ONLY
     #    "critical_rating": str,
     #    # CIX ONLY
@@ -220,7 +221,6 @@ class ComicBaseMetadata(object):
     #    "imprint": str,
     #    "locations": set,
     #    "manga": bool,
-    #    "maturity_rating": str,
     #    "notes": str,
     #    "pages": [{"page": int, "type": "PageType"}],
     #    "scan_info": str,
@@ -240,7 +240,6 @@ class ComicBaseMetadata(object):
     #    "identifier": str,
     #    "last_mark": int,
     #    "price": float,
-    #    "maturity_rating": str,
     #    "rights": str,
     #    "page_count": int,
     #    "is_version_of": str,
