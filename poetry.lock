@@ -1,7 +1,6 @@
 [[package]]
 category = "dev"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
-marker = "python_version >= \"3.6\""
 name = "appdirs"
 optional = false
 python-versions = "*"
@@ -457,7 +456,6 @@ version = "3.1"
 [[package]]
 category = "dev"
 description = "Alternative regular expression module, to replace re."
-marker = "python_version >= \"3.6\""
 name = "regex"
 optional = false
 python-versions = "*"
@@ -528,14 +526,6 @@ python-versions = "*"
 version = "3.7.4.1"
 
 [[package]]
-category = "main"
-description = "Wrapper for UnRAR library, ctypes-based."
-name = "unrar"
-optional = false
-python-versions = "*"
-version = "0.4"
-
-[[package]]
 category = "dev"
 description = "Find dead code"
 name = "vulture"
@@ -565,7 +555,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "5be427521f1908b7af5a64da7d4603e59967c770295a731f83bf47746bbe037e"
+content-hash = "4848b2b3692ba27d404d810561f07c5a3c1e8f56d681a955e3690945c35bbc50"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -855,10 +845,6 @@ typing-extensions = [
     {file = "typing_extensions-3.7.4.1-py2-none-any.whl", hash = "sha256:910f4656f54de5993ad9304959ce9bb903f90aadc7c67a0bef07e678014e892d"},
     {file = "typing_extensions-3.7.4.1-py3-none-any.whl", hash = "sha256:cf8b63fedea4d89bab840ecbb93e75578af28f76f66c35889bd7065f5af88575"},
     {file = "typing_extensions-3.7.4.1.tar.gz", hash = "sha256:091ecc894d5e908ac75209f10d5b4f118fbdb2eb1ede6a63544054bb1edb41f2"},
-]
-unrar = [
-    {file = "unrar-0.4-py3-none-any.whl", hash = "sha256:0ce03e28bfa90415ee1a92c8d38cad8ea244427a59a8a39c0d42bac8727cfaa0"},
-    {file = "unrar-0.4.tar.gz", hash = "sha256:b24447a5b93024be600ef8255668ba23a30f451176577b691559ea1359f7d164"},
 ]
 vulture = [
     {file = "vulture-1.3-py2.py3-none-any.whl", hash = "sha256:54f013779e071c7e1657e3a0b567f7400e046a8beb08585179ffbe762661fb5e"},

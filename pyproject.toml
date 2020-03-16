@@ -29,7 +29,6 @@ include = ["NEWS"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-unrar = "^0.4"
 simplejson = "^3.17"
 pycountry = "^19.8"
 parse = "^1.15"
