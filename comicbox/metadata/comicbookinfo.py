@@ -7,8 +7,8 @@ from .comic_json import ComicJSON
 
 
 PROGRAM_NAME = "comicbox"
-DISTRIBUTION = pkg_resources.get_distribution(PROGRAM_NAME)
-VERSION = DISTRIBUTION.version
+# DISTRIBUTION = pkg_resources.get_distribution(PROGRAM_NAME)
+VERSION = "HACK IMPORT"  # DISTRIBUTION.version
 
 
 class ComicBookInfo(ComicJSON):
