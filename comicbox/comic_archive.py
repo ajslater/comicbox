@@ -285,3 +285,7 @@ class ComicArchive(object):
         self.path.rename(new_path)
         print(f"Renamed:\n{old_path} ==> {self.path}")
         self.path = new_path
+
+    def compute_page_count(self):
+        """Compute the page count from images in the archive."""
+        self.metadata.compute_page_count()
