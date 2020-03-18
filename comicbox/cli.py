@@ -128,7 +128,7 @@ def main():
     elif args.index_from:
         car.extract_pages(args.index_from, args.root_path)
     elif args.cbz:
-        new_path = car.convert_to_cbz()
+        new_path = car.recompress()
         print(f"converted to: {new_path}")
         if args.delete_rar:
             if new_path.is_file():

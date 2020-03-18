@@ -1,5 +1,4 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
-from enum import Enum
 from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import SubElement
@@ -10,7 +9,7 @@ from .comic_xml import ComicXml
 class ComicInfoXml(ComicXml):
     """Comic Rack Metadata."""
 
-    class PageType(Enum):
+    class PageType(object):
         """CIX Page Type Schema."""
 
         FRONT_COVER = "FrontCover"
@@ -25,8 +24,8 @@ class ComicInfoXml(ComicXml):
         OTHER = "Other"
         DELETED = "Deleted"
 
-    class MangaType(Enum):
-        """CIX Manga Type Enum."""
+    class MangaType(object):
+        """CIX Manga Type."""
 
         YES = "Yes"
         YES_RTL = "YesRtl"
@@ -212,20 +211,22 @@ class ComicInfoXml(ComicXml):
 
     def compute_pages_tags(self, infolist):
         """Recompute the page tags with actual image sizes."""
+        # Just store this integer data as strings becuase I don't
+        # expect anyone will ever use it.
         new_pages = []
         index = 0
         old_pages = self.metadata.get("pages")
         front_cover_set = False
         for info in infolist:
-            if info.name not in self._page_filenames:
-                continue
             if old_pages and len(old_pages) > index:
                 new_page = old_pages[index]
                 if new_page.get("Type") == self.PageType.FRONT_COVER:
                     front_cover_set = True
+            elif info.filename in self._page_filenames:
+                new_page = {"Image": str(index)}
             else:
-                new_page = {"Image": index}
-            new_page["ImageSize"] = info.file_size
+                continue
+            new_page["ImageSize"] = str(info.file_size)
             new_pages.append(new_page)
             index += 1
         if not front_cover_set and len(new_pages) > 0:

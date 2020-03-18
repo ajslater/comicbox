@@ -26,11 +26,12 @@ METADATA = {
         {"person": "Wally Wood", "role": "Artist"},
         {"person": "Joe Orlando", "role": "Writer"},
     ],
-    "ext": "cbr",
     "language": "en",
     "country": "US",
     "title": "The Beginning",
     "remainder": "cbi",
+    "page_count": 36,
+    "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
 }
 
 

@@ -84,10 +84,10 @@ class FilenameMetadata(ComicBaseMetadata):
             return res.named
         return {}
 
-    def parse_filename(self, path):
+    def from_string(self, path):
         """Try all parsers againts the filename and return the best result."""
-        path = Path(path)
-        fn = self.clean_fn(path.name)
+        self._path = Path(path)
+        fn = self.clean_fn(self._path.name)
         best_res = {}
         pattern_num = 0
         for parser in self.PARSERS:
