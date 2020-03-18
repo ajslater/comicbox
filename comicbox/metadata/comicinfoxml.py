@@ -114,7 +114,6 @@ class ComicInfoXml(ComicXml):
                 val = self._pycountry(to_tag, val)
                 if not val:
                     continue
-
             self.metadata[to_tag] = val
 
     def _from_xml_pages(self, root):

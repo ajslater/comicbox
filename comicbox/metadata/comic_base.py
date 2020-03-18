@@ -45,12 +45,19 @@ class ComicBaseMetadata(object):
     )
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
 
-    def __init__(self, metadata=None):
-        """Initialize comicbox metadata dict."""
-        if metadata is None:
-            metadata = {}
-        self.metadata = metadata
+    def __init__(self, string=None, path=None, metadata=None):
+        """Initialize the metadata dict or parse it from a source."""
+        self.metadata = {}
         self._page_filenames = []
+        if metadata is not None:
+            self.metadata = metadata
+            return
+        elif string is not None:
+            self.from_string(string)
+            return
+        elif path is not None:
+            self.from_file(path)
+            return
 
     @staticmethod
     def _pycountry(tag, name, long_to_alpha2=True):
@@ -71,7 +78,7 @@ class ComicBaseMetadata(object):
         """Get the number of pages."""
         return len(self._page_filenames)
 
-    def parse_page_names(self, archive_filenames):
+    def set_page_names(self, archive_filenames):
         """Parse the filenames that are comic pages."""
         self._page_filenames = []
         for filename in archive_filenames:
@@ -194,9 +201,9 @@ class ComicBaseMetadata(object):
         """Compute the page count from the number of images."""
         self.metadata["page_count"] = len(self._page_filenames)
 
-    def compute_final_metadata(self, archive_filenames):
+    def compute_page_metadata(self, archive_filenames):
         """Rectify lots of metadatas."""
-        self.parse_page_names(archive_filenames)
+        self.set_page_names(archive_filenames)
 
         # Page Count
         if self.metadata.get("page_count") is None:
@@ -204,6 +211,14 @@ class ComicBaseMetadata(object):
 
         # Cover Image
         self.metadata["cover_image"] = self.get_cover_page_filename()
+
+    def from_string(self, string):
+        """Stub method."""
+        raise NotImplementedError()
+
+    def from_file(self, string):
+        """Stub method."""
+        raise NotImplementedError()
 
     # SCHEMA = {
     #    # CIX, CBI AND COMET

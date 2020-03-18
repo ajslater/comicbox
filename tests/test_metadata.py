@@ -12,14 +12,13 @@ from comicbox.metadata.comic_base import ComicBaseMetadata
 TEST_FILES_PATH = Path("tests/test_files")
 TMP_ROOT = Path("/tmp")
 COVER_PATH = "Captain Science 001/CaptainScience#1_01.jpg"
-TEST_COVER_PATH = TEST_FILES_PATH / COVER_PATH
 SOURCE_ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 
 
 def read_metadata(archive_path, metadata):
     """Read metadata and compare to dict fixture."""
     disk_car = ComicArchive(archive_path)
-    md = ComicBaseMetadata(metadata)
+    md = ComicBaseMetadata(metadata=metadata)
     assert disk_car.metadata == md
 
 
@@ -55,5 +54,5 @@ def write_metadata(tmp_path, new_test_cbz_path, metadata, md_type):
     shutil.rmtree(tmp_path)
 
     # comparison metadata direct from example data
-    md = ComicBaseMetadata(metadata)
+    md = ComicBaseMetadata(metadata=metadata)
     assert disk_car.metadata == md

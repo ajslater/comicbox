@@ -10,8 +10,7 @@ from tests.test_filenames import FNS
 @pytest.mark.parametrize("item", FNS.items())
 def test_parse_filename(item):
     fn, defined_fields = item
-    parser = FilenameMetadata()
-    parser.from_string(fn)
+    parser = FilenameMetadata(path=fn)
     res = parser.metadata
     matched_fields = set()
     unmatched_fields = []

@@ -50,11 +50,14 @@ class ComicArchive(object):
             settings = Settings()
         self.settings = settings
         self.set_path(path)
-        self.metadata = ComicBaseMetadata(metadata)
+        self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         if metadata is None:
             self._parse_metadata()
-        self.metadata.compute_final_metadata(self.get_archive_filenames())
+        from pprint import pprint
+
+        pprint(self.get_metadata())
+        self.metadata.compute_page_metadata(self.namelist())
 
     def set_path(self, path):
         """Set the path and determine the archive type."""
@@ -73,7 +76,8 @@ class ComicArchive(object):
         """Get the path for the archive."""
         return self._path
 
-    def get_archive_filenames(self):
+    def namelist(self):
+        """Get the archive file namelist."""
         with self._get_archive() as archive:
             return sorted(archive.namelist())
 
@@ -82,25 +86,25 @@ class ComicArchive(object):
         cix_md = {}
         comet_md = {}
         with self._get_archive() as archive:
-            for fn in self.get_archive_filenames():
+            for fn in sorted(archive.namelist()):
                 basename = Path(fn).name.lower()
-                xml_parser = None
-                if basename == ComicInfoXml.XML_FN and self.settings.comicrack:
+                xml_parser_cls = None
+                if basename == ComicInfoXml.XML_FN.lower() and self.settings.comicrack:
                     md = cix_md
-                    xml_parser = ComicInfoXml()
+                    xml_parser_cls = ComicInfoXml
                     title = "ComicRack"
-                elif basename == CoMet.XML_FN and self.settings.comet:
+                elif basename == CoMet.XML_FN.lower() and self.settings.comet:
                     md = comet_md
-                    xml_parser = CoMet()
+                    xml_parser_cls = CoMet
                     title = "CoMet"
-                if not xml_parser:
+                if not xml_parser_cls:
                     continue
                 with archive.open(fn) as md_file:
                     data = md_file.read()
                     if self.settings.raw:
                         self.raw[title] = data
-                    xml_parser.from_string(data)
-                    md.update(xml_parser.metadata)
+                    parser = xml_parser_cls(string=data)
+                    md.update(parser.metadata)
         return cix_md, comet_md
 
     def get_archive_comment(self):
@@ -115,8 +119,7 @@ class ComicArchive(object):
         if not self.settings.comiclover:
             return {}
         comment = self.get_archive_comment()
-        parser = ComicBookInfo()
-        parser.from_string(comment)
+        parser = ComicBookInfo(string=comment)
         cbi_md = parser.metadata
         if self.settings.raw:
             self.raw["ComicLover"] = comment
@@ -125,8 +128,7 @@ class ComicArchive(object):
     def _parse_metadata_filename(self):
         if not self.settings.filename:
             return {}
-        parser = FilenameMetadata()
-        parser.from_string(self._path)
+        parser = FilenameMetadata(path=self._path)
         if self.settings.raw:
             self.raw["Filename"] = self._path.name
         return parser.metadata
@@ -232,7 +234,7 @@ class ComicArchive(object):
 
     def write_metadata(self, md_class, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
-        parser = md_class(self.metadata.metadata)
+        parser = md_class(metadata=self.get_metadata())
         if recompute_page_sizes and isinstance(parser, ComicInfoXml):
             self.compute_pages_tags()
         if isinstance(parser, (ComicXml, CoMet)):
@@ -256,9 +258,8 @@ class ComicArchive(object):
         path = Path(filename)
         success_class = None
         for cls in self.PARSER_CLASSES:
-            md = cls()
             try:
-                md.from_file(path)
+                md = cls(path=path)
                 success_class = cls
                 break
             except (ParseError, JSONDecodeError):
@@ -270,7 +271,7 @@ class ComicArchive(object):
     def export_files(self):
         """Export metadata to all supported file formats."""
         for cls in self.PARSER_CLASSES:
-            md = cls(self.metadata.metadata)
+            md = cls(self.get_metadata())
             fn = self.settings.root_path / cls.XML_FN
             md.to_file(fn)
 
@@ -278,20 +279,15 @@ class ComicArchive(object):
         """Recompute the tag image sizes for ComicRack."""
         with self._get_archive() as archive:
             infolist = archive.infolist()
-        parser = ComicInfoXml(self.metadata.metadata)
+        parser = ComicInfoXml(metadata=self.get_metadata())
         parser.compute_pages_tags(infolist)
         self.metadata.metadata["pages"] = parser.metadata.get("pages")
-
-    def rename_file(self):
-        """Rename this file according to our favorite naming scheme."""
-        md = self.get_metadata()
-        name = FilenameMetadata.get_preferred_basename(md)
-        new_path = self._path.parent / Path(name + self._path.suffix)
-        old_path = self._path
-        self._path.rename(new_path)
-        print(f"Renamed:\n{old_path} ==> {self._path}")
-        self._path = new_path
 
     def compute_page_count(self):
         """Compute the page count from images in the archive."""
         self.metadata.compute_page_count()
+
+    def rename_file(self):
+        """Rename the archive."""
+        car = FilenameMetadata(self.metadata)
+        self._path = car.to_file(self._path)

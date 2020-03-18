@@ -40,9 +40,7 @@ class ComicBookInfo(ComicJSON):
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():
             val = root.get(from_key)
-            print(from_key, val, "==> ", end="")
             if val is None:
-                print()
                 continue
 
             if to_key in self.INT_TAGS:
@@ -50,19 +48,15 @@ class ComicBookInfo(ComicJSON):
             elif to_key in self.PYCOUNTRY_TAGS:
                 val = self._pycountry(to_key, val)
                 if not val:
-                    print()
                     continue
             elif isinstance(val, str):
                 val = val.strip()
                 if not val:
-                    print()
                     continue
             elif isinstance(val, list):
                 # credits and tags
                 if len(val) == 0:
-                    print()
                     continue
-            print(to_key, val)
             self.metadata[to_key] = val
 
     def _from_json(self, json_obj):
