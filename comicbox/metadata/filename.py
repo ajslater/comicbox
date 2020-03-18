@@ -84,10 +84,10 @@ class FilenameMetadata(ComicBaseMetadata):
             return res.named
         return {}
 
-    def parse_filename(self, path):
+    def from_string(self, path):
         """Try all parsers againts the filename and return the best result."""
-        path = Path(path)
-        fn = self.clean_fn(path.name)
+        self._path = Path(path)
+        fn = self.clean_fn(self._path.name)
         best_res = {}
         pattern_num = 0
         for parser in self.PARSERS:
@@ -100,14 +100,26 @@ class FilenameMetadata(ComicBaseMetadata):
             pattern_num += 1
         self.metadata.update(best_res)
 
-    @classmethod
-    def get_preferred_basename(cls, metadata):
+    def from_file(self, path):
+        """Oddly this ends up being identical."""
+        return self.from_string(path)
+
+    def to_string(self):
         """Get our preferred basename from a metadata dict."""
         tokens = []
-        for tag, fmt in cls.FILENAME_TAGS:
-            val = metadata.get(tag)
+        for tag, fmt in self.FILENAME_TAGS:
+            val = self.metadata.get(tag)
             if val:
                 token = fmt.format(val)
                 tokens.append(token)
         name = " ".join(tokens)
         return name
+
+    def to_file(self, path):
+        """Rename this file according to our favorite naming scheme."""
+        name = self.to_string()
+        new_path = path.parent / Path(name + path.suffix)
+        old_path = path
+        path.rename(new_path)
+        print(f"Renamed:\n{old_path} ==> {self._path}")
+        return new_path

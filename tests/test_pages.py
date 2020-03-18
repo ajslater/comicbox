@@ -14,11 +14,11 @@ PAGE_FIVE = PAGE_TMPL.format(page_num="05")
 
 def test_get_covers():
     car = ComicArchive(ARCHIVE_PATH)
-    pages = car.get_cover_images()
+    page = car.get_cover_image()
     with open(COVER_IMAGE, "rb") as cif:
         image = cif.read()
 
-    assert image == pages[0]
+    assert image == page
 
 
 def test_get_random_page():

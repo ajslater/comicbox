@@ -3,7 +3,7 @@ import pycountry
 import regex
 
 
-IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$")
+IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$", regex.IGNORECASE)
 
 
 class ComicBaseMetadata(object):
@@ -43,13 +43,21 @@ class ComicBaseMetadata(object):
             "year",
         )
     )
+    IGNORE_COMPARE_TAGS = ("ext", "remainder")
 
-    def __init__(self, metadata=None):
-        """Initialize comicbox metadata dict."""
-        if metadata is None:
-            metadata = {}
-        self.metadata = metadata
+    def __init__(self, string=None, path=None, metadata=None):
+        """Initialize the metadata dict or parse it from a source."""
+        self.metadata = {}
         self._page_filenames = []
+        if metadata is not None:
+            self.metadata = metadata
+            return
+        elif string is not None:
+            self.from_string(string)
+            return
+        elif path is not None:
+            self.from_file(path)
+            return
 
     @staticmethod
     def _pycountry(tag, name, long_to_alpha2=True):
@@ -70,7 +78,7 @@ class ComicBaseMetadata(object):
         """Get the number of pages."""
         return len(self._page_filenames)
 
-    def parse_page_names(self, archive_filenames):
+    def set_page_names(self, archive_filenames):
         """Parse the filenames that are comic pages."""
         self._page_filenames = []
         for filename in archive_filenames:
@@ -104,16 +112,17 @@ class ComicBaseMetadata(object):
     def _get_cover_page_filenames_tagged(self):
         return set()
 
-    def get_cover_page_filenames(self):
-        """Get indexes of cover pages."""
+    def get_cover_page_filename(self):
+        """Get filename of most likely coverpage."""
+        cover_image = None
         coverlist = self._get_cover_page_filenames_tagged()
-        tag_fn = self.metadata.get("cover_image")
-        if tag_fn:
-            coverlist.add(tag_fn)
-        if not coverlist and self.get_num_pages():
-            coverlist.add(self._page_filenames[0])
-
-        return coverlist
+        if coverlist:
+            cover_image = sorted(coverlist)[0]
+        if not cover_image:
+            cover_image = self.metadata.get("cover_image")
+        if not cover_image and self._page_filenames:
+            cover_image = self._page_filenames[0]
+        return cover_image
 
     def get_pagenames_from(self, index_from):
         """Return a list of page filenames from the given index onward."""
@@ -136,6 +145,8 @@ class ComicBaseMetadata(object):
     @classmethod
     def _compare_metadatas(cls, md_a, md_b):
         for key, val in md_a.items():
+            if key in cls.IGNORE_COMPARE_TAGS:
+                continue
             if key in cls.DICT_LIST_TAGS:
                 res = cls._compare_dict_list(val, md_b[key])
                 if not res:
@@ -149,7 +160,6 @@ class ComicBaseMetadata(object):
                         print(f"{a} != {b}")
                         return False
             else:
-                print(f"{key}: {val}")
                 if md_b[key] != val:
                     print(f"{key}: {md_b[key]} != {val}")
                     return False
@@ -190,6 +200,25 @@ class ComicBaseMetadata(object):
     def compute_page_count(self):
         """Compute the page count from the number of images."""
         self.metadata["page_count"] = len(self._page_filenames)
+
+    def compute_page_metadata(self, archive_filenames):
+        """Rectify lots of metadatas."""
+        self.set_page_names(archive_filenames)
+
+        # Page Count
+        if self.metadata.get("page_count") is None:
+            self.compute_page_count()
+
+        # Cover Image
+        self.metadata["cover_image"] = self.get_cover_page_filename()
+
+    def from_string(self, string):
+        """Stub method."""
+        raise NotImplementedError()
+
+    def from_file(self, string):
+        """Stub method."""
+        raise NotImplementedError()
 
     # SCHEMA = {
     #    # CIX, CBI AND COMET
@@ -243,7 +272,9 @@ class ComicBaseMetadata(object):
     #    "rights": str,
     #    "page_count": int,
     #    "is_version_of": str,
-    #    # COMICBOX_ONLY (none)
+    #    # COMICBOX_ONLY
+    #    "ext": str,
+    #    "remainder": sr
     # }
     # SPECIAL_TAGS = (
     #    "credits",
