@@ -54,9 +54,6 @@ class ComicArchive(object):
         self.raw = {}
         if metadata is None:
             self._parse_metadata()
-        from pprint import pprint
-
-        pprint(self.get_metadata())
         self.metadata.compute_page_metadata(self.namelist())
 
     def set_path(self, path):
@@ -183,7 +180,9 @@ class ComicArchive(object):
         """Extract the cover image to a destination file."""
         cover_fn = self.metadata.get_cover_page_filename()
         with self._get_archive() as archive:
-            archive.extract(cover_fn, path)
+            with archive.open(cover_fn) as page:
+                with open(path, "wb") as cover_file:
+                    cover_file.write(page.read())
 
     def get_cover_image(self):
         """Return cover image data."""
