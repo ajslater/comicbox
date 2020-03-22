@@ -11,7 +11,6 @@ from comicbox.metadata.comic_base import ComicBaseMetadata
 
 TEST_FILES_PATH = Path("tests/test_files")
 TMP_ROOT = Path("/tmp")
-COVER_PATH = "Captain Science 001/CaptainScience#1_01.jpg"
 SOURCE_ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 
 

@@ -1,4 +1,5 @@
 """A class to encapsulate CoMet data."""
+from decimal import Decimal
 from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import SubElement
@@ -45,11 +46,12 @@ class CoMet(ComicXml):
         "inker": ComicXml.CREDIT_TAGS["Inker"],
         "colorist": ComicXml.CREDIT_TAGS["Colorist"],
     }
+    TWOPLACES = Decimal("0.01")
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
             element = root.find(from_tag)
-            if element is None:
+            if element is None or element.text is None:
                 continue
             val = element.text.strip()
             if not val:
@@ -60,8 +62,10 @@ class CoMet(ComicXml):
                     continue
             if to_tag in self.INT_TAGS:
                 val = int(val)
-            elif to_tag in self.FLOAT_TAGS:
-                val = float(val)
+            elif to_tag == "price":
+                val = Decimal(val).quantize(self.TWOPLACES)
+            elif to_tag in self.DECIMAL_TAGS:
+                val = self.parse_decimal(val)
             elif to_tag in self.PYCOUNTRY_TAGS:
                 val = self._pycountry(to_tag, val)
                 if not val:
@@ -115,6 +119,8 @@ class CoMet(ComicXml):
             val = self.metadata.get(comicbox_tag)
             if val is None:
                 val = ""
+            if comicbox_tag == "price":
+                val = self.decimal_to_type(val)
             SubElement(root, tag).text = str(val)
 
     def _to_xml_characters(self, root):
