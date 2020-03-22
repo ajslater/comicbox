@@ -93,14 +93,16 @@ class ComicInfoXml(ComicXml):
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
             element = root.find(from_tag)
-            if element is None:
+            if element is None or element.text is None:
                 continue
-            val = element.text.strip()
+            val = str(element.text).strip()
             if not val:
                 continue
 
             if to_tag in self.INT_TAGS:
                 val = int(val)
+            if to_tag in self.DECIMAL_TAGS:
+                val = self.parse_decimal(val)
             elif to_tag in self.STR_SET_TAGS:
                 val = set([item.strip() for item in val.split(",")])
                 if len(val) == 0:

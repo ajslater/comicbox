@@ -1,4 +1,6 @@
 """Metadata class for a comic archive."""
+from decimal import Decimal
+
 import pycountry
 import regex
 
@@ -25,23 +27,13 @@ class ComicBaseMetadata(object):
                 return cls.LTR
 
     STR_SET_TAGS = set(("characters", "locations", "tags", "teams"))
-    FLOAT_TAGS = set(("price",))
     DICT_LIST_TAGS = set(("credits", "pages"))
     PYCOUNTRY_TAGS = set(("country", "language"))
+    DECIMAL_TAGS = set(
+        ("alternate_issue", "alternate_issue_count", "issue", "issue_count", "price")
+    )
     INT_TAGS = set(
-        (
-            "alternate_issue",
-            "alternate_issue_count",
-            "day",
-            "issue",
-            "issue_count",
-            "last_mark",
-            "month",
-            "page_count",
-            "volume",
-            "volume_count",
-            "year",
-        )
+        ("day", "last_mark", "month", "page_count", "volume", "volume_count", "year",)
     )
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
 
@@ -73,6 +65,26 @@ class ComicBaseMetadata(object):
                 return obj.alpha_2
             else:
                 return obj.name
+
+    @staticmethod
+    def parse_decimal(num):
+        """Fix half comic issue which are everywhere."""
+        if isinstance(num, str):
+            num = num.strip()
+            num = num.replace("½", ".5")
+            num = num.replace("1/2", ".5")
+            num = num.replace(" ", "")
+        elif not isinstance(num, (int, float)):
+            raise ValueError(f"Can't convert {num} to a number.")
+        return Decimal(num)
+
+    @staticmethod
+    def decimal_to_type(dec):
+        """Return an integer if we can."""
+        if dec % 1 == 0:
+            return int(dec)
+        else:
+            return float(dec)
 
     def get_num_pages(self):
         """Get the number of pages."""

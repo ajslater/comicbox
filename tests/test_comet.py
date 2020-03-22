@@ -1,4 +1,6 @@
 """Test CIX module."""
+from decimal import Decimal
+
 from comicbox.metadata.comet import CoMet
 
 from .test_metadata import TEST_FILES_PATH
@@ -28,7 +30,7 @@ METADATA = {
     "genre": "Science Fiction",
     "description": "A long example description",
     "is_version_of": "Captain Science",
-    "price": 0.10,
+    "price": Decimal(0.10).quantize(Decimal("0.01")),
     "format": "Comic",
     "maturity_rating": "Teen",
     "rights": "Copyright (c) 1950 Bell Features",

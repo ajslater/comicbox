@@ -45,6 +45,8 @@ class ComicBookInfo(ComicJSON):
 
             if to_key in self.INT_TAGS:
                 val = int(val)
+            if to_key in self.DECIMAL_TAGS:
+                val = self.parse_decimal(val)
             elif to_key in self.PYCOUNTRY_TAGS:
                 val = self._pycountry(to_key, val)
                 if not val:
@@ -78,6 +80,11 @@ class ComicBookInfo(ComicJSON):
             val = self.metadata.get(md_key)
             if not val:
                 continue
+            elif md_key in self.DECIMAL_TAGS:
+                if val % 1 == 0:
+                    val = int(val)
+                else:
+                    val = float(val)
             elif md_key in self.PYCOUNTRY_TAGS:
                 val = self._pycountry(md_key, val, False)
                 if not val:
