@@ -16,6 +16,18 @@ from parse import compile
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
 
+def compile_parsers(patterns):
+    """Compile patterns into parsers without spewing debug logs."""
+    from logging import getLogger
+
+    log = getLogger("parse")
+    old_level = log.level
+    log.setLevel("INFO")
+    parsers = tuple([compile(pattern) for pattern in patterns])
+    log.setLevel(old_level)
+    return parsers
+
+
 class FilenameMetadata(ComicBaseMetadata):
     """Extract metdata from the filename."""
 
@@ -55,8 +67,9 @@ class FilenameMetadata(ComicBaseMetadata):
         "{series}.{ext}",
         "{issue:d} {series}.{ext}",
     )
+
     PATTERN_MAX_MATCHES = tuple([pattern.count("}") for pattern in PATTERNS])
-    PARSERS = tuple([compile(pattern) for pattern in PATTERNS])
+    PARSERS = compile_parsers(PATTERNS)
     SPACE_ALT_CHARS_RE = regex.compile(r"[_-]+")
     PLUS_RE = regex.compile(r"\++")
     MULTI_SPACE_RE = regex.compile(r"\s{2,}")
