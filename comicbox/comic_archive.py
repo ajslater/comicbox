@@ -43,6 +43,7 @@ class ComicArchive(object):
     """
 
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
+    XML_FNS = set((CoMet.XML_FN, ComicInfoXml.XML_FN))
 
     def __init__(self, path, metadata=None, settings=None):
         """Initialize the archive with a path to the archive."""
@@ -195,7 +196,7 @@ class ComicArchive(object):
         """Return the metadata from the archive."""
         return self.metadata.metadata
 
-    def recompress(self, filename=None, data=None):
+    def recompress(self, filename=None, data=None, delete=False, delete_rar=False):
         """Recompress the archive optionally replacing a file."""
         new_path = self._path.with_suffix(CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
@@ -203,14 +204,20 @@ class ComicArchive(object):
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
         with self._get_archive() as archive:
-            comment = archive.comment
+            if delete:
+                comment = b""
+            else:
+                comment = archive.comment
             if isinstance(comment, str):
                 comment = comment.encode()
             with zipfile.ZipFile(
                 tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
             ) as zf:
+                skipnames = set(filename)
+                if delete:
+                    skipnames.add(self.XML_FNS)
                 for info in sorted(archive.infolist(), key=lambda i: i.filename):
-                    if info.filename == filename:
+                    if info.filename.lower() in skipnames:
                         continue
                     if IMAGE_EXT_RE.search(info.filename) is None:
                         compress = zipfile.ZIP_DEFLATED
@@ -228,8 +235,19 @@ class ComicArchive(object):
                     zf.writestr(filename, data)
                 zf.comment = comment
 
+        old_path = self._path
         tmp_path.replace(new_path)
         self._path = new_path
+        if delete_rar:
+            print(f"converted to: {new_path}")
+
+        if delete_rar and new_path.is_file():
+            old_path.unlink()
+            print(f"removed: {old_path}")
+
+    def delete_tags(self):
+        """Recompress, without any tag formats."""
+        self.recompress(delete=True)
 
     def write_metadata(self, md_class, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
@@ -290,3 +308,11 @@ class ComicArchive(object):
         """Rename the archive."""
         car = FilenameMetadata(self.metadata)
         self._path = car.to_file(self._path)
+
+    def print_raw(self):
+        """Print raw metadtata."""
+        for key, val in self.raw.items():
+            print("-" * 10, key, "-" * 10)
+            if isinstance(val, bytes):
+                val = val.decode()
+            print(val)

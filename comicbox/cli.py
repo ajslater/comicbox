@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
 import argparse
+import os
+import sys
 
 from pathlib import Path
 from pprint import pprint
@@ -64,10 +66,10 @@ def get_args():
     )
     parser.add_argument(
         "-p",
-        "--root_path",
+        "--dest_path",
         default=".",
         type=Path,
-        help="root path to extracting pages and metadata.",
+        help="destination path for extracting pages and metadata.",
     )
     parser.add_argument(
         "-c", "--covers", action="store_true", help="Extract cover pages."
@@ -101,8 +103,57 @@ def get_args():
         action="store_true",
         help="Rename the file with our preferred schema." "",
     )
+    parser.add_argument(
+        "--delete", action="store_true", help="Delete all tags from archive."
+    )
+    parser.add_argument(
+        "--recurse",
+        action="store_true",
+        help="Perform seletced actions recursively on a directory.",
+    )
 
     return parser.parse_args()
+
+
+def run_on_file(args, path):
+    """Run operations on one file."""
+    if not args.path.is_file():
+        print("{args.path} is not a file.")
+
+    car = ComicArchive(path, settings=args)
+    if args.raw:
+        car.print_raw()
+    elif args.metadata:
+        pprint(car.get_metadata())
+    elif args.covers:
+        car.extract_covers(args.dest_path)
+    elif args.index_from:
+        car.extract_pages(args.index_from, args.dest_path)
+    elif args.export:
+        car.export_files()
+    elif args.delete:
+        car.delete_tags()
+    elif args.cbz:
+        car.recompress(delete_rar=True)
+    elif args.import_fn:
+        car.import_file(args.import_fn)
+    elif args.rename:
+        car.rename_file()
+    else:
+        print("Nothing to do.")
+
+
+def recurse(args, path):
+    """Perform operations recursively on files."""
+    if not path.is_dir():
+        print(f"{path} is not a directory")
+        sys.exit(1)
+
+    for root, dirs, filenames in os.path.walk(path):
+        root_path = Path(root)
+        for filename in sorted(filenames):
+            full_path = root_path / filename
+            run_on_file(args, full_path)
 
 
 def main():
@@ -111,37 +162,11 @@ def main():
     if args.version:
         print(VERSION)
         return
-    if not args.path.is_file():
-        print("{args.path} is not a file.")
 
-    car = ComicArchive(args.path, settings=args)
-    if args.raw:
-        for key, val in car.raw.items():
-            print("-" * 10, key, "-" * 10)
-            if isinstance(val, bytes):
-                val = val.decode()
-            print(val)
-    elif args.metadata:
-        pprint(car.get_metadata())
-    elif args.covers:
-        car.extract_covers(args.root_path)
-    elif args.index_from:
-        car.extract_pages(args.index_from, args.root_path)
-    elif args.cbz:
-        new_path = car.recompress()
-        print(f"converted to: {new_path}")
-        if args.delete_rar:
-            if new_path.is_file():
-                args.path.unlink()
-                print(f"removed: {args.path}")
-    elif args.import_fn:
-        car.import_file(args.import_fn)
-    elif args.export:
-        car.export_files()
-    elif args.rename:
-        car.rename_file()
+    if not args.recursive:
+        run_on_file(args, args.path)
     else:
-        print("Nothing to do.")
+        recurse(args, args.path)
 
 
 if __name__ == "__main__":
