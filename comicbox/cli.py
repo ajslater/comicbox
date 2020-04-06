@@ -102,7 +102,7 @@ def get_args():
         help="Rename the file with our preferred schema." "",
     )
     parser.add_argument(
-        "--delete", action="store", help="Delete tags from archive."
+        "--delete", action="store_true", help="Delete all tags from archive."
     )
 
     return parser.parse_args()

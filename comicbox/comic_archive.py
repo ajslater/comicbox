@@ -43,7 +43,7 @@ class ComicArchive(object):
     """
 
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
-    XML_FNS = set(CoMet.XML_FN, ComicInfoXml.XML_FN)
+    XML_FNS = set((CoMet.XML_FN, ComicInfoXml.XML_FN))
 
     def __init__(self, path, metadata=None, settings=None):
         """Initialize the archive with a path to the archive."""
@@ -205,7 +205,7 @@ class ComicArchive(object):
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
         with self._get_archive() as archive:
             if delete:
-                comment = b''
+                comment = b""
             else:
                 comment = archive.comment
             if isinstance(comment, str):
