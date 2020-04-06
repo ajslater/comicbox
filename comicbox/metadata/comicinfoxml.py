@@ -55,6 +55,7 @@ class ComicInfoXml(ComicXml):
         "SeriesGroup": "series_group",
         "StoryArc": "story_arc",
         "Manga": "manga",  # type(MangaType),  # Yes, YesRTL, No
+        "Format": "format",
         "BlackAndWhite": "black_and_white",
         # "Credits": "credits",
         "ScanInformation": "scan_info",

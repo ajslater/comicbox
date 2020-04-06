@@ -26,7 +26,7 @@ class ComicBaseMetadata(object):
             elif val == cls.LTR:
                 return cls.LTR
 
-    STR_SET_TAGS = set(("characters", "locations", "tags", "teams"))
+    STR_SET_TAGS = set(("characters", "locations", "tags", "teams", "genre"))
     DICT_LIST_TAGS = set(("credits", "pages"))
     PYCOUNTRY_TAGS = set(("country", "language"))
     DECIMAL_TAGS = set(
@@ -252,6 +252,7 @@ class ComicBaseMetadata(object):
     #    "characters": set,
     #    "reading_direction": ReadingDirection,
     #    "maturity_rating": str,
+    #    "format": str,
     #    # CBI AND COMET ONLY
     #    "critical_rating": str,
     #    # CIX ONLY
@@ -277,7 +278,6 @@ class ComicBaseMetadata(object):
     #    # COMET_ONLY
     #    "cover_image": str,
     #    "description": str,
-    #    "format": str,
     #    "identifier": str,
     #    "last_mark": int,
     #    "price": float,
