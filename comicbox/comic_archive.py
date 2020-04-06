@@ -196,7 +196,7 @@ class ComicArchive(object):
         """Return the metadata from the archive."""
         return self.metadata.metadata
 
-    def recompress(self, filename=None, data=None, delete=False):
+    def recompress(self, filename=None, data=None, delete=False, delete_rar=False):
         """Recompress the archive optionally replacing a file."""
         new_path = self._path.with_suffix(CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
@@ -235,8 +235,15 @@ class ComicArchive(object):
                     zf.writestr(filename, data)
                 zf.comment = comment
 
+        old_path = self._path
         tmp_path.replace(new_path)
         self._path = new_path
+        if delete_rar:
+            print(f"converted to: {new_path}")
+
+        if delete_rar and new_path.is_file():
+            old_path.unlink()
+            print(f"removed: {old_path}")
 
     def delete_tags(self):
         """Recompress, without any tag formats."""
@@ -301,3 +308,11 @@ class ComicArchive(object):
         """Rename the archive."""
         car = FilenameMetadata(self.metadata)
         self._path = car.to_file(self._path)
+
+    def print_raw(self):
+        """Print raw metadtata."""
+        for key, val in self.raw.items():
+            print("-" * 10, key, "-" * 10)
+            if isinstance(val, bytes):
+                val = val.decode()
+            print(val)

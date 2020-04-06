@@ -64,10 +64,10 @@ def get_args():
     )
     parser.add_argument(
         "-p",
-        "--root_path",
+        "--dest_path",
         default=".",
         type=Path,
-        help="root path to extracting pages and metadata.",
+        help="destination path for extracting pages and metadata.",
     )
     parser.add_argument(
         "-c", "--covers", action="store_true", help="Extract cover pages."
@@ -108,45 +108,42 @@ def get_args():
     return parser.parse_args()
 
 
-def main():
-    """Get CLI arguments and perform the operation on the archive."""
-    args = get_args()
-    if args.version:
-        print(VERSION)
-        return
+def run_on_file(args, path):
+    """Run operations on one file."""
     if not args.path.is_file():
         print("{args.path} is not a file.")
 
-    car = ComicArchive(args.path, settings=args)
+    car = ComicArchive(path, settings=args)
     if args.raw:
-        for key, val in car.raw.items():
-            print("-" * 10, key, "-" * 10)
-            if isinstance(val, bytes):
-                val = val.decode()
-            print(val)
+        car.print_raw()
     elif args.metadata:
         pprint(car.get_metadata())
     elif args.covers:
-        car.extract_covers(args.root_path)
+        car.extract_covers(args.dest_path)
     elif args.index_from:
-        car.extract_pages(args.index_from, args.root_path)
+        car.extract_pages(args.index_from, args.dest_path)
     elif args.export:
         car.export_files()
     elif args.delete:
         car.delete_tags()
     elif args.cbz:
-        new_path = car.recompress()
-        print(f"converted to: {new_path}")
-        if args.delete_rar:
-            if new_path.is_file():
-                args.path.unlink()
-                print(f"removed: {args.path}")
+        car.recompress(delete_rar=True)
     elif args.import_fn:
         car.import_file(args.import_fn)
     elif args.rename:
         car.rename_file()
     else:
         print("Nothing to do.")
+
+
+def main():
+    """Get CLI arguments and perform the operation on the archive."""
+    args = get_args()
+    if args.version:
+        print(VERSION)
+        return
+
+    run_on_file(args, args.path)
 
 
 if __name__ == "__main__":
