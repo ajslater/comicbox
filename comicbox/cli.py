@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
 import argparse
+import os
+import sys
 
 from pathlib import Path
 from pprint import pprint
@@ -104,6 +106,11 @@ def get_args():
     parser.add_argument(
         "--delete", action="store_true", help="Delete all tags from archive."
     )
+    parser.add_argument(
+        "--recurse",
+        action="store_true",
+        help="Perform seletced actions recursively on a directory.",
+    )
 
     return parser.parse_args()
 
@@ -136,6 +143,19 @@ def run_on_file(args, path):
         print("Nothing to do.")
 
 
+def recurse(args, path):
+    """Perform operations recursively on files."""
+    if not path.is_dir():
+        print(f"{path} is not a directory")
+        sys.exit(1)
+
+    for root, dirs, filenames in os.path.walk(path):
+        root_path = Path(root)
+        for filename in sorted(filenames):
+            full_path = root_path / filename
+            run_on_file(args, full_path)
+
+
 def main():
     """Get CLI arguments and perform the operation on the archive."""
     args = get_args()
@@ -143,7 +163,10 @@ def main():
         print(VERSION)
         return
 
-    run_on_file(args, args.path)
+    if not args.recursive:
+        run_on_file(args, args.path)
+    else:
+        recurse(args, args.path)
 
 
 if __name__ == "__main__":
