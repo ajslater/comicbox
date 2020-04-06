@@ -163,7 +163,7 @@ def main():
         print(VERSION)
         return
 
-    if not args.recursive:
+    if not args.recurse:
         run_on_file(args, args.path)
     else:
         recurse(args, args.path)
