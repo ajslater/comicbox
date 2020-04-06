@@ -101,6 +101,9 @@ def get_args():
         action="store_true",
         help="Rename the file with our preferred schema." "",
     )
+    parser.add_argument(
+        "--delete", action="store", help="Delete tags from archive."
+    )
 
     return parser.parse_args()
 
@@ -127,6 +130,10 @@ def main():
         car.extract_covers(args.root_path)
     elif args.index_from:
         car.extract_pages(args.index_from, args.root_path)
+    elif args.export:
+        car.export_files()
+    elif args.delete:
+        car.delete_tags()
     elif args.cbz:
         new_path = car.recompress()
         print(f"converted to: {new_path}")
@@ -136,8 +143,6 @@ def main():
                 print(f"removed: {args.path}")
     elif args.import_fn:
         car.import_file(args.import_fn)
-    elif args.export:
-        car.export_files()
     elif args.rename:
         car.rename_file()
     else:
