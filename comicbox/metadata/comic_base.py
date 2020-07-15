@@ -59,12 +59,17 @@ class ComicBaseMetadata(object):
             module = pycountry.languages
         else:
             raise NotImplementedError(f"no pycountry module for {tag}")
-        obj = module.lookup(name.strip())
-        if obj:
-            if long_to_alpha2:
-                return obj.alpha_2
-            else:
-                return obj.name
+        name = name.strip()
+        # Language lookup fails for 'en' unless alpha_2 is specified.
+        if len(name) == 2:
+            obj = module.get(alpha_2=name)
+        else:
+            obj = module.lookup(name)
+
+        if long_to_alpha2:
+            return obj.alpha_2
+        else:
+            return obj.name
 
     @staticmethod
     def parse_decimal(num):
