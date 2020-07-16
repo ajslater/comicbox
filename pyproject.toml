@@ -51,6 +51,9 @@ mypy = "^0.782"
 monkeytype = "^20.5.0"
 vulture = "^1.2"
 radon = "^4.1"
+# neovim dev env
+neovim = "^0.3.1"
+jedi = "^0.17.1"
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
