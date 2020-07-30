@@ -269,8 +269,9 @@ class ComicArchive(object):
 
     def import_file(self, filename):
         """Try to import metada from a file and then write it into the comic."""
-        from simplejson.errors import JSONDecodeError
         from xml.etree.ElementTree import ParseError
+
+        from simplejson.errors import JSONDecodeError
 
         path = Path(filename)
         success_class = None
