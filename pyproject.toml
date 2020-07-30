@@ -41,7 +41,7 @@ flake8-black = "^0.2.0"
 flake8-bugbear = "^20.1"
 coverage = {extras = ["toml"], version = "^5.0"}
 pep8-naming = "^0.11.1"
-pytest = "^5.3"
+pytest = "^6.0"
 pytest-black = "^0.3.10"
 pytest-cov = "^2.8"
 pytest-flake8 = "^1.0"
@@ -65,3 +65,19 @@ concurrency = ["multiprocessing"]
 
 [tool.coverage.html]
 directory = "test-results/coverage"
+
+[tool.pytest.ini_options]
+junit_family = "xunit2"
+addopts = """
+    --junitxml=test-results/pytest/results.xml
+    -ra
+    --strict
+    --black
+    --cov
+    --cov-append
+    --cov-report=html
+    --cov-report=term
+    --flake8
+    --isort
+"""
+#    --mypy
