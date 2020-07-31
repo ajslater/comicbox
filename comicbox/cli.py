@@ -126,7 +126,7 @@ def run_on_file(args, path):
     elif args.metadata:
         pprint(car.get_metadata())
     elif args.covers:
-        car.extract_covers(args.dest_path)
+        car.extract_cover_as(args.dest_path)
     elif args.index_from:
         car.extract_pages(args.index_from, args.dest_path)
     elif args.export:
@@ -149,7 +149,7 @@ def recurse(args, path):
         print(f"{path} is not a directory")
         sys.exit(1)
 
-    for root, dirs, filenames in os.path.walk(path):
+    for root, _, filenames in os.walk(path):
         root_path = Path(root)
         for filename in sorted(filenames):
             full_path = root_path / filename
