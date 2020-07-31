@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument(
         "path", type=Path, help="Path to the comic archive",
     )
-    parser.add_argument("-m", "--metadata", action="store_true", help="Print metadata")
+    parser.add_argument("-p", "--metadata", action="store_true", help="Print metadata")
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
     parser.add_argument(
         "-R",
@@ -65,7 +65,7 @@ def get_args():
         help="Extract pages from the specified index forward.",
     )
     parser.add_argument(
-        "-p",
+        "-d",
         "--dest_path",
         default=".",
         type=Path,
