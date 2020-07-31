@@ -32,7 +32,7 @@ class ComicInfoXml(ComicXml):
         NO = "No"
         YES_VALUES = (YES.lower(), YES_RTL.lower())
 
-    XML_FN = "comicinfo.xml"
+    FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
     BW_YES_VALUES = ("yes", "true", "1")
     XML_TAGS = {

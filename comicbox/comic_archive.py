@@ -43,7 +43,7 @@ class ComicArchive(object):
     """
 
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
-    XML_FNS = set((CoMet.XML_FN, ComicInfoXml.XML_FN))
+    FILENAMES = set((CoMet.FILENAME, ComicInfoXml.FILENAME))
 
     def __init__(self, path, metadata=None, settings=None):
         """Initialize the archive with a path to the archive."""
@@ -87,11 +87,14 @@ class ComicArchive(object):
             for fn in sorted(archive.namelist()):
                 basename = Path(fn).name.lower()
                 xml_parser_cls = None
-                if basename == ComicInfoXml.XML_FN.lower() and self.settings.comicrack:
+                if (
+                    basename == ComicInfoXml.FILENAME.lower()
+                    and self.settings.comicrack
+                ):
                     md = cix_md
                     xml_parser_cls = ComicInfoXml
                     title = "ComicRack"
-                elif basename == CoMet.XML_FN.lower() and self.settings.comet:
+                elif basename == CoMet.FILENAME.lower() and self.settings.comet:
                     md = comet_md
                     xml_parser_cls = CoMet
                     title = "CoMet"
@@ -215,7 +218,7 @@ class ComicArchive(object):
             ) as zf:
                 skipnames = set(filename)
                 if delete:
-                    skipnames.add(self.XML_FNS)
+                    skipnames.add(self.FILENAMES)
                 for info in sorted(archive.infolist(), key=lambda i: i.filename):
                     if info.filename.lower() in skipnames:
                         continue
@@ -255,7 +258,7 @@ class ComicArchive(object):
         if recompute_page_sizes and isinstance(parser, ComicInfoXml):
             self.compute_pages_tags()
         if isinstance(parser, (ComicXml, CoMet)):
-            self.recompress(parser.XML_FN, parser.to_string())
+            self.recompress(parser.FILENAME, parser.to_string())
         elif isinstance(parser, ComicBookInfo):
             with self._get_archive("a") as archive:
                 comment = parser.to_string().encode()
@@ -290,7 +293,7 @@ class ComicArchive(object):
         """Export metadata to all supported file formats."""
         for cls in self.PARSER_CLASSES:
             md = cls(self.get_metadata())
-            fn = self.settings.root_path / cls.XML_FN
+            fn = self.settings.root_path / cls.FILENAME
             md.to_file(fn)
 
     def compute_pages_tags(self):

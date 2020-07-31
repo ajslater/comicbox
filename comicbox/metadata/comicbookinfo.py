@@ -1,8 +1,6 @@
 """A class to encapsulate the ComicBookInfo data."""
 from datetime import datetime
 
-import pkg_resources
-
 from .comic_json import ComicJSON
 
 
@@ -35,7 +33,7 @@ class ComicBookInfo(ComicJSON):
         "credits": "credits",
         "pages": "page_count",
     }
-    XML_FN = "ComicBookInfo.json"
+    FILENAME = "ComicBookInfo.json"
 
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():

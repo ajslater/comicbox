@@ -10,7 +10,7 @@ from .comic_xml import ComicXml
 class CoMet(ComicXml):
     """CoMet Metadata."""
 
-    XML_FN = "comet.xml"
+    FILENAME = "comet.xml"
     ROOT_TAG = "comet"
 
     # http://www.denvog.com/comet/comet-specification/
