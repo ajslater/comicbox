@@ -124,7 +124,7 @@ class CoMet(ComicXml):
             SubElement(root, tag).text = str(val)
 
     def _to_xml_characters(self, root):
-        characters = self.metadata.get("characters")
+        characters = self.metadata.get("characters", [])
         for character in sorted(characters):
             SubElement(root, "character").text = character
 

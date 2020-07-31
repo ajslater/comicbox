@@ -9,7 +9,6 @@ class ComicXml(ComicBaseMetadata):
     """XML Comic Metadata super class."""
 
     XML_HEADER = '<?xml version="1.0"?>\n'
-    ROOT_TAG = None
     CREDIT_TAGS = {
         "Colorist": set(["colorist", "colourist", "colorer", "colourer"]),
         "Cover": set(
@@ -21,6 +20,10 @@ class ComicXml(ComicBaseMetadata):
         "Penciller": set(["artist", "penciller", "penciler", "breakdowns"]),
         "Writer": set(["writer", "plotter", "scripter", "creator"]),
     }
+
+    @property
+    def ROOT_TAG(self):  # noqa: N802
+        raise NotImplementedError()
 
     def _get_xml_root(self, tree):
         root = tree.getroot()
