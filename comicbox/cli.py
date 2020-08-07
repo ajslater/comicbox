@@ -7,13 +7,8 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
-import pkg_resources
-
+from .comic_archive import VERSION
 from .comic_archive import ComicArchive
-
-
-PROGRAM_NAME = "comicbox"
-VERSION = pkg_resources.get_distribution(PROGRAM_NAME).version
 
 
 def get_args():
