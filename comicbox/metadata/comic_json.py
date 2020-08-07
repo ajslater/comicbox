@@ -9,11 +9,6 @@ from comicbox.metadata.comic_base import ComicBaseMetadata
 class ComicJSON(ComicBaseMetadata):
     """JSON Comic Metadata class."""
 
-    def _from_json_credits(self, root):
-        credits = root.get("credits")
-        for credit in credits:
-            self._add_credit(credit.get("person"), credit.get("role"))
-
     def _from_json(self, json_obj):
         raise NotImplementedError()
 
