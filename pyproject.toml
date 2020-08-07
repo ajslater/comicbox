@@ -32,7 +32,11 @@ python = "^3.7"
 simplejson = "^3.17"
 pycountry = "^20.7.3"
 parse = "^1.15"
-rarfile = "^3.1"
+rarfile = "^4.0"
+requests = "^2.24.0"
+toml = "^0.10.1"
+BeautifulSoup4 = "^4.9.1"
+python-dateutil = "^2.8.1"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"

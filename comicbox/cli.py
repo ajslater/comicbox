@@ -111,6 +111,23 @@ def get_args():
         action="store_true",
         help="Perform seletced actions recursively on a directory.",
     )
+    parser.add_argument(
+        "--cv", action="store_true", help="Use the Comicvine API to tag comics",
+    )
+    parser.add_argument(
+        "--cv-id", action="store", help="Use a specific Comicvine ID to tag a comic",
+    )
+    parser.add_argument(
+        "-o",
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing tags with Comicvine tags.",
+    ),
+    parser.add_argument(
+        "--cv-api-key",
+        action="store",
+        help="Set your comcivine API key, which will persist in settings.",
+    )
 
     return parser.parse_args()
 
@@ -139,6 +156,10 @@ def run_on_file(args, path):
         car.import_file(args.import_fn)
     elif args.rename:
         car.rename_file()
+    elif args.cv or args.cv_id:
+        car.comicvine()
+    elif args.cv_api_key:
+        car.save_cv_api_key()
     else:
         print("Nothing to do.")
 

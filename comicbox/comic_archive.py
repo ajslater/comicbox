@@ -10,7 +10,9 @@ import zipfile
 from pathlib import Path
 
 import rarfile
+import toml
 
+from .comicvine_api import ComicVineAPI
 from .metadata import comicapi
 from .metadata.comet import CoMet
 from .metadata.comic_base import IMAGE_EXT_RE
@@ -18,6 +20,7 @@ from .metadata.comic_base import ComicBaseMetadata
 from .metadata.comic_xml import ComicXml
 from .metadata.comicbookinfo import ComicBookInfo
 from .metadata.comicinfoxml import ComicInfoXml
+from .metadata.comicvine import ComicVine
 from .metadata.filename import FilenameMetadata
 
 
@@ -28,6 +31,7 @@ CBZ_SUFFIX = ".cbz"
 class Settings:
     """Settings to control default behavior. Overridden by cli namespace."""
 
+    PATH = Path.home() / ".comicbox.toml"
     comicrack = True
     comiclover = True
     comet = True
@@ -320,3 +324,47 @@ class ComicArchive(object):
             if isinstance(val, bytes):
                 val = val.decode()
             print(val)
+
+    def save_cv_api_key(self):
+        api_key = self.settings.cv_api_key
+        with open(Settings.PATH, "w") as settings_file:
+            toml_str = toml.dumps({"cv_api_key": api_key})
+            settings_file.write(toml_str)
+
+    def load_cv_api_key(self):
+        with open(Settings.PATH, "r") as settings_file:
+            toml_settings = toml.loads(settings_file.read())
+        try:
+            api_key = toml_settings["cv_api_key"]
+        except KeyError:
+            print(
+                f"Comicvine API key not found. Add to {Settings.PATH} "
+                "or specify on the command line."
+            )
+            exit(1)
+        self.settings.cv_api_key = api_key
+
+    def comicvine(self):
+        if self.settings.cv_api_key:
+            self.save_cv_api_key()
+        else:
+            self.load_cv_api_key()
+
+        md = self.metadata.metadata
+
+        # TODO better way to id if has metadata
+        if md["issue"] and not self.settings.overwrite:
+            print(f"{self._path} already tagged, skipping")
+            return
+
+        cv_api = ComicVineAPI(self.settings.cv_api_key)
+        if self.settings.cv_id:
+            cv_md = cv_api.fetch_issue_by_id(self.settings.cv_id)
+        else:
+            cv_md = cv_api.search(md)
+            # TODO use passed in UI for choice UI
+
+        parser = ComicVine(cv_md)
+        print("Successfully parsed ComicVine data.")
+        self.metadata.metadata = parser.metadata
+        self.write_metadata(ComicInfoXml)
