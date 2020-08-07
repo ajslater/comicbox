@@ -32,7 +32,7 @@ python = "^3.7"
 simplejson = "^3.17"
 pycountry = "^20.7.3"
 parse = "^1.15"
-rarfile = "^3.1"
+rarfile = "^4.0"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"

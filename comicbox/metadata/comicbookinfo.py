@@ -59,6 +59,11 @@ class ComicBookInfo(ComicJSON):
                     continue
             self.metadata[to_key] = val
 
+    def _from_json_credits(self, root):
+        credits = root.get("credits")
+        for credit in credits:
+            self._add_credit(credit.get("person"), credit.get("role"))
+
     def _from_json(self, json_obj):
         """Parse metadata from string."""
         root = json_obj[self.ROOT_TAG]
