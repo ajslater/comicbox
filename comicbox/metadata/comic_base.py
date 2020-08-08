@@ -11,6 +11,10 @@ IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$", regex.IGNORECASE)
 class ComicBaseMetadata(object):
     """Comicbox Metadata Class."""
 
+    @property
+    def FILENAME(self):  # noqa: N802
+        raise NotImplementedError("Subclasses should implement this!")
+
     class ReadingDirection(object):
         """Reading direction enum."""
 

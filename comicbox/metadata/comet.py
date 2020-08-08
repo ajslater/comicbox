@@ -10,7 +10,7 @@ from .comic_xml import ComicXml
 class CoMet(ComicXml):
     """CoMet Metadata."""
 
-    XML_FN = "comet.xml"
+    FILENAME = "comet.xml"
     ROOT_TAG = "comet"
 
     # http://www.denvog.com/comet/comet-specification/
@@ -124,7 +124,7 @@ class CoMet(ComicXml):
             SubElement(root, tag).text = str(val)
 
     def _to_xml_characters(self, root):
-        characters = self.metadata.get("characters")
+        characters = self.metadata.get("characters", [])
         for character in sorted(characters):
             SubElement(root, "character").text = character
 

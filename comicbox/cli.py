@@ -7,13 +7,8 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
-import pkg_resources
-
+from .comic_archive import VERSION
 from .comic_archive import ComicArchive
-
-
-PROGRAM_NAME = "comicbox"
-VERSION = pkg_resources.get_distribution(PROGRAM_NAME).version
 
 
 def get_args():
@@ -23,7 +18,7 @@ def get_args():
     parser.add_argument(
         "path", type=Path, help="Path to the comic archive",
     )
-    parser.add_argument("-m", "--metadata", action="store_true", help="Print metadata")
+    parser.add_argument("-p", "--metadata", action="store_true", help="Print metadata")
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
     parser.add_argument(
         "-R",
@@ -65,7 +60,7 @@ def get_args():
         help="Extract pages from the specified index forward.",
     )
     parser.add_argument(
-        "-p",
+        "-d",
         "--dest_path",
         default=".",
         type=Path,
@@ -101,7 +96,7 @@ def get_args():
     parser.add_argument(
         "--rename",
         action="store_true",
-        help="Rename the file with our preferred schema." "",
+        help="Rename the file with our preferred schema.",
     )
     parser.add_argument(
         "--delete", action="store_true", help="Delete all tags from archive."
@@ -126,7 +121,7 @@ def run_on_file(args, path):
     elif args.metadata:
         pprint(car.get_metadata())
     elif args.covers:
-        car.extract_covers(args.dest_path)
+        car.extract_cover_as(args.dest_path)
     elif args.index_from:
         car.extract_pages(args.index_from, args.dest_path)
     elif args.export:
@@ -149,7 +144,7 @@ def recurse(args, path):
         print(f"{path} is not a directory")
         sys.exit(1)
 
-    for root, dirs, filenames in os.path.walk(path):
+    for root, _, filenames in os.walk(path):
         root_path = Path(root)
         for filename in sorted(filenames):
             full_path = root_path / filename

@@ -1,14 +1,8 @@
 """A class to encapsulate the ComicBookInfo data."""
 from datetime import datetime
 
-import pkg_resources
-
+from ..version import VERSION
 from .comic_json import ComicJSON
-
-
-PROGRAM_NAME = "comicbox"
-DISTRIBUTION = pkg_resources.get_distribution(PROGRAM_NAME)
-VERSION = DISTRIBUTION.version
 
 
 class ComicBookInfo(ComicJSON):
@@ -35,7 +29,7 @@ class ComicBookInfo(ComicJSON):
         "credits": "credits",
         "pages": "page_count",
     }
-    XML_FN = "ComicBookInfo.json"
+    FILENAME = "ComicBookInfo.json"
 
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():
@@ -60,6 +54,11 @@ class ComicBookInfo(ComicJSON):
                 if len(val) == 0:
                     continue
             self.metadata[to_key] = val
+
+    def _from_json_credits(self, root):
+        credits = root.get("credits")
+        for credit in credits:
+            self._add_credit(credit.get("person"), credit.get("role"))
 
     def _from_json(self, json_obj):
         """Parse metadata from string."""
