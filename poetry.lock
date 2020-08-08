@@ -208,7 +208,7 @@ description = "A concrete syntax tree with AST-like properties for Python 3.5, 3
 name = "libcst"
 optional = false
 python-versions = ">=3.6"
-version = "0.3.8"
+version = "0.3.9"
 
 [package.dependencies]
 pyyaml = ">=5.2"
@@ -756,8 +756,8 @@ jedi = [
     {file = "jedi-0.17.2.tar.gz", hash = "sha256:86ed7d9b750603e4ba582ea8edc678657fb4007894a12bcf6f4bb97892f31d20"},
 ]
 libcst = [
-    {file = "libcst-0.3.8-py3-none-any.whl", hash = "sha256:d514cd36e8da5e1444ec693b65a4b6751781af02496f9a2442c8590eb0d321fc"},
-    {file = "libcst-0.3.8.tar.gz", hash = "sha256:484fc3bf0b9b15773349548a466a36b137fbd94705fac8cdf25734fd8261fa17"},
+    {file = "libcst-0.3.9-py3-none-any.whl", hash = "sha256:ca1744d9344f51c2c9226d0472a5a3096f8b39e4fe38441ebc2ba26babd00688"},
+    {file = "libcst-0.3.9.tar.gz", hash = "sha256:b5185c84f0e4a38409aac59f53a71741bec8c1b1159c874996b3266daafe63e5"},
 ]
 mando = [
     {file = "mando-0.6.4-py2.py3-none-any.whl", hash = "sha256:4ce09faec7e5192ffc3c57830e26acba0fd6cd11e1ee81af0d4df0657463bd1c"},
