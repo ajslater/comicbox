@@ -1,0 +1,81 @@
+[build-system]
+requires = ["poetry>=1.0"]
+build-backend = ["poetry.masonry.api"]
+
+[tool.poetry]
+name = "comicbox"
+version = "0.1.0"
+description = "An API for reading comic archives"
+license = "GPL-2.0-only"
+authors = ["AJ Slater <aj@slater.net>"]
+readme = "README.md"
+homepage = "https://github.com/ajslater/comicbox"
+documentation = "https://github.com/ajslater/comicbox"
+keywords = ["comic", "cbz", "cbr"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+]
+packages = [
+    { include = "comicbox" },
+    { include = "tests", format = "sdist" },
+]
+include = ["NEWS"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+simplejson = "^3.17"
+pycountry = "^20.7.3"
+parse = "^1.15"
+rarfile = "^4.0"
+
+[tool.poetry.dev-dependencies]
+black = "^19.10b0"
+flake8 = "^3.7"
+flake8-black = "^0.2.0"
+flake8-bugbear = "^20.1"
+coverage = {extras = ["toml"], version = "^5.0"}
+pep8-naming = "^0.11.1"
+pytest = "^6.0"
+pytest-black = "^0.3.10"
+pytest-cov = "^2.8"
+pytest-flake8 = "^1.0"
+pytest-isort = "^1.1.0"
+pytest-monkeytype = "^1.0"
+mypy = "^0.782"
+monkeytype = "^20.5.0"
+vulture = "^1.2"
+radon = "^4.1"
+# neovim dev env
+neovim = "^0.3.1"
+jedi = "^0.17.1"
+
+[tool.poetry.scripts]
+comicbox = "comicbox.cli:main"
+
+[tool.coverage.run]
+source = ["comicbox"]
+branch = true
+concurrency = ["multiprocessing"]
+
+[tool.coverage.html]
+directory = "test-results/coverage"
+
+[tool.pytest.ini_options]
+junit_family = "xunit2"
+addopts = """
+    --junitxml=test-results/pytest/results.xml
+    -ra
+    --strict
+    --black
+    --cov
+    --cov-append
+    --cov-report=html
+    --cov-report=term
+    --flake8
+    --isort
+"""
+#    --mypy

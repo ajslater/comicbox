@@ -1,0 +1,17 @@
+*.egg-info
+*.jpg
+*.png
+*.py[co]
+*.pyc
+*~
+.DS_Store
+.coverage*
+.mypy_cache
+.picopt_timestamp
+.ropeproject
+MANIFEST
+__pycache__
+build
+dist
+monkeytype.sqlite3
+test-results
