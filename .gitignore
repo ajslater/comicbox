@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# comicbox
+*.jpg
+*.png
+*~
+.DS_Store
+.coverage*
+.mypy_cache
+.picopt_timestamp
+__pycache__
+monkeytype.sqlite3
+test-results
