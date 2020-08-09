@@ -6,6 +6,15 @@ Comicbox is a comic book archive metadata reader and writer. It reads CBR and CB
 
 Comicbox's primary purpose is as a library for other programs with [comicbox.comic_archive](https://github.com/ajslater/comicbox/blob/master/comicbox/comic_archive.py) as the primary interface.
 
+## Console
+
+```sh
+comicbox -h
+```
+
+to use the CLI.
+
+
 ## Motivation
 
 I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for a forthcoming project.
