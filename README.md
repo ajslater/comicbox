@@ -12,4 +12,4 @@ I didn't like Comictagger's API, so I built this for myself as an educational ex
 
 ## Future Plans
 
-I may implement ComicVine API tagging in the futre, but this library will remain primarily an API for other programs with a console interface.
+I may implement ComicVine API tagging, but this library will remain primarily an API for other programs with a console interface.
