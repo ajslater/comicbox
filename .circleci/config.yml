@@ -1,0 +1,33 @@
+version: 2.1
+executors:
+    tester:
+        machine: true
+
+jobs:
+  build:
+    executor: tester 
+    steps:
+    - checkout
+    - run:
+        name: Setup
+        command: ./setup.sh
+    - run:
+        name: Lint
+        command: ./lint.sh
+    - run:
+        name: Test
+        command: ./test.sh
+    - run:
+        name: Build
+        command: ./build.sh
+
+workflows:
+  version: 2.1
+  build-deploy:
+    jobs:
+    - build
+        filters:
+          branches:
+            only:
+              - master
+              - develop
