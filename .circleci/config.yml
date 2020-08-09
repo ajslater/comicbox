@@ -1,33 +1,39 @@
 version: 2.1
-executors:
-    tester:
-        machine: true
+orbs:
+  python: circleci/python@0.2.1
 
 jobs:
-  build:
-    executor: tester 
+  build-and-test:
+    executor: python/default
     steps:
-    - checkout
-    - run:
-        name: Setup
-        command: ./setup.sh
-    - run:
-        name: Lint
-        command: ./lint.sh
-    - run:
-        name: Test
-        command: ./test.sh
-    - run:
-        name: Build
-        command: ./build.sh
+      - checkout
+      - restore_cache:
+          keys:
+            - deps-{{ checksum "poetry.lock"  }}
+      - run:
+          command: ./setup.sh
+          name: Setup
+      - save_cache:
+          key: deps-{{ checksum "poetry.lock"  }}
+          paths:
+            - /home/circleci/project/.poetry/virtualenvs
+      - run:
+          command: ./lint.sh
+          name: Lint
+      - run:
+          command: ./test.sh
+          name: Test
+      - run:
+          command: ./build.sh
+          name: Build
 
 workflows:
-  version: 2.1
-  build-deploy:
+  main:
     jobs:
-    - build
+      - build-and-test:
         filters:
           branches:
             only:
               - master
               - develop
+              - circleci
