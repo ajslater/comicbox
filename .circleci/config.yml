@@ -8,11 +8,15 @@ jobs:
     executor: python/default
     steps:
       - checkout
-      - python/load-cache
+      - restore_cache:
+        keys:
+        - deps-{{ checksum "poetry.lock"  }}
       - run:
           command: ./setup.sh
           name: Setup
-      - python/save-cache
+      - save_cache:
+        keys:
+        - deps-{{ checksum "poetry.lock"  }}
       - run:
           command: ./lint.sh
           name: Lint
