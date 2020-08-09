@@ -1,4 +1,6 @@
 #!/bin/sh
+# TODO Could speed up ci by replacing this with an image
+
 if [ -n "$CIRCLE_BRANCH" ]; then
     # CircleCI buster doesn't have non-free available by default
     sudo apt-get install -y software-properties-common
