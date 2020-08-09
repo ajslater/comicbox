@@ -1,0 +1,35 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  build-and-test:
+    executor: python/default
+    steps:
+      - checkout
+      - python/load-cache
+      - run:
+          command: ./setup.sh
+          name: Setup
+      - python/save-cache
+      - run:
+          command: ./lint.sh
+          name: Lint
+      - run:
+          command: ./test.sh
+          name: Test
+      - run:
+          command: ./build.sh
+          name: Build
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
+        filters:
+          branches:
+            only:
+              - master
+              - develop
+              - circleci
