@@ -1,6 +1,6 @@
 #!/bin/sh
 if [ -n "$CIRCLE_BRANCH" ]; then
-    # Circle buster doesn't have non-free available by default
+    # CircleCI buster doesn't have non-free available by default
     sudo apt-get install -y software-properties-common
     sudo apt-add-repository non-free
     sudo apt-add-repository contrib
