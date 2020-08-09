@@ -1,8 +1,7 @@
 #!/bin/sh
 if [ -n "$CIRCLE_BRANCH" ]; then
     # Circle buster doesn't have non-free available by default
-    echo 'deb ftp://ftp.us.debian.org/debian/ buster non-free
-deb http://security.debian.org/ buster/updates non-free deb http://volatile.debian.org/debian-volatile buster/volatile non-free' | sudo tee -a /etc/apt/sources.list.d/buster.non-free.list
+    printf 'deb http://deb.debian.org/debian buster-updates main contrib non-free\ndeb http://deb.debian.org/ buster-updates non-free\ndeb http://deb.debian.org/debian-security/ buster/updates main contrib non-free'
     sudo apt-get update
 fi
 
