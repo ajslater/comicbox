@@ -1,0 +1,11 @@
+create small test comics for each of 4 metadadata schemes
+and 4 comic types
+4x4 = 16 test comics
+plus some comics with all kinds of metadata
+
+
+Get licencing right.
+
+* Get tags from comicvine
+** Ambiguous results UI
+* Write tags individually from command line.

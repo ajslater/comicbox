@@ -136,6 +136,11 @@ dmypy.json
 .coverage*
 .mypy_cache
 .picopt_timestamp
+<<<<<<< HEAD
+.ropeproject
+MANIFEST
 __pycache__
+build
+dist
 monkeytype.sqlite3
 test-results
