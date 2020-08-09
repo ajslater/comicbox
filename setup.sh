@@ -1,7 +1,9 @@
 #!/bin/sh
 if [ -n "$CIRCLE_BRANCH" ]; then
     # Circle buster doesn't have non-free available by default
-    sudo cp .circleci/buster.non-free.list /etc/apt/sources.list.d/
+    sudo apt-get install -y software-properties-common
+    sudo apt-add-repository non-free
+    sudo apt-add-repository contrib
     sudo apt-get update
     sudo apt-get upgrade
 fi
