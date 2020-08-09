@@ -2,7 +2,7 @@
 
 Comicbox is a comic book archive metadata reader and writer. It reads CBR and CBZ archives and writes CBZ archives. It reads and writes the 
 [ComicRack comicinfo.xml format](https://wiki.mobileread.com/wiki/ComicRack#Metadata)
-, the [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/) and [Comet format](https://github.com/wdhongtw/comet-utils).
+, the [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/) and [CoMet format](https://github.com/wdhongtw/comet-utils).
 
 ## Motivation
 
