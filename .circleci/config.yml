@@ -9,12 +9,12 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - deps-{{ checksum "poetry.lock"  }}
+            - deps-{{ checksum "pyproject.toml"  }}
       - run:
           command: ./setup.sh
           name: Setup
       - save_cache:
-          key: deps-{{ checksum "poetry.lock"  }}
+          key: deps-{{ checksum "pyproject.toml"  }}
           paths:
             - /home/circleci/project/.poetry/virtualenvs
       - run:
