@@ -1,8 +1,9 @@
 #!/bin/sh
 if [ -n "$CIRCLE_BRANCH" ]; then
     # Circle buster doesn't have non-free available by default
-    printf 'deb http://deb.debian.org/debian buster-updates main contrib non-free\ndeb http://deb.debian.org/ buster-updates non-free\ndeb http://deb.debian.org/debian-security/ buster/updates main contrib non-free'
+    sudo cp .circleci/ buster.non-free.list /etc/apt/sources.list.d/
     sudo apt-get update
+    sudo apt-get upgrade
 fi
 
 if [ -n "$(which apt-get)" ]; then
