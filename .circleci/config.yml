@@ -1,39 +1,38 @@
 version: 2.1
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
   build-and-test:
-    executor: python/default
+    docker:
+    - image: circleci/python:latest
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - deps-{{ checksum "pyproject.toml"  }}
-      - run:
-          command: ./setup.sh
-          name: Setup
-      - save_cache:
-          key: deps-{{ checksum "pyproject.toml"  }}
-          paths:
-            - /home/circleci/project/.poetry/virtualenvs
-      - run:
-          command: ./lint.sh
-          name: Lint
-      - run:
-          command: ./test.sh
-          name: Test
-      - run:
-          command: ./build.sh
-          name: Build
+    - checkout
+    - restore_cache:
+        keys:
+        - deps-{{ checksum "pyproject.toml"  }}
+    - run:
+        command: ./setup.sh
+        name: Setup
+    - save_cache:
+        key: deps-{{ checksum "pyproject.toml"  }}
+        paths:
+        - /home/circleci/project/.poetry/virtualenvs
+    - run:
+        command: ./lint.sh
+        name: Lint
+    - run:
+        command: ./test.sh
+        name: Test
+    - run:
+        command: ./build.sh
+        name: Build
 
 workflows:
   main:
     jobs:
-      - build-and-test:
-        filters:
-          branches:
-            only:
-              - master
-              - develop
-              - circleci
+    - build-and-test:
+      filters:
+        branches:
+          only:
+          - master
+          - develop
+          - circleci
+  version: 2
