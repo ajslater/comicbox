@@ -50,7 +50,7 @@ You may automatically fix most simple linting errors with
 
 ## Motivation
 
-I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for a forthcoming project.
+I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for [Codex comic reader](https://github.com/ajslater/codex/).
 
 ## Alternatives
 
