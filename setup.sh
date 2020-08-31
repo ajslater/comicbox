@@ -22,5 +22,5 @@ else
     echo "Comicbox requires unrar to open cbr files. Please install it."
 fi
 
-pip3 install poetry
-poetry update
+pip3 install -U poetry
+poetry install --no-root
