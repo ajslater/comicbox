@@ -1,7 +1,6 @@
 jobs:
-    build-and-test:
-        docker:
-            - image: circleci/python:latest
+    build:
+        machine: true
         steps:
             - checkout
             - run:
@@ -15,12 +14,14 @@ version: 2.1
 workflows:
     main:
         jobs:
-            - build-and-test: null
-              filters:
-                branches:
-                    only:
-                        - master
-                        - develop
-                        - circleci
+            - build:
+                filters:
+                    branches:
+                        only:
+                            - release
+                            - master
+                            - develop
+                            - circleci
+                            - /.*-ci/
     version: 2.1
 
