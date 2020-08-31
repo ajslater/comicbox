@@ -88,12 +88,17 @@ class ComicBaseMetadata(object):
         """Fix half comic issue which are everywhere."""
         if isinstance(num, str):
             num = num.strip()
+            num = num.replace(" ", "")
             num = num.replace("½", ".5")
             num = num.replace("1/2", ".5")
-            num = num.replace(" ", "")
         elif not isinstance(num, (int, float)):
             raise ValueError(f"Can't convert {num} to a number.")
-        return Decimal(num)
+        try:
+            decimal = Decimal(num)
+        except Exception as exc:
+            print(f"Error parsing decimal: {num}")
+            print(exc)
+        return decimal
 
     @staticmethod
     def decimal_to_type(dec):
