@@ -73,6 +73,8 @@ class ComicBaseMetadata(object):
             raise NotImplementedError(f"no pycountry module for {tag}")
         name = name.strip()
         # Language lookup fails for 'en' unless alpha_2 is specified.
+        if not name:
+            return
         if len(name) == 2:
             obj = module.get(alpha_2=name)
         else:
