@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  comicbox-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    image: comicbox-builder
+    container_name: comicbox-builder
+    volumes:
+      - ./dist/:/dist/
+      - ./test-results/:/test-results/

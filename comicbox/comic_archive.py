@@ -11,14 +11,14 @@ from pathlib import Path
 
 import rarfile
 
-from .metadata import comicapi
-from .metadata.comet import CoMet
-from .metadata.comic_base import IMAGE_EXT_RE
-from .metadata.comic_base import ComicBaseMetadata
-from .metadata.comic_xml import ComicXml
-from .metadata.comicbookinfo import ComicBookInfo
-from .metadata.comicinfoxml import ComicInfoXml
-from .metadata.filename import FilenameMetadata
+from comicbox.metadata import comicapi
+from comicbox.metadata.comet import CoMet
+from comicbox.metadata.comic_base import IMAGE_EXT_RE
+from comicbox.metadata.comic_base import ComicBaseMetadata
+from comicbox.metadata.comic_xml import ComicXml
+from comicbox.metadata.comicbookinfo import ComicBookInfo
+from comicbox.metadata.comicinfoxml import ComicInfoXml
+from comicbox.metadata.filename import FilenameMetadata
 
 
 RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
@@ -192,7 +192,11 @@ class ComicArchive(object):
         """Return cover image data."""
         cover_fn = self.metadata.get_cover_page_filename()
         with self._get_archive() as archive:
-            data = archive.read(cover_fn)
+            try:
+                data = archive.read(cover_fn)
+            except Exception as exc:
+                print(f"Error reading: {cover_fn}")
+                raise exc
         return data
 
     def get_metadata(self):

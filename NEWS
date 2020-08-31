@@ -1,0 +1,10 @@
+* v0.1.2
+Fix relative imports
+Fix credit parsing errors
+Improve 1/2 Issue number parsing
+
+* v0.1.1
+Don't crash import on bad credits
+
+* v0.1.0
+initial release

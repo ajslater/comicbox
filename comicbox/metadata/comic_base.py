@@ -37,7 +37,15 @@ class ComicBaseMetadata(object):
         ("alternate_issue", "alternate_issue_count", "issue", "issue_count", "price")
     )
     INT_TAGS = set(
-        ("day", "last_mark", "month", "page_count", "volume", "volume_count", "year",)
+        (
+            "day",
+            "last_mark",
+            "month",
+            "page_count",
+            "volume",
+            "volume_count",
+            "year",
+        )
     )
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
 
@@ -65,10 +73,16 @@ class ComicBaseMetadata(object):
             raise NotImplementedError(f"no pycountry module for {tag}")
         name = name.strip()
         # Language lookup fails for 'en' unless alpha_2 is specified.
-        if len(name) == 2:
-            obj = module.get(alpha_2=name)
-        else:
-            obj = module.lookup(name)
+        if not name:
+            return
+        try:
+            if len(name) == 2:
+                obj = module.get(alpha_2=name)
+            else:
+                obj = module.lookup(name)
+        except LookupError as exc:
+            print(exc)
+            return
 
         if long_to_alpha2:
             return obj.alpha_2
@@ -80,12 +94,17 @@ class ComicBaseMetadata(object):
         """Fix half comic issue which are everywhere."""
         if isinstance(num, str):
             num = num.strip()
+            num = num.replace(" ", "")
             num = num.replace("½", ".5")
             num = num.replace("1/2", ".5")
-            num = num.replace(" ", "")
         elif not isinstance(num, (int, float)):
             raise ValueError(f"Can't convert {num} to a number.")
-        return Decimal(num)
+        try:
+            decimal = Decimal(num)
+        except Exception as exc:
+            print(f"Error parsing decimal: {num}")
+            print(exc)
+        return decimal
 
     @staticmethod
     def decimal_to_type(dec):
@@ -203,10 +222,14 @@ class ComicBaseMetadata(object):
         synth_dict_list = {}
         for md in md_list:
             dict_list = md.get("credits")
-            if not isinstance(dict_list, list):
+            if not isinstance(dict_list, list) or not dict_list:
                 continue
-            if dict_list:
+            try:
                 synth_dict_list.update(dict_list)
+            except ValueError as exc:
+                print(exc)
+                print(f"Bad credit list: {dict_list}")
+                print("Not added to synthesized metadata")
         md["credits"] = synth_dict_list
 
         # synthesize sets of attributes
