@@ -1,3 +1,6 @@
+* v0.1.2
+Fix relative imports
+
 * v0.1.1
 Don't crash import on bad credits
 
