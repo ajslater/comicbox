@@ -75,10 +75,14 @@ class ComicBaseMetadata(object):
         # Language lookup fails for 'en' unless alpha_2 is specified.
         if not name:
             return
-        if len(name) == 2:
-            obj = module.get(alpha_2=name)
-        else:
-            obj = module.lookup(name)
+        try:
+            if len(name) == 2:
+                obj = module.get(alpha_2=name)
+            else:
+                obj = module.lookup(name)
+        except LookupError as exc:
+            print(exc)
+            return
 
         if long_to_alpha2:
             return obj.alpha_2
