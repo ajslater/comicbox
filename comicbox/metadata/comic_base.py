@@ -216,14 +216,14 @@ class ComicBaseMetadata(object):
         synth_dict_list = {}
         for md in md_list:
             dict_list = md.get("credits")
-            if not isinstance(dict_list, list):
+            if not isinstance(dict_list, list) or not dict_list:
                 continue
-            if dict_list:
-                try:
-                    synth_dict_list.update(dict_list)
-                except ValueError:
-                    print(f"Bad credit list: {dict_list}")
-                    print("Not added to synthesized metadata")
+            try:
+                synth_dict_list.update(dict_list)
+            except ValueError as exc:
+                print(exc)
+                print(f"Bad credit list: {dict_list}")
+                print("Not added to synthesized metadata")
         md["credits"] = synth_dict_list
 
         # synthesize sets of attributes
