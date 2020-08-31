@@ -56,7 +56,7 @@ class ComicBookInfo(ComicJSON):
             self.metadata[to_key] = val
 
     def _from_json_credits(self, root):
-        credits = root.get("credits")
+        credits = root.get("credits", {})
         for credit in credits:
             self._add_credit(credit.get("person"), credit.get("role"))
 
