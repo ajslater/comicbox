@@ -37,7 +37,15 @@ class ComicBaseMetadata(object):
         ("alternate_issue", "alternate_issue_count", "issue", "issue_count", "price")
     )
     INT_TAGS = set(
-        ("day", "last_mark", "month", "page_count", "volume", "volume_count", "year",)
+        (
+            "day",
+            "last_mark",
+            "month",
+            "page_count",
+            "volume",
+            "volume_count",
+            "year",
+        )
     )
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
 

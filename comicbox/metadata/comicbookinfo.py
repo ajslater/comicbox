@@ -1,8 +1,8 @@
 """A class to encapsulate the ComicBookInfo data."""
 from datetime import datetime
 
-from ..version import VERSION
-from .comic_json import ComicJSON
+from comicbox.metadata.comic_json import ComicJSON
+from comicbox.version import VERSION
 
 
 class ComicBookInfo(ComicJSON):

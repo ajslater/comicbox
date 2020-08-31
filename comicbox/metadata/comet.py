@@ -4,7 +4,7 @@ from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import SubElement
 
-from .comic_xml import ComicXml
+from comicbox.metadata.comic_xml import ComicXml
 
 
 class CoMet(ComicXml):

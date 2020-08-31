@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
-from .comic_archive import VERSION
-from .comic_archive import ComicArchive
+from comicbox.comic_archive import VERSION
+from comicbox.comic_archive import ComicArchive
 
 
 def get_args():
@@ -16,7 +16,9 @@ def get_args():
     description = "Comic book archive read/write tool."
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
-        "path", type=Path, help="Path to the comic archive",
+        "path",
+        type=Path,
+        help="Path to the comic archive",
     )
     parser.add_argument("-p", "--metadata", action="store_true", help="Print metadata")
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
