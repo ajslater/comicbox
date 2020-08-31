@@ -192,7 +192,11 @@ class ComicArchive(object):
         """Return cover image data."""
         cover_fn = self.metadata.get_cover_page_filename()
         with self._get_archive() as archive:
-            data = archive.read(cover_fn)
+            try:
+                data = archive.read(cover_fn)
+            except Exception as exc:
+                print(f"Error reading: {cover_fn}")
+                raise exc
         return data
 
     def get_metadata(self):
