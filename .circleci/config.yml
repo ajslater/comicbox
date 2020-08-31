@@ -18,10 +18,10 @@ workflows:
                 filters:
                     branches:
                         only:
-                            - release
-                            - master
                             - develop
                             - circleci
                             - /.*-ci/
+                            - master
+                            - release
     version: 2.1
 
