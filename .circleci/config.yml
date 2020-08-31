@@ -4,29 +4,13 @@ jobs:
             - image: circleci/python:latest
         steps:
             - checkout
-            - restore_cache:
-                keys:
-                    - deps-{{ checksum "pyproject.toml"  }}
             - run:
-                command: ./setup.sh
-                name: Setup
-            - save_cache:
-                key: deps-{{ checksum "pyproject.toml"  }}
-                paths:
-                    - /home/circleci/project/.poetry/virtualenvs
-            - run:
-                command: ./lint.sh
-                name: Lint
-            - run:
-                command: ./test.sh
-                name: Test
+                command: ./build-dist-wheel.sh
+                name: Build Python Wheel
             - store_test_results:
                 path: test-results/pytest
             - store_artifacts:
                 path: test-results/coverage
-            - run:
-                command: ./build.sh
-                name: Build
 version: 2.1
 workflows:
     main:
