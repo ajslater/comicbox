@@ -181,11 +181,11 @@ description = "A Python utility / library to sort Python imports."
 name = "isort"
 optional = false
 python-versions = ">=3.6,<4.0"
-version = "5.4.2"
+version = "5.5.1"
 
 [package.extras]
 colors = ["colorama (>=0.4.3,<0.5.0)"]
-pipfile_deprecated_finder = ["pipreqs", "requirementslib", "tomlkit (>=0.5.3)"]
+pipfile_deprecated_finder = ["pipreqs", "requirementslib"]
 requirements_deprecated_finder = ["pipreqs", "pip-api"]
 
 [[package]]
@@ -459,7 +459,7 @@ description = "A pytest plugin to enable format checking with black"
 name = "pytest-black"
 optional = false
 python-versions = ">=2.7"
-version = "0.3.10"
+version = "0.3.11"
 
 [package.dependencies]
 pytest = ">=3.5.0"
@@ -502,14 +502,13 @@ description = "py.test plugin to check import ordering using isort"
 name = "pytest-isort"
 optional = false
 python-versions = "*"
-version = "1.1.0"
+version = "1.2.0"
 
 [package.dependencies]
 isort = ">=4.0"
-pytest = ">=3.5"
 
 [package.extras]
-dev = ["mock"]
+tests = ["mock"]
 
 [[package]]
 category = "dev"
@@ -752,8 +751,8 @@ iniconfig = [
     {file = "iniconfig-1.0.1.tar.gz", hash = "sha256:e5f92f89355a67de0595932a6c6c02ab4afddc6fcdc0bfc5becd0d60884d3f69"},
 ]
 isort = [
-    {file = "isort-5.4.2-py3-none-any.whl", hash = "sha256:60a1b97e33f61243d12647aaaa3e6cc6778f5eb9f42997650f1cc975b6008750"},
-    {file = "isort-5.4.2.tar.gz", hash = "sha256:d488ba1c5a2db721669cc180180d5acf84ebdc5af7827f7aaeaa75f73cf0e2b8"},
+    {file = "isort-5.5.1-py3-none-any.whl", hash = "sha256:a200d47b7ee8b7f7d0a9646650160c4a51b6a91a9413fd31b1da2c4de789f5d3"},
+    {file = "isort-5.5.1.tar.gz", hash = "sha256:92533892058de0306e51c88f22ece002a209dc8e80288aa3cec6d443060d584f"},
 ]
 jedi = [
     {file = "jedi-0.17.2-py2.py3-none-any.whl", hash = "sha256:98cc583fa0f2f8304968199b01b6b4b94f469a1f4a74c1560506ca2a211378b5"},
@@ -872,7 +871,7 @@ pytest = [
     {file = "pytest-6.0.1.tar.gz", hash = "sha256:85228d75db9f45e06e57ef9bf4429267f81ac7c0d742cc9ed63d09886a9fe6f4"},
 ]
 pytest-black = [
-    {file = "pytest-black-0.3.10.tar.gz", hash = "sha256:5f3c0cfee9b41e6281a9e52e2987f4c90ec4a13a92bbf2f249d26d7b58747437"},
+    {file = "pytest-black-0.3.11.tar.gz", hash = "sha256:595eb0e7908b8a858a8564a5c8f0eae853c3926a4ec7b2afdfcedfa6fec65dd6"},
 ]
 pytest-cov = [
     {file = "pytest-cov-2.10.1.tar.gz", hash = "sha256:47bd0ce14056fdd79f93e1713f88fad7bdcc583dcd7783da86ef2f085a0bb88e"},
@@ -883,8 +882,8 @@ pytest-flake8 = [
     {file = "pytest_flake8-1.0.6-py2.py3-none-any.whl", hash = "sha256:2e91578ecd9b200066f99c1e1de0f510fbb85bcf43712d46ea29fe47607cc234"},
 ]
 pytest-isort = [
-    {file = "pytest-isort-1.1.0.tar.gz", hash = "sha256:30bd29927ac1b92f0701c1c43de52abaf7ccedaec8f8c9775dfab4ee51d74006"},
-    {file = "pytest_isort-1.1.0-py2.py3-none-any.whl", hash = "sha256:e952482dd56cbc9b0cbd748d7734e856c4acbb1db6c4acd92259136e78a41db5"},
+    {file = "pytest-isort-1.2.0.tar.gz", hash = "sha256:f0fcf9674f3a627b36e07466d335e82b0f7c4f9e0f7ec39f2a1750b0189d5371"},
+    {file = "pytest_isort-1.2.0-py3-none-any.whl", hash = "sha256:2c6a1d210e8c478e418ab25df2408c235c97b1b8958fb0b139d790d0ec246f58"},
 ]
 pytest-monkeytype = [
     {file = "pytest-monkeytype-1.1.0.tar.gz", hash = "sha256:22a9d91bd74c7e27027eed1480179f6a34911e41eb1c94ec9bfbb8384d8380c8"},
