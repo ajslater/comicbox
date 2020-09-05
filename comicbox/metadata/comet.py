@@ -62,6 +62,8 @@ class CoMet(ComicXml):
                     if not val:
                         continue
                 if to_tag in self.INT_TAGS:
+                    if to_tag == "volume":
+                        val = self.remove_volume_prefixes(val)
                     val = int(val)
                 elif to_tag == "price":
                     val = Decimal(val).quantize(self.TWOPLACES)

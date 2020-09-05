@@ -47,6 +47,7 @@ class ComicBaseMetadata(object):
             "year",
         )
     )
+    VOLUME_PREFIXES = ("volume", "vol.", "vol", "v")
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
 
     def __init__(self, string=None, path=None, metadata=None):
@@ -113,6 +114,16 @@ class ComicBaseMetadata(object):
             return int(dec)
         else:
             return float(dec)
+
+    @classmethod
+    def remove_volume_prefixes(cls, volume):
+        """Remove common volume prefixes"""
+        lowercase_volume = volume.lower()
+        for prefix in cls.VOLUME_PREFIXES:
+            if lowercase_volume.startswith(prefix):
+                prefix_len = len(prefix)
+                volume = volume[prefix_len:].strip()
+        return volume
 
     def get_num_pages(self):
         """Get the number of pages."""

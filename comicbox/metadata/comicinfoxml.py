@@ -104,6 +104,8 @@ class ComicInfoXml(ComicXml):
                     continue
 
                 if to_tag in self.INT_TAGS:
+                    if to_tag == "volume":
+                        val = self.remove_volume_prefixes(val)
                     val = int(val)
                 if to_tag in self.DECIMAL_TAGS:
                     val = self.parse_decimal(val)
