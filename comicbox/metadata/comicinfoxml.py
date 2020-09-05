@@ -79,6 +79,8 @@ class ComicInfoXml(ComicXml):
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS.keys():
             for element in root.findall(role):
+                if not element.text:
+                    continue
                 for name in element.text.split(","):
                     self._add_credit(name, role)
 

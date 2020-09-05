@@ -1,5 +1,6 @@
 * v0.1.4
-Make metadata read more robust by catching individual tag exceptions and printing them to stdout.
+Make metadata read more robust by catching individual tag exceptions and printing them to stdout
+Protect against null people names for credits
 
 * v0.1.3
 Fix cli crash with bad import
