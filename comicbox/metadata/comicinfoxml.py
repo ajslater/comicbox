@@ -93,31 +93,34 @@ class ComicInfoXml(ComicXml):
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
-            element = root.find(from_tag)
-            if element is None or element.text is None:
-                continue
-            val = str(element.text).strip()
-            if not val:
-                continue
-
-            if to_tag in self.INT_TAGS:
-                val = int(val)
-            if to_tag in self.DECIMAL_TAGS:
-                val = self.parse_decimal(val)
-            elif to_tag in self.STR_SET_TAGS:
-                val = set([item.strip() for item in val.split(",")])
-                if len(val) == 0:
+            try:
+                element = root.find(from_tag)
+                if element is None or element.text is None:
                     continue
-            # special bool tags
-            elif to_tag == "black_and_white":
-                val = self._from_xml_black_and_white(val)
-            elif to_tag == "manga":
-                val = self._from_xml_manga(to_tag, val)
-            elif to_tag in self.PYCOUNTRY_TAGS:
-                val = self._pycountry(to_tag, val)
+                val = str(element.text).strip()
                 if not val:
                     continue
-            self.metadata[to_tag] = val
+
+                if to_tag in self.INT_TAGS:
+                    val = int(val)
+                if to_tag in self.DECIMAL_TAGS:
+                    val = self.parse_decimal(val)
+                elif to_tag in self.STR_SET_TAGS:
+                    val = set([item.strip() for item in val.split(",")])
+                    if len(val) == 0:
+                        continue
+                # special bool tags
+                elif to_tag == "black_and_white":
+                    val = self._from_xml_black_and_white(val)
+                elif to_tag == "manga":
+                    val = self._from_xml_manga(to_tag, val)
+                elif to_tag in self.PYCOUNTRY_TAGS:
+                    val = self._pycountry(to_tag, val)
+                    if not val:
+                        continue
+                self.metadata[to_tag] = val
+            except Exception as exc:
+                print(exc)
 
     def _from_xml_pages(self, root):
         pages = root.find("Pages")

@@ -103,7 +103,7 @@ class ComicBaseMetadata(object):
             decimal = Decimal(num)
         except Exception as exc:
             print(f"Error parsing decimal: {num}")
-            print(exc)
+            raise exc
         return decimal
 
     @staticmethod
