@@ -33,27 +33,30 @@ class ComicBookInfo(ComicJSON):
 
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():
-            val = root.get(from_key)
-            if val is None:
-                continue
+            try:
+                val = root.get(from_key)
+                if val is None:
+                    continue
 
-            if to_key in self.INT_TAGS:
-                val = int(val)
-            if to_key in self.DECIMAL_TAGS:
-                val = self.parse_decimal(val)
-            elif to_key in self.PYCOUNTRY_TAGS:
-                val = self._pycountry(to_key, val)
-                if not val:
-                    continue
-            elif isinstance(val, str):
-                val = val.strip()
-                if not val:
-                    continue
-            elif isinstance(val, list):
-                # credits and tags
-                if len(val) == 0:
-                    continue
-            self.metadata[to_key] = val
+                if to_key in self.INT_TAGS:
+                    val = int(val)
+                if to_key in self.DECIMAL_TAGS:
+                    val = self.parse_decimal(val)
+                elif to_key in self.PYCOUNTRY_TAGS:
+                    val = self._pycountry(to_key, val)
+                    if not val:
+                        continue
+                elif isinstance(val, str):
+                    val = val.strip()
+                    if not val:
+                        continue
+                elif isinstance(val, list):
+                    # credits and tags
+                    if len(val) == 0:
+                        continue
+                self.metadata[to_key] = val
+            except Exception as exc:
+                print(exc)
 
     def _from_json_credits(self, root):
         credits = root.get("credits", {})

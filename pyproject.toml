@@ -4,7 +4,7 @@ build-backend = ["poetry.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.1.3"
+version = "0.1.4"
 description = "An API for reading comic archives"
 license = "GPL-2.0-only"
 authors = ["AJ Slater <aj@slater.net>"]

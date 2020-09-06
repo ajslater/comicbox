@@ -50,27 +50,32 @@ class CoMet(ComicXml):
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
-            element = root.find(from_tag)
-            if element is None or element.text is None:
-                continue
-            val = element.text.strip()
-            if not val:
-                continue
-            if to_tag == "reading_direction":
-                val = self.ReadingDirection.parse(val)
+            try:
+                element = root.find(from_tag)
+                if element is None or element.text is None:
+                    continue
+                val = element.text.strip()
                 if not val:
                     continue
-            if to_tag in self.INT_TAGS:
-                val = int(val)
-            elif to_tag == "price":
-                val = Decimal(val).quantize(self.TWOPLACES)
-            elif to_tag in self.DECIMAL_TAGS:
-                val = self.parse_decimal(val)
-            elif to_tag in self.PYCOUNTRY_TAGS:
-                val = self._pycountry(to_tag, val)
-                if not val:
-                    continue
-            self.metadata[to_tag] = val
+                if to_tag == "reading_direction":
+                    val = self.ReadingDirection.parse(val)
+                    if not val:
+                        continue
+                if to_tag in self.INT_TAGS:
+                    if to_tag == "volume":
+                        val = self.remove_volume_prefixes(val)
+                    val = int(val)
+                elif to_tag == "price":
+                    val = Decimal(val).quantize(self.TWOPLACES)
+                elif to_tag in self.DECIMAL_TAGS:
+                    val = self.parse_decimal(val)
+                elif to_tag in self.PYCOUNTRY_TAGS:
+                    val = self._pycountry(to_tag, val)
+                    if not val:
+                        continue
+                self.metadata[to_tag] = val
+            except Exception as exc:
+                print(exc)
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS.keys():
