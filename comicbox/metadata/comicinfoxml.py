@@ -45,15 +45,15 @@ class ComicInfoXml(ComicXml):
         "Count": "issue_count",
         "Volume": "volume",
         "Publisher": "publisher",
-        "Genre": "genre",
+        "Genre": "genres",
         "LanguageISO": "language",  # two letter in the lang list
         "AlternateNumber": "alternate_issue",
         "AlternateCount": "alternate_issue_count",
         "AlternateSeries": "alternate_series",
         "AgeRating": "maturity_rating",
         "Imprint": "imprint",
-        "SeriesGroup": "series_group",
-        "StoryArc": "story_arc",
+        "SeriesGroup": "series_groups",
+        "StoryArc": "story_arcs",
         "Manga": "manga",  # type(MangaType),  # Yes, YesRTL, No
         "Format": "format",
         "BlackAndWhite": "black_and_white",
@@ -107,7 +107,7 @@ class ComicInfoXml(ComicXml):
                     if to_tag == "volume":
                         val = self.remove_volume_prefixes(val)
                     val = int(val)
-                if to_tag in self.DECIMAL_TAGS:
+                elif to_tag in self.DECIMAL_TAGS:
                     val = self.parse_decimal(val)
                 elif to_tag in self.STR_SET_TAGS:
                     val = set([item.strip() for item in val.split(",")])

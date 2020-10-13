@@ -27,7 +27,7 @@ METADATA = {
         {"person": "Wally Wood", "role": "penciller"},
     ],
     "ext": "cbz",
-    "genre": "Science Fiction",
+    "genres": set(["Science Fiction"]),
     "description": "A long example description",
     "is_version_of": "Captain Science",
     "price": Decimal(0.10).quantize(Decimal("0.01")),
