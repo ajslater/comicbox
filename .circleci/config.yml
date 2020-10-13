@@ -10,6 +10,22 @@ jobs:
                 path: test-results/pytest
             - store_artifacts:
                 path: test-results/coverage
+            - persist_to_workspace:
+                paths:
+                    - ./README.md
+                    - ./ci
+                    - ./dist
+                    - ./pyproject.toml
+                root: .
+    deploy:
+        machine: true
+        steps:
+            - attach_workspace:
+                at: .
+            - run:
+                command: pip install poetry
+            - run:
+                command: ./ci/publish-pypi.sh
 version: 2.1
 workflows:
     main:
@@ -21,6 +37,12 @@ workflows:
                             - develop
                             - circleci
                             - /.*-ci/
+                            - master
+                            - release
+            - deploy:
+                filters:
+                    branches:
+                        only:
                             - master
                             - release
     version: 2.1
