@@ -40,7 +40,7 @@ workflows:
                             - master
                             - release
             - deploy:
-                fitlers:
+                filters:
                     branches:
                         only:
                             - master
