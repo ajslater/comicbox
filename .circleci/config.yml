@@ -45,5 +45,7 @@ workflows:
                         only:
                             - master
                             - release
+                requires:
+                    - build
     version: 2.1
 
