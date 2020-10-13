@@ -18,7 +18,8 @@ jobs:
                     - ./pyproject.toml
                 root: .
     deploy:
-        machine: true
+        docker:
+            - image: circleci/python:3.8
         steps:
             - attach_workspace:
                 at: .
