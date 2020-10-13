@@ -13,13 +13,12 @@ class ComicBookInfo(ComicJSON):
         "series": "series",
         "title": "title",
         "issue": "issue",
-        "genre": "genre",
+        "genre": "genres",
         "publisher": "publisher",
         "publicationMonth": "month",
         "publicationYear": "year",
         "numberOfIssues": "issue_count",
         "comments": "comments",
-        "genre": "genre",
         "volume": "volume",
         "numberOfVolumes": "volume_count",
         "language": "language",
@@ -40,7 +39,14 @@ class ComicBookInfo(ComicJSON):
 
                 if to_key in self.INT_TAGS:
                     val = int(val)
-                if to_key in self.DECIMAL_TAGS:
+                elif to_key in self.STR_SET_TAGS:
+                    if isinstance(val, list):
+                        val = set(val)
+                    else:
+                        val = set([item.strip() for item in val.split(",")])
+                    if len(val) == 0:
+                        continue
+                elif to_key in self.DECIMAL_TAGS:
                     val = self.parse_decimal(val)
                 elif to_key in self.PYCOUNTRY_TAGS:
                     val = self._pycountry(to_key, val)
@@ -87,6 +93,8 @@ class ComicBookInfo(ComicJSON):
                     val = int(val)
                 else:
                     val = float(val)
+            elif md_key in self.STR_SET_TAGS:
+                val = ",".join(sorted(val))
             elif md_key in self.PYCOUNTRY_TAGS:
                 val = self._pycountry(md_key, val, False)
                 if not val:

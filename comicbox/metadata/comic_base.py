@@ -30,7 +30,17 @@ class ComicBaseMetadata(object):
             elif val == cls.LTR:
                 return cls.LTR
 
-    STR_SET_TAGS = set(("characters", "locations", "tags", "teams", "genre"))
+    STR_SET_TAGS = set(
+        (
+            "characters",
+            "locations",
+            "tags",
+            "teams",
+            "genres",
+            "story_arcs",
+            "series_groups",
+        )
+    )
     DICT_LIST_TAGS = set(("credits", "pages"))
     PYCOUNTRY_TAGS = set(("country", "language"))
     DECIMAL_TAGS = set(

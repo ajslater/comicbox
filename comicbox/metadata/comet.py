@@ -22,7 +22,7 @@ class CoMet(ComicXml):
         "volume": "volume",
         "publisher": "publisher",
         # date is special
-        "genre": "genre",
+        "genre": "genres",
         # character transforms into a list
         "isVersionOf": "is_version_of",
         "price": "price",
@@ -61,10 +61,14 @@ class CoMet(ComicXml):
                     val = self.ReadingDirection.parse(val)
                     if not val:
                         continue
-                if to_tag in self.INT_TAGS:
+                elif to_tag in self.INT_TAGS:
                     if to_tag == "volume":
                         val = self.remove_volume_prefixes(val)
                     val = int(val)
+                elif to_tag in self.STR_SET_TAGS:
+                    val = set([item.strip() for item in val.split(",        ")])
+                    if len(val) == 0:
+                        continue
                 elif to_tag == "price":
                     val = Decimal(val).quantize(self.TWOPLACES)
                 elif to_tag in self.DECIMAL_TAGS:
@@ -124,8 +128,10 @@ class CoMet(ComicXml):
             val = self.metadata.get(comicbox_tag)
             if val is None:
                 val = ""
-            if comicbox_tag == "price":
+            elif comicbox_tag == "price":
                 val = self.decimal_to_type(val)
+            elif comicbox_tag in self.STR_SET_TAGS:
+                val = ",".join(sorted(val))
             SubElement(root, tag).text = str(val)
 
     def _to_xml_characters(self, root):

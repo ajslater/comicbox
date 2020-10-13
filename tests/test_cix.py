@@ -31,7 +31,7 @@ METADATA = {
         {"person": "Joe Orlando", "role": "Writer"},
     ],
     "ext": "cbr",
-    "genre": set(["Science Fiction"]),
+    "genres": set(["Science Fiction"]),
     "pages": [
         {"Image": "0", "ImageSize": "429985", "Type": "FrontCover"},
         {"Image": "1", "ImageSize": "332936"},
