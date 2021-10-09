@@ -53,6 +53,9 @@ jedi = "^0.18.0"
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
 
+[tool.black]
+exclude = "/(.git|__pycache__|.pytest_cache|.venv)/"
+
 [tool.coverage.run]
 source = ["comicbox"]
 branch = true
@@ -60,6 +63,9 @@ concurrency = ["multiprocessing"]
 
 [tool.coverage.html]
 directory = "test-results/coverage"
+
+[tool.vulture]
+exclude = [".venv"]
 
 [tool.pytest.ini_options]
 junit_family = "xunit2"
@@ -74,5 +80,6 @@ addopts = """
     --cov-report=term
     --flake8
     --isort
+    --ignore=.venv
 """
 #    --mypy

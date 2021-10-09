@@ -88,13 +88,13 @@ class ComicArchive(object):
                 basename = Path(fn).name.lower()
                 xml_parser_cls = None
                 if (
-                    basename == ComicInfoXml.FILENAME.lower()
+                    basename == str(ComicInfoXml.FILENAME).lower()
                     and self.settings.comicrack
                 ):
                     md = cix_md
                     xml_parser_cls = ComicInfoXml
                     title = "ComicRack"
-                elif basename == CoMet.FILENAME.lower() and self.settings.comet:
+                elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
                     md = comet_md
                     xml_parser_cls = CoMet
                     title = "CoMet"
@@ -220,7 +220,9 @@ class ComicArchive(object):
             with zipfile.ZipFile(
                 tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
             ) as zf:
-                skipnames = set(filename)
+                skipnames = set()
+                if filename:
+                    skipnames.add(filename)
                 if delete:
                     skipnames.add(self.FILENAMES)
                 for info in sorted(archive.infolist(), key=lambda i: i.filename):
@@ -233,14 +235,15 @@ class ComicArchive(object):
                         # zip compression
                         compress = zipfile.ZIP_STORED
                     zf.writestr(
-                        info,
+                        info.filename,
                         archive.read(info),
                         compress_type=compress,
                         compresslevel=9,
                     )
                 if filename:
                     zf.writestr(filename, data)
-                zf.comment = comment
+                if comment:
+                    zf.comment = comment
 
         old_path = self._path
         tmp_path.replace(new_path)
