@@ -26,4 +26,4 @@ def test_parse_filename(item):
         else:
             unmatched_fields.append(f"{key}: {type(res_val)}-'{res_val}' != '{val}'")
     print(fn, ", ".join(unmatched_fields))
-    assert FilenameMetadata.ALL_FIELDS - matched_fields == set()
+    assert FilenameMetadata.ALL_FIELDS == matched_fields
