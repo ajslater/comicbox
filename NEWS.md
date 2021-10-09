@@ -1,5 +1,10 @@
 # News
 
+## v0.1.6
+
+- Fixed parsing for three new filename patterns
+- Updated dependancies
+
 ## v0.1.5
 
 - Fix parsing and writing genre, story_arc, series_groups tags
