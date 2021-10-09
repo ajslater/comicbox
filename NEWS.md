@@ -2,6 +2,8 @@
 
 ## v0.1.6
 
+- Fixed recursive mode trying to operate on directories
+- Fix recompressing crash especially on cbr -> cbz conversion
 - Fixed parsing for three new filename patterns
 - Updated dependancies
 
