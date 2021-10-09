@@ -84,7 +84,7 @@ class ComicInfoXml(ComicXml):
                 for name in element.text.split(","):
                     self._add_credit(name, role)
 
-    def _from_xml_manga(self, tag, val):
+    def _from_xml_manga(self, _, val):
         val = val.lower()
         if val == self.MangaType.YES_RTL.lower():
             self.metadata["reading_direction"] = self.ReadingDirection.RTL
