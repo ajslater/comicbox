@@ -88,17 +88,17 @@ class ComicArchive(object):
                 basename = Path(fn).name.lower()
                 xml_parser_cls = None
                 if (
-                    basename == ComicInfoXml.FILENAME.lower()
+                    basename == str(ComicInfoXml.FILENAME).lower()
                     and self.settings.comicrack
                 ):
                     md = cix_md
                     xml_parser_cls = ComicInfoXml
                     title = "ComicRack"
-                elif basename == CoMet.FILENAME.lower() and self.settings.comet:
+                elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
                     md = comet_md
                     xml_parser_cls = CoMet
                     title = "CoMet"
-                if not xml_parser_cls:
+                else:
                     continue
                 with archive.open(fn) as md_file:
                     data = md_file.read()
@@ -112,7 +112,7 @@ class ComicArchive(object):
         """Get the comment field from an archive."""
         with self._get_archive() as archive:
             comment = archive.comment
-            if isinstance(archive, zipfile.ZipFile):
+            if isinstance(comment, bytes):
                 comment = comment.decode()
         return comment
 
@@ -183,6 +183,9 @@ class ComicArchive(object):
     def extract_cover_as(self, path):
         """Extract the cover image to a destination file."""
         cover_fn = self.metadata.get_cover_page_filename()
+        if not cover_fn:
+            print("could not find cover filename")
+            return
         with self._get_archive() as archive:
             with archive.open(cover_fn) as page:
                 with open(path, "wb") as cover_file:
@@ -191,6 +194,9 @@ class ComicArchive(object):
     def get_cover_image(self):
         """Return cover image data."""
         cover_fn = self.metadata.get_cover_page_filename()
+        if not cover_fn:
+            print("could not find cover filename")
+            return
         with self._get_archive() as archive:
             try:
                 data = archive.read(cover_fn)
@@ -220,7 +226,9 @@ class ComicArchive(object):
             with zipfile.ZipFile(
                 tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
             ) as zf:
-                skipnames = set(filename)
+                skipnames = set()
+                if filename:
+                    skipnames.add(filename)
                 if delete:
                     skipnames.add(self.FILENAMES)
                 for info in sorted(archive.infolist(), key=lambda i: i.filename):
@@ -233,14 +241,15 @@ class ComicArchive(object):
                         # zip compression
                         compress = zipfile.ZIP_STORED
                     zf.writestr(
-                        info,
+                        info.filename,
                         archive.read(info),
                         compress_type=compress,
                         compresslevel=9,
                     )
                 if filename:
                     zf.writestr(filename, data)
-                zf.comment = comment
+                if comment:
+                    zf.comment = comment
 
         old_path = self._path
         tmp_path.replace(new_path)
@@ -282,6 +291,7 @@ class ComicArchive(object):
 
         path = Path(filename)
         success_class = None
+        md = None
         for cls in self.PARSER_CLASSES:
             try:
                 md = cls(path=path)
@@ -289,16 +299,16 @@ class ComicArchive(object):
                 break
             except (ParseError, JSONDecodeError):
                 pass
-        if success_class:
+        if success_class and md:
             self.metadata.metadata = md.metadata
             self.write_metadata(success_class)
 
     def export_files(self):
         """Export metadata to all supported file formats."""
-        for cls in self.PARSER_CLASSES:
-            md = cls(self.get_metadata())
-            fn = self.settings.root_path / cls.FILENAME
-            md.to_file(fn)
+        for parser_cls in self.PARSER_CLASSES:
+            md = parser_cls(self.get_metadata())
+            path = Path(str(parser_cls.FILENAME))
+            md.to_file(path)
 
     def compute_pages_tags(self):
         """Recompute the tag image sizes for ComicRack."""

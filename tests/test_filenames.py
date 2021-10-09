@@ -22,6 +22,19 @@ TEST_COMIC_VOL_ONLY = {
 }
 
 FNS = {
+    "Night of 1000 Wolves 001 (2013).cbz": {
+        "series": "Night of 1000 Wolves",
+        "issue": 1,
+        "year": 2013,
+        "ext": "cbz",
+    },
+    "19687 Sandman 53.cbz": {"series": "19687 Sandman", "issue": 53, "ext": "cbz"},
+    "33475 OMAC v3 2.cbr": {
+        "series": "33475 OMAC",
+        "volume": 3,
+        "issue": 2,
+        "ext": "cbr",
+    },
     "Long Series Name 001 (2000) Title (Source) (Releaser).cbz": TEST_COMIC_FIELDS,
     "Long Series Name #001 (2000) Title (Source) (Releaser).cbz": TEST_COMIC_FIELDS,
     "Long Series Name (2000) 001 Title (Source) (Releaser).cbz": TEST_COMIC_FIELDS,

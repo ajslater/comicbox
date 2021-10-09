@@ -1,4 +1,4 @@
-FROM ajslater/codex-builder:focal_1.1.0-be8ede9
+FROM ajslater/codex-builder:hirsute_2.0.1
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -7,6 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 #############
 
 RUN echo "**** copying source for dev build ****"
+WORKDIR /app
 COPY . .
 
 RUN ./setup-dev.sh

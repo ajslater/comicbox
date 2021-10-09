@@ -11,9 +11,7 @@ IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$", regex.IGNORECASE)
 class ComicBaseMetadata(object):
     """Comicbox Metadata Class."""
 
-    @property
-    def FILENAME(self):  # noqa: N802
-        raise NotImplementedError("Subclasses should implement this!")
+    FILENAME = ""
 
     class ReadingDirection(object):
         """Reading direction enum."""
@@ -235,13 +233,12 @@ class ComicBaseMetadata(object):
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
-        for md in md_list:
-            self.metadata.update(md)
-
         # synthesize credits
         # NOT "pages", only comes from cix anyway
+        md = {}
         synth_dict_list = {}
         for md in md_list:
+            self.metadata.update(md)
             dict_list = md.get("credits")
             if not isinstance(dict_list, list) or not dict_list:
                 continue
@@ -277,11 +274,11 @@ class ComicBaseMetadata(object):
         # Cover Image
         self.metadata["cover_image"] = self.get_cover_page_filename()
 
-    def from_string(self, string):
+    def from_string(self, _):
         """Stub method."""
         raise NotImplementedError()
 
-    def from_file(self, string):
+    def from_file(self, _):
         """Stub method."""
         raise NotImplementedError()
 

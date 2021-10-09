@@ -1,5 +1,12 @@
 # News
 
+## v0.1.6
+
+- Fixed recursive mode trying to operate on directories
+- Fix recompressing crash especially on cbr -> cbz conversion
+- Fixed parsing for three new filename patterns
+- Updated dependancies
+
 ## v0.1.5
 
 - Fix parsing and writing genre, story_arc, series_groups tags

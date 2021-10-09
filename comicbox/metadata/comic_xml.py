@@ -21,9 +21,7 @@ class ComicXml(ComicBaseMetadata):
         "Writer": set(["writer", "plotter", "scripter", "creator"]),
     }
 
-    @property
-    def ROOT_TAG(self):  # noqa: N802
-        raise NotImplementedError()
+    ROOT_TAG = ""
 
     def _get_xml_root(self, tree):
         root = tree.getroot()
@@ -31,7 +29,7 @@ class ComicXml(ComicBaseMetadata):
             raise ValueError(f"Not a {self.ROOT_TAG} XMLTree")
         return root
 
-    def _from_xml(self, tree):
+    def _from_xml(self, _):
         raise NotImplementedError()
 
     def from_string(self, xml_str):

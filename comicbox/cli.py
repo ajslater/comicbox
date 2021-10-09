@@ -112,8 +112,8 @@ def get_args():
 
 def run_on_file(args, path):
     """Run operations on one file."""
-    if not args.path.is_file():
-        print("{args.path} is not a file.")
+    if not path.is_file():
+        return
 
     car = ComicArchive(path, settings=args)
     if args.raw:

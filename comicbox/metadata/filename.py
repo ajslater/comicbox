@@ -49,23 +49,27 @@ class FilenameMetadata(ComicBaseMetadata):
         "{series} v{volume:d} ({year:4d}) {issue:d} {remainder}.{ext}",
         "{series} v{volume:d} ({year:4d}) #{issue:d} {remainder}.{ext}",
         "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}"
+        "{series} v{volume:d} {issue:d}.{ext}"
         "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}"
         "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} {issue:d} (of {issue_count:d}) {remainder}.{ext}",
         "{series} ({issue:d} of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} ({issue:d} of {issue_count:d}) {remainder}.{ext}",
+        "{series} {issue:d} ({year:4d}).{ext}",
         "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
         "{series} #{issue:d} ({year:4d}) {remainder}.{ext}",
         "{series} ({year:4d}) {issue:d} {remainder}.{ext}",
         "{series} ({year:4d}) #{issue:d} {remainder}.{ext}",
-        "{issue:d} {series} {remainder}.{ext}",
         "{series} ({year:4d}) {remainder}.{ext}",
-        "{series} {issue:d} {remainder}.{ext}",
+        "{series} v{volume:d} {issue:d}.{ext}",
+        "{series} v{volume:d} {issue:d} {remainder}.{ext}",
         "{series} {issue:d}.{ext}",
+        "{series} {issue:d} {remainder}.{ext}",
         "{series} #{issue:d} {remainder}.{ext}",
         "{series} #{issue:d}.{ext}",
         "{series}.{ext}",
         "{issue:d} {series}.{ext}",
+        "{issue:d} {series} {remainder}.{ext}",
     )
 
     PATTERN_MAX_MATCHES = tuple([pattern.count("}") for pattern in PATTERNS])
@@ -94,6 +98,10 @@ class FilenameMetadata(ComicBaseMetadata):
         """Try one parser and return the results as a dict."""
         res = parser.parse(fn)
         if res:
+            # For testing new patterns
+            # from pprint import pprint
+
+            # pprint(res)
             return res.named
         return {}
 

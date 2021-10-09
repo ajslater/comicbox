@@ -9,7 +9,7 @@ from comicbox.metadata.comic_base import ComicBaseMetadata
 class ComicJSON(ComicBaseMetadata):
     """JSON Comic Metadata class."""
 
-    def _from_json(self, json_obj):
+    def _from_json(self, _):
         raise NotImplementedError()
 
     def from_string(self, json_str):
