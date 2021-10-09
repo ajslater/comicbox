@@ -1,5 +1,6 @@
 .circleci
 .mypy_cache
 .pytest_cache
+.venv
 /test-results
 __pycache__
