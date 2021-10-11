@@ -7,9 +7,9 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
-from pathlib import Path
+import re
 
-import regex
+from pathlib import Path
 
 from parse import compile
 
@@ -74,9 +74,9 @@ class FilenameMetadata(ComicBaseMetadata):
 
     PATTERN_MAX_MATCHES = tuple([pattern.count("}") for pattern in PATTERNS])
     PARSERS = compile_parsers(PATTERNS)
-    SPACE_ALT_CHARS_RE = regex.compile(r"[_-]+")
-    PLUS_RE = regex.compile(r"\++")
-    MULTI_SPACE_RE = regex.compile(r"\s{2,}")
+    SPACE_ALT_CHARS_RE = re.compile(r"[_-]+")
+    PLUS_RE = re.compile(r"\++")
+    MULTI_SPACE_RE = re.compile(r"\s{2,}")
     FILENAME_TAGS = (
         ("series", "{}"),
         ("volume", "v{}"),
