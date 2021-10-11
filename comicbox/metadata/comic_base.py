@@ -1,11 +1,12 @@
 """Metadata class for a comic archive."""
+import re
+
 from decimal import Decimal
 
 import pycountry
-import regex
 
 
-IMAGE_EXT_RE = regex.compile(r"\.(jpe?g|png|gif|webp)$", regex.IGNORECASE)
+IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|gif|webp)$", re.IGNORECASE)
 
 
 class ComicBaseMetadata(object):

@@ -1,5 +1,9 @@
 # News
 
+## v0.1.7
+
+- Remove regex dependancy in favor of re module
+
 ## v0.1.6
 
 - Fixed recursive mode trying to operate on directories
