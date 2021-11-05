@@ -17,11 +17,11 @@ RUN ./setup-dev.sh
 ########
 
 WORKDIR /app
-RUN echo "*** run lint ***"
-RUN ./lint.sh
+RUN echo "*** run lint ***" && \
+  ./lint.sh
 
-RUN echo "*** run tests ***"
-RUN ./test.sh
+RUN echo "*** run tests ***" && \
+  ./test.sh
 
 #########
 # BUILD #
