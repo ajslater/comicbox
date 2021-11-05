@@ -4,7 +4,7 @@ build-backend = ["poetry.core.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.1.7"
+version = "0.2.0"
 description = "An API for reading comic archives"
 license = "GPL-2.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -31,11 +31,12 @@ rarfile = "^4.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
-flake8 = "^3.7"
+flake8 = "^4.0.1"
 flake8-black = "^0.2.0"
 flake8-bugbear = "^21.9"
 coverage = { extras = ["toml"], version = "^6.0" }
 pep8-naming = "^0.12.1"
+pyright = "^0.0.11"
 pytest = "^6.0"
 pytest-black = "^0.3.10"
 pytest-cov = "^3.0"
@@ -65,7 +66,9 @@ concurrency = ["multiprocessing"]
 directory = "test-results/coverage"
 
 [tool.vulture]
-exclude = [".venv"]
+exclude = [".venv", "node_modules", "typings"]
+min_confidence = 61
+sort_by_size = true
 
 [tool.pytest.ini_options]
 junit_family = "xunit2"
@@ -82,4 +85,8 @@ addopts = """
     --isort
     --ignore=.venv
 """
+
 #    --mypy
+[tool.pyright]
+exclude = [".git", "**/__pycache__", ".pytest_cache", ".venv", "typings"]
+useLibraryCodeForTypes = true

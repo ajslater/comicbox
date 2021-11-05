@@ -2,11 +2,13 @@
 
 Comicbox is a comic book archive metadata reader and writer. It reads CBR and CBZ archives and writes CBZ archives. It reads and writes the [ComicRack comicinfo.xml format](https://wiki.mobileread.com/wiki/ComicRack#Metadata), the [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/) and [CoMet format](https://github.com/wdhongtw/comet-utils).
 
-## API
+## ⌨️ <a href="usage">Usage</a>
+
+### API
 
 Comicbox's primary purpose is as a library for other programs with [comicbox.comic_archive](https://github.com/ajslater/comicbox/blob/master/comicbox/comic_archive.py) as the primary interface.
 
-## Console
+### Console
 
 ```sh
 comicbox -h
@@ -14,7 +16,7 @@ comicbox -h
 
 to use the CLI.
 
-## Development
+## 🛠 <a href="development">Development</a>
 
 run
 
@@ -48,14 +50,14 @@ You may automatically fix most simple linting errors with
 ./fix-linting.sh
 ```
 
-## Motivation
+## 🤔 <a href="motivation">Motivation</a>
 
 I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for [Codex comic reader](https://github.com/ajslater/codex/).
 
-## Alternatives
+## 👍🏻 <a href="alternative">Alternatives</a>
 
 [Comictagger](https://github.com/comictagger/comictagger) is a better alternative for most purposes at this time. It does everything Comicbox does but also automatically tags comics with the ComicVine API and has a pretty nice desktop UI.
 
-## Future Plans
+## 🚀 <a href="roadmap">Roadmap</a>
 
-I may implement ComicVine API tagging, but this library will remain primarily an API for other programs with a console interface.
+EvilHero had an idea to implemenet ComicVine API tagging by using a JSON cache of the ComicVine API itself as the primary datastore.
