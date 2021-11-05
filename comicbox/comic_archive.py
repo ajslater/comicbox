@@ -45,7 +45,7 @@ class ComicArchive(object):
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
     FILENAMES = set((CoMet.FILENAME, ComicInfoXml.FILENAME))
 
-    def __init__(self, path, metadata=None, settings=None):
+    def __init__(self, path, metadata=None, settings=None, get_cover=False):
         """Initialize the archive with a path to the archive."""
         if settings is None:
             settings = Settings()
@@ -53,9 +53,11 @@ class ComicArchive(object):
         self.set_path(path)
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
+        self.cover_image_data = None
         if metadata is None:
-            self._parse_metadata()
-        self.metadata.compute_page_metadata(self.namelist())
+            self._parse_metadata(get_cover)
+        if not self.metadata.metadata.get("page_count"):
+            self.metadata.compute_page_metadata(self.namelist())
 
     def set_path(self, path):
         """Set the path and determine the archive type."""
@@ -79,47 +81,46 @@ class ComicArchive(object):
         with self._get_archive() as archive:
             return sorted(archive.namelist())
 
-    def _parse_metadata_entries(self):
+    def _parse_metadata_entries(self, archive):
         """Get the filenames and file based metadata."""
         cix_md = {}
         comet_md = {}
-        with self._get_archive() as archive:
-            for fn in sorted(archive.namelist()):
-                basename = Path(fn).name.lower()
-                xml_parser_cls = None
-                if (
-                    basename == str(ComicInfoXml.FILENAME).lower()
-                    and self.settings.comicrack
-                ):
-                    md = cix_md
-                    xml_parser_cls = ComicInfoXml
-                    title = "ComicRack"
-                elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
-                    md = comet_md
-                    xml_parser_cls = CoMet
-                    title = "CoMet"
-                else:
-                    continue
-                with archive.open(fn) as md_file:
-                    data = md_file.read()
-                    if self.settings.raw:
-                        self.raw[title] = data
-                    parser = xml_parser_cls(string=data)
-                    md.update(parser.metadata)
+        for fn in sorted(archive.namelist()):
+            basename = Path(fn).name.lower()
+            xml_parser_cls = None
+            if (
+                basename == str(ComicInfoXml.FILENAME).lower()
+                and self.settings.comicrack
+            ):
+                md = cix_md
+                xml_parser_cls = ComicInfoXml
+                title = "ComicRack"
+            elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
+                md = comet_md
+                xml_parser_cls = CoMet
+                title = "CoMet"
+            else:
+                continue
+            data = archive.read(fn)
+            if self.settings.raw:
+                self.raw[title] = data
+            parser = xml_parser_cls(string=data)
+            md.update(parser.metadata)
         return cix_md, comet_md
 
-    def get_archive_comment(self):
+    def _get_archive_comment(self, archive):
         """Get the comment field from an archive."""
-        with self._get_archive() as archive:
-            comment = archive.comment
-            if isinstance(comment, bytes):
-                comment = comment.decode()
+        if not archive:
+            archive = self._get_archive()
+        comment = archive.comment
+        if isinstance(comment, bytes):
+            comment = comment.decode()
         return comment
 
-    def _parse_metadata_comments(self):
+    def _parse_metadata_comments(self, archive):
         if not self.settings.comiclover:
             return {}
-        comment = self.get_archive_comment()
+        comment = self._get_archive_comment(archive)
         parser = ComicBookInfo(string=comment)
         cbi_md = parser.metadata
         if self.settings.raw:
@@ -134,15 +135,20 @@ class ComicArchive(object):
             self.raw["Filename"] = self._path.name
         return parser.metadata
 
-    def _parse_metadata(self):
-        cix_md, comet_md = self._parse_metadata_entries()
-        cbi_md = self._parse_metadata_comments()
-        filename_md = self._parse_metadata_filename()
+    def _parse_metadata(self, get_cover=False):
+        with self._get_archive() as archive:
+            cix_md, comet_md = self._parse_metadata_entries(archive)
+            cbi_md = self._parse_metadata_comments(archive)
 
-        # order of the md list is very important, lowest to highest
-        # precedence.
-        md_list = (filename_md, comet_md, cbi_md, cix_md)
-        self.metadata.synthesize_metadata(md_list)
+            # order of the md list is very important, lowest to highest
+            # precedence.
+            filename_md = self._parse_metadata_filename()
+            md_list = (filename_md, comet_md, cbi_md, cix_md)
+            self.metadata.synthesize_metadata(md_list)
+            namelist = sorted(archive.namelist())
+            self.metadata.compute_page_metadata(namelist)
+            if get_cover:
+                self.cover_image_data = self._get_cover_image(archive)
 
     def get_num_pages(self):
         """Retun the number of pages."""
@@ -191,19 +197,22 @@ class ComicArchive(object):
                 with open(path, "wb") as cover_file:
                     cover_file.write(page.read())
 
-    def get_cover_image(self):
+    def _get_cover_image(self, archive):
         """Return cover image data."""
         cover_fn = self.metadata.get_cover_page_filename()
         if not cover_fn:
             print("could not find cover filename")
             return
-        with self._get_archive() as archive:
-            try:
-                data = archive.read(cover_fn)
-            except Exception as exc:
-                print(f"Error reading: {cover_fn}")
-                raise exc
+        try:
+            data = archive.read(cover_fn)
+        except Exception as exc:
+            print(f"Error reading: {cover_fn}")
+            raise exc
         return data
+
+    def get_cover_image(self):
+        with self._get_archive() as archive:
+            return self._get_cover_image(archive)
 
     def get_metadata(self):
         """Return the metadata from the archive."""

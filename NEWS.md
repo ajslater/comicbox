@@ -1,5 +1,9 @@
 # News
 
+## v0.2.0
+
+- Option for getting the cover image at metadata load time as well.
+
 ## v0.1.7
 
 - Remove regex dependancy in favor of re module
