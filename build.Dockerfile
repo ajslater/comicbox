@@ -1,4 +1,4 @@
-FROM ajslater/codex-builder:hirsute_2.0.1
+FROM ajslater/codex-builder:impish_1.0.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 
