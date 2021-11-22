@@ -11,6 +11,7 @@ from pathlib import Path
 
 import rarfile
 
+from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.metadata import comicapi
 from comicbox.metadata.comet import CoMet
 from comicbox.metadata.comic_base import IMAGE_EXT_RE
@@ -67,7 +68,7 @@ class ComicArchive(object):
         elif rarfile.is_rarfile(self._path):
             self.archive_cls = rarfile.RarFile
         else:
-            raise ValueError(f"Unsupported archive type: {self._path}")
+            raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 
     def _get_archive(self, mode="r"):
         return self.archive_cls(self._path, mode=mode)
