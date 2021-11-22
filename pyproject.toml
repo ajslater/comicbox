@@ -75,7 +75,7 @@ junit_family = "xunit2"
 addopts = """
     --junitxml=test-results/pytest/results.xml
     -ra
-    --strict
+    --strict-markers
     --black
     --cov
     --cov-append
