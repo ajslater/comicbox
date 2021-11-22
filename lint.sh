@@ -11,5 +11,5 @@ poetry run pyright .
 poetry run vulture .
 prettier --check .
 shellcheck -x ./*.sh ./**/*.sh
-shfmt -d -i 4 ./*.sh ./**/*.sh
+# shfmt -d -i 4 ./*.sh ./**/*.sh
 # hadolint build.Dockerfile
