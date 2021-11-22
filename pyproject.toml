@@ -38,7 +38,7 @@ coverage = { extras = ["toml"], version = "^6.0" }
 pep8-naming = "^0.12.1"
 pyright = "^0.0.12"
 pytest = "^6.0"
-
+pytest-black = "^0.3.10"
 pytest-cov = "^3.0"
 pytest-flake8 = "^1.0"
 pytest-isort = "^2.0"
