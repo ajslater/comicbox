@@ -36,7 +36,7 @@ flake8-black = "^0.2.0"
 flake8-bugbear = "^21.9"
 coverage = { extras = ["toml"], version = "^6.0" }
 pep8-naming = "^0.12.1"
-pyright = "^0.0.11"
+pyright = "^0.0.12"
 pytest = "^6.0"
 pytest-black = "^0.3.10"
 pytest-cov = "^3.0"
