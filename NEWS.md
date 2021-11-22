@@ -1,5 +1,9 @@
 # News
 
+## v0.2.1
+
+- Comicbox now raises a specific UnsupportedArchiveTypeError for bad archives
+
 ## v0.2.0
 
 - Option for getting the cover image at metadata load time as well.
