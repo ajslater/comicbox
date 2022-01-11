@@ -57,7 +57,3 @@ I didn't like Comictagger's API, so I built this for myself as an educational ex
 ## 👍🏻 <a href="alternative">Alternatives</a>
 
 [Comictagger](https://github.com/comictagger/comictagger) is a better alternative for most purposes at this time. It does everything Comicbox does but also automatically tags comics with the ComicVine API and has a pretty nice desktop UI.
-
-## 🚀 <a href="roadmap">Roadmap</a>
-
-EvilHero had an idea to implemenet ComicVine API tagging by using a JSON cache of the ComicVine API itself as the primary datastore.
