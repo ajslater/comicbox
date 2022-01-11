@@ -1,4 +1,8 @@
-# News
+# 📰 News
+
+## v0.2.2
+
+- Update pycountry to be compatible with codex
 
 ## v0.2.1
 
@@ -15,7 +19,7 @@
 ## v0.1.6
 
 - Fixed recursive mode trying to operate on directories
-- Fix recompressing crash especially on cbr -> cbz conversion
+- Fix recompressing crash on cbr -> cbz conversion
 - Fixed parsing for three new filename patterns
 - Updated dependancies
 
