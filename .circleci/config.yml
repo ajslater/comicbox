@@ -1,4 +1,5 @@
 jobs:
+<<<<<<< HEAD
   build:
     machine:
       image: ubuntu-2004:202111-02
@@ -28,6 +29,37 @@ jobs:
           command: pip install poetry
       - run:
           command: ./ci/publish-pypi.sh
+=======
+    build:
+        machine:
+          image: ubuntu-2004:202111-02
+        steps:
+            - checkout
+            - run:
+                command: ./build-dist-wheel.sh
+                name: Build Python Wheel
+            - store_test_results:
+                path: test-results/pytest
+            - store_artifacts:
+                path: test-results/coverage
+            - persist_to_workspace:
+                paths:
+                    - ./README.md
+                    - ./ci
+                    - ./dist
+                    - ./pyproject.toml
+                root: .
+    deploy:
+        docker:
+            - image: cimg/python:3.10.0
+        steps:
+            - attach_workspace:
+                at: .
+            - run:
+                command: pip install poetry
+            - run:
+                command: ./ci/publish-pypi.sh
+>>>>>>> master
 version: 2.1
 workflows:
   main:
