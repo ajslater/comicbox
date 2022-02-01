@@ -10,7 +10,7 @@ jobs:
           command: ./build-builder.sh
           name: Build Builder
       - run:
-          command: ./docker/docker-compose-exit.sh comicbox-text
+          command: ./docker/docker-compose-exit.sh comicbox-test
           name: Comicbox Test
       - store_test_results:
           path: test-results/pytest
