@@ -313,12 +313,13 @@ class ComicBaseMetadata(object):
     #    "maturity_rating": str,
     #    "format": str,
     #    # CBI AND COMET ONLY
-    #    "critical_rating": str,
+    #    "critical_rating": int, -> dec
     #    # CIX ONLY
     #    "alternate_issue": int,
     #    "alternate_issue_count": int,
     #    "alternate_series": str,
     #    "black_and_white": bool,
+    #    "community_rating": dec
     #    "imprint": str,
     #    "locations": set,
     #    "manga": bool,
@@ -331,7 +332,6 @@ class ComicBaseMetadata(object):
     #    "web": str,
     #    # CBI_ONLY
     #    "country": str,
-    #    "user_rating": str,
     #    "volume_count": int,
     #    "tags": set,
     #    # COMET_ONLY
