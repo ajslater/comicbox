@@ -23,7 +23,6 @@ jobs:
   deploy:
     docker:
       - image: cimg/python:3.10.0
-      docker_layer_caching: true
     steps:
       - attach_workspace:
           at: .
