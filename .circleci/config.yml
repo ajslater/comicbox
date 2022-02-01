@@ -35,10 +35,6 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          command: pip install poetry
       - run:
           command: ./ci/publish-pypi.sh
 version: 2.1
