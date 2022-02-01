@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 poetry run isort --color .
 poetry run black .
 prettier --write .

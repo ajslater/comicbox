@@ -9,6 +9,9 @@ from comicbox.metadata.comic_xml import ComicXml
 class ComicInfoXml(ComicXml):
     """Comic Rack Metadata."""
 
+    # Schema from
+    # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
+
     class PageType(object):
         """CIX Page Type Schema."""
 
@@ -35,45 +38,50 @@ class ComicInfoXml(ComicXml):
     FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
     BW_YES_VALUES = ("yes", "true", "1")
+    # order of tags from:
+    # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
     XML_TAGS = {
-        "Number": "issue",
-        "Series": "series",
         "Title": "title",
-        "Year": "year",
-        "Month": "month",
-        "Day": "day",
+        "Series": "series",
+        "Number": "issue",
         "Count": "issue_count",
         "Volume": "volume",
-        "Publisher": "publisher",
-        "Genre": "genres",
-        "LanguageISO": "language",  # two letter in the lang list
         "AlternateNumber": "alternate_issue",
         "AlternateCount": "alternate_issue_count",
         "AlternateSeries": "alternate_series",
-        "AgeRating": "maturity_rating",
+        "Summary": "summary",
+        "Notes": "notes",
+        "Year": "year",
+        "Month": "month",
+        "Day": "day",
+        "Publisher": "publisher",
         "Imprint": "imprint",
-        "SeriesGroup": "series_groups",
-        "StoryArc": "story_arcs",
-        "Manga": "manga",  # type(MangaType),  # Yes, YesRTL, No
+        "Genre": "genres",
+        "Web": "web",
+        # "PageCount": None,
+        "LanguageISO": "language",  # two letter in the lang list
         "Format": "format",
         "BlackAndWhite": "black_and_white",
-        # "Credits": "credits",
-        "ScanInformation": "scan_info",
-        "Notes": "notes",
-        "Web": "web",
+        "Manga": "manga",  # type(MangaType),  # Yes, YesRTL, No
         "Characters": "characters",
         "Teams": "teams",
         "Locations": "locations",
-        "Summary": "summary",
+        "ScanInformation": "scan_info",
+        "StoryArc": "story_arcs",
+        "SeriesGroup": "series_groups",
+        "AgeRating": "maturity_rating",
+        # "Pages": None,
+        "CommunityRating": "community_rating",
+        # "Credits": "credits",
     }
     CREDIT_TAGS = {
+        "Writer": ComicXml.CREDIT_TAGS["Writer"],
+        "Penciller": ComicXml.CREDIT_TAGS["Penciller"],
+        "Inker": ComicXml.CREDIT_TAGS["Inker"],
         "Colorist": ComicXml.CREDIT_TAGS["Colorist"],
+        "Letterer": ComicXml.CREDIT_TAGS["Letterer"],
         "CoverArtist": ComicXml.CREDIT_TAGS["Cover"],
         "Editor": ComicXml.CREDIT_TAGS["Editor"],
-        "Inker": ComicXml.CREDIT_TAGS["Inker"],
-        "Letterer": ComicXml.CREDIT_TAGS["Letterer"],
-        "Penciller": ComicXml.CREDIT_TAGS["Penciller"],
-        "Writer": ComicXml.CREDIT_TAGS["Writer"],
     }
 
     def _from_xml_credits(self, root):
@@ -220,7 +228,7 @@ class ComicInfoXml(ComicXml):
 
     def compute_pages_tags(self, infolist):
         """Recompute the page tags with actual image sizes."""
-        # Just store this integer data as strings becuase I don't
+        # Just store this integer data as strings because I don't
         # expect anyone will ever use it.
         new_pages = []
         index = 0

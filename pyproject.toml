@@ -30,10 +30,10 @@ parse = "^1.15"
 rarfile = "^4.0"
 
 [tool.poetry.dev-dependencies]
-black = "^21.9b0"
+black = "^22.1"
 flake8 = "^4.0.1"
 flake8-black = "^0.2.0"
-flake8-bugbear = "^21.9"
+flake8-bugbear = "^22.1"
 coverage = { extras = ["toml"], version = "^6.0" }
 pep8-naming = "^0.12.1"
 pyright = "^0.0.13"
@@ -50,32 +50,55 @@ radon = "^5.1"
 # neovim dev env
 neovim = "^0.3.1"
 jedi = "^0.18.0"
+pytest-bandit = "^0.6.1"
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
 
 [tool.black]
-exclude = "/(.git|__pycache__|.pytest_cache|.venv)/"
+exclude = "/(.git|.mypy_cache|.pytest_cache|.venv|__pycache__|dist|node_modules|test-results|typings)/"
 
 [tool.coverage.run]
 source = ["comicbox"]
 branch = true
 concurrency = ["multiprocessing"]
+omit = [
+  ".git/*",
+  ".mypy_cache/*",
+  ".pytest_cache/*",
+  ".venv/*",
+  "*__pycache__*",
+  "dist/*",
+  "node_modules/*",
+  "test-results/*",
+  "typings/*",
+]
 
 [tool.coverage.html]
 directory = "test-results/coverage"
 
 [tool.vulture]
-exclude = [".venv", "node_modules", "typings"]
 min_confidence = 61
 sort_by_size = true
+exclude = [
+  ".git/",
+  ".mypy_cache/",
+  ".pytest_cache/",
+  ".venv/",
+  "*__pycache__*",
+  "dist/",
+  "node_modules/",
+  "test_results/",
+  "typings/",
+]
 
 [tool.pytest.ini_options]
 junit_family = "xunit2"
 addopts = """
-    --junitxml=test-results/pytest/results.xml
+    --junit-xml=test-results/pytest/results.xml
     -ra
     --strict-markers
+    --bandit
     --black
     --cov
     --cov-append
@@ -83,10 +106,29 @@ addopts = """
     --cov-report=term
     --flake8
     --isort
+    --ignore=.git
+    --ignore=.mypy_cache
     --ignore=.venv
+    --ignore=dist
+    --ignore=node_modules
+    --ignore=test-results
+    --ignore=typings
+    --ignore-glob=*__pycache__*
 """
 
 #    --mypy
 [tool.pyright]
-exclude = [".git", "**/__pycache__", ".pytest_cache", ".venv", "typings"]
+exclude = [
+  "**/__pycache__",
+  "**/node_modules",
+  ".git",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".venv",
+  "dist",
+  "package-lock.json",
+  "poetry.lock",
+  "test-results",
+  "typings"
+]
 useLibraryCodeForTypes = true

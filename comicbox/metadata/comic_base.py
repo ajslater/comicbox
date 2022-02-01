@@ -43,7 +43,15 @@ class ComicBaseMetadata(object):
     DICT_LIST_TAGS = set(("credits", "pages"))
     PYCOUNTRY_TAGS = set(("country", "language"))
     DECIMAL_TAGS = set(
-        ("alternate_issue", "alternate_issue_count", "issue", "issue_count", "price")
+        (
+            "alternate_issue",
+            "alternate_issue_count",
+            "community_rating",
+            "critical_rating",
+            "issue",
+            "issue_count",
+            "price",
+        )
     )
     INT_TAGS = set(
         (

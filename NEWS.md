@@ -1,5 +1,10 @@
 # 📰 News
 
+## v0.3.0
+
+- comicbookinfo changed `critical_rating` to decimal type.
+- comicinfo gained the `community_rating` attribute.
+
 ## v0.2.2
 
 - Update pycountry to be compatible with codex
