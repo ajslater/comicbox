@@ -2,7 +2,8 @@ ARG CODEX_BUILDER_BASE_VERSION
 FROM ajslater/codex-builder-base:$CODEX_BUILDER_BASE_VERSION
 
 WORKDIR /app
-# hadolint ignore=DL3018
+RUN rm -rf python_cacher
+# hadolint ignore=DL3018, DL3059
 RUN apk add --no-cache \
   shellcheck
 
