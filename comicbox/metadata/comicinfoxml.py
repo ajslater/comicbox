@@ -27,17 +27,32 @@ class ComicInfoXml(ComicXml):
         OTHER = "Other"
         DELETED = "Deleted"
 
-    class MangaType(object):
-        """CIX Manga Type."""
-
+    class YesNoTypes:
         YES = "Yes"
-        YES_RTL = "YesRtl"
         NO = "No"
-        YES_VALUES = (YES.lower(), YES_RTL.lower())
+
+    class MangaTypes(YesNoTypes):
+        YES_RTL = "YesAndRightToLeft"
+        RTL_VALUES = ("YesRtl".lower(), YES_RTL.lower())
+
+    class AgeRatingTypes:
+        A_18_PLUS = "Adults Only 18+"
+        EARLY_CHILDHOOD = "Early Childhood"
+        EVERYONE = "Everyone"
+        E_10_PLUS = "Everyone 10+"
+        G = "G"
+        KIDS_TO_ADULTS = "Kids to Adults"
+        M = "M"
+        MA_15_PLUS = "MA 15+"
+        MA_17_PLUS = "Mature 17+"
+        PG = "PG"
+        R_18_PLUS = "R18+"
+        PENDING = "Rating Pending"
+        TEEN = "Teen"
+        X_18_PLUS = "X18+"
 
     FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
-    BW_YES_VALUES = ("yes", "true", "1")
     # order of tags from:
     # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
     XML_TAGS = {
@@ -69,7 +84,7 @@ class ComicInfoXml(ComicXml):
         "ScanInformation": "scan_info",
         "StoryArc": "story_arcs",
         "SeriesGroup": "series_groups",
-        "AgeRating": "maturity_rating",
+        "AgeRating": "age_rating",
         # "Pages": None,
         "CommunityRating": "community_rating",
         # "Credits": "credits",
@@ -80,7 +95,7 @@ class ComicInfoXml(ComicXml):
         "Inker": ComicXml.CREDIT_TAGS["Inker"],
         "Colorist": ComicXml.CREDIT_TAGS["Colorist"],
         "Letterer": ComicXml.CREDIT_TAGS["Letterer"],
-        "CoverArtist": ComicXml.CREDIT_TAGS["Cover"],
+        "CoverArtist": ComicXml.CREDIT_TAGS["CoverArtist"],
         "Editor": ComicXml.CREDIT_TAGS["Editor"],
     }
 
@@ -94,12 +109,10 @@ class ComicInfoXml(ComicXml):
 
     def _from_xml_manga(self, _, val):
         val = val.lower()
-        if val == self.MangaType.YES_RTL.lower():
+        if val in self.MangaTypes.RTL_VALUES:
             self.metadata["reading_direction"] = self.ReadingDirection.RTL
-        return val in self.MangaType.YES_VALUES
-
-    def _from_xml_black_and_white(self, baw):
-        return baw.lower() in self.BW_YES_VALUES
+            return True
+        return val in self.TRUTHY_VALUES
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
@@ -122,8 +135,8 @@ class ComicInfoXml(ComicXml):
                     if len(val) == 0:
                         continue
                 # special bool tags
-                elif to_tag == "black_and_white":
-                    val = self._from_xml_black_and_white(val)
+                elif to_tag in self.BOOL_SET_TAGS:
+                    val = self.parse_bool(val)
                 elif to_tag == "manga":
                     val = self._from_xml_manga(to_tag, val)
                 elif to_tag in self.PYCOUNTRY_TAGS:
@@ -153,17 +166,17 @@ class ComicInfoXml(ComicXml):
         root.attrib["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema"
         return root
 
-    def _to_xml_tags_black_and_white(self, val):
-        return "Yes" if val in self.BW_YES_VALUES else "No"
+    def _to_xml_tags_yes_no(self, val):
+        return self.YesNoTypes.YES if val else self.YesNoTypes.NO
 
     def _to_xml_manga(self, val):
         if val:
             if self.metadata["reading_direction"] == self.ReadingDirection.RTL:
-                return self.MangaType.YES_RTL
+                return self.MangaTypes.YES_RTL
             else:
-                return self.MangaType.YES
+                return self.MangaTypes.YES
         else:
-            return self.MangaType.NO
+            return self.MangaTypes.NO
 
     def _to_xml_tags(self, root):
         """Write tags to xml."""
@@ -171,7 +184,7 @@ class ComicInfoXml(ComicXml):
             val = self.metadata.get(md_key)
             if val:
                 if xml_tag == "BlackAndWhite":
-                    new_val = self._to_xml_tags_black_and_white(val)
+                    new_val = self._to_xml_tags_yes_no(val)
                 if xml_tag == "Manga":
                     new_val = self._to_xml_manga(val)
                 if md_key in self.STR_SET_TAGS:

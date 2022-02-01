@@ -2,8 +2,13 @@
 
 ## v0.3.0
 
-- comicbookinfo changed `critical_rating` to decimal type.
-- comicinfo gained the `community_rating` attribute.
+- CBI changed `critical_rating` to decimal type from string (in CBI it's an int).
+- CIX gained the `community_rating` attribute from CIX 2.0 spec.
+- `age_rating` replaces `maturity_rating` to standardize more on CIX
+- `CoverArtist` replaces `Cover` to standardize more on CIX
+- Better CIX `Manga` parsing
+- Better CIX `BlackAndWhite` parsing
+- Added CIX `AgeRating` valid schema values, unsed.
 
 ## v0.2.2
 

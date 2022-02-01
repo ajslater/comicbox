@@ -25,7 +25,7 @@ COMICAPI_SCHEMA = {
     "manga": "manga",
     "blackAndWhite": "black_and_white",
     "pageCount": "page_count",
-    "maturityRating": "maturity_rating",
+    "maturityRating": "age_rating",
     "storyArc": "story_arc",
     "seriesGroup": "series_group",
     "scanInfo": "scan_info",
