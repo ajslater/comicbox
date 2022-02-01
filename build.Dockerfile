@@ -8,6 +8,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN echo "**** copying source for dev build ****"
 WORKDIR /app
+RUN apk add --no-cache \
+  shellcheck
+
 COPY . .
 
 RUN ./setup-dev.sh
