@@ -1,4 +1,4 @@
-FROM ajslater/codex-builder:impish_1.0.0
+FROM ajslater/codex-builder-base:b97c828671282570b919908a38d2c3ce-x86_64
 
 ARG DEBIAN_FRONTEND=noninteractive
 
