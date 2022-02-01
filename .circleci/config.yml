@@ -7,12 +7,21 @@ jobs:
     steps:
       - checkout
       - run:
-          command: ./build-dist-wheel.sh
-          name: Build Python Wheel
+          command: ./build-builder.sh
+          name: Build Builder
+      - run:
+          command: ./docker/docker-compose-exit.sh comicbox-text
+          name: Comicbox Test
       - store_test_results:
           path: test-results/pytest
       - store_artifacts:
           path: test-results/coverage
+      - run:
+          command: ./docker/docker-compose-exit.sh comicbox-lint
+          name: Comicbox Lint
+      - run:
+          command: ./docker/docker-compose-exit.sh comicbox-build
+          name: Build Comicbox Dist
       - persist_to_workspace:
           paths:
             - ./README.md
