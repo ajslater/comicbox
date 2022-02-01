@@ -11,7 +11,7 @@ class ComicXml(ComicBaseMetadata):
     XML_HEADER = '<?xml version="1.0"?>\n'
     CREDIT_TAGS = {
         "Colorist": set(["colorist", "colourist", "colorer", "colourer"]),
-        "Cover": set(
+        "CoverArtist": set(
             ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
         ),
         "Editor": set(["editor"]),

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-pip3 install -U poetry
+pip3 install --upgrade pip
+pip3 install --upgrade poetry
 poetry install --no-root
-npm install -g prettier prettier-plugin-toml
+npm install

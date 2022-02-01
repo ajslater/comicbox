@@ -135,4 +135,5 @@ dmypy.json
 .mypy_cache
 .picopt_timestamp
 monkeytype.sqlite3
+node_modules
 test-results

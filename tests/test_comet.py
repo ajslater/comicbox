@@ -32,7 +32,7 @@ METADATA = {
     "is_version_of": "Captain Science",
     "price": Decimal(0.10).quantize(Decimal("0.01")),
     "format": "Comic",
-    "maturity_rating": "Teen",
+    "age_rating": "Teen",
     "rights": "Copyright (c) 1950 Bell Features",
     "identifier": "4000-145269",
     "reading_direction": "ltr",

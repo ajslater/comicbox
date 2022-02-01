@@ -28,7 +28,7 @@ class CoMet(ComicXml):
         "price": "price",
         "format": "format",
         "language": "language",  # alpha2
-        "rating": "maturity_rating",
+        "rating": "age_rating",
         "rights": "rights",
         "identifier": "identifier",
         "pages": "page_count",
@@ -41,7 +41,7 @@ class CoMet(ComicXml):
         "writer": ComicXml.CREDIT_TAGS["Writer"],
         "penciller": ComicXml.CREDIT_TAGS["Penciller"],
         "editor": ComicXml.CREDIT_TAGS["Editor"],
-        "coverDesigner": ComicXml.CREDIT_TAGS["Cover"],
+        "coverDesigner": ComicXml.CREDIT_TAGS["CoverArtist"],
         "letterer": ComicXml.CREDIT_TAGS["Letterer"],
         "inker": ComicXml.CREDIT_TAGS["Inker"],
         "colorist": ComicXml.CREDIT_TAGS["Colorist"],

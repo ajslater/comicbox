@@ -40,10 +40,19 @@ class ComicBaseMetadata(object):
             "series_groups",
         )
     )
+    BOOL_SET_TAGS = set(("black_and_white",))
     DICT_LIST_TAGS = set(("credits", "pages"))
     PYCOUNTRY_TAGS = set(("country", "language"))
     DECIMAL_TAGS = set(
-        ("alternate_issue", "alternate_issue_count", "issue", "issue_count", "price")
+        (
+            "alternate_issue",
+            "alternate_issue_count",
+            "community_rating",
+            "critical_rating",
+            "issue",  # cix Number
+            "issue_count",  # cix Count
+            "price",
+        )
     )
     INT_TAGS = set(
         (
@@ -58,6 +67,7 @@ class ComicBaseMetadata(object):
     )
     VOLUME_PREFIXES = ("volume", "vol.", "vol", "v")
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
+    TRUTHY_VALUES = ("yes", "true", "1")
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
@@ -98,6 +108,10 @@ class ComicBaseMetadata(object):
             return obj.alpha_2
         else:
             return obj.name
+
+    @classmethod
+    def parse_bool(cls, value):
+        return value.lower() in cls.TRUTHY_VALUES
 
     @staticmethod
     def parse_decimal(num):
@@ -302,15 +316,16 @@ class ComicBaseMetadata(object):
     #    # CIX AND COMET ONLY
     #    "characters": set,
     #    "reading_direction": ReadingDirection,
-    #    "maturity_rating": str,
+    #    "age_rating": str,
     #    "format": str,
     #    # CBI AND COMET ONLY
-    #    "critical_rating": str,
+    #    "critical_rating": int, -> dec
     #    # CIX ONLY
     #    "alternate_issue": int,
     #    "alternate_issue_count": int,
     #    "alternate_series": str,
     #    "black_and_white": bool,
+    #    "community_rating": dec
     #    "imprint": str,
     #    "locations": set,
     #    "manga": bool,
@@ -323,7 +338,6 @@ class ComicBaseMetadata(object):
     #    "web": str,
     #    # CBI_ONLY
     #    "country": str,
-    #    "user_rating": str,
     #    "volume_count": int,
     #    "tags": set,
     #    # COMET_ONLY
