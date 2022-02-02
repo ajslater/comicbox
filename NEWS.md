@@ -9,6 +9,7 @@
 - Better CIX `Manga` parsing
 - Better CIX `BlackAndWhite` parsing
 - Added CIX `AgeRating` valid schema values, unsed.
+- LGPL 3.0
 
 ## v0.2.2
 
