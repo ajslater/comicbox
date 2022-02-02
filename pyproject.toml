@@ -4,20 +4,21 @@ build-backend = ["poetry.core.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.2.2"
+version = "0.3.0"
 description = "An API for reading comic archives"
-license = "GPL-2.0-only"
+license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
 readme = "README.md"
 homepage = "https://github.com/ajslater/comicbox"
 documentation = "https://github.com/ajslater/comicbox"
 keywords = ["comic", "cbz", "cbr"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
 ]
 packages = [{ include = "comicbox" }, { include = "tests", format = "sdist" }]
 include = ["NEWS"]

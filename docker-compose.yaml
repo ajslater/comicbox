@@ -11,7 +11,7 @@ services:
     container_name: comicbox-test
     command: ./test.sh
     volumes:
-      - /app/test-results/:/test-results/
+      - ./test-results/:/app/test-results/
   comicbox-lint:
     image: comicbox-builder
     container_name: comicbox-lint
@@ -20,5 +20,5 @@ services:
     image: comicbox-builder
     container_name: comicbox-build
     volumes:
-      - /app/dist/:/dist/
+      - ./dist/:/app/dist/
     command: poetry build
