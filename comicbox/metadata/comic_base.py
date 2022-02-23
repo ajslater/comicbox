@@ -68,6 +68,7 @@ class ComicBaseMetadata(object):
     VOLUME_PREFIXES = ("volume", "vol.", "vol", "v")
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
+    DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
@@ -113,14 +114,17 @@ class ComicBaseMetadata(object):
     def parse_bool(cls, value):
         return value.lower() in cls.TRUTHY_VALUES
 
-    @staticmethod
-    def parse_decimal(num):
+    @classmethod
+    def parse_decimal(cls, num):
         """Fix half comic issue which are everywhere."""
         if isinstance(num, str):
             num = num.strip()
             num = num.replace(" ", "")
             num = num.replace("½", ".5")
             num = num.replace("1/2", ".5")
+            nums = cls.DECIMAL_MATCHER.findall(num)
+            if nums:
+                num = nums[0]
         elif not isinstance(num, (int, float)):
             raise ValueError(f"Can't convert {num} to a number.")
         try:
