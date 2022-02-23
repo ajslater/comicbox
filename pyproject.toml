@@ -4,7 +4,7 @@ build-backend = ["poetry.core.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.3.0"
+version = "0.3.1"
 description = "An API for reading comic archives"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -38,14 +38,14 @@ flake8-bugbear = "^22.1"
 coverage = { extras = ["toml"], version = "^6.0" }
 pep8-naming = "^0.12.1"
 pyright = "^0.0.13"
-pytest = "^6.0"
+pytest = "^7.0"
 pytest-black = "^0.3.10"
 pytest-cov = "^3.0"
 pytest-flake8 = "^1.0"
-pytest-isort = "^2.0"
+pytest-isort = "^3.0"
 pytest-monkeytype = "^1.0"
 mypy = "^0.931"
-monkeytype = "^21.5.0"
+monkeytype = "^22.2.0"
 vulture = "^2.1"
 radon = "^5.1"
 # neovim dev env

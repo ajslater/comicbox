@@ -71,7 +71,7 @@ class ComicArchive(object):
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 
     def _get_archive(self, mode="r"):
-        return self.archive_cls(self._path, mode=mode)
+        return self.archive_cls(self._path, mode=mode)  # type: ignore
 
     def get_path(self):
         """Get the path for the archive."""
@@ -152,7 +152,7 @@ class ComicArchive(object):
                 self.cover_image_data = self._get_cover_image(archive)
 
     def get_num_pages(self):
-        """Retun the number of pages."""
+        """Return the number of pages."""
         return self.metadata.get_num_pages()
 
     def get_pages(self, page_from):
@@ -247,7 +247,7 @@ class ComicArchive(object):
                     if IMAGE_EXT_RE.search(info.filename) is None:
                         compress = zipfile.ZIP_DEFLATED
                     else:
-                        # images usualy end up slightly larger with
+                        # images usually end up slightly larger with
                         # zip compression
                         compress = zipfile.ZIP_STORED
                     zf.writestr(
@@ -256,7 +256,7 @@ class ComicArchive(object):
                         compress_type=compress,
                         compresslevel=9,
                     )
-                if filename:
+                if filename and data:
                     zf.writestr(filename, data)
                 if comment:
                     zf.comment = comment

@@ -41,6 +41,11 @@ class ComicBookInfo(ComicJSON):
                 if val is None:
                     continue
 
+                if from_key == "credits":
+                    for credit in val:
+                        person = credit.get("person")
+                        role = credit.get("role")
+                        self._add_credit(person, role)
                 if to_key in self.INT_TAGS:
                     val = int(val)
                 elif to_key in self.STR_SET_TAGS:
@@ -68,16 +73,10 @@ class ComicBookInfo(ComicJSON):
             except Exception as exc:
                 print(exc)
 
-    def _from_json_credits(self, root):
-        credits = root.get("credits", {})
-        for credit in credits:
-            self._add_credit(credit.get("person"), credit.get("role"))
-
     def _from_json(self, json_obj):
         """Parse metadata from string."""
         root = json_obj[self.ROOT_TAG]
         self._from_json_tags(root)
-        self._from_json_credits(root)
 
     def _to_json(self):
         """Create the dictionary that we will convert to JSON text."""

@@ -8,7 +8,7 @@ from comicbox.metadata.comic_base import ComicBaseMetadata
 class ComicXml(ComicBaseMetadata):
     """XML Comic Metadata super class."""
 
-    XML_HEADER = '<?xml version="1.0"?>\n'
+    XML_HEADER = '<?xml version="1.0"?>'
     CREDIT_TAGS = {
         "Colorist": set(["colorist", "colourist", "colorer", "colourer"]),
         "CoverArtist": set(
@@ -54,7 +54,7 @@ class ComicXml(ComicBaseMetadata):
         tree = self._to_xml()
         root = self._get_xml_root(tree)
         tree_str = ElementTree.tostring(root).decode()
-        xml_str = self.XML_HEADER + tree_str
+        xml_str = self.XML_HEADER + "\n" + tree_str
         return xml_str
 
     def to_file(self, filename):

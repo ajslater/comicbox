@@ -89,15 +89,6 @@ class ComicInfoXml(ComicXml):
         "CommunityRating": "community_rating",
         # "Credits": "credits",
     }
-    CREDIT_TAGS = {
-        "Writer": ComicXml.CREDIT_TAGS["Writer"],
-        "Penciller": ComicXml.CREDIT_TAGS["Penciller"],
-        "Inker": ComicXml.CREDIT_TAGS["Inker"],
-        "Colorist": ComicXml.CREDIT_TAGS["Colorist"],
-        "Letterer": ComicXml.CREDIT_TAGS["Letterer"],
-        "CoverArtist": ComicXml.CREDIT_TAGS["CoverArtist"],
-        "Editor": ComicXml.CREDIT_TAGS["Editor"],
-    }
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS.keys():
