@@ -70,8 +70,8 @@ class ComicArchive(object):
         else:
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 
-    def _get_archive(self, mode: zipfile._ZipFileMode = "r"):
-        return self.archive_cls(self._path, mode=mode)
+    def _get_archive(self, mode="r"):
+        return self.archive_cls(self._path, mode=mode)  # type: ignore
 
     def get_path(self):
         """Get the path for the archive."""
