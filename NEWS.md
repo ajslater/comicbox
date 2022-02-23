@@ -3,6 +3,7 @@
 ## v0.3.1
 
 - Fix synthesizing CBI & CIX credits data.
+- Extract decimals from strings for more liberal reading.
 
 ## v0.3.0
 
