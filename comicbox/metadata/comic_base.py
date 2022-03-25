@@ -50,13 +50,13 @@ class ComicBaseMetadata(object):
             "community_rating",
             "critical_rating",
             "issue",  # cix Number
-            "issue_count",  # cix Count
             "price",
         )
     )
     INT_TAGS = set(
         (
             "day",
+            "issue_count",  # cix Count
             "last_mark",
             "month",
             "page_count",

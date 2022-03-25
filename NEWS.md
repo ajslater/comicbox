@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.3.2
+
+- issue_count type change from decimal to int
+
 ## v0.3.1
 
 - Fix synthesizing CBI & CIX credits data.
@@ -30,14 +34,14 @@
 
 ## v0.1.7
 
-- Remove regex dependancy in favor of re module
+- Remove regex dependency in favor of re module
 
 ## v0.1.6
 
 - Fixed recursive mode trying to operate on directories
 - Fix recompressing crash on cbr -> cbz conversion
 - Fixed parsing for three new filename patterns
-- Updated dependancies
+- Updated dependencies
 
 ## v0.1.5
 
