@@ -1,10 +1,14 @@
 """A class to encapsulate CoMet data."""
 from decimal import Decimal
+from logging import getLogger
 from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import SubElement
 
 from comicbox.metadata.comic_xml import ComicXml
+
+
+LOG = getLogger(__name__)
 
 
 class CoMet(ComicXml):
@@ -79,7 +83,7 @@ class CoMet(ComicXml):
                         continue
                 self.metadata[to_tag] = val
             except Exception as exc:
-                print(exc)
+                LOG.warning(f"{self.path} {from_tag} {exc}")
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS.keys():

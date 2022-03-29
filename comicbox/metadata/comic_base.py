@@ -2,11 +2,13 @@
 import re
 
 from decimal import Decimal
+from logging import getLogger
 
 import pycountry
 
 
 IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|gif|webp)$", re.IGNORECASE)
+LOG = getLogger(__name__)
 
 
 class ComicBaseMetadata(object):
@@ -74,6 +76,7 @@ class ComicBaseMetadata(object):
         """Initialize the metadata dict or parse it from a source."""
         self.metadata = {}
         self._page_filenames = []
+        self.path = path
         if metadata is not None:
             self.metadata = metadata
             return
@@ -102,7 +105,7 @@ class ComicBaseMetadata(object):
             else:
                 obj = module.lookup(name)
         except LookupError as exc:
-            print(exc)
+            LOG.warning(f"{tag}:{name} {exc}")
             return
 
         if long_to_alpha2:
@@ -130,7 +133,7 @@ class ComicBaseMetadata(object):
         try:
             decimal = Decimal(num)
         except Exception as exc:
-            print(f"Error parsing decimal: {num}")
+            LOG.warning(f"Error parsing decimal: {num}")
             raise exc
         return decimal
 
@@ -200,6 +203,9 @@ class ComicBaseMetadata(object):
             cover_image = self.metadata.get("cover_image")
         if not cover_image and self._page_filenames:
             cover_image = self._page_filenames[0]
+
+        if not cover_image:
+            LOG.warning(f"{self.path} could not find cover filename")
         return cover_image
 
     def get_pagenames_from(self, index_from):
@@ -216,7 +222,7 @@ class ComicBaseMetadata(object):
                     match = True
                     break
             if not match:
-                print("Could not find:", d_a)
+                LOG.debug("dict_compare: could not find:", d_a)
                 return False
         return True
 
@@ -235,11 +241,11 @@ class ComicBaseMetadata(object):
             elif isinstance(val, set):
                 for a, b in zip(sorted(val), sorted(md_b[key])):
                     if a != b:
-                        print(f"{a} != {b}")
+                        LOG.debug(f"compare metadata: {key} {a} != {b}")
                         return False
             else:
                 if md_b[key] != val:
-                    print(f"{key}: {md_b[key]} != {val}")
+                    LOG.debug(f"compare metadata: {key}: {md_b[key]} != {val}")
                     return False
         return True
 
@@ -264,9 +270,9 @@ class ComicBaseMetadata(object):
             try:
                 synth_dict_list.update(dict_list)
             except ValueError as exc:
-                print(exc)
-                print(f"Bad credit list: {dict_list}")
-                print("Not added to synthesized metadata")
+                LOG.warning(f"{self.path} {exc}")
+                LOG.warning(f"Bad credit list: {dict_list}.")
+                LOG.warning("Not added to synthesized metadata")
         md["credits"] = synth_dict_list
 
         # synthesize sets of attributes

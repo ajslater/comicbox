@@ -11,6 +11,9 @@ from comicbox.comic_archive import ComicArchive
 from comicbox.version import VERSION
 
 
+SUFFIXES = frozenset((".cbz", ".cbr"))
+
+
 def get_args():
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
@@ -78,7 +81,7 @@ def get_args():
     parser.add_argument(
         "--delete-rar",
         action="store_true",
-        help="Delete the original rar file if the zip is exported sucessfully.",
+        help="Delete the original rar file if the zip is exported successfully.",
     )
     parser.add_argument(
         "-i",
@@ -147,6 +150,8 @@ def recurse(args, path):
     for root, _, filenames in os.walk(path):
         root_path = Path(root)
         for filename in sorted(filenames):
+            if Path(filename).suffix.lower() not in SUFFIXES:
+                continue
             full_path = root_path / filename
             run_on_file(args, full_path)
 

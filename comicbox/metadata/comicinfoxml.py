@@ -1,9 +1,13 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+from logging import getLogger
 from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import ElementTree
 from xml.etree.ElementTree import SubElement
 
 from comicbox.metadata.comic_xml import ComicXml
+
+
+LOG = getLogger(__name__)
 
 
 class ComicInfoXml(ComicXml):
@@ -136,7 +140,7 @@ class ComicInfoXml(ComicXml):
                         continue
                 self.metadata[to_tag] = val
             except Exception as exc:
-                print(exc)
+                LOG.warning(f"{self.path} {from_tag} {exc}")
 
     def _from_xml_pages(self, root):
         pages = root.find("Pages")

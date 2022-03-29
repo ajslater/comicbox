@@ -1,8 +1,12 @@
 """XML Metadata parser superclass."""
+from logging import getLogger
 from xml.etree import ElementTree
 from xml.etree.ElementTree import ParseError
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
+
+
+LOG = getLogger(__name__)
 
 
 class ComicXml(ComicBaseMetadata):
@@ -39,7 +43,7 @@ class ComicXml(ComicBaseMetadata):
             tree = ElementTree.ElementTree(element)
             self._from_xml(tree)
         except ParseError as exc:
-            print(exc)
+            LOG.error(f"{self.path} {exc}")
 
     def from_file(self, filename):
         """Read metadata from a file."""
