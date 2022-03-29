@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.3.3
+
+- add colored python logging
+
 ## v0.3.2
 
 - issue_count type change from decimal to int

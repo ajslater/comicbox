@@ -1,7 +1,7 @@
 """
 Parse comic book archive names using the simple 'parse' parser.
 
-A more sophisticaed libarary like pyparsing or rebulk might be able to
+A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
@@ -9,11 +9,15 @@ effective, simple and easy to read and to contribute to.
 
 import re
 
+from logging import getLogger
 from pathlib import Path
 
 from parse import compile
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
+
+
+LOG = getLogger(__name__)
 
 
 def compile_parsers(patterns):
@@ -29,7 +33,7 @@ def compile_parsers(patterns):
 
 
 class FilenameMetadata(ComicBaseMetadata):
-    """Extract metdata from the filename."""
+    """Extract metadata from the filename."""
 
     ALL_FIELDS = set(["series", "volume", "issue", "issue_count", "year", "ext"])
     FIELD_SCHEMA = {key: None for key in ALL_FIELDS}
@@ -42,7 +46,7 @@ class FilenameMetadata(ComicBaseMetadata):
         "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) #{issue:d} {title} {remainer}.{ext}",
+        "{series} v{volume:d} ({year:4d}) #{issue:d} {title} {remainder}.{ext}",
         "{series} Vol {volume:d}{garbage}({year:4d}) {remainder}.{ext}",
         "{series} Vol. {volume:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} ({year:4d}) {remainder}.{ext}",
@@ -106,19 +110,22 @@ class FilenameMetadata(ComicBaseMetadata):
         return {}
 
     def from_string(self, path):
-        """Try all parsers againts the filename and return the best result."""
+        """Try all parsers against the filename and return the best result."""
         self._path = Path(path)
         fn = self.clean_fn(self._path.name)
         best_res = {}
         pattern_num = 0
         for parser in self.PARSERS:
-            res = self.try_parser(parser, fn)
-            if len(res) > len(best_res):
-                best_res = res
-                if len(best_res) == self.PATTERN_MAX_MATCHES[pattern_num]:
-                    # if we match everything in the pattern end early.
-                    break
-            pattern_num += 1
+            try:
+                res = self.try_parser(parser, fn)
+                if len(res) > len(best_res):
+                    best_res = res
+                    if len(best_res) == self.PATTERN_MAX_MATCHES[pattern_num]:
+                        # if we match everything in the pattern end early.
+                        break
+                pattern_num += 1
+            except Exception as exc:
+                LOG.debug(f"{self.path} {exc}")
         self.metadata.update(best_res)
 
     def from_file(self, path):
@@ -142,5 +149,5 @@ class FilenameMetadata(ComicBaseMetadata):
         new_path = path.parent / Path(name + path.suffix)
         old_path = path
         path.rename(new_path)
-        print(f"Renamed:\n{old_path} ==> {self._path}")
+        LOG.info(f"Renamed:\n{old_path} ==> {self._path}")
         return new_path

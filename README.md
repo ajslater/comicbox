@@ -16,6 +16,14 @@ comicbox -h
 
 to use the CLI.
 
+#### Log Level
+
+change logging level:
+
+```sh
+LOGLEVEL=ERROR comicbox -p <path>
+```
+
 ## 🛠 <a href="development">Development</a>
 
 run
@@ -56,4 +64,4 @@ I didn't like Comictagger's API, so I built this for myself as an educational ex
 
 ## 👍🏻 <a href="alternative">Alternatives</a>
 
-[Comictagger](https://github.com/comictagger/comictagger) is a better alternative for most purposes at this time. It does everything Comicbox does but also automatically tags comics with the ComicVine API and has a pretty nice desktop UI.
+[Comictagger](https://github.com/comictagger/comictagger) is a better alternative for most purposes. It does everything Comicbox does but also automatically tags comics with the ComicVine API and has a pretty nice desktop UI.

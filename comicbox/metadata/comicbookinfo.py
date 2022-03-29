@@ -1,5 +1,6 @@
 """A class to encapsulate the ComicBookInfo data."""
 from datetime import datetime
+from logging import getLogger
 
 from comicbox.metadata.comic_json import ComicJSON
 from comicbox.version import VERSION
@@ -7,6 +8,8 @@ from comicbox.version import VERSION
 
 # Schema from:
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
+
+LOG = getLogger(__name__)
 
 
 class ComicBookInfo(ComicJSON):
@@ -71,7 +74,7 @@ class ComicBookInfo(ComicJSON):
                         continue
                 self.metadata[to_key] = val
             except Exception as exc:
-                print(exc)
+                LOG.warning(f"{self.path} {from_key} {exc}")
 
     def _from_json(self, json_obj):
         """Parse metadata from string."""

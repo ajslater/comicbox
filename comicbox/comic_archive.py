@@ -7,11 +7,13 @@ Reads data using libarchive via archi.
 
 import zipfile
 
+from logging import getLogger
 from pathlib import Path
 
 import rarfile
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.logging import init_logging
 from comicbox.metadata import comicapi
 from comicbox.metadata.comet import CoMet
 from comicbox.metadata.comic_base import IMAGE_EXT_RE
@@ -24,6 +26,8 @@ from comicbox.metadata.filename import FilenameMetadata
 
 RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 CBZ_SUFFIX = ".cbz"
+init_logging()
+LOG = getLogger(__name__)
 
 
 class Settings:
@@ -191,7 +195,6 @@ class ComicArchive(object):
         """Extract the cover image to a destination file."""
         cover_fn = self.metadata.get_cover_page_filename()
         if not cover_fn:
-            print("could not find cover filename")
             return
         with self._get_archive() as archive:
             with archive.open(cover_fn) as page:
@@ -202,12 +205,11 @@ class ComicArchive(object):
         """Return cover image data."""
         cover_fn = self.metadata.get_cover_page_filename()
         if not cover_fn:
-            print("could not find cover filename")
             return
         try:
             data = archive.read(cover_fn)
         except Exception as exc:
-            print(f"Error reading: {cover_fn}")
+            LOG.error(f"{self._path} reading cover: {cover_fn}")
             raise exc
         return data
 
@@ -265,11 +267,11 @@ class ComicArchive(object):
         tmp_path.replace(new_path)
         self._path = new_path
         if delete_rar:
-            print(f"converted to: {new_path}")
+            LOG.info(f"converted to: {new_path}")
 
         if delete_rar and new_path.is_file():
             old_path.unlink()
-            print(f"removed: {old_path}")
+            LOG.info(f"removed: {old_path}")
 
     def delete_tags(self):
         """Recompress, without any tag formats."""
