@@ -108,6 +108,10 @@ class ComicBaseMetadata(object):
             LOG.warning(f"{tag}:{name} {exc}")
             return
 
+        if obj is None:
+            LOG.warning(f"{tag}:{name} failed lookup.")
+            return
+
         if long_to_alpha2:
             return obj.alpha_2
         else:
