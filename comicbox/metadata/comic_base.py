@@ -96,17 +96,16 @@ class ComicBaseMetadata(object):
         else:
             raise NotImplementedError(f"no pycountry module for {tag}")
         name = name.strip()
-        # Language lookup fails for 'en' unless alpha_2 is specified.
         if not name:
             return
-        try:
-            if len(name) == 2:
-                obj = module.get(alpha_2=name)
-            else:
-                obj = module.lookup(name)
-        except LookupError as exc:
-            LOG.warning(f"{tag}:{name} {exc}")
-            return
+        if len(name) == 2:
+            # Language lookup fails for 'en' unless alpha_2 is specified.
+            obj = module.get(alpha_2=name)
+        else:
+            obj = module.lookup(name)
+
+        if obj is None:
+            raise ValueError(f"couldn't find {tag} for {name}")
 
         if long_to_alpha2:
             return obj.alpha_2
@@ -128,14 +127,7 @@ class ComicBaseMetadata(object):
             nums = cls.DECIMAL_MATCHER.findall(num)
             if nums:
                 num = nums[0]
-        elif not isinstance(num, (int, float)):
-            raise ValueError(f"Can't convert {num} to a number.")
-        try:
-            decimal = Decimal(num)
-        except Exception as exc:
-            LOG.warning(f"Error parsing decimal: {num}")
-            raise exc
-        return decimal
+        return Decimal(num)
 
     @staticmethod
     def decimal_to_type(dec):
@@ -170,22 +162,30 @@ class ComicBaseMetadata(object):
         """Get the filename of the page by index."""
         return self._page_filenames[index]
 
-    def _add_credit(self, person, role):
-        """Add a credit to the metadata."""
-        credit = {"person": person.strip(), "role": role.strip()}
+    @staticmethod
+    def _credit_key(credit):
+        return f"{credit.get('role')}:{credit.get('person')}".lower()
 
-        if not credit["person"]:
+    def _add_credit(self, person, role, primary=None):
+        """Add a credit to the metadata."""
+        person = person.strip()
+        if not person:
             return
+        if role is None:
+            role = ""
+        else:
+            role = role.strip()
+
+        credit = {"person": person, "role": role}
+        if primary is not None:
+            credit["primary"] = primary
 
         if self.metadata.get("credits") is None:
             self.metadata["credits"] = []
 
         # if we've already added it, return
         for old_credit in self.metadata["credits"]:
-            if (
-                old_credit["person"].lower() == credit["person"].lower()
-                and old_credit["role"].lower() == credit["role"].lower()
-            ):
+            if self._credit_key(old_credit) == self._credit_key(credit):
                 return
 
         self.metadata["credits"].append(credit)
@@ -213,39 +213,39 @@ class ComicBaseMetadata(object):
         return self._page_filenames[index_from:]
 
     @classmethod
-    def _compare_dict_list(cls, dl_a, dl_b):
-        # There's probably a slicker generic way to do this
-        for d_a in dl_a:
+    def _compare_dict_list(cls, list_a, list_b):
+        """Compare lists of dicts."""
+        if list_a is None and list_b is None:
+            return True
+        if list_a is None and list_b or list_b is None and list_a:
+            return False
+        for dict_a in list_a:
             match = False
-            for d_b in dl_b:
-                if d_a == d_b:
+            for dict_b in list_b:
+                if dict_a == dict_b:
                     match = True
                     break
             if not match:
-                LOG.debug("dict_compare: could not find:", d_a)
+                LOG.debug("dict_compare: could not find:", dict_a)
                 return False
         return True
 
     @classmethod
     def _compare_metadatas(cls, md_a, md_b):
-        for key, val in md_a.items():
+        for key, val_a in md_a.items():
+            val_b = md_b.get(key)
             if key in cls.IGNORE_COMPARE_TAGS:
                 continue
             if key in cls.DICT_LIST_TAGS:
-                res = cls._compare_dict_list(val, md_b[key])
+                res = cls._compare_dict_list(val_a, val_b)
                 if not res:
+                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
+                    print(f"compare metatada: {key} {val_a} != {val_b}")
                     return False
-                res = cls._compare_dict_list(md_b[key], val)
-                if not res:
-                    return False
-            elif isinstance(val, set):
-                for a, b in zip(sorted(val), sorted(md_b[key])):
-                    if a != b:
-                        LOG.debug(f"compare metadata: {key} {a} != {b}")
-                        return False
             else:
-                if md_b[key] != val:
-                    LOG.debug(f"compare metadata: {key}: {md_b[key]} != {val}")
+                if val_a != val_b:
+                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
+                    print(f"compare metatada: {key} {val_a} != {val_b}")
                     return False
         return True
 
@@ -258,31 +258,43 @@ class ComicBaseMetadata(object):
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
-        # synthesize credits
-        # NOT "pages", only comes from cix anyway
         md = {}
-        synth_dict_list = {}
+        final_credits = {}
+        all_tags = {}
         for md in md_list:
-            self.metadata.update(md)
-            dict_list = md.get("credits")
-            if not isinstance(dict_list, list) or not dict_list:
-                continue
-            try:
-                synth_dict_list.update(dict_list)
-            except ValueError as exc:
-                LOG.warning(f"{self.path} {exc}")
-                LOG.warning(f"Bad credit list: {dict_list}.")
-                LOG.warning("Not added to synthesized metadata")
-        md["credits"] = synth_dict_list
+            # pop off complex values before simple update
+            # "pages" is complex but only comes from cix so no synth needed.
 
-        # synthesize sets of attributes
-        for tag in self.STR_SET_TAGS:
-            synth_str_set = set()
-            for md in md_list:
-                str_set = md.get(tag)
-                if str_set:
-                    synth_str_set.update(str_set)
-            md[tag] = synth_str_set
+            # Synthesize credits
+            try:
+                credits = md.pop("credits")
+                for credit in credits:
+                    credit_key = self._credit_key(credit)
+                    if credit_key not in final_credits:
+                        final_credits[credit_key] = {}
+                    final_credits[credit_key].update(credit)
+            except KeyError:
+                pass
+            except Exception as exc:
+                LOG.warning(f"{self.path} error combining credits: {exc}")
+
+            # Synthesize tags
+            for tag in self.STR_SET_TAGS:
+                # synthesize sets of attributes
+                try:
+                    tags = md.pop("tag")
+                    if tags:
+                        if tag not in all_tags:
+                            all_tags[tag] = set()
+                        all_tags[tag].update(tags)
+                except KeyError:
+                    pass
+                except Exception as exc:
+                    LOG.warning(f"{self.path} error comibining {tag}: {exc}")
+
+            self.metadata.update(md)
+        self.metadata["credits"] = list(final_credits.values())
+        self.metadata.update(all_tags)
 
     def compute_page_count(self):
         """Compute the page count from the number of images."""

@@ -24,7 +24,7 @@ METADATA = {
     "volume": 1950,
     "credits": [
         {"person": "Wally Wood", "role": "Artist"},
-        {"person": "Joe Orlando", "role": "Writer"},
+        {"person": "Joe Orlando", "role": "Writer", "primary": True},
     ],
     "language": "en",
     "country": "US",

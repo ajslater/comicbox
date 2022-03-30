@@ -99,11 +99,11 @@ class ComicArchive(object):
             ):
                 md = cix_md
                 xml_parser_cls = ComicInfoXml
-                title = "ComicRack"
+                title = "ComicInfo.xml"
             elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
                 md = comet_md
                 xml_parser_cls = CoMet
-                title = "CoMet"
+                title = "CoMet.xml"
             else:
                 continue
             data = archive.read(fn)
@@ -129,7 +129,7 @@ class ComicArchive(object):
         parser = ComicBookInfo(string=comment)
         cbi_md = parser.metadata
         if self.settings.raw:
-            self.raw["ComicLover"] = comment
+            self.raw["ComicBookInfo Archive Comment"] = comment
         return cbi_md
 
     def _parse_metadata_filename(self):

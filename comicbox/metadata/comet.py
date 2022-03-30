@@ -83,7 +83,7 @@ class CoMet(ComicXml):
                         continue
                 self.metadata[to_tag] = val
             except Exception as exc:
-                LOG.warning(f"{self.path} {from_tag} {exc}")
+                LOG.warning(f"{self.path} CoMet {from_tag} {exc}")
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS.keys():

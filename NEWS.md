@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.3.4
+
+- Fixed combining CBI credits and with other format credits.
+- More info in parsing warnings.
+- More explicit raw tag titles.
+
 ## v0.3.3
 
 - add colored python logging

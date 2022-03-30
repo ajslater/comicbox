@@ -140,7 +140,7 @@ class ComicInfoXml(ComicXml):
                         continue
                 self.metadata[to_tag] = val
             except Exception as exc:
-                LOG.warning(f"{self.path} {from_tag} {exc}")
+                LOG.warning(f"{self.path} CIX {from_tag} {exc}")
 
     def _from_xml_pages(self, root):
         pages = root.find("Pages")
