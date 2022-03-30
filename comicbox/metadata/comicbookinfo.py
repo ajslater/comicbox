@@ -36,6 +36,25 @@ class ComicBookInfo(ComicJSON):
         "pages": "page_count",
     }
     FILENAME = "ComicBookInfo.json"
+    CREDIT_PRIMARY_YES_VALUES = ("yes", "true")
+
+    def _get_credit(self, credit):
+        person = credit.get("person")
+        if not person:
+            return
+        role = credit.get("role")
+        primary = credit.get("primary")
+        try:
+            if (
+                isinstance(primary, str)
+                and primary.lower() in self.CREDIT_PRIMARY_YES_VALUES
+            ):
+                primary = True
+            else:
+                primary = bool(primary)
+        except Exception:
+            primary = False
+        self._add_credit(person, role, primary)
 
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():
@@ -46,10 +65,8 @@ class ComicBookInfo(ComicJSON):
 
                 if from_key == "credits":
                     for credit in val:
-                        person = credit.get("person")
-                        role = credit.get("role")
-                        self._add_credit(person, role)
-                if to_key in self.INT_TAGS:
+                        self._get_credit(credit)
+                elif to_key in self.INT_TAGS:
                     val = int(val)
                 elif to_key in self.STR_SET_TAGS:
                     if isinstance(val, list):
@@ -69,12 +86,12 @@ class ComicBookInfo(ComicJSON):
                     if not val:
                         continue
                 elif isinstance(val, list):
-                    # credits and tags
+                    # tags
                     if len(val) == 0:
                         continue
                 self.metadata[to_key] = val
             except Exception as exc:
-                LOG.warning(f"{self.path} {from_key} {exc}")
+                LOG.warning(f"{self.path} CBI {from_key} {exc}")
 
     def _from_json(self, json_obj):
         """Parse metadata from string."""
@@ -91,20 +108,23 @@ class ComicBookInfo(ComicJSON):
         }
 
         for json_key, md_key in self.JSON_KEYS.items():
-            val = self.metadata.get(md_key)
-            if not val:
-                continue
-            elif md_key in self.DECIMAL_TAGS:
-                if val % 1 == 0:
-                    val = int(val)
-                else:
-                    val = float(val)
-            elif md_key in self.STR_SET_TAGS:
-                val = ",".join(sorted(val))
-            elif md_key in self.PYCOUNTRY_TAGS:
-                val = self._pycountry(md_key, val, False)
+            try:
+                val = self.metadata.get(md_key)
                 if not val:
                     continue
-            cbi[json_key] = val
+                elif md_key in self.DECIMAL_TAGS:
+                    if val % 1 == 0:
+                        val = int(val)
+                    else:
+                        val = float(val)
+                elif md_key in self.STR_SET_TAGS:
+                    val = ",".join(sorted(val))
+                elif md_key in self.PYCOUNTRY_TAGS:
+                    val = self._pycountry(md_key, val, False)
+                    if not val:
+                        continue
+                cbi[json_key] = val
+            except Exception as exc:
+                LOG.warning(f"{self.path} CBI serializing {json_key}: {exc}")
 
         return json_obj

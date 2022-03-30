@@ -4,6 +4,7 @@ import shutil
 import zipfile
 
 from pathlib import Path
+from pprint import pprint
 
 from comicbox.comic_archive import ComicArchive
 from comicbox.metadata.comic_base import ComicBaseMetadata
@@ -18,6 +19,8 @@ def read_metadata(archive_path, metadata):
     """Read metadata and compare to dict fixture."""
     disk_car = ComicArchive(archive_path)
     md = ComicBaseMetadata(metadata=metadata)
+    pprint(disk_car.metadata.metadata)
+    pprint(md.metadata)
     assert disk_car.metadata == md
 
 
