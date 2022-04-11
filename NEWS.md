@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.3.5a0
+
+- Fixed some file name patterns
+
 ## v0.3.4
 
 - Fixed combining CBI credits and with other format credits.

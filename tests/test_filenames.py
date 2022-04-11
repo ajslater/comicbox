@@ -143,4 +143,17 @@ FNS = {
         "year": 2009,
         "ext": "cbr",
     },
+    "The Walking Dead #002 (2003).cbz": {
+        "series": "The Walking Dead",
+        "issue": 2,
+        "year": 2003,
+    },
+    "The Walking Dead #3.cbz": {
+        "series": "The Walking Dead",
+        "issue": 3,
+    },
+    "The Walking Dead 4.cbz": {
+        "series": "The Walking Dead",
+        "issue": 4,
+    },
 }
