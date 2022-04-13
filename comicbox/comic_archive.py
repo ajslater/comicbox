@@ -84,7 +84,10 @@ class ComicArchive(object):
         for fn in sorted(archive.namelist()):
             basename = Path(fn).name.lower()
             xml_parser_cls = None
-            if basename == str(ComicInfoXml.FILENAME).lower() and self.config.comicrack:
+            if (
+                basename == str(ComicInfoXml.FILENAME).lower()
+                and self.config.comicinfoxml
+            ):
                 md = cix_md
                 xml_parser_cls = ComicInfoXml
                 title = "ComicInfo.xml"
@@ -111,7 +114,7 @@ class ComicArchive(object):
         return comment
 
     def _parse_metadata_comments(self, archive):
-        if not self.config.comiclover:
+        if not self.config.comicbookinfo:
             return {}
         comment = self._get_archive_comment(archive)
         parser = ComicBookInfo(string=comment)

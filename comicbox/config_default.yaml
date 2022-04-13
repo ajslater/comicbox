@@ -1,6 +1,6 @@
 comet: True
-comiclover: True
-comicrack: True
+comicbookinfo: True
+comicinfoxml: True
 cover: False
 delete_rar: False
 delete_tags: False

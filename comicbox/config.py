@@ -13,8 +13,8 @@ from comicbox.version import PROGRAM_NAME
 TEMPLATE = MappingTemplate(
     {
         "comet": bool,
-        "comicrack": bool,
-        "comiclover": bool,
+        "comicinfoxml": bool,
+        "comicbookinfo": bool,
         "cover": bool,
         "delete_rar": bool,
         "delete_tags": bool,

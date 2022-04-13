@@ -15,17 +15,17 @@ def get_args():
     # OPTIONS
     parser.add_argument(
         "-R",
-        "--ignore-comicrack",
+        "--ignore-cix",
         action="store_false",
-        dest="comicrack",
-        help="Ignore ComicRack metadata if present.",
+        dest="comicinfo",
+        help="Ignore ComicRack ComicInfo.xml metadata if present.",
     )
     parser.add_argument(
         "-L",
-        "--ignore-comiclover",
+        "--ignore-cbi",
         action="store_false",
-        dest="comiclover",
-        help="Ignore ComicLover metadata if present.",
+        dest="comicbookinfo",
+        help="Ignore ComicLover ComicBookInfo metadata if present.",
     )
     parser.add_argument(
         "-C",
