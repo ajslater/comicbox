@@ -1,5 +1,14 @@
 # 📰 News
 
+## v0.4.0
+
+- Fixed some file name patterns
+- Accept environment variables and config files to configure.
+- CLI accepts multiple arguments as targets for action.
+- CLI runs _every_ action on the command line.
+- API `get_cover` init variable now set in config as `cover`
+- Optional metadata parsing with config.
+
 ## v0.3.4
 
 - Fixed combining CBI credits and with other format credits.

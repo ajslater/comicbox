@@ -40,37 +40,49 @@ class FilenameMetadata(ComicBaseMetadata):
     # The order of these patterns is very important as patterns farther down
     # the list are more permissive than those higher up.
     PATTERNS = (
-        "{series} v{volume:d} {issue:3d} {title} ({year:4d}) {remainder}.{ext}",
+        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}",
+        "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}",
+        "{series} #{issue:d} ({year:4d}) {remainder}.{ext}",
         "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
+        "{series} #{issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}",
+        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} ({year:4d}) #{issue:d} {title} {remainder}.{ext}",
+        "{series} v{volume:d} ({year:4d}) {issue:d} {title} {remainder}.{ext}",
         "{series} Vol {volume:d}{garbage}({year:4d}) {remainder}.{ext}",
         "{series} Vol. {volume:d} {title} ({year:4d}) {remainder}.{ext}",
         "{series} v{volume:d} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) {issue:d} {remainder}.{ext}",
         "{series} v{volume:d} ({year:4d}) #{issue:d} {remainder}.{ext}",
+        "{series} v{volume:d} ({year:4d}) {issue:d} {remainder}.{ext}",
+        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}"
         "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}"
+        "{series} v{volume:d} #{issue:d}.{ext}"
         "{series} v{volume:d} {issue:d}.{ext}"
         "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}"
+        "{series} #{issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
+        "{series} #{issue:d} (of {issue_count:d}) {remainder}.{ext}",
         "{series} {issue:d} (of {issue_count:d}) {remainder}.{ext}",
         "{series} ({issue:d} of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
         "{series} ({issue:d} of {issue_count:d}) {remainder}.{ext}",
+        "{series} #{issue:d} ({year:4d}).{ext}",
         "{series} {issue:d} ({year:4d}).{ext}",
-        "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
         "{series} #{issue:d} ({year:4d}) {remainder}.{ext}",
-        "{series} ({year:4d}) {issue:d} {remainder}.{ext}",
+        "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
         "{series} ({year:4d}) #{issue:d} {remainder}.{ext}",
+        "{series} ({year:4d}) {issue:d} {remainder}.{ext}",
         "{series} ({year:4d}) {remainder}.{ext}",
+        "{series} v{volume:d} #{issue:d}.{ext}",
         "{series} v{volume:d} {issue:d}.{ext}",
+        "{series} v{volume:d} #{issue:d} {remainder}.{ext}",
         "{series} v{volume:d} {issue:d} {remainder}.{ext}",
-        "{series} {issue:d}.{ext}",
-        "{series} {issue:d} {remainder}.{ext}",
         "{series} #{issue:d} {remainder}.{ext}",
+        "{series} {issue:d} {remainder}.{ext}",
         "{series} #{issue:d}.{ext}",
+        "{series} {issue:d}.{ext}",
         "{series}.{ext}",
         "{issue:d} {series}.{ext}",
         "{issue:d} {series} {remainder}.{ext}",
@@ -122,6 +134,7 @@ class FilenameMetadata(ComicBaseMetadata):
                     best_res = res
                     if len(best_res) == self.PATTERN_MAX_MATCHES[pattern_num]:
                         # if we match everything in the pattern end early.
+                        LOG.debug(f"{pattern_num} {self.PATTERNS[pattern_num]}")
                         break
                 pattern_num += 1
             except Exception as exc:

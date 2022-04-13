@@ -1,0 +1,11 @@
+comet: True
+comicbookinfo: True
+comicinfoxml: True
+cover: False
+delete_rar: False
+delete_tags: False
+dest_path: .
+filename: True
+metadata: True
+raw: False
+recurse: False
