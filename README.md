@@ -21,7 +21,8 @@ to use the CLI.
 comicbox accepts command line arguments but also an optional config file
 and environment variables.
 
-The variables have defaults specified in [a default yaml](https://github.com/ajslater/comicbox/comicbox/config_default.yaml)
+The variables have defaults specified in
+[a default yaml](https://github.com/ajslater/comicbox/blob/master/comicbox/config_default.yaml)
 
 The environment variables are the variable name prefixed with `COMICBOX_`. (e.g. COMICBOX_COMICINFOXML=0)
 
