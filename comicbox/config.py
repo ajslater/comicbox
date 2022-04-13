@@ -20,6 +20,7 @@ TEMPLATE = MappingTemplate(
         "delete_tags": bool,
         "dest_path": str,
         "filename": bool,
+        "metadata": bool,
         "raw": bool,
         "recurse": bool,
     }

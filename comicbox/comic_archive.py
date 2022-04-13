@@ -50,10 +50,8 @@ class ComicArchive(object):
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         self.cover_image_data = None
-        if metadata is None:
+        if metadata is None and config.metadata:
             self._parse_metadata()
-        if not self.metadata.metadata.get("page_count"):
-            self.metadata.compute_page_metadata(self.namelist())
 
     def set_path(self, path):
         """Set the path and determine the archive type."""
@@ -150,16 +148,19 @@ class ComicArchive(object):
         """Return the number of pages."""
         return self.metadata.get_num_pages()
 
+    def _ensure_page_metadata(self, archive):
+        """Ensure page metadata exists."""
+        if not not self.metadata.metadata.get("page_count"):
+            self.metadata.compute_page_metadata(sorted(archive.namelist()))
+
     def get_pages(self, page_from):
-        """Get all pages starting with page number."""
-        # TODO turn into generator
-        pagenames = self.metadata.get_pagenames_from(page_from)
-        pages = []
+        """Generate all pages starting with page number."""
         with self._get_archive() as archive:
+            self._ensure_page_metadata(archive)
+            pagenames = self.metadata.get_pagenames_from(page_from)
             for pagename in pagenames:
                 with archive.open(pagename) as page:
-                    pages += [page.read()]
-        return pages
+                    yield page.read()
 
     def get_page_by_filename(self, filename):
         """Return data for a single page by filename."""
@@ -169,13 +170,17 @@ class ComicArchive(object):
 
     def get_page_by_index(self, index):
         """Get the page data by index."""
-        filename = self.metadata.get_pagename(index)
-        return self.get_page_by_filename(filename)
+        with self._get_archive() as archive:
+            self._ensure_page_metadata(archive)
+            filename = self.metadata.get_pagename(index)
+            with archive.open(filename) as page:
+                return page.read()
 
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
-        filenames = self.metadata.get_pagenames_from(page_from)
         with self._get_archive() as archive:
+            self._ensure_page_metadata(archive)
+            filenames = self.metadata.get_pagenames_from(page_from)
             for fn in filenames:
                 with archive.open(fn) as page:
                     fn = root_path / fn
@@ -184,16 +189,18 @@ class ComicArchive(object):
 
     def extract_cover_as(self, path):
         """Extract the cover image to a destination file."""
-        cover_fn = self.metadata.get_cover_page_filename()
-        if not cover_fn:
-            return
         with self._get_archive() as archive:
+            self._ensure_page_metadata(archive)
+            cover_fn = self.metadata.get_cover_page_filename()
+            if not cover_fn:
+                return
             with archive.open(cover_fn) as page:
                 with open(path, "wb") as cover_file:
                     cover_file.write(page.read())
 
     def _get_cover_image(self, archive):
         """Return cover image data."""
+        self._ensure_page_metadata(archive)
         cover_fn = self.metadata.get_cover_page_filename()
         if not cover_fn:
             return
@@ -205,8 +212,11 @@ class ComicArchive(object):
         return data
 
     def get_cover_image(self):
-        with self._get_archive() as archive:
-            return self._get_cover_image(archive)
+        """Get the cover image."""
+        if not self.cover_image_data:
+            with self._get_archive() as archive:
+                self.cover_image_data = self._get_cover_image(archive)
+        return self.cover_image_data
 
     def get_metadata(self):
         """Return the metadata from the archive."""
