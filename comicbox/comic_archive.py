@@ -12,6 +12,7 @@ from pathlib import Path
 
 import rarfile
 
+from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.logging import init_logging
 from comicbox.metadata import comicapi
@@ -30,16 +31,6 @@ init_logging()
 LOG = getLogger(__name__)
 
 
-class Settings:
-    """Settings to control default behavior. Overridden by cli namespace."""
-
-    comicrack = True
-    comiclover = True
-    comet = True
-    filename = True
-    raw = False
-
-
 class ComicArchive(object):
     """
     Represent a comic archive.
@@ -50,17 +41,17 @@ class ComicArchive(object):
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
     FILENAMES = set((CoMet.FILENAME, ComicInfoXml.FILENAME))
 
-    def __init__(self, path, metadata=None, settings=None, get_cover=False):
+    def __init__(self, path, metadata=None, config=None):
         """Initialize the archive with a path to the archive."""
-        if settings is None:
-            settings = Settings()
-        self.settings = settings
+        if config is None:
+            config = get_config()
+        self.config = config
         self.set_path(path)
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         self.cover_image_data = None
         if metadata is None:
-            self._parse_metadata(get_cover)
+            self._parse_metadata()
         if not self.metadata.metadata.get("page_count"):
             self.metadata.compute_page_metadata(self.namelist())
 
@@ -93,21 +84,18 @@ class ComicArchive(object):
         for fn in sorted(archive.namelist()):
             basename = Path(fn).name.lower()
             xml_parser_cls = None
-            if (
-                basename == str(ComicInfoXml.FILENAME).lower()
-                and self.settings.comicrack
-            ):
+            if basename == str(ComicInfoXml.FILENAME).lower() and self.config.comicrack:
                 md = cix_md
                 xml_parser_cls = ComicInfoXml
                 title = "ComicInfo.xml"
-            elif basename == str(CoMet.FILENAME).lower() and self.settings.comet:
+            elif basename == str(CoMet.FILENAME).lower() and self.config.comet:
                 md = comet_md
                 xml_parser_cls = CoMet
                 title = "CoMet.xml"
             else:
                 continue
             data = archive.read(fn)
-            if self.settings.raw:
+            if self.config.raw:
                 self.raw[title] = data
             parser = xml_parser_cls(string=data)
             md.update(parser.metadata)
@@ -123,24 +111,24 @@ class ComicArchive(object):
         return comment
 
     def _parse_metadata_comments(self, archive):
-        if not self.settings.comiclover:
+        if not self.config.comiclover:
             return {}
         comment = self._get_archive_comment(archive)
         parser = ComicBookInfo(string=comment)
         cbi_md = parser.metadata
-        if self.settings.raw:
+        if self.config.raw:
             self.raw["ComicBookInfo Archive Comment"] = comment
         return cbi_md
 
     def _parse_metadata_filename(self):
-        if not self.settings.filename:
+        if not self.config.filename:
             return {}
         parser = FilenameMetadata(path=self._path)
-        if self.settings.raw:
+        if self.config.raw:
             self.raw["Filename"] = self._path.name
         return parser.metadata
 
-    def _parse_metadata(self, get_cover=False):
+    def _parse_metadata(self):
         with self._get_archive() as archive:
             cix_md, comet_md = self._parse_metadata_entries(archive)
             cbi_md = self._parse_metadata_comments(archive)
@@ -152,7 +140,7 @@ class ComicArchive(object):
             self.metadata.synthesize_metadata(md_list)
             namelist = sorted(archive.namelist())
             self.metadata.compute_page_metadata(namelist)
-            if get_cover:
+            if self.config.cover:
                 self.cover_image_data = self._get_cover_image(archive)
 
     def get_num_pages(self):
@@ -221,7 +209,7 @@ class ComicArchive(object):
         """Return the metadata from the archive."""
         return self.metadata.metadata
 
-    def recompress(self, filename=None, data=None, delete=False, delete_rar=False):
+    def recompress(self, filename=None, data=None):
         """Recompress the archive optionally replacing a file."""
         new_path = self._path.with_suffix(CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
@@ -229,7 +217,7 @@ class ComicArchive(object):
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
         with self._get_archive() as archive:
-            if delete:
+            if self.config.delete_tags:
                 comment = b""
             else:
                 comment = archive.comment
@@ -241,7 +229,7 @@ class ComicArchive(object):
                 skipnames = set()
                 if filename:
                     skipnames.add(filename)
-                if delete:
+                if self.config.delete_tags:
                     skipnames.add(self.FILENAMES)
                 for info in sorted(archive.infolist(), key=lambda i: i.filename):
                     if info.filename.lower() in skipnames:
@@ -266,16 +254,11 @@ class ComicArchive(object):
         old_path = self._path
         tmp_path.replace(new_path)
         self._path = new_path
-        if delete_rar:
+        if self.config.delete_rar:
             LOG.info(f"converted to: {new_path}")
-
-        if delete_rar and new_path.is_file():
-            old_path.unlink()
-            LOG.info(f"removed: {old_path}")
-
-    def delete_tags(self):
-        """Recompress, without any tag formats."""
-        self.recompress(delete=True)
+            if new_path.is_file():
+                old_path.unlink()
+                LOG.info(f"removed: {old_path}")
 
     def write_metadata(self, md_class, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""

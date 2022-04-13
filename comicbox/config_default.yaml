@@ -1,0 +1,10 @@
+comet: True
+comiclover: True
+comicrack: True
+cover: False
+delete_rar: False
+delete_tags: False
+dest_path: .
+filename: True
+raw: False
+recurse: False

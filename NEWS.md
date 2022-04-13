@@ -1,8 +1,12 @@
 # 📰 News
 
-## v0.3.5a0
+## v0.4.0
 
 - Fixed some file name patterns
+- Accept environment variables and config files to configure.
+- CLI accepts multiple arguments as targets for action.
+- CLI runs _every_ action on the command line.
+- API `get_cover` init variable now set in config as `cover`
 
 ## v0.3.4
 
