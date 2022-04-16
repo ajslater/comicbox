@@ -65,7 +65,7 @@ def get_args(params=None):
         help="Path to an alternate config file.",
     )
     parser.add_argument(
-        "-d",
+        "-y",
         "--dry_run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
