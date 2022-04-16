@@ -183,6 +183,9 @@ class ComicArchive(object):
             filenames = self.metadata.get_pagenames_from(page_from)
             for fn in filenames:
                 with archive.open(fn) as page:
+                    if self.config.dry_run:
+                        LOG.info(f"Not extracting page from {self._path}: {fn}")
+                        continue
                     fn = root_path / fn
                     with open(fn, "wb") as page_file:
                         page_file.write(page.read())
@@ -193,6 +196,9 @@ class ComicArchive(object):
             self._ensure_page_metadata(archive)
             cover_fn = self.metadata.get_cover_page_filename()
             if not cover_fn:
+                return
+            if self.config.dry_run:
+                LOG.info(f"Not extracting cover from {self._path}: {cover_fn}")
                 return
             with archive.open(cover_fn) as page:
                 with open(path, "wb") as cover_file:
@@ -224,6 +230,10 @@ class ComicArchive(object):
 
     def recompress(self, filename=None, data=None):
         """Recompress the archive optionally replacing a file."""
+        if self.config.dry_run:
+            LOG.info(f"Not recompressing: {self._path}")
+            return
+
         new_path = self._path.with_suffix(CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
             raise ValueError(f"{new_path} already exists.")
@@ -275,6 +285,9 @@ class ComicArchive(object):
 
     def write_metadata(self, md_class, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
+        if self.config.dry_run:
+            LOG.info(f"Not writing metadata for: {self._path}")
+            return
         parser = md_class(metadata=self.get_metadata())
         if recompute_page_sizes and isinstance(parser, ComicInfoXml):
             self.compute_pages_tags()
@@ -313,6 +326,9 @@ class ComicArchive(object):
 
     def export_files(self):
         """Export metadata to all supported file formats."""
+        if self.config.dry_run:
+            LOG.info("Not exporting files.")
+            return
         for parser_cls in self.PARSER_CLASSES:
             md = parser_cls(self.get_metadata())
             path = Path(str(parser_cls.FILENAME))
@@ -332,6 +348,10 @@ class ComicArchive(object):
 
     def rename_file(self):
         """Rename the archive."""
+        if self.config.dry_run:
+            LOG.info(f"Not reaming file: {self._path}")
+            return
+
         car = FilenameMetadata(self.metadata)
         self._path = car.to_file(self._path)
 
