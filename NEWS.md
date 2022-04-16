@@ -1,5 +1,12 @@
 # 📰 News
 
+## v0.4.1
+
+- Trap errors reading user config files.
+- Allow modnames for local config sources.
+- Namespace config under "comicbox" map to allow inclusion in caller configs.
+- Added dry_run option
+
 ## v0.4.0
 
 - Fixed some file name patterns

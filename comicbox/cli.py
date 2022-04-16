@@ -8,7 +8,7 @@ from comicbox.config import get_config
 from comicbox.run import Runner
 
 
-def get_args():
+def get_args(params=None):
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
     parser = argparse.ArgumentParser(description=description)
@@ -64,6 +64,12 @@ def get_args():
         type=Path,
         help="Path to an alternate config file.",
     )
+    parser.add_argument(
+        "-y",
+        "--dry_run",
+        action="store_true",
+        help="Do not write anything to the filesystem. Report on what would be done.",
+    )
 
     ###########
     # ACTIONS #
@@ -115,12 +121,14 @@ def get_args():
         "paths", type=Path, help="Path to comic archives or directories", nargs="*"
     )
 
-    return parser.parse_args()
+    if params is not None:
+        params = params[1:]
+    return parser.parse_args(params)
 
 
-def main():
+def main(params=None):
     """Get CLI arguments and perform the operation on the archive."""
-    args = get_args()
+    args = get_args(params)
     config = get_config(args)
     runner = Runner(args, config)
     runner.run()
