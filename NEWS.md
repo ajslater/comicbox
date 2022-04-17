@@ -5,7 +5,9 @@
 - Trap errors reading user config files.
 - Allow modnames for local config sources.
 - Namespace config under "comicbox" map to allow inclusion in caller configs.
-- Added dry_run option
+- Added dry_run option.
+- Fixed cover extraction to a directory.
+- Abort with message if pages asked to extracted to a filee.
 
 ## v0.4.1 - Yanked
 
