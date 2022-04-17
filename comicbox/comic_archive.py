@@ -178,6 +178,12 @@ class ComicArchive(object):
 
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
+        root_path = Path(root_path)
+        if not root_path.is_dir():
+            raise ValueError(
+                f"Must extract pages to a directory. {str(root_path)} "
+                "is not a directory"
+            )
         with self._get_archive() as archive:
             self._ensure_page_metadata(archive)
             filenames = self.metadata.get_pagenames_from(page_from)
@@ -186,8 +192,8 @@ class ComicArchive(object):
                     if self.config.dry_run:
                         LOG.info(f"Not extracting page from {self._path}: {fn}")
                         continue
-                    fn = root_path / fn
-                    with open(fn, "wb") as page_file:
+                    full_path = Path(root_path) / Path(fn).name
+                    with full_path.open("wb") as page_file:
                         page_file.write(page.read())
 
     def extract_cover_as(self, path):
@@ -200,8 +206,11 @@ class ComicArchive(object):
             if self.config.dry_run:
                 LOG.info(f"Not extracting cover from {self._path}: {cover_fn}")
                 return
+            output_path = Path(path)
+            if output_path.is_dir():
+                output_path = output_path / Path(cover_fn).name
             with archive.open(cover_fn) as page:
-                with open(path, "wb") as cover_file:
+                with output_path.open("wb") as cover_file:
                     cover_file.write(page.read())
 
     def _get_cover_image(self, archive):
