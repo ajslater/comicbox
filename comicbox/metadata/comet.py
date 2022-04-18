@@ -65,6 +65,8 @@ class CoMet(ComicXml):
                     val = self.ReadingDirection.parse(val)
                     if not val:
                         continue
+                elif to_tag in self.ISSUE_TAGS:
+                    val = self.parse_issue(val)
                 elif to_tag in self.INT_TAGS:
                     if to_tag == "volume":
                         val = self.remove_volume_prefixes(val)

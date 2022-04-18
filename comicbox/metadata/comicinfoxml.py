@@ -119,7 +119,9 @@ class ComicInfoXml(ComicXml):
                 if not val:
                     continue
 
-                if to_tag in self.INT_TAGS:
+                if to_tag in self.ISSUE_TAGS:
+                    val = self.parse_issue(val)
+                elif to_tag in self.INT_TAGS:
                     if to_tag == "volume":
                         val = self.remove_volume_prefixes(val)
                     val = int(val)

@@ -1,11 +1,22 @@
 # 📰 News
 
-## v0.4.1
+## v0.5.0
 
-- Trap errors reading user config files.
-- Allow modnames for local config sources.
-- Namespace config under "comicbox" map to allow inclusion in caller configs.
-- Added dry_run option
+- Features
+
+  - Issues numbers are now strings.
+  - Seperate read metadata option from print metadata action.
+  - Added dry_run option.
+  - Namespace config under "comicbox" map to allow inclusion in caller configs.
+  - Allow modnames for local config sources, useful when comicbox is a library.
+
+- Fixes
+  - Trap errors reading user config files.
+  - Fixed cover extraction to a directory.
+  - Abort with message if pages asked to extracted to a filee.
+  - Handle more filename patterns.
+
+## v0.4.1 - Yanked
 
 ## v0.4.0
 

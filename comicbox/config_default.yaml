@@ -1,7 +1,9 @@
 comicbox:
+  # Options
   comet: True
   comicbookinfo: True
   comicinfoxml: True
+  config: null
   cover: False
   delete_rar: False
   delete_tags: False
@@ -11,3 +13,14 @@ comicbox:
   metadata: True
   raw: False
   recurse: False
+  # Actions
+  cbz: False
+  covers: False
+  export: False
+  import_fn: null
+  index_from: null
+  print: False
+  rename: False
+  version: False
+  # Targets
+  paths: null

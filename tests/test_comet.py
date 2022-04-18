@@ -14,7 +14,7 @@ TMP_PATH = TMP_ROOT / "test_comet"
 NEW_TEST_CBZ_PATH = TMP_PATH / "test_comet_write_001-comet.cbz"
 METADATA = {
     "series": "Captain Science",
-    "issue": 1,
+    "issue": "1",
     "publisher": "Bell Features",
     "year": 1950,
     "month": 12,

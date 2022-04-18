@@ -7,6 +7,8 @@ from logging import getLogger
 from confuse import Configuration
 from confuse.templates import AttrDict
 from confuse.templates import MappingTemplate
+from confuse.templates import Optional
+from confuse.templates import Sequence
 
 from comicbox.version import PROGRAM_NAME
 
@@ -16,11 +18,13 @@ LOG = getLogger(__name__)
 
 TEMPLATE = MappingTemplate(
     {
-        "comicbox": MappingTemplate(
+        PROGRAM_NAME: MappingTemplate(
             {
+                # Options
                 "comet": bool,
                 "comicinfoxml": bool,
                 "comicbookinfo": bool,
+                "config": Optional(str),
                 "cover": bool,
                 "delete_rar": bool,
                 "delete_tags": bool,
@@ -30,6 +34,17 @@ TEMPLATE = MappingTemplate(
                 "metadata": bool,
                 "raw": bool,
                 "recurse": bool,
+                # Actions
+                "cbz": Optional(bool),
+                "covers": Optional(bool),
+                "export": Optional(bool),
+                "import_fn": Optional(str),
+                "index_from": Optional(int),
+                "print": Optional(bool),
+                "rename": Optional(bool),
+                "version": Optional(bool),
+                # Targets
+                "paths": Optional(Sequence(str)),
             }
         )
     }
@@ -45,12 +60,14 @@ def get_config(
         config.read()
     except Exception as exc:
         LOG.warning(exc)
-    if args and args.config:
-        config.set_file(args.config)
+    if args and args.comicbox and args.comicbox.config:
+        config.set_file(args.comicbox.config)
     config.set_env()
     if args:
         config.set_args(args)
     ad = config.get(TEMPLATE)
     if not isinstance(ad, AttrDict):
         raise ValueError()
+    if ad.comicbox.paths:
+        ad.comicbox.paths = sorted(set(ad.comicbox.paths))
     return ad.comicbox

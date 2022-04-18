@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
-import argparse
-
+from argparse import ArgumentParser
+from argparse import Namespace
 from pathlib import Path
 
 from comicbox.config import get_config
 from comicbox.run import Runner
 
 
-def get_args(params=None):
+def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
-    parser = argparse.ArgumentParser(description=description)
+    parser = ArgumentParser(description=description)
     # OPTIONS
     parser.add_argument(
         "-R",
@@ -42,6 +42,12 @@ def get_args(params=None):
         help="Ignore filename metadata.",
     )
     parser.add_argument(
+        "-M",
+        "--no-metadata",
+        action="store_false",
+        help="Do not read any comic metadata.",
+    )
+    parser.add_argument(
         "-d",
         "--dest_path",
         type=Path,
@@ -61,7 +67,7 @@ def get_args(params=None):
         "-g",
         "--config",
         action="store",
-        type=Path,
+        type=str,
         help="Path to an alternate config file.",
     )
     parser.add_argument(
@@ -75,7 +81,7 @@ def get_args(params=None):
     # ACTIONS #
     ###########
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
-    parser.add_argument("-p", "--metadata", action="store_true", help="Print metadata")
+    parser.add_argument("-p", "--print", action="store_true", help="Print metadata")
     parser.add_argument(
         "-f",
         "--from",
@@ -118,19 +124,25 @@ def get_args(params=None):
     # TARGETS #
     ###########
     parser.add_argument(
-        "paths", type=Path, help="Path to comic archives or directories", nargs="*"
+        "paths",
+        metavar="path",
+        type=str,
+        help="Paths to comic archives or directories",
+        nargs="*",
     )
 
     if params is not None:
         params = params[1:]
-    return parser.parse_args(params)
+    cns = parser.parse_args(params)
+    return Namespace(comicbox=cns)
 
 
 def main(params=None):
     """Get CLI arguments and perform the operation on the archive."""
     args = get_args(params)
     config = get_config(args)
-    runner = Runner(args, config)
+
+    runner = Runner(config)
     runner.run()
 
 

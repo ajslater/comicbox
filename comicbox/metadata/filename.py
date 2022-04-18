@@ -13,11 +13,40 @@ from logging import getLogger
 from pathlib import Path
 
 from parse import compile
+from parse import with_pattern
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
 
 LOG = getLogger(__name__)
+
+
+@with_pattern(r"#?(\d|½)+\.?\d*\w*")
+def issue(text):
+    res = ComicBaseMetadata.parse_issue(text)
+    return res
+
+
+@with_pattern(r"vo?l?\.? ?\d+")
+def volume(text):
+    text = text.lstrip("vV")
+    text = text.lstrip("oO")
+    text = text.lstrip("lL")
+    text = text.lstrip(".")
+    text = text.lstrip(" ")
+    return int(text)
+
+
+@with_pattern(r"\(\d\d\d\d\)")
+def year(text):
+    return int(text[1:-1])
+
+
+@with_pattern(r"\(?of \d+\)")
+def issue_count(text):
+    text = text.split()[1]
+    text = text.rstrip(")")
+    return int(text)
 
 
 def compile_parsers(patterns):
@@ -27,7 +56,20 @@ def compile_parsers(patterns):
     log = getLogger("parse")
     old_level = log.level
     log.setLevel("INFO")
-    parsers = tuple([compile(pattern) for pattern in patterns])
+    parsers = tuple(
+        [
+            compile(
+                pattern,
+                {
+                    "issue": issue,
+                    "volume": volume,
+                    "year": year,
+                    "issue_count": issue_count,
+                },
+            )
+            for pattern in patterns
+        ]
+    )
     log.setLevel(old_level)
     return parsers
 
@@ -38,65 +80,50 @@ class FilenameMetadata(ComicBaseMetadata):
     ALL_FIELDS = set(["series", "volume", "issue", "issue_count", "year", "ext"])
     FIELD_SCHEMA = {key: None for key in ALL_FIELDS}
     # The order of these patterns is very important as patterns farther down
-    # the list are more permissive than those higher up.
+    # match after patterns at the top.
+
     PATTERNS = (
-        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} #{issue:d} ({year:4d}) {remainder}.{ext}",
-        "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
-        "{series} #{issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
-        "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) #{issue:d} {title} {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) {issue:d} {title} {remainder}.{ext}",
-        "{series} Vol {volume:d}{garbage}({year:4d}) {remainder}.{ext}",
-        "{series} Vol. {volume:d} {title} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) #{issue:d} {remainder}.{ext}",
-        "{series} v{volume:d} ({year:4d}) {issue:d} {remainder}.{ext}",
-        "{series} v{volume:d} #{issue:d} {title} ({year:4d}) {remainder}.{ext}"
-        "{series} v{volume:d} {issue:d} {title} ({year:4d}) {remainder}.{ext}"
-        "{series} v{volume:d} #{issue:d}.{ext}"
-        "{series} v{volume:d} {issue:d}.{ext}"
-        "{series} v{volume:d} {title} ({year:4d}) {remainder}.{ext}"
-        "{series} #{issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
-        "{series} {issue:d} (of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
-        "{series} #{issue:d} (of {issue_count:d}) {remainder}.{ext}",
-        "{series} {issue:d} (of {issue_count:d}) {remainder}.{ext}",
-        "{series} ({issue:d} of {issue_count:d}) ({year:4d}) {remainder}.{ext}",
-        "{series} ({issue:d} of {issue_count:d}) {remainder}.{ext}",
-        "{series} #{issue:d} ({year:4d}).{ext}",
-        "{series} {issue:d} ({year:4d}).{ext}",
-        "{series} #{issue:d} ({year:4d}) {remainder}.{ext}",
-        "{series} {issue:d} ({year:4d}) {remainder}.{ext}",
-        "{series} ({year:4d}) #{issue:d} {remainder}.{ext}",
-        "{series} ({year:4d}) {issue:d} {remainder}.{ext}",
-        "{series} ({year:4d}) {remainder}.{ext}",
-        "{series} v{volume:d} #{issue:d}.{ext}",
-        "{series} v{volume:d} {issue:d}.{ext}",
-        "{series} v{volume:d} #{issue:d} {remainder}.{ext}",
-        "{series} v{volume:d} {issue:d} {remainder}.{ext}",
-        "{series} #{issue:d} {remainder}.{ext}",
-        "{series} {issue:d} {remainder}.{ext}",
-        "{series} #{issue:d}.{ext}",
-        "{series} {issue:d}.{ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
+        "{series} {issue:issue} {year:year} {remainder}.{ext}",
+        "{series} {issue:issue} {issue_count:issue_count} {year:year} "
+        "{remainder}.{ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {year:year} {issue:issue} {title} {remainder}.{ext}",
+        "{series} {volume:volume}{garbage}{year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {year:year} {issue:issue} {remainder}.{ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}"
+        "{series} {volume:volume} {issue:issue}.{ext}"
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}"
+        "{series} {issue:issue} {issue_count:issue_count} {year:year} "
+        "{remainder}.{ext}",
+        "{series} {issue:issue} {issue_count:issue_count} {remainder}.{ext}",
+        "{series} {issue:issue} {year:year}.{ext}",
+        "{series} {issue:issue} {year:year} {remainder}.{ext}",
+        "{series} {year:year} {issue:issue} {remainder}.{ext}",
+        "{series} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {issue:issue}.{ext}",
+        "{series} {volume:volume} {issue:issue} {remainder}.{ext}",
+        "{series} {issue:issue} {remainder}.{ext}",
+        "{series} {issue:issue}.{ext}",
         "{series}.{ext}",
-        "{issue:d} {series}.{ext}",
-        "{issue:d} {series} {remainder}.{ext}",
+        "{issue:issue} {series}.{ext}",
+        "{issue:issue} {series} {remainder}.{ext}",
     )
 
     PATTERN_MAX_MATCHES = tuple([pattern.count("}") for pattern in PATTERNS])
     PARSERS = compile_parsers(PATTERNS)
-    SPACE_ALT_CHARS_RE = re.compile(r"[_-]+")
+    SPACE_ALT_CHARS_RE = re.compile(r"_")
+    DIVIDERS = re.compile(r" -|: ")
     PLUS_RE = re.compile(r"\++")
     MULTI_SPACE_RE = re.compile(r"\s{2,}")
     FILENAME_TAGS = (
         ("series", "{}"),
         ("volume", "v{}"),
-        ("issue", "#{:03}"),
+        ("issue", ""),
         ("issue_count", "(of {:03})"),
         ("year", "({})"),
         ("title", "{}"),
@@ -105,6 +132,7 @@ class FilenameMetadata(ComicBaseMetadata):
     def clean_fn(self, filename):
         """Clean out distracting characters from the filename."""
         fn = self.SPACE_ALT_CHARS_RE.sub(" ", filename)
+        fn = self.DIVIDERS.sub(" ", fn)
         fn = self.PLUS_RE.sub(" ", fn)
         fn = self.MULTI_SPACE_RE.sub(" ", fn)
         return fn
@@ -145,12 +173,25 @@ class FilenameMetadata(ComicBaseMetadata):
         """Oddly this ends up being identical."""
         return self.from_string(path)
 
+    @staticmethod
+    def issue_formatter(issue):
+        """Formatter to zero pad issues."""
+        i = 0
+        for c in issue:
+            if not c.isdigit():
+                break
+            i += 1
+        pad = 3 + len(issue) - i
+        return "#{:0" + str(pad) + "}"
+
     def to_string(self):
         """Get our preferred basename from a metadata dict."""
         tokens = []
         for tag, fmt in self.FILENAME_TAGS:
             val = self.metadata.get(tag)
             if val:
+                if tag == "issue":
+                    fmt = self.issue_formatter(val)
                 token = fmt.format(val)
                 tokens.append(token)
         name = " ".join(tokens)

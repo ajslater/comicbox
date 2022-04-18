@@ -50,8 +50,7 @@ class ComicArchive(object):
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         self.cover_image_data = None
-        if metadata is None and config.metadata:
-            self._parse_metadata()
+        self._parse_metadata()
 
     def set_path(self, path):
         """Set the path and determine the archive type."""
@@ -75,31 +74,31 @@ class ComicArchive(object):
         with self._get_archive() as archive:
             return sorted(archive.namelist())
 
+    def _parse_xml_metadata(self, fn, xml_parser_cls, flag, archive):
+        """Run the correct parser for the xml file."""
+        md_filename = str(xml_parser_cls.FILENAME)
+        if Path(fn).name.lower() != md_filename.lower() or not flag:
+            return {}
+
+        data = archive.read(fn)
+        if self.config.raw:
+            self.raw[md_filename] = data
+        parser = xml_parser_cls(string=data)
+        return parser.metadata
+
     def _parse_metadata_entries(self, archive):
         """Get the filenames and file based metadata."""
         cix_md = {}
         comet_md = {}
         for fn in sorted(archive.namelist()):
-            basename = Path(fn).name.lower()
-            xml_parser_cls = None
-            if (
-                basename == str(ComicInfoXml.FILENAME).lower()
-                and self.config.comicinfoxml
-            ):
-                md = cix_md
-                xml_parser_cls = ComicInfoXml
-                title = "ComicInfo.xml"
-            elif basename == str(CoMet.FILENAME).lower() and self.config.comet:
-                md = comet_md
-                xml_parser_cls = CoMet
-                title = "CoMet.xml"
-            else:
-                continue
-            data = archive.read(fn)
-            if self.config.raw:
-                self.raw[title] = data
-            parser = xml_parser_cls(string=data)
-            md.update(parser.metadata)
+            cix_md.update(
+                self._parse_xml_metadata(
+                    fn, ComicInfoXml, self.config.comicinfoxml, archive
+                )
+            )
+            comet_md.update(
+                self._parse_xml_metadata(fn, CoMet, self.config.comet, archive)
+            )
         return cix_md, comet_md
 
     def _get_archive_comment(self, archive):
@@ -130,17 +129,38 @@ class ComicArchive(object):
         return parser.metadata
 
     def _parse_metadata(self):
-        with self._get_archive() as archive:
-            cix_md, comet_md = self._parse_metadata_entries(archive)
-            cbi_md = self._parse_metadata_comments(archive)
-
-            # order of the md list is very important, lowest to highest
-            # precedence.
+        if (
+            self.metadata.metadata
+            and not self.config.metadata
+            and not self.config.cover
+        ):
+            return
+        md_list = []
+        if self.config.filename:
             filename_md = self._parse_metadata_filename()
-            md_list = (filename_md, comet_md, cbi_md, cix_md)
+            md_list += [filename_md]
             self.metadata.synthesize_metadata(md_list)
-            namelist = sorted(archive.namelist())
-            self.metadata.compute_page_metadata(namelist)
+
+        if not (
+            self.config.comicinfoxml
+            or self.config.comicbookinfo
+            or self.config.comet
+            or self.config.cover
+        ):
+            return
+        with self._get_archive() as archive:
+            if (
+                self.config.comicinfoxml
+                or self.config.comicbookinfo
+                or self.config.comet
+            ):
+                cbi_md = self._parse_metadata_comments(archive)
+                cix_md, comet_md = self._parse_metadata_entries(archive)
+                # order of the md list is very important, lowest to highest
+                # precedence.
+                md_list += [comet_md, cbi_md, cix_md]
+                self.metadata.synthesize_metadata(md_list)
+                self._ensure_page_metadata(archive)
             if self.config.cover:
                 self.cover_image_data = self._get_cover_image(archive)
 
@@ -150,8 +170,13 @@ class ComicArchive(object):
 
     def _ensure_page_metadata(self, archive):
         """Ensure page metadata exists."""
-        if not not self.metadata.metadata.get("page_count"):
-            self.metadata.compute_page_metadata(sorted(archive.namelist()))
+        compute = False
+        for key in ("page_count", "cover_image"):
+            if not self.metadata.metadata.get(key):
+                compute = True
+        if compute:
+            namelist = sorted(archive.namelist())
+            self.metadata.compute_page_metadata(namelist)
 
     def get_pages(self, page_from):
         """Generate all pages starting with page number."""
@@ -178,6 +203,12 @@ class ComicArchive(object):
 
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
+        root_path = Path(root_path)
+        if not root_path.is_dir():
+            raise ValueError(
+                f"Must extract pages to a directory. {str(root_path)} "
+                "is not a directory"
+            )
         with self._get_archive() as archive:
             self._ensure_page_metadata(archive)
             filenames = self.metadata.get_pagenames_from(page_from)
@@ -186,8 +217,8 @@ class ComicArchive(object):
                     if self.config.dry_run:
                         LOG.info(f"Not extracting page from {self._path}: {fn}")
                         continue
-                    fn = root_path / fn
-                    with open(fn, "wb") as page_file:
+                    full_path = Path(root_path) / Path(fn).name
+                    with full_path.open("wb") as page_file:
                         page_file.write(page.read())
 
     def extract_cover_as(self, path):
@@ -200,8 +231,11 @@ class ComicArchive(object):
             if self.config.dry_run:
                 LOG.info(f"Not extracting cover from {self._path}: {cover_fn}")
                 return
+            output_path = Path(path)
+            if output_path.is_dir():
+                output_path = output_path / Path(cover_fn).name
             with archive.open(cover_fn) as page:
-                with open(path, "wb") as cover_file:
+                with output_path.open("wb") as cover_file:
                     cover_file.write(page.read())
 
     def _get_cover_image(self, archive):

@@ -22,4 +22,4 @@ def test_parse_decimal_str_half():
 def test_parse_decimal_regex():
     assert 5.0 == ComicBaseMetadata.parse_decimal("5AU")
     assert 5.0 == ComicBaseMetadata.parse_decimal("  5.0AU")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("MARVEL5.0AU")
+    assert 5.0 == ComicBaseMetadata.parse_decimal("MARVEL 5.0AU")

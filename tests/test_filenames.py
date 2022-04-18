@@ -3,14 +3,14 @@
 # {"series": "", "volume": None, "issue": , "issue_count": , "year": , "ext": "cbr"},
 TEST_COMIC_FIELDS = {
     "series": "Long Series Name",
-    "issue": 1,
+    "issue": "1",
     "year": 2000,
     "ext": "cbz",
 }
 TEST_COMIC_FIELDS_VOL = {
     "series": "Long Series Name",
     "volume": 1,
-    "issue": 1,
+    "issue": "1",
     "year": 2000,
     "ext": "cbz",
 }
@@ -24,15 +24,15 @@ TEST_COMIC_VOL_ONLY = {
 FNS = {
     "Night of 1000 Wolves 001 (2013).cbz": {
         "series": "Night of 1000 Wolves",
-        "issue": 1,
+        "issue": "1",
         "year": 2013,
         "ext": "cbz",
     },
-    "19687 Sandman 53.cbz": {"series": "19687 Sandman", "issue": 53, "ext": "cbz"},
+    "19687 Sandman 53.cbz": {"series": "19687 Sandman", "issue": "53", "ext": "cbz"},
     "33475 OMAC v3 2.cbr": {
         "series": "33475 OMAC",
         "volume": 3,
-        "issue": 2,
+        "issue": "2",
         "ext": "cbr",
     },
     "Long Series Name 001 (2000) Title (Source) (Releaser).cbz": TEST_COMIC_FIELDS,
@@ -66,12 +66,7 @@ FNS = {
     },
     "Drunkguy - The Man Without Fear - 01.cbz": {
         "series": "Drunkguy The Man Without Fear",
-        "issue": 1,
-        "ext": "cbz",
-    },
-    "Eating-Lots-of-Apples #04.cbz": {
-        "series": "Eating Lots of Apples",
-        "issue": 4,
+        "issue": "1",
         "ext": "cbz",
     },
     "The_Arkenstone_v03_(2002)_(Digital)_(DR_&amp;_Quenya-Elves).cbr": {
@@ -83,7 +78,7 @@ FNS = {
     "Kartalk v01 001 - Fear the Brakes (2004) (digital) (Son of Ultron-EMpire).cbr": {
         "series": "Kartalk",
         "volume": 1,
-        "issue": 1,
+        "issue": "1",
         "year": 2004,
         "ext": "cbr",
     },
@@ -106,13 +101,13 @@ FNS = {
     },
     "Jeremy John 001 (2006) (digital (Minutemen-Faessla).cbz": {
         "series": "Jeremy John",
-        "issue": 1,
+        "issue": "1",
         "year": 2006,
         "ext": "cbz",
     },
     "Jeremy John 003 (2007) (4 covers) (digital) (Minutemen-Faessla).cbz": {
         "series": "Jeremy John",
-        "issue": 3,
+        "issue": "3",
         "year": 2007,
         "ext": "cbz",
     },
@@ -124,14 +119,14 @@ FNS = {
     },
     "King of Skittles 01 (of 05) (2020) (digital) (Son of Ultron-Empire).cbr": {
         "series": "King of Skittles",
-        "issue": 1,
+        "issue": "1",
         "issue_count": 5,
         "year": 2020,
         "ext": "cbr",
     },
     "Darkwad 011 (2019) (Digital) (Zone-Empire).cbr": {
         "series": "Darkwad",
-        "issue": 11,
+        "issue": "11",
         "year": 2019,
         #        "source": "Digital",
         #        "release": "Zone-Empire",
@@ -145,15 +140,32 @@ FNS = {
     },
     "The Walking Dead #002 (2003).cbz": {
         "series": "The Walking Dead",
-        "issue": 2,
+        "issue": "2",
         "year": 2003,
     },
     "The Walking Dead #3.cbz": {
         "series": "The Walking Dead",
-        "issue": 3,
+        "issue": "3",
     },
     "The Walking Dead 4.cbz": {
         "series": "The Walking Dead",
-        "issue": 4,
+        "issue": "4",
     },
+    "A Fractional Comic 1.1.cbz": {"series": "A Fractional Comic", "issue": "1.1"},
+    "A Fractional Comic 8.54.cbz": {"series": "A Fractional Comic", "issue": "8.54"},
+    "Earth X #½.cbz": {"series": "Earth X", "issue": ".5"},
+    "Avengers #001½.cbz": {"series": "Avengers", "issue": "1.5"},
+    "The Amazing Spider-Man #78.BEY.cbz": {
+        "series": "The Amazing Spider-Man",
+        "issue": "78.BEY",
+    },
+    "The Amazing Spider-Man #54.LR.cbz": {
+        "series": "The Amazing Spider-Man",
+        "issue": "54.LR",
+    },
+    "Wolverine & the X-Men #27AU.cbz": {
+        "series": "Wolverine & the X-Men",
+        "issue": "27AU",
+    },
+    "Fantastic Four #5AU.cbz": {"series": "Fantastic Four", "issue": "5AU"},
 }
