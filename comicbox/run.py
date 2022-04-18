@@ -14,9 +14,8 @@ class Runner:
 
     SUFFIXES = frozenset((".cbz", ".cbr"))
 
-    def __init__(self, args, config):
+    def __init__(self, config):
         """Initialize actions and config."""
-        self.args = args
         self.config = config
 
     def run_on_file(self, path):
@@ -29,21 +28,21 @@ class Runner:
             return
 
         car = ComicArchive(path, config=self.config)
-        if self.args.raw:
+        if self.config.raw:
             car.print_raw()
-        if self.args.metadata:
+        if self.config.metadata:
             pprint(car.get_metadata())
-        if self.args.covers:
+        if self.config.covers:
             car.extract_cover_as(self.config.dest_path)
-        if self.args.index_from:
-            car.extract_pages(self.args.index_from, self.config.dest_path)
-        if self.args.export:
+        if self.config.index_from:
+            car.extract_pages(self.config.index_from, self.config.dest_path)
+        if self.config.export:
             car.export_files()
-        if self.args.cbz or self.args.delete_tags:
+        if self.config.cbz or self.config.delete_tags:
             car.recompress()
-        if self.args.import_fn:
-            car.import_file(self.args.import_fn)
-        if self.args.rename:
+        if self.config.import_fn:
+            car.import_file(self.config.import_fn)
+        if self.config.rename:
             car.rename_file()
 
     def recurse(self, path):
@@ -67,14 +66,14 @@ class Runner:
 
     def run(self):
         """Run actions with config."""
-        if self.args.version:
+        if self.config.version:
             print(VERSION)
-        if not self.args.paths:
-            if self.args.version:
+        if not self.config.paths:
+            if self.config.version:
                 return
             else:
                 print("the following arguments are required: paths")
                 sys.exit(1)
 
-        for path in self.args.paths:
-            self.run_on_file(path)
+        for path in self.config.paths:
+            self.run_on_file(Path(path))
