@@ -10,6 +10,7 @@ comicbox:
   dest_path: .
   dry_run: False
   filename: True
+  metadata: True
   raw: False
   recurse: False
   # Actions
@@ -18,7 +19,7 @@ comicbox:
   export: False
   import_fn: null
   index_from: null
-  metadata: False
+  print: False
   rename: False
   version: False
   # Targets

@@ -66,6 +66,8 @@ class ComicBookInfo(ComicJSON):
                 if from_key == "credits":
                     for credit in val:
                         self._get_credit(credit)
+                elif to_key in self.ISSUE_TAGS:
+                    val = self.parse_issue(val)
                 elif to_key in self.INT_TAGS:
                     val = int(val)
                 elif to_key in self.STR_SET_TAGS:

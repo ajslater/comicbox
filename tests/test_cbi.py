@@ -15,7 +15,7 @@ TMP_PATH = TMP_ROOT / "test_cbi"
 NEW_TEST_CBZ_PATH = TMP_PATH / FN.with_suffix(".cbz")
 METADATA = {
     "series": "Captain Science",
-    "issue": 1,
+    "issue": "1",
     "issue_count": 7,
     "publisher": "Youthful Adventure Stories",
     "month": 11,

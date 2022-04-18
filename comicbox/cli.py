@@ -42,6 +42,12 @@ def get_args(params=None) -> Namespace:
         help="Ignore filename metadata.",
     )
     parser.add_argument(
+        "-M",
+        "--no-metadata",
+        action="store_false",
+        help="Do not read any comic metadata.",
+    )
+    parser.add_argument(
         "-d",
         "--dest_path",
         type=Path,
@@ -75,7 +81,7 @@ def get_args(params=None) -> Namespace:
     # ACTIONS #
     ###########
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
-    parser.add_argument("-p", "--metadata", action="store_true", help="Print metadata")
+    parser.add_argument("-p", "--print", action="store_true", help="Print metadata")
     parser.add_argument(
         "-f",
         "--from",

@@ -31,6 +31,7 @@ TEMPLATE = MappingTemplate(
                 "dest_path": str,
                 "dry_run": bool,
                 "filename": bool,
+                "metadata": bool,
                 "raw": bool,
                 "recurse": bool,
                 # Actions
@@ -39,7 +40,7 @@ TEMPLATE = MappingTemplate(
                 "export": Optional(bool),
                 "import_fn": Optional(str),
                 "index_from": Optional(int),
-                "metadata": Optional(bool),
+                "print": Optional(bool),
                 "rename": Optional(bool),
                 "version": Optional(bool),
                 # Targets
@@ -67,5 +68,6 @@ def get_config(
     ad = config.get(TEMPLATE)
     if not isinstance(ad, AttrDict):
         raise ValueError()
-    ad.comicbox.paths = sorted(set(ad.comicbox.paths))
+    if ad.comicbox.paths:
+        ad.comicbox.paths = sorted(set(ad.comicbox.paths))
     return ad.comicbox

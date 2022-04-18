@@ -47,18 +47,17 @@ class ComicBaseMetadata(object):
     PYCOUNTRY_TAGS = set(("country", "language"))
     DECIMAL_TAGS = set(
         (
-            "alternate_issue",
-            "alternate_issue_count",
             "community_rating",
             "critical_rating",
-            "issue",  # cix Number
             "price",
         )
     )
+    ISSUE_TAGS = set(("issue", "alternate_issue"))
     INT_TAGS = set(
         (
             "day",
             "issue_count",  # cix Count
+            "alternate_issue_count",
             "last_mark",
             "month",
             "page_count",
@@ -71,6 +70,7 @@ class ComicBaseMetadata(object):
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
+    # _ISSUE_MATCHER = re.compile(r"\d(+.?\d*|)\S*")  # TODO UNUSED
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
@@ -117,8 +117,20 @@ class ComicBaseMetadata(object):
         return value.lower() in cls.TRUTHY_VALUES
 
     @classmethod
+    def parse_issue(cls, num):
+        """Parse issues."""
+        num = num.replace(" ", "")
+
+        num = num.lstrip("#")
+        num = num.lstrip("0")
+        num = num.rstrip(".")
+        num = num.replace("½", ".5")
+        num = num.replace("1/2", ".5")
+        return num
+
+    @classmethod
     def parse_decimal(cls, num):
-        """Fix half comic issue which are everywhere."""
+        """Fix half glyphs."""
         if isinstance(num, str):
             num = num.strip()
             num = num.replace(" ", "")
@@ -322,7 +334,7 @@ class ComicBaseMetadata(object):
     # SCHEMA = {
     #    # CIX, CBI AND COMET
     #    "genre": str,
-    #    "issue": int,
+    #    "issue": str,
     #    "credits": [{"name": str, "role": str}],
     #    "language": str,  # two letter iso code
     #    "publisher": str,
@@ -343,7 +355,7 @@ class ComicBaseMetadata(object):
     #    # CBI AND COMET ONLY
     #    "critical_rating": int, -> dec
     #    # CIX ONLY
-    #    "alternate_issue": int,
+    #    "alternate_issue": str,
     #    "alternate_issue_count": int,
     #    "alternate_series": str,
     #    "black_and_white": bool,
