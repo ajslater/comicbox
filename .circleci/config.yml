@@ -2,11 +2,13 @@ jobs:
   build:
     machine:
       image: ubuntu-2004:current
-      resource_class: medium
+    environment:
+      DOCKER_CLI_EXPERIMENTAL: enabled
+      DOCKER_BUILDKIT: 1
     steps:
       - checkout
       - run:
-          command: ./build-builder.sh
+          command: docker compose build comicbox-builder
           name: Build Builder
       - run:
           command: ./docker/docker-compose-exit.sh comicbox-test
@@ -47,13 +49,13 @@ workflows:
                 - develop
                 - circleci
                 - /.*-ci/
-                - master
+                - main
                 - release
       - deploy:
           filters:
             branches:
               only:
-                - master
+                - main
                 - release
           requires:
             - build
