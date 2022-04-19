@@ -11,12 +11,12 @@ IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|gif|webp)$", re.IGNORECASE)
 LOG = getLogger(__name__)
 
 
-class ComicBaseMetadata(object):
+class ComicBaseMetadata:
     """Comicbox Metadata Class."""
 
     FILENAME = ""
 
-    class ReadingDirection(object):
+    class ReadingDirection:
         """Reading direction enum."""
 
         LTR = "ltr"

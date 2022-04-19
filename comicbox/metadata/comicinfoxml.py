@@ -16,7 +16,7 @@ class ComicInfoXml(ComicXml):
     # Schema from
     # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
 
-    class PageType(object):
+    class PageType:
         """CIX Page Type Schema."""
 
         FRONT_COVER = "FrontCover"

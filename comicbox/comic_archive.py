@@ -31,7 +31,7 @@ init_logging()
 LOG = getLogger(__name__)
 
 
-class ComicArchive(object):
+class ComicArchive:
     """
     Represent a comic archive.
 
