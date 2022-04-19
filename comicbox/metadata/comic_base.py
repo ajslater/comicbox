@@ -270,7 +270,6 @@ class ComicBaseMetadata(object):
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
-        md = {}
         final_credits = {}
         all_tags = {}
         for md in md_list:
