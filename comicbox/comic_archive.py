@@ -4,13 +4,15 @@ Comic archive.
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
-
 import zipfile
 
+from io import BytesIO
 from logging import getLogger
 from pathlib import Path
 
 import rarfile
+
+from PIL import Image
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
@@ -201,6 +203,11 @@ class ComicArchive:
             with archive.open(filename) as page:
                 return page.read()
 
+    def get_page_by_index_as_pil(self, index):
+        """ "Return page as pil image."""
+        data = self.get_page_by_index(index)
+        return Image.open(BytesIO(data))
+
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
         root_path = Path(root_path)
@@ -257,6 +264,14 @@ class ComicArchive:
             with self._get_archive() as archive:
                 self.cover_image_data = self._get_cover_image(archive)
         return self.cover_image_data
+
+    def get_cover_image_as_pil(self):
+        """Get the cover image in PIL form."""
+        if not self.cover_pil_image:
+            with self._get_archive() as archive:
+                image = self._get_cover_image(archive)
+                self.cover_pil_image = Image.open(BytesIO(image))
+        return self.cover_pil_image
 
     def get_metadata(self):
         """Return the metadata from the archive."""

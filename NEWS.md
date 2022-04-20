@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.5.1
+
+- Features
+
+  - Methods for getting covers and pages as PIL Images.
+
 ## v0.5.0
 
 - Features
