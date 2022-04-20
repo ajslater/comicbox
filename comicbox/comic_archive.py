@@ -48,16 +48,16 @@ class ComicArchive:
         if config is None:
             config = get_config()
         self.config = config
-        self.set_path(path)
+        self._path = Path(path)
+        self._set_archive_cls()
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         self.cover_image_data = None
         self.cover_image_pil = None
         self._parse_metadata()
 
-    def set_path(self, path):
+    def _set_archive_cls(self):
         """Set the path and determine the archive type."""
-        self._path = Path(path)
         if zipfile.is_zipfile(self._path):
             self.archive_cls = zipfile.ZipFile
         elif rarfile.is_rarfile(self._path):
