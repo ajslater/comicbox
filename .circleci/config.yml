@@ -51,12 +51,14 @@ workflows:
                 - /.*-ci/
                 - main
                 - release
+                - release-candidate
       - deploy:
           filters:
             branches:
               only:
                 - main
                 - release
+                - release-candidate
           requires:
             - build
   version: 2.1
