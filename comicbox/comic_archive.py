@@ -52,6 +52,7 @@ class ComicArchive:
         self.metadata = ComicBaseMetadata(metadata=metadata)
         self.raw = {}
         self.cover_image_data = None
+        self.cover_image_pil = None
         self._parse_metadata()
 
     def set_path(self, path):
@@ -267,11 +268,11 @@ class ComicArchive:
 
     def get_cover_image_as_pil(self):
         """Get the cover image in PIL form."""
-        if not self.cover_pil_image:
+        if not self.cover_image_pil:
             with self._get_archive() as archive:
                 image = self._get_cover_image(archive)
-                self.cover_pil_image = Image.open(BytesIO(image))
-        return self.cover_pil_image
+                self.cover_image_pil = Image.open(BytesIO(image))
+        return self.cover_image_pil
 
     def get_metadata(self):
         """Return the metadata from the archive."""
