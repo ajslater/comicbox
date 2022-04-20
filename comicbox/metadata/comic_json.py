@@ -15,6 +15,11 @@ class ComicJSON(ComicBaseMetadata):
     """JSON Comic Metadata class."""
 
     def _from_json(self, _):
+        """Get metdata from json."""
+        raise NotImplementedError()
+
+    def _to_json(self):
+        """write metdata from to json."""
         raise NotImplementedError()
 
     def from_string(self, json_str):
@@ -32,9 +37,6 @@ class ComicJSON(ComicBaseMetadata):
         """Parse metadata from a JSON file."""
         with open(filename, "r") as json_file:
             self.from_string(json_file.read())
-
-    def _to_json(self):
-        raise NotImplementedError()
 
     def to_string(self):
         """Return metadata as a JSON string."""

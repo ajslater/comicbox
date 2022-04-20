@@ -5,6 +5,8 @@
 - Features
 
   - Methods for getting covers and pages as PIL Images.
+  - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
+  - closefd option leaves archive open for multiple method calls. Close manually with close().
 
 ## v0.5.0
 

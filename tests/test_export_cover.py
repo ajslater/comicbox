@@ -10,7 +10,6 @@ PAGE_TMPL = str(IMAGE_DIR / "CaptainScience#1_{page_num}.jpg")
 COVER_IMAGE = PAGE_TMPL.format(page_num="01")
 
 CONFIG = get_config()
-CONFIG.cover = True
 
 
 def test_get_covers():
@@ -18,4 +17,4 @@ def test_get_covers():
     with open(COVER_IMAGE, "rb") as cif:
         image = cif.read()
 
-    assert image == car.cover_image_data
+    assert image == car.get_cover_image()

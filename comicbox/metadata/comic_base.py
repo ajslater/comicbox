@@ -7,7 +7,7 @@ from logging import getLogger
 import pycountry
 
 
-IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|gif|webp)$", re.IGNORECASE)
+IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
 LOG = getLogger(__name__)
 
 
@@ -75,7 +75,7 @@ class ComicBaseMetadata:
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
         self.metadata = {}
-        self._page_filenames = []
+        self._page_filenames = None
         self.path = path
         if metadata is not None:
             self.metadata = metadata
@@ -88,7 +88,13 @@ class ComicBaseMetadata:
             return
 
     @staticmethod
+    def _credit_key(credit):
+        """Get a unique key for credits."""
+        return f"{credit.get('role')}:{credit.get('person')}".lower()
+
+    @staticmethod
     def _pycountry(tag, name, long_to_alpha2=True):
+        """Convert countries and languages to long names or alpha2."""
         if tag == "country":
             module = pycountry.countries
         elif tag == "language":
@@ -112,8 +118,62 @@ class ComicBaseMetadata:
         else:
             return obj.name
 
+    @staticmethod
+    def decimal_to_type(dec):
+        """Return an integer if we can."""
+        if dec % 1 == 0:
+            return int(dec)
+        else:
+            return float(dec)
+
+    @classmethod
+    def _compare_dict_list(cls, list_a, list_b):
+        """Compare lists of dicts."""
+        if list_a is None and list_b is None:
+            return True
+        if list_a is None and list_b or list_b is None and list_a:
+            return False
+        for dict_a in list_a:
+            match = False
+            for dict_b in list_b:
+                if dict_a == dict_b:
+                    match = True
+                    break
+            if not match:
+                LOG.debug("dict_compare: could not find:", dict_a)
+                return False
+        return True
+
+    @classmethod
+    def _compare_metadatas(cls, md_a, md_b):
+        # TODO remove
+        for key, val_a in md_a.items():
+            val_b = md_b.get(key)
+            if key in cls.IGNORE_COMPARE_TAGS:
+                continue
+            if key in cls.DICT_LIST_TAGS:
+                res = cls._compare_dict_list(val_a, val_b)
+                if not res:
+                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
+                    print(f"compare metatada: {key} {val_a} != {val_b}")
+                    return False
+            else:
+                if val_a != val_b:
+                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
+                    print(f"compare metatada: {key} {val_a} != {val_b}")
+                    return False
+        return True
+
+    def __eq__(self, obj):
+        """== operator."""
+        return self.metadata == obj.metadata
+        # return self._compare_metadatas(
+        #    obj.metadata, self.metadata
+        # ) and self._compare_metadatas(self.metadata, obj.metadata)
+
     @classmethod
     def parse_bool(cls, value):
+        """Parse boolean type."""
         return value.lower() in cls.TRUTHY_VALUES
 
     @classmethod
@@ -141,14 +201,6 @@ class ComicBaseMetadata:
                 num = nums[0]
         return Decimal(num)
 
-    @staticmethod
-    def decimal_to_type(dec):
-        """Return an integer if we can."""
-        if dec % 1 == 0:
-            return int(dec)
-        else:
-            return float(dec)
-
     @classmethod
     def remove_volume_prefixes(cls, volume):
         """Remove common volume prefixes"""
@@ -158,25 +210,6 @@ class ComicBaseMetadata:
                 prefix_len = len(prefix)
                 volume = volume[prefix_len:].strip()
         return volume
-
-    def get_num_pages(self):
-        """Get the number of pages."""
-        return len(self._page_filenames)
-
-    def set_page_names(self, archive_filenames):
-        """Parse the filenames that are comic pages."""
-        self._page_filenames = []
-        for filename in archive_filenames:
-            if IMAGE_EXT_RE.search(filename) is not None:
-                self._page_filenames.append(filename)
-
-    def get_pagename(self, index):
-        """Get the filename of the page by index."""
-        return self._page_filenames[index]
-
-    @staticmethod
-    def _credit_key(credit):
-        return f"{credit.get('role')}:{credit.get('person')}".lower()
 
     def _add_credit(self, person, role, primary=None):
         """Add a credit to the metadata."""
@@ -203,7 +236,27 @@ class ComicBaseMetadata:
         self.metadata["credits"].append(credit)
 
     def _get_cover_page_filenames_tagged(self):
+        """Overriden by CIX."""
         return set()
+
+    def get_num_pages(self):
+        """Get the number of pages."""
+        if self._page_filenames is not None:
+            return len(self._page_filenames)
+
+    def set_page_metadata(self, archive_filenames):
+        """Parse the filenames that are comic pages."""
+        self._page_filenames = []
+        for filename in archive_filenames:
+            if IMAGE_EXT_RE.search(filename) is not None:
+                self._page_filenames.append(filename)
+        self.metadata["page_count"] = len(self._page_filenames)
+        self.metadata["cover_image"] = self.get_cover_page_filename()
+
+    def get_pagename(self, index):
+        """Get the filename of the page by index."""
+        if self._page_filenames:
+            return self._page_filenames[index]
 
     def get_cover_page_filename(self):
         """Get filename of most likely coverpage."""
@@ -222,51 +275,8 @@ class ComicBaseMetadata:
 
     def get_pagenames_from(self, index_from):
         """Return a list of page filenames from the given index onward."""
-        return self._page_filenames[index_from:]
-
-    @classmethod
-    def _compare_dict_list(cls, list_a, list_b):
-        """Compare lists of dicts."""
-        if list_a is None and list_b is None:
-            return True
-        if list_a is None and list_b or list_b is None and list_a:
-            return False
-        for dict_a in list_a:
-            match = False
-            for dict_b in list_b:
-                if dict_a == dict_b:
-                    match = True
-                    break
-            if not match:
-                LOG.debug("dict_compare: could not find:", dict_a)
-                return False
-        return True
-
-    @classmethod
-    def _compare_metadatas(cls, md_a, md_b):
-        for key, val_a in md_a.items():
-            val_b = md_b.get(key)
-            if key in cls.IGNORE_COMPARE_TAGS:
-                continue
-            if key in cls.DICT_LIST_TAGS:
-                res = cls._compare_dict_list(val_a, val_b)
-                if not res:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-            else:
-                if val_a != val_b:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-        return True
-
-    def __eq__(self, obj):
-        """== operator."""
-        md = obj.metadata
-        return self._compare_metadatas(md, self.metadata) and self._compare_metadatas(
-            self.metadata, md
-        )
+        if self._page_filenames:
+            return self._page_filenames[index_from:]
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
@@ -306,21 +316,6 @@ class ComicBaseMetadata:
             self.metadata.update(md)
         self.metadata["credits"] = list(final_credits.values())
         self.metadata.update(all_tags)
-
-    def compute_page_count(self):
-        """Compute the page count from the number of images."""
-        self.metadata["page_count"] = len(self._page_filenames)
-
-    def compute_page_metadata(self, archive_filenames):
-        """Rectify lots of metadatas."""
-        self.set_page_names(archive_filenames)
-
-        # Page Count
-        if self.metadata.get("page_count") is None:
-            self.compute_page_count()
-
-        # Cover Image
-        self.metadata["cover_image"] = self.get_cover_page_filename()
 
     def from_string(self, _):
         """Stub method."""

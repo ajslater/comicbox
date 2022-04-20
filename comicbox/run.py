@@ -30,7 +30,7 @@ class Runner:
         car = ComicArchive(path, config=self.config)
         if self.config.raw:
             car.print_raw()
-        if self.config.metadata:
+        if self.config.print:
             pprint(car.get_metadata())
         if self.config.covers:
             car.extract_cover_as(self.config.dest_path)

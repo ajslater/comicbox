@@ -39,7 +39,7 @@ METADATA = {
     "title": "The Beginning",
     "last_mark": 12,
     "cover_image": "CaptainScience#1_01.jpg",
-    "remainder": "comet",
+    # "remainder": "comet",
     "page_count": 36,
 }
 

@@ -129,14 +129,6 @@ class FilenameMetadata(ComicBaseMetadata):
         ("title", "{}"),
     )
 
-    def clean_fn(self, filename):
-        """Clean out distracting characters from the filename."""
-        fn = self.SPACE_ALT_CHARS_RE.sub(" ", filename)
-        fn = self.DIVIDERS.sub(" ", fn)
-        fn = self.PLUS_RE.sub(" ", fn)
-        fn = self.MULTI_SPACE_RE.sub(" ", fn)
-        return fn
-
     @staticmethod
     def try_parser(parser, fn):
         """Try one parser and return the results as a dict."""
@@ -148,6 +140,25 @@ class FilenameMetadata(ComicBaseMetadata):
             # pprint(res)
             return res.named
         return {}
+
+    @staticmethod
+    def issue_formatter(issue):
+        """Formatter to zero pad issues."""
+        i = 0
+        for c in issue:
+            if not c.isdigit():
+                break
+            i += 1
+        pad = 3 + len(issue) - i
+        return "#{:0" + str(pad) + "}"
+
+    def clean_fn(self, filename):
+        """Clean out distracting characters from the filename."""
+        fn = self.SPACE_ALT_CHARS_RE.sub(" ", filename)
+        fn = self.DIVIDERS.sub(" ", fn)
+        fn = self.PLUS_RE.sub(" ", fn)
+        fn = self.MULTI_SPACE_RE.sub(" ", fn)
+        return fn
 
     def from_string(self, path):
         """Try all parsers against the filename and return the best result."""
@@ -172,17 +183,6 @@ class FilenameMetadata(ComicBaseMetadata):
     def from_file(self, path):
         """Oddly this ends up being identical."""
         return self.from_string(path)
-
-    @staticmethod
-    def issue_formatter(issue):
-        """Formatter to zero pad issues."""
-        i = 0
-        for c in issue:
-            if not c.isdigit():
-                break
-            i += 1
-        pad = 3 + len(issue) - i
-        return "#{:0" + str(pad) + "}"
 
     def to_string(self):
         """Get our preferred basename from a metadata dict."""

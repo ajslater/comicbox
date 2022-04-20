@@ -26,9 +26,9 @@ METADATA = {
     "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
     "characters": set(["Gordon Dane", "Captain Science"]),
     "credits": [
-        {"person": "Wally Wood", "role": "Inker"},
-        {"person": "Wally Wood", "role": "Penciller"},
         {"person": "Joe Orlando", "role": "Writer"},
+        {"person": "Wally Wood", "role": "Penciller"},
+        {"person": "Wally Wood", "role": "Inker"},
     ],
     "ext": "cbr",
     "genres": set(["Science Fiction"]),
@@ -70,7 +70,7 @@ METADATA = {
         {"Image": "34", "ImageSize": "353013"},
         {"Image": "35", "ImageSize": "340840"},
     ],
-    "remainder": "cix cbi",
+    # "remainder": "cix cbi",
     "page_count": 36,
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
 }
