@@ -4,6 +4,7 @@ Comic Archive.
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
+import tarfile
 import zipfile
 
 from io import BytesIO
@@ -73,7 +74,9 @@ class ComicArchive:
             config = get_config()
         self._config: AttrDict = config
         self._set_archive_cls()
-        self._archive: Union[zipfile.ZipFile, rarfile.RarFile, None] = None
+        self._archive: Union[
+            zipfile.ZipFile, rarfile.RarFile, tarfile.TarFile, None
+        ] = None
         self._metadata: ComicBaseMetadata = ComicBaseMetadata(metadata=metadata)
         self._closefd: bool = closefd
         self._raw: dict = {}
@@ -84,6 +87,8 @@ class ComicArchive:
             self._archive_cls = zipfile.ZipFile
         elif rarfile.is_rarfile(self._path):
             self._archive_cls = rarfile.RarFile
+        elif tarfile.is_tarfile(self._path):
+            self._archive_cls = tarfile.TarFile
         else:
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 
@@ -107,19 +112,45 @@ class ComicArchive:
         if self._closefd:
             self.close()
 
+    def _namelist(self):
+        """Get list of files in the archive."""
+        archive = self._get_archive()
+        if isinstance(archive, tarfile.TarFile):
+            return archive.getnames()
+        else:
+            return archive.namelist()
+
+    def _infolist(self):
+        """Get info list of members from the archive."""
+        archive = self._get_archive()
+        if isinstance(archive, tarfile.TarFile):
+            return archive.getmembers()
+        else:
+            return archive.infolist()
+
+    def _readfile(self, filename):
+        """Read an archive file to memory."""
+        archive = self._get_archive()
+        if isinstance(archive, tarfile.TarFile):
+            file_obj = archive.extractfile(filename)
+            if file_obj:
+                return file_obj.read()
+        else:
+            return archive.read(filename)  # type: ignore
+
     def _get_raw_xml_metadata(self, xml_parser_cls, flag):
         """Get raw xml metadata from an xml file in the archive."""
         if flag and not self._raw.get(xml_parser_cls.FILENAME):
             found = False
             fn = None
-            for fn in self._get_archive().namelist():
+            for fn in self._namelist():
                 if Path(fn).name.lower() == xml_parser_cls.FILENAME:
                     found = True
                     break
             if not found:
                 return
 
-            data = self._get_archive().read(fn)
+            data = self._readfile(fn)
             self._raw[xml_parser_cls.FILENAME] = data
         return self._raw.get(xml_parser_cls.FILENAME)
 
@@ -133,8 +164,12 @@ class ComicArchive:
 
     def _get_raw_archive_comment(self):
         """Get the comment field from an archive."""
-        if self._config.comicbookinfo and not self._raw.get(self._RAW_CBI_KEY):
-            comment = self._get_archive().comment
+        if (
+            self._archive_cls != tarfile.TarFile
+            and self._config.comicbookinfo
+            and not self._raw.get(self._RAW_CBI_KEY)
+        ):
+            comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, bytes):
                 comment = comment.decode()
             if comment:
@@ -170,7 +205,7 @@ class ComicArchive:
             not self._PAGE_KEYS.issubset(self._metadata.metadata)
             or self._metadata.get_num_pages() is None
         ):
-            namelist = sorted(self._get_archive().namelist())
+            namelist = sorted(self._namelist())
             self._metadata.set_page_metadata(namelist)
 
     def _parse_metadata(self):
@@ -203,10 +238,12 @@ class ComicArchive:
 
     def _write_cbi_comment(self, parser):
         """Write a cbi comment to an archive."""
+        if self._archive_cls == tarfile.TarFile:
+            raise ValueError("Cannot write ComicBookInfo comments to cbt tarfile.")
         self.close()
         with self._archive_cls(self._path, "a") as append_archive:
             comment = parser.to_string().encode()
-            append_archive.comment = comment
+            append_archive.comment = comment  # type: ignore
 
     def get_num_pages(self):
         """Return the number of pages."""
@@ -220,14 +257,12 @@ class ComicArchive:
         pagenames = self._metadata.get_pagenames_from(page_from)
         if pagenames:
             for pagename in pagenames:
-                with self._get_archive().open(pagename) as page:
-                    yield page.read()
+                yield self._readfile(pagename)
         self._close_archive()
 
     def get_page_by_filename(self, filename):
         """Return data for a single page by filename."""
-        with self._get_archive().open(filename) as page:
-            data = page.read()
+        data = self._readfile(filename)
         self._close_archive()
         return data
 
@@ -235,8 +270,7 @@ class ComicArchive:
         """Get the page data by index."""
         self._ensure_page_metadata()
         filename = self._metadata.get_pagename(index)
-        with self._get_archive().open(filename) as page:
-            data = page.read()
+        data = self._readfile(filename)
         self._close_archive()
         return data
 
@@ -257,13 +291,12 @@ class ComicArchive:
         pagenames = self._metadata.get_pagenames_from(page_from)
         if pagenames:
             for fn in pagenames:
-                with self._get_archive().open(fn) as page:
-                    if self._config.dry_run:
-                        LOG.info(f"Not extracting page from {self._path}: {fn}")
-                        continue
-                    full_path = Path(root_path) / Path(fn).name
-                    with full_path.open("wb") as page_file:
-                        page_file.write(page.read())
+                if self._config.dry_run:
+                    LOG.info(f"Not extracting page from {self._path}: {fn}")
+                    continue
+                full_path = Path(root_path) / Path(fn).name
+                with full_path.open("wb") as page_file:
+                    page_file.write(self._readfile(fn))
         self._close_archive()
 
     def extract_cover_as(self, path):
@@ -278,9 +311,8 @@ class ComicArchive:
         output_path = Path(path)
         if output_path.is_dir():
             output_path = output_path / Path(cover_fn).name
-        with self._get_archive().open(cover_fn) as page:
-            with output_path.open("wb") as cover_file:
-                cover_file.write(page.read())
+        with output_path.open("wb") as cover_file:
+            cover_file.write(self._readfile(cover_fn))
         self._close_archive()
 
     def get_cover_image(self):
@@ -290,7 +322,7 @@ class ComicArchive:
         if not cover_fn:
             return
         try:
-            data = self._get_archive().read(cover_fn)
+            data = self._readfile(cover_fn)
         except Exception as exc:
             LOG.error(f"{self._path} reading cover: {cover_fn}")
             raise exc
@@ -321,12 +353,13 @@ class ComicArchive:
             raise ValueError(f"{new_path} already exists.")
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
-        if self._config.delete_tags:
-            comment = b""
-        else:
-            comment = self._get_archive().comment
-        if isinstance(comment, str):
-            comment = comment.encode()
+        comment = b""
+        if self._archive_cls != tarfile.TarFile:
+            if not self._config.delete_tags:
+                comment = self._get_archive().comment  # type: ignore
+            if isinstance(comment, str):
+                comment = comment.encode()
+
         with zipfile.ZipFile(
             tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
         ) as zf:
@@ -335,20 +368,23 @@ class ComicArchive:
                 skipnames.add(filename)
             if self._config.delete_tags:
                 skipnames.add(self.FILENAMES)
-            for info in sorted(
-                self._get_archive().infolist(), key=lambda i: i.filename
-            ):
-                if info.filename.lower() in skipnames:
+            if self._archive_cls == tarfile.TarFile:
+                fn_attr = "name"
+            else:
+                fn_attr = "filename"
+            for info in sorted(self._infolist(), key=lambda i: getattr(i, fn_attr)):
+                fn = getattr(info, fn_attr)
+                if fn.lower() in skipnames:
                     continue
-                if IMAGE_EXT_RE.search(info.filename) is None:
+                if IMAGE_EXT_RE.search(fn) is None:
                     compress = zipfile.ZIP_DEFLATED
                 else:
                     # images usually end up slightly larger with
                     # zip compression
                     compress = zipfile.ZIP_STORED
                 zf.writestr(
-                    info.filename,
-                    self._get_archive().read(info),
+                    fn,
+                    self._readfile(fn),
                     compress_type=compress,
                     compresslevel=9,
                 )
@@ -418,7 +454,7 @@ class ComicArchive:
 
     def compute_pages_tags(self):
         """Recompute the tag image sizes for ComicRack."""
-        infolist = self._get_archive().infolist()
+        infolist = self._infolist()
         metadata = self.get_metadata()
         self._close_archive()
         parser = ComicInfoXml(metadata=metadata)
@@ -449,7 +485,7 @@ class ComicArchive:
 
     def namelist(self, closefd=True):
         """Get the archive file namelist."""
-        result = sorted(self._get_archive().namelist())
+        result = sorted(self._namelist())
         if closefd:
             self._close_archive()
         return result

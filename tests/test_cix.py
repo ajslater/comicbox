@@ -10,7 +10,9 @@ from .test_metadata import write_metadata
 
 
 FN = Path("Captain Science #001-cix-cbi.cbr")
+FN_TAR = Path("Captain Science #001.cbt")
 ARCHIVE_PATH = TEST_FILES_PATH / FN
+TAR_ARCHIVE_PATH = TEST_FILES_PATH / FN_TAR
 TMP_PATH = TMP_ROOT / "test_cix"
 NEW_TEST_CBZ_PATH = TMP_PATH / FN.with_suffix(".cbz")
 METADATA = {
@@ -76,9 +78,13 @@ METADATA = {
 }
 
 
-def test_read_cix():
+def test_read_cix_rar():
     read_metadata(ARCHIVE_PATH, METADATA)
 
 
-def test_write_cix():
+def text_read_cix_tar():
+    read_metadata(TAR_ARCHIVE_PATH, METADATA)
+
+
+def test_write_cix_from_rar():
     write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, ComicInfoXml)
