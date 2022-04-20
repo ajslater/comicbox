@@ -107,12 +107,12 @@ class ComicArchive:
             pass
         self._archive = None
 
-    def _close_archive(self):
+    def _archive_close(self):
         """Close if the closefd bit is set."""
         if self._closefd:
             self.close()
 
-    def _namelist(self):
+    def _archive_namelist(self):
         """Get list of files in the archive."""
         archive = self._get_archive()
         if isinstance(archive, tarfile.TarFile):
@@ -120,15 +120,21 @@ class ComicArchive:
         else:
             return archive.namelist()
 
-    def _infolist(self):
+    def _archive_infolist(self):
         """Get info list of members from the archive."""
         archive = self._get_archive()
         if isinstance(archive, tarfile.TarFile):
-            return archive.getmembers()
+            infolist = archive.getmembers()
         else:
-            return archive.infolist()
+            infolist = archive.infolist()
+        if self._archive_cls == tarfile.TarFile:
+            fn_attr = "name"
+        else:
+            fn_attr = "filename"
+        infolist = sorted(infolist, key=lambda i: getattr(i, fn_attr))
+        return infolist, fn_attr
 
-    def _readfile(self, filename):
+    def _archive_readfile(self, filename):
         """Read an archive file to memory."""
         archive = self._get_archive()
         if isinstance(archive, tarfile.TarFile):
@@ -143,14 +149,14 @@ class ComicArchive:
         if flag and not self._raw.get(xml_parser_cls.FILENAME):
             found = False
             fn = None
-            for fn in self._namelist():
+            for fn in self._archive_namelist():
                 if Path(fn).name.lower() == xml_parser_cls.FILENAME:
                     found = True
                     break
             if not found:
                 return
 
-            data = self._readfile(fn)
+            data = self._archive_readfile(fn)
             self._raw[xml_parser_cls.FILENAME] = data
         return self._raw.get(xml_parser_cls.FILENAME)
 
@@ -205,7 +211,7 @@ class ComicArchive:
             not self._PAGE_KEYS.issubset(self._metadata.metadata)
             or self._metadata.get_num_pages() is None
         ):
-            namelist = sorted(self._namelist())
+            namelist = sorted(self._archive_namelist())
             self._metadata.set_page_metadata(namelist)
 
     def _parse_metadata(self):
@@ -227,7 +233,7 @@ class ComicArchive:
         # precedence.
         self._metadata.synthesize_metadata(md_list)
         self._ensure_page_metadata()
-        self._close_archive()
+        self._archive_close()
 
     def _set_raw_metadata(self):
         """Set only the raw metadata."""
@@ -248,7 +254,7 @@ class ComicArchive:
     def get_num_pages(self):
         """Return the number of pages."""
         self._ensure_page_metadata()
-        self._close_archive()
+        self._archive_close()
         return self._metadata.get_num_pages()
 
     def get_pages(self, page_from):
@@ -257,21 +263,21 @@ class ComicArchive:
         pagenames = self._metadata.get_pagenames_from(page_from)
         if pagenames:
             for pagename in pagenames:
-                yield self._readfile(pagename)
-        self._close_archive()
+                yield self._archive_readfile(pagename)
+        self._archive_close()
 
     def get_page_by_filename(self, filename):
         """Return data for a single page by filename."""
-        data = self._readfile(filename)
-        self._close_archive()
+        data = self._archive_readfile(filename)
+        self._archive_close()
         return data
 
     def get_page_by_index(self, index):
         """Get the page data by index."""
         self._ensure_page_metadata()
         filename = self._metadata.get_pagename(index)
-        data = self._readfile(filename)
-        self._close_archive()
+        data = self._archive_readfile(filename)
+        self._archive_close()
         return data
 
     def get_page_by_index_as_pil(self, index):
@@ -296,8 +302,8 @@ class ComicArchive:
                     continue
                 full_path = Path(root_path) / Path(fn).name
                 with full_path.open("wb") as page_file:
-                    page_file.write(self._readfile(fn))
-        self._close_archive()
+                    page_file.write(self._archive_readfile(fn))
+        self._archive_close()
 
     def extract_cover_as(self, path):
         """Extract the cover image to a destination file."""
@@ -312,8 +318,8 @@ class ComicArchive:
         if output_path.is_dir():
             output_path = output_path / Path(cover_fn).name
         with output_path.open("wb") as cover_file:
-            cover_file.write(self._readfile(cover_fn))
-        self._close_archive()
+            cover_file.write(self._archive_readfile(cover_fn))
+        self._archive_close()
 
     def get_cover_image(self):
         """Return cover image data."""
@@ -322,11 +328,11 @@ class ComicArchive:
         if not cover_fn:
             return
         try:
-            data = self._readfile(cover_fn)
+            data = self._archive_readfile(cover_fn)
         except Exception as exc:
             LOG.error(f"{self._path} reading cover: {cover_fn}")
             raise exc
-        self._close_archive()
+        self._archive_close()
         return data
 
     def get_cover_image_as_pil(self):
@@ -368,11 +374,8 @@ class ComicArchive:
                 skipnames.add(filename)
             if self._config.delete_tags:
                 skipnames.add(self.FILENAMES)
-            if self._archive_cls == tarfile.TarFile:
-                fn_attr = "name"
-            else:
-                fn_attr = "filename"
-            for info in sorted(self._infolist(), key=lambda i: getattr(i, fn_attr)):
+            infolist, fn_attr = self._archive_infolist()
+            for info in infolist:
                 fn = getattr(info, fn_attr)
                 if fn.lower() in skipnames:
                     continue
@@ -384,11 +387,11 @@ class ComicArchive:
                     compress = zipfile.ZIP_STORED
                 zf.writestr(
                     fn,
-                    self._readfile(fn),
+                    self._archive_readfile(fn),
                     compress_type=compress,
                     compresslevel=9,
                 )
-            self._close_archive()
+            self._archive_close()
             if filename and data:
                 zf.writestr(filename, data)
             if comment:
@@ -454,9 +457,9 @@ class ComicArchive:
 
     def compute_pages_tags(self):
         """Recompute the tag image sizes for ComicRack."""
-        infolist = self._infolist()
+        infolist, _ = self._archive_infolist()
         metadata = self.get_metadata()
-        self._close_archive()
+        self._archive_close()
         parser = ComicInfoXml(metadata=metadata)
         parser.compute_pages_tags(infolist)
         self._metadata.metadata["pages"] = parser.metadata.get("pages")
@@ -485,7 +488,7 @@ class ComicArchive:
 
     def namelist(self, closefd=True):
         """Get the archive file namelist."""
-        result = sorted(self._namelist())
+        result = sorted(self._archive_namelist())
         if closefd:
-            self._close_archive()
+            self._archive_close()
         return result
