@@ -6,6 +6,8 @@ import zipfile
 from pathlib import Path
 from pprint import pprint
 
+from deepdiff.diff import DeepDiff
+
 from comicbox.comic_archive import ComicArchive
 
 
@@ -20,7 +22,9 @@ def read_metadata(archive_path, metadata):
     disk_md = disk_car.get_metadata()
     pprint(disk_md)
     pprint(metadata)
-    assert disk_md == metadata
+    diff = DeepDiff(disk_md, metadata)
+    pprint(diff)
+    assert not diff
 
 
 def create_test_file(tmp_path, new_test_cbz_path, metadata, md_type):
@@ -54,5 +58,8 @@ def write_metadata(tmp_path, new_test_cbz_path, metadata, md_type):
     disk_car = ComicArchive(new_test_cbz_path)
 
     # comparison metadata direct from example data
-    assert disk_car.get_metadata() == metadata
+    disk_md = disk_car.get_metadata()
+    diff = DeepDiff(disk_md, metadata)
+    pprint(diff)
+    assert not diff
     shutil.rmtree(tmp_path)
