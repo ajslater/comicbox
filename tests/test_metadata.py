@@ -6,8 +6,9 @@ import zipfile
 from pathlib import Path
 from pprint import pprint
 
+from deepdiff.diff import DeepDiff
+
 from comicbox.comic_archive import ComicArchive
-from comicbox.metadata.comic_base import ComicBaseMetadata
 
 
 TEST_FILES_PATH = Path("tests/test_files")
@@ -18,10 +19,12 @@ SOURCE_ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 def read_metadata(archive_path, metadata):
     """Read metadata and compare to dict fixture."""
     disk_car = ComicArchive(archive_path)
-    md = ComicBaseMetadata(metadata=metadata)
-    pprint(disk_car.metadata.metadata)
-    pprint(md.metadata)
-    assert disk_car.metadata == md
+    disk_md = disk_car.get_metadata()
+    pprint(disk_md)
+    pprint(metadata)
+    diff = DeepDiff(disk_md, metadata)
+    pprint(diff)
+    assert not diff
 
 
 def create_test_file(tmp_path, new_test_cbz_path, metadata, md_type):
@@ -43,7 +46,7 @@ def create_test_file(tmp_path, new_test_cbz_path, metadata, md_type):
     shutil.rmtree(extract_path)
 
     # Create an archive object with the fixture data
-    car = ComicArchive(new_test_cbz_path, metadata)
+    car = ComicArchive(new_test_cbz_path, metadata=metadata)
     # write the metadata to the empty archive
     car.write_metadata(md_type)
 
@@ -53,8 +56,10 @@ def write_metadata(tmp_path, new_test_cbz_path, metadata, md_type):
     create_test_file(tmp_path, new_test_cbz_path, metadata, md_type)
     # read data back from the test file and then cleanup
     disk_car = ComicArchive(new_test_cbz_path)
-    shutil.rmtree(tmp_path)
 
     # comparison metadata direct from example data
-    md = ComicBaseMetadata(metadata=metadata)
-    assert disk_car.metadata == md
+    disk_md = disk_car.get_metadata()
+    diff = DeepDiff(disk_md, metadata)
+    pprint(diff)
+    assert not diff
+    shutil.rmtree(tmp_path)

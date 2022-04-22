@@ -4,13 +4,11 @@ comicbox:
   comicbookinfo: True
   comicinfoxml: True
   config: null
-  cover: False
   delete_rar: False
   delete_tags: False
   dest_path: .
   dry_run: False
   filename: True
-  metadata: True
   raw: False
   recurse: False
   # Actions

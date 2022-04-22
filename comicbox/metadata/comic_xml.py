@@ -28,12 +28,18 @@ class ComicXml(ComicBaseMetadata):
     ROOT_TAG = ""
 
     def _get_xml_root(self, tree):
+        """Return the xml root."""
         root = tree.getroot()
         if root.tag != self.ROOT_TAG:
             raise ValueError(f"Not a {self.ROOT_TAG} XMLTree")
         return root
 
     def _from_xml(self, _):
+        """Parse metadata from xml."""
+        raise NotImplementedError()
+
+    def _to_xml(self):
+        """Exxport metadata to xml."""
         raise NotImplementedError()
 
     def from_string(self, xml_str):
@@ -49,9 +55,6 @@ class ComicXml(ComicBaseMetadata):
         """Read metadata from a file."""
         tree = ElementTree.parse(filename)
         self._from_xml(tree)
-
-    def _to_xml(self):
-        raise NotImplementedError()
 
     def to_string(self):
         """Return metadata as an xml string."""

@@ -25,13 +25,11 @@ TEMPLATE = MappingTemplate(
                 "comicinfoxml": bool,
                 "comicbookinfo": bool,
                 "config": Optional(str),
-                "cover": bool,
                 "delete_rar": bool,
                 "delete_tags": bool,
                 "dest_path": str,
                 "dry_run": bool,
                 "filename": bool,
-                "metadata": bool,
                 "raw": bool,
                 "recurse": bool,
                 # Actions

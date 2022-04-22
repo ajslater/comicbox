@@ -16,7 +16,7 @@ class ComicInfoXml(ComicXml):
     # Schema from
     # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
 
-    class PageType(object):
+    class PageType:
         """CIX Page Type Schema."""
 
         FRONT_COVER = "FrontCover"
@@ -232,7 +232,12 @@ class ComicInfoXml(ComicXml):
         for page in self.metadata.get("pages", []):
             if page.get("Type") == self.PageType.FRONT_COVER:
                 index = int(page["Image"])
-                if index <= self.get_num_pages():
+                num_pages = self.get_num_pages()
+                if (
+                    self._page_filenames
+                    and num_pages is not None
+                    and index <= num_pages
+                ):
                     coverlist.add(self._page_filenames[index])
         return coverlist
 

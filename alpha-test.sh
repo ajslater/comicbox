@@ -1,6 +1,7 @@
 #!/bin/bash
+# Local test of ci
 set -euo pipefail
-./build-builder.sh
+docker compose build comicbox-builder
 ./docker/docker-compose-exit.sh comicbox-test
 ./docker/docker-compose-exit.sh comicbox-lint
 ./docker/docker-compose-exit.sh comicbox-build

@@ -10,7 +10,9 @@ from .test_metadata import write_metadata
 
 
 FN = Path("Captain Science #001-cix-cbi.cbr")
+FN_TAR = Path("Captain Science #001.cbt")
 ARCHIVE_PATH = TEST_FILES_PATH / FN
+TAR_ARCHIVE_PATH = TEST_FILES_PATH / FN_TAR
 TMP_PATH = TMP_ROOT / "test_cix"
 NEW_TEST_CBZ_PATH = TMP_PATH / FN.with_suffix(".cbz")
 METADATA = {
@@ -26,9 +28,9 @@ METADATA = {
     "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
     "characters": set(["Gordon Dane", "Captain Science"]),
     "credits": [
-        {"person": "Wally Wood", "role": "Inker"},
-        {"person": "Wally Wood", "role": "Penciller"},
         {"person": "Joe Orlando", "role": "Writer"},
+        {"person": "Wally Wood", "role": "Penciller"},
+        {"person": "Wally Wood", "role": "Inker"},
     ],
     "ext": "cbr",
     "genres": set(["Science Fiction"]),
@@ -70,15 +72,19 @@ METADATA = {
         {"Image": "34", "ImageSize": "353013"},
         {"Image": "35", "ImageSize": "340840"},
     ],
-    "remainder": "cix cbi",
+    # "remainder": "cix cbi",
     "page_count": 36,
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
 }
 
 
-def test_read_cix():
+def test_read_cix_rar():
     read_metadata(ARCHIVE_PATH, METADATA)
 
 
-def test_write_cix():
+def text_read_cix_tar():
+    read_metadata(TAR_ARCHIVE_PATH, METADATA)
+
+
+def test_write_cix_from_rar():
     write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, ComicInfoXml)
