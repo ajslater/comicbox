@@ -11,6 +11,7 @@ from functools import wraps
 from io import BytesIO
 from logging import getLogger
 from pathlib import Path
+from typing import Callable
 from typing import Optional
 from typing import Union
 
@@ -95,12 +96,13 @@ class ComicArchive:
 
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
+        self._archive_cls: Callable
         if zipfile.is_zipfile(self._path):
             self._archive_cls = zipfile.ZipFile
         elif rarfile.is_rarfile(self._path):
             self._archive_cls = rarfile.RarFile
         elif tarfile.is_tarfile(self._path):
-            self._archive_cls = tarfile.TarFile
+            self._archive_cls = tarfile.open
         else:
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 
@@ -126,7 +128,7 @@ class ComicArchive:
             infolist = archive.getmembers()
         else:
             infolist = archive.infolist()
-        if self._archive_cls == tarfile.TarFile:
+        if self._archive_cls == tarfile.open:
             fn_attr = "name"
         else:
             fn_attr = "filename"
@@ -143,34 +145,46 @@ class ComicArchive:
         else:
             return archive.read(filename)  # type: ignore
 
-    def _get_raw_xml_metadata(self, xml_parser_cls, flag):
-        """Get raw xml metadata from an xml file in the archive."""
-        if flag and not self._raw.get(xml_parser_cls.FILENAME):
-            found = False
-            fn = None
-            for fn in self._archive_namelist():
-                if Path(fn).name.lower() == xml_parser_cls.FILENAME:
-                    found = True
+    def _get_raw_files_metadata(self):
+        """Get raw metadata from files in the archive."""
+
+        # create parser_classes_dict
+        all_parser_classes = {
+            CoMet: self._config.comet,
+            ComicInfoXml: self._config.comicinfoxml,
+        }
+        parser_classes = {}
+        for parser_class, flag in all_parser_classes.items():
+            if flag and not self._raw.get(parser_class.FILENAME):
+                parser_classes[parser_class.FILENAME] = parser_class
+
+        # search filenames for metadata files and read.
+        result_parsers = {}
+        for fn in self._archive_namelist():
+            lower_name = Path(fn).name.lower()
+            parser_class = parser_classes.get(lower_name)
+            if parser_class and not self._raw.get(parser_class.FILENAME):
+                data = self._archive_readfile(fn)
+                self._raw[parser_class.FILENAME] = data
+                result_parsers[parser_class] = data
+                del parser_classes[parser_class.FILENAME]
+                if not parser_classes:
                     break
-            if not found:
-                return
+        return result_parsers
 
-            data = self._archive_readfile(fn)
-            self._raw[xml_parser_cls.FILENAME] = data
-        return self._raw.get(xml_parser_cls.FILENAME)
-
-    def _parse_xml_metadata(self, xml_parser_cls, flag):
-        """Run the correct parser for the xml file."""
-        data = self._get_raw_xml_metadata(xml_parser_cls, flag)
-        if not data:
-            return {}
-        parser = xml_parser_cls(string=data)
-        return parser.metadata
+    def _parse_files_metadata(self):
+        """Run the correct parser for the each archive file's metadata."""
+        result_parsers = self._get_raw_files_metadata()
+        files_md = {}
+        for parser_class, data in result_parsers.items():
+            parser = parser_class(string=data)
+            files_md[parser_class] = parser.metadata
+        return files_md
 
     def _get_raw_archive_comment(self):
         """Get the comment field from an archive."""
         if (
-            self._archive_cls != tarfile.TarFile
+            self._archive_cls != tarfile.open
             and self._config.comicbookinfo
             and not self._raw.get(self._RAW_CBI_KEY)
         ):
@@ -216,17 +230,18 @@ class ComicArchive:
     def _parse_metadata(self):
         """Parse all enabled metadata."""
         md_list = []
-        if self._config.filename:
-            filename_md = self._parse_metadata_filename()
+        filename_md = self._parse_metadata_filename()
+        if filename_md:
             md_list += [filename_md]
-        if self._config.comet:
-            comet_md = self._parse_xml_metadata(CoMet, self._config.comet)
+        files_md = self._parse_files_metadata()
+        comet_md = files_md.get(CoMet)
+        if comet_md:
             md_list += [comet_md]
-        if self._config.comicbookinfo:
-            cbi_md = self._parse_metadata_comments()
+        cbi_md = self._parse_metadata_comments()
+        if cbi_md:
             md_list += [cbi_md]
-        if self._config.comicinfoxml:
-            cix_md = self._parse_xml_metadata(ComicInfoXml, self._config.comicinfoxml)
+        cix_md = files_md.get(ComicInfoXml)
+        if cix_md:
             md_list += [cix_md]
         # order of the md list is very important, lowest to highest
         # precedence.
@@ -236,13 +251,12 @@ class ComicArchive:
     def _set_raw_metadata(self):
         """Set only the raw metadata."""
         self._get_raw_filename()
-        self._get_raw_xml_metadata(CoMet, self._config.comet)
         self._get_raw_archive_comment()
-        self._get_raw_xml_metadata(ComicInfoXml, self._config.comicinfoxml)
+        self._get_raw_files_metadata()
 
     def _write_cbi_comment(self, parser):
         """Write a cbi comment to an archive."""
-        if self._archive_cls == tarfile.TarFile:
+        if self._archive_cls == tarfile.open:
             raise ValueError("Cannot write ComicBookInfo comments to cbt tarfile.")
         self.close()
         with self._archive_cls(self._path, "a") as append_archive:
@@ -371,7 +385,7 @@ class ComicArchive:
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
         comment = b""
-        if self._archive_cls != tarfile.TarFile:
+        if self._archive_cls != tarfile.open:
             if not self._config.delete_tags:
                 comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, str):
