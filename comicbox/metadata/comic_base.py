@@ -31,7 +31,7 @@ class ComicBaseMetadata:
             elif val == cls.LTR:
                 return cls.LTR
 
-    STR_SET_TAGS = set(
+    STR_SET_TAGS = frozenset(
         (
             "characters",
             "locations",
@@ -42,18 +42,18 @@ class ComicBaseMetadata:
             "series_groups",
         )
     )
-    BOOL_SET_TAGS = set(("black_and_white",))
-    DICT_LIST_TAGS = set(("credits", "pages"))
-    PYCOUNTRY_TAGS = set(("country", "language"))
-    DECIMAL_TAGS = set(
+    BOOL_SET_TAGS = frozenset(("black_and_white",))
+    DICT_LIST_TAGS = frozenset(("credits", "pages"))
+    PYCOUNTRY_TAGS = frozenset(("country", "language"))
+    DECIMAL_TAGS = frozenset(
         (
             "community_rating",
             "critical_rating",
             "price",
         )
     )
-    ISSUE_TAGS = set(("issue", "alternate_issue"))
-    INT_TAGS = set(
+    ISSUE_TAGS = frozenset(("issue", "alternate_issue"))
+    INT_TAGS = frozenset(
         (
             "day",
             "issue_count",  # cix Count
@@ -237,7 +237,7 @@ class ComicBaseMetadata:
 
     def _get_cover_page_filenames_tagged(self):
         """Overriden by CIX."""
-        return set()
+        return frozenset()
 
     def get_num_pages(self):
         """Get the number of pages."""

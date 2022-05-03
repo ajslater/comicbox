@@ -56,9 +56,9 @@ class ComicArchive:
     """
 
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
-    FILENAMES = set((CoMet.FILENAME, ComicInfoXml.FILENAME))
-    _PAGE_KEYS = set(("page_count", "cover_image"))
-    _PAGES_KEYS = set(("pages",)) | _PAGE_KEYS
+    FILENAMES = frozenset((CoMet.FILENAME, ComicInfoXml.FILENAME))
+    _PAGE_KEYS = frozenset(("page_count", "cover_image"))
+    _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
     _RAW_CBI_KEY = "ComicBookInfo Archive Comment"
     _RAW_FILENAME_KEY = "Filename"
 
@@ -364,7 +364,7 @@ class ComicArchive:
     def get_metadata(self):
         """Return the metadata from the archive."""
         if not self._metadata.metadata or bool(
-            set(self._metadata.metadata.keys()) - self._PAGES_KEYS
+            frozenset(self._metadata.metadata.keys()) - self._PAGES_KEYS
         ):
             self._parse_metadata()
         return self._metadata.metadata

@@ -41,7 +41,7 @@ class CoMet(ComicXml):
         "readingDirection": "reading_direction",
     }
     CREDIT_TAGS = {
-        "creator": set(["creator"]),
+        "creator": frozenset(["creator"]),
         "writer": ComicXml.CREDIT_TAGS["Writer"],
         "penciller": ComicXml.CREDIT_TAGS["Penciller"],
         "editor": ComicXml.CREDIT_TAGS["Editor"],
@@ -72,7 +72,7 @@ class CoMet(ComicXml):
                         val = self.remove_volume_prefixes(val)
                     val = int(val)
                 elif to_tag in self.STR_SET_TAGS:
-                    val = set([item.strip() for item in val.split(",        ")])
+                    val = frozenset([item.strip() for item in val.split(",        ")])
                     if len(val) == 0:
                         continue
                 elif to_tag == "price":
@@ -109,7 +109,7 @@ class CoMet(ComicXml):
         for element in root.findall("character"):
             chars.add(element.text.strip())
         if chars:
-            self.metadata["characters"] = chars
+            self.metadata["characters"] = frozenset(chars)
 
     def _from_xml(self, tree):
         root = self._get_xml_root(tree)

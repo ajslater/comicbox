@@ -67,5 +67,5 @@ def get_config(
     if not isinstance(ad, AttrDict):
         raise ValueError()
     if ad.comicbox.paths:
-        ad.comicbox.paths = sorted(set(ad.comicbox.paths))
+        ad.comicbox.paths = sorted(frozenset(ad.comicbox.paths))
     return ad.comicbox

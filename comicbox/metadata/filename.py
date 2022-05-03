@@ -77,7 +77,7 @@ def compile_parsers(patterns):
 class FilenameMetadata(ComicBaseMetadata):
     """Extract metadata from the filename."""
 
-    ALL_FIELDS = set(["series", "volume", "issue", "issue_count", "year", "ext"])
+    ALL_FIELDS = frozenset(["series", "volume", "issue", "issue_count", "year", "ext"])
     FIELD_SCHEMA = {key: None for key in ALL_FIELDS}
     # The order of these patterns is very important as patterns farther down
     # match after patterns at the top.
