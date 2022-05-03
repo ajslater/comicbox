@@ -8,7 +8,6 @@ import tarfile
 import zipfile
 
 from functools import wraps
-from io import BytesIO
 from logging import getLogger
 from pathlib import Path
 from typing import Callable
@@ -18,7 +17,6 @@ from typing import Union
 import rarfile
 
 from confuse import AttrDict
-from PIL import Image
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
@@ -94,6 +92,14 @@ class ComicArchive:
         self._closefd: bool = closefd
         self._raw: dict = {}
 
+    def __enter__(self):
+        """Context enter."""
+        return self
+
+    def __exit__(self, *_exc):
+        """Context close."""
+        self.close()
+
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         self._archive_cls: Callable
@@ -135,15 +141,17 @@ class ComicArchive:
         infolist = sorted(infolist, key=lambda i: getattr(i, fn_attr))
         return infolist, fn_attr
 
-    def _archive_readfile(self, filename):
+    def _archive_readfile(self, filename) -> bytes:
         """Read an archive file to memory."""
         archive = self._get_archive()
+        data = None
         if isinstance(archive, tarfile.TarFile):
             file_obj = archive.extractfile(filename)
             if file_obj:
-                return file_obj.read()
+                data = file_obj.read()
         else:
-            return archive.read(filename)  # type: ignore
+            data = archive.read(filename)
+        return data
 
     def _get_raw_files_metadata(self):
         """Get raw metadata from files in the archive."""
@@ -268,9 +276,10 @@ class ComicArchive:
         try:
             if self._archive:
                 self._archive.close()
-        except Exception:
-            pass
-        self._archive = None
+        except Exception as exc:
+            LOG.warning(f"closing archive: {exc}")
+        finally:
+            self._archive = None
 
     @_archive_close
     def get_num_pages(self):
@@ -300,12 +309,6 @@ class ComicArchive:
         filename = self._metadata.get_pagename(index)
         data = self._archive_readfile(filename)
         return data
-
-    @_archive_close
-    def get_page_by_index_as_pil(self, index):
-        """ "Return page as pil image."""
-        data = self.get_page_by_index(index)
-        return Image.open(BytesIO(data))
 
     @_archive_close
     def extract_pages(self, page_from, root_path="."):
@@ -350,18 +353,12 @@ class ComicArchive:
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
             return
+        data = None
         try:
             data = self._archive_readfile(cover_fn)
         except Exception as exc:
-            LOG.error(f"{self._path} reading cover: {cover_fn}")
-            raise exc
+            LOG.warning(f"{self._path} reading cover: {cover_fn}: {exc}")
         return data
-
-    @_archive_close
-    def get_cover_image_as_pil(self):
-        """Get the cover image in PIL form."""
-        image = self.get_cover_image()
-        return Image.open(BytesIO(image))
 
     @_archive_close
     def get_metadata(self):

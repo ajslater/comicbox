@@ -1,5 +1,12 @@
 # 📰 News
 
+## v0.5.2
+
+- Features
+
+  - ComicArchive class now has a context manager
+  - Removed as_pil() methods for pages and covers
+
 ## v0.5.1
 
 - Features
