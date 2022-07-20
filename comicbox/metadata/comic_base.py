@@ -268,9 +268,6 @@ class ComicBaseMetadata:
             cover_image = self.metadata.get("cover_image")
         if not cover_image and self._page_filenames:
             cover_image = self._page_filenames[0]
-
-        if not cover_image:
-            LOG.warning(f"{self.path} could not find cover filename")
         return cover_image
 
     def get_pagenames_from(self, index_from):

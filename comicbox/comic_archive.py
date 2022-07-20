@@ -144,7 +144,7 @@ class ComicArchive:
     def _archive_readfile(self, filename) -> bytes:
         """Read an archive file to memory."""
         archive = self._get_archive()
-        data = None
+        data = b""
         if isinstance(archive, tarfile.TarFile):
             file_obj = archive.extractfile(filename)
             if file_obj:
@@ -336,6 +336,7 @@ class ComicArchive:
         self._ensure_page_metadata()
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
+            LOG.warning(f"{self._path} could not find cover filename")
             return
         if self._config.dry_run:
             LOG.info(f"Not extracting cover from {self._path}: {cover_fn}")
@@ -352,6 +353,7 @@ class ComicArchive:
         self._ensure_page_metadata()
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
+            LOG.warning(f"{self._path} could not find cover filename")
             return
         data = None
         try:
