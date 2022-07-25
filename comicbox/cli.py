@@ -139,14 +139,11 @@ def get_args(params=None) -> Namespace:
 
 def main(params=None):
     """Get CLI arguments and perform the operation on the archive."""
-    try:
-        args = get_args(params)
-        config = get_config(args)
+    args = get_args(params)
+    config = get_config(args)
 
-        runner = Runner(config)
-        runner.run()
-    except Exception as exc:
-        print(exc)
+    runner = Runner(config)
+    runner.run()
 
 
 if __name__ == "__main__":
