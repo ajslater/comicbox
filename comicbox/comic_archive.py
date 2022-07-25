@@ -10,10 +10,10 @@ import zipfile
 from functools import wraps
 from logging import getLogger
 from pathlib import Path
+from tarfile import TarInfo
 from typing import Callable
 from typing import Optional
 from typing import Union
-from tarfile import TarInfo
 
 import rarfile
 
