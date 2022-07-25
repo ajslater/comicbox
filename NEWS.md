@@ -5,6 +5,7 @@
 - Fix
 
   - Fix filename extension parsing
+  - Renamed underscore cli options to use dash instead
 
 ## v0.5.2
 

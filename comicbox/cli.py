@@ -49,7 +49,7 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-d",
-        "--dest_path",
+        "--dest-path",
         type=Path,
         help="destination path for extracting pages and metadata.",
     )
@@ -72,7 +72,7 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-y",
-        "--dry_run",
+        "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
