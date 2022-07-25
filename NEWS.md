@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.5.3
+
+- Fix
+
+  - Fix filename extension parsing
+
 ## v0.5.2
 
 - Features
