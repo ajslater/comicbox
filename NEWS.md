@@ -6,6 +6,7 @@
 
   - Fix filename extension parsing
   - Renamed underscore cli options to use dash instead
+  - Fixed crash when recompressing directories.
 
 ## v0.5.2
 

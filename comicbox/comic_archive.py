@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable
 from typing import Optional
 from typing import Union
+from tarfile import TarInfo
 
 import rarfile
 
@@ -402,6 +403,12 @@ class ComicArchive:
                 skipnames.add(self.FILENAMES)
             infolist, fn_attr = self._archive_infolist()
             for info in infolist:
+                if isinstance(info, TarInfo):
+                    if not info.size:
+                        continue
+                elif not info.file_size:
+                    # don't try to recompress empty dirs
+                    continue
                 fn = getattr(info, fn_attr)
                 if fn.lower() in skipnames:
                     continue
