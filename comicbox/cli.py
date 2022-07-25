@@ -143,7 +143,10 @@ def main(params=None):
     config = get_config(args)
 
     runner = Runner(config)
-    runner.run()
+    try:
+        runner.run()
+    except Exception as exc:
+        print(exc)
 
 
 if __name__ == "__main__":
