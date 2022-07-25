@@ -310,6 +310,10 @@ class ComicArchive:
         data = self._archive_readfile(filename)
         return data
 
+    def _extract_page(self, path, fn):
+        with path.open("wb") as page_file:
+            page_file.write(self._archive_readfile(fn))
+
     @_archive_close
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
@@ -327,8 +331,7 @@ class ComicArchive:
                     LOG.info(f"Not extracting page from {self._path}: {fn}")
                     continue
                 full_path = Path(root_path) / Path(fn).name
-                with full_path.open("wb") as page_file:
-                    page_file.write(self._archive_readfile(fn))
+                self._extract_page(full_path, fn)
 
     @_archive_close
     def extract_cover_as(self, path):
@@ -344,8 +347,7 @@ class ComicArchive:
         output_path = Path(path)
         if output_path.is_dir():
             output_path = output_path / Path(cover_fn).name
-        with output_path.open("wb") as cover_file:
-            cover_file.write(self._archive_readfile(cover_fn))
+        self._extract_page(output_path, cover_fn)
 
     @_archive_close
     def get_cover_image(self):
