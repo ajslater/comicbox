@@ -72,9 +72,9 @@ class ComicBookInfo(ComicJSON):
                     val = int(val)
                 elif to_key in self.STR_SET_TAGS:
                     if isinstance(val, list):
-                        val = set(val)
+                        val = frozenset(val)
                     else:
-                        val = set([item.strip() for item in val.split(",")])
+                        val = frozenset([item.strip() for item in val.split(",")])
                     if len(val) == 0:
                         continue
                 elif to_key in self.DECIMAL_TAGS:

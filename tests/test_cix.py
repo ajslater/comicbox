@@ -26,14 +26,14 @@ METADATA = {
     "volume": 1950,
     "language": "en",
     "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-    "characters": set(["Gordon Dane", "Captain Science"]),
+    "characters": frozenset(["Gordon Dane", "Captain Science"]),
     "credits": [
         {"person": "Joe Orlando", "role": "Writer"},
         {"person": "Wally Wood", "role": "Penciller"},
         {"person": "Wally Wood", "role": "Inker"},
     ],
     "ext": "cbr",
-    "genres": set(["Science Fiction"]),
+    "genres": frozenset(["Science Fiction"]),
     "pages": [
         {"Image": "0", "ImageSize": "429985", "Type": "FrontCover"},
         {"Image": "1", "ImageSize": "332936"},

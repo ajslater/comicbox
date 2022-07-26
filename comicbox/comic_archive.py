@@ -10,6 +10,7 @@ import zipfile
 from functools import wraps
 from logging import getLogger
 from pathlib import Path
+from tarfile import TarInfo
 from typing import Callable
 from typing import Optional
 from typing import Union
@@ -56,9 +57,9 @@ class ComicArchive:
     """
 
     PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
-    FILENAMES = set((CoMet.FILENAME, ComicInfoXml.FILENAME))
-    _PAGE_KEYS = set(("page_count", "cover_image"))
-    _PAGES_KEYS = set(("pages",)) | _PAGE_KEYS
+    FILENAMES = frozenset((CoMet.FILENAME, ComicInfoXml.FILENAME))
+    _PAGE_KEYS = frozenset(("page_count", "cover_image"))
+    _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
     _RAW_CBI_KEY = "ComicBookInfo Archive Comment"
     _RAW_FILENAME_KEY = "Filename"
 
@@ -144,7 +145,7 @@ class ComicArchive:
     def _archive_readfile(self, filename) -> bytes:
         """Read an archive file to memory."""
         archive = self._get_archive()
-        data = None
+        data = b""
         if isinstance(archive, tarfile.TarFile):
             file_obj = archive.extractfile(filename)
             if file_obj:
@@ -310,6 +311,10 @@ class ComicArchive:
         data = self._archive_readfile(filename)
         return data
 
+    def _extract_page(self, path, fn):
+        with path.open("wb") as page_file:
+            page_file.write(self._archive_readfile(fn))
+
     @_archive_close
     def extract_pages(self, page_from, root_path="."):
         """Extract pages from archive and write to a path."""
@@ -327,8 +332,7 @@ class ComicArchive:
                     LOG.info(f"Not extracting page from {self._path}: {fn}")
                     continue
                 full_path = Path(root_path) / Path(fn).name
-                with full_path.open("wb") as page_file:
-                    page_file.write(self._archive_readfile(fn))
+                self._extract_page(full_path, fn)
 
     @_archive_close
     def extract_cover_as(self, path):
@@ -336,6 +340,7 @@ class ComicArchive:
         self._ensure_page_metadata()
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
+            LOG.warning(f"{self._path} could not find cover filename")
             return
         if self._config.dry_run:
             LOG.info(f"Not extracting cover from {self._path}: {cover_fn}")
@@ -343,8 +348,7 @@ class ComicArchive:
         output_path = Path(path)
         if output_path.is_dir():
             output_path = output_path / Path(cover_fn).name
-        with output_path.open("wb") as cover_file:
-            cover_file.write(self._archive_readfile(cover_fn))
+        self._extract_page(output_path, cover_fn)
 
     @_archive_close
     def get_cover_image(self):
@@ -352,6 +356,7 @@ class ComicArchive:
         self._ensure_page_metadata()
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
+            LOG.warning(f"{self._path} could not find cover filename")
             return
         data = None
         try:
@@ -364,7 +369,7 @@ class ComicArchive:
     def get_metadata(self):
         """Return the metadata from the archive."""
         if not self._metadata.metadata or bool(
-            set(self._metadata.metadata.keys()) - self._PAGES_KEYS
+            frozenset(self._metadata.metadata.keys()) - self._PAGES_KEYS
         ):
             self._parse_metadata()
         return self._metadata.metadata
@@ -398,6 +403,12 @@ class ComicArchive:
                 skipnames.add(self.FILENAMES)
             infolist, fn_attr = self._archive_infolist()
             for info in infolist:
+                if isinstance(info, TarInfo):
+                    if not info.size:
+                        continue
+                elif not info.file_size:
+                    # don't try to recompress empty dirs
+                    continue
                 fn = getattr(info, fn_attr)
                 if fn.lower() in skipnames:
                     continue

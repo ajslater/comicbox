@@ -128,7 +128,7 @@ class ComicInfoXml(ComicXml):
                 elif to_tag in self.DECIMAL_TAGS:
                     val = self.parse_decimal(val)
                 elif to_tag in self.STR_SET_TAGS:
-                    val = set([item.strip() for item in val.split(",")])
+                    val = frozenset([item.strip() for item in val.split(",")])
                     if len(val) == 0:
                         continue
                 # special bool tags
@@ -239,7 +239,7 @@ class ComicInfoXml(ComicXml):
                     and index <= num_pages
                 ):
                     coverlist.add(self._page_filenames[index])
-        return coverlist
+        return frozenset(coverlist)
 
     def compute_pages_tags(self, infolist):
         """Recompute the page tags with actual image sizes."""

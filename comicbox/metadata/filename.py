@@ -49,6 +49,11 @@ def issue_count(text):
     return int(text)
 
 
+@with_pattern(r"([^\.\s]*)$")
+def ext(text):
+    return text
+
+
 def compile_parsers(patterns):
     """Compile patterns into parsers without spewing debug logs."""
     from logging import getLogger
@@ -65,6 +70,7 @@ def compile_parsers(patterns):
                     "volume": volume,
                     "year": year,
                     "issue_count": issue_count,
+                    "ext": ext,
                 },
             )
             for pattern in patterns
@@ -77,41 +83,45 @@ def compile_parsers(patterns):
 class FilenameMetadata(ComicBaseMetadata):
     """Extract metadata from the filename."""
 
-    ALL_FIELDS = set(["series", "volume", "issue", "issue_count", "year", "ext"])
+    ALL_FIELDS = frozenset(["series", "volume", "issue", "issue_count", "year", "ext"])
     FIELD_SCHEMA = {key: None for key in ALL_FIELDS}
     # The order of these patterns is very important as patterns farther down
     # match after patterns at the top.
 
     PATTERNS = (
-        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
-        "{series} {issue:issue} {year:year} {remainder}.{ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
+        + ".{ext:ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
+        "{series} {issue:issue} {year:year} {remainder}.{ext:ext}",
         "{series} {issue:issue} {issue_count:issue_count} {year:year} "
-        "{remainder}.{ext}",
-        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {year:year} {issue:issue} {title} {remainder}.{ext}",
-        "{series} {volume:volume}{garbage}{year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {year:year} {issue:issue} {remainder}.{ext}",
-        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}.{ext}"
-        "{series} {volume:volume} {issue:issue}.{ext}"
-        "{series} {volume:volume} {title} {year:year} {remainder}.{ext}"
+        "{remainder}.{ext:ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
+        + ".{ext:ext}",
+        "{series} {volume:volume} {year:year} {issue:issue} {title} {remainder}"
+        + ".{ext:ext}",
+        "{series} {volume:volume}{garbage}{year:year} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {year:year} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {year:year} {issue:issue} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
+        + ".{ext:ext}"
+        "{series} {volume:volume} {issue:issue}.{ext:ext}"
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}"
         "{series} {issue:issue} {issue_count:issue_count} {year:year} "
-        "{remainder}.{ext}",
-        "{series} {issue:issue} {issue_count:issue_count} {remainder}.{ext}",
-        "{series} {issue:issue} {year:year}.{ext}",
-        "{series} {issue:issue} {year:year} {remainder}.{ext}",
-        "{series} {year:year} {issue:issue} {remainder}.{ext}",
-        "{series} {year:year} {remainder}.{ext}",
-        "{series} {volume:volume} {issue:issue}.{ext}",
-        "{series} {volume:volume} {issue:issue} {remainder}.{ext}",
-        "{series} {issue:issue} {remainder}.{ext}",
-        "{series} {issue:issue}.{ext}",
-        "{series}.{ext}",
-        "{issue:issue} {series}.{ext}",
-        "{issue:issue} {series} {remainder}.{ext}",
+        "{remainder}.{ext:ext}",
+        "{series} {issue:issue} {issue_count:issue_count} {remainder}.{ext:ext}",
+        "{series} {issue:issue} {year:year}.{ext:ext}",
+        "{series} {issue:issue} {year:year} {remainder}.{ext:ext}",
+        "{series} {year:year} {issue:issue} {remainder}.{ext:ext}",
+        "{series} {year:year} {remainder}.{ext:ext}",
+        "{series} {volume:volume} {issue:issue}.{ext:ext}",
+        "{series} {volume:volume} {issue:issue} {remainder}.{ext:ext}",
+        "{series} {issue:issue} {remainder}.{ext:ext}",
+        "{series} {issue:issue}.{ext:ext}",
+        "{series}.{ext:ext}",
+        "{issue:issue} {series}.{ext:ext}",
+        "{issue:issue} {series} {remainder}.{ext:ext}",
     )
 
     PATTERN_MAX_MATCHES = tuple([pattern.count("}") for pattern in PATTERNS])

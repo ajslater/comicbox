@@ -14,15 +14,15 @@ class ComicXml(ComicBaseMetadata):
 
     XML_HEADER = '<?xml version="1.0"?>'
     CREDIT_TAGS = {
-        "Colorist": set(["colorist", "colourist", "colorer", "colourer"]),
-        "CoverArtist": set(
+        "Colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
+        "CoverArtist": frozenset(
             ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
         ),
-        "Editor": set(["editor"]),
-        "Inker": set(["inker", "artist", "finishes"]),
-        "Letterer": set(["letterer"]),
-        "Penciller": set(["artist", "penciller", "penciler", "breakdowns"]),
-        "Writer": set(["writer", "plotter", "scripter", "creator"]),
+        "Editor": frozenset(["editor"]),
+        "Inker": frozenset(["inker", "artist", "finishes"]),
+        "Letterer": frozenset(["letterer"]),
+        "Penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
+        "Writer": frozenset(["writer", "plotter", "scripter", "creator"]),
     }
 
     ROOT_TAG = ""

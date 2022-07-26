@@ -20,7 +20,7 @@ METADATA = {
     "publisher": "Youthful Adventure Stories",
     "month": 11,
     "year": 1950,
-    "genres": set(["Science Fiction"]),
+    "genres": frozenset(["Science Fiction"]),
     "volume": 1950,
     "credits": [
         {"person": "Wally Wood", "role": "Artist"},

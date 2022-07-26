@@ -49,7 +49,7 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-d",
-        "--dest_path",
+        "--dest-path",
         type=Path,
         help="destination path for extracting pages and metadata.",
     )
@@ -72,7 +72,7 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-y",
-        "--dry_run",
+        "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
@@ -117,7 +117,7 @@ def get_args(params=None) -> Namespace:
         help="Rename the file with our preferred schema.",
     )
     parser.add_argument(
-        "--delete_tags", action="store_true", help="Delete all tags from archive."
+        "--delete-tags", action="store_true", help="Delete all tags from archive."
     )
 
     ###########
