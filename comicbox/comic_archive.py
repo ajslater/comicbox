@@ -8,12 +8,14 @@ import tarfile
 import zipfile
 
 from functools import wraps
+from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
 from tarfile import TarInfo
 from typing import Callable
 from typing import Optional
 from typing import Union
+from xml.etree.ElementTree import ParseError
 
 import rarfile
 
@@ -458,10 +460,6 @@ class ComicArchive:
 
     def import_file(self, filename):
         """Try to import metada from a file and then write it into the comic."""
-        from xml.etree.ElementTree import ParseError
-
-        from simplejson.errors import JSONDecodeError
-
         path = Path(filename)
         success_class = None
         md = None

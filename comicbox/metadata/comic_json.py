@@ -1,9 +1,7 @@
 """Comic JSON superclass."""
+import json
+
 from logging import getLogger
-
-import simplejson as json
-
-from simplejson.errors import JSONDecodeError
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
@@ -30,7 +28,7 @@ class ComicJSON(ComicBaseMetadata):
                 return
             json_obj = json.loads(json_str)
             self._from_json(json_obj)
-        except JSONDecodeError as exc:
+        except json.JSONDecodeError as exc:
             LOG.error(f"{self.path} {exc}")
 
     def from_file(self, filename):
