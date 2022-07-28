@@ -156,7 +156,6 @@ class ComicArchive:
 
     def _get_raw_files_metadata(self):
         """Get raw metadata from files in the archive."""
-
         # create parser_classes_dict
         all_parser_classes = {
             CoMet: self._config.comet,

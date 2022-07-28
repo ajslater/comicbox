@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.5.4
+
+- Internal improvements
+
 ## v0.5.3
 
 - Fix

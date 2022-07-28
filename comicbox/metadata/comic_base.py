@@ -203,7 +203,7 @@ class ComicBaseMetadata:
 
     @classmethod
     def remove_volume_prefixes(cls, volume):
-        """Remove common volume prefixes"""
+        """Remove common volume prefixes."""
         lowercase_volume = volume.lower()
         for prefix in cls.VOLUME_PREFIXES:
             if lowercase_volume.startswith(prefix):
@@ -321,70 +321,3 @@ class ComicBaseMetadata:
     def from_file(self, _):
         """Stub method."""
         raise NotImplementedError()
-
-    # SCHEMA = {
-    #    # CIX, CBI AND COMET
-    #    "genre": str,
-    #    "issue": str,
-    #    "credits": [{"name": str, "role": str}],
-    #    "language": str,  # two letter iso code
-    #    "publisher": str,
-    #    "series": str,
-    #    "title": str,
-    #    "volume": int,
-    #    "year": int,
-    #    "month": int,
-    #    "day": int,
-    #    # CIX AND CBI ONLY
-    #    "comments": str,
-    #    "issue_count": int,
-    #    # CIX AND COMET ONLY
-    #    "characters": set,
-    #    "reading_direction": ReadingDirection,
-    #    "age_rating": str,
-    #    "format": str,
-    #    # CBI AND COMET ONLY
-    #    "critical_rating": int, -> dec
-    #    # CIX ONLY
-    #    "alternate_issue": str,
-    #    "alternate_issue_count": int,
-    #    "alternate_series": str,
-    #    "black_and_white": bool,
-    #    "community_rating": dec
-    #    "imprint": str,
-    #    "locations": set,
-    #    "manga": bool,
-    #    "notes": str,
-    #    "pages": [{"page": int, "type": "PageType"}],
-    #    "scan_info": str,
-    #    "series_group": str,
-    #    "story_arc": str,
-    #    "teams": set,
-    #    "web": str,
-    #    # CBI_ONLY
-    #    "country": str,
-    #    "volume_count": int,
-    #    "tags": set,
-    #    # COMET_ONLY
-    #    "cover_image": str,
-    #    "description": str,
-    #    "identifier": str,
-    #    "last_mark": int,
-    #    "price": float,
-    #    "rights": str,
-    #    "page_count": int,
-    #    "is_version_of": str,
-    #    # COMICBOX_ONLY
-    #    "ext": str,
-    #    "remainder": sr
-    # }
-    # SPECIAL_TAGS = (
-    #    "credits",
-    #    "language",
-    #    "country",
-    #    "date",
-    #    "pages",
-    #    "reading_direction",
-    #    "manga",
-    # )
-    # BOOL_TAGS = ("black_and_white", "manga")

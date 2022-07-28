@@ -32,14 +32,20 @@ class ComicInfoXml(ComicXml):
         DELETED = "Deleted"
 
     class YesNoTypes:
+        """Text Boolean Types."""
+
         YES = "Yes"
         NO = "No"
 
     class MangaTypes(YesNoTypes):
+        """Manga Types."""
+
         YES_RTL = "YesAndRightToLeft"
         RTL_VALUES = ("YesRtl".lower(), YES_RTL.lower())
 
     class AgeRatingTypes:
+        """Age Ratings."""
+
         A_18_PLUS = "Adults Only 18+"
         EARLY_CHILDHOOD = "Early Childhood"
         EVERYONE = "Everyone"
@@ -77,7 +83,7 @@ class ComicInfoXml(ComicXml):
         "Imprint": "imprint",
         "Genre": "genres",
         "Web": "web",
-        # "PageCount": None,
+        # PageCount unused
         "LanguageISO": "language",  # two letter in the lang list
         "Format": "format",
         "BlackAndWhite": "black_and_white",
@@ -89,9 +95,9 @@ class ComicInfoXml(ComicXml):
         "StoryArc": "story_arcs",
         "SeriesGroup": "series_groups",
         "AgeRating": "age_rating",
-        # "Pages": None,
+        # Pages unused
         "CommunityRating": "community_rating",
-        # "Credits": "credits",
+        # Credits handled speraately
     }
 
     def _from_xml_credits(self, root):
