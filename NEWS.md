@@ -2,7 +2,9 @@
 
 ## v0.5.4
 
-- Internal improvements
+- Fix
+
+  - Remove uneccissary dependencies
 
 ## v0.5.3
 
