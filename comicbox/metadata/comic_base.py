@@ -236,7 +236,7 @@ class ComicBaseMetadata:
         self.metadata["credits"].append(credit)
 
     def _get_cover_page_filenames_tagged(self):
-        """Overriden by CIX."""
+        """Overridden by CIX."""
         return frozenset()
 
     def get_num_pages(self):

@@ -54,6 +54,7 @@ pytest-monkeytype = "^1.0"
 monkeytype = "^22.2.0"
 vulture = "^2.1"
 radon = "^5.1"
+codespell = "^2.1.0"
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"

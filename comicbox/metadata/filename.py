@@ -55,7 +55,7 @@ def issue_count(text):
 
 @with_pattern(r"([^\.\s]*)$")
 def ext(text):
-    """Last File Exension."""
+    """Last File Extension."""
     return text
 
 

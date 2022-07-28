@@ -17,3 +17,4 @@ if [ "$(uname)" = "Darwin" ]; then
     shfmt -d -i 4 ./*.sh ./**/*.sh
     circleci config check .circleci/config.yml
 fi
+poetry run codespell .
