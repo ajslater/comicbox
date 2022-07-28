@@ -1,3 +1,4 @@
+"""Test getting pages."""
 from pathlib import Path
 
 from comicbox.comic_archive import ComicArchive
@@ -13,15 +14,16 @@ PAGE_FIVE = PAGE_TMPL.format(page_num="05")
 
 
 def test_get_covers():
-    car = ComicArchive(ARCHIVE_PATH)
-    page = car.get_cover_image()
+    """Test getting the cover image."""
     with open(COVER_IMAGE, "rb") as cif:
         image = cif.read()
-
+    with ComicArchive(ARCHIVE_PATH) as car:
+        page = car.get_cover_image()
     assert image == page
 
 
 def test_get_random_page():
+    """Test getting page 5."""
     car = ComicArchive(ARCHIVE_PATH)
     page = car.get_page_by_index(4)
     with open(PAGE_FIVE, "rb") as cif:
@@ -31,6 +33,7 @@ def test_get_random_page():
 
 
 def test_get_pages_after():
+    """Test getting many pages."""
     car = ComicArchive(ARCHIVE_PATH)
     page_num = 33
     pages = car.get_pages(page_num)

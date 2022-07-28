@@ -1,6 +1,5 @@
 """Test filenames with human parsed correct results."""
 
-# {"series": "", "volume": None, "issue": , "issue_count": , "year": , "ext": "cbr"},
 TEST_COMIC_FIELDS = {
     "series": "Long Series Name",
     "issue": "1",
@@ -128,8 +127,6 @@ FNS = {
         "series": "Darkwad",
         "issue": "11",
         "year": 2019,
-        #        "source": "Digital",
-        #        "release": "Zone-Empire",
         "ext": "cbr",
     },
     "Darkwad by Carlos Zemo v01 - Knuckle Fight (2009) (Digital) (Zone-Empire).cbr": {
