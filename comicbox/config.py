@@ -5,10 +5,7 @@ from argparse import Namespace
 from logging import getLogger
 
 from confuse import Configuration
-from confuse.templates import AttrDict
-from confuse.templates import MappingTemplate
-from confuse.templates import Optional
-from confuse.templates import Sequence
+from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
 from comicbox.version import PROGRAM_NAME
 

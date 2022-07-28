@@ -133,3 +133,12 @@ exclude = [
   "typings"
 ]
 useLibraryCodeForTypes = true
+
+[tool.isort]
+profile = "black"
+atomic = true
+lines_after_imports = 2
+lines_between_types = 1
+multi_line_output = 3
+skip = ".git,__pycache__,.pytest_cache,.venv,node_modules,typings"
+color_output = true

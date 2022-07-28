@@ -1,9 +1,7 @@
 """A class to encapsulate CoMet data."""
 from decimal import Decimal
 from logging import getLogger
-from xml.etree.ElementTree import Element
-from xml.etree.ElementTree import ElementTree
-from xml.etree.ElementTree import SubElement
+from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from comicbox.metadata.comic_xml import ComicXml
 

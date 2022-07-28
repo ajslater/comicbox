@@ -12,9 +12,7 @@ from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
 from tarfile import TarInfo
-from typing import Callable
-from typing import Optional
-from typing import Union
+from typing import Callable, Optional, Union
 from xml.etree.ElementTree import ParseError
 
 import rarfile
@@ -26,8 +24,7 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.logging import init_logging
 from comicbox.metadata import comicapi
 from comicbox.metadata.comet import CoMet
-from comicbox.metadata.comic_base import IMAGE_EXT_RE
-from comicbox.metadata.comic_base import ComicBaseMetadata
+from comicbox.metadata.comic_base import IMAGE_EXT_RE, ComicBaseMetadata
 from comicbox.metadata.comic_xml import ComicXml
 from comicbox.metadata.comicbookinfo import ComicBookInfo
 from comicbox.metadata.comicinfoxml import ComicInfoXml

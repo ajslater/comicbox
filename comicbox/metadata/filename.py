@@ -12,8 +12,7 @@ import re
 from logging import getLogger
 from pathlib import Path
 
-from parse import compile
-from parse import with_pattern
+from parse import compile, with_pattern
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 

@@ -2,9 +2,7 @@
 import logging
 import os
 
-from logging import Formatter
-from logging import StreamHandler
-from logging import basicConfig
+from logging import Formatter, StreamHandler, basicConfig
 
 from colors import color
 
@@ -28,6 +26,7 @@ class ColorFormatter(Formatter):
     FORMATTERS = {}
 
     def __init__(self, format, **kwargs):
+        """Set up formatters."""
         super().__init__(**kwargs)
         for level_name, args in self.FORMAT_COLORS.items():
             levelno = getattr(logging, level_name)
@@ -41,6 +40,7 @@ class ColorFormatter(Formatter):
 
 
 def init_logging():
+    """Initialize logging."""
     level = os.environ.get("LOGLEVEL", logging.INFO)
 
     formatter = ColorFormatter(LOG_FMT, style="{", datefmt=DATEFMT)

@@ -3,10 +3,7 @@ from pathlib import Path
 
 from comicbox.metadata.comicbookinfo import ComicBookInfo
 
-from .test_metadata import TEST_FILES_PATH
-from .test_metadata import TMP_ROOT
-from .test_metadata import read_metadata
-from .test_metadata import write_metadata
+from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
 
 FN = Path("Captain Science #001-cbi.cbr")
