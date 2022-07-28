@@ -12,8 +12,7 @@ import re
 from logging import getLogger
 from pathlib import Path
 
-from parse import compile
-from parse import with_pattern
+from parse import compile, with_pattern
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
@@ -23,12 +22,14 @@ LOG = getLogger(__name__)
 
 @with_pattern(r"#?(\d|½)+\.?\d*\w*")
 def issue(text):
+    """Issue number."""
     res = ComicBaseMetadata.parse_issue(text)
     return res
 
 
-@with_pattern(r"vo?l?\.? ?\d+")
+@with_pattern(r"v(?:ol)?\.? ?\d+")
 def volume(text):
+    """Volume number or year."""
     text = text.lstrip("vV")
     text = text.lstrip("oO")
     text = text.lstrip("lL")
@@ -37,13 +38,15 @@ def volume(text):
     return int(text)
 
 
-@with_pattern(r"\(\d\d\d\d\)")
+@with_pattern(r"\(\d{4}\)")
 def year(text):
+    """Year."""
     return int(text[1:-1])
 
 
-@with_pattern(r"\(?of \d+\)")
+@with_pattern(r"\(?of \d+\)?")
 def issue_count(text):
+    """Issue count suffix."""
     text = text.split()[1]
     text = text.rstrip(")")
     return int(text)
@@ -51,6 +54,7 @@ def issue_count(text):
 
 @with_pattern(r"([^\.\s]*)$")
 def ext(text):
+    """Last File Extension."""
     return text
 
 
@@ -144,10 +148,6 @@ class FilenameMetadata(ComicBaseMetadata):
         """Try one parser and return the results as a dict."""
         res = parser.parse(fn)
         if res:
-            # For testing new patterns
-            # from pprint import pprint
-
-            # pprint(res)
             return res.named
         return {}
 

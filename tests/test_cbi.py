@@ -3,10 +3,7 @@ from pathlib import Path
 
 from comicbox.metadata.comicbookinfo import ComicBookInfo
 
-from .test_metadata import TEST_FILES_PATH
-from .test_metadata import TMP_ROOT
-from .test_metadata import read_metadata
-from .test_metadata import write_metadata
+from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
 
 FN = Path("Captain Science #001-cbi.cbr")
@@ -32,13 +29,14 @@ METADATA = {
     "page_count": 36,
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
     "ext": "cbr",
-    # "remainder": "cbi",
 }
 
 
 def test_read_cbi():
+    """Read CBI archive."""
     read_metadata(ARCHIVE_PATH, METADATA)
 
 
 def test_write_cbi():
+    """Write CBI archive."""
     write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, ComicBookInfo)

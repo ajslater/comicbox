@@ -11,15 +11,15 @@ jobs:
           command: docker compose build comicbox-builder
           name: Build Builder
       - run:
+          command: ./docker/docker-compose-exit.sh comicbox-lint
+          name: Comicbox Lint
+      - run:
           command: ./docker/docker-compose-exit.sh comicbox-test
           name: Comicbox Test
       - store_test_results:
           path: test-results/pytest
       - store_artifacts:
           path: test-results/coverage
-      - run:
-          command: ./docker/docker-compose-exit.sh comicbox-lint
-          name: Comicbox Lint
       - run:
           command: ./docker/docker-compose-exit.sh comicbox-build
           name: Build Comicbox Dist

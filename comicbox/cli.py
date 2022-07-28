@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
-from argparse import ArgumentParser
-from argparse import Namespace
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from comicbox.config import get_config

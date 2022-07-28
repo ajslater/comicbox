@@ -3,5 +3,5 @@
 # Good to do before commits
 set -euo pipefail
 ./fix-lint.sh
-./test.sh
 ./lint.sh
+./test.sh

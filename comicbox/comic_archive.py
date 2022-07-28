@@ -8,12 +8,12 @@ import tarfile
 import zipfile
 
 from functools import wraps
+from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
 from tarfile import TarInfo
-from typing import Callable
-from typing import Optional
-from typing import Union
+from typing import Callable, Optional, Union
+from xml.etree.ElementTree import ParseError
 
 import rarfile
 
@@ -24,8 +24,7 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.logging import init_logging
 from comicbox.metadata import comicapi
 from comicbox.metadata.comet import CoMet
-from comicbox.metadata.comic_base import IMAGE_EXT_RE
-from comicbox.metadata.comic_base import ComicBaseMetadata
+from comicbox.metadata.comic_base import IMAGE_EXT_RE, ComicBaseMetadata
 from comicbox.metadata.comic_xml import ComicXml
 from comicbox.metadata.comicbookinfo import ComicBookInfo
 from comicbox.metadata.comicinfoxml import ComicInfoXml
@@ -156,7 +155,6 @@ class ComicArchive:
 
     def _get_raw_files_metadata(self):
         """Get raw metadata from files in the archive."""
-
         # create parser_classes_dict
         all_parser_classes = {
             CoMet: self._config.comet,
@@ -459,10 +457,6 @@ class ComicArchive:
 
     def import_file(self, filename):
         """Try to import metada from a file and then write it into the comic."""
-        from xml.etree.ElementTree import ParseError
-
-        from simplejson.errors import JSONDecodeError
-
         path = Path(filename)
         success_class = None
         md = None

@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.5.4
+
+- Fix
+
+  - Remove uneccissary dependencies
+
 ## v0.5.3
 
 - Fix
@@ -29,7 +35,7 @@
 - Features
 
   - Issues numbers are now strings.
-  - Seperate read metadata option from print metadata action.
+  - Separate read metadata option from print metadata action.
   - Added dry_run option.
   - Namespace config under "comicbox" map to allow inclusion in caller configs.
   - Allow modnames for local config sources, useful when comicbox is a library.
@@ -78,7 +84,7 @@
 - `CoverArtist` replaces `Cover` to standardize more on CIX
 - Better CIX `Manga` parsing
 - Better CIX `BlackAndWhite` parsing
-- Added CIX `AgeRating` valid schema values, unsed.
+- Added CIX `AgeRating` valid schema values, unused.
 - LGPL 3.0
 
 ## v0.2.2
