@@ -4,10 +4,10 @@
 
 - Fix
 
-- Fix dest-path cli argument.
-- Use defusedxml for XML parsing.
-- Fix recursion crash.
-- Log exception during recursion and proceed.
+  - Fix dest-path cli argument.
+  - Use defusedxml for XML parsing.
+  - Fix recursion crash.
+  - Log exception during recursion and proceed.
 
 ## v0.5.4
 
