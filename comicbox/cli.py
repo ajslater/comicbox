@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
 
 from comicbox.config import get_config
 from comicbox.run import Runner
@@ -49,7 +48,7 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "-d",
         "--dest-path",
-        type=Path,
+        type=str,
         help="destination path for extracting pages and metadata.",
     )
     parser.add_argument(

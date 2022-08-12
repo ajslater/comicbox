@@ -2,11 +2,15 @@
 import os
 import sys
 
+from logging import getLogger
 from pathlib import Path
 from pprint import pprint
 
 from comicbox.comic_archive import ComicArchive
 from comicbox.version import VERSION
+
+
+LOG = getLogger(__name__)
 
 
 class Runner:
@@ -57,12 +61,16 @@ class Runner:
         for root, dirnames, filenames in os.walk(path):
             root_path = Path(root)
             for dirname in dirnames:
-                self.recurse(dirname)
+                full_path = root_path / dirname
+                self.recurse(full_path)
             for filename in sorted(filenames):
                 if Path(filename).suffix.lower() not in self.SUFFIXES:
                     continue
                 full_path = root_path / filename
-                self.run_on_file(full_path)
+                try:
+                    self.run_on_file(full_path)
+                except Exception as ex:
+                    LOG.error(f"{full_path}: {ex}")
 
     def run(self):
         """Run actions with config."""
