@@ -35,7 +35,6 @@ rarfile = "^4.0"
 
 [tool.poetry.dev-dependencies]
 bandit = "^1.7.4"
-black = "^22.1"
 codespell = "^2.1.0"
 coverage = { extras = ["toml"], version = "^6.0" }
 deepdiff = "^5.8.0"

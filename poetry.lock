@@ -646,7 +646,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "223a457f7b6d749e14c76f95c39777ad48118b8af11e8544a37a504243c41a03"
+content-hash = "c3bef6a0f5c53f5980e7375221db7915bacda828d9e972c8edeb956d77918d26"
 
 [metadata.files]
 ansicolors = [
