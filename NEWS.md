@@ -1,5 +1,12 @@
 # 📰 News
 
+## v0.5.5
+
+- Fix
+
+ - Fix dest-path cli argument.
+
+
 ## v0.5.4
 
 - Fix
