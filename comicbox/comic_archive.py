@@ -13,11 +13,11 @@ from logging import getLogger
 from pathlib import Path
 from tarfile import TarInfo
 from typing import Callable, Optional, Union
-from xml.etree.ElementTree import ParseError
 
 import rarfile
 
 from confuse import AttrDict
+from defusedxml.ElementTree import ParseError
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError

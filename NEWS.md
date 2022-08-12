@@ -4,8 +4,8 @@
 
 - Fix
 
- - Fix dest-path cli argument.
-
+- Fix dest-path cli argument.
+- Use defusedxml for XML parsing.
 
 ## v0.5.4
 
