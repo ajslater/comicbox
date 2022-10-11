@@ -23,7 +23,7 @@ class ComicXml(ComicBaseMetadata):
         "Inker": frozenset(["inker", "artist", "finishes"]),
         "Letterer": frozenset(["letterer"]),
         "Penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
-        "Writer": frozenset(["writer", "plotter", "scripter", "creator"]),
+        "Writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
     }
 
     ROOT_TAG = ""
