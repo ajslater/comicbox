@@ -38,12 +38,11 @@ bandit = "^1.7.4"
 codespell = "^2.1.0"
 coverage = { extras = ["toml"], version = "^6.0" }
 deepdiff = "^5.8.0"
-eradicate = "^2.1.0"
 flake8 = "^5.0.4"
 flake8-black = "^0.3.2"
 flake8-bugbear = "^22.3"
 flake8-docstrings = "^1.5"
-# flake8-eradicate = "^1.2.1"
+flake8-eradicate = "^1.2.1"
 isort = "^5.10.1"
 pep8-naming = "^0.13.1"
 pyright = "^1.1"
@@ -55,6 +54,10 @@ vulture = "^2.1"
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
+
+[tool.bandit]
+# most options must be on the command line
+exclude = [".venv", "node_modules", "**/__pycache__"]
 
 [tool.black]
 exclude = "/(.git|.mypy_cache|.pytest_cache|.venv|__pycache__|dist|node_modules|test-results|typings)/"
@@ -78,20 +81,14 @@ omit = [
 [tool.coverage.html]
 directory = "test-results/coverage"
 
-[tool.vulture]
-min_confidence = 61
-sort_by_size = true
-exclude = [
-  ".git/",
-  ".mypy_cache/",
-  ".pytest_cache/",
-  ".venv/",
-  "*__pycache__*",
-  "dist/",
-  "node_modules/",
-  "test_results/",
-  "typings/",
-]
+[tool.isort]
+profile = "black"
+atomic = true
+lines_after_imports = 2
+lines_between_types = 1
+multi_line_output = 3
+skip = ".git,__pycache__,.pytest_cache,.venv,node_modules,typings"
+color_output = true
 
 [tool.pytest.ini_options]
 junit_family = "xunit2"
@@ -129,15 +126,17 @@ exclude = [
 ]
 useLibraryCodeForTypes = true
 
-[tool.isort]
-profile = "black"
-atomic = true
-lines_after_imports = 2
-lines_between_types = 1
-multi_line_output = 3
-skip = ".git,__pycache__,.pytest_cache,.venv,node_modules,typings"
-color_output = true
-
-[tool.bandit]
-# most options must be on the command line
-exclude = ["**/__pycache__"]
+[tool.vulture]
+min_confidence = 61
+sort_by_size = true
+exclude = [
+  ".git/",
+  ".mypy_cache/",
+  ".pytest_cache/",
+  ".venv/",
+  "*__pycache__*",
+  "dist/",
+  "node_modules/",
+  "test_results/",
+  "typings/",
+]
