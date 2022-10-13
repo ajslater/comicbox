@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.5.6
+
+- Fix
+
+  - Did not log format conversions.
+
 ## v0.5.5
 
 - Fix
