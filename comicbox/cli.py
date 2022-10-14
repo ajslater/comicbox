@@ -59,7 +59,7 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "--recurse",
         action="store_true",
-        help="Perform seletced actions recursively on a directory.",
+        help="Perform selected actions recursively on a directory.",
     )
     parser.add_argument(
         "-g",
