@@ -5,10 +5,7 @@ from argparse import Namespace
 from logging import getLogger
 
 from confuse import Configuration
-from confuse.templates import AttrDict
-from confuse.templates import MappingTemplate
-from confuse.templates import Optional
-from confuse.templates import Sequence
+from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
 from comicbox.version import PROGRAM_NAME
 
@@ -32,6 +29,7 @@ TEMPLATE = MappingTemplate(
                 "filename": bool,
                 "raw": bool,
                 "recurse": bool,
+                "metadata": dict,
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),
@@ -67,5 +65,5 @@ def get_config(
     if not isinstance(ad, AttrDict):
         raise ValueError()
     if ad.comicbox.paths:
-        ad.comicbox.paths = sorted(set(ad.comicbox.paths))
+        ad.comicbox.paths = sorted(frozenset(ad.comicbox.paths))
     return ad.comicbox

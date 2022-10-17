@@ -6,6 +6,8 @@ from logging import getLogger
 
 import pycountry
 
+from deepdiff.diff import DeepDiff
+
 
 IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
 LOG = getLogger(__name__)
@@ -31,7 +33,7 @@ class ComicBaseMetadata:
             elif val == cls.LTR:
                 return cls.LTR
 
-    STR_SET_TAGS = set(
+    STR_SET_TAGS = frozenset(
         (
             "characters",
             "locations",
@@ -42,18 +44,18 @@ class ComicBaseMetadata:
             "series_groups",
         )
     )
-    BOOL_SET_TAGS = set(("black_and_white",))
-    DICT_LIST_TAGS = set(("credits", "pages"))
-    PYCOUNTRY_TAGS = set(("country", "language"))
-    DECIMAL_TAGS = set(
+    BOOL_SET_TAGS = frozenset(("black_and_white",))
+    DICT_LIST_TAGS = frozenset(("credits", "pages"))
+    PYCOUNTRY_TAGS = frozenset(("country", "language"))
+    DECIMAL_TAGS = frozenset(
         (
             "community_rating",
             "critical_rating",
             "price",
         )
     )
-    ISSUE_TAGS = set(("issue", "alternate_issue"))
-    INT_TAGS = set(
+    ISSUE_TAGS = frozenset(("issue", "alternate_issue"))
+    INT_TAGS = frozenset(
         (
             "day",
             "issue_count",  # cix Count
@@ -70,7 +72,6 @@ class ComicBaseMetadata:
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
-    # _ISSUE_MATCHER = re.compile(r"\d(+.?\d*|)\S*")  # TODO UNUSED
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
@@ -126,50 +127,9 @@ class ComicBaseMetadata:
         else:
             return float(dec)
 
-    @classmethod
-    def _compare_dict_list(cls, list_a, list_b):
-        """Compare lists of dicts."""
-        if list_a is None and list_b is None:
-            return True
-        if list_a is None and list_b or list_b is None and list_a:
-            return False
-        for dict_a in list_a:
-            match = False
-            for dict_b in list_b:
-                if dict_a == dict_b:
-                    match = True
-                    break
-            if not match:
-                LOG.debug("dict_compare: could not find:", dict_a)
-                return False
-        return True
-
-    @classmethod
-    def _compare_metadatas(cls, md_a, md_b):
-        # TODO remove
-        for key, val_a in md_a.items():
-            val_b = md_b.get(key)
-            if key in cls.IGNORE_COMPARE_TAGS:
-                continue
-            if key in cls.DICT_LIST_TAGS:
-                res = cls._compare_dict_list(val_a, val_b)
-                if not res:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-            else:
-                if val_a != val_b:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-        return True
-
     def __eq__(self, obj):
         """== operator."""
-        return self.metadata == obj.metadata
-        # return self._compare_metadatas(
-        #    obj.metadata, self.metadata
-        # ) and self._compare_metadatas(self.metadata, obj.metadata)
+        return bool(DeepDiff(self.metadata, obj.metadata, ignore_order=True))
 
     @classmethod
     def parse_bool(cls, value):
@@ -203,7 +163,7 @@ class ComicBaseMetadata:
 
     @classmethod
     def remove_volume_prefixes(cls, volume):
-        """Remove common volume prefixes"""
+        """Remove common volume prefixes."""
         lowercase_volume = volume.lower()
         for prefix in cls.VOLUME_PREFIXES:
             if lowercase_volume.startswith(prefix):
@@ -222,22 +182,21 @@ class ComicBaseMetadata:
             role = role.strip()
 
         credit = {"person": person, "role": role}
+        if self.metadata.get("credits"):
+            # if we've already added it, return
+            for old_credit in self.metadata["credits"]:
+                if self._credit_key(old_credit) == self._credit_key(credit):
+                    return
+
+        if "credits" not in self.metadata:
+            self.metadata["credits"] = []
         if primary is not None:
             credit["primary"] = primary
-
-        if self.metadata.get("credits") is None:
-            self.metadata["credits"] = []
-
-        # if we've already added it, return
-        for old_credit in self.metadata["credits"]:
-            if self._credit_key(old_credit) == self._credit_key(credit):
-                return
-
         self.metadata["credits"].append(credit)
 
     def _get_cover_page_filenames_tagged(self):
-        """Overriden by CIX."""
-        return set()
+        """Overridden by CIX."""
+        return frozenset()
 
     def get_num_pages(self):
         """Get the number of pages."""
@@ -268,9 +227,6 @@ class ComicBaseMetadata:
             cover_image = self.metadata.get("cover_image")
         if not cover_image and self._page_filenames:
             cover_image = self._page_filenames[0]
-
-        if not cover_image:
-            LOG.warning(f"{self.path} could not find cover filename")
         return cover_image
 
     def get_pagenames_from(self, index_from):
@@ -280,7 +236,7 @@ class ComicBaseMetadata:
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
-        final_credits = {}
+        all_credits_map = {}
         all_tags = {}
         for md in md_list:
             # pop off complex values before simple update
@@ -291,9 +247,9 @@ class ComicBaseMetadata:
                 credits = md.pop("credits")
                 for credit in credits:
                     credit_key = self._credit_key(credit)
-                    if credit_key not in final_credits:
-                        final_credits[credit_key] = {}
-                    final_credits[credit_key].update(credit)
+                    if credit_key not in all_credits_map:
+                        all_credits_map[credit_key] = {}
+                    all_credits_map[credit_key].update(credit)
             except KeyError:
                 pass
             except Exception as exc:
@@ -314,7 +270,9 @@ class ComicBaseMetadata:
                     LOG.warning(f"{self.path} error comibining {tag}: {exc}")
 
             self.metadata.update(md)
-        self.metadata["credits"] = list(final_credits.values())
+        final_credits = sorted(all_credits_map.values(), key=self._credit_key)
+        if final_credits:
+            self.metadata["credits"] = final_credits
         self.metadata.update(all_tags)
 
     def from_string(self, _):
@@ -324,70 +282,3 @@ class ComicBaseMetadata:
     def from_file(self, _):
         """Stub method."""
         raise NotImplementedError()
-
-    # SCHEMA = {
-    #    # CIX, CBI AND COMET
-    #    "genre": str,
-    #    "issue": str,
-    #    "credits": [{"name": str, "role": str}],
-    #    "language": str,  # two letter iso code
-    #    "publisher": str,
-    #    "series": str,
-    #    "title": str,
-    #    "volume": int,
-    #    "year": int,
-    #    "month": int,
-    #    "day": int,
-    #    # CIX AND CBI ONLY
-    #    "comments": str,
-    #    "issue_count": int,
-    #    # CIX AND COMET ONLY
-    #    "characters": set,
-    #    "reading_direction": ReadingDirection,
-    #    "age_rating": str,
-    #    "format": str,
-    #    # CBI AND COMET ONLY
-    #    "critical_rating": int, -> dec
-    #    # CIX ONLY
-    #    "alternate_issue": str,
-    #    "alternate_issue_count": int,
-    #    "alternate_series": str,
-    #    "black_and_white": bool,
-    #    "community_rating": dec
-    #    "imprint": str,
-    #    "locations": set,
-    #    "manga": bool,
-    #    "notes": str,
-    #    "pages": [{"page": int, "type": "PageType"}],
-    #    "scan_info": str,
-    #    "series_group": str,
-    #    "story_arc": str,
-    #    "teams": set,
-    #    "web": str,
-    #    # CBI_ONLY
-    #    "country": str,
-    #    "volume_count": int,
-    #    "tags": set,
-    #    # COMET_ONLY
-    #    "cover_image": str,
-    #    "description": str,
-    #    "identifier": str,
-    #    "last_mark": int,
-    #    "price": float,
-    #    "rights": str,
-    #    "page_count": int,
-    #    "is_version_of": str,
-    #    # COMICBOX_ONLY
-    #    "ext": str,
-    #    "remainder": sr
-    # }
-    # SPECIAL_TAGS = (
-    #    "credits",
-    #    "language",
-    #    "country",
-    #    "date",
-    #    "pages",
-    #    "reading_direction",
-    #    "manga",
-    # )
-    # BOOL_TAGS = ("black_and_white", "manga")

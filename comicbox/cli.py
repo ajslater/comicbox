@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
-from argparse import ArgumentParser
-from argparse import Namespace
-from pathlib import Path
+from argparse import Action, ArgumentParser, Namespace
 
 from comicbox.config import get_config
 from comicbox.run import Runner
+
+
+class KeyValueDictAction(Action):
+    """Parse comma deliminted key value pairs key value."""
+
+    def __call__(self, parser, namespace, values, _option_string=None):
+        """Parse comma deliminated key value pairs."""
+        if values:
+            values = dict(item.split("=") for item in values.split(","))
+        else:
+            values = {}
+        setattr(namespace, self.dest, values)
 
 
 def get_args(params=None) -> Namespace:
@@ -49,8 +59,8 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-d",
-        "--dest_path",
-        type=Path,
+        "--dest-path",
+        type=str,
         help="destination path for extracting pages and metadata.",
     )
     parser.add_argument(
@@ -61,7 +71,7 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "--recurse",
         action="store_true",
-        help="Perform seletced actions recursively on a directory.",
+        help="Perform selected actions recursively on a directory.",
     )
     parser.add_argument(
         "-g",
@@ -72,9 +82,15 @@ def get_args(params=None) -> Namespace:
     )
     parser.add_argument(
         "-y",
-        "--dry_run",
+        "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
+    )
+    parser.add_argument(
+        "-m",
+        "--metadata",
+        action=KeyValueDictAction,
+        help="Set metadata fields key=value,key=value",
     )
 
     ###########
@@ -117,7 +133,7 @@ def get_args(params=None) -> Namespace:
         help="Rename the file with our preferred schema.",
     )
     parser.add_argument(
-        "--delete_tags", action="store_true", help="Delete all tags from archive."
+        "--delete-tags", action="store_true", help="Delete all tags from archive."
     )
 
     ###########

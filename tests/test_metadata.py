@@ -22,7 +22,7 @@ def read_metadata(archive_path, metadata):
     disk_md = disk_car.get_metadata()
     pprint(disk_md)
     pprint(metadata)
-    diff = DeepDiff(disk_md, metadata)
+    diff = DeepDiff(disk_md, metadata, ignore_order=True)
     pprint(diff)
     assert not diff
 
@@ -59,7 +59,7 @@ def write_metadata(tmp_path, new_test_cbz_path, metadata, md_type):
 
     # comparison metadata direct from example data
     disk_md = disk_car.get_metadata()
-    diff = DeepDiff(disk_md, metadata)
+    diff = DeepDiff(disk_md, metadata, ignore_order=True)
     pprint(diff)
     assert not diff
     shutil.rmtree(tmp_path)

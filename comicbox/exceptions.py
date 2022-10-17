@@ -2,4 +2,6 @@
 
 
 class UnsupportedArchiveTypeError(Exception):
+    """Unsupported Archive Type."""
+
     pass

@@ -3,10 +3,7 @@ from pathlib import Path
 
 from comicbox.metadata.comicinfoxml import ComicInfoXml
 
-from .test_metadata import TEST_FILES_PATH
-from .test_metadata import TMP_ROOT
-from .test_metadata import read_metadata
-from .test_metadata import write_metadata
+from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
 
 FN = Path("Captain Science #001-cix-cbi.cbr")
@@ -26,14 +23,14 @@ METADATA = {
     "volume": 1950,
     "language": "en",
     "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-    "characters": set(["Gordon Dane", "Captain Science"]),
+    "characters": frozenset(["Gordon Dane", "Captain Science"]),
     "credits": [
-        {"person": "Joe Orlando", "role": "Writer"},
-        {"person": "Wally Wood", "role": "Penciller"},
-        {"person": "Wally Wood", "role": "Inker"},
+        {"role": "Inker", "person": "Wally Wood"},
+        {"role": "Penciller", "person": "Wally Wood"},
+        {"role": "Writer", "person": "Joe Orlando"},
     ],
     "ext": "cbr",
-    "genres": set(["Science Fiction"]),
+    "genres": frozenset(["Science Fiction"]),
     "pages": [
         {"Image": "0", "ImageSize": "429985", "Type": "FrontCover"},
         {"Image": "1", "ImageSize": "332936"},
@@ -72,19 +69,21 @@ METADATA = {
         {"Image": "34", "ImageSize": "353013"},
         {"Image": "35", "ImageSize": "340840"},
     ],
-    # "remainder": "cix cbi",
     "page_count": 36,
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
 }
 
 
 def test_read_cix_rar():
+    """Read RAR with CIX."""
     read_metadata(ARCHIVE_PATH, METADATA)
 
 
 def text_read_cix_tar():
+    """Read Tarball with CIX."""
     read_metadata(TAR_ARCHIVE_PATH, METADATA)
 
 
 def test_write_cix_from_rar():
+    """Write cbz with CIX."""
     write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, ComicInfoXml)

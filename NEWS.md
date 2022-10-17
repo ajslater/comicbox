@@ -1,6 +1,50 @@
 # 📰 News
 
-## v0.5.1a0
+## v0.6.0
+
+- Features
+
+  - Add --metadata cli action. Injects metadata from cli.
+  - Warn when no actions performed.
+  - == operator for metadata is deep and ignores key order.
+  - Credits are now sorted.
+
+- Fix
+
+  - Log format conversions.
+  - Don't add empty credits list metadata.
+
+## v0.5.5
+
+- Fix
+
+  - Fix dest-path cli argument.
+  - Use defusedxml for XML parsing.
+  - Fix recursion crash.
+  - Log exception during recursion and proceed.
+
+## v0.5.4
+
+- Fix
+
+  - Remove uneccissary dependencies
+
+## v0.5.3
+
+- Fix
+
+  - Fix filename extension parsing
+  - Renamed underscore cli options to use dash instead
+  - Fixed crash when recompressing directories.
+
+## v0.5.2
+
+- Features
+
+  - ComicArchive class now has a context manager
+  - Removed as_pil() methods for pages and covers
+
+## v0.5.1
 
 - Features
 
@@ -14,7 +58,7 @@
 - Features
 
   - Issues numbers are now strings.
-  - Seperate read metadata option from print metadata action.
+  - Separate read metadata option from print metadata action.
   - Added dry_run option.
   - Namespace config under "comicbox" map to allow inclusion in caller configs.
   - Allow modnames for local config sources, useful when comicbox is a library.
@@ -63,7 +107,7 @@
 - `CoverArtist` replaces `Cover` to standardize more on CIX
 - Better CIX `Manga` parsing
 - Better CIX `BlackAndWhite` parsing
-- Added CIX `AgeRating` valid schema values, unsed.
+- Added CIX `AgeRating` valid schema values, unused.
 - LGPL 3.0
 
 ## v0.2.2

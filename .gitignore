@@ -134,6 +134,7 @@ dmypy.json
 .coverage*
 .mypy_cache
 .picopt_timestamp
+.pypirc
 monkeytype.sqlite3
 node_modules
 test-results

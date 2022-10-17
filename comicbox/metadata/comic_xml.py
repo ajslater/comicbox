@@ -1,7 +1,8 @@
 """XML Metadata parser superclass."""
 from logging import getLogger
 from xml.etree import ElementTree
-from xml.etree.ElementTree import ParseError
+
+from defusedxml.ElementTree import ParseError, fromstring, parse
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
@@ -14,15 +15,15 @@ class ComicXml(ComicBaseMetadata):
 
     XML_HEADER = '<?xml version="1.0"?>'
     CREDIT_TAGS = {
-        "Colorist": set(["colorist", "colourist", "colorer", "colourer"]),
-        "CoverArtist": set(
+        "Colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
+        "CoverArtist": frozenset(
             ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
         ),
-        "Editor": set(["editor"]),
-        "Inker": set(["inker", "artist", "finishes"]),
-        "Letterer": set(["letterer"]),
-        "Penciller": set(["artist", "penciller", "penciler", "breakdowns"]),
-        "Writer": set(["writer", "plotter", "scripter", "creator"]),
+        "Editor": frozenset(["editor"]),
+        "Inker": frozenset(["inker", "artist", "finishes"]),
+        "Letterer": frozenset(["letterer"]),
+        "Penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
+        "Writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
     }
 
     ROOT_TAG = ""
@@ -39,13 +40,14 @@ class ComicXml(ComicBaseMetadata):
         raise NotImplementedError()
 
     def _to_xml(self):
-        """Exxport metadata to xml."""
+        """Export metadata to xml."""
         raise NotImplementedError()
 
     def from_string(self, xml_str):
         """Parse an xml string into metadata."""
+        # Use defusedxml for safety.
         try:
-            element = ElementTree.fromstring(xml_str)
+            element = fromstring(xml_str)
             tree = ElementTree.ElementTree(element)
             self._from_xml(tree)
         except ParseError as exc:
@@ -53,7 +55,7 @@ class ComicXml(ComicBaseMetadata):
 
     def from_file(self, filename):
         """Read metadata from a file."""
-        tree = ElementTree.parse(filename)
+        tree = parse(filename)
         self._from_xml(tree)
 
     def to_string(self):
