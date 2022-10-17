@@ -25,9 +25,9 @@ METADATA = {
     "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
     "characters": frozenset(["Gordon Dane", "Captain Science"]),
     "credits": [
-        {"person": "Joe Orlando", "role": "Writer"},
-        {"person": "Wally Wood", "role": "Penciller"},
-        {"person": "Wally Wood", "role": "Inker"},
+        {"role": "Inker", "person": "Wally Wood"},
+        {"role": "Penciller", "person": "Wally Wood"},
+        {"role": "Writer", "person": "Joe Orlando"},
     ],
     "ext": "cbr",
     "genres": frozenset(["Science Fiction"]),

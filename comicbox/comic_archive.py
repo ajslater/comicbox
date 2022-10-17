@@ -250,6 +250,8 @@ class ComicArchive:
         cix_md = files_md.get(ComicInfoXml)
         if cix_md:
             md_list += [cix_md]
+        if self._config.metadata:
+            md_list += [self._config.metadata]
         # order of the md list is very important, lowest to highest
         # precedence.
         self._metadata.synthesize_metadata(md_list)

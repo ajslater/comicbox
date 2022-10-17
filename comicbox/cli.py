@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """Cli for comicbox."""
-from argparse import ArgumentParser, Namespace
+from argparse import Action, ArgumentParser, Namespace
 
 from comicbox.config import get_config
 from comicbox.run import Runner
+
+
+class KeyValueDictAction(Action):
+    """Parse comma deliminted key value pairs key value."""
+
+    def __call__(self, parser, namespace, values, _option_string=None):
+        """Parse comma deliminated key value pairs."""
+        if values:
+            values = dict(item.split("=") for item in values.split(","))
+        else:
+            values = {}
+        setattr(namespace, self.dest, values)
 
 
 def get_args(params=None) -> Namespace:
@@ -73,6 +85,12 @@ def get_args(params=None) -> Namespace:
         "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
+    )
+    parser.add_argument(
+        "-m",
+        "--metadata",
+        action=KeyValueDictAction,
+        help="Set metadata fields key=value,key=value",
     )
 
     ###########
