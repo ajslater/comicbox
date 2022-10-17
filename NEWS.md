@@ -1,5 +1,19 @@
 # 📰 News
 
+## v0.6.0
+
+- Features
+
+  - Add --metadata cli action. Injects metadata from cli.
+  - Warn when no actions performed.
+  - == operator for metadata is deep and ignores key order.
+  - Credits are now sorted.
+
+- Fix
+
+  - Log format conversions.
+  - Don't add empty credits list metadata.
+
 ## v0.5.5
 
 - Fix

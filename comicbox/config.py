@@ -29,6 +29,7 @@ TEMPLATE = MappingTemplate(
                 "filename": bool,
                 "raw": bool,
                 "recurse": bool,
+                "metadata": dict,
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),

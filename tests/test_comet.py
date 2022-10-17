@@ -20,8 +20,8 @@ METADATA = {
     "language": "en",
     "characters": frozenset(["Captain Science", "Gordon Dane"]),
     "credits": [
-        {"person": "Joe Orlando", "role": "writer"},
         {"person": "Wally Wood", "role": "penciller"},
+        {"person": "Joe Orlando", "role": "writer"},
     ],
     "ext": "cbz",
     "genres": frozenset(["Science Fiction"]),

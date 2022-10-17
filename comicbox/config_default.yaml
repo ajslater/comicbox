@@ -11,6 +11,7 @@ comicbox:
   filename: True
   raw: False
   recurse: False
+  metadata: {}
   # Actions
   cbz: False
   covers: False

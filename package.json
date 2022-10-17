@@ -7,7 +7,7 @@
     "lint": "eslint_d --cache --ext .cjs,.mjs.js,.json,.yaml,.md ."
   },
   "devDependencies": {
-    "@fsouza/prettierd": "^0.21.1",
+    "@fsouza/prettierd": "^0.22.3",
     "@prettier/plugin-xml": "^2.0.1",
     "eslint": "^8.5.0",
     "eslint-config-prettier": "^8.3.0",
@@ -27,10 +27,10 @@
     "eslint-plugin-promise": "^6.0.0",
     "eslint-plugin-scanjs-rules": "^0.2.1",
     "eslint-plugin-security": "^1.4.0",
-    "eslint-plugin-simple-import-sort": "^7.0.0",
-    "eslint-plugin-sonarjs": "^0.15.0",
+    "eslint-plugin-simple-import-sort": "^8.0.0",
+    "eslint-plugin-sonarjs": "^0.16.0",
     "eslint-plugin-switch-case": "^1.1.2",
-    "eslint-plugin-unicorn": "^43.0.0",
+    "eslint-plugin-unicorn": "^44.0.2",
     "eslint-plugin-yaml": "^0.5.0",
     "eslint_d": "^12.0.0",
     "prettier": "^2.5.1",
@@ -41,8 +41,7 @@
     "remark-preset-lint-consistent": "^5.1.1",
     "remark-preset-lint-markdown-style-guide": "^5.1.2",
     "remark-preset-lint-recommended": "^6.1.2",
-    "remark-preset-prettier": "^1.0.0",
-    "remark-toc": "^8.0.1"
+    "remark-preset-prettier": "^2.0.1"
   },
   "prettier": {
     "trailingComma": "es5",

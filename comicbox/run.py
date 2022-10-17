@@ -21,6 +21,7 @@ class Runner:
     def __init__(self, config):
         """Initialize actions and config."""
         self.config = config
+        self.noop = True
 
     def run_on_file(self, path):
         """Run operations on one file."""
@@ -34,20 +35,28 @@ class Runner:
         car = ComicArchive(path, config=self.config)
         if self.config.raw:
             car.print_raw()
+            self.noop = False
         if self.config.print:
             pprint(car.get_metadata())
+            self.noop = False
         if self.config.covers:
             car.extract_cover_as(self.config.dest_path)
+            self.noop = False
         if self.config.index_from:
             car.extract_pages(self.config.index_from, self.config.dest_path)
+            self.noop = False
         if self.config.export:
             car.export_files()
+            self.noop = False
         if self.config.cbz or self.config.delete_tags:
             car.recompress()
+            self.noop = False
         if self.config.import_fn:
             car.import_file(self.config.import_fn)
+            self.noop = False
         if self.config.rename:
             car.rename_file()
+            self.noop = False
 
     def recurse(self, path):
         """Perform operations recursively on files."""
@@ -85,3 +94,6 @@ class Runner:
 
         for path in self.config.paths:
             self.run_on_file(Path(path))
+
+        if self.noop:
+            print("No action performed")

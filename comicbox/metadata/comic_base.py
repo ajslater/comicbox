@@ -6,6 +6,8 @@ from logging import getLogger
 
 import pycountry
 
+from deepdiff.diff import DeepDiff
+
 
 IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
 LOG = getLogger(__name__)
@@ -70,7 +72,6 @@ class ComicBaseMetadata:
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
-    # _ISSUE_MATCHER = re.compile(r"\d(+.?\d*|)\S*")  # TODO UNUSED
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
@@ -126,50 +127,9 @@ class ComicBaseMetadata:
         else:
             return float(dec)
 
-    @classmethod
-    def _compare_dict_list(cls, list_a, list_b):
-        """Compare lists of dicts."""
-        if list_a is None and list_b is None:
-            return True
-        if list_a is None and list_b or list_b is None and list_a:
-            return False
-        for dict_a in list_a:
-            match = False
-            for dict_b in list_b:
-                if dict_a == dict_b:
-                    match = True
-                    break
-            if not match:
-                LOG.debug("dict_compare: could not find:", dict_a)
-                return False
-        return True
-
-    @classmethod
-    def _compare_metadatas(cls, md_a, md_b):
-        # TODO remove
-        for key, val_a in md_a.items():
-            val_b = md_b.get(key)
-            if key in cls.IGNORE_COMPARE_TAGS:
-                continue
-            if key in cls.DICT_LIST_TAGS:
-                res = cls._compare_dict_list(val_a, val_b)
-                if not res:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-            else:
-                if val_a != val_b:
-                    LOG.debug(f"compare metatada: {key} {val_a} != {val_b}")
-                    print(f"compare metatada: {key} {val_a} != {val_b}")
-                    return False
-        return True
-
     def __eq__(self, obj):
         """== operator."""
-        return self.metadata == obj.metadata
-        # return self._compare_metadatas(
-        #    obj.metadata, self.metadata
-        # ) and self._compare_metadatas(self.metadata, obj.metadata)
+        return bool(DeepDiff(self.metadata, obj.metadata, ignore_order=True))
 
     @classmethod
     def parse_bool(cls, value):
@@ -222,17 +182,16 @@ class ComicBaseMetadata:
             role = role.strip()
 
         credit = {"person": person, "role": role}
+        if self.metadata.get("credits"):
+            # if we've already added it, return
+            for old_credit in self.metadata["credits"]:
+                if self._credit_key(old_credit) == self._credit_key(credit):
+                    return
+
+        if "credits" not in self.metadata:
+            self.metadata["credits"] = []
         if primary is not None:
             credit["primary"] = primary
-
-        if self.metadata.get("credits") is None:
-            self.metadata["credits"] = []
-
-        # if we've already added it, return
-        for old_credit in self.metadata["credits"]:
-            if self._credit_key(old_credit) == self._credit_key(credit):
-                return
-
         self.metadata["credits"].append(credit)
 
     def _get_cover_page_filenames_tagged(self):
@@ -277,7 +236,7 @@ class ComicBaseMetadata:
 
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
-        final_credits = {}
+        all_credits_map = {}
         all_tags = {}
         for md in md_list:
             # pop off complex values before simple update
@@ -288,9 +247,9 @@ class ComicBaseMetadata:
                 credits = md.pop("credits")
                 for credit in credits:
                     credit_key = self._credit_key(credit)
-                    if credit_key not in final_credits:
-                        final_credits[credit_key] = {}
-                    final_credits[credit_key].update(credit)
+                    if credit_key not in all_credits_map:
+                        all_credits_map[credit_key] = {}
+                    all_credits_map[credit_key].update(credit)
             except KeyError:
                 pass
             except Exception as exc:
@@ -308,10 +267,12 @@ class ComicBaseMetadata:
                 except KeyError:
                     pass
                 except Exception as exc:
-                    LOG.warning(f"{self.path} error comibining {tag}: {exc}")
+                    LOG.warning(f"{self.path} error combining {tag}: {exc}")
 
             self.metadata.update(md)
-        self.metadata["credits"] = list(final_credits.values())
+        final_credits = list(all_credits_map.values())
+        if final_credits:
+            self.metadata["credits"] = final_credits
         self.metadata.update(all_tags)
 
     def from_string(self, _):
