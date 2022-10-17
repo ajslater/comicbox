@@ -267,10 +267,10 @@ class ComicBaseMetadata:
                 except KeyError:
                     pass
                 except Exception as exc:
-                    LOG.warning(f"{self.path} error comibining {tag}: {exc}")
+                    LOG.warning(f"{self.path} error combining {tag}: {exc}")
 
             self.metadata.update(md)
-        final_credits = sorted(all_credits_map.values(), key=self._credit_key)
+        final_credits = list(all_credits_map.values())
         if final_credits:
             self.metadata["credits"] = final_credits
         self.metadata.update(all_tags)
