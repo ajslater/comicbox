@@ -208,7 +208,7 @@ class ComicArchive:
         data = self._get_raw_archive_comment()
         if not data:
             return {}
-        parser = ComicBookInfo(string=data)
+        parser = ComicBookInfo(string=data, path=self._path)
         return parser.metadata
 
     def _get_raw_filename(self):
@@ -489,7 +489,7 @@ class ComicArchive:
         """Recompute the tag image sizes for ComicRack."""
         infolist, _ = self._archive_infolist()
         metadata = self.get_metadata()
-        parser = ComicInfoXml(metadata=metadata)
+        parser = ComicInfoXml(metadata=metadata, path=self._path)
         parser.compute_pages_tags(infolist)
         self._metadata.metadata["pages"] = parser.metadata.get("pages")
 

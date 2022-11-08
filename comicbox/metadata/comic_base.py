@@ -80,13 +80,10 @@ class ComicBaseMetadata:
         self.path = path
         if metadata is not None:
             self.metadata = metadata
-            return
         elif string is not None:
             self.from_string(string)
-            return
         elif path is not None:
             self.from_file(path)
-            return
 
     @staticmethod
     def _credit_key(credit):

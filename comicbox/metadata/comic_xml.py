@@ -51,7 +51,7 @@ class ComicXml(ComicBaseMetadata):
             tree = ElementTree.ElementTree(element)
             self._from_xml(tree)
         except ParseError as exc:
-            LOG.error(f"{self.path} {exc}")
+            LOG.error(f"{self.path} {type(exc).__name__} {exc}")
 
     def from_file(self, filename):
         """Read metadata from a file."""
