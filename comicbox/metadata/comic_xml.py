@@ -62,7 +62,7 @@ class ComicXml(ComicBaseMetadata):
         """Return metadata as an xml string."""
         tree = self._to_xml()
         root = self._get_xml_root(tree)
-        tree_str = ElementTree.tostring(root).decode()
+        tree_str = ElementTree.tostring(root).decode(errors="replace")
         xml_str = self.XML_HEADER + "\n" + tree_str
         return xml_str
 

@@ -197,7 +197,8 @@ class ComicArchive:
         ):
             comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, bytes):
-                comment = comment.decode()
+                comment = comment.decode(errors="replace")
+                print(comment)
             if comment:
                 self._raw[self._RAW_CBI_KEY] = comment
         return self._raw.get(self._RAW_CBI_KEY)
@@ -269,7 +270,7 @@ class ComicArchive:
             raise ValueError("Cannot write ComicBookInfo comments to cbt tarfile.")
         self.close()
         with self._archive_cls(self._path, "a") as append_archive:
-            comment = parser.to_string().encode()
+            comment = parser.to_string().encode(errors="replace")
             append_archive.comment = comment  # type: ignore
 
     def close(self):
@@ -391,7 +392,7 @@ class ComicArchive:
             if not self._config.delete_tags:
                 comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, str):
-                comment = comment.encode()
+                comment = comment.encode(errors="replace")
 
         with zipfile.ZipFile(
             tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
@@ -508,7 +509,7 @@ class ComicArchive:
         for key, val in self._raw.items():
             print("-" * 10, key, "-" * 10)
             if isinstance(val, bytes):
-                val = val.decode()
+                val = val.decode(errors="replace")
             print(val)
 
     def get_path(self):

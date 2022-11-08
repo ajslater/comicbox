@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.6.1
+
+- Fix
+
+  - Fix encoding/decoding crash by replacing uncodable utf-8 characters.
+
 ## v0.6.0
 
 - Features
