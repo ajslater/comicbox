@@ -198,7 +198,6 @@ class ComicArchive:
             comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, bytes):
                 comment = comment.decode(errors="replace")
-                print(comment)
             if comment:
                 self._raw[self._RAW_CBI_KEY] = comment
         return self._raw.get(self._RAW_CBI_KEY)
