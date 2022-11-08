@@ -78,8 +78,8 @@ class Runner:
                 full_path = root_path / filename
                 try:
                     self.run_on_file(full_path)
-                except Exception as ex:
-                    LOG.error(f"{full_path}: {ex}")
+                except Exception as exc:
+                    LOG.error(f"{full_path}: {type(exc).__name__} {exc}")
 
     def run(self):
         """Run actions with config."""

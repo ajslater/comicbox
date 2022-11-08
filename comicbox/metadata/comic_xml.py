@@ -51,7 +51,7 @@ class ComicXml(ComicBaseMetadata):
             tree = ElementTree.ElementTree(element)
             self._from_xml(tree)
         except ParseError as exc:
-            LOG.error(f"{self.path} {exc}")
+            LOG.error(f"{self.path} {type(exc).__name__} {exc}")
 
     def from_file(self, filename):
         """Read metadata from a file."""
@@ -62,7 +62,7 @@ class ComicXml(ComicBaseMetadata):
         """Return metadata as an xml string."""
         tree = self._to_xml()
         root = self._get_xml_root(tree)
-        tree_str = ElementTree.tostring(root).decode()
+        tree_str = ElementTree.tostring(root).decode(errors="replace")
         xml_str = self.XML_HEADER + "\n" + tree_str
         return xml_str
 

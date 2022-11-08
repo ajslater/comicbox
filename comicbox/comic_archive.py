@@ -197,7 +197,7 @@ class ComicArchive:
         ):
             comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, bytes):
-                comment = comment.decode()
+                comment = comment.decode(errors="replace")
             if comment:
                 self._raw[self._RAW_CBI_KEY] = comment
         return self._raw.get(self._RAW_CBI_KEY)
@@ -207,7 +207,7 @@ class ComicArchive:
         data = self._get_raw_archive_comment()
         if not data:
             return {}
-        parser = ComicBookInfo(string=data)
+        parser = ComicBookInfo(string=data, path=self._path)
         return parser.metadata
 
     def _get_raw_filename(self):
@@ -269,7 +269,7 @@ class ComicArchive:
             raise ValueError("Cannot write ComicBookInfo comments to cbt tarfile.")
         self.close()
         with self._archive_cls(self._path, "a") as append_archive:
-            comment = parser.to_string().encode()
+            comment = parser.to_string().encode(errors="replace")
             append_archive.comment = comment  # type: ignore
 
     def close(self):
@@ -391,7 +391,7 @@ class ComicArchive:
             if not self._config.delete_tags:
                 comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, str):
-                comment = comment.encode()
+                comment = comment.encode(errors="replace")
 
         with zipfile.ZipFile(
             tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
@@ -488,7 +488,7 @@ class ComicArchive:
         """Recompute the tag image sizes for ComicRack."""
         infolist, _ = self._archive_infolist()
         metadata = self.get_metadata()
-        parser = ComicInfoXml(metadata=metadata)
+        parser = ComicInfoXml(metadata=metadata, path=self._path)
         parser.compute_pages_tags(infolist)
         self._metadata.metadata["pages"] = parser.metadata.get("pages")
 
@@ -508,7 +508,7 @@ class ComicArchive:
         for key, val in self._raw.items():
             print("-" * 10, key, "-" * 10)
             if isinstance(val, bytes):
-                val = val.decode()
+                val = val.decode(errors="replace")
             print(val)
 
     def get_path(self):
