@@ -36,7 +36,7 @@ rarfile = "^4.0"
 
 [tool.poetry.dev-dependencies]
 bandit = "^1.7.4"
-codespell = { extras = ["toml"], version = "^2.1.0"}
+codespell = "^2.1.0"
 coverage = { extras = ["toml"], version = "^7.0" }
 flake8 = "^5.0.4"
 flake8-black = "^0.3.2"
