@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.6.2
+
+- Fix
+
+  - Enable support for Deflate64.
+
 ## v0.6.1
 
 - Fix

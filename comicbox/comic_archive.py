@@ -5,7 +5,6 @@ Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
 import tarfile
-import zipfile
 
 from functools import wraps
 from json import JSONDecodeError
@@ -15,6 +14,7 @@ from tarfile import TarInfo
 from typing import Callable, Optional, Union
 
 import rarfile
+import zipfile_deflate64 as zipfile
 
 from confuse import AttrDict
 from defusedxml.ElementTree import ParseError
