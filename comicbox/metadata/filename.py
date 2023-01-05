@@ -160,7 +160,7 @@ class FilenameMetadata(ComicBaseMetadata):
                 break
             i += 1
         pad = 3 + len(issue) - i
-        return "#{:0" + str(pad) + "}"
+        return "#{:0>" + str(pad) + "}"
 
     def clean_fn(self, filename):
         """Clean out distracting characters from the filename."""
@@ -199,11 +199,12 @@ class FilenameMetadata(ComicBaseMetadata):
         tokens = []
         for tag, fmt in self.FILENAME_TAGS:
             val = self.metadata.get(tag)
-            if val:
-                if tag == "issue":
-                    fmt = self.issue_formatter(val)
-                token = fmt.format(val)
-                tokens.append(token)
+            if not val:
+                continue
+            if tag == "issue":
+                fmt = self.issue_formatter(val)
+            token = fmt.format(val)
+            tokens.append(token)
         name = " ".join(tokens)
         return name
 
