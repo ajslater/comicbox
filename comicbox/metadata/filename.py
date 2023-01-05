@@ -207,11 +207,14 @@ class FilenameMetadata(ComicBaseMetadata):
         name = " ".join(tokens)
         return name
 
-    def to_file(self, path):
+    def to_file(self, path, dry_run=False):
         """Rename this file according to our favorite naming scheme."""
         name = self.to_string()
         new_path = path.parent / Path(name + path.suffix)
         old_path = path
-        path.rename(new_path)
-        LOG.info(f"Renamed:\n{old_path} ==> {self._path}")
+        if dry_run:
+            LOG.info(f"Would rename:\n{old_path} ==> {new_path}")
+        else:
+            path.rename(new_path)
+            LOG.info(f"Renamed:\n{old_path} ==> {new_path}")
         return new_path
