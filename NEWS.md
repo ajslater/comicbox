@@ -1,5 +1,12 @@
 # 📰 News
 
+## v0.6.3
+
+- Fix
+
+- Fix rename function renaming files to nothing.
+- Fix --dry-run feature for rename.
+
 ## v0.6.2
 
 - Fix

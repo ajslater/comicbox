@@ -160,7 +160,7 @@ class FilenameMetadata(ComicBaseMetadata):
                 break
             i += 1
         pad = 3 + len(issue) - i
-        return "#{:0" + str(pad) + "}"
+        return "#{:0>" + str(pad) + "}"
 
     def clean_fn(self, filename):
         """Clean out distracting characters from the filename."""
@@ -199,19 +199,23 @@ class FilenameMetadata(ComicBaseMetadata):
         tokens = []
         for tag, fmt in self.FILENAME_TAGS:
             val = self.metadata.get(tag)
-            if val:
-                if tag == "issue":
-                    fmt = self.issue_formatter(val)
-                token = fmt.format(val)
-                tokens.append(token)
+            if not val:
+                continue
+            if tag == "issue":
+                fmt = self.issue_formatter(val)
+            token = fmt.format(val)
+            tokens.append(token)
         name = " ".join(tokens)
         return name
 
-    def to_file(self, path):
+    def to_file(self, path, dry_run=False):
         """Rename this file according to our favorite naming scheme."""
         name = self.to_string()
         new_path = path.parent / Path(name + path.suffix)
         old_path = path
-        path.rename(new_path)
-        LOG.info(f"Renamed:\n{old_path} ==> {self._path}")
+        if dry_run:
+            LOG.info(f"Would rename:\n{old_path} ==> {new_path}")
+        else:
+            path.rename(new_path)
+            LOG.info(f"Renamed:\n{old_path} ==> {new_path}")
         return new_path

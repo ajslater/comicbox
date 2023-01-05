@@ -494,12 +494,9 @@ class ComicArchive:
 
     def rename_file(self):
         """Rename the archive."""
-        if self._config.dry_run:
-            LOG.info(f"Not reaming file: {self._path}")
-            return
-
-        car = FilenameMetadata(self._metadata)
-        self._path = car.to_file(self._path)
+        metadata = self.get_metadata()
+        car = FilenameMetadata(metadata=metadata, path=self._path)
+        self._path = car.to_file(self._path, dry_run=self._config.dry_run)
 
     @_archive_close
     def print_raw(self):
