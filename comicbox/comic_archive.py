@@ -434,9 +434,9 @@ class ComicArchive:
         self._path = new_path
         if old_path.suffix != new_path.suffix:
             LOG.info(f"converted to: {new_path}")
-        if self._config.delete_rar and new_path.is_file():
-            old_path.unlink()
-            LOG.info(f"removed: {old_path}")
+            if self._config.delete_orig and old_path != new_path and new_path.is_file():
+                old_path.unlink()
+                LOG.info(f"removed: {old_path}")
 
     def write_metadata(self, md_class, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
