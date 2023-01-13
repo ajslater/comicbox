@@ -4,7 +4,7 @@ comicbox:
   comicbookinfo: True
   comicinfoxml: True
   config: null
-  delete_rar: False
+  delete_orig: False
   delete_tags: False
   dest_path: .
   dry_run: False

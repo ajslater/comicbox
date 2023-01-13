@@ -64,9 +64,9 @@ def get_args(params=None) -> Namespace:
         help="destination path for extracting pages and metadata.",
     )
     parser.add_argument(
-        "--delete-rar",
+        "--delete-orig",
         action="store_true",
-        help="Delete the original rar file if the zip is exported successfully.",
+        help="Delete the original file if it was converted to a cbz successfully.",
     )
     parser.add_argument(
         "--recurse",

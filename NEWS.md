@@ -1,5 +1,12 @@
 # 📰 News
 
+## v0.6.4
+
+- Feature
+  --delete-rar option is now --delete-orig
+- Fix
+  - Fix --delete-rar option sometimes deleting original cbzs
+
 ## v0.6.3
 
 - Fix
