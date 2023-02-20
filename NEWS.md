@@ -5,6 +5,8 @@
 - Feature
   - Demote parser errors to warnings.
 
+## v0.6.4
+
 - Feature
   --delete-rar option is now --delete-orig
 - Fix
