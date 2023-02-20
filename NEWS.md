@@ -1,6 +1,9 @@
 # 📰 News
 
-## v0.6.4
+## v0.6.5
+
+- Feature
+  - Demote parser errors to warnings.
 
 - Feature
   --delete-rar option is now --delete-orig
