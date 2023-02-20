@@ -1,5 +1,10 @@
 # 📰 News
 
+## v0.6.5
+
+- Feature
+  - Demote parser errors to warnings.
+
 ## v0.6.4
 
 - Feature

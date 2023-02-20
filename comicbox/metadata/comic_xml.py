@@ -6,7 +6,6 @@ from defusedxml.ElementTree import ParseError, fromstring, parse
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
-
 LOG = getLogger(__name__)
 
 
@@ -51,7 +50,7 @@ class ComicXml(ComicBaseMetadata):
             tree = ElementTree.ElementTree(element)
             self._from_xml(tree)
         except ParseError as exc:
-            LOG.error(f"{self.path} {type(exc).__name__} {exc}")
+            LOG.warning(f"{self.path} {type(exc).__name__} {exc}")
 
     def from_file(self, filename):
         """Read metadata from a file."""

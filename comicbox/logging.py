@@ -1,11 +1,9 @@
 """Logging classes."""
 import logging
 import os
-
 from logging import Formatter, StreamHandler, basicConfig
 
 from colors import color
-
 
 DATEFMT = "%Y-%m-%d %H:%M:%S %Z"
 LOG_FMT = "{asctime} {levelname:8} {message}"

@@ -1,13 +1,10 @@
 """Metadata class for a comic archive."""
 import re
-
 from decimal import Decimal
 from logging import getLogger
 
 import pycountry
-
 from deepdiff.diff import DeepDiff
-
 
 IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
 LOG = getLogger(__name__)

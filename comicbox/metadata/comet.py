@@ -5,7 +5,6 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from comicbox.metadata.comic_xml import ComicXml
 
-
 LOG = getLogger(__name__)
 
 

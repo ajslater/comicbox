@@ -1,5 +1,4 @@
-"""
-Parse comic book archive names using the simple 'parse' parser.
+"""Parse comic book archive names using the simple 'parse' parser.
 
 A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
@@ -8,14 +7,12 @@ effective, simple and easy to read and to contribute to.
 """
 
 import re
-
 from logging import getLogger
 from pathlib import Path
 
 from parse import compile, with_pattern
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
-
 
 LOG = getLogger(__name__)
 

@@ -4,13 +4,11 @@ if [ "${1:-}" = "-f" ]; then
     # Fix before check
     ./fix-lint.sh
 fi
-poetry run flake8 .
-poetry run black --check .
-poetry run isort --check-only .
+poetry run ruff .
 poetry run pyright .
-poetry run bandit -r -c "pyproject.toml" --confidence-level=medium --severity-level=medium comicbox
 poetry run vulture .
-poetry run radon mi -nc . || true
+poetry run radon mi --min C .
+poetry run radon cc --min C .
 npx prettier --check .
 shellcheck -x ./*.sh ./**/*.sh
 # hadolint build.Dockerfile

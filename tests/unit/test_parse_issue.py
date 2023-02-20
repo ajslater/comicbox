@@ -1,7 +1,6 @@
 """Test issue parsing."""
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
-
 ISSUES = {
     "3": ("3", " 3", " 3 ", "3."),
     "3.0": ("3.0",),

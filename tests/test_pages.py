@@ -5,7 +5,6 @@ from comicbox.comic_archive import ComicArchive
 
 from .test_metadata import TEST_FILES_PATH
 
-
 ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 IMAGE_DIR = TEST_FILES_PATH / "Captain Science 001"
 PAGE_TMPL = str(IMAGE_DIR / "CaptainScience#1_{page_num}.jpg")
