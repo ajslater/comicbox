@@ -2,7 +2,6 @@
 
 import pkg_resources
 
-
 PROGRAM_NAME = "comicbox"
 try:
     DISTRIBUTION = pkg_resources.get_distribution(PROGRAM_NAME)

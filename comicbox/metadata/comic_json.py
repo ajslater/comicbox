@@ -1,10 +1,8 @@
 """Comic JSON superclass."""
 import json
-
 from logging import getLogger
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
-
 
 LOG = getLogger(__name__)
 

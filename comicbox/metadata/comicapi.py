@@ -45,8 +45,7 @@ COMICAPI_SCHEMA = {
 
 
 def export(metadata, cls=None):
-    """
-    Export metadata to comicapi metadata.
+    """Export metadata to comicapi metadata.
 
     Optionally overlay that data onto a custom class.
     """

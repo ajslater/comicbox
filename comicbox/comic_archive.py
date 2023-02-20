@@ -1,11 +1,9 @@
-"""
-Comic Archive.
+"""Comic Archive.
 
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
 import tarfile
-
 from functools import wraps
 from json import JSONDecodeError
 from logging import getLogger
@@ -15,7 +13,6 @@ from typing import Callable, Optional, Union
 
 import rarfile
 import zipfile_deflate64 as zipfile
-
 from confuse import AttrDict
 from defusedxml.ElementTree import ParseError
 
@@ -29,7 +26,6 @@ from comicbox.metadata.comic_xml import ComicXml
 from comicbox.metadata.comicbookinfo import ComicBookInfo
 from comicbox.metadata.comicinfoxml import ComicInfoXml
 from comicbox.metadata.filename import FilenameMetadata
-
 
 RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 CBZ_SUFFIX = ".cbz"
@@ -49,8 +45,7 @@ def _archive_close(f):
 
 
 class ComicArchive:
-    """
-    Represent a comic archive.
+    """Represent a comic archive.
 
     Contains the compressed archive file and its parsed metadata
     """
@@ -374,6 +369,57 @@ class ComicArchive:
             self._parse_metadata()
         return self._metadata.metadata
 
+    def _get_comment(self):
+        """Get the comment from the archive."""
+        comment = b""
+        if self._archive_cls != tarfile.open:
+            if not self._config.delete_tags:
+                comment = self._get_archive().comment  # type: ignore
+            if isinstance(comment, str):
+                comment = comment.encode(errors="replace")
+
+    def _recompress_write_entry(self, info, fn_attr, skipnames, zf):
+        """Write a single entry to the tmpfile."""
+        if isinstance(info, TarInfo):
+            if not info.size:
+                return
+        elif not info.file_size:
+            # don't try to recompress empty dirs
+            return
+        fn = getattr(info, fn_attr)
+        if fn.lower() in skipnames:
+            return
+        if IMAGE_EXT_RE.search(fn) is None:
+            compress = zipfile.ZIP_DEFLATED
+        else:
+            # images usually end up slightly larger with
+            # zip compression
+            compress = zipfile.ZIP_STORED
+        zf.writestr(
+            fn,
+            self._archive_readfile(fn),
+            compress_type=compress,
+            compresslevel=9,
+        )
+
+    def _recompress_write(self, tmp_path, filename, data, comment):
+        """Write files from this archive into the tmpfile."""
+        with zipfile.ZipFile(
+            tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
+        ) as zf:
+            skipnames = set()
+            if filename:
+                skipnames.add(filename)
+            if self._config.delete_tags:
+                skipnames.add(self.FILENAMES)
+            infolist, fn_attr = self._archive_infolist()
+            for info in infolist:
+                self._recompress_write_entry(info, fn_attr, skipnames, zf)
+            if filename and data:
+                zf.writestr(filename, data)
+            if comment:
+                zf.comment = comment
+
     @_archive_close
     def recompress(self, filename=None, data=None):
         """Recompress the archive optionally replacing a file."""
@@ -386,48 +432,9 @@ class ComicArchive:
             raise ValueError(f"{new_path} already exists.")
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
-        comment = b""
-        if self._archive_cls != tarfile.open:
-            if not self._config.delete_tags:
-                comment = self._get_archive().comment  # type: ignore
-            if isinstance(comment, str):
-                comment = comment.encode(errors="replace")
 
-        with zipfile.ZipFile(
-            tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
-        ) as zf:
-            skipnames = set()
-            if filename:
-                skipnames.add(filename)
-            if self._config.delete_tags:
-                skipnames.add(self.FILENAMES)
-            infolist, fn_attr = self._archive_infolist()
-            for info in infolist:
-                if isinstance(info, TarInfo):
-                    if not info.size:
-                        continue
-                elif not info.file_size:
-                    # don't try to recompress empty dirs
-                    continue
-                fn = getattr(info, fn_attr)
-                if fn.lower() in skipnames:
-                    continue
-                if IMAGE_EXT_RE.search(fn) is None:
-                    compress = zipfile.ZIP_DEFLATED
-                else:
-                    # images usually end up slightly larger with
-                    # zip compression
-                    compress = zipfile.ZIP_STORED
-                zf.writestr(
-                    fn,
-                    self._archive_readfile(fn),
-                    compress_type=compress,
-                    compresslevel=9,
-                )
-            if filename and data:
-                zf.writestr(filename, data)
-            if comment:
-                zf.comment = comment
+        comment = self._get_comment()
+        self._recompress_write(tmp_path, filename, data, comment)
 
         old_path = self._path
         tmp_path.replace(new_path)

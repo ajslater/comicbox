@@ -5,7 +5,6 @@ from comicbox.metadata.comicinfoxml import ComicInfoXml
 
 from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
-
 FN = Path("Captain Science #001-cix-cbi.cbr")
 FN_TAR = Path("Captain Science #001.cbt")
 ARCHIVE_PATH = TEST_FILES_PATH / FN

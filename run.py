@@ -2,5 +2,4 @@
 """Test runner."""
 from comicbox import cli
 
-
 cli.main()

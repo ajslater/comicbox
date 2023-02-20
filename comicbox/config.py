@@ -1,6 +1,5 @@
 """Confuse config for comicbox."""
 import typing
-
 from argparse import Namespace
 from logging import getLogger
 
@@ -8,7 +7,6 @@ from confuse import Configuration
 from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
 from comicbox.version import PROGRAM_NAME
-
 
 LOG = getLogger(__name__)
 

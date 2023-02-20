@@ -5,7 +5,6 @@ from logging import getLogger
 from comicbox.metadata.comic_json import ComicJSON
 from comicbox.version import VERSION
 
-
 # Schema from:
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
 

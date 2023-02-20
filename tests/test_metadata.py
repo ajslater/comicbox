@@ -2,7 +2,6 @@
 import os
 import shutil
 import zipfile
-
 from pathlib import Path
 from pprint import pprint
 
@@ -10,9 +9,8 @@ from deepdiff.diff import DeepDiff
 
 from comicbox.comic_archive import ComicArchive
 
-
 TEST_FILES_PATH = Path("tests/test_files")
-TMP_ROOT = Path("/tmp")
+TMP_ROOT = Path("/tmp")  # noqa
 SOURCE_ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 
 

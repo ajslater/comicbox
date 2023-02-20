@@ -1,14 +1,12 @@
 """Run comicbox on files."""
 import os
 import sys
-
 from logging import getLogger
 from pathlib import Path
 from pprint import pprint
 
 from comicbox.comic_archive import ComicArchive
 from comicbox.version import VERSION
-
 
 LOG = getLogger(__name__)
 

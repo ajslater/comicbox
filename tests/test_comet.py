@@ -5,7 +5,6 @@ from comicbox.metadata.comet import CoMet
 
 from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
-
 ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001-comet.cbz"
 TMP_PATH = TMP_ROOT / "test_comet"
 NEW_TEST_CBZ_PATH = TMP_PATH / "test_comet_write_001-comet.cbz"
