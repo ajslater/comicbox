@@ -106,6 +106,7 @@ class ComicInfoXml(ComicXml):
                     self._add_credit(name, role)
 
     def _from_xml_manga(self, _, val):
+        """Accept CIX 2.0 Manga Types and old truthy values."""
         val = val.lower()
         if val in self.MangaTypes.RTL_VALUES:
             self.metadata["reading_direction"] = self.ReadingDirection.RTL
