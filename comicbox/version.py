@@ -4,6 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 PACKAGE_NAME = "comicbox"
 
+
 def get_version():
     """Get the current installed comicbox version."""
     try:
@@ -11,5 +12,6 @@ def get_version():
     except PackageNotFoundError:
         v = "dev"
     return v
+
 
 VERSION = get_version()
