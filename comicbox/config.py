@@ -6,14 +6,14 @@ from logging import getLogger
 from confuse import Configuration
 from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
-from comicbox.version import PROGRAM_NAME
+from comicbox.version import PACKAGE_NAME
 
 LOG = getLogger(__name__)
 
 
 TEMPLATE = MappingTemplate(
     {
-        PROGRAM_NAME: MappingTemplate(
+        PACKAGE_NAME: MappingTemplate(
             {
                 # Options
                 "comet": bool,
@@ -46,10 +46,10 @@ TEMPLATE = MappingTemplate(
 
 
 def get_config(
-    args: typing.Optional[Namespace] = None, modname: str = PROGRAM_NAME
+    args: typing.Optional[Namespace] = None, modname: str = PACKAGE_NAME
 ) -> AttrDict:
     """Get the config dict, layering env and args over defaults."""
-    config = Configuration(PROGRAM_NAME, modname=modname, read=False)
+    config = Configuration(PACKAGE_NAME, modname=modname, read=False)
     try:
         config.read()
     except Exception as exc:

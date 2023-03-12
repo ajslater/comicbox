@@ -1,5 +1,10 @@
 # 📰 News
 
+## v0.6.6
+
+- Dev
+  - Use importlib instead of deprecated pkg_resources.
+
 ## v0.6.5
 
 - Feature
