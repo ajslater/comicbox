@@ -12,7 +12,7 @@ from tarfile import TarInfo
 from typing import Callable, Optional, Union
 
 try:
-    from unrar.cffi import rarfile
+    from unrar.cffi import rarfile  # type: ignore
 except ImportError:
     import rarfile
 
@@ -286,7 +286,7 @@ class ComicArchive:
         """Close the open archive."""
         try:
             if self._archive and hasattr(self._archive, "close"):
-                self._archive.close() # type: ignore
+                self._archive.close()  # type: ignore
         except Exception as exc:
             LOG.warning(f"closing archive: {exc}")
         finally:

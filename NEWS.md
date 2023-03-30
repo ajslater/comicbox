@@ -1,5 +1,10 @@
 # 📰 News
 
+## v0.6.7
+
+- Fix
+  - Remove unrar-cffi dependency aciddentally left in during testing
+
 ## v0.6.6
 
 - Features
