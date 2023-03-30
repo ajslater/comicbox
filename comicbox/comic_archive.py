@@ -12,7 +12,7 @@ from tarfile import TarInfo
 from typing import Callable, Optional, Union
 
 try:
-    from unrar.cffi import rarfile
+    from unrar.cffi import rarfile  # type: ignore
 except ImportError:
     import rarfile
 
