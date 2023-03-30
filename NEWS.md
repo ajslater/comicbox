@@ -4,6 +4,7 @@
 
 - Features
   - Print filetype cli option. get_archive_type() api method.
+  - Use unrar.cffi if it's available.
 - Dev
   - Use importlib instead of deprecated pkg_resources.
 

@@ -11,7 +11,11 @@ from pathlib import Path
 from tarfile import TarInfo
 from typing import Callable, Optional, Union
 
-import rarfile
+try:
+    from unrar.cffi import rarfile
+except ImportError:
+    import rarfile
+
 import zipfile_deflate64 as zipfile
 from confuse import AttrDict
 from defusedxml.ElementTree import ParseError
@@ -102,14 +106,16 @@ class ComicArchive:
         if zipfile.is_zipfile(self._path):
             self._archive_cls = zipfile.ZipFile
             self._file_type = "CBZ"
-        elif rarfile.is_rarfile(self._path):
+        elif rarfile.is_rarfile(str(self._path)):
+            # uffi rarfile requires a str path
             self._archive_cls = rarfile.RarFile
             self._file_type = "CBR"
         elif tarfile.is_tarfile(self._path):
             self._archive_cls = tarfile.open
             self._file_type = "CBT"
         else:
-            raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
+            reason = f"Unsupported archive type: {self._path}"
+            raise UnsupportedArchiveTypeError(reason)
 
     def get_file_type(self):
         """Return archive type string."""
@@ -118,7 +124,8 @@ class ComicArchive:
     def _get_archive(self):
         """Set archive instance open for reading."""
         if not self._archive:
-            self._archive = self._archive_cls(self._path)
+            # uffi rarfile requires a str path
+            self._archive = self._archive_cls(str(self._path))
         return self._archive
 
     def _archive_namelist(self):
@@ -278,7 +285,7 @@ class ComicArchive:
     def close(self):
         """Close the open archive."""
         try:
-            if self._archive:
+            if self._archive and hasattr(self._archive, "close"):
                 self._archive.close()
         except Exception as exc:
             LOG.warning(f"closing archive: {exc}")
