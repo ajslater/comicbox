@@ -34,6 +34,7 @@ pycountry = "^22.1.3"
 parse = "^1.15"
 rarfile = "^4.0"
 zipfile-deflate64 = "^0.2.0"
+unrar-cffi = "^0.2.2"
 
 [tool.poetry.dev-dependencies]
 black = "^23.3.0"
