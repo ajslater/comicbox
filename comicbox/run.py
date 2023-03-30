@@ -34,6 +34,9 @@ class Runner:
         if self.config.raw:
             car.print_raw()
             self.noop = False
+        if self.config.file_type:
+            print(car.get_file_type())
+            self.noop = False
         if self.config.print:
             pprint(car.get_metadata())
             self.noop = False

@@ -98,14 +98,22 @@ class ComicArchive:
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         self._archive_cls: Callable
+        self._file_type: str
         if zipfile.is_zipfile(self._path):
             self._archive_cls = zipfile.ZipFile
+            self._file_type = "CBZ"
         elif rarfile.is_rarfile(self._path):
             self._archive_cls = rarfile.RarFile
+            self._file_type = "CBR"
         elif tarfile.is_tarfile(self._path):
             self._archive_cls = tarfile.open
+            self._file_type = "CBT"
         else:
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
+
+    def get_file_type(self):
+        """Return archive type string."""
+        return self._file_type
 
     def _get_archive(self):
         """Set archive instance open for reading."""

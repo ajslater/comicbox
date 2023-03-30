@@ -16,6 +16,7 @@ comicbox:
   cbz: False
   covers: False
   export: False
+  file_type: False
   import_fn: null
   index_from: null
   print: False

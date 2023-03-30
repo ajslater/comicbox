@@ -1,7 +1,8 @@
 # 📰 News
 
 ## v0.6.6
-
+- Features
+  - Print filetype cli option. get_archive_type() api method.
 - Dev
   - Use importlib instead of deprecated pkg_resources.
 

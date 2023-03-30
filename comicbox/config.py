@@ -32,6 +32,7 @@ TEMPLATE = MappingTemplate(
                 "cbz": Optional(bool),
                 "covers": Optional(bool),
                 "export": Optional(bool),
+                "file_type": Optional(bool),
                 "import_fn": Optional(str),
                 "index_from": Optional(int),
                 "print": Optional(bool),
