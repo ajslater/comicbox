@@ -106,11 +106,37 @@ class ComicInfoXml(ComicXml):
                     self._add_credit(name, role)
 
     def _from_xml_manga(self, _, val):
+        """Accept CIX 2.0 Manga Types and old truthy values."""
         val = val.lower()
         if val in self.MangaTypes.RTL_VALUES:
             self.metadata["reading_direction"] = self.ReadingDirection.RTL
             return True
         return val in self.TRUTHY_VALUES
+
+    def _from_xml_tag(self, to_tag, val):  # noqa C901
+        """Parse one xml tag."""
+        if to_tag in self.ISSUE_TAGS:
+            val = self.parse_issue(val)
+        elif to_tag in self.INT_TAGS:
+            if to_tag == "volume":
+                val = self.remove_volume_prefixes(val)
+            val = int(val)
+        elif to_tag in self.DECIMAL_TAGS:
+            val = self.parse_decimal(val)
+        elif to_tag in self.STR_SET_TAGS:
+            val = frozenset([item.strip() for item in val.split(",")])
+            if len(val) == 0:
+                return
+        # special bool tags
+        elif to_tag in self.BOOL_SET_TAGS:
+            val = self.parse_bool(val)
+        elif to_tag == "manga":
+            val = self._from_xml_manga(to_tag, val)
+        elif to_tag in self.PYCOUNTRY_TAGS:
+            val = self._pycountry(to_tag, val)
+            if not val:
+                return
+        self.metadata[to_tag] = val
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
@@ -121,29 +147,7 @@ class ComicInfoXml(ComicXml):
                 val = str(element.text).strip()
                 if not val:
                     continue
-
-                if to_tag in self.ISSUE_TAGS:
-                    val = self.parse_issue(val)
-                elif to_tag in self.INT_TAGS:
-                    if to_tag == "volume":
-                        val = self.remove_volume_prefixes(val)
-                    val = int(val)
-                elif to_tag in self.DECIMAL_TAGS:
-                    val = self.parse_decimal(val)
-                elif to_tag in self.STR_SET_TAGS:
-                    val = frozenset([item.strip() for item in val.split(",")])
-                    if len(val) == 0:
-                        continue
-                # special bool tags
-                elif to_tag in self.BOOL_SET_TAGS:
-                    val = self.parse_bool(val)
-                elif to_tag == "manga":
-                    val = self._from_xml_manga(to_tag, val)
-                elif to_tag in self.PYCOUNTRY_TAGS:
-                    val = self._pycountry(to_tag, val)
-                    if not val:
-                        continue
-                self.metadata[to_tag] = val
+                self._from_xml_tag(to_tag, val)
             except Exception as exc:
                 LOG.warning(f"{self.path} CIX {from_tag} {exc}")
 

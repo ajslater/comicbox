@@ -4,7 +4,7 @@ build-backend = ["poetry.core.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.6.5"
+version = "0.6.6"
 description = "An API for reading comic archives"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -34,17 +34,18 @@ pycountry = "^22.1.3"
 parse = "^1.15"
 rarfile = "^4.0"
 zipfile-deflate64 = "^0.2.0"
+unrar-cffi = "^0.2.2"
 
 [tool.poetry.dev-dependencies]
+black = "^23.3.0"
 codespell = "^2.1.0"
 coverage = { extras = ["toml"], version = "^7.0" }
 pyright = "^1.1"
 pytest = "^7.0"
 pytest-cov = "^4.0"
 pytest-gitignore = "^1.3"
-radon = "^5.1"
-ruff = "^0.0.247"
-tomli = "^2.0.1" # for codespell before python 3.11
+radon = { version = "^6.0.1", extras = ["toml"] }
+ruff = "^0.0.260"
 vulture = "^2.1"
 
 [tool.poetry.scripts]
@@ -114,6 +115,9 @@ exclude = [
 ]
 useLibraryCodeForTypes = true
 
+[tool.radon]
+exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*"
+
 [tool.ruff]
 extend-exclude = ["cache", "typings"]
 extend-ignore = ["S101", "D203", "D213"]
@@ -141,6 +145,3 @@ exclude = [
   "test_results/",
   "typings/",
 ]
-
-[tool.radon]
-exclude = ".git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*"

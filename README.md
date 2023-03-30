@@ -72,6 +72,11 @@ You may automatically fix most simple linting errors with
 ./fix-linting.sh
 ```
 
+## Dependencies
+
+Comicbox works without any binary dependencies but if [unrar-cffi](https://pypi.org/project/unrar-cffi/) is available
+it will use that instead of Python's native rarfile.
+
 ## 🤔 <a href="motivation">Motivation</a>
 
 I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for [Codex comic reader](https://github.com/ajslater/codex/).

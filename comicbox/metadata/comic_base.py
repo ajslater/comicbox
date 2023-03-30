@@ -228,42 +228,46 @@ class ComicBaseMetadata:
         if self._page_filenames:
             return self._page_filenames[index_from:]
 
+    def _synth_md_tag(self, md, all_credits_map, all_tags):
+        """Pop off complex values before simple update.
+
+        "pages" is complex but only comes from cix so no synth needed.
+        """
+        # Synthesize credits
+        try:
+            credits = md.pop("credits")
+            for credit in credits:
+                credit_key = self._credit_key(credit)
+                if credit_key not in all_credits_map:
+                    all_credits_map[credit_key] = {}
+                all_credits_map[credit_key].update(credit)
+        except KeyError:
+            pass
+        except Exception as exc:
+            LOG.warning(f"{self.path} error combining credits: {exc}")
+
+        # Synthesize tags
+        for tag in self.STR_SET_TAGS:
+            # synthesize sets of attributes
+            try:
+                tags = md.pop("tag")
+                if tags:
+                    if tag not in all_tags:
+                        all_tags[tag] = set()
+                    all_tags[tag].update(tags)
+            except KeyError:
+                pass
+            except Exception as exc:
+                LOG.warning(f"{self.path} error combining {tag}: {exc}")
+
+        self.metadata.update(md)
+
     def synthesize_metadata(self, md_list):
         """Overlay the metadatas in precedence order."""
         all_credits_map = {}
         all_tags = {}
         for md in md_list:
-            # pop off complex values before simple update
-            # "pages" is complex but only comes from cix so no synth needed.
-
-            # Synthesize credits
-            try:
-                credits = md.pop("credits")
-                for credit in credits:
-                    credit_key = self._credit_key(credit)
-                    if credit_key not in all_credits_map:
-                        all_credits_map[credit_key] = {}
-                    all_credits_map[credit_key].update(credit)
-            except KeyError:
-                pass
-            except Exception as exc:
-                LOG.warning(f"{self.path} error combining credits: {exc}")
-
-            # Synthesize tags
-            for tag in self.STR_SET_TAGS:
-                # synthesize sets of attributes
-                try:
-                    tags = md.pop("tag")
-                    if tags:
-                        if tag not in all_tags:
-                            all_tags[tag] = set()
-                        all_tags[tag].update(tags)
-                except KeyError:
-                    pass
-                except Exception as exc:
-                    LOG.warning(f"{self.path} error combining {tag}: {exc}")
-
-            self.metadata.update(md)
+            self._synth_md_tag(md, all_credits_map, all_tags)
         final_credits = list(all_credits_map.values())
         if final_credits:
             self.metadata["credits"] = final_credits

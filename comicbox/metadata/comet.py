@@ -49,6 +49,32 @@ class CoMet(ComicXml):
     }
     TWOPLACES = Decimal("0.01")
 
+    def _from_xml_tag(self, to_tag, val):  # noqa C901
+        """Parse a single xml tag."""
+        if to_tag == "reading_direction":
+            val = self.ReadingDirection.parse(val)
+            if not val:
+                return
+        elif to_tag in self.ISSUE_TAGS:
+            val = self.parse_issue(val)
+        elif to_tag in self.INT_TAGS:
+            if to_tag == "volume":
+                val = self.remove_volume_prefixes(val)
+            val = int(val)
+        elif to_tag in self.STR_SET_TAGS:
+            val = frozenset([item.strip() for item in val.split(",        ")])
+            if len(val) == 0:
+                return
+        elif to_tag == "price":
+            val = Decimal(val).quantize(self.TWOPLACES)
+        elif to_tag in self.DECIMAL_TAGS:
+            val = self.parse_decimal(val)
+        elif to_tag in self.PYCOUNTRY_TAGS:
+            val = self._pycountry(to_tag, val)
+            if not val:
+                return
+        self.metadata[to_tag] = val
+
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
             try:
@@ -58,29 +84,7 @@ class CoMet(ComicXml):
                 val = element.text.strip()
                 if not val:
                     continue
-                if to_tag == "reading_direction":
-                    val = self.ReadingDirection.parse(val)
-                    if not val:
-                        continue
-                elif to_tag in self.ISSUE_TAGS:
-                    val = self.parse_issue(val)
-                elif to_tag in self.INT_TAGS:
-                    if to_tag == "volume":
-                        val = self.remove_volume_prefixes(val)
-                    val = int(val)
-                elif to_tag in self.STR_SET_TAGS:
-                    val = frozenset([item.strip() for item in val.split(",        ")])
-                    if len(val) == 0:
-                        continue
-                elif to_tag == "price":
-                    val = Decimal(val).quantize(self.TWOPLACES)
-                elif to_tag in self.DECIMAL_TAGS:
-                    val = self.parse_decimal(val)
-                elif to_tag in self.PYCOUNTRY_TAGS:
-                    val = self._pycountry(to_tag, val)
-                    if not val:
-                        continue
-                self.metadata[to_tag] = val
+                self._from_xml_tag(to_tag, val)
             except Exception as exc:
                 LOG.warning(f"{self.path} CoMet {from_tag} {exc}")
 

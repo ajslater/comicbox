@@ -99,6 +99,13 @@ def get_args(params=None) -> Namespace:
     parser.add_argument("-v", "--version", action="store_true", help="Display version.")
     parser.add_argument("-p", "--print", action="store_true", help="Print metadata")
     parser.add_argument(
+        "-t",
+        "--type",
+        dest="file_type",
+        action="store_true",
+        help="Print archive file type",
+    )
+    parser.add_argument(
         "-f",
         "--from",
         dest="index_from",
