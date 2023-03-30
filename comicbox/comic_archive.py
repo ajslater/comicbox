@@ -3,6 +3,8 @@
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
+import bz2
+import lzma
 import tarfile
 from functools import wraps
 from json import JSONDecodeError
@@ -56,6 +58,14 @@ class ComicArchive:
     _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
     _RAW_CBI_KEY = "ComicBookInfo Archive Comment"
     _RAW_FILENAME_KEY = "Filename"
+    _MAGIC_NUMBERS = {
+        "bz2": {"bz2": bytes([0x42, 0x5A, 0x68]), "bz1": bytes([0x42, 0x5A, 0x30])},
+        "lzma": {
+            "xz": bytes([0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00]),
+            "7z": bytes([0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]),
+        },
+    }
+    _MAX_HEADER_READ_SIZE = max(*[len(number) for number in _MAGIC_NUMBERS.values()])
 
     def __init__(
         self,
@@ -95,6 +105,16 @@ class ComicArchive:
         """Context close."""
         self.close()
 
+    def _is_filetype(self, file_type):
+        """Detect file type from magic number."""
+        magic_number_list = self._MAGIC_NUMBERS[file_type].values()
+        with self._path.open("rb") as f:
+            head = f.read(self._MAX_HEADER_READ_SIZE)
+            for magic_number in magic_number_list:
+                if head.startswith(magic_number):
+                    return True
+        return False
+
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         self._archive_cls: Callable
@@ -104,6 +124,10 @@ class ComicArchive:
             self._archive_cls = rarfile.RarFile
         elif tarfile.is_tarfile(self._path):
             self._archive_cls = tarfile.open
+        elif self._is_filetype("lzma"):
+            self._archive_cls = lzma.open
+        elif self._is_filetype("bz2"):
+            self._archive_cls = bz2.open
         else:
             raise UnsupportedArchiveTypeError(f"Unsupported archive type: {self._path}")
 

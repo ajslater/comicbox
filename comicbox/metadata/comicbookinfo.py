@@ -55,42 +55,45 @@ class ComicBookInfo(ComicJSON):
             primary = False
         self._add_credit(person, role, primary)
 
+    def _from_json_tag(self, from_key, to_key, val):  # noqa C901
+        """Parse one json tag."""
+        if from_key == "credits":
+            for credit in val:
+                self._get_credit(credit)
+        elif to_key in self.ISSUE_TAGS:
+            val = self.parse_issue(val)
+        elif to_key in self.INT_TAGS:
+            val = int(val)
+        elif to_key in self.STR_SET_TAGS:
+            if isinstance(val, list):
+                val = frozenset(val)
+            else:
+                val = frozenset([item.strip() for item in val.split(",")])
+            if len(val) == 0:
+                return
+        elif to_key in self.DECIMAL_TAGS:
+            val = self.parse_decimal(val)
+        elif to_key in self.PYCOUNTRY_TAGS:
+            val = self._pycountry(to_key, val)
+            if not val:
+                return
+        elif isinstance(val, str):
+            val = val.strip()
+            if not val:
+                return
+        elif isinstance(val, list):
+            # tags
+            if len(val) == 0:
+                return
+        self.metadata[to_key] = val
+
     def _from_json_tags(self, root):
         for from_key, to_key in self.JSON_KEYS.items():
             try:
                 val = root.get(from_key)
                 if val is None:
                     continue
-
-                if from_key == "credits":
-                    for credit in val:
-                        self._get_credit(credit)
-                elif to_key in self.ISSUE_TAGS:
-                    val = self.parse_issue(val)
-                elif to_key in self.INT_TAGS:
-                    val = int(val)
-                elif to_key in self.STR_SET_TAGS:
-                    if isinstance(val, list):
-                        val = frozenset(val)
-                    else:
-                        val = frozenset([item.strip() for item in val.split(",")])
-                    if len(val) == 0:
-                        continue
-                elif to_key in self.DECIMAL_TAGS:
-                    val = self.parse_decimal(val)
-                elif to_key in self.PYCOUNTRY_TAGS:
-                    val = self._pycountry(to_key, val)
-                    if not val:
-                        continue
-                elif isinstance(val, str):
-                    val = val.strip()
-                    if not val:
-                        continue
-                elif isinstance(val, list):
-                    # tags
-                    if len(val) == 0:
-                        continue
-                self.metadata[to_key] = val
+                self._from_json_tag(from_key, to_key, val)
             except Exception as exc:
                 LOG.warning(f"{self.path} CBI {from_key} {exc}")
 

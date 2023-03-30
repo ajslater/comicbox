@@ -21,7 +21,7 @@ class Runner:
         self.config = config
         self.noop = True
 
-    def run_on_file(self, path):
+    def run_on_file(self, path):  # noqa C901
         """Run operations on one file."""
         if path.is_dir() and self.config.recurse:
             self.recurse(path)
