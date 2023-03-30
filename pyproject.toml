@@ -114,6 +114,9 @@ exclude = [
 ]
 useLibraryCodeForTypes = true
 
+[tool.radon]
+exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*"
+
 [tool.ruff]
 extend-exclude = ["cache", "typings"]
 extend-ignore = ["S101", "D203", "D213"]
@@ -141,6 +144,3 @@ exclude = [
   "test_results/",
   "typings/",
 ]
-
-[tool.radon]
-exclude = ".git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*"
