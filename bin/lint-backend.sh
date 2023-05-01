@@ -35,5 +35,5 @@ if [ "$(uname)" = "Darwin" ]; then
     shellcheck --external-sources ./**/*.sh
     circleci config check .circleci/config.yml
 fi
-./bin/roman.sh -i .gitignore .
+./bin/roman.sh -i .prettierignore .
 poetry run codespell .
