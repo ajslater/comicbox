@@ -5,7 +5,8 @@
     "check": "remark . --quiet",
     "fix": "eslint_d --cache --fix --ext .cjs,.mjs.js,.json,.yaml,.md . && prettier --write .",
     "lint": "eslint_d --cache --ext .cjs,.mjs.js,.json,.yaml,.md .",
-    "remark-check": "remark ."
+    "remark-check": "remark .",
+    "remark-fix": "remark . --output"
   },
   "devDependencies": {
     "@fsouza/prettierd": "^0.23.2",
