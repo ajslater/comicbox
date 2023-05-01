@@ -1,6 +1,6 @@
 *.py[co]
 *~
 .venv
-__pycache__
 TODO.md
+__pycache__
 node_modules
