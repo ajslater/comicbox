@@ -62,7 +62,7 @@ def get_config(
         config.set_args(args)
     ad = config.get(TEMPLATE)
     if not isinstance(ad, AttrDict):
-        raise ValueError()
+        raise TypeError
     if ad.comicbox.paths:
         ad.comicbox.paths = sorted(frozenset(ad.comicbox.paths))
     return ad.comicbox

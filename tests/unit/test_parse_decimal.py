@@ -1,31 +1,34 @@
 """Test decimal parsing."""
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
+FIVE = 5.0
+FIVE_HALF = 5.5
+
 
 def test_parse_decimal_int():
     """Test int."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal(5)
+    assert ComicBaseMetadata.parse_decimal(5) == FIVE
 
 
 def test_parse_decimal_float():
     """Test float."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal(5.0)
+    assert ComicBaseMetadata.parse_decimal(FIVE) == FIVE
 
 
 def test_parse_decimal_str():
     """Test str."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5.0")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5")
+    assert ComicBaseMetadata.parse_decimal("5.0") == FIVE
+    assert ComicBaseMetadata.parse_decimal("5") == FIVE
 
 
 def test_parse_decimal_str_half():
     """Test str with halves."""
-    assert 5.5 == ComicBaseMetadata.parse_decimal("5½")
-    assert 5.5 == ComicBaseMetadata.parse_decimal("5 1/2")
+    assert ComicBaseMetadata.parse_decimal("5½") == FIVE_HALF
+    assert ComicBaseMetadata.parse_decimal("5 1/2") == FIVE_HALF
 
 
 def test_parse_decimal_regex():
     """Test str with suffixes."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5AU")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("  5.0AU")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("MARVEL 5.0AU")
+    assert ComicBaseMetadata.parse_decimal("5AU") == FIVE
+    assert ComicBaseMetadata.parse_decimal("  5.0AU") == FIVE
+    assert ComicBaseMetadata.parse_decimal("MARVEL 5.0AU") == FIVE

@@ -98,7 +98,7 @@ class ComicInfoXml(ComicXml):
     }
 
     def _from_xml_credits(self, root):
-        for role in self.CREDIT_TAGS.keys():
+        for role in self.CREDIT_TAGS:
             for element in root.findall(role):
                 if not element.text:
                     continue
@@ -177,10 +177,8 @@ class ComicInfoXml(ComicXml):
         if val:
             if self.metadata["reading_direction"] == self.ReadingDirection.RTL:
                 return self.MangaTypes.YES_RTL
-            else:
-                return self.MangaTypes.YES
-        else:
-            return self.MangaTypes.NO
+            return self.MangaTypes.YES
+        return self.MangaTypes.NO
 
     def _to_xml_tags(self, root):
         """Write tags to xml."""
@@ -191,10 +189,7 @@ class ComicInfoXml(ComicXml):
                     new_val = self._to_xml_tags_yes_no(val)
                 if xml_tag == "Manga":
                     new_val = self._to_xml_manga(val)
-                if md_key in self.STR_SET_TAGS:
-                    new_val = ",".join(sorted(val))
-                else:
-                    new_val = val
+                new_val = ",".join(sorted(val)) if md_key in self.STR_SET_TAGS else val
                 SubElement(root, xml_tag).text = str(new_val)
 
     def _to_xml_pages(self, root):
@@ -231,8 +226,7 @@ class ComicInfoXml(ComicXml):
         self._to_xml_tags(root)
         self._to_xml_pages(root)
         self._to_xml_credits(root)
-        tree = ElementTree(root)
-        return tree
+        return ElementTree(root)
 
     def _get_cover_page_filenames_tagged(self):
         coverlist = set()

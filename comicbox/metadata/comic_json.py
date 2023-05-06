@@ -1,6 +1,7 @@
 """Comic JSON superclass."""
 import json
 from logging import getLogger
+from pathlib import Path
 
 from comicbox.metadata.comic_base import ComicBaseMetadata
 
@@ -12,11 +13,11 @@ class ComicJSON(ComicBaseMetadata):
 
     def _from_json(self, _):
         """Get metadata from json."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _to_json(self):
         """Write metadata from to json."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def from_string(self, json_str):
         """Parse metadata from a JSON string."""
@@ -31,16 +32,15 @@ class ComicJSON(ComicBaseMetadata):
 
     def from_file(self, filename):
         """Parse metadata from a JSON file."""
-        with open(filename, "r") as json_file:
+        with Path(filename).open("r") as json_file:
             self.from_string(json_file.read())
 
     def to_string(self):
         """Return metadata as a JSON string."""
         json_obj = self._to_json()
-        json_str = json.dumps(json_obj)
-        return json_str
+        return json.dumps(json_obj)
 
     def to_file(self, filename):
         """Write metadata to a JSON file."""
-        with open(filename, "w") as json_file:
+        with Path(filename).open("w") as json_file:
             json_file.write(self.to_string())

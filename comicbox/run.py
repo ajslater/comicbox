@@ -89,9 +89,8 @@ class Runner:
         if not self.config.paths:
             if self.config.version:
                 return
-            else:
-                print("the following arguments are required: paths")
-                sys.exit(1)
+            print("the following arguments are required: paths")
+            sys.exit(1)
 
         for path in self.config.paths:
             self.run_on_file(Path(path))

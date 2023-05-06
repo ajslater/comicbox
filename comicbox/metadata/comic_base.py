@@ -27,8 +27,9 @@ class ComicBaseMetadata:
             val = val.strip().lower()
             if val == cls.RTL:
                 return cls.RTL
-            elif val == cls.LTR:
+            if val == cls.LTR:
                 return cls.LTR
+            return None
 
     STR_SET_TAGS = frozenset(
         (
@@ -95,31 +96,31 @@ class ComicBaseMetadata:
         elif tag == "language":
             module = pycountry.languages
         else:
-            raise NotImplementedError(f"no pycountry module for {tag}")
+            reason = f"no pycountry module for {tag}"
+            raise NotImplementedError(reason)
         name = name.strip()
         if not name:
-            return
-        if len(name) == 2:
+            return None
+        if len(name) == 2:  # noqa PLR2004
             # Language lookup fails for 'en' unless alpha_2 is specified.
             obj = module.get(alpha_2=name)
         else:
             obj = module.lookup(name)
 
         if obj is None:
-            raise ValueError(f"couldn't find {tag} for {name}")
+            reason = f"couldn't find {tag} for {name}"
+            raise ValueError(reason)
 
         if long_to_alpha2:
             return obj.alpha_2
-        else:
-            return obj.name
+        return obj.name
 
     @staticmethod
     def decimal_to_type(dec):
         """Return an integer if we can."""
         if dec % 1 == 0:
             return int(dec)
-        else:
-            return float(dec)
+        return float(dec)
 
     def __eq__(self, obj):
         """== operator."""
@@ -170,10 +171,7 @@ class ComicBaseMetadata:
         person = person.strip()
         if not person:
             return
-        if role is None:
-            role = ""
-        else:
-            role = role.strip()
+        role = "" if role is None else role.strip()
 
         credit = {"person": person, "role": role}
         if self.metadata.get("credits"):
@@ -196,6 +194,7 @@ class ComicBaseMetadata:
         """Get the number of pages."""
         if self._page_filenames is not None:
             return len(self._page_filenames)
+        return None
 
     def set_page_metadata(self, archive_filenames):
         """Parse the filenames that are comic pages."""
@@ -210,6 +209,7 @@ class ComicBaseMetadata:
         """Get the filename of the page by index."""
         if self._page_filenames:
             return self._page_filenames[index]
+        return None
 
     def get_cover_page_filename(self):
         """Get filename of most likely coverpage."""
@@ -227,6 +227,7 @@ class ComicBaseMetadata:
         """Return a list of page filenames from the given index onward."""
         if self._page_filenames:
             return self._page_filenames[index_from:]
+        return None
 
     def _synth_md_tag(self, md, all_credits_map, all_tags):
         """Pop off complex values before simple update.
@@ -235,8 +236,8 @@ class ComicBaseMetadata:
         """
         # Synthesize credits
         try:
-            credits = md.pop("credits")
-            for credit in credits:
+            md_credits = md.pop("credits")
+            for credit in md_credits:
                 credit_key = self._credit_key(credit)
                 if credit_key not in all_credits_map:
                     all_credits_map[credit_key] = {}
@@ -275,8 +276,8 @@ class ComicBaseMetadata:
 
     def from_string(self, _):
         """Stub method."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def from_file(self, _):
         """Stub method."""
-        raise NotImplementedError()
+        raise NotImplementedError
