@@ -11,7 +11,7 @@ install:
 ## Install dev requirements
 ## @category Install
 install-dev: install
-	poetry install  --no-root extras dev
+	poetry install --no-root --extras dev
 
 .PHONY: install-all
 ## Install all extras
