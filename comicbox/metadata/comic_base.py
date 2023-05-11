@@ -61,6 +61,7 @@ class ComicBaseMetadata:
             "last_mark",
             "month",
             "page_count",
+            "story_arc_number",
             "volume",
             "volume_count",
             "year",

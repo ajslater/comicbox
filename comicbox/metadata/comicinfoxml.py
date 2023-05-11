@@ -1,6 +1,9 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+from dataclasses import dataclass
 from logging import getLogger
 from xml.etree.ElementTree import Element, ElementTree, SubElement
+
+from stringcase import pascalcase, snakecase
 
 from comicbox.metadata.comic_xml import ComicXml
 
@@ -11,22 +14,35 @@ class ComicInfoXml(ComicXml):
     """Comic Rack Metadata."""
 
     # Schema from
-    # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
+    # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
 
-    class PageType:
-        """CIX Page Type Schema."""
+    @dataclass
+    class PageInfo:
+        """CIX Page Info."""
 
-        FRONT_COVER = "FrontCover"
-        INNER_COVER = "InnerCover"
-        ROUNDUP = "Roundup"
-        STORY = "Story"
-        ADVERTISEMENT = "Advertisement"
-        EDITORIAL = "Editorial"
-        LETTERS = "Letters"
-        PREVIEW = "Preview"
-        BACK_COVER = "BackCover"
-        OTHER = "Other"
-        DELETED = "Deleted"
+        class PageType:
+            """CIX Page Type Schema."""
+
+            FRONT_COVER = "FrontCover"
+            INNER_COVER = "InnerCover"
+            ROUNDUP = "Roundup"
+            STORY = "Story"
+            ADVERTISEMENT = "Advertisement"
+            EDITORIAL = "Editorial"
+            LETTERS = "Letters"
+            PREVIEW = "Preview"
+            BACK_COVER = "BackCover"
+            OTHER = "Other"
+            DELETED = "Deleted"
+
+        image: int
+        page_type: str = PageType.STORY
+        double_page: bool = False
+        image_size: int = 0
+        key: str = ""
+        bookmark: str = ""
+        image_width: int = -1
+        image_height: int = -1
 
     class YesNoTypes:
         """Text Boolean Types."""
@@ -60,27 +76,32 @@ class ComicInfoXml(ComicXml):
 
     FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
+
     # order of tags from:
-    # https://github.com/anansi-project/comicinfo/blob/main/schema/v2.0/ComicInfo.xsd
+    # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
     XML_TAGS = {
         "Title": "title",
         "Series": "series",
         "Number": "issue",
         "Count": "issue_count",
         "Volume": "volume",
+        "AlternateSeries": "alternate_series",
         "AlternateNumber": "alternate_issue",
         "AlternateCount": "alternate_issue_count",
-        "AlternateSeries": "alternate_series",
         "Summary": "summary",
         "Notes": "notes",
         "Year": "year",
         "Month": "month",
         "Day": "day",
+        #
+        # Credit tags here handled separately
+        #
         "Publisher": "publisher",
         "Imprint": "imprint",
         "Genre": "genres",
+        "Tags": "tags",
         "Web": "web",
-        # PageCount unused
+        # "PageCount": None,  # unused, calculated.
         "LanguageISO": "language",  # two letter in the lang list
         "Format": "format",
         "BlackAndWhite": "black_and_white",
@@ -90,11 +111,14 @@ class ComicInfoXml(ComicXml):
         "Locations": "locations",
         "ScanInformation": "scan_info",
         "StoryArc": "story_arcs",
+        "StoryArcNumber": "story_arc_number",
         "SeriesGroup": "series_groups",
         "AgeRating": "age_rating",
-        # Pages unused
+        # "Pages": None,  # unused, unparsed
         "CommunityRating": "community_rating",
-        # Credits handled speraately
+        # "MainCharacterOrTeam": None,  # unused
+        "Review": "review",
+        "GTIN": "gtin",
     }
 
     def _from_xml_credits(self, root):
@@ -156,7 +180,10 @@ class ComicInfoXml(ComicXml):
         if pages is not None:
             self.metadata["pages"] = []
             for page in pages.findall("Page"):
-                self.metadata["pages"].append(page.attrib)
+                snake_dict = {}
+                for key, value in page.attrib.items():
+                    snake_dict[snakecase(key)] = value
+                self.metadata["pages"].append(snake_dict)
 
     def _from_xml(self, tree):
         root = self._get_xml_root(tree)
@@ -199,7 +226,10 @@ class ComicInfoXml(ComicXml):
             if page_count:
                 pages = SubElement(root, "Pages")
                 for page in self.metadata["pages"]:
-                    SubElement(pages, "Page", attrib=page)
+                    pascal_dict = {}
+                    for key, value in page.items():
+                        pascal_dict[pascalcase(key)] = value
+                    SubElement(pages, "Page", attrib=pascal_dict)
         else:
             page_count = self.get_num_pages()
         SubElement(root, "PageCount").text = str(page_count)
@@ -231,8 +261,8 @@ class ComicInfoXml(ComicXml):
     def _get_cover_page_filenames_tagged(self):
         coverlist = set()
         for page in self.metadata.get("pages", []):
-            if page.get("Type") == self.PageType.FRONT_COVER:
-                index = int(page["Image"])
+            if page.get("type") == self.PageInfo.PageType.FRONT_COVER:
+                index = page.get("image")
                 num_pages = self.get_num_pages()
                 if (
                     self._page_filenames
@@ -244,24 +274,22 @@ class ComicInfoXml(ComicXml):
 
     def compute_pages_tags(self, infolist):
         """Recompute the page tags with actual image sizes."""
-        # Just store this integer data as strings because I don't
-        # expect anyone will ever use it.
         new_pages = []
         index = 0
         old_pages = self.metadata.get("pages")
         front_cover_set = False
-        for info in infolist:
-            if old_pages and len(old_pages) > index:
-                new_page = old_pages[index]
-                if new_page.get("Type") == self.PageType.FRONT_COVER:
-                    front_cover_set = True
-            elif info.filename in self._page_filenames:
-                new_page = {"Image": str(index)}
-            else:
-                continue
-            new_page["ImageSize"] = str(info.file_size)
+        for index, info in enumerate(infolist):
+            new_page = {"image": str(index), "image_size": str(info.file_size)}
+            if (
+                old_pages
+                and len(old_pages) > index
+                and old_pages[index].get("type") == self.PageInfo.PageType.FRONT_COVER
+            ):
+                new_page["type"] = self.PageInfo.PageType.FRONT_COVER
+                front_cover_set = True
+            # new_page["image_width"] = pillow
+            # new_page["image_height"] = pillow
             new_pages.append(new_page)
-            index += 1
         if not front_cover_set and len(new_pages) > 0:
-            new_pages[0]["Type"] = self.PageType.FRONT_COVER
+            new_pages[0]["type"] = self.PageInfo.PageType.FRONT_COVER
         self.metadata["pages"] = new_pages
