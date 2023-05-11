@@ -2,7 +2,7 @@
 ## Install for production
 ## @category Install
 install:
-	pip install --update pip
+	pip install --upgrade pip
 	pip install --upgrade poetry
 	poetry install --no-root
 	npm install
