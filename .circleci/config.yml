@@ -26,13 +26,13 @@ jobs:
       - persist_to_workspace:
           paths:
             - ./README.md
-            - ./ci
+            - ./bin
             - ./dist
             - ./pyproject.toml
           root: .
   deploy:
     docker:
-      - image: cimg/python:3.10.0
+      - image: cimg/python:3.11
     steps:
       - attach_workspace:
           at: .
