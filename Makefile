@@ -3,19 +3,20 @@
 ## @category Install
 install:
 	pip install --update pip
+	pip install --upgrade poetry
 	poetry install --no-root
 	npm install
 
 .PHONY: install-dev
 ## Install dev requirements
 ## @category Install
-install-dev:
+install-dev: install
 	poetry install  --no-root --extras=dev
 
 .PHONY: install-all
 ## Install all extras
 ## @category Install
-install-all:
+install-all: install
 	poetry install --no-root --all-extras
 
 .PHONY: clean
