@@ -7,7 +7,8 @@ RUN rm -rf python_cacher
 RUN apk add --no-cache \
   shellcheck
 
-COPY bin package.json package-lock.json pyproject.toml poetry.lock bin Makefile ./
+COPY bin ./bin
+COPY package.json package-lock.json pyproject.toml poetry.lock Makefile ./
 RUN make install-dev
 
 COPY . .
