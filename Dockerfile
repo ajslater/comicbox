@@ -9,6 +9,6 @@ RUN apk add --no-cache \
 
 COPY bin ./bin
 COPY package.json package-lock.json pyproject.toml poetry.lock Makefile ./
-RUN make install-dev
+RUN make install
 
 COPY . .
