@@ -144,10 +144,7 @@ class ComicArchive:
             infolist = archive.getmembers()
         else:
             infolist = archive.infolist()
-        if self._archive_cls == tarfile.open:
-            fn_attr = "name"
-        else:
-            fn_attr = "filename"
+        fn_attr = "name" if self._archive_cls == tarfile.open else "filename"
         infolist = sorted(infolist, key=lambda i: getattr(i, fn_attr))
         return infolist, fn_attr
 
@@ -276,7 +273,8 @@ class ComicArchive:
     def _write_cbi_comment(self, parser):
         """Write a cbi comment to an archive."""
         if self._archive_cls == tarfile.open:
-            raise ValueError("Cannot write ComicBookInfo comments to cbt tarfile.")
+            reason = "Cannot write ComicBookInfo comments to cbt tarfile."
+            raise ValueError(reason)
         self.close()
         with self._archive_cls(self._path, "a") as append_archive:
             comment = parser.to_string().encode(errors="replace")
@@ -310,16 +308,14 @@ class ComicArchive:
     @_archive_close
     def get_page_by_filename(self, filename):
         """Return data for a single page by filename."""
-        data = self._archive_readfile(filename)
-        return data
+        return self._archive_readfile(filename)
 
     @_archive_close
     def get_page_by_index(self, index):
         """Get the page data by index."""
         self._ensure_page_metadata()
         filename = self._metadata.get_pagename(index)
-        data = self._archive_readfile(filename)
-        return data
+        return self._archive_readfile(filename)
 
     def _extract_page(self, path, fn):
         with path.open("wb") as page_file:
@@ -330,10 +326,11 @@ class ComicArchive:
         """Extract pages from archive and write to a path."""
         root_path = Path(root_path)
         if not root_path.is_dir():
-            raise ValueError(
+            reason = (
                 f"Must extract pages to a directory. {str(root_path)} "
                 "is not a directory"
             )
+            raise ValueError(reason)
         self._ensure_page_metadata()
         pagenames = self._metadata.get_pagenames_from(page_from)
         if pagenames:
@@ -367,7 +364,7 @@ class ComicArchive:
         cover_fn = self._metadata.get_cover_page_filename()
         if not cover_fn:
             LOG.warning(f"{self._path} could not find cover filename")
-            return
+            return None
         data = None
         try:
             data = self._archive_readfile(cover_fn)
@@ -444,7 +441,8 @@ class ComicArchive:
 
         new_path = self._path.with_suffix(CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
-            raise ValueError(f"{new_path} already exists.")
+            reason = f"{new_path} already exists."
+            raise ValueError(reason)
 
         tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)
 
@@ -473,7 +471,8 @@ class ComicArchive:
         elif isinstance(parser, ComicBookInfo):
             self._write_cbi_comment(parser)
         else:
-            raise ValueError(f"Unsupported metadata writer {md_class}")
+            reason = f"Unsupported metadata writer {md_class}"
+            raise TypeError(reason)
 
     def to_comicapi(self):
         """Export to comicapi style metadata."""
@@ -525,10 +524,9 @@ class ComicArchive:
         """Print raw metadtata."""
         self._set_raw_metadata()
         for key, val in self._raw.items():
-            print("-" * 10, key, "-" * 10)
-            if isinstance(val, bytes):
-                val = val.decode(errors="replace")
-            print(val)
+            print("-" * 10, key, "-" * 10)  # noqa T201
+            print_val = val.decode(errors="replace") if isinstance(val, bytes) else val
+            print(print_val)  # noqa T201
 
     def get_path(self):
         """Get the path for the archive."""

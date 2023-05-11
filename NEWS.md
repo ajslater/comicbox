@@ -1,5 +1,13 @@
 # 📰 News
 
+## v0.7.0
+
+- Fix
+  - Tags from ComicInfo.xml were not parsed
+- Features
+  - ComicInfo.xml StoryArcNumber, Review and GTIN now parsed.
+  - ComicInfo.xml Pages attributes now exposed as snake case for python
+
 ## v0.6.7
 
 - Fix

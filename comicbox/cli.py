@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Cli for comicbox."""
 from argparse import Action, ArgumentParser, Namespace
 
@@ -9,12 +8,9 @@ from comicbox.run import Runner
 class KeyValueDictAction(Action):
     """Parse comma deliminted key value pairs key value."""
 
-    def __call__(self, parser, namespace, values, _option_string=None):
+    def __call__(self, _parser, namespace, values, _option_string=None):
         """Parse comma deliminated key value pairs."""
-        if values:
-            values = dict(item.split("=") for item in values.split(","))
-        else:
-            values = {}
+        values = dict(item.split("=") for item in values.split(",")) if values else {}
         setattr(namespace, self.dest, values)
 
 
@@ -167,7 +163,3 @@ def main(params=None):
 
     runner = Runner(config)
     runner.run()
-
-
-if __name__ == "__main__":
-    main()

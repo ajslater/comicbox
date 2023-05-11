@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run all tests
 set -euxo pipefail
 mkdir -p test-results
 LOGLEVEL=DEBUG poetry run pytest "$@"

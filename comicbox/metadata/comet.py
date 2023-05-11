@@ -89,7 +89,7 @@ class CoMet(ComicXml):
                 LOG.warning(f"{self.path} CoMet {from_tag} {exc}")
 
     def _from_xml_credits(self, root):
-        for role in self.CREDIT_TAGS.keys():
+        for role in self.CREDIT_TAGS:
             for element in root.findall(role):
                 self._add_credit(element.text, role)
 
@@ -102,7 +102,7 @@ class CoMet(ComicXml):
             self.metadata["year"] = int(parts[0])
         if len(parts) > 1:
             self.metadata["month"] = int(parts[1])
-        if len(parts) > 2:
+        if len(parts) > 2:  # noqa PLR2004
             self.metadata["day"] = int(parts[2])
 
     def _from_xml_characters(self, root):
@@ -178,5 +178,4 @@ class CoMet(ComicXml):
         self._to_xml_date(root)
         self._to_xml_credits(root)
         self._to_xml_page_count(root)
-        tree = ElementTree(root)
-        return tree
+        return ElementTree(root)

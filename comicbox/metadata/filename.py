@@ -20,8 +20,7 @@ LOG = getLogger(__name__)
 @with_pattern(r"#?(\d|½)+\.?\d*\w*")
 def issue(text):
     """Issue number."""
-    res = ComicBaseMetadata.parse_issue(text)
-    return res
+    return ComicBaseMetadata.parse_issue(text)
 
 
 @with_pattern(r"v(?:ol)?\.? ?\d+")
@@ -91,24 +90,24 @@ class FilenameMetadata(ComicBaseMetadata):
 
     PATTERNS = (
         "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
-        + ".{ext:ext}",
+        ".{ext:ext}",
         "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
         "{series} {issue:issue} {year:year} {remainder}.{ext:ext}",
         "{series} {issue:issue} {issue_count:issue_count} {year:year} "
         "{remainder}.{ext:ext}",
         "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
         "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
-        + ".{ext:ext}",
+        ".{ext:ext}",
         "{series} {volume:volume} {year:year} {issue:issue} {title} {remainder}"
-        + ".{ext:ext}",
+        ".{ext:ext}",
         "{series} {volume:volume}{garbage}{year:year} {remainder}.{ext:ext}",
         "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
         "{series} {volume:volume} {year:year} {remainder}.{ext:ext}",
         "{series} {volume:volume} {year:year} {issue:issue} {remainder}.{ext:ext}",
         "{series} {volume:volume} {issue:issue} {title} {year:year} {remainder}"
-        + ".{ext:ext}"
-        "{series} {volume:volume} {issue:issue}.{ext:ext}"
-        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}"
+        ".{ext:ext}"
+        "{series} {volume:volume} {issue:issue}.{ext:ext}",
+        "{series} {volume:volume} {title} {year:year} {remainder}.{ext:ext}",
         "{series} {issue:issue} {issue_count:issue_count} {year:year} "
         "{remainder}.{ext:ext}",
         "{series} {issue:issue} {issue_count:issue_count} {remainder}.{ext:ext}",
@@ -198,12 +197,10 @@ class FilenameMetadata(ComicBaseMetadata):
             val = self.metadata.get(tag)
             if not val:
                 continue
-            if tag == "issue":
-                fmt = self.issue_formatter(val)
-            token = fmt.format(val)
+            final_fmt = self.issue_formatter(val) if tag == "issue" else fmt
+            token = final_fmt.format(val)
             tokens.append(token)
-        name = " ".join(tokens)
-        return name
+        return " ".join(tokens)
 
     def to_file(self, path, dry_run=False):
         """Rename this file according to our favorite naming scheme."""

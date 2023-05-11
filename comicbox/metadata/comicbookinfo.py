@@ -1,5 +1,5 @@
 """A class to encapsulate the ComicBookInfo data."""
-from datetime import datetime
+from datetime import UTC, datetime
 from logging import getLogger
 
 from comicbox.metadata.comic_json import ComicJSON
@@ -81,10 +81,9 @@ class ComicBookInfo(ComicJSON):
             val = val.strip()
             if not val:
                 return
-        elif isinstance(val, list):
+        elif isinstance(val, list) and len(val) == 0:
             # tags
-            if len(val) == 0:
-                return
+            return
         self.metadata[to_key] = val
 
     def _from_json_tags(self, root):
@@ -107,7 +106,7 @@ class ComicBookInfo(ComicJSON):
         cbi = {}
         json_obj = {
             "appID": f"Comicbox/{VERSION}",
-            "lastModified": str(datetime.now()),
+            "lastModified": str(datetime.now(tz=UTC)),
             self.ROOT_TAG: cbi,
         }
 
@@ -116,11 +115,8 @@ class ComicBookInfo(ComicJSON):
                 val = self.metadata.get(md_key)
                 if not val:
                     continue
-                elif md_key in self.DECIMAL_TAGS:
-                    if val % 1 == 0:
-                        val = int(val)
-                    else:
-                        val = float(val)
+                if md_key in self.DECIMAL_TAGS:
+                    val = int(val) if val % 1 == 0 else float(val)
                 elif md_key in self.STR_SET_TAGS:
                     val = ",".join(sorted(val))
                 elif md_key in self.PYCOUNTRY_TAGS:

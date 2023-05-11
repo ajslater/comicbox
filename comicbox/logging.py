@@ -23,15 +23,15 @@ class ColorFormatter(Formatter):
 
     FORMATTERS = {}
 
-    def __init__(self, format, **kwargs):
+    def __init__(self, log_format, **kwargs):
         """Set up formatters."""
         super().__init__(**kwargs)
         for level_name, args in self.FORMAT_COLORS.items():
             levelno = getattr(logging, level_name)
-            template = color(format, **args)
+            template = color(log_format, **args)
             self.FORMATTERS[levelno] = Formatter(fmt=template, **kwargs)
 
-    def format(self, record):
+    def format(self, record):  # noqa A003
         """Format each log message."""
         formatter = self.FORMATTERS[record.levelno]
         return formatter.format(record)
