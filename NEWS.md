@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.7.1
+
+- Remove unrar.cffi support.
+
 ## v0.7.0
 
 - Fix
