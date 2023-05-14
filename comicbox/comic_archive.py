@@ -3,22 +3,25 @@
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
-import tarfile
+import shutil
+import stat
 from functools import wraps
 from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
-from tarfile import TarInfo
+from tarfile import TarFile, TarInfo, is_tarfile
+from tarfile import open as tarfile_open
 from typing import Callable, Optional, Union
 
-try:
-    from unrar.cffi import rarfile  # type: ignore
-except ImportError:
-    import rarfile
-
-import zipfile_deflate64 as zipfile
 from confuse import AttrDict
 from defusedxml.ElementTree import ParseError
+from rarfile import RarFile, is_rarfile
+from zipfile_deflate64 import (
+    ZIP_DEFLATED,
+    ZIP_STORED,
+    ZipFile,
+    is_zipfile,
+)
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
@@ -60,6 +63,7 @@ class ComicArchive:
     _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
     _RAW_CBI_KEY = "ComicBookInfo Archive Comment"
     _RAW_FILENAME_KEY = "Filename"
+    _MODE_EXECUTABLE = stat.S_IXUSR ^ stat.S_IXGRP ^ stat.S_IXOTH
 
     def __init__(
         self,
@@ -84,9 +88,7 @@ class ComicArchive:
             config = get_config()
         self._config: AttrDict = config
         self._set_archive_cls()
-        self._archive: Union[
-            zipfile.ZipFile, rarfile.RarFile, tarfile.TarFile, None
-        ] = None
+        self._archive: Union[ZipFile, RarFile, TarFile, None] = None
         self._metadata: ComicBaseMetadata = ComicBaseMetadata(metadata=metadata)
         self._closefd: bool = closefd
         self._raw: dict = {}
@@ -99,19 +101,30 @@ class ComicArchive:
         """Context close."""
         self.close()
 
+    @classmethod
+    def _check_unrar_executable(cls):
+        unrar_path = shutil.which("unrar")
+        if not unrar_path:
+            reason = "unrar not on path"
+            raise UnsupportedArchiveTypeError(reason)
+        mode = Path(unrar_path).stat().st_mode
+        if not bool(mode & cls._MODE_EXECUTABLE):
+            reason = f"{unrar_path} not executable."
+            raise UnsupportedArchiveTypeError(reason)
+
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         self._archive_cls: Callable
         self._file_type: str
-        if zipfile.is_zipfile(self._path):
-            self._archive_cls = zipfile.ZipFile
+        if is_zipfile(self._path):
+            self._archive_cls = ZipFile
             self._file_type = "CBZ"
-        elif rarfile.is_rarfile(str(self._path)):
-            # uffi rarfile requires a str path
-            self._archive_cls = rarfile.RarFile
+        elif is_rarfile(self._path):
+            self._check_unrar_executable()
+            self._archive_cls = RarFile
             self._file_type = "CBR"
-        elif tarfile.is_tarfile(self._path):
-            self._archive_cls = tarfile.open
+        elif is_tarfile(self._path):
+            self._archive_cls = tarfile_open
             self._file_type = "CBT"
         else:
             reason = f"Unsupported archive type: {self._path}"
@@ -124,14 +137,13 @@ class ComicArchive:
     def _get_archive(self):
         """Set archive instance open for reading."""
         if not self._archive:
-            # uffi rarfile requires a str path
-            self._archive = self._archive_cls(str(self._path))
+            self._archive = self._archive_cls(self._path)
         return self._archive
 
     def _archive_namelist(self):
         """Get list of files in the archive."""
         archive = self._get_archive()
-        if isinstance(archive, tarfile.TarFile):
+        if isinstance(archive, TarFile):
             namelist = archive.getnames()
         else:
             namelist = archive.namelist()
@@ -140,11 +152,11 @@ class ComicArchive:
     def _archive_infolist(self):
         """Get info list of members from the archive."""
         archive = self._get_archive()
-        if isinstance(archive, tarfile.TarFile):
+        if isinstance(archive, TarFile):
             infolist = archive.getmembers()
         else:
             infolist = archive.infolist()
-        fn_attr = "name" if self._archive_cls == tarfile.open else "filename"
+        fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         infolist = sorted(infolist, key=lambda i: getattr(i, fn_attr))
         return infolist, fn_attr
 
@@ -152,7 +164,7 @@ class ComicArchive:
         """Read an archive file to memory."""
         archive = self._get_archive()
         data = b""
-        if isinstance(archive, tarfile.TarFile):
+        if isinstance(archive, TarFile):
             file_obj = archive.extractfile(filename)
             if file_obj:
                 data = file_obj.read()
@@ -198,7 +210,7 @@ class ComicArchive:
     def _get_raw_archive_comment(self):
         """Get the comment field from an archive."""
         if (
-            self._archive_cls != tarfile.open
+            self._archive_cls != tarfile_open
             and self._config.comicbookinfo
             and not self._raw.get(self._RAW_CBI_KEY)
         ):
@@ -272,7 +284,7 @@ class ComicArchive:
 
     def _write_cbi_comment(self, parser):
         """Write a cbi comment to an archive."""
-        if self._archive_cls == tarfile.open:
+        if self._archive_cls == tarfile_open:
             reason = "Cannot write ComicBookInfo comments to cbt tarfile."
             raise ValueError(reason)
         self.close()
@@ -327,7 +339,7 @@ class ComicArchive:
         root_path = Path(root_path)
         if not root_path.is_dir():
             reason = (
-                f"Must extract pages to a directory. {str(root_path)} "
+                f"Must extract pages to a directory. {root_path!s} "
                 "is not a directory"
             )
             raise ValueError(reason)
@@ -384,7 +396,7 @@ class ComicArchive:
     def _get_comment(self):
         """Get the comment from the archive."""
         comment = b""
-        if self._archive_cls != tarfile.open:
+        if self._archive_cls != tarfile_open:
             if not self._config.delete_tags:
                 comment = self._get_archive().comment  # type: ignore
             if isinstance(comment, str):
@@ -401,12 +413,10 @@ class ComicArchive:
         fn = getattr(info, fn_attr)
         if fn.lower() in skipnames:
             return
-        if IMAGE_EXT_RE.search(fn) is None:
-            compress = zipfile.ZIP_DEFLATED
-        else:
-            # images usually end up slightly larger with
-            # zip compression
-            compress = zipfile.ZIP_STORED
+
+        # images usually end up slightly larger with
+        # zip compression, so store them.
+        compress = ZIP_DEFLATED if IMAGE_EXT_RE.search(fn) is None else ZIP_STORED
         zf.writestr(
             fn,
             self._archive_readfile(fn),
@@ -416,9 +426,7 @@ class ComicArchive:
 
     def _recompress_write(self, tmp_path, filename, data, comment):
         """Write files from this archive into the tmpfile."""
-        with zipfile.ZipFile(
-            tmp_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
-        ) as zf:
+        with ZipFile(tmp_path, "w", compression=ZIP_DEFLATED, compresslevel=9) as zf:
             skipnames = set()
             if filename:
                 skipnames.add(filename)

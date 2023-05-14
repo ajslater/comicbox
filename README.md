@@ -44,8 +44,7 @@ You may access most development tasks from the makefile. Run make to see documen
 
 ## Dependencies
 
-Comicbox works without any binary dependencies but if [unrar-cffi](https://pypi.org/project/unrar-cffi/) is available
-it will use that instead of Python's native rarfile.
+Comicbox generally works without any binary dependencies but requires unrar be on the path to convert CBR into CBZ.
 
 ## 🤔 <a href="motivation">Motivation</a>
 
