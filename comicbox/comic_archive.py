@@ -3,6 +3,8 @@
 Reads and writes metadata via the included metadata package.
 Reads data using libarchive via archi.
 """
+import shutil
+import stat
 from functools import wraps
 from json import JSONDecodeError
 from logging import getLogger
@@ -61,6 +63,7 @@ class ComicArchive:
     _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
     _RAW_CBI_KEY = "ComicBookInfo Archive Comment"
     _RAW_FILENAME_KEY = "Filename"
+    _MODE_EXECUTABLE = stat.S_IXUSR ^ stat.S_IXGRP ^ stat.S_IXOTH
 
     def __init__(
         self,
@@ -98,6 +101,17 @@ class ComicArchive:
         """Context close."""
         self.close()
 
+    @classmethod
+    def _check_unrar_executable(cls):
+        unrar_path = shutil.which("unrar")
+        if not unrar_path:
+            reason = "unrar not on path"
+            raise UnsupportedArchiveTypeError(reason)
+        mode = Path(unrar_path).stat().st_mode
+        if not bool(mode & cls._MODE_EXECUTABLE):
+            reason = f"{unrar_path} not executable."
+            raise UnsupportedArchiveTypeError(reason)
+
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         self._archive_cls: Callable
@@ -106,6 +120,7 @@ class ComicArchive:
             self._archive_cls = ZipFile
             self._file_type = "CBZ"
         elif is_rarfile(self._path):
+            self._check_unrar_executable()
             self._archive_cls = RarFile
             self._file_type = "CBR"
         elif is_tarfile(self._path):
