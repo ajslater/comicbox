@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.8.0
+
+- Add close_fd & check_unrar config options for API use.
+- Add ComicArchive.check_unrar_executable() public method.
+- Remove closefd constructor option.
+
 ## v0.7.1
 
 - Remove unrar.cffi support.
