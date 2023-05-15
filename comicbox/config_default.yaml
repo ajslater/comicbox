@@ -12,6 +12,9 @@ comicbox:
   raw: False
   recurse: False
   metadata: {}
+  # API Options
+  close_fd: True
+  check_unrar: True
   # Actions
   cbz: False
   covers: False

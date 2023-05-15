@@ -28,6 +28,9 @@ TEMPLATE = MappingTemplate(
                 "raw": bool,
                 "recurse": bool,
                 "metadata": dict,
+                # API Options
+                "close_fd": bool,
+                "check_unrar": bool,
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),

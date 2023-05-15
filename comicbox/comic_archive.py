@@ -44,7 +44,7 @@ def _archive_close(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         result = f(self, *args, **kwargs)
-        if self._closefd:
+        if self._config.close_fd:
             self.close()
         return result
 
@@ -70,7 +70,6 @@ class ComicArchive:
         path: Union[Path, str],
         config: Optional[AttrDict] = None,
         metadata: Optional[dict] = None,
-        closefd: bool = True,
     ):
         """Initialize the archive with a path to the archive.
 
@@ -79,9 +78,6 @@ class ComicArchive:
             environment.
         metadata: a comicbox metadata dict to use instead of gathering the metadata
             from the path.
-        closefd: whether or not to close the comic archive after every public method
-            call or leave it open. If set to False, you should call
-            ComicArchive.close() when done with the comic archive.
         """
         self._path: Path = Path(path)
         if config is None:
@@ -90,7 +86,6 @@ class ComicArchive:
         self._set_archive_cls()
         self._archive: Union[ZipFile, RarFile, TarFile, None] = None
         self._metadata: ComicBaseMetadata = ComicBaseMetadata(metadata=metadata)
-        self._closefd: bool = closefd
         self._raw: dict = {}
 
     def __enter__(self):
@@ -102,15 +97,17 @@ class ComicArchive:
         self.close()
 
     @classmethod
-    def _check_unrar_executable(cls):
+    def check_unrar_executable(cls) -> bool:
+        """Check for the unrar executable."""
         unrar_path = shutil.which("unrar")
         if not unrar_path:
-            reason = "unrar not on path"
+            reason = "'unrar' not on path"
             raise UnsupportedArchiveTypeError(reason)
         mode = Path(unrar_path).stat().st_mode
         if not bool(mode & cls._MODE_EXECUTABLE):
-            reason = f"{unrar_path} not executable."
+            reason = f"'{unrar_path}' not executable"
             raise UnsupportedArchiveTypeError(reason)
+        return True
 
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
@@ -120,7 +117,8 @@ class ComicArchive:
             self._archive_cls = ZipFile
             self._file_type = "CBZ"
         elif is_rarfile(self._path):
-            self._check_unrar_executable()
+            if self._config.check_unrar:
+                self.check_unrar_executable()
             self._archive_cls = RarFile
             self._file_type = "CBR"
         elif is_tarfile(self._path):
