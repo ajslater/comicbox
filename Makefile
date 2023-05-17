@@ -70,11 +70,14 @@ fix:
 lint:
 	./bin/lint-backend.sh
 
+## test
+## @category Test
+T :=
 .PHONY: test
 ## Run Tests
 ## @category Test
 test:
-	./bin/test.sh
+	./bin/test.sh $(T)
 
 .PHONY: test-docker
 ## Run Tests

@@ -110,6 +110,7 @@ class ComicInfoXml(ComicXml):
         "Teams": "teams",
         "Locations": "locations",
         "ScanInformation": "scan_info",
+        # Mylar writes csvs for StoryArc & StoryArcNumber for multiple story arcs.
         "StoryArc": "story_arcs",
         "StoryArcNumber": "story_arc_number",
         "SeriesGroup": "series_groups",
@@ -160,7 +161,21 @@ class ComicInfoXml(ComicXml):
             val = self._pycountry(to_tag, val)
             if not val:
                 return
+        elif to_tag in self.CSV_DICT_LIST_MAP:
+            val = val.split(",")
+        elif to_tag in self.CSV_DICT_LIST_MAP.values():
+            val = [int(x) for x in val.split(",")]
         self.metadata[to_tag] = val
+
+    def _map_dicts(self):
+        for key_key, value_key in self.CSV_DICT_LIST_MAP.items():
+            key_list = self.metadata.pop(key_key, None)
+            if not key_list:
+                continue
+            value_list = self.metadata.pop(value_key, [])
+            diff = max(len(key_list) - len(value_list), 0)
+            value_list += [None] * diff
+            self.metadata[key_key] = dict(zip(key_list, value_list, strict=True))
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
@@ -174,6 +189,7 @@ class ComicInfoXml(ComicXml):
                 self._from_xml_tag(to_tag, val)
             except Exception as exc:
                 LOG.warning(f"{self.path} CIX {from_tag} {exc}")
+        self._map_dicts()
 
     def _from_xml_pages(self, root):
         pages = root.find("Pages")
@@ -207,6 +223,13 @@ class ComicInfoXml(ComicXml):
             return self.MangaTypes.YES
         return self.MangaTypes.NO
 
+    def _to_xml_csv_map(self, root, val, key_tag, value_tag):
+        sorted_arcs = dict(sorted(val.items()))
+        keys_val = ",".join(sorted_arcs.keys())
+        SubElement(root, key_tag).text = keys_val
+        values_val = ",".join(str(x) for x in sorted_arcs.values())
+        SubElement(root, value_tag).text = values_val
+
     def _to_xml_tags(self, root):
         """Write tags to xml."""
         for xml_tag, md_key in self.XML_TAGS.items():
@@ -214,8 +237,11 @@ class ComicInfoXml(ComicXml):
             if val:
                 if xml_tag == "BlackAndWhite":
                     new_val = self._to_xml_tags_yes_no(val)
-                if xml_tag == "Manga":
+                elif xml_tag == "Manga":
                     new_val = self._to_xml_manga(val)
+                elif xml_tag == "StoryArc":
+                    self._to_xml_csv_map(root, val, "StoryArc", "StoryArcNumber")
+                    continue
                 new_val = ",".join(sorted(val)) if md_key in self.STR_SET_TAGS else val
                 SubElement(root, xml_tag).text = str(new_val)
 

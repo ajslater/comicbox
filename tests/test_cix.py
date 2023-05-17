@@ -70,6 +70,10 @@ METADATA = {
     ],
     "page_count": 36,
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
+    "story_arcs": {
+        "Captain Arc": 4,
+        "Other Arc": 2,
+    },
 }
 
 
