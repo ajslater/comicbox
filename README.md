@@ -1,10 +1,17 @@
 # Comicbox
 
 A comic book archive metadata reader and writer. It reads CBZ, CBR, and CBT
-archives and writes CBZ archives. It reads and writes the
-[ComicRack comicinfo.xml format](https://wiki.mobileread.com/wiki/ComicRack#Metadata),
-the [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/)
-and [CoMet format](https://github.com/wdhongtw/comet-utils).
+archives and writes CBZ archives.
+
+## 🏷️ <a href="formats">Formats</a>
+
+Comicbox reads and writes:
+
+- [ComicRack Comicinfo.xml v2.1 (draft)](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1),
+  - An unofficial, undocumented Mylar extension to ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV values.
+- [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/)
+- [CoMet format](https://github.com/wdhongtw/comet-utils).
+- A variety of filename schemes that encode metadata.
 
 ## ⌨️ <a href="usage">Usage</a>
 
