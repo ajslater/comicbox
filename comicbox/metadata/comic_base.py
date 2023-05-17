@@ -38,12 +38,12 @@ class ComicBaseMetadata:
             "tags",
             "teams",
             "genres",
-            "story_arcs",
             "series_groups",
         )
     )
     BOOL_SET_TAGS = frozenset(("black_and_white",))
     DICT_LIST_TAGS = frozenset(("credits", "pages"))
+    CSV_DICT_LIST_MAP = {"story_arcs": "story_arc_number"}
     PYCOUNTRY_TAGS = frozenset(("country", "language"))
     DECIMAL_TAGS = frozenset(
         (
@@ -61,7 +61,6 @@ class ComicBaseMetadata:
             "last_mark",
             "month",
             "page_count",
-            "story_arc_number",
             "volume",
             "volume_count",
             "year",

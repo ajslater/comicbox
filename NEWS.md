@@ -1,5 +1,10 @@
 # 📰 News
 
+## v0.9.0
+
+- StoryArc & StoryArcNumber for ComicInfo.xml exported
+  as `story_arcs` dict. Supports Mylar multiple story arcs csv values hack.
+
 ## v0.8.0
 
 - Add close_fd & check_unrar config options for API use.
