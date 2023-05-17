@@ -1,9 +1,13 @@
 # Comicbox
 
-A comic book archive metadata reader and writer. It reads CBZ, CBR, and CBT
+A comic book archive metadata reader and writer.
+
+## 📚<a href="comicFormats">Comic Formats</a>
+
+Comicbox reads CBZ, CBR, and CBT
 archives and writes CBZ archives.
 
-## 🏷️ <a href="formats">Formats</a>
+## 🏷️ <a href="metadata_formats">Metadata Formats</a>
 
 Comicbox reads and writes:
 
