@@ -386,7 +386,7 @@ class ComicArchive:
     def get_metadata(self):
         """Return the metadata from the archive."""
         if not self._metadata.metadata or bool(
-            frozenset(self._metadata.metadata.keys()) - self._PAGES_KEYS
+            set(self._metadata.metadata.keys()) - self._PAGES_KEYS
         ):
             self._parse_metadata()
         return self._metadata.metadata

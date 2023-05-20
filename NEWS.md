@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.9.1
+
+- Removed dependence on Python 3.11
+
 ## v0.9.0
 
 - StoryArc & StoryArcNumber for ComicInfo.xml exported
