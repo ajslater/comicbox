@@ -1,5 +1,5 @@
 """A class to encapsulate the ComicBookInfo data."""
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from logging import getLogger
 
 from comicbox.metadata.comic_json import ComicJSON
@@ -106,7 +106,7 @@ class ComicBookInfo(ComicJSON):
         cbi = {}
         json_obj = {
             "appID": f"Comicbox/{VERSION}",
-            "lastModified": str(datetime.now(tz=UTC)),
+            "lastModified": str(datetime.now(tz=timezone.utc)),
             self.ROOT_TAG: cbi,
         }
 
