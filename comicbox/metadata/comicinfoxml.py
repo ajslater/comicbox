@@ -1,5 +1,6 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 from dataclasses import dataclass
+from itertools import zip_longest
 from logging import getLogger
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
@@ -173,9 +174,8 @@ class ComicInfoXml(ComicXml):
             if not key_list:
                 continue
             value_list = self.metadata.pop(value_key, [])
-            diff = max(len(key_list) - len(value_list), 0)
-            value_list += [None] * diff
-            self.metadata[key_key] = dict(zip(key_list, value_list, strict=True))
+            zipped_itr = zip_longest(key_list, value_list, fillvalue=None)
+            self.metadata[key_key] = dict(zipped_itr)
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
