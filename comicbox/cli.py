@@ -1,5 +1,5 @@
 """Cli for comicbox."""
-from argparse import Action, ArgumentParser, Namespace
+from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from collections.abc import Sequence
 
 from comicbox.config import get_config
@@ -74,14 +74,26 @@ def process_keys(config):
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
-    parser = ArgumentParser(description=description)
+    epilog = (
+        "Format keys:\n"
+        f"    Comic Rack: {', '.join(sorted(ComicInfoXml.CONFIG_KEYS))}\n"
+        f"    Comic Book Info: {', '.join(sorted(ComicBookInfo.CONFIG_KEYS))}\n"
+        f"    CoMet: {', '.join(sorted(CoMet.CONFIG_KEYS))}\n"
+        f"    Filename: {', '.join(sorted(FilenameMetadata.CONFIG_KEYS))}\n"
+        "-w & -R can take comma separated lists of these keys."
+    )
+    parser = ArgumentParser(
+        description=description,
+        epilog=epilog,
+        formatter_class=RawDescriptionHelpFormatter,
+    )
     # OPTIONS
     parser.add_argument(
         "-R",
         "--ignore-read",
         action=CSVAction,
         dest="ignore_read",
-        help="Ignore reading metadata formats.",
+        help="Ignore reading metadata formats. List of format keys.",
     )
     parser.add_argument(
         "-M",
@@ -178,7 +190,7 @@ def get_args(params=None) -> Namespace:
         "-w",
         "--write",
         action=CSVAction,
-        help="Write comic metadata formats to archive. e.g. 'cr' or 'cix,cbi'",
+        help="Write comic metadata formats to archive. List of format keys.",
     )
 
     ###########
