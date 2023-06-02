@@ -24,6 +24,7 @@ class ComicXml(ComicBaseMetadata):
         "Penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
         "Writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
     }
+    CREDIT_TAG_MAP = {key: list(value)[0] for (key, value) in CREDIT_TAGS.items()}
 
     ROOT_TAG = ""
 

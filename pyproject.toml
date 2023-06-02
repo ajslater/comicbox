@@ -4,7 +4,7 @@ build-backend = ["poetry.core.masonry.api"]
 
 [tool.poetry]
 name = "comicbox"
-version = "0.9.1"
+version = "0.10.0"
 description = "An API for reading comic archives"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -25,16 +25,21 @@ packages = [{ include = "comicbox" }, { include = "tests", format = "sdist" }]
 include = ["NEWS"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.9"
 ansicolors = "^1.1.8"
 confuse = "^2.0.0"
 deepdiff6 = "^6.2.0"
 defusedxml = "^0.7.1"
+#filetype = { version = "^1.0.12", optional = true}
 pycountry = "^22.1.3"
+#pymupdf = { version = "^1.21.1", optional = true}
 parse = "^1.15"
 rarfile = "^4.0"
 stringcase = "^1.2.0"
 zipfile-deflate64 = "^0.2.0"
+
+#[tool.poetry.extras]
+#pdf = ["pymupdf", "filetype"]
 
 [tool.poetry.dev-dependencies]
 black = "^23.3.0"
@@ -114,7 +119,7 @@ exclude = [
   "typings"
 ]
 useLibraryCodeForTypes = true
-pythonVersion = "3.7"
+pythonVersion = "3.9"
 pythonPlatform = "All"
 
 [tool.radon]
@@ -132,7 +137,7 @@ extend-select = ["A", "ARG", "B", "B9", "C", "C4", "C90", "D", "DJ",
 external = ["V101"]
 # format = "grouped"
 # show-source = true
-target-version = "py37"
+target-version = "py39"
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.per-file-ignores]

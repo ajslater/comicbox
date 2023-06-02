@@ -77,6 +77,7 @@ class ComicInfoXml(ComicXml):
 
     FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
+    CONFIG_KEYS = frozenset(("cr", "ci", "cix", "comicinfo", "comicinfoxml"))
 
     # order of tags from:
     # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
@@ -122,6 +123,7 @@ class ComicInfoXml(ComicXml):
         "Review": "review",
         "GTIN": "gtin",
     }
+    KEY_MAP = {**XML_TAGS, **ComicXml.CREDIT_TAG_MAP}
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS:
@@ -263,7 +265,7 @@ class ComicInfoXml(ComicXml):
     def _to_xml_credits(self, root):
         consolidated_credits = {}
         # Extract credits and consolidate
-        for credit in self.metadata["credits"]:
+        for credit in self.metadata.get("credits", []):
             for key, synonyms in self.CREDIT_TAGS.items():
                 if credit["role"].lower() in synonyms:
                     cleaned_person = credit["person"].replace(",", "").strip()

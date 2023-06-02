@@ -34,8 +34,10 @@ class ComicBookInfo(ComicJSON):
         "credits": "credits",
         "pages": "page_count",
     }
+    KEY_MAP = JSON_KEYS
     FILENAME = "ComicBookInfo.json"
     CREDIT_PRIMARY_YES_VALUES = ("yes", "true")
+    CONFIG_KEYS = frozenset(("cb", "cbi", "comicbookinfo"))
 
     def _get_credit(self, credit):
         person = credit.get("person")

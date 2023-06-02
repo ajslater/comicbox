@@ -3,7 +3,6 @@ import os
 import sys
 from logging import getLogger
 from pathlib import Path
-from pprint import pprint
 
 from comicbox.comic_archive import ComicArchive
 from comicbox.version import VERSION
@@ -35,10 +34,10 @@ class Runner:
             car.print_raw()
             self.noop = False
         if self.config.file_type:
-            print(car.get_file_type())
+            car.print_file_type()
             self.noop = False
         if self.config.print:
-            pprint(car.get_metadata())
+            car.print_metadata()
             self.noop = False
         if self.config.covers:
             car.extract_cover_as(self.config.dest_path)
@@ -54,6 +53,13 @@ class Runner:
             self.noop = False
         if self.config.import_fn:
             car.import_file(self.config.import_fn)
+            self.noop = False
+        if (
+            self.config.write_comicinfoxml
+            or self.config.write_comicbookinfo
+            or self.config.write_comet
+        ):
+            car.write()
             self.noop = False
         if self.config.rename:
             car.rename_file()

@@ -1,15 +1,15 @@
 comicbox:
   # Options
-  comet: True
-  comicbookinfo: True
-  comicinfoxml: True
   config: null
   delete_orig: False
   delete_tags: False
   dest_path: .
   dry_run: False
-  filename: True
   raw: False
+  read_comet: True
+  read_comicbookinfo: True
+  read_comicinfoxml: True
+  read_filename: True
   recurse: False
   metadata: {}
   # API Options
@@ -25,5 +25,8 @@ comicbox:
   print: False
   rename: False
   version: False
+  write_comet: False
+  write_comicbookinfo: False
+  write_comicinfoxml: False
   # Targets
   paths: null

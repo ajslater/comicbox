@@ -16,16 +16,16 @@ TEMPLATE = MappingTemplate(
         PACKAGE_NAME: MappingTemplate(
             {
                 # Options
-                "comet": bool,
-                "comicinfoxml": bool,
-                "comicbookinfo": bool,
                 "config": Optional(str),
                 "delete_orig": bool,
                 "delete_tags": bool,
                 "dest_path": str,
                 "dry_run": bool,
-                "filename": bool,
                 "raw": bool,
+                "read_comet": bool,
+                "read_comicinfoxml": bool,
+                "read_comicbookinfo": bool,
+                "read_filename": bool,
                 "recurse": bool,
                 "metadata": dict,
                 # API Options
@@ -41,6 +41,9 @@ TEMPLATE = MappingTemplate(
                 "print": Optional(bool),
                 "rename": Optional(bool),
                 "version": Optional(bool),
+                "write_comet": bool,
+                "write_comicbookinfo": bool,
+                "write_comicinfoxml": bool,
                 # Targets
                 "paths": Optional(Sequence(str)),
             }

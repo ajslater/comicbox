@@ -138,6 +138,7 @@ class FilenameMetadata(ComicBaseMetadata):
         ("year", "({})"),
         ("title", "{}"),
     )
+    CONFIG_KEYS = frozenset(("fn", "filename"))
 
     @staticmethod
     def try_parser(parser, fn):

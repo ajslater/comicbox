@@ -1,7 +1,12 @@
 """Cli for comicbox."""
 from argparse import Action, ArgumentParser, Namespace
+from collections.abc import Sequence
 
 from comicbox.config import get_config
+from comicbox.metadata.comet import CoMet
+from comicbox.metadata.comicbookinfo import ComicBookInfo
+from comicbox.metadata.comicinfoxml import ComicInfoXml
+from comicbox.metadata.filename import FilenameMetadata
 from comicbox.run import Runner
 
 
@@ -10,8 +15,60 @@ class KeyValueDictAction(Action):
 
     def __call__(self, _parser, namespace, values, _option_string=None):
         """Parse comma deliminated key value pairs."""
-        values = dict(item.split("=") for item in values.split(",")) if values else {}
-        setattr(namespace, self.dest, values)
+        if not values:
+            return
+        key, values_list = values.split("=")
+        values_array = values_list.split(",")
+        values_dict = {key: values_array}
+        dest_dict = getattr(namespace, self.dest, {})
+        if dest_dict is None:
+            dest_dict = {}
+        dest_dict.update(values_dict)
+        setattr(namespace, self.dest, dest_dict)
+
+
+class CSVAction(Action):
+    """Parse comma deliminated sequences."""
+
+    def __call__(self, _parser, namespace, values, _option_string=None):
+        """Parse comma deliminated sequences."""
+        if isinstance(values, str):
+            values_array = values.split(",")
+        elif isinstance(values, Sequence):
+            values_array = values
+        else:
+            return
+        setattr(namespace, self.dest, values_array)
+
+
+WRITE_KEY_MAPS = {
+    "comet": CoMet,
+    "comicbookinfo": ComicBookInfo,
+    "comicinfoxml": ComicInfoXml,
+    "filename": FilenameMetadata,
+}
+
+READ_KEY_MAPS = {**WRITE_KEY_MAPS, "filename": FilenameMetadata}
+
+
+def map_keys(config, prefix, list_key, maps, value):
+    """Map keyed values to config booleans."""
+    key_list = getattr(config, list_key)
+    if not key_list:
+        return
+    for key in key_list:
+        lower_key = key.lower()
+        for attr_suffix, parser_class in maps.items():
+            if lower_key in parser_class.CONFIG_KEYS:
+                attr = f"{prefix}_{attr_suffix}"
+                setattr(config, attr, value)
+    delattr(config, list_key)
+
+
+def process_keys(config):
+    """CLI config post processing."""
+    map_keys(config, "read", "ignore_read", READ_KEY_MAPS, False)
+    map_keys(config, "write", "write", READ_KEY_MAPS, True)
 
 
 def get_args(params=None) -> Namespace:
@@ -21,31 +78,10 @@ def get_args(params=None) -> Namespace:
     # OPTIONS
     parser.add_argument(
         "-R",
-        "--ignore-cix",
-        action="store_false",
-        dest="comicinfo",
-        help="Ignore ComicRack ComicInfo.xml metadata if present.",
-    )
-    parser.add_argument(
-        "-L",
-        "--ignore-cbi",
-        action="store_false",
-        dest="comicbookinfo",
-        help="Ignore ComicLover ComicBookInfo metadata if present.",
-    )
-    parser.add_argument(
-        "-C",
-        "--ignore-comet",
-        action="store_false",
-        dest="comet",
-        help="Ignore CoMet metadata if present.",
-    )
-    parser.add_argument(
-        "-F",
-        "--ignore-filename",
-        action="store_false",
-        dest="filename",
-        help="Ignore filename metadata.",
+        "--ignore-read",
+        action=CSVAction,
+        dest="ignore_read",
+        help="Ignore reading metadata formats.",
     )
     parser.add_argument(
         "-M",
@@ -138,6 +174,12 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "--delete-tags", action="store_true", help="Delete all tags from archive."
     )
+    parser.add_argument(
+        "-w",
+        "--write",
+        action=CSVAction,
+        help="Write comic metadata formats to archive. e.g. 'cr' or 'cix,cbi'",
+    )
 
     ###########
     # TARGETS #
@@ -153,6 +195,7 @@ def get_args(params=None) -> Namespace:
     if params is not None:
         params = params[1:]
     cns = parser.parse_args(params)
+    process_keys(cns)
     return Namespace(comicbox=cns)
 
 

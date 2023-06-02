@@ -1,5 +1,11 @@
 # 📰 News
 
+## v0.10.0
+
+- Breaking API & CLI Changes.
+- Write metadata from the command line.
+- Python version now >=3.9
+
 ## v0.9.1
 
 - Removed dependence on Python 3.11

@@ -9,6 +9,7 @@ from functools import wraps
 from json import JSONDecodeError
 from logging import getLogger
 from pathlib import Path
+from pprint import pprint
 from tarfile import TarFile, TarInfo, is_tarfile
 from tarfile import open as tarfile_open
 from typing import Callable, Optional, Union
@@ -174,8 +175,8 @@ class ComicArchive:
         """Get raw metadata from files in the archive."""
         # create parser_classes_dict
         all_parser_classes = {
-            CoMet: self._config.comet,
-            ComicInfoXml: self._config.comicinfoxml,
+            CoMet: self._config.read_comet,
+            ComicInfoXml: self._config.read_comicinfoxml,
         }
         parser_classes = {}
         for parser_class, flag in all_parser_classes.items():
@@ -209,7 +210,7 @@ class ComicArchive:
         """Get the comment field from an archive."""
         if (
             self._archive_cls != tarfile_open
-            and self._config.comicbookinfo
+            and self._config.read_comicbookinfo
             and not self._raw.get(self._RAW_CBI_KEY)
         ):
             comment = self._get_archive().comment  # type: ignore
@@ -229,7 +230,7 @@ class ComicArchive:
 
     def _get_raw_filename(self):
         """Get the filename form the path."""
-        if self._config.filename and not self._raw.get(self._RAW_FILENAME_KEY):
+        if self._config.read_filename and not self._raw.get(self._RAW_FILENAME_KEY):
             data = self._path.name
             self._raw[self._RAW_FILENAME_KEY] = data
         return self._raw.get(self._RAW_FILENAME_KEY)
@@ -251,6 +252,21 @@ class ComicArchive:
             namelist = self._archive_namelist()
             self._metadata.set_page_metadata(namelist)
 
+    def _normalize_metadata(self):
+        """Map familiar keys to native format keys."""
+        md = self._config.metadata
+        if not md:
+            return md
+        normal_md = {}
+        for key, value in md.items():
+            new_key = key
+            for parser in self.PARSER_CLASSES:
+                if native_key := parser.KEY_MAP.get(key):
+                    new_key = native_key
+                    break
+            normal_md[new_key] = value
+        return normal_md
+
     def _parse_metadata(self):
         """Parse all enabled metadata."""
         md_list = []
@@ -268,7 +284,8 @@ class ComicArchive:
         if cix_md:
             md_list += [cix_md]
         if self._config.metadata:
-            md_list += [self._config.metadata]
+            normal_md = self._normalize_metadata()
+            md_list += [normal_md]
         # order of the md list is very important, lowest to highest
         # precedence.
         self._metadata.synthesize_metadata(md_list)
@@ -464,12 +481,14 @@ class ComicArchive:
                 old_path.unlink()
                 LOG.info(f"removed: {old_path}")
 
-    def write_metadata(self, md_class, recompute_page_sizes=True):
+    def write_metadata(self, md_class, metadata=None, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
         if self._config.dry_run:
             LOG.info(f"Not writing metadata for: {self._path}")
             return
-        parser = md_class(metadata=self.get_metadata())
+        if metadata is None:
+            metadata = self.get_metadata()
+        parser = md_class(metadata=metadata)
         if recompute_page_sizes and isinstance(parser, ComicInfoXml):
             self.compute_pages_tags()
         if isinstance(parser, (ComicXml, CoMet)):
@@ -479,6 +498,34 @@ class ComicArchive:
         else:
             reason = f"Unsupported metadata writer {md_class}"
             raise TypeError(reason)
+        LOG.info(f"Wrote: {md_class.__name__}")
+
+    def _get_write_parsers(self):
+        """Convert config.write list into parser class list."""
+        md_class_dict = {
+            ComicInfoXml: self._config.write_comicinfoxml,
+            ComicBookInfo: self._config.write_comicbookinfo,
+            CoMet: self._config.write_comet,
+        }
+
+        md_class_list = []
+        for key, value in md_class_dict.items():
+            if value:
+                md_class_list.append(key)
+        return md_class_list
+
+    @_archive_close
+    def write(self):
+        """Write metadata accourding to config.write list."""
+        if self._config.dry_run:
+            LOG.info(f"Not writing metadata for: {self._path}")
+            return
+        md_class_list = self._get_write_parsers()
+        metadata = self.get_metadata()
+        for md_class in md_class_list:
+            # XXX writing bot cix & comet may be ineffecient.
+            # If opds.json occurs consider optimizing for writing multiple files.
+            self.write_metadata(md_class, metadata)
 
     def to_comicapi(self):
         """Export to comicapi style metadata."""
@@ -542,3 +589,11 @@ class ComicArchive:
     def namelist(self):
         """Get the archive file namelist."""
         return self._archive_namelist()
+
+    def print_file_type(self):
+        """Print the file type."""
+        print(self.get_file_type())  # noqa: T201
+
+    def print_metadata(self):
+        """Pretty print the metadata."""
+        pprint(self.get_metadata())  # noqa: T203
