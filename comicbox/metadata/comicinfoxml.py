@@ -123,7 +123,19 @@ class ComicInfoXml(ComicXml):
         "Review": "review",
         "GTIN": "gtin",
     }
-    KEY_MAP = {**XML_TAGS, **ComicXml.CREDIT_TAG_MAP}
+    CREDIT_TAGS = {
+        "Colorist": ComicXml.CREDIT_TAGS["colorist"],
+        "CoverArtist": ComicXml.CREDIT_TAGS["cover"],
+        "Editor": ComicXml.CREDIT_TAGS["editor"],
+        "Inker": ComicXml.CREDIT_TAGS["inker"],
+        "Letterer": ComicXml.CREDIT_TAGS["letterer"],
+        "Penciller": ComicXml.CREDIT_TAGS["penciller"],
+        "Writer": ComicXml.CREDIT_TAGS["writer"],
+    }
+    KEY_MAP = {
+        **XML_TAGS,
+        **{key: list(value)[0] for (key, value) in CREDIT_TAGS.items()},
+    }
 
     def _from_xml_credits(self, root):
         for role in self.CREDIT_TAGS:

@@ -39,13 +39,13 @@ class CoMet(ComicXml):
     }
     CREDIT_TAGS = {
         "creator": frozenset(["creator"]),
-        "writer": ComicXml.CREDIT_TAGS["Writer"],
-        "penciller": ComicXml.CREDIT_TAGS["Penciller"],
-        "editor": ComicXml.CREDIT_TAGS["Editor"],
-        "coverDesigner": ComicXml.CREDIT_TAGS["CoverArtist"],
-        "letterer": ComicXml.CREDIT_TAGS["Letterer"],
-        "inker": ComicXml.CREDIT_TAGS["Inker"],
-        "colorist": ComicXml.CREDIT_TAGS["Colorist"],
+        "writer": ComicXml.CREDIT_TAGS["writer"],
+        "penciller": ComicXml.CREDIT_TAGS["penciller"],
+        "editor": ComicXml.CREDIT_TAGS["editor"],
+        "coverDesigner": ComicXml.CREDIT_TAGS["cover"],
+        "letterer": ComicXml.CREDIT_TAGS["letterer"],
+        "inker": ComicXml.CREDIT_TAGS["inker"],
+        "colorist": ComicXml.CREDIT_TAGS["colorist"],
     }
     KEY_MAP = {
         **XML_TAGS,

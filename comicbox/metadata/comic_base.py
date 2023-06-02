@@ -70,6 +70,17 @@ class ComicBaseMetadata:
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
+    CREDIT_TAGS = {
+        "colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
+        "cover": frozenset(
+            ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
+        ),
+        "editor": frozenset(["editor"]),
+        "inker": frozenset(["inker", "artist", "finishes"]),
+        "letterer": frozenset(["letterer"]),
+        "penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
+        "writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
+    }
 
     def __init__(self, string=None, path=None, metadata=None):
         """Initialize the metadata dict or parse it from a source."""
