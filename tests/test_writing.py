@@ -1,34 +1,32 @@
-"""Test CIX module."""
-from argparse import Namespace
+"""Tests for writing."""
+import shutil
 from pathlib import Path
 
-from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
+from comicbox.comic_archive import ComicArchive
+from comicbox.metadata.comicinfoxml import ComicInfoXml
 
-FN = Path("Captain Science #001-cix-cbi.cbr")
-FN_TAR = Path("Captain Science #001.cbt")
+from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata
+
+FN = Path("Captain Science #001-cbi.cbr")
 ARCHIVE_PATH = TEST_FILES_PATH / FN
-TAR_ARCHIVE_PATH = TEST_FILES_PATH / FN_TAR
-TMP_PATH = TMP_ROOT / "test_cix"
+TMP_PATH = TMP_ROOT / "test_write"
+OLD_TEST_CBR_PATH = TMP_PATH / FN
 NEW_TEST_CBZ_PATH = TMP_PATH / FN.with_suffix(".cbz")
+
 METADATA = {
-    "series": "Captain Science",
+    "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
+    "credits": [
+        {"person": "Wally Wood", "role": "Inker"},
+        {"person": "Wally Wood", "role": "Penciller"},
+        {"person": "Joe Orlando", "role": "Writer"},
+    ],
+    "ext": "cbz",
+    "genres": frozenset({"Science Fiction"}),
     "issue": "1",
     "issue_count": 7,
-    "publisher": "Youthful Adventure Stories",
-    "year": 1950,
-    "month": 11,
-    "day": 1,
-    "volume": 1950,
     "language": "en",
-    "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-    "characters": frozenset(["Gordon Dane", "Captain Science"]),
-    "credits": [
-        {"role": "Inker", "person": "Wally Wood"},
-        {"role": "Penciller", "person": "Wally Wood"},
-        {"role": "Writer", "person": "Joe Orlando"},
-    ],
-    "ext": "cbr",
-    "genres": frozenset(["Science Fiction"]),
+    "month": 11,
+    "page_count": 36,
     "pages": [
         {"image": "0", "image_size": "429985", "type": "FrontCover"},
         {"image": "1", "image_size": "332936"},
@@ -67,26 +65,40 @@ METADATA = {
         {"image": "34", "image_size": "353013"},
         {"image": "35", "image_size": "340840"},
     ],
-    "page_count": 36,
-    "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
-    "story_arcs": {
-        "Captain Arc": 4,
-        "Other Arc": 2,
-    },
+    "publisher": "Youthful Adventure Stories",
+    "series": "Captain Science",
+    "title": "The Beginning",
+    "volume": 1950,
+    "year": 1950,
+    "tags": frozenset(["a", "b", "c"]),
 }
-CONFIG = Namespace(comicbox=Namespace(write_comicinfoxml=True))
 
 
-def test_read_cix_rar():
-    """Read RAR with CIX."""
-    read_metadata(ARCHIVE_PATH, METADATA)
+def setup():
+    """Set up test dir and copy archive."""
+    shutil.rmtree(TMP_PATH, ignore_errors=True)
+    TMP_PATH.mkdir(parents=True, exist_ok=True)
+    shutil.copy(ARCHIVE_PATH, OLD_TEST_CBR_PATH)
 
 
-def text_read_cix_tar():
-    """Read Tarball with CIX."""
-    read_metadata(TAR_ARCHIVE_PATH, METADATA)
+def cleanup():
+    """Cleanup test dir."""
+    shutil.rmtree(TMP_PATH)
 
 
-def test_write_cix_from_rar():
-    """Write cbz with CIX."""
-    write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, CONFIG)
+def test_convert_to_cbz_and_cbi_to_cix():
+    """Test converting cbr to cbz and writing cbi info as cix."""
+    setup()
+
+    md = {"tags": frozenset(["a", "b", "c"])}
+
+    # read and write
+    # inject tags.
+    with ComicArchive(OLD_TEST_CBR_PATH) as car:
+        car.add_metadata(md)
+        car.write_metadata(ComicInfoXml)
+
+    # test
+    read_metadata(NEW_TEST_CBZ_PATH, METADATA)
+
+    cleanup()

@@ -138,6 +138,7 @@ class FilenameMetadata(ComicBaseMetadata):
         ("year", "({})"),
         ("title", "{}"),
     )
+    CONFIG_KEYS = frozenset(("fn", "filename"))
 
     @staticmethod
     def try_parser(parser, fn):
@@ -202,7 +203,7 @@ class FilenameMetadata(ComicBaseMetadata):
             tokens.append(token)
         return " ".join(tokens)
 
-    def to_file(self, path, dry_run=False):
+    def to_file(self, path, dry_run=True):
         """Rename this file according to our favorite naming scheme."""
         name = self.to_string()
         new_path = path.parent / Path(name + path.suffix)

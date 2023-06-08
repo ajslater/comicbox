@@ -1,5 +1,6 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 from dataclasses import dataclass
+from itertools import zip_longest
 from logging import getLogger
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
@@ -76,6 +77,7 @@ class ComicInfoXml(ComicXml):
 
     FILENAME = "comicinfo.xml"
     ROOT_TAG = "ComicInfo"
+    CONFIG_KEYS = frozenset(("cr", "ci", "cix", "comicinfo", "comicinfoxml"))
 
     # order of tags from:
     # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
@@ -120,6 +122,19 @@ class ComicInfoXml(ComicXml):
         # "MainCharacterOrTeam": None,  # unused
         "Review": "review",
         "GTIN": "gtin",
+    }
+    CREDIT_TAGS = {
+        "Colorist": ComicXml.CREDIT_TAGS["colorist"],
+        "CoverArtist": ComicXml.CREDIT_TAGS["cover"],
+        "Editor": ComicXml.CREDIT_TAGS["editor"],
+        "Inker": ComicXml.CREDIT_TAGS["inker"],
+        "Letterer": ComicXml.CREDIT_TAGS["letterer"],
+        "Penciller": ComicXml.CREDIT_TAGS["penciller"],
+        "Writer": ComicXml.CREDIT_TAGS["writer"],
+    }
+    KEY_MAP = {
+        **XML_TAGS,
+        **{key: list(value)[0] for (key, value) in CREDIT_TAGS.items()},
     }
 
     def _from_xml_credits(self, root):
@@ -173,9 +188,8 @@ class ComicInfoXml(ComicXml):
             if not key_list:
                 continue
             value_list = self.metadata.pop(value_key, [])
-            diff = max(len(key_list) - len(value_list), 0)
-            value_list += [None] * diff
-            self.metadata[key_key] = dict(zip(key_list, value_list, strict=True))
+            zipped_itr = zip_longest(key_list, value_list, fillvalue=None)
+            self.metadata[key_key] = dict(zipped_itr)
 
     def _from_xml_tags(self, root):
         for from_tag, to_tag in self.XML_TAGS.items():
@@ -263,7 +277,7 @@ class ComicInfoXml(ComicXml):
     def _to_xml_credits(self, root):
         consolidated_credits = {}
         # Extract credits and consolidate
-        for credit in self.metadata["credits"]:
+        for credit in self.metadata.get("credits", []):
             for key, synonyms in self.CREDIT_TAGS.items():
                 if credit["role"].lower() in synonyms:
                     cleaned_person = credit["person"].replace(",", "").strip()

@@ -1,57 +1,127 @@
 """Cli for comicbox."""
-from argparse import Action, ArgumentParser, Namespace
+import sys
+from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from collections.abc import Sequence
 
 from comicbox.config import get_config
+from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.metadata.comet import CoMet
+from comicbox.metadata.comicbookinfo import ComicBookInfo
+from comicbox.metadata.comicinfoxml import ComicInfoXml
+from comicbox.metadata.filename import FilenameMetadata
+from comicbox.metadata.pdf import PDFParser
 from comicbox.run import Runner
+
+WRITE_KEY_MAPS = {
+    "comet": CoMet,
+    "comicbookinfo": ComicBookInfo,
+    "comicinfoxml": ComicInfoXml,
+    "filename": FilenameMetadata,
+    "pdf": PDFParser,
+}
+
+READ_KEY_MAPS = {**WRITE_KEY_MAPS, "filename": FilenameMetadata}
+HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
 
 
 class KeyValueDictAction(Action):
-    """Parse comma deliminted key value pairs key value."""
+    """Parse comma delimited key value pairs key value."""
 
     def __call__(self, _parser, namespace, values, _option_string=None):
-        """Parse comma deliminated key value pairs."""
-        values = dict(item.split("=") for item in values.split(",")) if values else {}
-        setattr(namespace, self.dest, values)
+        """Parse comma delimited key value pairs."""
+        if not values:
+            return
+        key, values_list = values.split("=")
+        values_array = values_list.split(",")
+        values_dict = {key: values_array}
+        dest_dict = getattr(namespace, self.dest, {})
+        if dest_dict is None:
+            dest_dict = {}
+        dest_dict.update(values_dict)
+        setattr(namespace, self.dest, dest_dict)
+
+
+class CSVAction(Action):
+    """Parse comma deliminated sequences."""
+
+    def __call__(self, _parser, namespace, values, _option_string=None):
+        """Parse comma delimited sequences."""
+        if isinstance(values, str):
+            values_array = values.split(",")
+        elif isinstance(values, Sequence):
+            values_array = values
+        else:
+            return
+        setattr(namespace, self.dest, values_array)
+
+
+class PageRangeAction(Action):
+    """Parse page range."""
+
+    def __call__(self, _parser, namespace, values, _option_string=None):
+        """Parse page range delimited by :."""
+        values_array = values.split(":")
+        if not values_array:
+            return
+
+        index_from = int(values_array[0]) if len(values_array[0]) else None
+
+        if len(values_array) == 1:
+            index_to = index_from
+        elif len(values_array[1]):
+            index_to = int(values_array[1])
+        else:
+            index_to = None
+
+        if index_from is not None:
+            namespace.index_from = index_from
+        if index_to is not None:
+            namespace.index_to = index_to
+
+
+def map_keys(config, prefix, list_key, maps, value):
+    """Map keyed values to config booleans."""
+    key_list = getattr(config, list_key)
+    if key_list:
+        for key in key_list:
+            lower_key = key.lower()
+            for attr_suffix, parser_class in maps.items():
+                if lower_key in parser_class.CONFIG_KEYS:
+                    attr = f"{prefix}_{attr_suffix}"
+                    setattr(config, attr, value)
+    delattr(config, list_key)
+
+
+def process_keys(config):
+    """CLI config post processing."""
+    map_keys(config, "read", "ignore_read", READ_KEY_MAPS, False)
+    map_keys(config, "write", "write", WRITE_KEY_MAPS, True)
 
 
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
-    parser = ArgumentParser(description=description)
+    epilog = (
+        "Format keys:\n"
+        f"    Comic Rack: {', '.join(sorted(ComicInfoXml.CONFIG_KEYS))}\n"
+        f"    Comic Book Info: {', '.join(sorted(ComicBookInfo.CONFIG_KEYS))}\n"
+        f"    CoMet: {', '.join(sorted(CoMet.CONFIG_KEYS))}\n"
+        f"    Filename: {', '.join(sorted(FilenameMetadata.CONFIG_KEYS))}\n"
+        f"    PDF: {', '.join(sorted(PDFParser.CONFIG_KEYS))}\n"
+        "-w & -R can take comma separated lists of these keys."
+    )
+    parser = ArgumentParser(
+        description=description,
+        epilog=epilog,
+        formatter_class=RawDescriptionHelpFormatter,
+    )
     # OPTIONS
     parser.add_argument(
         "-R",
-        "--ignore-cix",
-        action="store_false",
-        dest="comicinfo",
-        help="Ignore ComicRack ComicInfo.xml metadata if present.",
-    )
-    parser.add_argument(
-        "-L",
-        "--ignore-cbi",
-        action="store_false",
-        dest="comicbookinfo",
-        help="Ignore ComicLover ComicBookInfo metadata if present.",
-    )
-    parser.add_argument(
-        "-C",
-        "--ignore-comet",
-        action="store_false",
-        dest="comet",
-        help="Ignore CoMet metadata if present.",
-    )
-    parser.add_argument(
-        "-F",
-        "--ignore-filename",
-        action="store_false",
-        dest="filename",
-        help="Ignore filename metadata.",
-    )
-    parser.add_argument(
-        "-M",
-        "--no-metadata",
-        action="store_false",
-        help="Do not read any comic metadata.",
+        "--ignore-read",
+        action=CSVAction,
+        dest="ignore_read",
+        help="Ignore reading metadata formats. List of format keys.",
     )
     parser.add_argument(
         "-d",
@@ -102,11 +172,17 @@ def get_args(params=None) -> Namespace:
         help="Print archive file type",
     )
     parser.add_argument(
-        "-f",
-        "--from",
-        dest="index_from",
+        "-n",
+        "--index",
+        dest="index",
         type=int,
-        help="Extract pages from the specified index forward.",
+        help="Extract a single page by zero based index.",
+    )
+    parser.add_argument(
+        "-a",
+        "--pages",
+        action=PageRangeAction,
+        help="Extract a single page or : delimited range of pages by zero based index.",
     )
     parser.add_argument(
         "-c", "--covers", action="store_true", help="Extract cover pages."
@@ -138,6 +214,12 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "--delete-tags", action="store_true", help="Delete all tags from archive."
     )
+    parser.add_argument(
+        "-w",
+        "--write",
+        action=CSVAction,
+        help="Write comic metadata formats to archive. List of format keys.",
+    )
 
     ###########
     # TARGETS #
@@ -153,6 +235,7 @@ def get_args(params=None) -> Namespace:
     if params is not None:
         params = params[1:]
     cns = parser.parse_args(params)
+    process_keys(cns)
     return Namespace(comicbox=cns)
 
 
@@ -162,4 +245,8 @@ def main(params=None):
     config = get_config(args)
 
     runner = Runner(config)
-    runner.run()
+    try:
+        runner.run()
+    except HANDLED_EXCEPTIONS as exc:
+        print(exc)  # noqa: T201
+        sys.exit(1)

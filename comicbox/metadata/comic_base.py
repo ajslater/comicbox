@@ -70,18 +70,38 @@ class ComicBaseMetadata:
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
     TRUTHY_VALUES = ("yes", "true", "1")
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
+    CREDIT_TAGS = {
+        "colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
+        "cover": frozenset(
+            ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
+        ),
+        "editor": frozenset(["editor"]),
+        "inker": frozenset(["inker", "artist", "finishes"]),
+        "letterer": frozenset(["letterer"]),
+        "penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
+        "writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
+    }
 
-    def __init__(self, string=None, path=None, metadata=None):
+    def __init__(  # noqa: PLR0913
+        self,
+        path=None,
+        string=None,
+        metadata_path=None,
+        native_dict=None,
+        metadata=None,
+    ):
         """Initialize the metadata dict or parse it from a source."""
         self.metadata = {}
         self._page_filenames = None
         self.path = path
         if metadata is not None:
             self.metadata = metadata
-        elif string is not None:
+        if native_dict is not None:
+            self.from_dict(native_dict)
+        if string is not None:
             self.from_string(string)
-        elif path is not None:
-            self.from_file(path)
+        if metadata_path is not None:
+            self.from_file(metadata_path)
 
     @staticmethod
     def _credit_key(credit):
@@ -196,12 +216,15 @@ class ComicBaseMetadata:
             return len(self._page_filenames)
         return None
 
-    def set_page_metadata(self, archive_filenames):
+    def set_page_metadata(self, archive_filenames, is_pdf=False):
         """Parse the filenames that are comic pages."""
-        self._page_filenames = []
-        for filename in archive_filenames:
-            if IMAGE_EXT_RE.search(filename) is not None:
-                self._page_filenames.append(filename)
+        if is_pdf:
+            self._page_filenames = archive_filenames
+        else:
+            self._page_filenames = []
+            for filename in archive_filenames:
+                if IMAGE_EXT_RE.search(filename) is not None:
+                    self._page_filenames.append(filename)
         self.metadata["page_count"] = len(self._page_filenames)
         self.metadata["cover_image"] = self.get_cover_page_filename()
 
@@ -223,10 +246,16 @@ class ComicBaseMetadata:
             cover_image = self._page_filenames[0]
         return cover_image
 
-    def get_pagenames_from(self, index_from):
+    def get_pagenames_from(self, index_from=None, index_to=None):
         """Return a list of page filenames from the given index onward."""
         if self._page_filenames:
-            return self._page_filenames[index_from:]
+            if index_from is None:
+                index_from = 0
+            if index_to is None:
+                index_to = -1
+            elif index_to > 0:
+                index_to += 1
+            return self._page_filenames[index_from:index_to]
         return None
 
     def _synth_md_tag(self, md, all_credits_map, all_tags):
@@ -274,10 +303,26 @@ class ComicBaseMetadata:
             self.metadata["credits"] = final_credits
         self.metadata.update(all_tags)
 
+    def from_dict(self, metadata):
+        """Noop method."""
+        return metadata
+
     def from_string(self, _):
         """Stub method."""
         raise NotImplementedError
 
     def from_file(self, _):
+        """Stub method."""
+        raise NotImplementedError
+
+    def to_dict(self):
+        """Noop method."""
+        return self.metadata
+
+    def to_string(self):
+        """Stub method."""
+        raise NotImplementedError
+
+    def to_file(self):
         """Stub method."""
         raise NotImplementedError

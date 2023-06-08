@@ -15,7 +15,24 @@ Comicbox reads and writes:
   - Also, an unofficial, undocumented Mylar extension to ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV values.
 - [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/)
 - [CoMet format](https://github.com/wdhongtw/comet-utils).
+- optionally [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
 - A variety of filename schemes that encode metadata.
+
+## Installation
+
+```sh
+pip install comicbox
+```
+
+Comicbox supports PDFs as an extra when installed like:
+
+```sh
+pip install comicbox[pdf]
+```
+
+### Dependencies
+
+Comicbox generally works without any binary dependencies but requires `unrar` be on the path to convert CBR into CBZ or extract files from CBRs.
 
 ## ⌨️ <a href="usage">Usage</a>
 
@@ -25,11 +42,13 @@ Comicbox's primary purpose is as a library for other programs with [comicbox.com
 
 ### Console
 
+Type
+
 ```sh
 comicbox -h
 ```
 
-to use the CLI.
+see the CLI help.
 
 ### Config
 
@@ -37,7 +56,7 @@ comicbox accepts command line arguments but also an optional config file
 and environment variables.
 
 The variables have defaults specified in
-[a default yaml](https://github.com/ajslater/comicbox/blob/master/comicbox/config_default.yaml)
+[a default yaml](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml)
 
 The environment variables are the variable name prefixed with `COMICBOX_`. (e.g. COMICBOX_COMICINFOXML=0)
 
@@ -52,10 +71,6 @@ LOGLEVEL=ERROR comicbox -p <path>
 ## 🛠 <a href="development">Development</a>
 
 You may access most development tasks from the makefile. Run make to see documentation.
-
-## Dependencies
-
-Comicbox generally works without any binary dependencies but requires unrar be on the path to convert CBR into CBZ.
 
 ## 🤔 <a href="motivation">Motivation</a>
 

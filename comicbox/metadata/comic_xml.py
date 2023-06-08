@@ -13,18 +13,6 @@ class ComicXml(ComicBaseMetadata):
     """XML Comic Metadata super class."""
 
     XML_HEADER = '<?xml version="1.0"?>'
-    CREDIT_TAGS = {
-        "Colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
-        "CoverArtist": frozenset(
-            ["cover", "covers", "coverartist", "cover artist", "coverDesigner"]
-        ),
-        "Editor": frozenset(["editor"]),
-        "Inker": frozenset(["inker", "artist", "finishes"]),
-        "Letterer": frozenset(["letterer"]),
-        "Penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
-        "Writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
-    }
-
     ROOT_TAG = ""
 
     def _get_xml_root(self, tree):

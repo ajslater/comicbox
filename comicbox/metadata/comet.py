@@ -39,17 +39,22 @@ class CoMet(ComicXml):
     }
     CREDIT_TAGS = {
         "creator": frozenset(["creator"]),
-        "writer": ComicXml.CREDIT_TAGS["Writer"],
-        "penciller": ComicXml.CREDIT_TAGS["Penciller"],
-        "editor": ComicXml.CREDIT_TAGS["Editor"],
-        "coverDesigner": ComicXml.CREDIT_TAGS["CoverArtist"],
-        "letterer": ComicXml.CREDIT_TAGS["Letterer"],
-        "inker": ComicXml.CREDIT_TAGS["Inker"],
-        "colorist": ComicXml.CREDIT_TAGS["Colorist"],
+        "writer": ComicXml.CREDIT_TAGS["writer"],
+        "penciller": ComicXml.CREDIT_TAGS["penciller"],
+        "editor": ComicXml.CREDIT_TAGS["editor"],
+        "coverDesigner": ComicXml.CREDIT_TAGS["cover"],
+        "letterer": ComicXml.CREDIT_TAGS["letterer"],
+        "inker": ComicXml.CREDIT_TAGS["inker"],
+        "colorist": ComicXml.CREDIT_TAGS["colorist"],
+    }
+    KEY_MAP = {
+        **XML_TAGS,
+        **{key: list(value)[0] for (key, value) in CREDIT_TAGS.items()},
     }
     TWOPLACES = Decimal("0.01")
+    CONFIG_KEYS = frozenset(("comet",))
 
-    def _from_xml_tag(self, to_tag, val):  # noqa C901
+    def _from_xml_tag(self, to_tag, val):  # noqa: C901
         """Parse a single xml tag."""
         if to_tag == "reading_direction":
             val = self.ReadingDirection.parse(val)
@@ -95,14 +100,14 @@ class CoMet(ComicXml):
 
     def _from_xml_date(self, root):
         node = root.find("date")
-        if node is None:
+        if node is None or node.text is None:
             return
         parts = node.text.strip().split("-")
         if len(parts) > 0:
             self.metadata["year"] = int(parts[0])
         if len(parts) > 1:
             self.metadata["month"] = int(parts[1])
-        if len(parts) > 2:  # noqa PLR2004
+        if len(parts) > 2:  # noqa: PLR2004
             self.metadata["day"] = int(parts[2])
 
     def _from_xml_characters(self, root):
@@ -160,7 +165,7 @@ class CoMet(ComicXml):
         SubElement(root, "date").text = date_str
 
     def _to_xml_credits(self, root):
-        for credit in self.metadata["credits"]:
+        for credit in self.metadata.get("credits", []):
             for key, synonyms in self.CREDIT_TAGS.items():
                 if credit["role"].lower() in synonyms:
                     SubElement(root, key).text = credit["person"]
