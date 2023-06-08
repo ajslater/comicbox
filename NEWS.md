@@ -2,7 +2,7 @@
 
 ## v0.10.0
 
-- Breaking API & CLI Changes.
+- WARNING: Breaking API, CLI & Config changes.
 - Write metadata from the command line.
 - Optional PDF support. Install as `comicbox[pdf]`
 - Python version now >=3.9
