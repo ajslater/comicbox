@@ -42,8 +42,10 @@ class Runner:
         if self.config.covers:
             car.extract_cover_as(self.config.dest_path)
             self.noop = False
-        if self.config.index_from:
-            car.extract_pages(self.config.index_from, self.config.dest_path)
+        if self.config.index_from is not None or self.config.index_to is not None:
+            index_from = self.config.index_from
+            index_to = self.config.index_to
+            car.extract_pages(index_from, index_to, self.config.dest_path)
             self.noop = False
         if self.config.export:
             car.export_files()
@@ -58,6 +60,7 @@ class Runner:
             self.config.write_comicinfoxml
             or self.config.write_comicbookinfo
             or self.config.write_comet
+            or self.config.write_pdf
         ):
             car.write()
             self.noop = False

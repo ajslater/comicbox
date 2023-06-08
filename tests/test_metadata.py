@@ -6,18 +6,20 @@ from pathlib import Path
 from pprint import pprint
 
 from deepdiff.diff import DeepDiff
+from fitz import fitz
 
 from comicbox.comic_archive import ComicArchive
+from comicbox.config import get_config
 
 TEST_FILES_PATH = Path("tests/test_files")
-TMP_ROOT = Path("/tmp")  # noqa
+TMP_ROOT = Path("/tmp")  # noqa: S108
 SOURCE_ARCHIVE_PATH = TEST_FILES_PATH / "Captain Science #001.cbz"
 
 
 def read_metadata(archive_path, metadata):
     """Read metadata and compare to dict fixture."""
-    disk_car = ComicArchive(archive_path)
-    disk_md = disk_car.get_metadata()
+    with ComicArchive(archive_path) as car:
+        disk_md = car.get_metadata()
     pprint(disk_md)
     pprint(metadata)
     diff = DeepDiff(disk_md, metadata, ignore_order=True)
@@ -25,7 +27,7 @@ def read_metadata(archive_path, metadata):
     assert not diff
 
 
-def create_test_file(tmp_path, new_test_cbz_path, metadata, md_type):
+def _create_test_cbz(tmp_path, new_test_cbz_path, metadata, config):
     """Create a test file and write metadata to it."""
     # Create an minimal file to write to
     extract_path = tmp_path / "extract"
@@ -44,20 +46,34 @@ def create_test_file(tmp_path, new_test_cbz_path, metadata, md_type):
     shutil.rmtree(extract_path)
 
     # Create an archive object with the fixture data
-    car = ComicArchive(new_test_cbz_path, metadata=metadata)
-    # write the metadata to the empty archive
-    car.write_metadata(md_type)
+    config = get_config(config)
+    with ComicArchive(new_test_cbz_path, config=config, metadata=metadata) as car:
+        # write the metadata to the empty archive
+        car.write()
 
 
-def write_metadata(tmp_path, new_test_cbz_path, metadata, md_type):
+def write_metadata(tmp_path, new_test_cbz_path, metadata, config):
     """Create a test metadata file, read it back and compare the original."""
-    create_test_file(tmp_path, new_test_cbz_path, metadata, md_type)
-    # read data back from the test file and then cleanup
-    disk_car = ComicArchive(new_test_cbz_path)
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    _create_test_cbz(tmp_path, new_test_cbz_path, metadata, config)
+    read_metadata(new_test_cbz_path, metadata)
+    shutil.rmtree(tmp_path)
 
-    # comparison metadata direct from example data
-    disk_md = disk_car.get_metadata()
-    diff = DeepDiff(disk_md, metadata, ignore_order=True)
-    pprint(diff)
-    assert not diff
+
+def _create_test_pdf(metadata, new_test_pdf_path, config):
+    """Create a new empty PDF file."""
+    doc = fitz.Document()
+    doc.new_page()  # type: ignore
+    doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
+    doc.close()
+    config = get_config(config)
+    with ComicArchive(new_test_pdf_path, config=config, metadata=metadata) as car:
+        car.write()
+
+
+def write_metadata_pdf(tmp_path, new_test_pdf_path, metadata, config):
+    """Copy the test metadata pdf and write to it."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    _create_test_pdf(metadata, new_test_pdf_path, config)
+    read_metadata(new_test_pdf_path, metadata)
     shutil.rmtree(tmp_path)

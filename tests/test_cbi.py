@@ -1,7 +1,6 @@
 """Test CBI module."""
+from argparse import Namespace
 from pathlib import Path
-
-from comicbox.metadata.comicbookinfo import ComicBookInfo
 
 from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
@@ -29,6 +28,7 @@ METADATA = {
     "cover_image": "Captain Science 001/CaptainScience#1_01.jpg",
     "ext": "cbr",
 }
+CONFIG = Namespace(comicbox=Namespace(write_comicbookinfo=True))
 
 
 def test_read_cbi():
@@ -38,4 +38,4 @@ def test_read_cbi():
 
 def test_write_cbi():
     """Write CBI archive."""
-    write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, ComicBookInfo)
+    write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, CONFIG)

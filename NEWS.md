@@ -4,7 +4,9 @@
 
 - Breaking API & CLI Changes.
 - Write metadata from the command line.
+- Optional PDF support. Install as `comicbox[pdf]`
 - Python version now >=3.9
+- Extract a range of pages from the cli.
 
 ## v0.9.1
 

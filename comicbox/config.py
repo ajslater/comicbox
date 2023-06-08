@@ -26,6 +26,7 @@ TEMPLATE = MappingTemplate(
                 "read_comicinfoxml": bool,
                 "read_comicbookinfo": bool,
                 "read_filename": bool,
+                "read_pdf": bool,
                 "recurse": bool,
                 "metadata": dict,
                 # API Options
@@ -38,12 +39,14 @@ TEMPLATE = MappingTemplate(
                 "file_type": Optional(bool),
                 "import_fn": Optional(str),
                 "index_from": Optional(int),
+                "index_to": Optional(int),
                 "print": Optional(bool),
                 "rename": Optional(bool),
                 "version": Optional(bool),
                 "write_comet": bool,
                 "write_comicbookinfo": bool,
                 "write_comicinfoxml": bool,
+                "write_pdf": bool,
                 # Targets
                 "paths": Optional(Sequence(str)),
             }
@@ -61,8 +64,12 @@ def get_config(
         config.read()
     except Exception as exc:
         LOG.warning(exc)
-    if args and args.comicbox and args.comicbox.config:
-        config.set_file(args.comicbox.config)
+    if (
+        args
+        and getattr(args, "comicbox", None)
+        and (config_fn := getattr(args.comicbox, "config", None))
+    ):
+        config.set_file(config_fn)
     config.set_env()
     if args:
         config.set_args(args)

@@ -1,7 +1,6 @@
 """Test CIX module."""
+from argparse import Namespace
 from decimal import Decimal
-
-from comicbox.metadata.comet import CoMet
 
 from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metadata
 
@@ -37,6 +36,7 @@ METADATA = {
     "cover_image": "CaptainScience#1_01.jpg",
     "page_count": 36,
 }
+CONFIG = Namespace(comicbox=Namespace(write_comet=True))
 
 
 def test_read_comet():
@@ -46,4 +46,4 @@ def test_read_comet():
 
 def test_write_comet():
     """Write comet metadata."""
-    write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, CoMet)
+    write_metadata(TMP_PATH, NEW_TEST_CBZ_PATH, METADATA, CONFIG)
