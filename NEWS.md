@@ -1,5 +1,9 @@
 # 📰 News
 
+## v0.10.1
+
+- Change --metadata cli syntax to use key=[a,b,c] for arrays and key=a for simple values.
+
 ## v0.10.0
 
 - WARNING: Breaking API, CLI & Config changes.
