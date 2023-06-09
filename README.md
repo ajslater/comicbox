@@ -64,7 +64,7 @@ see the CLI help.
 #### Examples
 
 ```sh
-comicbox test.cbz -m "Tags=a,b,c" -m "Publisher=SmallComics" -w cr
+comicbox test.cbz -m "Tags=[a,b,c]" -m "Publisher=SmallComics" -w cr
 ```
 
 Will write those tags to comicinfo.xml in the archive.
