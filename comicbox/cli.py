@@ -31,9 +31,13 @@ class KeyValueDictAction(Action):
         """Parse comma delimited key value pairs."""
         if not values:
             return
-        key, values_list = values.split("=")
-        values_array = values_list.split(",")
-        values_dict = {key: values_array}
+        key, value_str = values.split("=")
+        if value_str.startswith("[") and value_str.endswith("]"):
+            values_list_str = value_str[1:-1]
+            val = values_list_str.split(",")
+        else:
+            val = value_str
+        values_dict = {key: val}
         dest_dict = getattr(namespace, self.dest, {})
         if dest_dict is None:
             dest_dict = {}
@@ -156,7 +160,7 @@ def get_args(params=None) -> Namespace:
         "-m",
         "--metadata",
         action=KeyValueDictAction,
-        help="Set metadata fields key=value,key=value",
+        help="Set metadata fields key=value or key=[valueA,valueB,valueC] for lists",
     )
 
     ###########
