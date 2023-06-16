@@ -41,9 +41,11 @@ class ComicBaseMetadata:
             "series_groups",
         )
     )
-    BOOL_SET_TAGS = frozenset(("black_and_white",))
+    STR_LIST_RE = re.compile(r"[,;]")
+    BOOL_TAGS = frozenset(("black_and_white",))
     DICT_LIST_TAGS = frozenset(("credits", "pages"))
     CSV_DICT_LIST_MAP = {"story_arcs": "story_arc_number"}
+    DICT_TAGS = frozenset(("story_arcs",))
     PYCOUNTRY_TAGS = frozenset(("country", "language"))
     DECIMAL_TAGS = frozenset(
         (
@@ -68,7 +70,7 @@ class ComicBaseMetadata:
     )
     VOLUME_PREFIXES = ("volume", "vol.", "vol", "v")
     IGNORE_COMPARE_TAGS = ("ext", "remainder")
-    TRUTHY_VALUES = ("yes", "true", "1")
+    TRUTHY_VALUES = frozenset(("yes", "true", "1"))
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
     CREDIT_TAGS = {
         "colorist": frozenset(["colorist", "colourist", "colorer", "colourer"]),
@@ -81,6 +83,7 @@ class ComicBaseMetadata:
         "penciller": frozenset(["artist", "penciller", "penciler", "breakdowns"]),
         "writer": frozenset(["writer", "author", "plotter", "scripter", "creator"]),
     }
+    KEY_MAP = {}
 
     def __init__(  # noqa: PLR0913
         self,
@@ -103,13 +106,25 @@ class ComicBaseMetadata:
         if metadata_path is not None:
             self.from_file(metadata_path)
 
+    @classmethod
+    def is_truthy(cls, value):
+        """Return if value is truthy."""
+        try:
+            if isinstance(value, str) and value.lower() in cls.TRUTHY_VALUES:
+                result = True
+            else:
+                result = bool(value)
+        except Exception:
+            result = False
+        return result
+
     @staticmethod
     def _credit_key(credit):
         """Get a unique key for credits."""
         return f"{credit.get('role')}:{credit.get('person')}".lower()
 
     @staticmethod
-    def _pycountry(tag, name, long_to_alpha2=True):
+    def parse_pycountry(tag, name, long_to_alpha2=True):
         """Convert countries and languages to long names or alpha2."""
         if tag == "country":
             module = pycountry.countries
@@ -135,21 +150,29 @@ class ComicBaseMetadata:
             return obj.alpha_2
         return obj.name
 
-    @staticmethod
-    def decimal_to_type(dec):
-        """Return an integer if we can."""
-        if dec % 1 == 0:
-            return int(dec)
-        return float(dec)
+    @classmethod
+    def normalize_key(cls, parser_classes, key):
+        """Normalize a single key with parsers."""
+        comicbox_key = key
+        for parser in parser_classes:
+            if native_key := parser.KEY_MAP.get(key):
+                comicbox_key = native_key
+                break
+        return comicbox_key
 
-    def __eq__(self, obj):
-        """== operator."""
-        return bool(DeepDiff(self.metadata, obj.metadata, ignore_order=True))
+    @classmethod
+    def normalize_metadata(cls, parser_classes, md):
+        """Normalize metadata to comicbox format with parsers."""
+        normal_md = {}
+        for key, value in md:
+            comicbox_key = cls.normalize_key(parser_classes, key)
+            normal_md[comicbox_key] = value
+        return normal_md
 
     @classmethod
     def parse_bool(cls, value):
         """Parse boolean type."""
-        return value.lower() in cls.TRUTHY_VALUES
+        return cls.is_truthy(value)
 
     @classmethod
     def parse_issue(cls, num):
@@ -177,6 +200,32 @@ class ComicBaseMetadata:
         return Decimal(num)
 
     @classmethod
+    def parse_str_set(cls, list_str):
+        """Parse a string list into a set."""
+        str_stripped_list = cls.parse_str_list(list_str)
+        return frozenset(str_stripped_list)
+
+    @classmethod
+    def parse_int(cls, value):
+        """Parse an integer value."""
+        return int(value)
+
+    @classmethod
+    def parse_str_list(cls, list_str):
+        """Parse a list of delimited strings."""
+        str_list = cls.STR_LIST_RE.split(list_str)
+        str_stripped_list = []
+        for item in str_list:
+            if stripped_item := item.strip():
+                str_stripped_list.append(stripped_item)
+        return str_stripped_list
+
+    @classmethod
+    def parse_int_list(cls, value):
+        """Parse a list of ints."""
+        return [int(x) for x in value.split(",")]
+
+    @classmethod
     def remove_volume_prefixes(cls, volume):
         """Remove common volume prefixes."""
         lowercase_volume = volume.lower()
@@ -185,6 +234,10 @@ class ComicBaseMetadata:
                 prefix_len = len(prefix)
                 volume = volume[prefix_len:].strip()
         return volume
+
+    def __eq__(self, obj):
+        """== operator."""
+        return bool(DeepDiff(self.metadata, obj.metadata, ignore_order=True))
 
     def _add_credit(self, person, role, primary=None):
         """Add a credit to the metadata."""
@@ -323,6 +376,41 @@ class ComicBaseMetadata:
         """Stub method."""
         raise NotImplementedError
 
-    def to_file(self):
+    def to_file(self, _):
         """Stub method."""
         raise NotImplementedError
+
+    @staticmethod
+    def is_number_or_truthy(value):
+        """See if value is a throwaway."""
+        return value in (False, 0) or value
+
+    @staticmethod
+    def serialize_str_set(value):
+        """Serialize string set tags."""
+        return ",".join(sorted(value))
+
+    @staticmethod
+    def serialize_bool(value):
+        """Serialize bool tags."""
+        return str(value).lower()
+
+    @classmethod
+    def serialize_pycountry(cls, tag, value):
+        """Serialize a pycountry tag."""
+        return cls.parse_pycountry(tag, value, False)
+
+    @staticmethod
+    def serialize_decimal(value):
+        """Serialize a decimal tag."""
+        return str(value)
+
+    @staticmethod
+    def serialize_issue(value):
+        """Serialize issue tags."""
+        return str(value)
+
+    @staticmethod
+    def serialize_int(value):
+        """Serialize int tags."""
+        return str(value)

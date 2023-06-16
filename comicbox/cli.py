@@ -24,25 +24,18 @@ READ_KEY_MAPS = {**WRITE_KEY_MAPS, "filename": FilenameMetadata}
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
 
 
-class KeyValueDictAction(Action):
-    """Parse comma delimited key value pairs key value."""
+class MetadataAction(Action):
+    """Parse metadtaa fields."""
 
     def __call__(self, _parser, namespace, values, _option_string=None):
-        """Parse comma delimited key value pairs."""
+        """Parse metadata key value pairs."""
         if not values:
             return
-        key, value_str = values.split("=")
-        if value_str.startswith("[") and value_str.endswith("]"):
-            values_list_str = value_str[1:-1]
-            val = values_list_str.split(",")
-        else:
-            val = value_str
-        values_dict = {key: val}
-        dest_dict = getattr(namespace, self.dest, {})
-        if dest_dict is None:
-            dest_dict = {}
-        dest_dict.update(values_dict)
-        setattr(namespace, self.dest, dest_dict)
+        dest_str = getattr(namespace, self.dest, "")
+        if dest_str is None:
+            dest_str = ""
+        dest_str = ";".join([dest_str, values])
+        setattr(namespace, self.dest, dest_str)
 
 
 class CSVAction(Action):
@@ -106,13 +99,19 @@ def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
     epilog = (
-        "Format keys:\n"
-        f"    Comic Rack: {', '.join(sorted(ComicInfoXml.CONFIG_KEYS))}\n"
-        f"    Comic Book Info: {', '.join(sorted(ComicBookInfo.CONFIG_KEYS))}\n"
-        f"    CoMet: {', '.join(sorted(CoMet.CONFIG_KEYS))}\n"
-        f"    Filename: {', '.join(sorted(FilenameMetadata.CONFIG_KEYS))}\n"
-        f"    PDF: {', '.join(sorted(PDFParser.CONFIG_KEYS))}\n"
-        "-w & -R can take comma separated lists of these keys."
+        "Complex --metadata example:\n"
+        "\t-m StoryArcs=Arc Name:1,Other Arc Name:5"
+        ";credits=writer:Person Name,inker:Other Name"
+        ";characters=anna,bea,carol\n"
+        "\t-m 'publisher=My Press' -m title='The Dark Freighter'\n\n"
+        "\tMetadata can be any tag from any of the supported metadata formats.\n\n"
+        "Format keys for --ignore-read and --write:\n"
+        f"\tComic Rack: {', '.join(sorted(ComicInfoXml.CONFIG_KEYS))}\n"
+        f"\tComic Book Info: {', '.join(sorted(ComicBookInfo.CONFIG_KEYS))}\n"
+        f"\tCoMet: {', '.join(sorted(CoMet.CONFIG_KEYS))}\n"
+        f"\tFilename: {', '.join(sorted(FilenameMetadata.CONFIG_KEYS))}\n"
+        f"\tPDF: {', '.join(sorted(PDFParser.CONFIG_KEYS))}\n"
+        "\n\n"
     )
     parser = ArgumentParser(
         description=description,
@@ -159,8 +158,10 @@ def get_args(params=None) -> Namespace:
     parser.add_argument(
         "-m",
         "--metadata",
-        action=KeyValueDictAction,
-        help="Set metadata fields key=value or key=[valueA,valueB,valueC] for lists",
+        dest="metadata_cli",
+        action="append",
+        help="Set metadata fields key=value, key=valueA,valueB,valueC,"
+        "key=subkey:value,subkey:value",
     )
 
     ###########

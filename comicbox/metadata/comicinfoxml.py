@@ -36,6 +36,22 @@ class ComicInfoXml(ComicXml):
             OTHER = "Other"
             DELETED = "Deleted"
 
+            ALL = frozenset(
+                (
+                    FRONT_COVER,
+                    INNER_COVER,
+                    ROUNDUP,
+                    STORY,
+                    ADVERTISEMENT,
+                    EDITORIAL,
+                    LETTERS,
+                    PREVIEW,
+                    BACK_COVER,
+                    OTHER,
+                    DELETED,
+                )
+            )
+
         image: int
         page_type: str = PageType.STORY
         double_page: bool = False
@@ -151,7 +167,7 @@ class ComicInfoXml(ComicXml):
         if val in self.MangaTypes.RTL_VALUES:
             self.metadata["reading_direction"] = self.ReadingDirection.RTL
             return True
-        return val in self.TRUTHY_VALUES
+        return self.is_truthy(val)
 
     def _from_xml_tag(self, to_tag, val):  # noqa C901
         """Parse one xml tag."""
@@ -160,26 +176,26 @@ class ComicInfoXml(ComicXml):
         elif to_tag in self.INT_TAGS:
             if to_tag == "volume":
                 val = self.remove_volume_prefixes(val)
-            val = int(val)
+            val = self.parse_int(val)
         elif to_tag in self.DECIMAL_TAGS:
             val = self.parse_decimal(val)
         elif to_tag in self.STR_SET_TAGS:
-            val = frozenset([item.strip() for item in val.split(",")])
-            if len(val) == 0:
+            val = self.parse_str_set(val)
+            if not val:
                 return
         # special bool tags
-        elif to_tag in self.BOOL_SET_TAGS:
+        elif to_tag in self.BOOL_TAGS:
             val = self.parse_bool(val)
         elif to_tag == "manga":
             val = self._from_xml_manga(to_tag, val)
         elif to_tag in self.PYCOUNTRY_TAGS:
-            val = self._pycountry(to_tag, val)
+            val = self.parse_pycountry(to_tag, val)
             if not val:
                 return
         elif to_tag in self.CSV_DICT_LIST_MAP:
-            val = val.split(",")
+            val = self.parse_str_list(val)
         elif to_tag in self.CSV_DICT_LIST_MAP.values():
-            val = [int(x) for x in val.split(",")]
+            val = self.parse_int_list(val)
         self.metadata[to_tag] = val
 
     def _map_dicts(self):
@@ -212,7 +228,22 @@ class ComicInfoXml(ComicXml):
             for page in pages.findall("Page"):
                 snake_dict = {}
                 for key, value in page.attrib.items():
-                    snake_dict[snakecase(key)] = value
+                    try:
+                        if key in ("Image", "ImageSize", "ImageWidth", "ImageHeight"):
+                            final_val = self.parse_int(value)
+                        elif key == "Type" and value not in self.PageInfo.PageType.ALL:
+                            reason = "PageType not recognized."
+                            raise TypeError(reason)  # noqa TRY301
+                        elif key == "DoublePage":
+                            final_val = self.parse_bool(value)
+                        else:
+                            final_val = value
+
+                        snake_dict[snakecase(key)] = final_val
+                    except Exception as exc:
+                        LOG.warning(
+                            f"Could not parse ComicPageInfo tag {key}:{value} {exc}"
+                        )
                 self.metadata["pages"].append(snake_dict)
 
     def _from_xml(self, tree):
@@ -244,20 +275,39 @@ class ComicInfoXml(ComicXml):
         values_val = ",".join(str(x) for x in sorted_arcs.values())
         SubElement(root, value_tag).text = values_val
 
+    SERIALIZER_MAP = {
+        ComicXml.BOOL_TAGS: ComicXml.serialize_bool,
+        ComicXml.DECIMAL_TAGS: ComicXml.serialize_decimal,
+        ComicXml.INT_TAGS: ComicXml.serialize_int,
+        ComicXml.STR_SET_TAGS: ComicXml.serialize_str_set,
+        frozenset(["black_and_white"]): _to_xml_tags_yes_no,
+        frozenset(["manga"]): _to_xml_manga,
+    }
+
     def _to_xml_tags(self, root):
         """Write tags to xml."""
         for xml_tag, md_key in self.XML_TAGS.items():
             val = self.metadata.get(md_key)
-            if val:
-                if xml_tag == "BlackAndWhite":
-                    new_val = self._to_xml_tags_yes_no(val)
-                elif xml_tag == "Manga":
-                    new_val = self._to_xml_manga(val)
-                elif xml_tag == "StoryArc":
-                    self._to_xml_csv_map(root, val, "StoryArc", "StoryArcNumber")
-                    continue
-                new_val = ",".join(sorted(val)) if md_key in self.STR_SET_TAGS else val
-                SubElement(root, xml_tag).text = str(new_val)
+            if val is None:
+                continue
+
+            if md_key in self.PYCOUNTRY_TAGS:
+                new_val = self.serialize_pycountry(md_key, val)
+            elif md_key == "story_arcs":
+                self._to_xml_csv_map(root, val, "StoryArc", "StoryArcNumber")
+                continue
+            else:
+                serializer = str
+                for key_set, method in self.SERIALIZER_MAP.items():
+                    if md_key in key_set:
+                        serializer = method
+                        break
+                new_val = serializer(val)
+
+            if not self.is_number_or_truthy(new_val):
+                continue
+
+            SubElement(root, xml_tag).text = new_val
 
     def _to_xml_pages(self, root):
         md_pages = self.metadata.get("pages")
@@ -268,7 +318,7 @@ class ComicInfoXml(ComicXml):
                 for page in self.metadata["pages"]:
                     pascal_dict = {}
                     for key, value in page.items():
-                        pascal_dict[pascalcase(key)] = value
+                        pascal_dict[pascalcase(key)] = str(value)
                     SubElement(pages, "Page", attrib=pascal_dict)
         else:
             page_count = self.get_num_pages()
@@ -319,7 +369,7 @@ class ComicInfoXml(ComicXml):
         old_pages = self.metadata.get("pages")
         front_cover_set = False
         for index, info in enumerate(infolist):
-            new_page = {"image": str(index), "image_size": str(info.file_size)}
+            new_page = {"image": index, "image_size": info.file_size}
             if (
                 old_pages
                 and len(old_pages) > index

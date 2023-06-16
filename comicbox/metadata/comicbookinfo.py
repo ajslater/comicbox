@@ -35,8 +35,7 @@ class ComicBookInfo(ComicJSON):
         "pages": "page_count",
     }
     KEY_MAP = JSON_KEYS
-    FILENAME = "ComicBookInfo.json"
-    CREDIT_PRIMARY_YES_VALUES = ("yes", "true")
+    FILENAME = "comic-book-info.json"
     CONFIG_KEYS = frozenset(("cb", "cbi", "comicbookinfo"))
 
     def _get_credit(self, credit):
@@ -45,16 +44,7 @@ class ComicBookInfo(ComicJSON):
             return
         role = credit.get("role")
         primary = credit.get("primary")
-        try:
-            if (
-                isinstance(primary, str)
-                and primary.lower() in self.CREDIT_PRIMARY_YES_VALUES
-            ):
-                primary = True
-            else:
-                primary = bool(primary)
-        except Exception:
-            primary = False
+        primary = self.is_truthy(primary)
         self._add_credit(person, role, primary)
 
     def _from_json_tag(self, from_key, to_key, val):  # noqa C901
@@ -65,18 +55,15 @@ class ComicBookInfo(ComicJSON):
         elif to_key in self.ISSUE_TAGS:
             val = self.parse_issue(val)
         elif to_key in self.INT_TAGS:
-            val = int(val)
+            val = self.parse_int(val)
         elif to_key in self.STR_SET_TAGS:
-            if isinstance(val, list):
-                val = frozenset(val)
-            else:
-                val = frozenset([item.strip() for item in val.split(",")])
-            if len(val) == 0:
+            val = frozenset(val) if isinstance(val, list) else self.parse_str_set(val)
+            if not val:
                 return
         elif to_key in self.DECIMAL_TAGS:
             val = self.parse_decimal(val)
         elif to_key in self.PYCOUNTRY_TAGS:
-            val = self._pycountry(to_key, val)
+            val = self.parse_pycountry(to_key, val)
             if not val:
                 return
         elif isinstance(val, str):
@@ -115,16 +102,17 @@ class ComicBookInfo(ComicJSON):
         for json_key, md_key in self.JSON_KEYS.items():
             try:
                 val = self.metadata.get(md_key)
-                if not val:
+                if val is None:
                     continue
                 if md_key in self.DECIMAL_TAGS:
-                    val = int(val) if val % 1 == 0 else float(val)
-                elif md_key in self.STR_SET_TAGS:
-                    val = ",".join(sorted(val))
+                    val = float(val)
                 elif md_key in self.PYCOUNTRY_TAGS:
-                    val = self._pycountry(md_key, val, False)
-                    if not val:
-                        continue
+                    val = self.serialize_pycountry(md_key, val)
+                elif md_key in self.STR_SET_TAGS:
+                    val = self.serialize_str_set(val)
+
+                if not self.is_number_or_truthy(val):
+                    continue
                 cbi[json_key] = val
             except Exception as exc:
                 LOG.warning(f"{self.path} CBI serializing {json_key}: {exc}")

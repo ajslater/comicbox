@@ -20,9 +20,9 @@ def read_metadata(archive_path, metadata):
     """Read metadata and compare to dict fixture."""
     with ComicArchive(archive_path) as car:
         disk_md = car.get_metadata()
-    pprint(disk_md)
     pprint(metadata)
-    diff = DeepDiff(disk_md, metadata, ignore_order=True)
+    pprint(disk_md)
+    diff = DeepDiff(metadata, disk_md, ignore_order=True)
     pprint(diff)
     assert not diff
 

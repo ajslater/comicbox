@@ -42,5 +42,6 @@ class ComicJSON(ComicBaseMetadata):
 
     def to_file(self, filename):
         """Write metadata to a JSON file."""
+        json_obj = self._to_json()
         with Path(filename).open("w") as json_file:
-            json_file.write(self.to_string())
+            json.dump(json_obj, json_file, indent=2)

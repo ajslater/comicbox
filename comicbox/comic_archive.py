@@ -28,6 +28,7 @@ from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.logging import init_logging
 from comicbox.metadata import comicapi
+from comicbox.metadata.cli import CLIMetadata
 from comicbox.metadata.comet import CoMet
 from comicbox.metadata.comic_base import IMAGE_EXT_RE, ComicBaseMetadata
 from comicbox.metadata.comic_xml import ComicXml
@@ -60,7 +61,7 @@ class ComicArchive:
     Contains the compressed archive file and its parsed metadata
     """
 
-    PARSER_CLASSES = (ComicInfoXml, ComicBookInfo, CoMet)
+    PARSER_CLASSES = (CLIMetadata, ComicInfoXml, ComicBookInfo, CoMet, PDFParser)
     FILENAMES = frozenset((CoMet.FILENAME, ComicInfoXml.FILENAME))
     _PAGE_KEYS = frozenset(("page_count", "cover_image"))
     _PAGES_KEYS = frozenset(frozenset(("pages",)) | _PAGE_KEYS)
@@ -280,6 +281,17 @@ class ComicArchive:
         parser = FilenameMetadata(path=data, metadata_path=data)
         return parser.metadata
 
+    def _parse_cli_metadata(self):
+        """Parse CLI metadata."""
+        cli_md = self._config.metadata_cli
+        if not cli_md:
+            return None
+        all_md = {}
+        for md_str in cli_md:
+            parser = CLIMetadata(string=md_str)
+            all_md.update(parser.metadata)
+        return all_md
+
     def _ensure_page_metadata(self):
         """Ensure page metadata exists."""
         if (
@@ -290,21 +302,6 @@ class ComicArchive:
             is_pdf = self._archive_cls == PDFFile
             self._metadata.set_page_metadata(namelist, is_pdf)
 
-    def _normalize_metadata(self):
-        """Map familiar keys to native format keys."""
-        md = self._config.metadata
-        if not md:
-            return md
-        normal_md = {}
-        for key, value in md.items():
-            new_key = key
-            for parser in self.PARSER_CLASSES:
-                if native_key := parser.KEY_MAP.get(key):
-                    new_key = native_key
-                    break
-            normal_md[new_key] = value
-        return normal_md
-
     def add_metadata(self, metadata):
         """Add metadata to the existing metadata."""
         md_list = [metadata]
@@ -313,11 +310,9 @@ class ComicArchive:
     def _parse_metadata(self):
         """Parse all enabled metadata."""
         md_list = []
-        filename_md = self._parse_metadata_filename()
-        if filename_md:
+        if filename_md := self._parse_metadata_filename():
             md_list += [filename_md]
-        pdf_md = self._parse_pdf_metadata()
-        if pdf_md:
+        if pdf_md := self._parse_pdf_metadata():
             md_list += [pdf_md]
         if self._archive_cls != PDFFile:
             files_md = self._parse_files_metadata()
@@ -330,9 +325,14 @@ class ComicArchive:
             cix_md = files_md.get(ComicInfoXml)
             if cix_md:
                 md_list += [cix_md]
-        if self._config.metadata:
-            normal_md = self._normalize_metadata()
+        if cli_md := self._parse_cli_metadata():
+            md_list += [cli_md]
+        if config_md := self._config.metadata:
+            normal_md = ComicBaseMetadata.normalize_metadata(
+                self.PARSER_CLASSES, config_md
+            )
             md_list += [normal_md]
+
         # order of the md list is very important, lowest to highest
         # precedence.
         self._metadata.synthesize_metadata(md_list)
@@ -547,6 +547,16 @@ class ComicArchive:
         with PDFFile(self._path) as archive:
             archive.save_metadata(pdf_md)
 
+    def _write_cli_metadata(self, parser):
+        """Write CLI metadtata."""
+        if self._config.dry_run:
+            LOG.info("Not writing CLI metadata.")
+            return
+        path = self._config.dest_path
+        if path.is_dir():
+            path = path / parser.FILENAME
+        parser.to_file(path)
+
     def write_metadata(self, md_class, metadata=None, recompute_page_sizes=True):
         """Write metadata using the supplied parser class."""
         if self._config.dry_run:
@@ -557,12 +567,14 @@ class ComicArchive:
         parser = md_class(path=self._path, metadata=metadata)
         if recompute_page_sizes and isinstance(parser, ComicInfoXml):
             self.compute_pages_tags()
-        if isinstance(parser, (ComicXml, CoMet)):
+        if isinstance(parser, (ComicXml, CoMet)) and not isinstance(parser, PDFParser):
             self.recompress(parser.FILENAME, parser.to_string())
         elif isinstance(parser, ComicBookInfo):
             self._write_cbi_comment(parser)
         elif isinstance(parser, PDFParser):
             self._write_pdf_metadata(parser)
+        elif isinstance(parser, CLIMetadata):
+            self._write_cli_metadata(parser)
         else:
             reason = f"Unsupported metadata writer {md_class}"
             raise TypeError(reason)
@@ -623,7 +635,7 @@ class ComicArchive:
             LOG.info("Not exporting files.")
             return
         for parser_cls in self.PARSER_CLASSES:
-            md = parser_cls(self.get_metadata())
+            md = parser_cls(metadata=self.get_metadata())
             path = Path(str(parser_cls.FILENAME))
             md.to_file(path)
 

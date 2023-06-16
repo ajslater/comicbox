@@ -28,7 +28,8 @@ TEMPLATE = MappingTemplate(
                 "read_filename": bool,
                 "read_pdf": bool,
                 "recurse": bool,
-                "metadata": dict,
+                "metadata": Optional(dict),
+                "metadata_cli": Optional(Sequence(str)),
                 # API Options
                 "close_fd": bool,
                 "check_unrar": bool,

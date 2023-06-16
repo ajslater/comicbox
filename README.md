@@ -64,10 +64,16 @@ see the CLI help.
 #### Examples
 
 ```sh
-comicbox test.cbz -m "Tags=[a,b,c]" -m "Publisher=SmallComics" -w cr
+comicbox test.cbz -m "Tags=a,b,c;story_arcs=d:1,e,f:3" -m "Publisher=SmallComics" -w cr
 ```
 
 Will write those tags to comicinfo.xml in the archive.
+
+The cli also has minimal comicinfo.xml ComicPageInfo support for three attributes: `Image:ImageSize:Type`.
+
+```sh
+comicbox test.cbz -m "Pages=image1.jpg:1234,image2.jpg:2344:FrontCover,image3.jpg,image4.jpg:2344:BackCover" -w cr
+```
 
 ### ⚙️ Config
 

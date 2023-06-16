@@ -13,6 +13,7 @@ comicbox:
   read_pdf: True
   recurse: False
   metadata: {}
+  metadata_cli: null
   # API Options
   close_fd: True
   check_unrar: True

@@ -6,14 +6,14 @@ from .test_metadata import TEST_FILES_PATH, TMP_ROOT, read_metadata, write_metad
 
 FN = Path("test_pdf.pdf")
 ARCHIVE_PATH = TEST_FILES_PATH / FN
-TMP_PATH = TMP_ROOT / "test_"
-NEW_TEST_PATH = TMP_PATH / FN.with_suffix(".pdf")
+TMP_PATH = TMP_ROOT / "test_pdf"
+NEW_TEST_PATH = TMP_PATH / FN
 METADATA = {
     "scan_info": "Writer",
-    "creators": [
+    "credits": [
         {"person": "Evangelos Vlachogiannis", "role": "writer"},
     ],
-    "tags": ["d,e,f"],
+    "tags": frozenset(["d", "e", "f"]),
     "page_count": 1,
     "ext": "pdf",
     "series": "test pdf",

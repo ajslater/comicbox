@@ -65,17 +65,17 @@ class CoMet(ComicXml):
         elif to_tag in self.INT_TAGS:
             if to_tag == "volume":
                 val = self.remove_volume_prefixes(val)
-            val = int(val)
+            val = self.parse_int(val)
         elif to_tag in self.STR_SET_TAGS:
-            val = frozenset([item.strip() for item in val.split(",        ")])
-            if len(val) == 0:
+            val = self.parse_str_set(val)
+            if not val:
                 return
         elif to_tag == "price":
             val = Decimal(val).quantize(self.TWOPLACES)
         elif to_tag in self.DECIMAL_TAGS:
             val = self.parse_decimal(val)
         elif to_tag in self.PYCOUNTRY_TAGS:
-            val = self._pycountry(to_tag, val)
+            val = self.parse_pycountry(to_tag, val)
             if not val:
                 return
         self.metadata[to_tag] = val
@@ -133,18 +133,34 @@ class CoMet(ComicXml):
         ] = "http://www.denvog.com http://www.denvog.com/comet/comet.xsd"
         return root
 
+    SERIALIZER_MAP = {
+        ComicXml.BOOL_TAGS: ComicXml.serialize_bool,
+        ComicXml.DECIMAL_TAGS: ComicXml.serialize_decimal,
+        ComicXml.INT_TAGS: ComicXml.serialize_int,
+        ComicXml.ISSUE_TAGS: ComicXml.serialize_issue,
+        ComicXml.STR_SET_TAGS: ComicXml.serialize_str_set,
+    }
+
     def _to_xml_tags(self, root):
         for tag, comicbox_tag in self.XML_TAGS.items():
-            if tag == "pages":
+            if comicbox_tag == "pages":
                 continue
             val = self.metadata.get(comicbox_tag)
             if val is None:
-                val = ""
-            elif comicbox_tag == "price":
-                val = self.decimal_to_type(val)
-            elif comicbox_tag in self.STR_SET_TAGS:
-                val = ",".join(sorted(val))
-            SubElement(root, tag).text = str(val)
+                return
+
+            if comicbox_tag in self.PYCOUNTRY_TAGS:
+                text = self.serialize_pycountry(comicbox_tag, val)
+            else:
+                serializer = str
+                for key_set, method in self.SERIALIZER_MAP.items():
+                    if comicbox_tag in key_set:
+                        serializer = method
+                        break
+                text = serializer(val)
+            if not text:
+                return
+            SubElement(root, tag).text = text
 
     def _to_xml_characters(self, root):
         characters = self.metadata.get("characters", [])

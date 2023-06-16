@@ -1,5 +1,13 @@
 # 📰 News
 
+## v0.10.2
+
+- Sophisticated cli metadata parsing. See cli help and README.
+  - config.metadata_cli holds the new string format.
+- Writing xml and json metadata to files is now pretty printed.
+- Fix some instances where falsey values were not written.
+- Fix comicinfo.xml ComicPageInfo typing.
+
 ## v0.10.1
 
 - Change --metadata cli syntax to use key=[a,b,c] for arrays and key=a for simple values.

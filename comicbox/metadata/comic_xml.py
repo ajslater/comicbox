@@ -1,5 +1,7 @@
 """XML Metadata parser superclass."""
 from logging import getLogger
+from pathlib import Path
+from xml.dom import minidom
 from xml.etree import ElementTree
 
 from defusedxml.ElementTree import ParseError, fromstring, parse
@@ -12,7 +14,6 @@ LOG = getLogger(__name__)
 class ComicXml(ComicBaseMetadata):
     """XML Comic Metadata super class."""
 
-    XML_HEADER = '<?xml version="1.0"?>'
     ROOT_TAG = ""
 
     def _get_xml_root(self, tree):
@@ -50,10 +51,15 @@ class ComicXml(ComicBaseMetadata):
         """Return metadata as an xml string."""
         tree = self._to_xml()
         root = self._get_xml_root(tree)
-        tree_str = ElementTree.tostring(root).decode(errors="replace")
-        return self.XML_HEADER + "\n" + tree_str
+        tree_str = ElementTree.tostring(root, encoding="utf-8").decode(errors="replace")
+        dom = minidom.parseString(tree_str)  # noqa: S318
+        pretty_xml_bytes = dom.toprettyxml(
+            indent="  ", encoding="utf-8", standalone=True
+        )
+        return pretty_xml_bytes.decode(errors="replace")
 
     def to_file(self, filename):
         """Write metadata to a file."""
-        tree = self._to_xml()
-        tree.write(filename, encoding="utf-8")
+        xml_str = self.to_string()
+        with Path(filename).open("w") as f:
+            f.write(xml_str)
