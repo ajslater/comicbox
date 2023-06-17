@@ -92,7 +92,7 @@ class ComicBaseMetadata:
 
     @staticmethod
     def _get_pycountry(tag, name):
-        """Convert countries and languages to long names or alpha2."""
+        """Get pycountry object for a country or language tag."""
         if tag == "country":
             module = pycountry.countries
         elif tag == "language":
