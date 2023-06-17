@@ -85,26 +85,76 @@ class ComicBaseMetadata:
     }
     KEY_MAP = {}
 
-    def __init__(  # noqa: PLR0913
-        self,
-        path=None,
-        string=None,
-        metadata_path=None,
-        native_dict=None,
-        metadata=None,
-    ):
-        """Initialize the metadata dict or parse it from a source."""
-        self.metadata = {}
-        self._page_filenames = None
-        self.path = path
-        if metadata is not None:
-            self.metadata = metadata
-        if native_dict is not None:
-            self.from_dict(native_dict)
-        if string is not None:
-            self.from_string(string)
-        if metadata_path is not None:
-            self.from_file(metadata_path)
+    @staticmethod
+    def _credit_key(credit):
+        """Get a unique key for credits."""
+        return f"{credit.get('role')}:{credit.get('person')}".lower()
+
+    @staticmethod
+    def _get_pycountry(tag, name):
+        """Convert countries and languages to long names or alpha2."""
+        if tag == "country":
+            module = pycountry.countries
+        elif tag == "language":
+            module = pycountry.languages
+        else:
+            reason = f"no pycountry module for {tag}"
+            raise NotImplementedError(reason)
+        name = name.strip()
+        if not name:
+            return None
+
+        if len(name) == 2:  # noqa PLR2004
+            # Language lookup fails for 'en' unless alpha_2 is specified.
+            obj = module.get(alpha_2=name)
+        else:
+            obj = module.lookup(name)
+
+        if obj is None:
+            reason = f"Couldn't find {tag} for {name}"
+            raise ValueError(reason)
+
+        return obj
+
+    @staticmethod
+    def is_number_or_truthy(value):
+        """See if value is a throwaway."""
+        return value or value in (False, 0)
+
+    @staticmethod
+    def serialize_str_set(value):
+        """Serialize string set tags."""
+        return ",".join(sorted(value))
+
+    @staticmethod
+    def serialize_bool(value):
+        """Serialize bool tags."""
+        return str(value).lower()
+
+    @staticmethod
+    def serialize_decimal(value):
+        """Serialize a decimal tag."""
+        return str(value)
+
+    @staticmethod
+    def serialize_issue(value):
+        """Serialize issue tags."""
+        return str(value)
+
+    @staticmethod
+    def serialize_int(value):
+        """Serialize int tags."""
+        return str(value)
+
+    @staticmethod
+    def normalize_key(parser_classes, key):
+        """Normalize a single key with parsers."""
+        comicbox_key = key
+        for parser in parser_classes:
+            if native_key := parser.KEY_MAP.get(key):
+                comicbox_key = native_key
+                break
+        return comicbox_key
 
     @classmethod
     def is_truthy(cls, value):
@@ -118,47 +168,21 @@ class ComicBaseMetadata:
             result = False
         return result
 
-    @staticmethod
-    def _credit_key(credit):
-        """Get a unique key for credits."""
-        return f"{credit.get('role')}:{credit.get('person')}".lower()
-
-    @staticmethod
-    def parse_pycountry(tag, name, long_to_alpha2=True):
+    @classmethod
+    def parse_pycountry(cls, tag, name):
         """Convert countries and languages to long names or alpha2."""
-        if tag == "country":
-            module = pycountry.countries
-        elif tag == "language":
-            module = pycountry.languages
-        else:
-            reason = f"no pycountry module for {tag}"
-            raise NotImplementedError(reason)
-        name = name.strip()
-        if not name:
-            return None
-        if len(name) == 2:  # noqa PLR2004
-            # Language lookup fails for 'en' unless alpha_2 is specified.
-            obj = module.get(alpha_2=name)
-        else:
-            obj = module.lookup(name)
-
-        if obj is None:
-            reason = f"couldn't find {tag} for {name}"
-            raise ValueError(reason)
-
-        if long_to_alpha2:
+        obj = cls._get_pycountry(tag, name)
+        if obj:
             return obj.alpha_2
-        return obj.name
+        return None
 
     @classmethod
-    def normalize_key(cls, parser_classes, key):
-        """Normalize a single key with parsers."""
-        comicbox_key = key
-        for parser in parser_classes:
-            if native_key := parser.KEY_MAP.get(key):
-                comicbox_key = native_key
-                break
-        return comicbox_key
+    def serialize_pycountry(cls, tag, name):
+        """Serialize a pycountry tag."""
+        obj = cls._get_pycountry(tag, name)
+        if obj:
+            return obj.name
+        return None
 
     @classmethod
     def normalize_metadata(cls, parser_classes, md):
@@ -174,8 +198,8 @@ class ComicBaseMetadata:
         """Parse boolean type."""
         return cls.is_truthy(value)
 
-    @classmethod
-    def parse_issue(cls, num):
+    @staticmethod
+    def parse_issue(num):
         """Parse issues."""
         num = num.replace(" ", "")
 
@@ -205,8 +229,8 @@ class ComicBaseMetadata:
         str_stripped_list = cls.parse_str_list(list_str)
         return frozenset(str_stripped_list)
 
-    @classmethod
-    def parse_int(cls, value):
+    @staticmethod
+    def parse_int(value):
         """Parse an integer value."""
         return int(value)
 
@@ -220,8 +244,8 @@ class ComicBaseMetadata:
                 str_stripped_list.append(stripped_item)
         return str_stripped_list
 
-    @classmethod
-    def parse_int_list(cls, value):
+    @staticmethod
+    def parse_int_list(value):
         """Parse a list of ints."""
         return [int(x) for x in value.split(",")]
 
@@ -234,6 +258,27 @@ class ComicBaseMetadata:
                 prefix_len = len(prefix)
                 volume = volume[prefix_len:].strip()
         return volume
+
+    def __init__(  # noqa: PLR0913
+        self,
+        path=None,
+        string=None,
+        metadata_path=None,
+        native_dict=None,
+        metadata=None,
+    ):
+        """Initialize the metadata dict or parse it from a source."""
+        self.metadata = {}
+        self._page_filenames = None
+        self.path = path
+        if metadata is not None:
+            self.metadata = metadata
+        if native_dict is not None:
+            self.from_dict(native_dict)
+        if string is not None:
+            self.from_string(string)
+        if metadata_path is not None:
+            self.from_file(metadata_path)
 
     def __eq__(self, obj):
         """== operator."""
@@ -379,38 +424,3 @@ class ComicBaseMetadata:
     def to_file(self, _):
         """Stub method."""
         raise NotImplementedError
-
-    @staticmethod
-    def is_number_or_truthy(value):
-        """See if value is a throwaway."""
-        return value in (False, 0) or value
-
-    @staticmethod
-    def serialize_str_set(value):
-        """Serialize string set tags."""
-        return ",".join(sorted(value))
-
-    @staticmethod
-    def serialize_bool(value):
-        """Serialize bool tags."""
-        return str(value).lower()
-
-    @classmethod
-    def serialize_pycountry(cls, tag, value):
-        """Serialize a pycountry tag."""
-        return cls.parse_pycountry(tag, value, False)
-
-    @staticmethod
-    def serialize_decimal(value):
-        """Serialize a decimal tag."""
-        return str(value)
-
-    @staticmethod
-    def serialize_issue(value):
-        """Serialize issue tags."""
-        return str(value)
-
-    @staticmethod
-    def serialize_int(value):
-        """Serialize int tags."""
-        return str(value)
