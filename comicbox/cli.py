@@ -231,18 +231,6 @@ def _add_target_group(parser):
     )
 
 
-class KeyValueDictAction(Action):
-    """Parse comma deliminted key value pairs key value."""
-
-    def __call__(self, parser, namespace, values, _option_string=None):
-        """Parse comma deliminated key value pairs."""
-        if values:
-            values = dict(item.split("=") for item in values.split(","))
-        else:
-            values = {}
-        setattr(namespace, self.dest, values)
-
-
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."

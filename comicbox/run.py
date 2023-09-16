@@ -13,9 +13,6 @@ if TYPE_CHECKING:
 LOG = getLogger(__name__)
 
 
-LOG = getLogger(__name__)
-
-
 class Runner:
     """Main runner."""
 

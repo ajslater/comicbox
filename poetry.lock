@@ -224,19 +224,6 @@ toml = ["tomli"]
 types = ["chardet (>=5.1.0)", "mypy", "pytest", "pytest-cov", "pytest-dependency"]
 
 [[package]]
-name = "codespell"
-version = "2.2.2"
-description = "Codespell"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.extras]
-dev = ["check-manifest", "flake8", "pytest", "pytest-cov", "pytest-dependency", "tomli"]
-hard-encoding-detection = ["chardet"]
-toml = ["tomli"]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
