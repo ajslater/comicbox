@@ -113,7 +113,7 @@ I didn't like Comictagger's API, so I built this for myself as an educational ex
 
 Comicbox supports reading and writing several comic book metadata schemas.
 
-### Filename
+### Filename Schema
 
 Comicbox includes a pretty good comic archive filename parser. It can extract a number of common fields from comic archive filenames.
 
@@ -122,7 +122,7 @@ Comicbox includes a pretty good comic archive filename parser. It can extract a 
 | Archive       | The archive filename  |
 | Import/Export | comicbox-filename.txt |
 
-### PDF
+### PDF Schema
 
 The pdf metadata standard. Can be exported as an xml file or written directly to the pdf itself.
 
@@ -136,7 +136,7 @@ PDF metadata is only read or written from and to PDF files.
 | Archive       | PDF internal     |
 | Import/Export | pdf-metadata.xml |
 
-### CoMet
+### CoMet Schema
 
 An old and uncommon comic metadata standard from a defunct comic book reader.
 
@@ -147,7 +147,7 @@ An old and uncommon comic metadata standard from a defunct comic book reader.
 | Archive       | comet.xml |
 | Import/Export | comet.xml |
 
-### ComicBookInfo (Comic Book Lover)
+### ComicBookInfo Schema (Comic Book Lover)
 
 The Comic Book Lover schema. A rare but still encountered JSON schema. It probably survives because Comictagger supports writing it.
 
@@ -158,7 +158,7 @@ The Comic Book Lover schema. A rare but still encountered JSON schema. It probab
 | Archive       | Zip & Rar Comments   |
 | Import/Export | comic-book-info.json |
 
-### ComicInfo (Comic Rack)
+### ComicInfo Schema (Comic Rack)
 
 The Comic Rack schema. The de facto standard of comic book metadata.
 The Comic Rack reader is defunct, but the [Anansi Project](https://anansi-project.github.io/) now publishes the ComicInfo spec and has compatibly and conservatively extended it.
@@ -171,7 +171,7 @@ Also, an unofficial, undocumented Mylar extension to ComicInfo.xml that encodes 
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-### ComicTagger
+### ComicTagger Schema
 
 The most useful comic book metadata writer is [ComicTagger](https://github.com/comictagger/comictagger). It supports the ComicVine API, is extensible to other APIs, and features a nice desktop GUI. Internally, Comictagger keeps a metadata object to work with the schemas it supports. This schema allows the import and export of that schema.
 
@@ -184,29 +184,31 @@ This schema may only be useful to developers. The author of ComicTagger offers n
 | Archive       | comictagger.json |
 | Import/Export | comictagger.json |
 
-### Comicbox
+### Comicbox Schema
 
-The comicbox internal data structure that allows interpolating between the above schemas.
+The comicbox internal data structure which acts as a superset of the above schemas to allow interpolating.
 
 [Comicbox JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json)
 
-##### Comicbox JSON
+#### JSON Format
 
 | Location      | Name          |
 | ------------- | ------------- |
 | Archive       | comicbox.json |
 | Import/Export | comicbox.json |
 
-##### Comicbox YAML
+#### YAML Format
+
+YAML is a superset of JSON, so the JSON schema applies here.
 
 | Location      | Name          |
 | ------------- | ------------- |
 | Archive       | comicbox.yaml |
 | Import/Export | comicbox.yaml |
 
-##### Comicbox CLI
+#### CLI Format
 
-The Comicbox cli uses "flow style" YAML all on one line to enter metadata on the command line.
+The Comicbox CLI uses "flow style" YAML, which is an all on one line format to enter metadata on the command line.
 
 | Location      | Name              |
 | ------------- | ----------------- |
