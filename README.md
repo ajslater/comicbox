@@ -1,32 +1,94 @@
 # Comicbox
 
-A comic book archive metadata reader and writer. It reads CBZ, CBR, and CBT
-archives and writes CBZ archives. It reads and writes the
-[ComicRack comicinfo.xml format](https://wiki.mobileread.com/wiki/ComicRack#Metadata),
-the [ComicBookInfo format](https://code.google.com/archive/p/comicbookinfo/)
-and [CoMet format](https://github.com/wdhongtw/comet-utils).
+A comic book archive metadata reader and writer.
+
+## ✨ <a href="features">Features</a>
+
+### 📚<a href="comicFormats">Comic Formats</a>
+
+Comicbox reads CBZ, CBR, CBT, and optionally PDF.
+Comicbox archives and writes CBZ archives and PDF metadata.
+
+### 🏷️ <a href="metadata_formats">Metadata Formats</a>
+
+Comicbox reads and writes:
+
+- [ComicRack Comicinfo.xml v2.1 (draft) schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1),
+- [Comic Book Lover ComicBookInfo schema](https://code.google.com/archive/p/comicbookinfo/)
+- [CoMet schema](https://github.com/wdhongtw/comet-utils).
+- [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
+- A variety of filename schemes that encode metadata.
+
+### Usefulness
+
+Comicbox's primary purpose is a library for use by [Codex comic reader](https://github.com/ajslater/codex/).
+The API isn't well documented, but you can infer what it does pretty easily here: [comicbox.comic_archive](https://github.com/ajslater/comicbox/blob/main/comicbox/comic_archive.py) as the primary interface.
+
+The command line is increasingly useful and can read and write metadata recursively and extract pages.
+
+### Limitations and Alternatives
+
+Comicbox does _not_ use popular metadata database APIs or have a GUI!
+
+[Comictagger](https://github.com/comictagger/comictagger) is a popular alternative. It does most of what Comicbox does but also automatically tags comics with the ComicVine API and has a desktop UI.
+
+## 📦 <a href="install">Installation</a>
+
+```sh
+pip install comicbox
+```
+
+Comicbox supports PDFs as an extra when installed like:
+
+```sh
+pip install comicbox[pdf]
+```
+
+### Dependencies
+
+Comicbox generally works without any binary dependencies but requires `unrar` be on the path to convert CBR into CBZ or extract files from CBRs.
 
 ## ⌨️ <a href="usage">Usage</a>
 
-### API
-
-Comicbox's primary purpose is as a library for other programs with [comicbox.comic_archive](https://github.com/ajslater/comicbox/blob/main/comicbox/comic_archive.py) as the primary interface.
-
 ### Console
+
+Type
 
 ```sh
 comicbox -h
 ```
 
-to use the CLI.
+see the CLI help.
 
-### Config
+#### Examples
+
+```sh
+comicbox test.cbz -m "{Tags: a,b,c, story_arcs: {d:1,e:'',f:3}" -m "Publisher: SmallComics" -w cr
+```
+
+Will write those tags to comicinfo.xml in the archive.
+
+But it's probably better to use the --print action to see what it's going to do before you actually write to the archive:
+
+```sh
+comicbox test.cbz -m "{Tags: a,b,c, story_arcs: {d:1,e:'',f:3}" -m "Publisher: SmallComics" -p
+```
+
+A recursive example:
+
+```sh
+comicbox --recurse -m "publisher: SC Comics" -w cr ./SmallComicsComics/
+```
+
+Will recursively change the publisher to "SC Comics" for every comic found in under the SmallComicsComics directory.
+
+### ⚙️ Config
 
 comicbox accepts command line arguments but also an optional config file
 and environment variables.
 
 The variables have defaults specified in
-[a default yaml](https://github.com/ajslater/comicbox/blob/master/comicbox/config_default.yaml)
+[a default yaml](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml)
 
 The environment variables are the variable name prefixed with `COMICBOX_`. (e.g. COMICBOX_COMICINFOXML=0)
 
@@ -40,42 +102,114 @@ LOGLEVEL=ERROR comicbox -p <path>
 
 ## 🛠 <a href="development">Development</a>
 
-run
-
-```sh
-./setup.sh
-```
-
-to get started.
-
-To run the code you've checked out
-
-```sh
-./run.sh -h
-```
-
-will run the comicbox cli.
-
-I'll only merge branches to develop that pass
-
-```sh
-./lint.sh
-./test.sh
-./build.sh
-```
-
-And I might require tests for significant new code.
-
-You may automatically fix most simple linting errors with
-
-```sh
-./fix-linting.sh
-```
+You may access most development tasks from the makefile. Run make to see documentation.
 
 ## 🤔 <a href="motivation">Motivation</a>
 
-I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for [Codex comic reader](https://github.com/ajslater/codex/).
+I didn't like Comictagger's API, so I built this for myself as an educational exercise and to use as a library for
+[Codex comic reader](https://github.com/ajslater/codex/).
 
-## 👍🏻 <a href="alternative">Alternatives</a>
+## 📋 <a href="schemas">Schemas</a>
 
-[Comictagger](https://github.com/comictagger/comictagger) is a better alternative for most purposes. It does everything Comicbox does but also automatically tags comics with the ComicVine API and has a pretty nice desktop UI.
+Comicbox supports reading and writing several comic book metadata schemas.
+
+### Filename
+
+Comicbox includes a pretty good comic archive filename parser. It can extract a number of common fields from comic archive filenames.
+
+| Location      | Name                  |
+| ------------- | --------------------- |
+| Archive       | The archive filename  |
+| Import/Export | comicbox-filename.txt |
+
+### PDF
+
+The pdf metadata standard. Can be exported as an xml file or written directly to the pdf itself.
+
+[Adobe PDF Namespace](https://developer.adobe.com/xmp/docs/XMPNamespaces/pdf/)
+[Adobe PDF Standard](https://opensource.adobe.com/dc-acrobat-sdk-docs/standards/pdfstandards/pdf/PDF32000_2008.pdf) § 14.3.3 Document Information Dictionary
+
+PDF metadata is only read or written from and to PDF files.
+
+| Location      | Name             |
+| ------------- | ---------------- |
+| Archive       | PDF internal     |
+| Import/Export | pdf-metadata.xml |
+
+### CoMet
+
+An old and uncommon comic metadata standard from a defunct comic book reader.
+
+[CoMet Specification](http://www.denvog.com/comet/comet-specification/)
+
+| Location      | Name      |
+| ------------- | --------- |
+| Archive       | comet.xml |
+| Import/Export | comet.xml |
+
+### ComicBookInfo (Comic Book Lover)
+
+The Comic Book Lover schema. A rare but still encountered JSON schema. It probably survives because Comictagger supports writing it.
+
+[ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
+
+| Location      | Name                 |
+| ------------- | -------------------- |
+| Archive       | Zip & Rar Comments   |
+| Import/Export | comic-book-info.json |
+
+### ComicInfo (Comic Rack)
+
+The Comic Rack schema. The de facto standard of comic book metadata.
+The Comic Rack reader is defunct, but the [Anansi Project](https://anansi-project.github.io/) now publishes the ComicInfo spec and has compatibly and conservatively extended it.
+
+[Anansi ComicInfo v2.1 Spec](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
+Also, an unofficial, undocumented Mylar extension to ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV values.
+
+| Location      | Name          |
+| ------------- | ------------- |
+| Archive       | comicinfo.xml |
+| Import/Export | comicinfo.xml |
+
+### ComicTagger
+
+The most useful comic book metadata writer is [ComicTagger](https://github.com/comictagger/comictagger). It supports the ComicVine API, is extensible to other APIs, and features a nice desktop GUI. Internally, Comictagger keeps a metadata object to work with the schemas it supports. This schema allows the import and export of that schema.
+
+[Comictaggger genericmetadata.py](https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py)
+
+This schema may only be useful to developers. The author of ComicTagger offers no promises as to the stability of this API and I am very lazy, so the chances of this drifting out of date are anyone's guess. It was included because it was easy to do.
+
+| Location      | Name             |
+| ------------- | ---------------- |
+| Archive       | comictagger.json |
+| Import/Export | comictagger.json |
+
+### Comicbox
+
+The comicbox internal data structure that allows interpolating between the above schemas.
+
+[Comicbox JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json)
+
+##### Comicbox JSON
+
+| Location      | Name          |
+| ------------- | ------------- |
+| Archive       | comicbox.json |
+| Import/Export | comicbox.json |
+
+##### Comicbox YAML
+
+| Location      | Name          |
+| ------------- | ------------- |
+| Archive       | comicbox.yaml |
+| Import/Export | comicbox.yaml |
+
+##### Comicbox CLI
+
+The Comicbox cli uses "flow style" YAML all on one line to enter metadata on the command line.
+
+| Location      | Name              |
+| ------------- | ----------------- |
+| Comicbox CLI  | -m --metadata     |
+| Archive       | comicbox-cli.yaml |
+| Import/Export | comicbox-cli.yaml |

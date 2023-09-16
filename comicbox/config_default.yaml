@@ -1,25 +1,40 @@
 comicbox:
   # Options
-  comet: True
-  comicbookinfo: True
-  comicinfoxml: True
   config: null
-  delete_rar: False
+  delete_orig: False
   delete_tags: False
   dest_path: .
   dry_run: False
-  filename: True
-  raw: False
-  recurse: False
+  loglevel: INFO
   metadata: {}
+  metadata_cli: null
+  read:
+    [
+      "cli",
+      "comet",
+      "comicbox",
+      "comicbookinfo",
+      "comicinfo",
+      "comictagger",
+      "filename",
+      "pdf",
+      "xml",
+      "yaml",
+    ]
+  read_ignore: []
+  recurse: False
+  tagger: null
+  # API Options
+  close_fd: True
   # Actions
   cbz: False
-  covers: False
-  export: False
-  import_fn: null
+  cover: False
+  export: []
+  import_paths: []
   index_from: null
-  print: False
+  index_to: null
+  print: ""
   rename: False
-  version: False
+  write: []
   # Targets
   paths: null

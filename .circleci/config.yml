@@ -11,33 +11,33 @@ jobs:
           command: docker compose build comicbox-builder
           name: Build Builder
       - run:
-          command: ./docker/docker-compose-exit.sh comicbox-lint
+          command: ./bin/docker-compose-exit.sh comicbox-lint
           name: Comicbox Lint
       - run:
-          command: ./docker/docker-compose-exit.sh comicbox-test
+          command: ./bin/docker-compose-exit.sh comicbox-test
           name: Comicbox Test
       - store_test_results:
           path: test-results/pytest
       - store_artifacts:
           path: test-results/coverage
       - run:
-          command: ./docker/docker-compose-exit.sh comicbox-build
+          command: ./bin/docker-compose-exit.sh comicbox-build
           name: Build Comicbox Dist
       - persist_to_workspace:
           paths:
             - ./README.md
-            - ./ci
+            - ./bin
             - ./dist
             - ./pyproject.toml
           root: .
   deploy:
     docker:
-      - image: cimg/python:3.10.0
+      - image: cimg/python:3.11
     steps:
       - attach_workspace:
           at: .
       - run:
-          command: ./ci/publish-pypi.sh
+          command: ./bin/publish-pypi.sh
 version: 2.1
 workflows:
   main:

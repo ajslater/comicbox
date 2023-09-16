@@ -1,5 +1,106 @@
 # 📰 News
 
+## v1.0.0
+
+- This version contains large breaking changes, some of which are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- Comicbox continues to primarily be an API for reading comic metadata but this version contains an enhanced CLI,
+  and more powerful reading, writing, synthesis and exporting of metadata.
+- Comicbox now sorts archive filenames case insensitively.
+- Comicbox now writes identifiers to the notes field in urn format.
+- You should probably read the code in `comicbox.box` for public facing apis.
+
+## v0.10.2
+
+- Sophisticated cli metadata parsing. See cli help and README.
+  - config.metadata_cli holds the new string format.
+- Writing xml and json metadata to files is now pretty printed.
+- Fix some instances where falsey values were not written.
+- Fix comicinfo.xml ComicPageInfo typing.
+
+## v0.10.1
+
+- Change --metadata cli syntax to use key=\[a,b,c\] for arrays and key=a for simple values.
+
+## v0.10.0
+
+- WARNING: Breaking API, CLI & Config changes.
+- Write metadata from the command line.
+- Optional PDF support. Install as `comicbox[pdf]`
+- Python version now >=3.9
+- Extract a range of pages from the cli.
+
+## v0.9.1
+
+- Removed dependence on Python 3.11
+
+## v0.9.0
+
+- StoryArc & StoryArcNumber for ComicInfo.xml exported
+  as `story_arcs` dict. Supports Mylar multiple story arcs csv values format.
+
+## v0.8.0
+
+- Add close_fd & check_unrar config options for API use.
+- Add ComicArchive.check_unrar_executable() public method.
+- Remove closefd constructor option.
+
+## v0.7.1
+
+- Remove unrar.cffi support.
+- Test for unrar executable for clearer errors.
+
+## v0.7.0
+
+- Fix
+  - Tags from ComicInfo.xml were not parsed
+- Features
+  - ComicInfo.xml StoryArcNumber, Review and GTIN now parsed.
+  - ComicInfo.xml Pages attributes now exposed as snake case for python
+
+## v0.6.7
+
+- Fix
+  - Remove unrar-cffi dependency aciddentally left in during testing
+
+## v0.6.6
+
+- Features
+  - Print filetype cli option. get_archive_type() api method.
+  - Use unrar.cffi if it's available.
+- Dev
+  - Use importlib instead of deprecated pkg_resources.
+
+## v0.6.5
+
+- Feature
+  - Demote parser errors to warnings.
+
+## v0.6.4
+
+- Feature
+  --delete-rar option is now --delete-orig
+- Fix
+  - Fix --delete-rar option sometimes deleting original cbzs
+
+## v0.6.3
+
+- Fix
+
+- Fix rename function renaming files to nothing.
+- Fix --dry-run feature for rename.
+
+## v0.6.2
+
+- Fix
+
+  - Enable support for Deflate64.
+
+## v0.6.1
+
+- Fix
+
+  - Fix encoding/decoding crash by replacing uncodable utf-8 characters.
+
 ## v0.6.0
 
 - Features
@@ -50,7 +151,7 @@
 
   - Methods for getting covers and pages as PIL Images.
   - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
-  - closefd option leaves archive open for multiple method calls. Close manually with close().
+  - closefd option leaves archive open after method calls. Close manually with close().
   - .cbt Tarfile comic archive support.
 
 ## v0.5.0
@@ -75,7 +176,7 @@
 
 - Fixed some file name patterns
 - Accept environment variables and config files to configure.
-- CLI accepts multiple arguments as targets for action.
+- CLI accepts more than one path as targets for action.
 - CLI runs _every_ action on the command line.
 - API `get_cover` init variable now set in config as `cover`
 - Optional metadata parsing with config.

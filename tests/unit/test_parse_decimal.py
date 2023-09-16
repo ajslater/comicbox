@@ -1,31 +1,39 @@
 """Test decimal parsing."""
-from comicbox.metadata.comic_base import ComicBaseMetadata
+from comicbox.fields.numbers import DecimalField
+
+FIVE = 5.0
+FIVE_HALF = 5.5
 
 
 def test_parse_decimal_int():
     """Test int."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal(5)
+    df = DecimalField()
+    assert df.deserialize(5) == FIVE
 
 
 def test_parse_decimal_float():
     """Test float."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal(5.0)
+    df = DecimalField()
+    assert df.deserialize(FIVE) == FIVE
 
 
 def test_parse_decimal_str():
     """Test str."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5.0")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5")
+    df = DecimalField()
+    assert df.deserialize("5.0") == FIVE
+    assert df.deserialize("5") == FIVE
 
 
 def test_parse_decimal_str_half():
     """Test str with halves."""
-    assert 5.5 == ComicBaseMetadata.parse_decimal("5½")
-    assert 5.5 == ComicBaseMetadata.parse_decimal("5 1/2")
+    df = DecimalField()
+    assert df.deserialize("5½") == FIVE_HALF
+    assert df.deserialize("5 1/2") == FIVE_HALF
 
 
 def test_parse_decimal_regex():
     """Test str with suffixes."""
-    assert 5.0 == ComicBaseMetadata.parse_decimal("5AU")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("  5.0AU")
-    assert 5.0 == ComicBaseMetadata.parse_decimal("MARVEL 5.0AU")
+    df = DecimalField()
+    assert df.deserialize("5AU") == FIVE
+    assert df.deserialize("  5.0AU") == FIVE
+    assert df.deserialize("MARVEL 5.0AU") == FIVE

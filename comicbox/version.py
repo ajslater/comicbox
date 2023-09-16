@@ -1,11 +1,18 @@
 """Package name and version."""
 
-import pkg_resources
+from importlib.metadata import PackageNotFoundError, version
+
+PACKAGE_NAME = "comicbox"
 
 
-PROGRAM_NAME = "comicbox"
-try:
-    DISTRIBUTION = pkg_resources.get_distribution(PROGRAM_NAME)
-    VERSION = DISTRIBUTION.version
-except pkg_resources.DistributionNotFound:
-    VERSION = "dev"
+def get_version():
+    """Get the current installed comicbox version."""
+    try:
+        v = version(PACKAGE_NAME)
+    except PackageNotFoundError:
+        v = "dev"
+    return v
+
+
+VERSION = get_version()
+DEFAULT_TAGGER = f"{PACKAGE_NAME} {VERSION}"
