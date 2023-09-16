@@ -12,13 +12,12 @@ comicbox:
     [
       "cli",
       "comet",
-      "comicbox",
       "comicbookinfo",
       "comicinfo",
       "comictagger",
       "filename",
+      "json",
       "pdf",
-      "xml",
       "yaml",
     ]
   read_ignore: []
