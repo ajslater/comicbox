@@ -33,7 +33,7 @@ if [ "$(uname)" = "Darwin" ]; then
     # subdirs aren't copied into docker builder
     # .env files aren't copied into docker
     shellcheck --external-sources ./**/*.sh
-    circleci config check .circleci/config.yml
+    circleci config validate .circleci/config.yml
 fi
 ./bin/roman.sh -i .prettierignore .
 poetry run codespell .

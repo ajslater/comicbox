@@ -2,4 +2,7 @@
 .pytest_cache
 .venv
 /test-results
+/tests/**/*.json
+/tests/**/*.xml
+/tests/**/*.yaml
 __pycache__

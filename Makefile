@@ -64,10 +64,16 @@ kill-eslint_d:
 fix:
 	./bin/fix-lint-backend.sh
 
-.PHONY: lint
-## Lint front and back end
+.PHONY: lint-schemas
+## Lint schemas
 ## @category Lint
-lint:
+lint-schemas:
+	./bin/lint-schemas.sh
+
+.PHONY: lint
+## Lint
+## @category Lint
+lint: lint-schemas
 	./bin/lint-backend.sh
 
 ## test

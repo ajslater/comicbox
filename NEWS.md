@@ -1,5 +1,14 @@
 # 📰 News
 
+## v1.0.0
+
+- This version contains large breaking changes, some of which are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- Comicbox continues to primarily be an API for reading comic metadata but this version contains an enhanced CLI,
+  and more powerful reading, writing, synthesis and exporting of metadata.
+- Comicbox now sorts archive filenames case insensitively.
+- Comicbox now writes identifiers to the notes field in urn format.
+- You should probably read the code in `comicbox.box` for public facing apis.
+
 ## v0.10.2
 
 - Sophisticated cli metadata parsing. See cli help and README.
@@ -10,7 +19,7 @@
 
 ## v0.10.1
 
-- Change --metadata cli syntax to use key=[a,b,c] for arrays and key=a for simple values.
+- Change --metadata cli syntax to use key=\[a,b,c\] for arrays and key=a for simple values.
 
 ## v0.10.0
 
@@ -27,7 +36,7 @@
 ## v0.9.0
 
 - StoryArc & StoryArcNumber for ComicInfo.xml exported
-  as `story_arcs` dict. Supports Mylar multiple story arcs csv values hack.
+  as `story_arcs` dict. Supports Mylar multiple story arcs csv values format.
 
 ## v0.8.0
 
@@ -142,7 +151,7 @@
 
   - Methods for getting covers and pages as PIL Images.
   - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
-  - closefd option leaves archive open for multiple method calls. Close manually with close().
+  - closefd option leaves archive open after method calls. Close manually with close().
   - .cbt Tarfile comic archive support.
 
 ## v0.5.0
@@ -167,7 +176,7 @@
 
 - Fixed some file name patterns
 - Accept environment variables and config files to configure.
-- CLI accepts multiple arguments as targets for action.
+- CLI accepts more than one path as targets for action.
 - CLI runs _every_ action on the command line.
 - API `get_cover` init variable now set in config as `cover`
 - Optional metadata parsing with config.

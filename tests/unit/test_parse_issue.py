@@ -1,5 +1,5 @@
 """Test issue parsing."""
-from comicbox.metadata.comic_base import ComicBaseMetadata
+from comicbox.fields.fields import IssueField
 
 ISSUES = {
     "3": ("3", " 3", " 3 ", "3."),
@@ -14,4 +14,4 @@ def test_parse_issue():
     """Test many issue variations."""
     for result, issue_list in ISSUES.items():
         for issue in issue_list:
-            assert result == ComicBaseMetadata.parse_issue(issue)
+            assert result == IssueField.parse_issue(issue)

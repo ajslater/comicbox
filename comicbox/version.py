@@ -15,3 +15,4 @@ def get_version():
 
 
 VERSION = get_version()
+DEFAULT_TAGGER = f"{PACKAGE_NAME} {VERSION}"

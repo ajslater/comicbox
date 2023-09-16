@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "comicbox"
-version = "0.10.2"
+version = "1.0.0rc0"
 description = "An API for reading comic archives"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -28,33 +28,39 @@ include = ["NEWS"]
 python = "^3.9"
 ansicolors = "^1.1.8"
 confuse = "^2.0.0"
-deepdiff6 = "^6.2.0"
-defusedxml = "^0.7.1"
 filetype = { version = "^1.0.12", optional = true}
+marshmallow = "^3.19.0"
 pycountry = "^22.1.3"
 pymupdf = { version = "^1.21.1", optional = true}
-parse = "^1.15"
+python-dateutil = "^2.8.2"
 rarfile = "^4.0"
+ruamel-yaml = "^0.17.32"
+simplejson = "^3.19.1"
 stringcase = "^1.2.0"
-zipfile-deflate64 = "^0.2.0"
+urnparse = "^0.2.0"
+xmltodict = "^0.13.0"
 
 [tool.poetry.extras]
 pdf = ["pymupdf", "filetype"]
 
-[tool.poetry.dev-dependencies]
-black = "^23.3.0"
-codespell = "^2.1.0"
-coverage = { extras = ["toml"], version = "^7.0" }
-pyright = "^1.1"
-pytest = "^7.0"
-pytest-cov = "^4.0"
-pytest-gitignore = "^1.3"
-radon = { version = "^6.0.1", extras = ["toml"] }
-ruff = ">=0.0.265,<0.1.0"
-vulture = "^2.1"
-
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
+
+[tool.poetry.group.lint.dependencies]
+black = "^23.3.0"
+check-jsonschema = "^0.26.2"
+codespell = "^2.1.0"
+pyright = "^1.1"
+radon = { version = "^6.0.1", extras = ["toml"] }
+ruff = ">=0.0.265,<0.1.0"
+types-python-dateutil = "^2.8.19.13"
+vulture = "^2.1"
+
+[tool.poetry.group.test.dependencies]
+coverage = { extras = ["toml"], version = "^7.0" }
+deepdiff = "^6.3.1"
+pytest-cov = "^4.0"
+pytest-gitignore = "^1.3"
 
 [tool.black]
 exclude = "/(.git|.mypy_cache|.pytest_cache|.venv|__pycache__|dist|node_modules|test-results|typings)/"
@@ -141,6 +147,7 @@ target-version = "py39"
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.per-file-ignores]
+"comicbox/box/print.py" = ["T201", "T203"]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/*" = ["T201", "T203"]
 

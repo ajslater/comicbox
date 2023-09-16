@@ -1,11 +1,14 @@
 """Run comicbox on files."""
 import os
-import sys
 from logging import getLogger
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from comicbox.comic_archive import ComicArchive
-from comicbox.version import VERSION
+from comicbox.box.comic import Comicbox
+from comicbox.config import get_config
+
+if TYPE_CHECKING:
+    from confuse import AttrDict
 
 LOG = getLogger(__name__)
 
@@ -13,68 +16,34 @@ LOG = getLogger(__name__)
 class Runner:
     """Main runner."""
 
-    SUFFIXES = frozenset((".cbz", ".cbr"))
+    _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
     def __init__(self, config):
         """Initialize actions and config."""
-        self.config = config
-        self.noop = True
+        self.config: AttrDict = get_config(config)
 
-    def run_on_file(self, path):  # noqa C901
+    def run_on_file(self, path):
         """Run operations on one file."""
-        if path.is_dir() and self.config.recurse:
-            self.recurse(path)
+        if path:
+            path = Path(path)
+            if not path.exists():
+                LOG.error(f"{path} does not exist.")
+                return
+            if path.is_dir() and self.config.recurse:
+                self.recurse(path)
+                return
 
-        if not path.is_file():
-            print(f"{path} is not a file.")
-            return
-
-        car = ComicArchive(path, config=self.config)
-        if self.config.raw:
-            car.print_raw()
-            self.noop = False
-        if self.config.file_type:
-            car.print_file_type()
-            self.noop = False
-        if self.config.print:
-            car.print_metadata()
-            self.noop = False
-        if self.config.covers:
-            car.extract_cover_as(self.config.dest_path)
-            self.noop = False
-        if self.config.index_from is not None or self.config.index_to is not None:
-            index_from = self.config.index_from
-            index_to = self.config.index_to
-            car.extract_pages(index_from, index_to, self.config.dest_path)
-            self.noop = False
-        if self.config.export:
-            car.export_files()
-            self.noop = False
-        if self.config.cbz or self.config.delete_tags:
-            car.recompress()
-            self.noop = False
-        if self.config.import_fn:
-            car.import_file(self.config.import_fn)
-            self.noop = False
-        if (
-            self.config.write_comicinfoxml
-            or self.config.write_comicbookinfo
-            or self.config.write_comet
-            or self.config.write_pdf
-        ):
-            car.write()
-            self.noop = False
-        if self.config.rename:
-            car.rename_file()
-            self.noop = False
+        with Comicbox(path, config=self.config) as car:
+            car.print_file_header()
+            car.run()
 
     def recurse(self, path):
         """Perform operations recursively on files."""
         if not path.is_dir():
-            print(f"{path} is not a directory")
-            sys.exit(1)
+            LOG.error(f"{path} is not a directory")
+            return
         if not self.config.recurse:
-            print(f"Recurse option not set. Ignoring directory {path}")
+            LOG.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
         for root, dirnames, filenames in os.walk(path):
@@ -83,26 +52,17 @@ class Runner:
                 full_path = root_path / dirname
                 self.recurse(full_path)
             for filename in sorted(filenames):
-                if Path(filename).suffix.lower() not in self.SUFFIXES:
+                path = Path(str(filename))
+                if path.suffix.lower() not in self._RECURSE_SUFFIXES:
                     continue
-                full_path = root_path / filename
+                full_path = root_path / path
                 try:
                     self.run_on_file(full_path)
-                except Exception as exc:
-                    LOG.error(f"{full_path}: {type(exc).__name__} {exc}")
+                except Exception:
+                    LOG.exception(full_path)
 
     def run(self):
         """Run actions with config."""
-        if self.config.version:
-            print(VERSION)
-        if not self.config.paths:
-            if self.config.version:
-                return
-            print("the following arguments are required: paths")
-            sys.exit(1)
-
-        for path in self.config.paths:
-            self.run_on_file(Path(path))
-
-        if self.noop:
-            print("No action performed")
+        paths = self.config.paths
+        for path in paths:
+            self.run_on_file(path)

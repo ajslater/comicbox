@@ -2,12 +2,9 @@
 import math
 from logging import getLogger
 from pathlib import Path
-
-from fitz import PDF_ENCRYPT_KEEP
-from zipfile_deflate64 import ZipInfo
+from zipfile import ZipInfo
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.version import VERSION
 
 try:
     from filetype import guess
@@ -57,6 +54,7 @@ class PDFFile:
 
     def __init__(self, path):
         """Initialize document."""
+        self.check_import()
         self._path = path
         self._doc = fitz.Document(self._path)
 
@@ -70,9 +68,9 @@ class PDFFile:
 
     def namelist(self):
         """Return sortable zero padded index strings."""
-        page_count = self._get_page_count()
+        page_count = self.get_page_count()
         zero_pad = math.floor(math.log10(page_count)) + 1
-        return [f"{i:0{zero_pad}}" for i in range(0, page_count)]
+        return [f"{i:0{zero_pad}}" for i in range(page_count)]
 
     def infolist(self):
         """Return ZipFile like infolist."""
@@ -90,8 +88,7 @@ class PDFFile:
             pix = self._doc.get_page_pixmap(index)  # type: ignore
             page_bytes = pix.tobytes(output="ppm")
         else:
-            self._doc.select([index])
-            page_bytes = self._doc.tobytes()  # type: ignore
+            page_bytes = self._doc.convert_to_pdf(index, index)
         return page_bytes
 
     def close(self):
@@ -99,7 +96,7 @@ class PDFFile:
         if self._doc:
             self._doc.close()
 
-    def _get_page_count(self):
+    def get_page_count(self):
         """Get the page count from the doc or the default highnum."""
         try:
             page_count = self._doc.page_count
@@ -113,7 +110,6 @@ class PDFFile:
         md = self._doc.metadata
         if not md:
             md = {}
-        md["page_count"] = self._get_page_count()
         return md
 
     def _get_preserved_metadata(self):
@@ -131,7 +127,6 @@ class PDFFile:
         new_metadata = {
             **preserved_metadata,
             **metadata,
-            "producer": f"comicbox v{VERSION}",
         }
         self._doc.set_metadata(new_metadata)  # type: ignore
 
@@ -142,7 +137,7 @@ class PDFFile:
             deflate=True,
             deflate_images=False,
             deflate_fonts=True,
-            encryption=PDF_ENCRYPT_KEEP,
+            encryption=fitz.PDF_ENCRYPT_KEEP,
             linear=True,
             pretty=True,
             no_new_id=True,
