@@ -14,7 +14,7 @@ except ImportError:
     FILETYPE_IMPORTED = False
 
 try:
-    import fitz
+    from fitz_new import fitz
 
     FITZ_IMPORTED = True
 except ImportError:
@@ -137,7 +137,7 @@ class PDFFile:
             deflate=True,
             deflate_images=False,
             deflate_fonts=True,
-            encryption=fitz.PDF_ENCRYPT_KEEP,
+            encryption=fitz.PDF_ENCRYPT_KEEP,  # type: ignore
             linear=True,
             pretty=True,
             no_new_id=True,

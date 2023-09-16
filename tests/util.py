@@ -11,7 +11,7 @@ from typing import Optional, Union
 from deepdiff.diff import DeepDiff
 
 try:
-    from fitz import fitz
+    from fitz_new import fitz
 
     FITZ_IMPORTED = True
 except ImportError:
