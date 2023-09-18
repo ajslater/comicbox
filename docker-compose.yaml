@@ -1,7 +1,6 @@
 services:
   comicbox-builder:
-    build:
-      context: .
+    build: .
     image: comicbox-builder
     container_name: comicbox-builder
   comicbox-lint:
