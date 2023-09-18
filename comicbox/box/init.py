@@ -14,9 +14,9 @@ from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.pdf_file import PDFFile
 from comicbox.schemas.comicbox_base import ComicboxBaseSchema, SchemaConfig
 from comicbox.sources import MetadataSources
+from pdffile.pdffile import PDFFile
 
 if TYPE_CHECKING:
     from tarfile import TarFile

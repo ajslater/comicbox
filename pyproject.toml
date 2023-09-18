@@ -21,7 +21,12 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
 ]
-packages = [{ include = "comicbox" }, { include = "tests", format = "sdist" }]
+packages = [
+  { include = "comicbox" },
+  { include = "comicfn2dict" },
+  { include = "pdffile" },
+  { include = "tests", format = "sdist" }
+]
 include = ["NEWS"]
 
 [tool.poetry.dependencies]
@@ -45,6 +50,7 @@ pdf = ["pymupdf", "filetype"]
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
+comicfn2dict = "comicfn2dict.cli:main"
 
 [tool.poetry.group.lint.dependencies]
 black = "^23.3.0"

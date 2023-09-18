@@ -5,7 +5,7 @@ from types import MappingProxyType
 import pytest
 from deepdiff.diff import DeepDiff
 
-from comicbox.comicfn2dict import comicfn2dict
+from comicfn2dict import comicfn2dict
 from tests.comic_filenames import FNS
 
 ALL_FIELDS = frozenset({"series", "volume", "issue", "issue_count", "year", "ext"})

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Test runner."""
+from comicbox import cli
 
-from comicfn2dict.cli import main
-
-main()
+cli.main()

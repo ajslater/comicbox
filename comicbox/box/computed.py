@@ -9,7 +9,6 @@ from typing import Optional
 
 from comicbox.box.archive import archive_close
 from comicbox.box.parse_load import ComicboxParseLoadMixin
-from comicbox.comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from comicbox.fields.collections import IdentifiersField
 from comicbox.fields.enum import PageTypeEnum
 from comicbox.fields.fields import EMPTY_VALUES, StringField
@@ -43,6 +42,7 @@ from comicbox.schemas.comicbox_base import (
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.page_info import PAGE_TYPE_KEY
 from comicbox.sources import SourceFrom
+from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 
 LOG = getLogger(__name__)
 

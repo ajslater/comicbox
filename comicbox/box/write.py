@@ -7,13 +7,13 @@ from typing import Optional
 from comicbox.box.archive_read import archive_close
 from comicbox.box.archive_write import ComicboxArchiveWriteMixin
 from comicbox.box.pages import ComicboxPagesMixin
-from comicbox.pdf_file import PDFFile
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
 from comicbox.schemas.comicbox_base import ComicboxBaseSchema, SchemaConfig
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.schemas.json import ComicboxJsonSchema
 from comicbox.schemas.pdf import PDFSchema
 from comicbox.sources import MetadataSources, SourceFrom
+from pdffile.pdffile import PDFFile
 
 LOG = getLogger(__name__)
 

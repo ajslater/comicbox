@@ -4,7 +4,7 @@ from pathlib import Path
 
 from comicbox.box.archive import archive_close
 from comicbox.box.pages import ComicboxPagesMixin
-from comicbox.pdf_file import PDFFile
+from pdffile.pdffile import PDFFile
 
 LOG = getLogger(__name__)
 

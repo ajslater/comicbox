@@ -9,9 +9,9 @@ effective, simple and easy to read and to contribute to.
 from types import MappingProxyType
 from typing import Union
 
-from comicbox.comicfn2dict import comicfn2dict
 from comicbox.fields.fields import StringField
 from comicbox.schemas.comicbox_base import ComicboxBaseSchema
+from comicfn2dict import comicfn2dict
 
 
 class FilenameRenderModule:

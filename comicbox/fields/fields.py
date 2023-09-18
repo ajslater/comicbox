@@ -5,7 +5,7 @@ from logging import getLogger
 from marshmallow import fields
 from stringcase import titlecase
 
-from comicbox.comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
+from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 
 LOG = getLogger(__name__)
 _ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"

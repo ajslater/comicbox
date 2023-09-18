@@ -8,7 +8,7 @@ from rarfile import BadRarFile, RarFile
 
 from comicbox.box.archive import ComicboxArchiveMixin, archive_close
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.pdf_file import FITZ_IMPORTED, PDFFile
+from pdffile.pdffile import FITZ_IMPORTED, PDFFile
 
 
 class ComicboxArchiveReadMixin(ComicboxArchiveMixin):

@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Union
 
-from comicbox.comicfn2dict.regex import (
+from comicfn2dict.regex import (
     DASH_SPLIT_RE,
     EXTRA_SPACES_RE,
     ISSUE_ANYWHERE_RE,

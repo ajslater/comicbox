@@ -1,10 +1,8 @@
-"""ZipFile like API to PDFs."""
+"""Access PDFS with a ZipFile-like API."""
 import math
 from logging import getLogger
 from pathlib import Path
 from zipfile import ZipInfo
-
-from comicbox.exceptions import UnsupportedArchiveTypeError
 
 try:
     from filetype import guess
@@ -21,6 +19,10 @@ except ImportError:
     FITZ_IMPORTED = False
 
 LOG = getLogger(__name__)
+
+
+class FitzNotFoundError(Exception):
+    """PyMuPDF not found."""
 
 
 class PDFFile:
@@ -40,7 +42,7 @@ class PDFFile:
                 "Unsupported archive type:"
                 " comicbox[pdf] extra dependencies not installed."
             )
-            raise UnsupportedArchiveTypeError(reason)
+            raise FitzNotFoundError(reason)
 
     @classmethod
     def is_pdffile(cls, path):

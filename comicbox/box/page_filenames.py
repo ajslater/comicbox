@@ -3,7 +3,7 @@ from sys import maxsize
 
 from comicbox.box.archive import archive_close
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
-from comicbox.pdf_file import PDFFile
+from pdffile.pdffile import PDFFile
 
 
 class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):

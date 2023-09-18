@@ -5,8 +5,8 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
-from comicbox.pdf_file import PDFFile
 from comicbox.sources import MetadataSources
+from pdffile.pdffile import PDFFile
 
 RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 CBZ_SUFFIX = ".cbz"

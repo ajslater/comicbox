@@ -1,0 +1,1 @@
+"""Access PDFs like ZipFile."""

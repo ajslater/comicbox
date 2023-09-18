@@ -4,8 +4,8 @@ from pathlib import Path
 
 from comicbox.box.init import SourceData
 from comicbox.box.page_filenames import ComicboxPageFilenamesMixin
-from comicbox.pdf_file import PDFFile
 from comicbox.sources import MetadataSources, SourceFrom
+from pdffile.pdffile import PDFFile
 
 LOG = getLogger(__name__)
 
