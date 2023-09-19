@@ -215,3 +215,11 @@ The Comicbox CLI uses "flow style" YAML, which is an all on one line format to e
 | Comicbox CLI  | -m --metadata     |
 | Archive       | comicbox-cli.yaml |
 | Import/Export | comicbox-cli.yaml |
+
+## Packages
+
+Comicbox actually installs three different packages:
+
+- `comicbox` which is the main API and CLI script.
+- `comicfn2dict` which is a separate library for parsing comic filenaames into dicts it also includes a CLI script.
+- `pdffile` a utility library for reading and writing PDF files with an API like Python's ZipFile
