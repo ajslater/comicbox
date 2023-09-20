@@ -82,6 +82,14 @@ comicbox --recurse -m "publisher: SC Comics" -w cr ./SmallComicsComics/
 
 Will recursively change the publisher to "SC Comics" for every comic found in under the SmallComicsComics directory.
 
+#### Packages
+
+Comicbox actually installs three different packages:
+
+- `comicbox` The main API and CLI script.
+- `comicfn2dict` A separate library for parsing comic filenames into dicts it also includes a CLI script.
+- `pdffile` A utility library for reading and writing PDF files with an API like Python's ZipFile
+
 ### ⚙️ Config
 
 comicbox accepts command line arguments but also an optional config file
@@ -215,11 +223,3 @@ The Comicbox CLI uses "flow style" YAML, which is an all on one line format to e
 | Comicbox CLI  | -m --metadata     |
 | Archive       | comicbox-cli.yaml |
 | Import/Export | comicbox-cli.yaml |
-
-## Packages
-
-Comicbox actually installs three different packages:
-
-- `comicbox` which is the main API and CLI script.
-- `comicfn2dict` which is a separate library for parsing comic filenaames into dicts it also includes a CLI script.
-- `pdffile` a utility library for reading and writing PDF files with an API like Python's ZipFile
