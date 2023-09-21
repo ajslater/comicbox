@@ -7,6 +7,8 @@ from urnparse import URN8141, InvalidURNFormatError
 SERIES_SUFFIX = "-series"
 COMICVINE_NID = "comicvine"
 COMICVINE_SERIES_NID = COMICVINE_NID + SERIES_SUFFIX
+METRON_NID = "metron"
+METRON_SERIES_NID = METRON_NID + SERIES_SUFFIX
 COMIXOLOGY_NID = "comixology"
 ASIN_NID = "asin"
 GTIN_NID = "gtin"
@@ -14,15 +16,19 @@ ISBN_NID = "isbn"
 _CVDB_ALTERNATE_NID = "cvdb"
 _CMXDB_ALTERNTATE_NID = "cmxdb"
 
+# Metron uses the slug for an id, not the actual metron id.
+# Metron could use an id to
 CV_COMIC_PREFIX = "4000-"
 CV_SERIES_PREFIX = "4050-"
 MATCH_URLS = MappingProxyType(
     {
         COMICVINE_NID: "https://comicvine.gamespot.com/c/" + CV_COMIC_PREFIX,
+        METRON_NID: "https://metron.cloud/issue/",
         ASIN_NID: "https://www.amazon.com/dp/",
         COMIXOLOGY_NID: "https://www.comixology.com/c/digital-comic/",
         ISBN_NID: "https://isbndb.com/book/",
         COMICVINE_SERIES_NID: "https://comicvine.gamespot.com/c/" + CV_SERIES_PREFIX,
+        METRON_SERIES_NID: "https://metron.cloud/series/",
     }
 )
 _WEB_EXPS = MappingProxyType(
@@ -30,12 +36,14 @@ _WEB_EXPS = MappingProxyType(
         COMICVINE_NID: (
             rf"comicvine\.gamespot\.com/.+/{CV_COMIC_PREFIX}(?P<identifier>\d+)"
         ),
+        METRON_NID: r"metron\.cloud/issue/(?P<identifier>\w+)",
         ASIN_NID: r"amazon\.com/dp/(?P<identifier>\w+)",
         COMIXOLOGY_NID: r"comixology\.com/.+/.+/(?P<identifier>\d+)",
         ISBN_NID: r"isbndb\.com/book/(?P<identifier>\d{13}|\d{10})",
         COMICVINE_SERIES_NID: (
             rf"comicvine\.gamespot\.com/.+/{CV_SERIES_PREFIX}(?P<identifier>\d+)"
         ),
+        METRON_SERIES_NID: r"metron\.cloud/series/(?P<identifier>\w+)",
     }
 )
 WEB_REGEX_URLS = MappingProxyType(
@@ -48,9 +56,11 @@ _IDENTIFIER_TYPES = (
     GTIN_NID,
     ISBN_NID,
     COMICVINE_NID,
+    METRON_NID,
     COMIXOLOGY_NID,
     CV_COMIC_PREFIX,
     COMICVINE_SERIES_NID,
+    METRON_SERIES_NID,
     CV_SERIES_PREFIX,
 )
 IDENTIFIER_EXP = r"(?P<type>" + r"|".join(_IDENTIFIER_TYPES) + r")?(?P<code>\S+)"
@@ -60,11 +70,13 @@ IDENTIFIER_URN_NIDS = MappingProxyType(
         COMICVINE_NID: frozenset(
             {None, _CVDB_ALTERNATE_NID, "comicvine.gamespot.org", CV_COMIC_PREFIX}
         ),
+        METRON_NID: frozenset({"metron.cloud", "metron.cloud/issue"}),
         ASIN_NID: frozenset({"amazon", "amazon.com", "www.amazon.com"}),
         COMIXOLOGY_NID: frozenset({"comixology.com", _CMXDB_ALTERNTATE_NID}),
         GTIN_NID: frozenset(),
         ISBN_NID: frozenset(),
         COMICVINE_SERIES_NID: frozenset({COMICVINE_SERIES_NID, CV_SERIES_PREFIX}),
+        METRON_SERIES_NID: frozenset({"metron.cloud/series"}),
     }
 )
 GTIN_NID_ORDER = (
@@ -73,7 +85,9 @@ GTIN_NID_ORDER = (
     ASIN_NID,
     COMIXOLOGY_NID,
     COMICVINE_NID,
+    METRON_NID,
     COMICVINE_SERIES_NID,
+    METRON_SERIES_NID,
 )
 
 
