@@ -2,12 +2,13 @@
 
 ## v1.0.0
 
-- This version contains large breaking changes, some of which are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- This version contains large breaking changes, some detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
 - Comicbox continues to primarily be an API for reading comic metadata but this version contains an enhanced CLI,
   and more powerful reading, writing, synthesis and exporting of metadata.
 - Comicbox now sorts archive filenames case insensitively.
 - Comicbox now writes identifiers to the notes field in urn format.
 - You should probably read the code in `comicbox.box` for public facing apis.
+- comicbfn2dict and comicbox-pdffile are now independent ackages.
 
 ## v0.10.2
 

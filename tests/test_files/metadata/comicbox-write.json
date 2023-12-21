@@ -9,20 +9,22 @@
         "Joe Orlando"
       ]
     },
-    "country": "United States",
+    "country": "US",
     "day": 1,
     "genres": [
       "Science Fiction"
     ],
     "identifiers": {
-      "comicvine": "145269"
+      "comicvine": {
+        "nss": "4000-145269",
+        "url": "https://comicvine.gamespot.com/c/4000-145269/"
+      }
     },
     "issue": "1",
-    "issue_count": 7,
     "issue_number": 1,
-    "language": "English",
+    "language": "en",
     "month": 11,
-    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269",
+    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269",
     "page_count": 36,
     "pages": [
       {
@@ -172,12 +174,16 @@
       }
     ],
     "publisher": "Youthful Adventure Stories",
-    "series": "Captain Science",
+    "series": {
+      "name": "Captain Science"
+    },
     "tagger": "comicbox dev",
     "title": "The Beginning",
     "updated_at": "1970-01-01T00:00:00",
-    "volume": 1950,
-    "web": "https://comicvine.gamespot.com/c/4000-145269/",
+    "volume": {
+      "issue_count": 7,
+      "number": 1950
+    },
     "year": 1950
   },
   "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"

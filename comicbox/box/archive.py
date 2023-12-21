@@ -4,8 +4,6 @@ from functools import wraps
 from logging import getLogger
 
 from comicbox.box.init import ComicboxInitMixin
-from comicbox.exceptions import UnsupportedArchiveTypeError
-from pdffile.pdffile import FitzNotFoundError
 
 LOG = getLogger(__name__)
 
@@ -50,8 +48,5 @@ class ComicboxArchiveMixin(ComicboxInitMixin):
     def _get_archive(self):
         """Set archive instance open for reading."""
         if not self._archive and self._archive_cls:
-            try:
-                self._archive = self._archive_cls(self._path)
-            except FitzNotFoundError as exc:
-                raise UnsupportedArchiveTypeError from exc
+            self._archive = self._archive_cls(self._path)
         return self._archive

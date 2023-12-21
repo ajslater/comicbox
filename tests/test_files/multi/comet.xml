@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/comet.xsd">
+<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/comet.xsd">
 	<character>Captain Science</character>
 	<character>Gordon Dane</character>
 	<character>COMET</character>
@@ -9,8 +9,8 @@
 	<format>Comic</format>
 	<genre>Science Fiction</genre>
 	<identifier>4000-145269</identifier>
-	<isVersionOf>Captain Science</isVersionOf>
-	<language>English</language>
+	<isVersionOf>Captain Science Alternate #001</isVersionOf>
+	<language>en</language>
 	<lastMark>12</lastMark>
 	<pages>36</pages>
 	<price>0.10</price>

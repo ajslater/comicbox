@@ -27,7 +27,7 @@ module.exports = {
     "plugin:prettier/recommended",
     // SECURITY
     "plugin:no-unsanitized/DOM",
-    "plugin:security/recommended",
+    "plugin:security/recommended-legacy",
   ],
   parserOptions: {
     ecmaFeatures: {

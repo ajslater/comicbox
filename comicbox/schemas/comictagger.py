@@ -1,138 +1,128 @@
 """Export comicbox.schemas to comicapi metadata."""
-from copy import deepcopy
+# https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py
+from decimal import Decimal
 from types import MappingProxyType
 
-from marshmallow import pre_dump
 from marshmallow.fields import Nested
 
+from comicbox.fields.collections import StringListField, StringSetField
+from comicbox.fields.enum import AgeRatingField, MangaField, YesNoField
 from comicbox.fields.fields import StringField
-from comicbox.identifiers import IDENTIFIER_URN_NIDS, SERIES_SUFFIX
-from comicbox.schemas.base import BaseSchema
-from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_base import (
-    CONTRIBUTORS_KEY,
-    IDENTIFIERS_KEY,
-    PAGE_COUNT_KEY,
-    PAGES_KEY,
-    TAGS_KEY,
-)
-from comicbox.schemas.comicinfo_storyarcs import (
-    STORY_ARC_KEY,
-    ComicInfoStoryArcsSchemaMixin,
-)
+from comicbox.fields.numbers import BooleanField, DecimalField, IntegerField
+from comicbox.fields.pycountry import CountryField, LanguageField
+from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.comicbookinfo import ComicBookInfoCreditSchema
+from comicbox.schemas.json import JsonSchema, JsonSubSchema
 
 TAG_ORIGIN_KEY = "tag_origin"
 ISSUE_ID_KEY = "issue_id"
 SERIES_ID_KEY = "series_id"
+IS_VERSION_OF_TAG = "is_version_of"
+IDENTIFIER_TAG = "identifier"
+STORY_ARC_TAG = "story_arcs"
+PAGES_TAG = "pages"
+INDEX_TAG = "Image"
 
 
-CT_DATA_KEY_MAP = MappingProxyType(
-    # https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py
-    {
-        TAG_ORIGIN_KEY: TAG_ORIGIN_KEY,
-        ISSUE_ID_KEY: ISSUE_ID_KEY,
-        SERIES_ID_KEY: SERIES_ID_KEY,
-        ###
-        "series": "series",
-        "seriesAliases": "series_aliases",
-        "issue": "issue",
-        "title": "title",
-        "titleAliases": "title_aliases",
-        "publisher": "publisher",
-        "month": "month",
-        "year": "year",
-        "day": "day",
-        "issueCount": "issue_count",
-        "volume": "volume",
-        "genres": "genres",
-        "language": "language",
-        "description": "summary",
-        ###
-        "volumeCount": "volume_count",
-        "criticalRating": "critical_rating",
-        "country": "country",
-        ###
-        "alternateSeries": "alternate_series",
-        "alternateNumber": "alternate_issue",
-        "alternateCount": "alternate_issue_count",
-        "imprint": "imprint",
-        "notes": "notes",
-        "webLink": "web",
-        "format": "original_format",
-        "manga": "manga",
-        "blackAndWhite": "monochrome",
-        "pageCount": PAGE_COUNT_KEY,
-        "maturityRating": "age_rating",
-        ###
-        "storyArcs": STORY_ARC_KEY,
-        "seriesGroups": "series_group",
-        "scanInfo": "scan_info",
-        ###
-        "characters": "characters",
-        "teams": "teams",
-        "locations": "locations",
-        ###
-        "alternateImages": "alternate_images",
-        "credits": "credits_list",
-        "tags": TAGS_KEY,
-        "pages": PAGES_KEY,
-        ###
-        "price": "price",
-        "isVersionOf": "alternate_series",
-        "rights": "rights",
-        "lastMark": "last_mark",
-        "coverImage": "cover_image",
-    }
-)
-
-CT_EXTRA_KEYS = (CONTRIBUTORS_KEY,)
-
-
-class TagOriginSchema(BaseSchema):
+class TagOriginSchema(BaseSubSchema):
     """Comictagger Tag Origin."""
 
-    id = StringField()  # noqa A003
     name = StringField()
 
+    class Meta(BaseSubSchema.Meta):
+        """Schema Options."""
 
-class ComictaggerSchema(ComicBookInfoSchema, ComicInfoStoryArcsSchemaMixin):
+        include = MappingProxyType({"id": StringField()})
+
+
+class ComictaggerPageInfoSchema(BaseSchema):
+    """Comictagger Page Info data structure."""
+
+    Type = StringField()
+    Bookmark = StringField()
+    DoublePage = BooleanField()
+    Image = IntegerField()
+    ImageSize = IntegerField(minimum=0)
+    ImageHeight = IntegerField(minimum=0)
+    ImageWidth = IntegerField(minimum=0)
+
+
+class ComictaggerSubSchema(JsonSubSchema):
     """Comictagger schema."""
 
-    DATA_KEY_MAP = CT_DATA_KEY_MAP
-    ROOT_TAG = "comictagger"
-    ROOT_TAGS = MappingProxyType({ROOT_TAG: {}})
-    CONFIG_KEYS = frozenset({"comictagger", "ct"})
-    FILENAME = "comictagger.json"
-
+    # comictagger unique
     tag_origin = Nested(TagOriginSchema())
     issue_id = StringField()
     series_id = StringField()
 
-    class Meta(ComicBookInfoSchema.Meta):
+    # comicinfo, comicbookinfo & comet
+    series = StringField()
+    series_aliases = StringSetField()
+    issue = StringField()
+    title = StringField()
+    publisher = StringField()
+    month = IntegerField(minimum=0, maximum=12)
+    year = IntegerField()
+    day = IntegerField(minimum=0, maximum=31)
+    issue_count = IntegerField(minimum=0)
+    volume = IntegerField()
+    genres = StringSetField()
+    language = LanguageField()
+    description = StringField()
+
+    volume_count = IntegerField(minimum=0)
+    critical_rating = DecimalField()
+    country = CountryField()
+
+    alternate_series = StringField()
+    alternate_number = IntegerField()
+    alternate_count = IntegerField()
+    imprint = StringField()
+    notes = StringField()
+    web_link = StringField()
+    # format in include
+    manga = MangaField()
+    black_and_white = YesNoField()
+    page_count = IntegerField(minimum=0)
+    maturity_rating = AgeRatingField()
+
+    story_arcs = StringListField(sort=False)
+    series_groups = StringSetField()
+    scan_info = StringField()
+
+    characters = StringSetField()
+    teams = StringSetField()
+    locations = StringSetField()
+
+    alternate_images = StringListField(sort=False)
+    # credits in include
+    tags = StringSetField()
+    pages = Nested(ComictaggerPageInfoSchema, many=True)
+
+    # comet unique
+    price = DecimalField(minimum=Decimal(0.0))
+    is_version_of = StringSetField(as_string=True)
+    rights = StringField()
+    identifier = StringSetField(as_string=True)
+    last_mark = StringField()
+    cover_image = StringField()
+
+    class Meta(JsonSubSchema.Meta):
         """Schema options."""
 
-        fields = ComicBookInfoSchema.Meta.create_fields(CT_DATA_KEY_MAP, CT_EXTRA_KEYS)
+        include = MappingProxyType(
+            {
+                "format": StringField(),
+                "credits": Nested(ComicBookInfoCreditSchema, many=True),
+            }
+        )
 
-    @pre_dump
-    def dump_comictag_identifiers(self, data, **_kwargs):
-        """Translate identifiers dict to comictagger tag_origin and ids."""
-        identifiers = data.get(IDENTIFIERS_KEY)
-        if not identifiers:
-            return data
-        for identifier_type in IDENTIFIER_URN_NIDS:
-            issue_id = data.get(identifier_type)
-            series_type = identifier_type + SERIES_SUFFIX
-            series_id = data.get(series_type)
-            if issue_id or series_id:
-                break
-        else:
-            return data
 
-        data = data(deepcopy(dict(data)))
-        tag_origin = {"id": "", "name": identifier_type}
-        data[TAG_ORIGIN_KEY] = tag_origin
-        if issue_id:
-            data[ISSUE_ID_KEY] = issue_id
-        if series_id:
-            data[SERIES_ID_KEY] = series_id
-        return data
+class ComictaggerSchema(JsonSchema):
+    """Comictagger Schema."""
+
+    CONFIG_KEYS = frozenset({"comictagger", "ct"})
+    FILENAME = "comictagger.json"
+    ROOT_TAGS = ("comictagger",)
+
+    comictagger = Nested(ComictaggerSubSchema)

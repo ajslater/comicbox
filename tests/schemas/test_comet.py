@@ -8,60 +8,74 @@ import xmltodict
 
 from comicbox.fields.enum import ReadingDirectionEnum
 from comicbox.schemas.comet import CoMetSchema
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.transforms.comet import CoMetTransform
 from tests.util import (
     TestParser,
 )
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["comet"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["comet"], compute_pages=False))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(write=["comet"], read=["comet"], compute_pages=False)
+)
 
 METADATA = MappingProxyType(
     {
-        "age_rating": "Teen",
-        "alternate_issue": "Captain Science",
-        "cover_image": "CaptainScience#1_01.jpg",
-        "characters": {"Captain Science", "Gordon Dane"},
-        "contributors": {
-            "writer": {"Joe Orlando"},
-            "penciller": {"Wally Wood"},
-        },
-        "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
-        "genres": {"Science Fiction"},
-        "identifiers": {"comicvine": "145269"},
-        "issue": "1",
-        "issue_number": Decimal("1"),
-        "language": "en",
-        "last_mark": 12,
-        "publisher": "Bell Features",
-        "original_format": "Comic",
-        "page_count": 36,
-        "price": Decimal(0.10).quantize(Decimal("0.01")),
-        "reading_direction": ReadingDirectionEnum.LTR,
-        "rights": "Copyright (c) 1950 Bell Features",
-        "title": "The Beginning",
-        "series": "Captain Science",
-        "summary": "A long example description",
-        "volume": 1,
-        "web": "https://comicvine.gamespot.com/c/4000-145269/",
+        ROOT_TAG: {
+            "age_rating": "Teen",
+            "cover_image": "CaptainScience#1_01.jpg",
+            "characters": {"Captain Science", "Gordon Dane"},
+            "contributors": {
+                "writer": {"Joe Orlando"},
+                "penciller": {"Wally Wood"},
+            },
+            "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
+            "genres": {"Science Fiction"},
+            "identifiers": {
+                "comicvine": {
+                    "nss": "4000-145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                }
+            },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "last_mark": 12,
+            "publisher": "Bell Features",
+            "original_format": "Comic",
+            "page_count": 36,
+            "price": Decimal(0.10).quantize(Decimal("0.01")),
+            "reading_direction": ReadingDirectionEnum.LTR,
+            "reprints": [
+                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+            ],
+            "rights": "Copyright (c) 1950 Bell Features",
+            "title": "The Beginning",
+            "series": {"name": "Captain Science"},
+            "summary": "A long example description",
+            "volume": {"number": 1},
+        }
     }
 )
 COMET_DICT = MappingProxyType(
     {
-        CoMetSchema.ROOT_TAG: {
+        CoMetSchema.ROOT_TAGS[0]: {
             "@xmlns:comet": "http://www.denvog.com/comet/",
+            "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "http://www.denvog.com/comet/comet.xsd",
             "character": ["Captain Science", "Gordon Dane"],
+            "writer": ["Joe Orlando"],
             "coverImage": "CaptainScience#1_01.jpg",
             "date": "1950-12-01",
             "description": "A long example description",
             "format": "Comic",
             "genre": ["Science Fiction"],
-            "identifier": "urn:comicvine:145269",
-            "isVersionOf": "Captain Science",
+            "identifier": "urn:comicvine:4000-145269",
+            "isVersionOf": "Captain Science Alternate #001",
             "issue": "1",
-            "language": "English",
+            "language": "en",
             "lastMark": 12,
             "pages": 36,
             "penciller": ["Wally Wood"],
@@ -73,14 +87,13 @@ COMET_DICT = MappingProxyType(
             "series": "Captain Science",
             "title": "The Beginning",
             "volume": 1,
-            "writer": ["Joe Orlando"],
         }
     }
 )
 COMET_STR = xmltodict.unparse(COMET_DICT, pretty=True, short_empty_elements=True)
 
 COMET_TESTER = TestParser(
-    CoMetSchema,
+    CoMetTransform,
     FN,
     METADATA,
     COMET_DICT,
@@ -132,4 +145,4 @@ def test_comet_read():
 
 def test_comet_write():
     """Write comet metadata."""
-    COMET_TESTER.test_md_write()
+    COMET_TESTER.test_md_write(page_count=36)

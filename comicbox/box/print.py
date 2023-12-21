@@ -4,13 +4,16 @@ from pprint import pprint
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.print import PrintPhases
-from comicbox.schemas.yaml import ComicboxYamlSchema, YamlRenderModule
+from comicbox.schemas.comicbox_mixin import PAGES_KEY
+from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.yaml import YamlRenderModule
 from comicbox.sources import MetadataSources
 from comicbox.version import VERSION
 
-_SOURCES_PARSED_LOADED = frozenset(
-    {PrintPhases.SOURCE, PrintPhases.PARSED, PrintPhases.LOADED}
+_SOURCES_LOADED_NORMALIZED = frozenset(
+    {PrintPhases.SOURCE, PrintPhases.LOADED, PrintPhases.NORMALIZED}
 )
+_ALLOWED_NULL_KEYS = frozenset({PAGES_KEY})
 
 
 class ComicboxPrintMixin(ComicboxMetadataMixin):
@@ -79,23 +82,8 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
                 print(print_md)
 
-    def _print_parsed(self, source):
-        """Print parsed metadata."""
-        # This is is a hack to get parsed
-        parsed_md_list = self.get_parsed_metadata(source)
-        if not parsed_md_list:
-            return
-        for parsed_md in parsed_md_list:
-            if not parsed_md:
-                continue
-            self._print_header("Parsed", source.value.label, parsed_md.path)
-            str_data = YamlRenderModule.dumps(parsed_md.metadata)
-            if str_data.endswith("\n"):
-                str_data = str_data[:-1]
-            print(str_data)
-
-    def _print_loaded(self, source, schema):
-        """Print parsed metadata."""
+    def _print_loaded(self, source):
+        """Print loaded metadata."""
         if PrintPhases.LOADED not in self._config.print:
             return
         loaded_md_list = self.get_loaded_metadata(source)
@@ -105,28 +93,45 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             if not loaded_md:
                 continue
             self._print_header("Loaded", source.value.label, loaded_md.path)
-            str_data = schema.dumps(loaded_md.metadata)
+            str_data = YamlRenderModule.dumps(dict(loaded_md.metadata))
             if str_data.endswith("\n"):
                 str_data = str_data[:-1]
             print(str_data)
 
-    def _print_sources_parsed_loaded(self, schema):
-        """Print sources, parsed and loaded metadata."""
-        if not _SOURCES_PARSED_LOADED & self._config.print:
+    def _print_normalized(self, source):
+        """Print normalized metadata."""
+        if PrintPhases.NORMALIZED not in self._config.print:
+            return
+        normalized_md_list = self.get_normalized_metadata(source)
+        if not normalized_md_list:
+            return
+        for normalized_md in normalized_md_list:
+            if not normalized_md:
+                continue
+            self._print_header("Normalized", source.value.label, normalized_md.path)
+            schema = ComicboxYamlSchema(path=normalized_md.path)
+            str_data = schema.dumps(normalized_md.metadata)
+            if str_data.endswith("\n"):
+                str_data = str_data[:-1]
+            print(str_data)
+
+    def _print_sources_loaded_normalized(self):
+        """Print sources, loaded, and normalized metadata."""
+        if not _SOURCES_LOADED_NORMALIZED & self._config.print:
             return
         for source in MetadataSources:
             if PrintPhases.SOURCE in self._config.print:
                 self._print_sources(source)
-            if PrintPhases.PARSED in self._config.print:
-                self._print_parsed(source)
             if PrintPhases.LOADED in self._config.print:
-                self._print_loaded(source, schema)
+                self._print_loaded(source)
+            if PrintPhases.NORMALIZED in self._config.print:
+                self._print_normalized(source)
 
-    def _print_loaded_synthed(self, schema):
-        if PrintPhases.LOADED_SYNTHED not in self._config.print:
+    def _print_merged(self, schema):
+        if PrintPhases.MERGED not in self._config.print:
             return
-        md = self.get_loaded_synthed_metadata()
-        self._print_header("Loaded Synthesized (Not Final)")
+        md = self.get_merged_metadata()
+        self._print_header("Normalized Merged (Not Final)")
         str_data = schema.dumps(md)
         print(str_data)
 
@@ -139,14 +144,16 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             if not computed_md or not computed_md.metadata:
                 continue
             self._print_header("Computed", computed_md.label)
-            str_data = schema.dumps(computed_md.metadata)
+            str_data = schema.dumps(
+                computed_md.metadata, allowed_null_keys=_ALLOWED_NULL_KEYS
+            )
             print(str_data)
 
     def _print_metadata(self):
         """Pretty print the metadata."""
         if PrintPhases.METADATA in self._config.print:
             if len(self._config.print) > 1:
-                self._print_header("Synthesized", "Metadata")
+                self._print_header("Merged", "Metadata")
             md = self.to_string()
             print(md)
 
@@ -156,8 +163,8 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         self._print_version()
         self._print_file_type()
         self._print_file_names()
+        self._print_sources_loaded_normalized()
         schema = ComicboxYamlSchema(path=self._path)
-        self._print_sources_parsed_loaded(schema)
-        self._print_loaded_synthed(schema)
+        self._print_merged(schema)
         self._print_computed(schema)
         self._print_metadata()

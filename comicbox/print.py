@@ -7,12 +7,12 @@ class PrintPhases(Enum):
 
     VERSION = "v"
     FILE_TYPE = "t"
-    FILE_NAMES = "n"
+    FILE_NAMES = "f"
 
     # Metadata
     SOURCE = "s"
-    PARSED = "p"
     LOADED = "l"
-    LOADED_SYNTHED = "y"
+    NORMALIZED = "n"
+    MERGED = "m"
     COMPUTED = "c"
-    METADATA = "m"
+    METADATA = "d"

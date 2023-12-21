@@ -8,7 +8,6 @@ from rarfile import BadRarFile, RarFile
 
 from comicbox.box.archive import ComicboxArchiveMixin, archive_close
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from pdffile.pdffile import FITZ_IMPORTED, PDFFile
 
 
 class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
@@ -87,11 +86,6 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         except UnsupportedArchiveTypeError:
             return False
 
-    @staticmethod
-    def is_pdf_supported() -> bool:
-        """Return if pdf files can be read."""
-        return FITZ_IMPORTED
-
     def _archive_readfile(self, filename, to_pixmap=False) -> bytes:
         """Read an archive file to memory."""
         self._ensure_read_archive()
@@ -105,8 +99,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
                 file_obj = archive.extractfile(filename)
                 if file_obj:
                     data = file_obj.read()
-            elif to_pixmap and isinstance(archive, PDFFile):
-                data = archive.read(filename, True)
+            elif to_pixmap and self._archive_is_pdf:
+                data = archive.read(filename, True)  # type: ignore
             else:
                 data = archive.read(filename)
         except BadRarFile:

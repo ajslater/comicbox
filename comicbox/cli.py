@@ -70,7 +70,7 @@ def _create_format_help():
         if not source.value.configurable:
             continue
         label = source.value.label
-        keys = ", ".join(source.value.schema_class.CONFIG_KEYS)
+        keys = ", ".join(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS)
         space = (max_space - len(label)) * " "
         lines += f"  {label}:{space}{keys}"
         if not source.value.writable:
@@ -90,20 +90,21 @@ def _add_option_group(parser):
         help="Path to an alternate config file.",
     )
     option_group.add_argument(
-        "-I",
-        "--ignore-read",
+        "-r",
+        "--read",
         action=CSVAction,
         metavar="FORMATS",
-        dest="ignore_read",
-        help="Ignore reading metadata formats. List of format keys.",
+        dest="read",
+        help="Read metadata formats. Defaults to all.",
     )
     option_group.add_argument(
         "-m",
         "--metadata",
         dest="metadata_cli",
+        metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields key=value, key=valueA,valueB,valueC,"
-        "key=subkey:value,subkey:value",
+        help="Set metadata fields. e.g.: 'keyA: value, keyB: [valueA,valueB,valueC],"
+        " keyC: {subkey: {subsubkey: value}'",
     )
     option_group.add_argument(
         "-d",
@@ -113,7 +114,7 @@ def _add_option_group(parser):
     option_group.add_argument(
         "--delete-orig",
         action="store_true",
-        help="Delete the original file if it was converted to a cbz successfully.",
+        help="Delete the original cbr or cbt file if it was converted to a cbz successfully.",
     )
     option_group.add_argument(
         "--recurse",
@@ -127,49 +128,65 @@ def _add_option_group(parser):
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
     option_group.add_argument(
-        "-q",
+        "-G",
+        "--no-compute-pages",
+        dest="compute_pages",
+        action="store_false",
+        default=True,
+        help=("Never compute page_count or pages metadata from the archive."),
+    )
+    option_group.add_argument(
+        "-Q",
         "--quiet",
         action="count",
         default=0,
         help="Increasingingly quiet success messages, "
-        "warnings and errors with more qs.",
+        "warnings and errors with more Qs.",
+    )
+    option_group.add_argument(
+        "-N",
+        "--no-stamp-notes",
+        dest="stamp_notes",
+        action="store_false",
+        help="Do not write the notes field with tagger, timestamp and identifiers "
+        "when writing metadata out to a file.",
     )
 
 
 def _add_action_group(parser):
     action_group = parser.add_argument_group("Actions")
     action_group.add_argument(
+        "-P",
+        "--print-phases",
+        dest="print",
+        metavar="PRINT_PHASES",
+        action="store",
+        default="",
+        help=(
+            "Print separate phases of metadata processing."
+            " Specify with a string that contains phase characters"
+            " listed below. e.g. -P slcm."
+        ),
+    )
+    action_group.add_argument(
         "-v",
         "--version",
         action="store_true",
-        help="Print software version. Shortcut for (-n v)",
+        help="Print software version. Shortcut for -P v",
     )
     action_group.add_argument(
         "-p",
         "--print",
         dest="print_metadata",
         action="store_true",
-        help="Print synthesized metadata. Shortcut for (-n m).",
+        help="Print merged metadata. Shortcut for -P d.",
     )
     action_group.add_argument(
         "-l",
         "--list",
         dest="print_filenames",
         action="store_true",
-        help="Print filenames in archive. Shortcut for (-n n).",
-    )
-    action_group.add_argument(
-        "-n",
-        "--print-phases",
-        dest="print",
-        metavar="PHASES",
-        action="store",
-        default="",
-        help=(
-            "Print separate phases of metadata processing."
-            " Specify with a string that contains phase characters"
-            " listed below. e.g. -n slcm"
-        ),
+        help="Print filenames in archive. Shortcut for -P f.",
     )
     action_group.add_argument(
         "-i",
@@ -183,17 +200,19 @@ def _add_action_group(parser):
         "--export",
         metavar="FORMATS",
         action=CSVAction,
-        help="Export metadata as external files to --dest-path.",
+        help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
     action_group.add_argument(
-        "--delete-tags", action="store_true", help="Delete all tags from archive."
+        "--delete",
+        action="store_true",
+        help="Delete all tags from the archive. Overrides --write.",
     )
     action_group.add_argument(
         "-e",
         "--pages",
         action=PageRangeAction,
         help="Extract a single page or : delimited range of pages by zero based index"
-        "to --dest-path.",
+        " to --dest-path.",
     )
     action_group.add_argument(
         "-o", "--cover", action="store_true", help="Extract cover page(s)."
@@ -210,12 +229,12 @@ def _add_action_group(parser):
         metavar="FORMATS",
         action=CSVAction,
         help="Write comic metadata formats to archive cbt & cbr are always"
-        " exported to cbz format. List of format keys.",
+        " exported to cbz format. Format keys listed below.",
     )
     action_group.add_argument(
         "--rename",
         action="store_true",
-        help="Rename the file with our preferred schema.",
+        help="Rename the file with comicbox's filename format.",
     )
     action_group.add_argument(
         "-h", "--help", action="help", help="Show only this help message and exit"
@@ -236,16 +255,18 @@ def get_args(params=None) -> Namespace:
     description = "Comic book archive read/write tool."
     formats = _create_format_help()
     epilog = (
-        "Characters for --print-phases string:\n"
-        "  v  Software version\n"
+        "PRINT_PHASES Characters:\n"
+        "  v  Software version (Shortcut -v)\n"
         "  t  File type\n"
-        "  n  File names\n"
+        "  f  File names (Shortcut -l)\n"
         "  s  Source metadata\n"
-        "  p  Parsed metadata sources\n"
         "  l  Loaded metadata sources\n"
+        "  n  Loaded metadata normalized to comicbox schema\n"
+        "  m  Merged normalized intermediate metadata\n"
         "  c  Computed metadata sources\n"
-        "  m  Final synthesized metadata.\n\n"
-        "Complex --metadata example:\n"
+        "  d  Final metadata merged with computed sources. (Shortcut -p)\n"
+        "\n"
+        "Complex --metadata Example:\n"
         "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
         " writer: [Other Name, Writer Name]},"
         " story_arcs: {Arc Name: 1, Other Arc Name: 5}'\n"

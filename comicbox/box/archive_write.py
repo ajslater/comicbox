@@ -6,12 +6,11 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
 from comicbox.sources import MetadataSources
-from pdffile.pdffile import PDFFile
 
 RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 CBZ_SUFFIX = ".cbz"
 ALL_METADATA_NAMES = frozenset(
-    {source.value.schema_class.FILENAME for source in MetadataSources}
+    {source.value.transform_class.SCHEMA_CLASS.FILENAME for source in MetadataSources}
 )
 LOG = getLogger(__name__)
 
@@ -119,7 +118,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
     def write_archive_metadata(self, files: Mapping, comment: bytes):
         """Write the metadata files and comment to an archive."""
         self._ensure_write_archive()
-        if self._archive_cls == PDFFile:
+        if self._archive_is_pdf:
             LOG.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
             return
 
@@ -144,8 +143,8 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         """Write PDF Metadata."""
         self._ensure_write_archive("pdf")
         archive = self._get_archive()
-        if isinstance(archive, PDFFile):
-            archive.save_metadata(mupdf_metadata)
+        if self._archive_is_pdf:
+            archive.save_metadata(mupdf_metadata)  # type: ignore
         else:
             LOG.warning(
                 f"{self._path}: Not writing pdf metadata dict to a not PDF archive."

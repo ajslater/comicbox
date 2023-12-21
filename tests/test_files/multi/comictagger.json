@@ -2,13 +2,13 @@
   "appID": "comicbox/dev",
   "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
   "comictagger": {
-    "country": "United States",
+    "country": "US",
     "day": 1,
     "genre": "Science Fiction",
-    "issueCount": 9,
-    "language": "French",
+    "issue_count": 9,
+    "language": "fr",
     "month": 11,
-    "pageCount": 36,
+    "page_count": 36,
     "publisher": "Youthful Adventure Stories COMICTAGGER"
   }
 }

@@ -2,16 +2,19 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from comicbox.schemas.cli import CLISchema
-from comicbox.schemas.comet import CoMetSchema
-from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_base import ComicboxBaseSchema
-from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.schemas.comictagger import ComictaggerSchema
-from comicbox.schemas.filename import FilenameSchema
-from comicbox.schemas.json import ComicboxJsonSchema
-from comicbox.schemas.pdf import PDFSchema
-from comicbox.schemas.yaml import ComicboxYamlSchema
+from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comet import CoMetTransform
+from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
+from comicbox.transforms.comicbox_cli import (
+    ComicboxCLITransform,
+)
+from comicbox.transforms.comicbox_json import ComicboxJsonTransform
+from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
+from comicbox.transforms.comicinfo import ComicInfoTransform
+from comicbox.transforms.comictagger import ComictaggerTransform
+from comicbox.transforms.filename import FilenameTransform
+from comicbox.transforms.metroninfo import MetronInfoTransform
+from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
 
 class SourceFrom(Enum):
@@ -29,76 +32,111 @@ class MetadataSource:
     """Metadata source attributes."""
 
     label: str
-    schema_class: type[ComicboxBaseSchema] = ComicboxJsonSchema
+    transform_class: type[BaseTransform] = ComicboxJsonTransform
     configurable: bool = False
     from_archive: SourceFrom = SourceFrom.OTHER
     writable: bool = False
+    has_page_count: bool = False
+    has_pages: bool = False
 
 
 class MetadataSources(Enum):
     """Metadata sources."""
 
-    # If adding a file source be sure to update CLISchema.loads()
+    # If adding a file source be sure to update CLITransform.loads()
     # The order these are listed is the order of masking. Very important.
 
     CONFIG = MetadataSource("Config")
     FILENAME = MetadataSource(
         "Filename",
-        FilenameSchema,
+        FilenameTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_FILENAME,
     )
+    COMICTAGGER = MetadataSource(
+        "ComicTagger",
+        ComictaggerTransform,
+        configurable=True,
+        from_archive=SourceFrom.ARCHIVE_FILE,
+        writable=True,
+        has_page_count=True,
+        has_pages=True,
+    )
     PDF = MetadataSource(
-        "PDF",
-        PDFSchema,
+        "MuPDF",
+        MuPDFTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_CONTENTS,
         writable=True,
+        has_page_count=True,
+    )
+    PDF_XML = MetadataSource(
+        "PDF XML",
+        PDFXmlTransform,
+        configurable=True,
+        from_archive=SourceFrom.ARCHIVE_FILE,
+        writable=True,
+        has_page_count=True,
     )
     COMET = MetadataSource(
         "CoMet",
-        CoMetSchema,
+        CoMetTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
+        has_page_count=True,
+    )
+    METRON = MetadataSource(
+        "MetronInfo",
+        MetronInfoTransform,
+        configurable=True,
+        from_archive=SourceFrom.ARCHIVE_FILE,
+        writable=True,
+        has_page_count=True,
+        has_pages=True,
     )
     CBI = MetadataSource(
         "ComicBookInfo",
-        ComicBookInfoSchema,
+        ComicBookInfoTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_COMMENT,
         writable=True,
+        has_page_count=True,
     )
     CIX = MetadataSource(
         "ComicInfo",
-        ComicInfoSchema,
+        ComicInfoTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
-    )
-    COMICTAGGER = MetadataSource(
-        "ComicTagger",
-        ComictaggerSchema,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
+        has_page_count=True,
+        has_pages=True,
     )
     COMICBOX_YAML = MetadataSource(
         "Comicbox YAML",
-        ComicboxYamlSchema,
+        ComicboxYamlTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
+        has_page_count=True,
+        has_pages=True,
     )
     COMICBOX_JSON = MetadataSource(
         "Comicbox JSON",
-        ComicboxJsonSchema,
+        ComicboxJsonTransform,
         configurable=True,
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
+        has_page_count=True,
+        has_pages=True,
     )
     IMPORT = MetadataSource("Imported File")
-    CLI = MetadataSource("Comicbox CLI", CLISchema, configurable=True, writable=True)
+    CLI = MetadataSource(
+        "Comicbox CLI",
+        ComicboxCLITransform,
+        configurable=True,
+        writable=True,
+    )
     API = MetadataSource("API")
     ADDED = MetadataSource(
         "API Added",

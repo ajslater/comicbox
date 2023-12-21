@@ -1,84 +1,101 @@
 """Identifiers functions."""
 import re
+from logging import getLogger
 from types import MappingProxyType
+from typing import Optional
 
-from urnparse import URN8141, InvalidURNFormatError
+from urnparse import URN8141, NSIdentifier, NSSString
 
-SERIES_SUFFIX = "-series"
+from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+
 COMICVINE_NID = "comicvine"
-COMICVINE_SERIES_NID = COMICVINE_NID + SERIES_SUFFIX
 METRON_NID = "metron"
-METRON_SERIES_NID = METRON_NID + SERIES_SUFFIX
 COMIXOLOGY_NID = "comixology"
+GCD_NID = "grandcomicsdatabase"
+LCG_NID = "leagueofcomicgeeks"
 ASIN_NID = "asin"
 GTIN_NID = "gtin"
 ISBN_NID = "isbn"
+UPC_NID = "upc"
 _CVDB_ALTERNATE_NID = "cvdb"
 _CMXDB_ALTERNTATE_NID = "cmxdb"
 
+LOG = getLogger(__name__)
+
 # Metron uses the slug for an id, not the actual metron id.
 # Metron could use an id to
-CV_COMIC_PREFIX = "4000-"
-CV_SERIES_PREFIX = "4050-"
-MATCH_URLS = MappingProxyType(
+IDENTIFIER_URL_MAP = MappingProxyType(
     {
-        COMICVINE_NID: "https://comicvine.gamespot.com/c/" + CV_COMIC_PREFIX,
-        METRON_NID: "https://metron.cloud/issue/",
+        COMICVINE_NID: "https://comicvine.gamespot.com/c/",
+        METRON_NID: "https://metron.cloud/",
+        GCD_NID: "https://comics.org/",
+        LCG_NID: "https://leaugeofcomicgeeks.com/",
         ASIN_NID: "https://www.amazon.com/dp/",
         COMIXOLOGY_NID: "https://www.comixology.com/c/digital-comic/",
         ISBN_NID: "https://isbndb.com/book/",
-        COMICVINE_SERIES_NID: "https://comicvine.gamespot.com/c/" + CV_SERIES_PREFIX,
-        METRON_SERIES_NID: "https://metron.cloud/series/",
+        UPC_NID: "https://barcodelookup.com/",
     }
 )
+TRAILING_SLUG = frozenset({LCG_NID})
+COMICVINE_NSS_EXP = r"(?P<identifier>\d+-\d+)"
 _WEB_EXPS = MappingProxyType(
     {
-        COMICVINE_NID: (
-            rf"comicvine\.gamespot\.com/.+/{CV_COMIC_PREFIX}(?P<identifier>\d+)"
-        ),
-        METRON_NID: r"metron\.cloud/issue/(?P<identifier>\w+)",
-        ASIN_NID: r"amazon\.com/dp/(?P<identifier>\w+)",
+        COMICVINE_NID: rf"comicvine\.gamespot\.com/\S+\/{COMICVINE_NSS_EXP}/?",
+        METRON_NID: r"metron\.cloud/(?P<identifier>\S+\/\S+)/?",
+        GCD_NID: r"comics\.org/(?P<identifier>\S+\/\S+)/?",
+        LCG_NID: r"leagueofcomicgeeks.com/(?P<identifier>\S+\/\S+)(/.*)?",
+        ASIN_NID: r"amazon\.com/dp/(?P<identifier>\S+)",
         COMIXOLOGY_NID: r"comixology\.com/.+/.+/(?P<identifier>\d+)",
         ISBN_NID: r"isbndb\.com/book/(?P<identifier>\d{13}|\d{10})",
-        COMICVINE_SERIES_NID: (
-            rf"comicvine\.gamespot\.com/.+/{CV_SERIES_PREFIX}(?P<identifier>\d+)"
-        ),
-        METRON_SERIES_NID: r"metron\.cloud/series/(?P<identifier>\w+)",
+        UPC_NID: r"barcodelookup\.com/(?P<identifier>\d{12})",
     }
 )
 WEB_REGEX_URLS = MappingProxyType(
-    {key: re.compile(exp, flags=re.IGNORECASE) for key, exp in _WEB_EXPS.items()}
+    {nid: re.compile(exp, flags=re.IGNORECASE) for nid, exp in _WEB_EXPS.items()}
 )
-_IDENTIFIER_TYPES = (
+_NIDS = (
     _CVDB_ALTERNATE_NID,
     ASIN_NID,
     _CMXDB_ALTERNTATE_NID,
+    UPC_NID,
     GTIN_NID,
     ISBN_NID,
-    COMICVINE_NID,
-    METRON_NID,
     COMIXOLOGY_NID,
-    CV_COMIC_PREFIX,
-    COMICVINE_SERIES_NID,
-    METRON_SERIES_NID,
-    CV_SERIES_PREFIX,
+    LCG_NID,
+    GCD_NID,
+    METRON_NID,
+    COMICVINE_NID,
 )
-IDENTIFIER_EXP = r"(?P<type>" + r"|".join(_IDENTIFIER_TYPES) + r")?(?P<code>\S+)"
-_PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
+IDENTIFIER_EXP = r"(?P<type>" + r"|".join(_NIDS) + r")?:?(?P<nss>[\w-]+)"
 IDENTIFIER_URN_NIDS = MappingProxyType(
     {
         COMICVINE_NID: frozenset(
-            {None, _CVDB_ALTERNATE_NID, "comicvine.gamespot.org", CV_COMIC_PREFIX}
+            {
+                COMICVINE_NID,
+                None,
+                _CVDB_ALTERNATE_NID,
+                "comicvine.gamespot.org",
+                "comic vine",
+            }
         ),
-        METRON_NID: frozenset({"metron.cloud", "metron.cloud/issue"}),
-        ASIN_NID: frozenset({"amazon", "amazon.com", "www.amazon.com"}),
-        COMIXOLOGY_NID: frozenset({"comixology.com", _CMXDB_ALTERNTATE_NID}),
-        GTIN_NID: frozenset(),
-        ISBN_NID: frozenset(),
-        COMICVINE_SERIES_NID: frozenset({COMICVINE_SERIES_NID, CV_SERIES_PREFIX}),
-        METRON_SERIES_NID: frozenset({"metron.cloud/series"}),
+        METRON_NID: frozenset({METRON_NID, "metron.cloud"}),
+        GCD_NID: frozenset({GCD_NID, "comics.org", "grand comics database"}),
+        LCG_NID: frozenset(
+            {LCG_NID, "leagueofcomicgeeks.com", "league of comic geeks"}
+        ),
+        ASIN_NID: frozenset({ASIN_NID, "amazon", "amazon.com", "www.amazon.com"}),
+        COMIXOLOGY_NID: frozenset(
+            {COMIXOLOGY_NID, "comixology.com", _CMXDB_ALTERNTATE_NID}
+        ),
+        GTIN_NID: frozenset({GTIN_NID}),
+        ISBN_NID: frozenset({ISBN_NID}),
+        UPC_NID: frozenset({UPC_NID}),
     }
 )
+IDENTIFIER_URN_NIDS_REVERSE_MAP = MappingProxyType(
+    {name: nid for nid, names in IDENTIFIER_URN_NIDS.items() for name in names}
+)
+
 GTIN_NID_ORDER = (
     GTIN_NID,
     ISBN_NID,
@@ -86,50 +103,64 @@ GTIN_NID_ORDER = (
     COMIXOLOGY_NID,
     COMICVINE_NID,
     METRON_NID,
-    COMICVINE_SERIES_NID,
-    METRON_SERIES_NID,
+    GCD_NID,
+    LCG_NID,
+    UPC_NID,
 )
+NIDS_UNPARSE_NO_RESOURCE = frozenset(
+    {ASIN_NID, COMIXOLOGY_NID, GTIN_NID, ISBN_NID, UPC_NID}
+)
+PARSE_COMICVINE_RE = re.compile(COMICVINE_NSS_EXP)
 
 
-def get_web_link(identifier_type, code):
-    """Get a url by type and code."""
-    if not code:
+def _prefix_comicvine_issue_nss(nid, nss):
+    """Add prefix to comicvine identifiers."""
+    if nid == COMICVINE_NID and not PARSE_COMICVINE_RE.search(nss):
+        return "4000-" + nss
+    return nss
+
+
+def get_url_from_identifier(nid, nss):
+    """Get URL from identifier."""
+    if not nss:
         return None
-    url_prefix = MATCH_URLS.get(identifier_type)
+    url_prefix = IDENTIFIER_URL_MAP.get(nid)
     if not url_prefix:
         return None
-    return url_prefix + code + "/"
+    url = url_prefix + nss + "/"
+    if nid in TRAILING_SLUG:
+        url += "s"
+    return url
 
 
-def parse_identifier_str(full_identifier):
-    """Parse an identifier string with optional prefix."""
-    match = _PARSE_EXTRA_RE.search(full_identifier)
-    if not match:
-        return None, full_identifier
-    identifier_type = match.group("type")
-    code = match.group("code")
-    return identifier_type, code
+def create_identifier(nid, nss, url=None):
+    """Create identifier dict from parts."""
+    nss = _prefix_comicvine_issue_nss(nid, nss)
+    if not url:
+        url = get_url_from_identifier(nid, nss)
+    return {NSS_KEY: nss, URL_KEY: url}
 
 
-def parse_urn_identifier(tag):
+def parse_urn_identifier(tag: str, warn=True) -> tuple[Optional[str], Optional[str]]:
     """Parse an identifier from a tag."""
     try:
         urn = URN8141.from_string(tag)
-        identifier_type = str(urn.namespace_id)
-        code = urn.specific_string.decoded
-    except InvalidURNFormatError:
-        identifier_type = None
-        code = None
-    return identifier_type, code
+        nid = str(urn.namespace_id)
+        if nid:
+            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower())
+        parts = urn.specific_string.parts
+        nss = str(parts[-1])
+    except Exception:
+        if warn:
+            LOG.warning(f"Unable to decode urn: {tag}")
+        nid = None
+        nss = None
+    return nid, nss
 
 
-def coerce_urn_nid(identifier_type):
-    """Coerce an identifier type into an known urn NID."""
-    if not identifier_type:
-        return identifier_type
-    identifier_type = identifier_type.lower()
-    for canonical_nid, alternate_nids in IDENTIFIER_URN_NIDS.items():
-        if identifier_type in alternate_nids:
-            identifier_type = canonical_nid
-            break
-    return identifier_type
+def to_urn_string(nid_str: str, nss_str: str):
+    """Compose an urn string."""
+    nid = NSIdentifier(nid_str)
+    nss = NSSString(nss_str)
+    urn = URN8141(nid=nid, nss=nss)
+    return str(urn)

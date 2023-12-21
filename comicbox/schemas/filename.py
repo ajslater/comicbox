@@ -5,13 +5,27 @@ build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
-
-from types import MappingProxyType
 from typing import Union
 
+from comicfn2dict import comicfn2dict, dict2comicfn
+from marshmallow.fields import Nested
+
+from comicbox.fields.collections import StringListField
 from comicbox.fields.fields import StringField
-from comicbox.schemas.comicbox_base import ComicboxBaseSchema
-from comicfn2dict import comicfn2dict
+from comicbox.fields.numbers import IntegerField
+from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.comicbox_mixin import (
+    ISSUE_COUNT_KEY,
+    ISSUE_KEY,
+    ROOT_TAG,
+    SERIES_KEY,
+    VOLUME_KEY,
+)
+
+SERIES_TAG = SERIES_KEY
+VOLUME_TAG = VOLUME_KEY
+ISSUE_COUNT_TAG = ISSUE_COUNT_KEY
+ISSUE_TAG = ISSUE_KEY
 
 
 class FilenameRenderModule:
@@ -20,45 +34,44 @@ class FilenameRenderModule:
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
-        data = sub_data if (sub_data := obj.get(FilenameSchema.ROOT_TAG)) else obj
-        return comicfn2dict.unparse(data, *args, **kwargs)
+        data = obj.get(FilenameSchema.ROOT_TAGS[0])
+        return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod
     def loads(s: Union[bytes, str], *args, **kwargs):
         """Load filename to dict."""
         cleaned_s = StringField().deserialize(s)
         if cleaned_s:
-            return comicfn2dict.parse(cleaned_s, *args, **kwargs)
+            sub_data = comicfn2dict(cleaned_s, *args, **kwargs)
+            return {FilenameSchema.ROOT_TAGS[0]: sub_data}
         return None
 
 
-FN_DATA_KEY_MAP = MappingProxyType(
-    {
-        "ext": "ext",
-        "issue": "issue",
-        "issue_count": "issue_count",
-        "original_format": "original_format",
-        "remainders": "remainders",
-        "series": "series",
-        "scan_info": "scan_info",
-        "title": "title",
-        "volume": "volume",
-        "year": "year",
-    }
-)
+class FilenameSubSchema(BaseSubSchema):
+    """File name sub schema."""
+
+    ext = StringField()
+    issue = StringField()
+    issue_count = IntegerField(minimum=0)
+    original_format = StringField()
+    remainders = StringListField()
+    series = StringField()
+    scan_info = StringField()
+    title = StringField()
+    volume = IntegerField()
+    year = IntegerField()
 
 
-class FilenameSchema(ComicboxBaseSchema):
+class FilenameSchema(BaseSchema):
     """File name schema."""
 
-    DATA_KEY_MAP = FN_DATA_KEY_MAP
-    ROOT_TAG = "filename"
-    ROOT_TAGS = MappingProxyType({ROOT_TAG: {}})
     CONFIG_KEYS = frozenset({"fn", "filename"})
     FILENAME = "comicbox-filename.txt"
+    ROOT_TAGS = (ROOT_TAG,)
 
-    class Meta(ComicboxBaseSchema.Meta):
+    comicbox = Nested(FilenameSubSchema)
+
+    class Meta(BaseSchema.Meta):
         """Schema Options."""
 
-        fields = ComicboxBaseSchema.Meta.create_fields(FN_DATA_KEY_MAP)
         render_module = FilenameRenderModule

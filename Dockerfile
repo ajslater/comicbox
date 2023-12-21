@@ -1,4 +1,4 @@
-FROM python:3.11.5-bookworm
+FROM python:3.12.0-bookworm
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/

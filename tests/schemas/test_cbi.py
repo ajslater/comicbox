@@ -6,35 +6,44 @@ from types import MappingProxyType
 import simplejson as json
 
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from tests.const import CBI_CBR_FN, TEST_DTTM_STR
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
+from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cbi"], read=["cbi"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi"], compute_pages=False))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(write=["cbi"], read=["cbi"], compute_pages=False)
+)
 METADATA = MappingProxyType(
     {
-        "series": "Captain Science",
-        "issue": "1",
-        "issue_number": Decimal(1),
-        "issue_count": 7,
-        "publisher": "Youthful Adventure Stories",
-        "month": 11,
-        "year": 1950,
-        "genres": {"Science Fiction"},
-        "volume": 1950,
-        "contributors": {
-            "penciller": {"Wally Wood"},
-            "writer": {"Joe Orlando"},
-        },
-        "language": "en",
-        "country": "US",
-        "title": "The Beginning",
-        "page_count": 36,
+        ROOT_TAG: {
+            "series": {"name": "Captain Science"},
+            "issue": "1",
+            "issue_number": Decimal(1),
+            "publisher": "Youthful Adventure Stories",
+            "month": 11,
+            "year": 1950,
+            "genres": {"Science Fiction"},
+            "volume": {
+                "number": 1950,
+                "issue_count": 7,
+            },
+            "contributors": {
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "language": "en",
+            "country": "US",
+            "title": "The Beginning",
+            "page_count": 36,
+            "updated_at": TEST_DATETIME,
+        }
     }
 )
 CBI_DICT = MappingProxyType(
     {
-        ComicBookInfoSchema.ROOT_TAG: {
+        ComicBookInfoSchema.ROOT_TAGS[0]: {
             "country": "United States",
             "credits": [
                 {"person": "Wally Wood", "role": "Penciller"},
@@ -61,7 +70,7 @@ CBI_DICT = MappingProxyType(
 CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=True, indent=2)
 
 CBI_TESTER = TestParser(
-    ComicBookInfoSchema,
+    ComicBookInfoTransform,
     CBI_CBR_FN,
     METADATA,
     CBI_DICT,
@@ -113,4 +122,4 @@ def test_cbi_read():
 
 def test_cbi_write():
     """Test write to file."""
-    CBI_TESTER.test_md_write()
+    CBI_TESTER.test_md_write(page_count=36)

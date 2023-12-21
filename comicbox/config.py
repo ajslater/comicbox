@@ -21,9 +21,10 @@ _TEMPLATE = MappingTemplate(
         PACKAGE_NAME: MappingTemplate(
             {
                 # Options
+                "compute_pages": bool,
                 "config": Optional(str),
+                "delete": bool,
                 "delete_orig": bool,
-                "delete_tags": bool,
                 "dest_path": str,
                 "dry_run": bool,
                 "loglevel": OneOf((String(), Integer())),
@@ -32,6 +33,7 @@ _TEMPLATE = MappingTemplate(
                 "read": Optional(Sequence(str)),
                 "read_ignore": Optional(Sequence(str)),
                 "recurse": bool,
+                "stamp_notes": bool,
                 "tagger": Optional(str),
                 # API Options
                 "close_fd": bool,
@@ -98,7 +100,7 @@ def _get_sources_from_keys(key, keys, ignore_keys):
     sources = []
     writable = key in _WRITABLE_SOURCE_KEYS
     for source in MetadataSources:
-        config_keys = source.value.schema_class.CONFIG_KEYS
+        config_keys = source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
         if (not writable or source.value.writable) and (
             not source.value.configurable
             or bool(keys & config_keys)
@@ -106,7 +108,7 @@ def _get_sources_from_keys(key, keys, ignore_keys):
         ):
             sources.append(source)
         if source.value.configurable:
-            keys -= source.value.schema_class.CONFIG_KEYS
+            keys -= source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
     LOG.debug(f"config.{key}: {[source._name_ for source in sources]}")
     return sources, keys
 
@@ -136,22 +138,22 @@ def _set_config_sources_from_keys(config, key):
 def _transform_keys_to_sources(config):
     """Transform schema config keys to sources."""
     config.read = _set_config_sources_from_keys(config, "read")
-    if config.delete_tags:
+    if config.delete:
         config.write = config.export = frozenset()
     else:
         config.write = _set_config_sources_from_keys(config, "write")
-        config.export = _set_config_sources_from_keys(config, "export")
+    config.export = _set_config_sources_from_keys(config, "export")
     config.all_write_sources = frozenset(config.write | config.export)
 
 
 def _parse_print(config):
     if not config.print:
         config.print = ""
-    print_phases = frozenset({*config.print})
+    print_phases = config.print.lower()
     enum_print_phases = set()
     for phase in print_phases:
         try:
-            enum = PrintPhases(phase.lower())
+            enum = PrintPhases(phase)
             enum_print_phases.add(enum)
         except ValueError as exc:
             LOG.warning(exc)

@@ -1,10 +1,14 @@
+[project]
+name = "comicbox"
+requires-python = ">3.9"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "comicbox"
-version = "1.0.0rc0"
+version = "1.0.0rc1"
 description = "An API for reading comic archives"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -23,8 +27,6 @@ classifiers = [
 ]
 packages = [
   { include = "comicbox" },
-  { include = "comicfn2dict" },
-  { include = "pdffile" },
   { include = "tests", format = "sdist" }
 ]
 include = ["NEWS"]
@@ -32,33 +34,36 @@ include = ["NEWS"]
 [tool.poetry.dependencies]
 python = "^3.9"
 ansicolors = "^1.1.8"
+bidict = "^0.22.1"
 confuse = "^2.0.0"
-filetype = { version = "^1.0.12", optional = true}
+comicbox-pdffile = { version = "^0.1.1", optional = true}
+comicfn2dict = "^0.1.0"
 marshmallow = "^3.19.0"
-pycountry = "^22.1.3"
-pymupdf = { version = "^1.21.1", optional = true}
+marshmallow-union = "^0.1.15.post1"
+pycountry = "^23.12.11"
 python-dateutil = "^2.8.2"
 rarfile = "^4.0"
-ruamel-yaml = "^0.17.32"
+ruamel-yaml = ">=0.17.32,<0.19.00"
 simplejson = "^3.19.1"
 stringcase = "^1.2.0"
 urnparse = "^0.2.0"
 xmltodict = "^0.13.0"
 
 [tool.poetry.extras]
-pdf = ["pymupdf", "filetype"]
+pdf = ["comicbox-pdffile"]
 
 [tool.poetry.scripts]
 comicbox = "comicbox.cli:main"
-comicfn2dict = "comicfn2dict.cli:main"
+
+[tool.poetry.group.dev.dependencies]
+wheel = "^0.42.0"
 
 [tool.poetry.group.lint.dependencies]
-black = "^23.3.0"
-check-jsonschema = "^0.26.2"
+check-jsonschema = "^0.27.0"
 codespell = "^2.1.0"
 pyright = "^1.1"
 radon = { version = "^6.0.1", extras = ["toml"] }
-ruff = ">=0.0.265,<0.1.0"
+ruff = "^0.1.2"
 types-python-dateutil = "^2.8.19.13"
 vulture = "^2.1"
 
@@ -67,9 +72,6 @@ coverage = { extras = ["toml"], version = "^7.0" }
 deepdiff = "^6.3.1"
 pytest-cov = "^4.0"
 pytest-gitignore = "^1.3"
-
-[tool.black]
-exclude = "/(.git|.mypy_cache|.pytest_cache|.venv|__pycache__|dist|node_modules|test-results|typings)/"
 
 [tool.codespell]
 skip = './cache,./dist,./test-results,.git,.mypy_cache,.pytest_cache,.venv,*~,node_modules,package-lock.json,poetry.lock,./tests/test_files/*'
@@ -139,7 +141,11 @@ exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typing
 
 [tool.ruff]
 extend-exclude = ["cache", "typings"]
-extend-ignore = ["S101", "D203", "D213"]
+extend-ignore = ["S101", "D203", "D213",
+  # Format ignores
+  "W191", "E501", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001",
+  "Q002", "Q003", "COM812", "COM819", "ISC001", "ISC002"
+]
 extend-select = ["A", "ARG", "B", "B9", "C", "C4", "C90", "D", "DJ",
   "DTZ", "E", "EM", "EXE", "F", "I", "ICN", "INP", "ISC", "PIE", "PL",
   "PT", "PTH", "PYI", "Q", "N", "RET", "RSE", "RUF", "S", "SIM", "SLF",
@@ -149,7 +155,6 @@ extend-select = ["A", "ARG", "B", "B9", "C", "C4", "C90", "D", "DJ",
 external = ["V101"]
 # format = "grouped"
 # show-source = true
-target-version = "py39"
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.per-file-ignores]

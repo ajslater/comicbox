@@ -1,30 +1,38 @@
 """Test CIX module."""
 from argparse import Namespace
+from collections.abc import Mapping
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.filename import FilenameSchema
+from comicbox.transforms.filename import FilenameTransform
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(read=["fn"], write=["fn"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["fn"], compute_pages=False))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(read=["fn"], write=["fn"], compute_pages=False)
+)
 
 METADATA = MappingProxyType(
     {
-        "ext": "cbz",
-        "issue": "001",
-        "issue_number": Decimal("1"),
-        "title": "The Beginning",
-        "series": "Captain Science",
-        "year": 1950,
-        "remainders": ["nothing"],
+        ROOT_TAG: {
+            "ext": "cbz",
+            "issue": "001",
+            "issue_number": Decimal("1"),
+            "title": "The Beginning",
+            "series": {"name": "Captain Science"},
+            "year": 1950,
+            "remainders": ["nothing"],
+        }
     }
 )
 
 FILENAME_DICT = MappingProxyType(
     {
-        "filename": {
+        FilenameSchema.ROOT_TAGS[0]: {
             "ext": "cbz",
             "issue": "001",
             "title": "The Beginning",
@@ -35,19 +43,20 @@ FILENAME_DICT = MappingProxyType(
     }
 )
 
-_REMAINDERS_STR = " ".join(METADATA["remainders"])  # type: ignore
+SUB_DATA: Mapping[str, Any] = METADATA[ROOT_TAG]
+_REMAINDERS_STR = " ".join(SUB_DATA["remainders"])  # type: ignore
 FILENAME_STR = (
-    f"{METADATA['series']} #{METADATA['issue']} ({METADATA['year']})"
-    f" {METADATA['title']} - {_REMAINDERS_STR}.{METADATA['ext']}"
+    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
+    f" {SUB_DATA['title']} - {_REMAINDERS_STR}.{SUB_DATA['ext']}"
 )
 FILENAME_STR_NO_REMAINDER = (
-    f"{METADATA['series']} #{METADATA['issue']} ({METADATA['year']})"
-    f" {METADATA['title']}.{METADATA['ext']}"
+    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
+    f" {SUB_DATA['title']}.{SUB_DATA['ext']}"
 )
 
 
 FN_TESTER = TestParser(
-    FilenameSchema,
+    FilenameTransform,
     FN,
     METADATA,
     FILENAME_DICT,

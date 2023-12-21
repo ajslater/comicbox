@@ -1,16 +1,24 @@
 """Marshmallow pycountry fields."""
+from abc import ABC
 from logging import getLogger
 
+import pycountry
 from marshmallow import fields
-from pycountry import pycountry
 
 from comicbox.fields.fields import DeserializeMeta, StringField
 
 LOG = getLogger(__name__)
 
 
-class PyCountryField(fields.String, metaclass=DeserializeMeta):
+class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
     """A pycountry value."""
+
+    MODULE = None
+
+    def __init__(self, *args, serialize_name=False, **kwargs):
+        """Optionally serialize with full names."""
+        self._serialize_name = serialize_name
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def _clean_name(name):
@@ -29,22 +37,11 @@ class PyCountryField(fields.String, metaclass=DeserializeMeta):
             if not name:
                 return None
 
-            lower_tag = tag.lower()
-            if lower_tag.startswith("lang"):
-                module = pycountry.languages
-            elif lower_tag.startswith("country"):
-                module = pycountry.countries
+            if len(name) == 2:  # noqa PLR2004
+                # Language lookup fails for 'en' unless alpha_2 is specified.
+                obj = cls.MODULE.get(alpha_2=name)  # type: ignore
             else:
-                LOG.warning(f"no pycountry module for {tag}")
-                module = None
-            if module:
-                if len(name) == 2:  # noqa PLR2004
-                    # Language lookup fails for 'en' unless alpha_2 is specified.
-                    obj = module.get(alpha_2=name)
-                else:
-                    obj = module.lookup(name)
-            else:
-                obj = None
+                obj = cls.MODULE.lookup(name)  # type: ignore
         except Exception as exc:
             LOG.warning(exc)
             obj = None
@@ -54,16 +51,28 @@ class PyCountryField(fields.String, metaclass=DeserializeMeta):
 
         return obj
 
-    def _deserialize(self, value, attr, _data, **_kwargs):
+    def _deserialize(self, value, attr, *_args, **_kwargs):
         """Return the alpha 2 encoding."""
-        pc_obj = self._get_pycountry(attr, value)
-        if pc_obj:
+        if pc_obj := self._get_pycountry(attr, value):
             return pc_obj.alpha_2
         return None
 
-    def _serialize(self, value, attr, _obj, **_kwargs):
+    def _serialize(self, value, attr, *_args, **_kwargs):
         """Return the long name."""
-        pc_obj = self._get_pycountry(attr, value)
-        if pc_obj:
-            return pc_obj.name
+        if pc_obj := self._get_pycountry(attr, value):
+            if self._serialize_name:
+                return pc_obj.name
+            return pc_obj.alpha_2
         return None
+
+
+class LanguageField(PyCountryField):
+    """PyCountry Language Field."""
+
+    MODULE = pycountry.languages
+
+
+class CountryField(PyCountryField):
+    """PyCountry Country Field."""
+
+    MODULE = pycountry.countries

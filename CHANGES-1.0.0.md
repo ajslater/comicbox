@@ -18,7 +18,7 @@ to configure the behavior.
 
 ### read & write
 
-The old system of `read_comicbookinfo` and `write_comicbookinfo` booleans has been replaced by the `read`, `write` and `export` config attributes which are all lists of config strings that represent formats. This is documened in the cli.
+The old system of `read_comicbookinfo` and `write_comicbookinfo` booleans has been replaced by the `read`, `write` and `export` config attributes which are all lists of config strings that represent formats. This is documented in the cli.
 
 ```yaml
 Format keys for --ignore-read, --write, and --export:

@@ -1,17 +1,10 @@
 """Custom Marshmallow fields."""
-import re
 from logging import getLogger
 
 from marshmallow import fields
-from stringcase import titlecase
-
-from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
+from marshmallow.exceptions import ValidationError
 
 LOG = getLogger(__name__)
-_ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
-_ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)
-_CAPS_FORMATS = frozenset({"HC", "TPB"})
-_PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
 _STRING_EMPTY_VALUES = (None, "")
 EMPTY_VALUES = (*_STRING_EMPTY_VALUES, [], {})
 
@@ -60,6 +53,9 @@ class StringField(fields.String, metaclass=DeserializeMeta):
             value = value.encode("utf8", "replace")
         if isinstance(value, bytes):
             value = value.decode("utf8", "replace")
+        else:
+            reason = f"{type(value)} is not a string"
+            raise ValidationError(reason)
         value = str(value).strip()
         if not value:
             return None
@@ -90,25 +86,3 @@ class IssueField(StringField):
     def _deserialize(self, value, *args, **kwargs):
         value = self.parse_issue(value)
         return super()._deserialize(value, *args, **kwargs)
-
-
-class OriginalFormatField(StringField):
-    """Prettify Original Format."""
-
-    def _deserialize(self, value, *args, **kwargs):
-        """Prettify Original Format if it's known."""
-        value = super()._deserialize(value, *args, **kwargs)
-        if not value or not _ORIGINAL_FORMAT_RE.search(value):
-            return value
-        value_upper = value.upper()
-        for preformatted_value in _PREFORMATTED_FORMATS:
-            if value_upper == preformatted_value.upper():
-                value = preformatted_value
-                break
-        else:
-            if value_upper in _CAPS_FORMATS:
-                value = value_upper
-            else:
-                value = titlecase(value)
-                value = value.replace("  ", " ")
-        return value

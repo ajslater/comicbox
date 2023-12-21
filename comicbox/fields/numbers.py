@@ -6,7 +6,12 @@ from typing import Optional, Union
 
 from marshmallow import fields
 
-from comicbox.fields.fields import DeserializeMeta, StringField, half_replace
+from comicbox.fields.fields import (
+    EMPTY_VALUES,
+    DeserializeMeta,
+    StringField,
+    half_replace,
+)
 
 LOG = getLogger(__name__)
 NumberType = Union[int, float, Decimal]
@@ -38,6 +43,8 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
     def _deserialize(self, value, *args, **kwargs) -> Optional[NumberType]:
         if isinstance(value, str):
             value = self.parse_str(value)
+        if value in EMPTY_VALUES:
+            return None
         result = super()._deserialize(value, *args, **kwargs)
         if result is not None:
             old_result = result

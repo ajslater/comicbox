@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Callable, Optional, Union
 from zipfile import ZipFile, is_zipfile
 
@@ -14,9 +15,15 @@ from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.schemas.comicbox_base import ComicboxBaseSchema, SchemaConfig
 from comicbox.sources import MetadataSources
-from pdffile.pdffile import PDFFile
+from comicbox.transforms.base import BaseTransform
+
+try:
+    from pdffile import PDFFile
+except ImportError:
+    PDFFIle = None
+    if TYPE_CHECKING:
+        PDFFile = type[None]
 
 if TYPE_CHECKING:
     from tarfile import TarFile
@@ -27,7 +34,7 @@ class SourceData:
     """Pre parsed source metadata."""
 
     metadata: Union[str, bytes, Mapping]
-    schema_class: Optional[type[ComicboxBaseSchema]] = None
+    transform_class: Optional[type[BaseTransform]] = None
     path: Optional[str] = None
 
 
@@ -56,21 +63,22 @@ class ComicboxInitMixin:
             raise ValueError(reason)
 
         self._config: AttrDict = get_config(config)
-        self._default_dump_config = SchemaConfig(stamp=True, tagger=self._config.tagger)
+        self._all_sources = None
+        self._pdf_suffix = ""
 
         self._reset_archive(metadata)
 
     def _reset_loaded_forward_caches(self):
-        self._loaded_synth_metadata: dict = {}
+        self._merged_metadata: MappingProxyType = MappingProxyType({})
         self._computed: tuple = ()
-        self._computed_synthed_metadata: dict = {}
-        self._metadata: dict = {}
+        self._computed_merged_metadata: MappingProxyType = MappingProxyType({})
+        self._metadata: MappingProxyType = MappingProxyType({})
 
     def _reset_archive(self, metadata):
         self._archive_cls: Optional[Callable] = None
         self._file_type: Optional[str] = None
         self._set_archive_cls()
-        self._archive: Union[ZipFile, RarFile, TarFile, PDFFile, None] = None
+        self._archive: Union[ZipFile, RarFile, TarFile, PDFFile, None] = None  # type: ignore
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         self._info_size_attr = (
             "size" if self._archive_cls == tarfile_open else "file_size"
@@ -83,11 +91,12 @@ class ComicboxInitMixin:
             self._sources[MetadataSources.API] = (
                 SourceData(
                     metadata,
-                    MetadataSources.API.value.schema_class,
+                    MetadataSources.API.value.transform_class,
                 ),
             )
         self._parsed: dict = {}
         self._loaded: dict = {}
+        self._normalized: dict = {}
 
         self._reset_loaded_forward_caches()
 
@@ -95,15 +104,32 @@ class ComicboxInitMixin:
         self._cover_path_list = []
         self._page_count = None
 
+    def _set_archive_cls_pdf(self):
+        """PDFFile is only optionally installed."""
+        if not PDFFile:
+            self._archive_is_pdf = False
+            return
+        try:
+            self._archive_is_pdf = PDFFile.is_pdffile(self._path)  # type: ignore
+            if self._archive_is_pdf:
+                # Important to have PDFile before zipfile
+                self._archive_cls = PDFFile  # type: ignore
+                self._pdf_suffix = PDFFile.SUFFIX  # type: ignore
+                self._file_type = "PDF"
+                return
+        except Exception:
+            self._archive_is_pdf = False
+
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         if not self._path:
             return
-        if PDFFile.is_pdffile(self._path):
-            # Important to have PDFile before zipfile
-            self._archive_cls = PDFFile
-            self._file_type = "PDF"
-        elif is_zipfile(self._path):
+
+        self._set_archive_cls_pdf()
+        if self._archive_is_pdf:
+            return
+
+        if is_zipfile(self._path):
             self._archive_cls = ZipFile
             self._file_type = "CBZ"
         elif is_rarfile(self._path):
