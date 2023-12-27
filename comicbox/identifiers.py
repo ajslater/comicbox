@@ -111,6 +111,8 @@ NIDS_UNPARSE_NO_RESOURCE = frozenset(
     {ASIN_NID, COMIXOLOGY_NID, GTIN_NID, ISBN_NID, UPC_NID}
 )
 PARSE_COMICVINE_RE = re.compile(COMICVINE_NSS_EXP)
+# XXX I haven't identified which program adds these "extra" notes encodings.
+_PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
 
 
 def _prefix_comicvine_issue_nss(nid, nss):
@@ -155,6 +157,34 @@ def parse_urn_identifier(tag: str, warn=True) -> tuple[Optional[str], Optional[s
             LOG.warning(f"Unable to decode urn: {tag}")
         nid = None
         nss = None
+    return nid, nss
+
+
+def _parse_identifier_str(full_identifier):
+    """Parse an identifier string with optional prefix."""
+    if match := PARSE_COMICVINE_RE.search(full_identifier):
+        nid = COMICVINE_NID
+        if nss := match.group("identifier"):
+            return nid, nss
+
+    if match := _PARSE_EXTRA_RE.search(full_identifier):
+        nid = match.group("type")
+        if nid:
+            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower())
+        if nss := match.group("nss"):
+            return nid, nss
+
+    return None, full_identifier
+
+
+def parse_identifier(item, naked_nid=None):
+    """Parse identifiers from strings."""
+    nid, nss = parse_urn_identifier(item)
+    if not nss:
+        nid, nss = _parse_identifier_str(item)
+    if naked_nid and not nid:
+        nid = naked_nid
+
     return nid, nss
 
 

@@ -120,6 +120,7 @@ module.exports = {
     "!.circleci",
     ".mypy_cache",
     ".pytest_cache",
+    ".ruff_cache",
     ".venv",
     "cache/*",
     "!cache/packages",

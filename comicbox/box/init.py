@@ -104,6 +104,11 @@ class ComicboxInitMixin:
         self._cover_path_list = []
         self._page_count = None
 
+    @staticmethod
+    def is_pdf_supported() -> bool:
+        """Are PDFs supported."""
+        return bool(PDFFile)
+
     def _set_archive_cls_pdf(self):
         """PDFFile is only optionally installed."""
         if not PDFFile:

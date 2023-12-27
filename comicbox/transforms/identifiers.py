@@ -1,18 +1,13 @@
 """Identifier Fields."""
-import re
 from abc import ABC
 from collections.abc import Sequence
 
 from comicbox.identifiers import (
-    COMICVINE_NID,
     GTIN_NID_ORDER,
-    IDENTIFIER_EXP,
     IDENTIFIER_URL_MAP,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    PARSE_COMICVINE_RE,
     WEB_REGEX_URLS,
     create_identifier,
-    parse_urn_identifier,
+    parse_identifier,
     to_urn_string,
 )
 from comicbox.schemas.comicbox_mixin import IDENTIFIERS_KEY
@@ -21,25 +16,6 @@ from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 #########
 # PARSE #
 #########
-# XXX I haven't identified which program adds these "extra" notes encodings.
-_PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
-
-
-def _parse_identifier_str(full_identifier):
-    """Parse an identifier string with optional prefix."""
-    if match := PARSE_COMICVINE_RE.search(full_identifier):
-        nid = COMICVINE_NID
-        if nss := match.group("identifier"):
-            return nid, nss
-
-    if match := _PARSE_EXTRA_RE.search(full_identifier):
-        nid = match.group("type")
-        if nid:
-            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower())
-        if nss := match.group("nss"):
-            return nid, nss
-
-    return None, full_identifier
 
 
 def _sequence_to_map(identifier_sequence, naked_nid=None):
@@ -49,11 +25,7 @@ def _sequence_to_map(identifier_sequence, naked_nid=None):
     # Technically out of spec.
     identifier_map = {}
     for item in identifier_sequence:
-        nid, nss = parse_urn_identifier(item)
-        if not nss:
-            nid, nss = _parse_identifier_str(item)
-        if naked_nid and not nid:
-            nid = naked_nid
+        nid, nss = parse_identifier(item, naked_nid=naked_nid)
 
         if nid and nss:
             identifier = create_identifier(nid, nss)

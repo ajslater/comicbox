@@ -236,13 +236,13 @@ pymupdf = ">=1.23.8,<2.0.0"
 
 [[package]]
 name = "comicfn2dict"
-version = "0.1.0"
+version = "0.1.1"
 description = "Parse common comic filenames and return a dict of metadata attributes. Includes a cli."
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "comicfn2dict-0.1.0-py3-none-any.whl", hash = "sha256:09bbe332e3c04a2175f00d5051a027c7ab62d9e5416f564945284713b10d9d7b"},
-    {file = "comicfn2dict-0.1.0.tar.gz", hash = "sha256:99a24fd51d7c431c7cb6c9b60aa64fe9bf8c80551117036fcf569d4d4438befb"},
+    {file = "comicfn2dict-0.1.1-py3-none-any.whl", hash = "sha256:8542fbbdc3e66d2e2937cd538782cb3fbc84b8fbdfb594960a400ab21f01dbf4"},
+    {file = "comicfn2dict-0.1.1.tar.gz", hash = "sha256:807e4c0221cd2f112b6456a37370ed2429586c08903d574329a38bd4d3a35b67"},
 ]
 
 [[package]]
@@ -414,13 +414,13 @@ format-nongpl = ["fqdn", "idna", "isoduration", "jsonpointer (>1.13)", "rfc3339-
 
 [[package]]
 name = "jsonschema-specifications"
-version = "2023.11.2"
+version = "2023.12.1"
 description = "The JSON Schema meta-schemas and vocabularies, exposed as a Registry"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "jsonschema_specifications-2023.11.2-py3-none-any.whl", hash = "sha256:e74ba7c0a65e8cb49dc26837d6cfe576557084a8b423ed16a420984228104f93"},
-    {file = "jsonschema_specifications-2023.11.2.tar.gz", hash = "sha256:9472fc4fea474cd74bea4a2b190daeccb5a9e4db2ea80efcf7a1b582fc9a81b8"},
+    {file = "jsonschema_specifications-2023.12.1-py3-none-any.whl", hash = "sha256:87e4fdf3a94858b8a2ba2778d9ba57d8a9cafca7c7489c46ba0d30a8bc6a9c3c"},
+    {file = "jsonschema_specifications-2023.12.1.tar.gz", hash = "sha256:48a76787b3e70f5ed53f1160d2b81f586e4ca6d1548c5de7085d1682674764cc"},
 ]
 
 [package.dependencies]
@@ -602,13 +602,13 @@ files = [
 
 [[package]]
 name = "pyright"
-version = "1.1.342"
+version = "1.1.343"
 description = "Command line wrapper for pyright"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyright-1.1.342-py3-none-any.whl", hash = "sha256:9a7b95b3a2a90ef7b4297221173956f7f2db2a6cf4f0c7493f2a2349d38305fc"},
-    {file = "pyright-1.1.342.tar.gz", hash = "sha256:c8e9785b9080c1aaf2a2efad706249ec65e15abd5f542ee455956acfd404d273"},
+    {file = "pyright-1.1.343-py3-none-any.whl", hash = "sha256:75a0d24e8227328198bdfa1f4904ce66b78c2bacf49c269d9e6e3b174b026225"},
+    {file = "pyright-1.1.343.tar.gz", hash = "sha256:871e122d74003e8e5fddb17867220b06ee892de61fa967ca7ca031acdc176738"},
 ]
 
 [package.dependencies]
@@ -1102,13 +1102,13 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "69.0.2"
+version = "69.0.3"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-69.0.2-py3-none-any.whl", hash = "sha256:1e8fdff6797d3865f37397be788a4e3cba233608e9b509382a2777d25ebde7f2"},
-    {file = "setuptools-69.0.2.tar.gz", hash = "sha256:735896e78a4742605974de002ac60562d286fa8051a7e2299445e8e8fbb01aa6"},
+    {file = "setuptools-69.0.3-py3-none-any.whl", hash = "sha256:385eb4edd9c9d5c17540511303e39a147ce2fc04bc55289c322b9e5904fe2c05"},
+    {file = "setuptools-69.0.3.tar.gz", hash = "sha256:be1af57fc409f93647f2e8e4573a142ed38724b8cdd389706a867bb4efcf1e78"},
 ]
 
 [package.extras]

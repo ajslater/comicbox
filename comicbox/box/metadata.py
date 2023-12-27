@@ -49,17 +49,17 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         self,
         transform_class: type[BaseTransform] = ComicboxYamlTransform,
         **kwargs,
-    ):
+    ) -> dict:
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(transform_class)
-        return schema.dump(md, **kwargs)
+        return dict(schema.dump(md, **kwargs))
 
     @archive_close
     def to_string(
         self,
         transform_class: type[BaseTransform] = ComicboxYamlTransform,
         **kwargs,
-    ):
+    ) -> str:
         """Get mergeesized metadata as a string."""
         schema, md = self._to_dict(transform_class)
         return schema.dumps(md, **kwargs)
