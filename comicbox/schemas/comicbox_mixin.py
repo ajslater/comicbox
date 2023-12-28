@@ -194,4 +194,4 @@ class ComicboxSchemaMixin:
     title_aliases = StringSetField()
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
-    year = IntegerField(minimum=0)
+    year = IntegerField()
