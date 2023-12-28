@@ -33,7 +33,7 @@ READ_METADATA = MappingProxyType(
             "month": 11,
             "year": 591,
             "genres": {"Science Fiction", "Comic Info Genre", "comicbox Genre"},
-            "volume": {"number": 999, "issue_count": 10},
+            "volume": {"name": 999, "issue_count": 10},
             "contributors": {
                 "penciller": {"Wally Wood CBI"},
                 "writer": {"Joe Orlando CBI"},
@@ -111,7 +111,7 @@ READ_MULTI_DICT = MappingProxyType(
             "imprint": "CLIImprint",
             "series": {"name": "Captain Science COMET"},
             "title": "The Beginning CBI",
-            "volume": {"number": 999, "issue_count": 10},
+            "volume": {"name": 999, "issue_count": 10},
             "day": 1,
             "tags": ["a", "b", "c"],
             "story_arcs": {

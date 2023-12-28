@@ -39,7 +39,7 @@ READ_METADATA = MappingProxyType(
             "issue_number": Decimal("1"),
             "publisher": "Youthful Adventure Stories",
             "date": date(year=1950, month=11, day=1),
-            "volume": {"number": 1950},
+            "volume": {"name": 1950},
             "language": "en",
             "notes": METRON_NOTES,
             "characters": {

@@ -30,7 +30,7 @@ READ_METADATA = MappingProxyType(
             "year": 1950,
             "month": 11,
             "day": 1,
-            "volume": {"number": 1950, "issue_count": 7},
+            "volume": {"name": 1950, "issue_count": 7},
             "language": "en",
             "notes": TEST_READ_NOTES,
             "characters": {

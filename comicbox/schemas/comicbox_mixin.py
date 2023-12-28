@@ -74,7 +74,7 @@ PENCILLER_KEY = "penciller"
 WRITER_KEY = "writer"
 
 SERIES_NAME_KEY = "name"
-VOLUME_NUMBER_KEY = "number"
+VOLUME_NUMBER_KEY = "name"
 VOLUME_COUNT_KEY = "volume_count"
 
 
@@ -104,45 +104,40 @@ class PageInfoSchema(BaseSubSchema):
     page_type = PageTypeField()
 
 
-class VolumeSchema(BaseSubSchema):
+class GroupSubSchema(BaseSubSchema):
+    """Group Schema."""
+
+    name = StringField()
+    aliases = StringSetField()
+    identifiers = IdentifiersField()
+
+
+class VolumeSchema(GroupSubSchema):
     """Volume Schema."""
 
-    number = IntegerField()
+    name = IntegerField()
     issue_count = IntegerField(minimum=0)
-    identifiers = IdentifiersField()
 
 
-class SeriesSchema(BaseSubSchema):
+class SeriesSchema(GroupSubSchema):
     """Series Schema."""
 
-    name = StringField()
-    identifiers = IdentifiersField()
     volume_count = IntegerField(minimum=0)
-    aliases = StringSetField()
-    groups = StringSetField()
 
 
-class ImprintSchema(BaseSubSchema):
-    """Imprint Schema."""
-
-    name = StringField()
-    aliases = StringSetField()
-    identifiers = IdentifiersField()
+# class ImprintSchema(GroupSubSchema):
+#    """Imprint Schema."""
 
 
-class PublisherSchema(BaseSubSchema):
-    """Publisher Schema."""
-
-    name = StringField()
-    aliases = StringSetField()
-    identifiers = IdentifiersField()
+# class PublisherSchema(GroupSubSchema):
+#    """Publisher Schema."""
 
 
 class ReprintSchema(BaseSubSchema):
     """Schema for Reprints of this issue."""
 
-    publisher = Nested(PublisherSchema)
-    imprint = Nested(ImprintSchema)
+    publisher = StringField()
+    imprint = StringField()
     series = Nested(SeriesSchema)
     volume = Nested(VolumeSchema)
     issue = StringField()
@@ -188,6 +183,7 @@ class ComicboxSchemaMixin:
     rights = StringField()
     scan_info = StringField()
     series = Union([Nested(SeriesSchema), StringField()])
+    series_groups = StringSetField()
     stories = StringSetField()
     story_arcs = DictStringField(values=IntegerField())
     summary = StringField()

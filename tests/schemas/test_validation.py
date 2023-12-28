@@ -36,7 +36,7 @@ READ_METADATA = MappingProxyType(
                 }
             },
             "volume": {
-                "number": 1950,
+                "name": 1950,
                 "issue_count": 7,
             },
             "language": "en",
