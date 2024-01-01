@@ -64,6 +64,7 @@ READ_METADATA = MappingProxyType(
                 },
             },
             "page_count": 0,
+            "stories": {"Captain Lost", "Science is Good"},
             "story_arcs": {
                 "Captain Arc": 4,
                 "Other Arc": 2,
@@ -123,6 +124,9 @@ READ_METRON_DICT = MappingProxyType(
                 "Name": "Captain Science",
                 "Volume": 1950,
             },
+            "Stories": {
+                "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
+            },
             "URL": "https://comicvine.gamespot.com/c/4000-145269/",
         }
     }
@@ -173,6 +177,9 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "@lang": "en",
                 "Name": "Captain Science",
                 "Volume": 1950,
+            },
+            "Stories": {
+                "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
             },
             "URL": "https://comicvine.gamespot.com/c/4000-145269/",
         }

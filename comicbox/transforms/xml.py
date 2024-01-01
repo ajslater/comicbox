@@ -41,18 +41,21 @@ class XmlTransform(BaseTransform):
         return data
 
     @staticmethod
-    def hoist_tag(tag, data):
+    def hoist_tag(tag, data, single_tag=None):
         """Hoist a double tag."""
         plural_tag = data.pop(tag, {})
-        single_tag = tag[:-1]
+        if not single_tag:
+            single_tag = tag[:-1]
         return plural_tag.get(single_tag)
 
     @staticmethod
-    def lower_tag(key, tag, data, value):
+    def lower_tag(key, tag, data, value, single_tag=None):
         """Lower into a double tag."""
         if not value:
             return
-        data[key] = {tag[:-1]: value}
+        if not single_tag:
+            single_tag = tag[:-1]
+        data[key] = {single_tag: value}
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *BaseTransform.TO_COMICBOX_PRE_TRANSFORM,

@@ -118,7 +118,9 @@ def test_cli_action_write():
 def test_cli_action_cbz():
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
+    # config = Namespace(comicbox=Namespace(print="sl"))
     with Comicbox(TMP_CBR_PATH) as car:
+        # car.print_out()
         old_md = car.get_metadata()
     old_md[ROOT_TAG].pop("notes", None)
     old_md[ROOT_TAG].pop("updated_at", None)
@@ -129,7 +131,10 @@ def test_cli_action_cbz():
     cli.main((ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
     assert not TMP_CBR_PATH.exists()
 
+    print("X" * 80)
+    # config = Namespace(comicbox=Namespace(print="sl"))
     with Comicbox(TMP_CBZ_PATH) as car:
+        # car.print_out()
         new_md = car.get_metadata()
     assert new_md[ROOT_TAG]["ext"] == "cbz"
     new_md[ROOT_TAG]["ext"] = "cbr"

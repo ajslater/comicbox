@@ -97,13 +97,13 @@ PENCILLER_TAG = "Penciller"
 
 _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     {
-        CHARACTERS_TAG: CHARACTERS_KEY,
-        GENRES_TAG: GENRES_KEY,
-        LOCATIONS_TAG: LOCATIONS_KEY,
-        PRICES_TAG: PRICE_KEY,
-        STORIES_TAG: STORIES_KEY,
-        TEAMS_TAG: TEAMS_KEY,
-        TAGS_TAG: TAGS_KEY,
+        (CHARACTERS_TAG, None): CHARACTERS_KEY,
+        (GENRES_TAG, None): GENRES_KEY,
+        (LOCATIONS_TAG, None): LOCATIONS_KEY,
+        (PRICES_TAG, None): PRICE_KEY,
+        (STORIES_TAG, "Story"): STORIES_KEY,
+        (TEAMS_TAG, None): TEAMS_KEY,
+        (TAGS_TAG, None): TAGS_KEY,
     }
 )
 _PARSABLE_METRON_RESOURCE_TAGS = MappingProxyType({PUBLISHER_TAG: PUBLISHER_KEY})
@@ -207,9 +207,10 @@ class MetronInfoTransform(
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
         update_dict = {}
-        for tag, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
+        for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
             # ignores id tag
-            resources = self.hoist_tag(tag, data)
+            tag, single_tag = tags
+            resources = self.hoist_tag(tag, data, single_tag=single_tag)
             if not resources:
                 continue
             names = set()
@@ -231,7 +232,7 @@ class MetronInfoTransform(
     def lower_metron_resource_lists(self, data):
         """Lower comicbox tags into metron resource tags."""
         update_dict = {}
-        for tag, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
+        for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
             names = data.pop(key, ())
             if not names:
                 continue
@@ -240,7 +241,8 @@ class MetronInfoTransform(
             for name in names:
                 if name:
                     resources.append({"#text": name})
-            self.lower_tag(tag, tag, update_dict, resources)
+            tag, single_tag = tags
+            self.lower_tag(tag, tag, update_dict, resources, single_tag=single_tag)
         if update_dict:
             data.update(update_dict)
         return data

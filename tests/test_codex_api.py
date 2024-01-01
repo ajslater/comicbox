@@ -123,7 +123,14 @@ CBZ_MD = MappingProxyType(
         }
     }
 )
-CBR_MD_PATCH = {ROOT_TAG: {"ext": "cbr", "country": "US", "remainders": ["-cix-cbi"]}}
+CBR_MD_PATCH = {
+    ROOT_TAG: {
+        "country": "US",
+        "ext": "cbr",
+        "series": {"volume_count": 1},
+        "remainders": ["-cix-cbi"],
+    },
+}
 CBR_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBR_MD_PATCH))
 CBT_MD_PATCH = {
     ROOT_TAG: {

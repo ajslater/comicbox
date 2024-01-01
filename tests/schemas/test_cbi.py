@@ -18,7 +18,7 @@ WRITE_CONFIG = Namespace(
 METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "series": {"name": "Captain Science"},
+            "series": {"name": "Captain Science", "volume_count": 1},
             "issue": "1",
             "issue_number": Decimal(1),
             "publisher": "Youthful Adventure Stories",
@@ -53,6 +53,7 @@ CBI_DICT = MappingProxyType(
             "issue": "1",
             "language": "English",
             "numberOfIssues": 7,
+            "numberOfVolumes": 1,
             "pages": 36,
             "publicationMonth": 11,
             "publicationYear": 1950,

@@ -75,7 +75,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
                 if denormalized_metadata:
                     files[schema.FILENAME] = schema.dumps(denormalized_metadata)
 
-        if MetadataSources.CBI in self._config.write:
+        if MetadataSources.CBI in sources:
             schema, denormalized_metadata = self._get_schema_and_transformed_metadata(
                 ComicBookInfoTransform, metadata
             )
