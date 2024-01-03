@@ -1,7 +1,8 @@
 """Parsing methods."""
 from collections.abc import Mapping
 from dataclasses import dataclass
-from logging import getLogger
+from logging import DEBUG, getLogger
+from traceback import format_exc
 from types import MappingProxyType
 from typing import Optional
 
@@ -29,6 +30,15 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
             return schema.loads(source_md)
         return schema.load(source_md)
 
+    def _except_on_load(self, source, exc):
+        """When loading fails warn or give stack trace in debug."""
+        name = source.value.transform_class.SCHEMA_CLASS.__name__
+        LOG.warning(
+            f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}"
+        )
+        if LOG.getEffectiveLevel() == DEBUG:
+            LOG.debug(format_exc())
+
     def _load_unknown_metadata(self, label, source_md) -> Optional[Mapping]:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
@@ -42,7 +52,8 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
                     LOG.debug(f"Parsed {label} with {schema_class.__name__}")
                     break
             except Exception as exc:
-                LOG.debug(exc)
+                self._except_on_load(source, exc)
+
         if not success_md:
             reason = f"Unable to load {label}."
             raise ValueError(reason)
@@ -61,11 +72,8 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
                     )
                 if md:
                     return MappingProxyType(md)
-        except Exception:
-            name = source.value.transform_class.SCHEMA_CLASS.__name__
-            LOG.exception(
-                f"{self._path}: Unable to load {source.value.label}:{name} metadata"
-            )
+        except Exception as exc:
+            self._except_on_load(source, exc)
         return None
 
     def _set_loaded_metadata(self, source):
