@@ -59,6 +59,10 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
         self._as_string = as_string
         self._sort = sort
 
+    @staticmethod
+    def _seq_to_str_seq(seq):
+        return ("" if item is None else str(item) for item in seq)
+
     def _deserialize(self, value, *args, **kwargs):
         """Deserialize CSV encodings of lists."""
         if not value:
@@ -70,17 +74,17 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
                 value = self.STR_LIST_RE.split(value)
         if value and is_collection(value):
             # Already deserialized.
-            value = ("" if item is None else item for item in value)
+            value = self._seq_to_str_seq(value)
             return super()._deserialize(value, *args, **kwargs)
         return []
 
     def _serialize(self, value, *args, **kwargs) -> Union[list[Any], str, None]:  # type:ignore
+        value = self._seq_to_str_seq(value)
         if self._sort:
             value = sorted(value)
         if self._as_string:
             # For subclasses where items aren't always strings
-            string_value = (str(item) for item in value)
-            return ",".join(string_value)
+            return ",".join(value)
         return super()._serialize(value, *args, **kwargs)
 
 
