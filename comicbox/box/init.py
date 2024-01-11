@@ -2,6 +2,7 @@
 import stat
 from argparse import Namespace
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from tarfile import is_tarfile
@@ -18,12 +19,8 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.sources import MetadataSources
 from comicbox.transforms.base import BaseTransform
 
-try:
+with suppress(ImportError):
     from pdffile import PDFFile
-except ImportError:
-    PDFFIle = None
-    if TYPE_CHECKING:
-        PDFFile = type[None]
 
 if TYPE_CHECKING:
     from tarfile import TarFile
@@ -78,7 +75,10 @@ class ComicboxInitMixin:
         self._archive_cls: Optional[Callable] = None
         self._file_type: Optional[str] = None
         self._set_archive_cls()
-        self._archive: Union[ZipFile, RarFile, TarFile, PDFFile, None] = None  # type: ignore
+        try:
+            self._archive: Union[ZipFile, RarFile, TarFile, PDFFile, None] = None  # type: ignore
+        except NameError:
+            self._archive: Union[ZipFile, RarFile, TarFile, None] = None
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         self._info_size_attr = (
             "size" if self._archive_cls == tarfile_open else "file_size"
@@ -107,34 +107,31 @@ class ComicboxInitMixin:
     @staticmethod
     def is_pdf_supported() -> bool:
         """Are PDFs supported."""
-        return bool(PDFFile)
+        try:
+            return bool(PDFFile)  # type: ignore
+        except NameError:
+            return False
 
     def _set_archive_cls_pdf(self):
         """PDFFile is only optionally installed."""
-        if not PDFFile:
-            self._archive_is_pdf = False
-            return
         try:
             self._archive_is_pdf = PDFFile.is_pdffile(self._path)  # type: ignore
             if self._archive_is_pdf:
                 # Important to have PDFile before zipfile
                 self._archive_cls = PDFFile  # type: ignore
                 self._pdf_suffix = PDFFile.SUFFIX  # type: ignore
-                self._file_type = "PDF"
-                return
         except Exception:
             self._archive_is_pdf = False
+        return self._archive_is_pdf
 
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         if not self._path:
             return
 
-        self._set_archive_cls_pdf()
-        if self._archive_is_pdf:
-            return
-
-        if is_zipfile(self._path):
+        if self._set_archive_cls_pdf():
+            self._file_type = "PDF"
+        elif is_zipfile(self._path):
             self._archive_cls = ZipFile
             self._file_type = "CBZ"
         elif is_rarfile(self._path):
