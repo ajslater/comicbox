@@ -1,6 +1,7 @@
 """Utility functions for testing metadata."""
 import shutil
 from collections.abc import Mapping
+from contextlib import suppress
 from copy import deepcopy
 from difflib import ndiff
 from pathlib import Path
@@ -13,12 +14,8 @@ from deepdiff.diff import DeepDiff
 from comicbox.schemas.comicbox_mixin import NOTES_KEY, ROOT_TAG
 from comicbox.transforms.base import BaseTransform
 
-try:
-    from fitz_new import fitz
-
-    FITZ_IMPORTED = True
-except ImportError:
-    FITZ_IMPORTED = False
+with suppress(ImportError):
+    import fitz
 
 from comicbox.box import Comicbox
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG
@@ -390,20 +387,23 @@ class TestParser:
 
     def _create_test_pdf(self, new_test_pdf_path):
         """Create a new empty PDF file."""
-        assert FITZ_IMPORTED
-        doc = fitz.Document()  # type: ignore
-        doc.new_page()  # type: ignore
-        doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
-        doc.close()
-        pprint(self.write_reference_metadata)
-        config = deepcopy(self.write_config)
-        config.comicbox.updated_at = TEST_DATETIME.isoformat()
-        with Comicbox(
-            new_test_pdf_path,
-            config=config,
-            metadata=self.write_reference_metadata,
-        ) as car:
-            car.write()
+        try:
+            doc = fitz.Document()  # type: ignore
+            doc.new_page()  # type: ignore
+            doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
+            doc.close()
+            pprint(self.write_reference_metadata)
+            config = deepcopy(self.write_config)
+            config.comicbox.updated_at = TEST_DATETIME.isoformat()
+            with Comicbox(
+                new_test_pdf_path,
+                config=config,
+                metadata=self.write_reference_metadata,
+            ) as car:
+                car.write()
+        except NameError as exc:
+            reason = "fitz not imported from comicbox-pdffile"
+            raise AssertionError(reason) from exc
 
     def write_metadata_pdf(
         self,

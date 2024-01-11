@@ -1,5 +1,6 @@
 """Test the API surface that Codex uses."""
 from argparse import Namespace
+from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal
@@ -13,12 +14,8 @@ from deepdiff.diff import DeepDiff
 from comicbox.box.computed import deep_update
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 
-try:
-    from fitz_new import fitz
-
-    FITZ_IMPORTED = True
-except ImportError:
-    FITZ_IMPORTED = False
+with suppress(ImportError):
+    import fitz
 
 
 from comicbox.box import Comicbox
@@ -217,12 +214,13 @@ def test_cover_image(ft):
         disk_cover = f.read()
     if cover_path.suffix == ".pdf":
         # transform file to image.
-        assert FITZ_IMPORTED
-        if not fitz:
-            return
-        doc = fitz.Document(stream=disk_cover)
-        pix = doc.get_page_pixmap(0)  # type: ignore
-        disk_cover = pix.tobytes(output="ppm")
+        try:
+            doc = fitz.Document(stream=disk_cover)  # type: ignore
+            pix = doc.get_page_pixmap(0)  # type: ignore
+            disk_cover = pix.tobytes(output="ppm")
+        except NameError as exc:
+            reason = "fitz not imported from pymupdf (comicbox-pdffile)"
+            raise AssertionError(reason) from exc
 
     assert cover == disk_cover
 
