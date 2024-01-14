@@ -109,7 +109,6 @@ def _get_sources_from_keys(key, keys, ignore_keys):
             sources.append(source)
         if source.value.configurable:
             keys -= source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
-    LOG.debug(f"config.{key}: {[source._name_ for source in sources]}")
     return sources, keys
 
 
