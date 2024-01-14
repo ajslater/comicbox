@@ -2,6 +2,7 @@
 from collections.abc import Mapping
 from copy import deepcopy
 from logging import DEBUG, getLogger
+from os import environ
 from pprint import pformat
 from types import MappingProxyType
 
@@ -145,13 +146,14 @@ class BaseTransform:
         """
         if not methods:
             return data
+        debug_transform = environ.get("DEBUG_TRANSFORM", False)
         sub_data = self.unwrap(data, root_tags=unwrap_root_tags)
-        if LOG.isEnabledFor(DEBUG):
+        if debug_transform and LOG.isEnabledFor(DEBUG):
             LOG.debug(f"{type(self)} sub_data:")
             LOG.debug(pformat(sub_data))
         for method in methods:
             sub_data = method(self, sub_data)
-            if LOG.isEnabledFor(DEBUG):
+            if debug_transform and LOG.isEnabledFor(DEBUG):
                 LOG.debug(f"{type(self)}.{method}:")
                 LOG.debug(pformat(sub_data))
         if insert:

@@ -223,3 +223,7 @@ The Comicbox CLI uses "flow style" YAML, which is an all on one line format to e
 | Comicbox CLI  | -m --metadata     |
 | Archive       | comicbox-cli.yaml |
 | Import/Export | comicbox-cli.yaml |
+
+## Environment variables
+
+There is a special environment variable `DEBUG_TRANSFORM` that will print verbose schema transform information
