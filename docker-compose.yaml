@@ -1,9 +1,6 @@
 services:
   comicbox-builder:
-    build:
-      context: .
-      args:
-        CODEX_BUILDER_BASE_VERSION:
+    build: .
     image: comicbox-builder
     container_name: comicbox-builder
   comicbox-lint:

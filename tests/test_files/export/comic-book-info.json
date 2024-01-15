@@ -1,0 +1,33 @@
+{
+  "ComicBookInfo/1.0": {
+    "credits": [
+      {
+        "person": "Wally Wood",
+        "role": "Inker"
+      },
+      {
+        "person": "Wally Wood",
+        "role": "Penciller"
+      },
+      {
+        "person": "Joe Orlando",
+        "role": "Writer"
+      }
+    ],
+    "genre": "Science Fiction",
+    "issue": "1",
+    "language": "English",
+    "numberOfIssues": 7,
+    "pages": 0,
+    "publicationDay": 1,
+    "publicationMonth": 11,
+    "publicationYear": 1950,
+    "publisher": "Youthful Adventure Stories",
+    "series": "Captain Science",
+    "title": "The Beginning",
+    "volume": 1950
+  },
+  "appID": "comicbox/dev",
+  "lastModified": "1970-01-01T00:00:00",
+  "schema": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki"
+}

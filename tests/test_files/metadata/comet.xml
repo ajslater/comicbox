@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/comet.xsd">
+	<character>Captain Science</character>
+	<character>Gordon Dane</character>
+	<coverImage>CaptainScience#1_01.jpg</coverImage>
+	<date>1950-12-01</date>
+	<description>A long example description</description>
+	<format>Comic</format>
+	<genre>Science Fiction</genre>
+	<identifier>CVDB145269</identifier>
+	<isVersionOf>Captain Science Alternate #001</isVersionOf>
+	<issue>1</issue>
+	<language>en</language>
+	<lastMark>12</lastMark>
+	<pages>36</pages>
+	<penciller>Wally Wood</penciller>
+	<price>0.10</price>
+	<publisher>Bell Features</publisher>
+	<rating>Teen</rating>
+	<readingDirection>ltr</readingDirection>
+	<rights>Copyright (c) 1950 Bell Features</rights>
+	<series>Captain Science</series>
+	<title>The Beginning</title>
+	<volume>1</volume>
+	<writer>Joe Orlando</writer>
+</comet>

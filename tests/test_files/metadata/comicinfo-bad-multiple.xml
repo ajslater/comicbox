@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">
+	<Characters>Captain Science,Gordon Dane</Characters>
+	<Count>7</Count>
+	<Day>1</Day>
+	<Genre>Science Fiction,Fantasy</Genre>
+	<Genre>BAD DO NOT PARSE</Genre>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00</Notes>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Publisher>BAD NO DO NOT PARSE</Publisher>
+</ComicInfo>

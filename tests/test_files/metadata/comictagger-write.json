@@ -1,0 +1,36 @@
+{
+  "comictagger": {
+    "country": "US",
+    "credits": [
+      {
+        "person": "Wally Wood",
+        "role": "Penciller"
+      },
+      {
+        "person": "Joe Orlando",
+        "role": "Writer"
+      }
+    ],
+    "day": 1,
+    "genres": [
+      "Science Fiction"
+    ],
+    "identifier": "urn:comicvine:4000-145269",
+    "issue": "1",
+    "issue_count": 7,
+    "issue_id": "4000-145269",
+    "language": "en",
+    "month": 11,
+    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269",
+    "page_count": 0,
+    "publisher": "Youthful Adventure Stories",
+    "series": "Captain Science",
+    "tag_origin": {
+      "name": "comicvine"
+    },
+    "title": "The Beginning",
+    "volume": 1950,
+    "web_link": "https://comicvine.gamespot.com/c/4000-145269/",
+    "year": 1950
+  }
+}

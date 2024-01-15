@@ -2,53 +2,20 @@
 import sys
 from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from collections.abc import Sequence
+from logging import INFO
 
-from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.metadata.comet import CoMet
-from comicbox.metadata.comicbookinfo import ComicBookInfo
-from comicbox.metadata.comicinfoxml import ComicInfoXml
-from comicbox.metadata.filename import FilenameMetadata
-from comicbox.metadata.pdf import PDFParser
+from comicbox.print import PrintPhases
 from comicbox.run import Runner
+from comicbox.sources import MetadataSources
 
-WRITE_KEY_MAPS = {
-    "comet": CoMet,
-    "comicbookinfo": ComicBookInfo,
-    "comicinfoxml": ComicInfoXml,
-    "filename": FilenameMetadata,
-    "pdf": PDFParser,
-}
-
-READ_KEY_MAPS = {**WRITE_KEY_MAPS, "filename": FilenameMetadata}
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
-
-
-class KeyValueDictAction(Action):
-    """Parse comma delimited key value pairs key value."""
-
-    def __call__(self, _parser, namespace, values, _option_string=None):
-        """Parse comma delimited key value pairs."""
-        if not values:
-            return
-        key, value_str = values.split("=")
-        if value_str.startswith("[") and value_str.endswith("]"):
-            values_list_str = value_str[1:-1]
-            val = values_list_str.split(",")
-        else:
-            val = value_str
-        values_dict = {key: val}
-        dest_dict = getattr(namespace, self.dest, {})
-        if dest_dict is None:
-            dest_dict = {}
-        dest_dict.update(values_dict)
-        setattr(namespace, self.dest, dest_dict)
 
 
 class CSVAction(Action):
     """Parse comma deliminated sequences."""
 
-    def __call__(self, _parser, namespace, values, _option_string=None):
+    def __call__(self, _parser, namespace, values, _string=None):
         """Parse comma delimited sequences."""
         if isinstance(values, str):
             values_array = values.split(",")
@@ -62,7 +29,7 @@ class CSVAction(Action):
 class PageRangeAction(Action):
     """Parse page range."""
 
-    def __call__(self, _parser, namespace, values, _option_string=None):
+    def __call__(self, _parser, namespace, values, _string=None):
         """Parse page range delimited by :."""
         values_array = values.split(":")
         if not values_array:
@@ -96,159 +63,256 @@ def map_keys(config, prefix, list_key, maps, value):
     delattr(config, list_key)
 
 
-def process_keys(config):
-    """CLI config post processing."""
-    map_keys(config, "read", "ignore_read", READ_KEY_MAPS, False)
-    map_keys(config, "write", "write", WRITE_KEY_MAPS, True)
+def _create_format_help():
+    lines = ""
+    max_space = max(len(source.value.label) for source in MetadataSources) + 1
+    for source in MetadataSources:
+        if not source.value.configurable:
+            continue
+        label = source.value.label
+        keys = ", ".join(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS)
+        space = (max_space - len(label)) * " "
+        lines += f"  {label}:{space}{keys}"
+        if not source.value.writable:
+            lines += " (read only)"
+        lines += "\n"
+
+    return lines
 
 
-def get_args(params=None) -> Namespace:
-    """Get arguments and options."""
-    description = "Comic book archive read/write tool."
-    epilog = (
-        "Format keys:\n"
-        f"    Comic Rack: {', '.join(sorted(ComicInfoXml.CONFIG_KEYS))}\n"
-        f"    Comic Book Info: {', '.join(sorted(ComicBookInfo.CONFIG_KEYS))}\n"
-        f"    CoMet: {', '.join(sorted(CoMet.CONFIG_KEYS))}\n"
-        f"    Filename: {', '.join(sorted(FilenameMetadata.CONFIG_KEYS))}\n"
-        f"    PDF: {', '.join(sorted(PDFParser.CONFIG_KEYS))}\n"
-        "-w & -R can take comma separated lists of these keys."
+def _add_option_group(parser):
+    option_group = parser.add_argument_group("Options")
+    option_group.add_argument(
+        "-c",
+        "--config",
+        metavar="CONFIG_PATH",
+        action="store",
+        help="Path to an alternate config file.",
     )
-    parser = ArgumentParser(
-        description=description,
-        epilog=epilog,
-        formatter_class=RawDescriptionHelpFormatter,
-    )
-    # OPTIONS
-    parser.add_argument(
-        "-R",
-        "--ignore-read",
+    option_group.add_argument(
+        "-r",
+        "--read",
         action=CSVAction,
-        dest="ignore_read",
-        help="Ignore reading metadata formats. List of format keys.",
+        metavar="FORMATS",
+        dest="read",
+        help="Read metadata formats. Defaults to all.",
     )
-    parser.add_argument(
+    option_group.add_argument(
+        "-m",
+        "--metadata",
+        dest="metadata_cli",
+        metavar="YAML_METADATA",
+        action="append",
+        help="Set metadata fields. e.g.: 'keyA: value, keyB: [valueA,valueB,valueC],"
+        " keyC: {subkey: {subsubkey: value}'",
+    )
+    option_group.add_argument(
         "-d",
         "--dest-path",
-        type=str,
         help="destination path for extracting pages and metadata.",
     )
-    parser.add_argument(
+    option_group.add_argument(
         "--delete-orig",
         action="store_true",
-        help="Delete the original file if it was converted to a cbz successfully.",
+        help="Delete the original cbr or cbt file if it was converted to a cbz successfully.",
     )
-    parser.add_argument(
+    option_group.add_argument(
         "--recurse",
         action="store_true",
         help="Perform selected actions recursively on a directory.",
     )
-    parser.add_argument(
-        "-g",
-        "--config",
-        action="store",
-        type=str,
-        help="Path to an alternate config file.",
-    )
-    parser.add_argument(
+    option_group.add_argument(
         "-y",
         "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
-    parser.add_argument(
-        "-m",
-        "--metadata",
-        action=KeyValueDictAction,
-        help="Set metadata fields key=value or key=[valueA,valueB,valueC] for lists",
+    option_group.add_argument(
+        "-G",
+        "--no-compute-pages",
+        dest="compute_pages",
+        action="store_false",
+        default=True,
+        help=("Never compute page_count or pages metadata from the archive."),
+    )
+    option_group.add_argument(
+        "-Q",
+        "--quiet",
+        action="count",
+        default=0,
+        help="Increasingingly quiet success messages, "
+        "warnings and errors with more Qs.",
+    )
+    option_group.add_argument(
+        "-N",
+        "--no-stamp-notes",
+        dest="stamp_notes",
+        action="store_false",
+        help="Do not write the notes field with tagger, timestamp and identifiers "
+        "when writing metadata out to a file.",
     )
 
-    ###########
-    # ACTIONS #
-    ###########
-    parser.add_argument("-v", "--version", action="store_true", help="Display version.")
-    parser.add_argument("-p", "--print", action="store_true", help="Print metadata")
-    parser.add_argument(
-        "-t",
-        "--type",
-        dest="file_type",
+
+def _add_action_group(parser):
+    action_group = parser.add_argument_group("Actions")
+    action_group.add_argument(
+        "-P",
+        "--print-phases",
+        dest="print",
+        metavar="PRINT_PHASES",
+        action="store",
+        default="",
+        help=(
+            "Print separate phases of metadata processing."
+            " Specify with a string that contains phase characters"
+            " listed below. e.g. -P slcm."
+        ),
+    )
+    action_group.add_argument(
+        "-v",
+        "--version",
         action="store_true",
-        help="Print archive file type",
+        help="Print software version. Shortcut for -P v",
     )
-    parser.add_argument(
-        "-n",
-        "--index",
-        dest="index",
-        type=int,
-        help="Extract a single page by zero based index.",
+    action_group.add_argument(
+        "-p",
+        "--print",
+        dest="print_metadata",
+        action="store_true",
+        help="Print merged metadata. Shortcut for -P d.",
     )
-    parser.add_argument(
-        "-a",
-        "--pages",
-        action=PageRangeAction,
-        help="Extract a single page or : delimited range of pages by zero based index.",
+    action_group.add_argument(
+        "-l",
+        "--list",
+        dest="print_filenames",
+        action="store_true",
+        help="Print filenames in archive. Shortcut for -P f.",
     )
-    parser.add_argument(
-        "-c", "--covers", action="store_true", help="Extract cover pages."
-    )
-    parser.add_argument(
-        "-r", "--raw", action="store_true", help="Print raw metadata without parsing"
-    )
-    parser.add_argument(
-        "-z", "--cbz", action="store_true", help="Export the archive to CBZ format."
-    )
-    parser.add_argument(
+    action_group.add_argument(
         "-i",
         "--import",
-        action="store",
-        dest="import_fn",
-        help="Import metadata from an external file.",
+        action="append",
+        dest="import_paths",
+        help="Import metadata from external files.",
     )
-    parser.add_argument(
-        "-e",
+    action_group.add_argument(
+        "-x",
         "--export",
+        metavar="FORMATS",
+        action=CSVAction,
+        help="Export metadata as external files to --dest-path. Format keys listed below.",
+    )
+    action_group.add_argument(
+        "--delete",
         action="store_true",
-        help="Export metadata as external files in several formats.",
+        help="Delete all tags from the archive. Overrides --write.",
     )
-    parser.add_argument(
-        "--rename",
+    action_group.add_argument(
+        "-e",
+        "--pages",
+        action=PageRangeAction,
+        help="Extract a single page or : delimited range of pages by zero based index"
+        " to --dest-path.",
+    )
+    action_group.add_argument(
+        "-o", "--cover", action="store_true", help="Extract cover page(s)."
+    )
+    action_group.add_argument(
+        "-z",
+        "--cbz",
         action="store_true",
-        help="Rename the file with our preferred schema.",
+        help="Export the archive to CBZ format and rewrite all metadata formats found.",
     )
-    parser.add_argument(
-        "--delete-tags", action="store_true", help="Delete all tags from archive."
-    )
-    parser.add_argument(
+    action_group.add_argument(
         "-w",
         "--write",
+        metavar="FORMATS",
         action=CSVAction,
-        help="Write comic metadata formats to archive. List of format keys.",
+        help="Write comic metadata formats to archive cbt & cbr are always"
+        " exported to cbz format. Format keys listed below.",
+    )
+    action_group.add_argument(
+        "--rename",
+        action="store_true",
+        help="Rename the file with comicbox's filename format.",
+    )
+    action_group.add_argument(
+        "-h", "--help", action="help", help="Show only this help message and exit"
     )
 
-    ###########
-    # TARGETS #
-    ###########
-    parser.add_argument(
+
+def _add_target_group(parser):
+    target_group = parser.add_argument_group("Targets")
+    target_group.add_argument(
         "paths",
-        metavar="path",
-        type=str,
-        help="Paths to comic archives or directories",
         nargs="*",
+        help="Paths to comic archives or directories",
     )
+
+
+def get_args(params=None) -> Namespace:
+    """Get arguments and options."""
+    description = "Comic book archive read/write tool."
+    formats = _create_format_help()
+    epilog = (
+        "PRINT_PHASES Characters:\n"
+        "  v  Software version (Shortcut -v)\n"
+        "  t  File type\n"
+        "  f  File names (Shortcut -l)\n"
+        "  s  Source metadata\n"
+        "  l  Loaded metadata sources\n"
+        "  n  Loaded metadata normalized to comicbox schema\n"
+        "  m  Merged normalized intermediate metadata\n"
+        "  c  Computed metadata sources\n"
+        "  d  Final metadata merged with computed sources. (Shortcut -p)\n"
+        "\n"
+        "Complex --metadata Example:\n"
+        "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
+        " writer: [Other Name, Writer Name]},"
+        " story_arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
+        "  -m '{publisher: My Press}'\n"
+        "  -m 'Title: The Dark Freighter'\n"
+        "\n"
+        "  Metadata can be any tag from any of the supported metadata formats.\n\n"
+        "Format keys for --ignore-read, --write, and --export:\n" + formats
+    )
+    parser = ArgumentParser(
+        description=description,
+        epilog=epilog,
+        formatter_class=RawDescriptionHelpFormatter,
+        add_help=False,
+    )
+    _add_option_group(parser)
+    _add_action_group(parser)
+    _add_target_group(parser)
 
     if params is not None:
         params = params[1:]
-    cns = parser.parse_args(params)
-    process_keys(cns)
-    return Namespace(comicbox=cns)
+    return parser.parse_args(params)
+
+
+def post_process_args(cns):
+    """Adjust CLI config."""
+    # Print options
+    if cns.version:
+        cns.print += PrintPhases.VERSION.value
+    if cns.print_filenames:
+        cns.print += PrintPhases.FILE_NAMES.value
+    if cns.print_metadata:
+        cns.print += PrintPhases.METADATA.value
+
+    # Logleve
+    if cns.quiet:
+        cns.loglevel = INFO + cns.quiet * 10
 
 
 def main(params=None):
     """Get CLI arguments and perform the operation on the archive."""
-    args = get_args(params)
-    config = get_config(args)
+    cns = get_args(params)
+    post_process_args(cns)
+    args = Namespace(comicbox=cns)
 
-    runner = Runner(config)
+    runner = Runner(args)
     try:
         runner.run()
     except HANDLED_EXCEPTIONS as exc:

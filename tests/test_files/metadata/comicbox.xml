@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Comicbox xmlns:comicbox="https://github.com/ajslater/comicbox/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<AgeRating>Teen</AgeRating>
+	<AlternateIssue>Captain Science</AlternateIssue>
+	<Characters>Captain Science</Characters>
+	<Characters>Gordon Dane</Characters>
+	<Contributors>
+		<Penciller>Wally Wood</Penciller>
+		<Writer>Joe Orlando</Writer>
+	</Contributors>
+	<CoverImage>CaptainScience#1_01.jpg</CoverImage>
+	<Date>1950-12-01</Date>
+	<Genres>Science Fiction</Genres>
+	<Identifiers>
+		<Comicvine>145269</Comicvine>
+	</Identifiers>
+	<Issue>1</Issue>
+	<IssueNumber>1</IssueNumber>
+	<Language>en</Language>
+	<LastMark>12</LastMark>
+	<OriginalFormat>Comic</OriginalFormat>
+	<PageCount>36</PageCount>
+	<Pages>
+		<Page Index="0" PageType="FrontCover" Size="429985"/>
+		<Page Index="1" Size="332936"/>
+		<Page Index="2" Size="458657"/>
+		<Page Index="3" Size="450456"/>
+		<Page Index="4" Size="436648"/>
+		<Page Index="5" Size="443725"/>
+		<Page Index="6" Size="469526"/>
+		<Page Index="7" Size="429811"/>
+		<Page Index="8" Size="445513"/>
+		<Page Index="9" Size="446292"/>
+		<Page Index="10" Size="458589"/>
+		<Page Index="11" Size="417623"/>
+		<Page Index="12" Size="445302"/>
+		<Page Index="13" Size="413271"/>
+		<Page Index="14" Size="434201"/>
+		<Page Index="15" Size="439049"/>
+		<Page Index="16" Size="485957"/>
+		<Page Index="17" Size="388379"/>
+		<Page Index="18" Size="368138"/>
+		<Page Index="19" Size="427874"/>
+		<Page Index="20" Size="422522"/>
+		<Page Index="21" Size="442529"/>
+		<Page Index="22" Size="423785"/>
+		<Page Index="23" Size="427980"/>
+		<Page Index="24" Size="445631"/>
+		<Page Index="25" Size="413615"/>
+		<Page Index="26" Size="417605"/>
+		<Page Index="27" Size="439120"/>
+		<Page Index="28" Size="451598"/>
+		<Page Index="29" Size="451550"/>
+		<Page Index="30" Size="438346"/>
+		<Page Index="31" Size="454914"/>
+		<Page Index="32" Size="428461"/>
+		<Page Index="33" Size="438091"/>
+		<Page Index="34" Size="353013"/>
+		<Page Index="35" Size="340840"/>
+	</Pages>
+	<Price>0.10</Price>
+	<Publisher>Bell Features</Publisher>
+	<ReadingDirection>ltr</ReadingDirection>
+	<Rights>Copyright (c) 1950 Bell Features</Rights>
+	<Series>Captain Science</Series>
+	<Summary>A long example description</Summary>
+	<Tagger>comicbox dev</Tagger>
+	<Title>The Beginning</Title>
+	<UpdatedAt>1970-01-01T00:00:00</UpdatedAt>
+	<Volume>1</Volume>
+</Comicbox>
