@@ -8,7 +8,7 @@
 - Comicbox now sorts archive filenames case insensitively.
 - Comicbox now writes identifiers to the notes field in urn format.
 - You should probably read the code in `comicbox.box` for public facing apis.
-- comicbfn2dict and comicbox-pdffile are now independent ackages.
+- comicbfn2dict and comicbox-pdffile are now independent packages.
 
 ## v0.10.2
 
