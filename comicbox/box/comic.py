@@ -50,9 +50,9 @@ class Comicbox(
         if self._config.cbz:
             need_file_opts += ["cbz"]
             self._config.cbz = False
-        if self._config.delete_tags:
-            need_file_opts += ["delete_tags"]
-            self._config.delete_tags = False
+        if self._config.delete:
+            need_file_opts += ["delete"]
+            self._config.delete = False
         if self._config.rename:
             need_file_opts += ["rename"]
             self._config.rename = False
@@ -84,7 +84,7 @@ class Comicbox(
                 self._config.index_from, self._config.index_to, self._config.dest_path
             )
             noop = False
-        if self._config.write or self._config.cbz or self._config.delete_tags:
+        if self._config.write or self._config.cbz or self._config.delete:
             self.write()
             noop = False
         if self._config.rename:

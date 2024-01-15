@@ -1,12 +1,11 @@
 """Json Schema."""
-from types import MappingProxyType
+from abc import ABC
 from typing import Union
 
 import simplejson as json
 
 from comicbox.fields.fields import StringField
-from comicbox.schemas.comicbox_base import ComicboxBaseSchema
-from comicbox.version import VERSION
+from comicbox.schemas.base import BaseSchema, BaseSubSchema
 
 
 class JsonRenderModule:
@@ -41,21 +40,14 @@ class JsonRenderModule:
         return None
 
 
-class ComicboxJsonSchema(ComicboxBaseSchema):
+class JsonSubSchema(BaseSubSchema, ABC):
+    """Json Sub Schema."""
+
+
+class JsonSchema(BaseSchema, ABC):
     """Json Schema."""
 
-    CONFIG_KEYS = frozenset({"cb", "comicbox", "json"})
-    FILENAME = "comicbox.json"
-    ROOT_TAG = "comicbox"
-    ROOT_TAGS = MappingProxyType(
-        {
-            "appID": f"comicbox/{VERSION}",
-            ROOT_TAG: {},
-            "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
-        }
-    )
-
-    class Meta(ComicboxBaseSchema.Meta):
+    class Meta(BaseSchema.Meta):
         """Schema Options."""
 
         render_module = JsonRenderModule

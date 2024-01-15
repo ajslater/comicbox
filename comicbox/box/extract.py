@@ -4,7 +4,6 @@ from pathlib import Path
 
 from comicbox.box.archive import archive_close
 from comicbox.box.pages import ComicboxPagesMixin
-from comicbox.pdf_file import PDFFile
 
 LOG = getLogger(__name__)
 
@@ -14,8 +13,8 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
 
     def _extract_page(self, path, fn, to_pixmap=False):
         path = path / Path(fn).name if path.is_dir() else path
-        if self._archive_cls == PDFFile:
-            path = path.with_suffix(PDFFile.SUFFIX)
+        if self._archive_is_pdf:
+            path = path.with_suffix(self._pdf_suffix)
         with path.open("wb") as page_file:
             data = self._archive_readfile(fn, to_pixmap)
             page_file.write(data)

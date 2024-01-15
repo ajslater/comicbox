@@ -1,5 +1,7 @@
 """Package name and version."""
 
+import sys
+from contextlib import suppress
 from importlib.metadata import PackageNotFoundError, version
 
 PACKAGE_NAME = "comicbox"
@@ -7,10 +9,10 @@ PACKAGE_NAME = "comicbox"
 
 def get_version():
     """Get the current installed comicbox version."""
-    try:
-        v = version(PACKAGE_NAME)
-    except PackageNotFoundError:
-        v = "dev"
+    v = "dev"
+    if "pytest" not in sys.modules:
+        with suppress(PackageNotFoundError):
+            v = version(PACKAGE_NAME)
     return v
 
 

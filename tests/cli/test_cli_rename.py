@@ -1,5 +1,6 @@
 """Test CLI extract actions."""
 from comicbox import cli
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import EXPORT_SOURCE_PATH
 from tests.util import get_tmp_dir, my_cleanup, my_setup
 
@@ -25,14 +26,14 @@ def test_cli_action_rename():
 
     cli.main(
         (
-            "comicbox",
+            ROOT_TAG,
             "--rename",
             str(TMP_PATH),
         )
     )
 
     list_dir = sorted(TMP_DIR.iterdir())
-    print("LIST DIR")
+    print("LIST DIR:")
     for fn in list_dir:
         print(fn)
     name = list_dir[0].name

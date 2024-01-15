@@ -6,7 +6,9 @@ from types import MappingProxyType
 import xmltodict
 
 from comicbox.fields.enum import PageTypeEnum
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.comicinfo import ComicInfoSchema
+from comicbox.transforms.comicinfo import ComicInfoTransform
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -14,96 +16,108 @@ from tests.util import (
     create_write_metadata,
 )
 
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"]))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=False)
+)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"], compute_pages=False))
 READ_METADATA = MappingProxyType(
     {
-        "series": "Captain Science",
-        "issue": "1",
-        "issue_number": Decimal("1"),
-        "issue_count": 7,
-        "publisher": "Youthful Adventure Stories",
-        "year": 1950,
-        "month": 11,
-        "day": 1,
-        "volume": 1950,
-        "language": "en",
-        "notes": TEST_READ_NOTES,
-        "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-        "characters": {
-            "Captain Science",
-            "Gordon Dane",
-        },
-        "contributors": {
-            "inker": {"Wally Wood"},
-            "penciller": {"Wally Wood"},
-            "writer": {"Joe Orlando"},
-        },
-        "genres": {"Science Fiction"},
-        "identifiers": {"comicvine": "145269"},
-        "pages": [
-            {"index": 0, "size": 429985, "page_type": PageTypeEnum.FRONT_COVER},
-            {"index": 1, "size": 332936},
-            {"index": 2, "size": 458657},
-            {"index": 3, "size": 450456},
-            {"index": 4, "size": 436648},
-            {"index": 5, "size": 443725},
-            {"index": 6, "size": 469526},
-            {"index": 7, "size": 429811},
-            {"index": 8, "size": 445513},
-            {"index": 9, "size": 446292},
-            {"index": 10, "size": 458589},
-            {"index": 11, "size": 417623},
-            {"index": 12, "size": 445302},
-            {"index": 13, "size": 413271},
-            {"index": 14, "size": 434201},
-            {"index": 15, "size": 439049},
-            {"index": 16, "size": 485957},
-            {"index": 17, "size": 388379},
-            {"index": 18, "size": 368138},
-            {"index": 19, "size": 427874},
-            {"index": 20, "size": 422522},
-            {"index": 21, "size": 442529},
-            {"index": 22, "size": 423785},
-            {"index": 23, "size": 427980},
-            {"index": 24, "size": 445631},
-            {"index": 25, "size": 413615},
-            {"index": 26, "size": 417605},
-            {"index": 27, "size": 439120},
-            {"index": 28, "size": 451598},
-            {"index": 29, "size": 451550},
-            {"index": 30, "size": 438346},
-            {"index": 31, "size": 454914},
-            {"index": 32, "size": 428461},
-            {"index": 33, "size": 438091},
-            {"index": 34, "size": 353013},
-            {"index": 35, "size": 340840},
-        ],
-        "page_count": 36,
-        "story_arcs": {
-            "Captain Arc": 4,
-            "Other Arc": 2,
-        },
-        "tagger": "comicbox dev",
-        "title": "The Beginning",
-        "updated_at": TEST_DATETIME,
+        ROOT_TAG: {
+            "series": {"name": "Captain Science"},
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "publisher": "Youthful Adventure Stories",
+            "year": 1950,
+            "month": 11,
+            "day": 1,
+            "volume": {"name": 1950, "issue_count": 7},
+            "language": "en",
+            "notes": TEST_READ_NOTES,
+            "characters": {
+                "Captain Science",
+                "Gordon Dane",
+            },
+            "contributors": {
+                "inker": {"Wally Wood"},
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "genres": {"Science Fiction"},
+            "identifiers": {
+                "comicvine": {
+                    "nss": "4000-145269",
+                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                }
+            },
+            "pages": [
+                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                {"index": 1, "size": 332936},
+                {"index": 2, "size": 458657},
+                {"index": 3, "size": 450456},
+                {"index": 4, "size": 436648},
+                {"index": 5, "size": 443725},
+                {"index": 6, "size": 469526},
+                {"index": 7, "size": 429811},
+                {"index": 8, "size": 445513},
+                {"index": 9, "size": 446292},
+                {"index": 10, "size": 458589},
+                {"index": 11, "size": 417623},
+                {"index": 12, "size": 445302},
+                {"index": 13, "size": 413271},
+                {"index": 14, "size": 434201},
+                {"index": 15, "size": 439049},
+                {"index": 16, "size": 485957},
+                {"index": 17, "size": 388379},
+                {"index": 18, "size": 368138},
+                {"index": 19, "size": 427874},
+                {"index": 20, "size": 422522},
+                {"index": 21, "size": 442529},
+                {"index": 22, "size": 423785},
+                {"index": 23, "size": 427980},
+                {"index": 24, "size": 445631},
+                {"index": 25, "size": 413615},
+                {"index": 26, "size": 417605},
+                {"index": 27, "size": 439120},
+                {"index": 28, "size": 451598},
+                {"index": 29, "size": 451550},
+                {"index": 30, "size": 438346},
+                {"index": 31, "size": 454914},
+                {"index": 32, "size": 428461},
+                {"index": 33, "size": 438091},
+                {"index": 34, "size": 353013},
+                {"index": 35, "size": 340840},
+            ],
+            "page_count": 36,
+            "story_arcs": {
+                "Captain Arc": 4,
+                "Other Arc": 2,
+            },
+            "reprints": [
+                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+            ],
+            "tagger": "comicbox dev",
+            "title": "The Beginning",
+            "updated_at": TEST_DATETIME,
+        }
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 
 READ_CIX_DICT = MappingProxyType(
     {
-        ComicInfoSchema.ROOT_TAG: {
+        "ComicInfo": {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1",
+            "AlternateNumber": "001",
+            "AlternateSeries": "Captain Science Alternate",
             "Characters": "Captain Science,Gordon Dane",
             "Count": 7,
             "Day": 1,
-            "GTIN": "urn:comicvine:145269",
+            "GTIN": "urn:comicvine:4000-145269",
             "Genre": "Science Fiction",
             "Inker": "Wally Wood",
-            "LanguageISO": "English",
+            "LanguageISO": "en",
             "Month": 11,
             "Notes": TEST_READ_NOTES,
             "Number": "1",
@@ -168,7 +182,7 @@ WRITE_CIX_STR = xmltodict.unparse(
 )
 
 CIX_TESTER = TestParser(
-    ComicInfoSchema,
+    ComicInfoTransform,
     CIX_CBZ_FN,
     READ_METADATA,
     READ_CIX_DICT,
@@ -230,4 +244,4 @@ def test_cix_read():
 
 def test_cix_write():
     """Write cbz with CIX."""
-    CIX_TESTER.test_md_write()
+    CIX_TESTER.test_md_write(page_count=36)

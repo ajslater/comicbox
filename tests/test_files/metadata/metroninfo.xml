@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MetronInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0">
+	<Arcs>
+		<Arc>
+			<Name>Captain Arc</Name>
+			<Number>4</Number>
+		</Arc>
+		<Arc>
+			<Name>Other Arc</Name>
+			<Number>2</Number>
+		</Arc>
+	</Arcs>
+	<Characters>
+		<Character>Captain Science</Character>
+		<Character>Gordon Dane</Character>
+	</Characters>
+	<CoverDate>1950-11-01</CoverDate>
+	<Credits>
+		<Credit>
+			<Creator>Joe Orlando</Creator>
+			<Roles>
+				<Role>Writer</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Wally Wood</Creator>
+			<Roles>
+				<Role>Inker</Role>
+				<Role>Penciller</Role>
+			</Roles>
+		</Credit>
+	</Credits>
+	<GTIN>
+		<ISBN>123-456789-0123</ISBN>
+		<UPC>12345</UPC>
+	</GTIN>
+	<Genres>
+		<Genre>Science Fiction</Genre>
+	</Genres>
+	<ID source="Comic Vine"/>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269 urn:isbn:123-456789-0123 urn:upc:12345</Notes>
+	<Number>1</Number>
+	<PageCount>0</PageCount>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Reprints>
+		<Reprint>Captain Science Alternate #001</Reprint>
+	</Reprints>
+	<Series lang="en">
+		<Name>Captain Science</Name>
+		<Volume>1950</Volume>
+	</Series>
+	<Stories>
+		<Story>Captain Lost</Story>
+		<Story>Science is Good</Story>
+	</Stories>
+	<URL>https://comicvine.gamespot.com/captain-science-1/4000-145269/</URL>
+</MetronInfo>

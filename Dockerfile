@@ -1,11 +1,21 @@
-ARG CODEX_BUILDER_BASE_VERSION
-FROM ajslater/codex-builder-base:$CODEX_BUILDER_BASE_VERSION
+FROM python:3.12.0-bookworm
+LABEL maintainer="AJ Slater <aj@slater.net>"
+
+COPY debian.sources /etc/apt/sources.list.d/
+# hadolint ignore=DL3008
+RUN apt-get clean \
+  && apt-get update \
+  && apt-get install --no-install-recommends -y \
+    bash \
+    mupdf \
+    npm \
+    ruamel.yaml.clib \
+    unrar \
+    zlib1g \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN rm -rf python_cacher
-# hadolint ignore=DL3018, DL3059
-RUN apk add --no-cache \
-  shellcheck
 
 COPY bin ./bin
 COPY package.json package-lock.json pyproject.toml poetry.lock Makefile ./

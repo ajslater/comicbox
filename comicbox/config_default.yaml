@@ -1,8 +1,9 @@
 comicbox:
   # Options
+  compute_pages: True
   config: null
+  delete: False
   delete_orig: False
-  delete_tags: False
   dest_path: .
   dry_run: False
   loglevel: INFO
@@ -12,17 +13,18 @@ comicbox:
     [
       "cli",
       "comet",
-      "comicbox",
+      "metroninfo",
       "comicbookinfo",
       "comicinfo",
       "comictagger",
       "filename",
+      "json",
       "pdf",
-      "xml",
       "yaml",
     ]
   read_ignore: []
   recurse: False
+  stamp_notes: True
   tagger: null
   # API Options
   close_fd: True

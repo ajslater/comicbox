@@ -1,11 +1,12 @@
 """Get Metadata mixin."""
-from typing import Optional
+from types import MappingProxyType
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
-from comicbox.schemas.base import sort_dict
-from comicbox.schemas.comicbox_base import ComicboxBaseSchema, SchemaConfig
-from comicbox.schemas.yaml import ComicboxYamlSchema
+from comicbox.dict_funcs import sort_dict
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 
 
 class ComicboxMetadataMixin(ComicboxComputedMixin):
@@ -13,40 +14,52 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
 
     def _set_metadata(self):
         # collect metadata
-        computed_synthed_metadata = self.get_computed_synthed_metadata()
-        self._metadata = sort_dict(computed_synthed_metadata)
+        computed_merged_metadata = self.get_computed_merged_metadata()
+        if not computed_merged_metadata:
+            computed_merged_metadata = {ROOT_TAG: {}}
+        self._metadata = MappingProxyType(sort_dict(computed_merged_metadata))
 
-    def _get_metadata(self) -> dict:
+    def _get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""
         if not self._metadata:
             self._set_metadata()
         return self._metadata
 
     @archive_close
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""
         return self._get_metadata()
+
+    def _to_dict(
+        self,
+        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+    ):
+        # Get schema instance.
+        schema = transform_class.SCHEMA_CLASS(path=self._path)
+
+        # Get transformed md
+        transform = transform_class(self._path)
+        md = self._get_metadata()
+        md = transform.from_comicbox(md)
+
+        return schema, md
 
     @archive_close
     def to_dict(
         self,
-        schema_class: type[ComicboxBaseSchema] = ComicboxYamlSchema,
-        dump_config: Optional[SchemaConfig] = None,
-        **kwargs
-    ):
-        """Get synthesized metadata as a dict."""
-        md = self._get_metadata()
-        schema = schema_class(self._path, dump_config)
-        return schema.dump(md, **kwargs)
+        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+        **kwargs,
+    ) -> dict:
+        """Get merged metadata as a dict."""
+        schema, md = self._to_dict(transform_class)
+        return dict(schema.dump(md, **kwargs))
 
     @archive_close
     def to_string(
         self,
-        schema_class: type[ComicboxBaseSchema] = ComicboxYamlSchema,
-        dump_config: Optional[SchemaConfig] = None,
-        **kwargs
-    ):
-        """Get synthesized metadata as a string."""
-        md = self._get_metadata()
-        schema = schema_class(self._path, dump_config)
+        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+        **kwargs,
+    ) -> str:
+        """Get mergeesized metadata as a string."""
+        schema, md = self._to_dict(transform_class)
         return schema.dumps(md, **kwargs)

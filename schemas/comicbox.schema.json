@@ -16,13 +16,6 @@
         "age_rating": {
           "type": "string"
         },
-        "alternate_issue": {
-          "type": "string"
-        },
-        "alternate_issue_count": {
-          "type": "integer",
-          "minimum": 0
-        },
         "characters": {
           "type": "array",
           "items": {
@@ -78,9 +71,6 @@
       },
       "issue": {
         "type": "string"
-      },
-      "issue_count": {
-        "type": "integer"
       },
       "issue_number": {
         "type": "integer"
@@ -174,6 +164,26 @@
       "remainder": {
         "type": "string"
       },
+      "reprints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "publisher": {
+              "type": "string"
+            },
+            "imprint": {
+              "type": "string"
+            },
+            "series": {
+              "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.series.schema.json"
+            },
+            "volume": {
+              "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.volume.schema.json"
+            }
+          }
+        }
+      },
       "review": {
         "type": "string"
       },
@@ -184,7 +194,7 @@
         "type": "string"
       },
       "series": {
-        "type": "string"
+        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.series.schema.json"
       },
       "series_groups": {
         "type": "array",
@@ -221,11 +231,7 @@
         "format": "uri"
       },
       "volume": {
-        "type": "integer"
-      },
-      "volume_count": {
-        "type": "integer",
-        "minimum": 0
+        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.volume.schema.json"
       },
       "year": {
         "type": "integer",

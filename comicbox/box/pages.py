@@ -4,7 +4,7 @@ from logging import getLogger
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.fields.enum import PageTypeEnum
-from comicbox.schemas.comicbox_base import PAGES_KEY
+from comicbox.schemas.comicbox_mixin import PAGES_KEY
 
 LOG = getLogger(__name__)
 

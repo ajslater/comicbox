@@ -6,45 +6,54 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.comictagger import ComictaggerSchema
+from comicbox.transforms.comictagger import ComictaggerTransform
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comictagger.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["ct"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["ct"], read=["ct"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["ct"], compute_pages=False))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(write=["ct"], read=["ct"], compute_pages=False)
+)
 READ_METADATA = MappingProxyType(
     {
-        "series": "Captain Science",
-        "identifiers": {"comicvine": "145269"},
-        "issue": "1",
-        "issue_count": 7,
-        "issue_number": Decimal("1"),
-        "publisher": "Youthful Adventure Stories",
-        "month": 11,
-        "notes": TEST_READ_NOTES,
-        "year": 1950,
-        "day": 1,
-        "genres": {"Science Fiction"},
-        "volume": 1950,
-        "contributors": {
-            "penciller": {"Wally Wood"},
-            "writer": {"Joe Orlando"},
-        },
-        "language": "en",
-        "country": "US",
-        "title": "The Beginning",
-        "page_count": 0,
-        "tagger": "comicbox dev",
-        "updated_at": TEST_DATETIME,
-        "web": "https://comicvine.gamespot.com/c/4000-145269/",
+        ROOT_TAG: {
+            "series": {"name": "Captain Science"},
+            "identifiers": {
+                "comicvine": {
+                    "nss": "4000-145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                }
+            },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "publisher": "Youthful Adventure Stories",
+            "month": 11,
+            "notes": TEST_READ_NOTES,
+            "year": 1950,
+            "day": 1,
+            "genres": {"Science Fiction"},
+            "volume": {"name": 1950, "issue_count": 7},
+            "contributors": {
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "language": "en",
+            "country": "US",
+            "title": "The Beginning",
+            "page_count": 0,
+            "tagger": "comicbox dev",
+            "updated_at": TEST_DATETIME,
+        }
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_CT_DICT = MappingProxyType(
     {
-        ComictaggerSchema.ROOT_TAG: {
-            "country": "United States",
+        ComictaggerSchema.ROOT_TAGS[0]: {
+            "country": "US",
             "credits": [
                 {"person": "Wally Wood", "role": "Penciller"},
                 {
@@ -53,19 +62,22 @@ READ_CT_DICT = MappingProxyType(
                 },
             ],
             "day": 1,
-            "genres": "Science Fiction",
+            "genres": ["Science Fiction"],
             "issue": "1",
-            "issueCount": 7,
-            "language": "English",
+            "issue_count": 7,
+            "issue_id": "4000-145269",
+            "identifier": "urn:comicvine:4000-145269",
+            "language": "en",
             "month": 11,
             "notes": TEST_READ_NOTES,
-            "pageCount": 0,
+            "page_count": 0,
             "publisher": "Youthful Adventure Stories",
             "series": "Captain Science",
+            "tag_origin": {"name": "comicvine"},
             "title": "The Beginning",
             "volume": 1950,
             "year": 1950,
-            "webLink": "https://comicvine.gamespot.com/c/4000-145269/",
+            "web_link": "https://comicvine.gamespot.com/c/4000-145269/",
         },
     }
 )
@@ -75,7 +87,7 @@ WRITE_CT_STR = json.dumps(dict(WRITE_CT_DICT.items()), sort_keys=True, indent=2)
 
 
 CT_TESTER = TestParser(
-    ComictaggerSchema,
+    ComictaggerTransform,
     FN,
     READ_METADATA,
     READ_CT_DICT,

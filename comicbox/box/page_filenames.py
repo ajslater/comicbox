@@ -3,7 +3,6 @@ from sys import maxsize
 
 from comicbox.box.archive import archive_close
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
-from comicbox.pdf_file import PDFFile
 
 
 class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
@@ -16,7 +15,7 @@ class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
     def _set_page_filenames(self):
         """Parse the filenames that are comic pages."""
         archive_filenames = self._get_archive_namelist()
-        if self._archive_cls == PDFFile:
+        if self._archive_is_pdf:
             self._page_filenames = archive_filenames
         else:
             self._page_filenames = []

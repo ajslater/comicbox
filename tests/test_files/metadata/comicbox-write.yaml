@@ -1,9 +1,11 @@
 comicbox:
   ext: cbz
   identifiers:
-    comicvine: '145269'
+    comicvine:
+      nss: 4000-145269
+      url: https://comicvine.gamespot.com/c/4000-145269/
   imprint: TestImprint
-  notes: Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269
+  notes: Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269
   page_count: 36
   pages:
     - {index: 0, page_type: FrontCover, size: 429985}
@@ -43,7 +45,8 @@ comicbox:
     - {index: 34, size: 353013}
     - {index: 35, size: 340840}
   publisher: TestPub
-  series: empty
+  series:
+    name: empty
   story_arcs:
     d: 1
     e: 3
@@ -54,4 +57,3 @@ comicbox:
     - b
     - c
   updated_at: '1970-01-01T00:00:00'
-  web: https://comicvine.gamespot.com/c/4000-145269/

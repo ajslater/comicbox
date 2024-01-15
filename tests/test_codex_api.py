@@ -1,5 +1,7 @@
 """Test the API surface that Codex uses."""
 from argparse import Namespace
+from contextlib import suppress
+from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -9,12 +11,11 @@ from types import MappingProxyType
 import pytest
 from deepdiff.diff import DeepDiff
 
-try:
-    from fitz import fitz
+from comicbox.box.computed import deep_update
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 
-    FITZ_IMPORTED = True
-except ImportError:
-    FITZ_IMPORTED = False
+with suppress(ImportError):
+    import fitz
 
 
 from comicbox.box import Comicbox
@@ -44,98 +45,117 @@ class Fixture:
 
 CBZ_MD = MappingProxyType(
     {
-        "characters": {"Captain Science", "Gordon Dane"},
-        "contributors": {
-            "inker": {"Wally Wood"},
-            "penciller": {"Wally Wood"},
-            "writer": {"Joe Orlando"},
-        },
-        "day": 1,
-        "ext": "cbz",
-        "genres": {"Science Fiction"},
-        "identifiers": {"comicvine": "145269"},
-        "issue": "1",
-        "issue_count": 7,
-        "issue_number": Decimal("1"),
-        "language": "en",
-        "month": 11,
-        "notes": TEST_READ_NOTES,
-        "page_count": 36,
+        ROOT_TAG: {
+            "characters": {"Captain Science", "Gordon Dane"},
+            "contributors": {
+                "inker": {"Wally Wood"},
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "day": 1,
+            "ext": "cbz",
+            "genres": {"Science Fiction"},
+            "identifiers": {
+                "comicvine": {
+                    "nss": "4000-145269",
+                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                }
+            },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "month": 11,
+            "notes": TEST_READ_NOTES,
+            "page_count": 36,
+            "pages": [
+                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                {"index": 1, "size": 332936},
+                {"index": 2, "size": 458657},
+                {"index": 3, "size": 450456},
+                {"index": 4, "size": 436648},
+                {"index": 5, "size": 443725},
+                {"index": 6, "size": 469526},
+                {"index": 7, "size": 429811},
+                {"index": 8, "size": 445513},
+                {"index": 9, "size": 446292},
+                {"index": 10, "size": 458589},
+                {"index": 11, "size": 417623},
+                {"index": 12, "size": 445302},
+                {"index": 13, "size": 413271},
+                {"index": 14, "size": 434201},
+                {"index": 15, "size": 439049},
+                {"index": 16, "size": 485957},
+                {"index": 17, "size": 388379},
+                {"index": 18, "size": 368138},
+                {"index": 19, "size": 427874},
+                {"index": 20, "size": 422522},
+                {"index": 21, "size": 442529},
+                {"index": 22, "size": 423785},
+                {"index": 23, "size": 427980},
+                {"index": 24, "size": 445631},
+                {"index": 25, "size": 413615},
+                {"index": 26, "size": 417605},
+                {"index": 27, "size": 439120},
+                {"index": 28, "size": 451598},
+                {"index": 29, "size": 451550},
+                {"index": 30, "size": 438346},
+                {"index": 31, "size": 454914},
+                {"index": 32, "size": 428461},
+                {"index": 33, "size": 438091},
+                {"index": 34, "size": 353013},
+                {"index": 35, "size": 340840},
+            ],
+            "publisher": "Youthful Adventure Stories",
+            "remainders": ["-cix"],
+            "reprints": [
+                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
+            ],
+            "series": {"name": "Captain Science"},
+            "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
+            "title": "The Beginning",
+            "tagger": f"comicbox {VERSION}",
+            "updated_at": TEST_DATETIME,
+            "volume": {"name": 1950, "issue_count": 7},
+            "year": 1950,
+        }
+    }
+)
+CBR_MD_PATCH = {
+    ROOT_TAG: {
+        "country": "US",
+        "ext": "cbr",
+        "series": {"volume_count": 1},
+        "remainders": ["-cix-cbi"],
+    },
+}
+CBR_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBR_MD_PATCH))
+CBT_MD_PATCH = {
+    ROOT_TAG: {
+        "ext": "cbt",
+        "page_count": 5,
         "pages": [
             {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
             {"index": 1, "size": 332936},
             {"index": 2, "size": 458657},
             {"index": 3, "size": 450456},
             {"index": 4, "size": 436648},
-            {"index": 5, "size": 443725},
-            {"index": 6, "size": 469526},
-            {"index": 7, "size": 429811},
-            {"index": 8, "size": 445513},
-            {"index": 9, "size": 446292},
-            {"index": 10, "size": 458589},
-            {"index": 11, "size": 417623},
-            {"index": 12, "size": 445302},
-            {"index": 13, "size": 413271},
-            {"index": 14, "size": 434201},
-            {"index": 15, "size": 439049},
-            {"index": 16, "size": 485957},
-            {"index": 17, "size": 388379},
-            {"index": 18, "size": 368138},
-            {"index": 19, "size": 427874},
-            {"index": 20, "size": 422522},
-            {"index": 21, "size": 442529},
-            {"index": 22, "size": 423785},
-            {"index": 23, "size": 427980},
-            {"index": 24, "size": 445631},
-            {"index": 25, "size": 413615},
-            {"index": 26, "size": 417605},
-            {"index": 27, "size": 439120},
-            {"index": 28, "size": 451598},
-            {"index": 29, "size": 451550},
-            {"index": 30, "size": 438346},
-            {"index": 31, "size": 454914},
-            {"index": 32, "size": 428461},
-            {"index": 33, "size": 438091},
-            {"index": 34, "size": 353013},
-            {"index": 35, "size": 340840},
         ],
-        "publisher": "Youthful Adventure Stories",
-        "remainders": ["-cix"],
-        "series": "Captain Science",
-        "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
-        "title": "The Beginning",
-        "tagger": f"comicbox {VERSION}",
-        "updated_at": TEST_DATETIME,
-        "volume": 1950,
-        "web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-        "year": 1950,
     }
-)
-CBR_MD_PATCH = {"ext": "cbr", "country": "US", "remainders": ["-cix-cbi"]}
-CBR_MD = MappingProxyType({**CBZ_MD, **CBR_MD_PATCH})
-CBT_MD_PATCH = {
-    "ext": "cbt",
-    "page_count": 5,
-    "pages": [
-        {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
-        {"index": 1, "size": 332936},
-        {"index": 2, "size": 458657},
-        {"index": 3, "size": 450456},
-        {"index": 4, "size": 436648},
-    ],
 }
-CBT_MD = MappingProxyType({**CBZ_MD, **CBT_MD_PATCH})
+CBT_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBT_MD_PATCH))
 PDF_MD = MappingProxyType(
     {
-        "contributors": {"writer": {"Jon Osterman"}},
-        "ext": "pdf",
-        "genres": {"Science Fiction"},
-        # "page_count": 4,
-        "scan_info": "Pages",
-        "series": "test pdf",
-        "tags": {"d", "f", "e"},
-        "title": "the tangle of their lives",
-        "tagger": f"comicbox {VERSION}",
+        ROOT_TAG: {
+            "contributors": {"writer": {"Jon Osterman"}},
+            "ext": "pdf",
+            "genres": {"Science Fiction"},
+            "page_count": 4,
+            "scan_info": "Pages",
+            "series": {"name": "test pdf"},
+            "tags": {"d", "f", "e"},
+            "title": "the tangle of their lives",
+            "tagger": f"comicbox {VERSION}",
+        }
     }
 )
 
@@ -194,12 +214,13 @@ def test_cover_image(ft):
         disk_cover = f.read()
     if cover_path.suffix == ".pdf":
         # transform file to image.
-        assert FITZ_IMPORTED
-        if not fitz:
-            return
-        doc = fitz.Document(stream=disk_cover)
-        pix = doc.get_page_pixmap(0)  # type: ignore
-        disk_cover = pix.tobytes(output="ppm")
+        try:
+            doc = fitz.Document(stream=disk_cover)  # type: ignore
+            pix = doc.get_page_pixmap(0)  # type: ignore
+            disk_cover = pix.tobytes(output="ppm")
+        except NameError as exc:
+            reason = "fitz not imported from pymupdf (comicbox-pdffile)"
+            raise AssertionError(reason) from exc
 
     assert cover == disk_cover
 

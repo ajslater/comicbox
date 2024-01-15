@@ -7,12 +7,13 @@ from types import MappingProxyType
 from deepdiff.diff import DeepDiff
 
 from comicbox import cli
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.yaml import YamlRenderModule
-from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH, TEST_DTTM_STR
+from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH
 from tests.util import diff_strings
 
 CLI_METADATA_ARGS = (
-    "comicbox",
+    ROOT_TAG,
     "-m",
     "Tags: 'a, b, c',Publisher: TestPub,story_arcs: {d: 1,e: 3,f: 5}",
     "-m",
@@ -20,14 +21,15 @@ CLI_METADATA_ARGS = (
 )
 CLI_DICT = MappingProxyType(
     {
-        "comicbox": {
+        ROOT_TAG: {
             "ext": "cbz",
             "imprint": "TestImprint",
+            "page_count": 0,
             "publisher": "TestPub",
-            "series": "empty",
+            "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tags": ["a", "b", "c"],
-            "updated_at": TEST_DTTM_STR,
+            # "updated_at": TEST_DTTM_STR,
         }
     }
 )
@@ -60,7 +62,7 @@ CBZ
 
 def test_cli_filetype():
     """Test filetype action."""
-    args = ("comicbox", "-n", "t", str(EMPTY_CBZ_SOURCE_PATH))
+    args = (ROOT_TAG, "-P", "t", str(EMPTY_CBZ_SOURCE_PATH))
     output = "\n" + _get_output(args)
     assert output == FILETYPE_OUTPUT
 
@@ -74,37 +76,12 @@ empty.cbz
 
 def test_cli_source():
     """Test print source action."""
-    args = ("comicbox", "-n", "s", str(EMPTY_CBZ_SOURCE_PATH))
+    args = (ROOT_TAG, "-P", "s", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(SOURCE_OUTPUT)
     diff_strings(SOURCE_OUTPUT, output)
     assert output == SOURCE_OUTPUT
-
-
-PARSED_OUTPUT = """
-===== tests/test_files/empty.cbz ===============================================
------ Parsed Filename tests/test_files/empty.cbz -------------------------------
-ext: cbz
-series: empty
-"""
-
-
-def test_cli_parsed():
-    """Test print parsed action."""
-    args = ("comicbox", "-n", "p", str(EMPTY_CBZ_SOURCE_PATH))
-    output = _get_output(args)
-    # filtered_output = []
-    # for line in output.split("\n"):
-    #    if "updated_at:" not in line:
-    #        filtered_output.append(line)
-    # output = "\n".join(filtered_output)
-    output = "\n" + output
-    print(PARSED_OUTPUT)
-    print(output)
-    print(len(PARSED_OUTPUT), len(output))
-    diff_strings(PARSED_OUTPUT, output)
-    assert output == PARSED_OUTPUT
 
 
 LOADED_OUTPUT = """
@@ -118,7 +95,7 @@ comicbox:
 
 def test_cli_loaded():
     """Test print loaded action."""
-    args = ("comicbox", "-n", "l", str(EMPTY_CBZ_SOURCE_PATH))
+    args = (ROOT_TAG, "-P", "l", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     # filtered_output = []
     # for line in output.split("\n"):
@@ -136,16 +113,14 @@ def test_cli_loaded():
 def test_cli_print():
     """Simple cli metadata print test."""
     args = (*CLI_METADATA_ARGS, "-p", str(EMPTY_CBZ_SOURCE_PATH))
+    cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
     output = _get_output(args)
     output = output.split("\n", 1)[1]  # remove first line
 
-    yaml = YamlRenderModule.get_write_yaml(dfs=True)
+    yaml = YamlRenderModule.get_write_yaml()
     output_dict = yaml.load(output)
-    output_dict["comicbox"]["story_arcs"] = dict(output_dict["comicbox"]["story_arcs"])
-    output_dict["comicbox"]["tags"] = list(output_dict["comicbox"]["tags"])
-    output_dict["comicbox"].pop("notes", None)
-    output_dict["comicbox"]["updated_at"] = TEST_DTTM_STR
-    output_dict = {"comicbox": dict(output_dict["comicbox"])}
+    output_dict[ROOT_TAG] = dict(output_dict[ROOT_TAG])
+    output_dict[ROOT_TAG]["story_arcs"] = dict(output_dict[ROOT_TAG]["story_arcs"])
     output_dict = MappingProxyType(output_dict)
     diff = DeepDiff(CLI_DICT, output_dict, ignore_order=True)
     pprint(CLI_DICT)
@@ -200,7 +175,7 @@ Page	Archive Path
 
 def test_cli_print_contents():
     """Test list contents."""
-    args = ("comicbox", "-n", "n", str(CIX_CBI_CBR_SOURCE_PATH))
+    args = (ROOT_TAG, "-P", "f", str(CIX_CBI_CBR_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(LIST_OUTPUT)

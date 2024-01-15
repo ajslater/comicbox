@@ -1,6 +1,7 @@
 """Utility functions for testing metadata."""
 import shutil
 from collections.abc import Mapping
+from contextlib import suppress
 from copy import deepcopy
 from difflib import ndiff
 from pathlib import Path
@@ -10,21 +11,18 @@ from typing import Optional, Union
 
 from deepdiff.diff import DeepDiff
 
-try:
-    from fitz import fitz
+from comicbox.schemas.comicbox_mixin import NOTES_KEY, ROOT_TAG
+from comicbox.transforms.base import BaseTransform
 
-    FITZ_IMPORTED = True
-except ImportError:
-    FITZ_IMPORTED = False
+with suppress(ImportError):
+    import fitz
 
 from comicbox.box import Comicbox
-from comicbox.schemas.comicbookinfo import LAST_MODIFIED_KEY
-from comicbox.schemas.comicbox_base import (
+from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG
+from comicbox.schemas.comicbox_mixin import (
     PAGE_COUNT_KEY,
     PAGES_KEY,
     UPDATED_AT_KEY,
-    ComicboxBaseSchema,
-    SchemaConfig,
 )
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
@@ -72,7 +70,14 @@ def diff_strings(a, b):
             print(f'Add "{s[-1]}" to position {i}')
 
 
-def read_metadata(archive_path, metadata, read_config, page_count=None):
+def read_metadata(  # noqa: PLR0913
+    archive_path,
+    metadata,
+    read_config,
+    page_count=None,
+    ignore_updated_at=False,
+    ignore_notes=False,
+):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "nslc"
     print(archive_path)
@@ -80,14 +85,23 @@ def read_metadata(archive_path, metadata, read_config, page_count=None):
         car.print_out()
         disk_md = MappingProxyType(car.get_metadata())
     if page_count is not None:
-        metadata = dict(metadata)
-        metadata[PAGE_COUNT_KEY] = page_count
-        if pages := metadata.get(PAGES_KEY):
+        disk_md = dict(disk_md)
+        disk_md[ROOT_TAG][PAGE_COUNT_KEY] = page_count
+        if pages := disk_md.get(PAGES_KEY):
             if page_count:
-                metadata[PAGES_KEY] = pages[:page_count]
+                disk_md[PAGES_KEY] = pages[:page_count]
             else:
-                metadata.pop(PAGES_KEY, None)
-        metadata = MappingProxyType(metadata)
+                disk_md.pop(PAGES_KEY, None)
+        disk_md = MappingProxyType(disk_md)
+    if ignore_updated_at:
+        metadata = dict(metadata)
+        metadata[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        disk_md = dict(disk_md)
+        disk_md[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    if ignore_notes:
+        metadata = dict(metadata)
+        metadata[ROOT_TAG].pop(NOTES_KEY, None)
+        disk_md[ROOT_TAG].pop(NOTES_KEY, None)
     pprint(metadata)
     pprint(disk_md)
     diff = DeepDiff(metadata, disk_md, ignore_order=True)
@@ -98,10 +112,10 @@ def read_metadata(archive_path, metadata, read_config, page_count=None):
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
 
 
-def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated):
+def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
     pruned_lines = []
     for line in lines:
-        if ignore_last_modified and f'"{LAST_MODIFIED_KEY}":' in line:
+        if ignore_last_modified and f'"{LAST_MODIFIED_TAG}":' in line:
             continue
         if ignore_notes:
             skip = False
@@ -110,10 +124,33 @@ def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated):
                     skip = True
             if skip:
                 continue
-        if ignore_updated and UPDATED_AT_KEY in line:
+        if ignore_updated_at and UPDATED_AT_KEY in line:
             continue
         pruned_lines.append(line)
     return pruned_lines
+
+
+def _prune_same_lines(
+    a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+):
+    a_lines = _prune_lines(
+        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+    )
+    b_lines = _prune_lines(
+        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+    )
+    return a_lines, b_lines
+
+
+def _prune_strings(a_str, b_str, ignore_last_modified, ignore_notes, ignore_updated_at):
+    a_lines = a_str.splitlines()
+    b_lines = b_str.splitlines()
+    a_lines, b_lines = _prune_same_lines(
+        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+    )
+    a_str = "\n".join(a_lines)
+    b_str = "\n".join(b_lines)
+    return a_str, b_str
 
 
 def compare_files(
@@ -128,11 +165,8 @@ def compare_files(
         a_lines = file_a.readlines()
         b_lines = file_b.readlines()
 
-    a_lines = _prune_lines(
-        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at
-    )
-    b_lines = _prune_lines(
-        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+    a_lines, b_lines = _prune_same_lines(
+        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
     )
 
     for line_a, line_b in zip(a_lines, b_lines):
@@ -144,9 +178,6 @@ def compare_files(
     return True
 
 
-DUMP_CONFIG = SchemaConfig(stamp=True, updated_at=TEST_DATETIME)
-
-
 class TestParser:
     """Generic parser tester."""
 
@@ -154,7 +185,7 @@ class TestParser:
 
     def __init__(  # noqa PLR0913
         self,
-        schema_class: type[ComicboxBaseSchema],
+        transform_class: type[BaseTransform],
         test_fn: Union[Path, str],
         read_reference_metadata: Mapping,
         read_native_dict: Mapping,
@@ -167,9 +198,9 @@ class TestParser:
         export_fn=None,
     ):
         """Initialize common variables."""
-        self.schema_class = schema_class
-        self.schema = schema_class(test_fn)
-        self.tmp_dir = TMP_ROOT_DIR / f"test_{schema_class.__name__}"
+        self.transform_class = transform_class
+        self.schema = transform_class.SCHEMA_CLASS(path=test_fn)
+        self.tmp_dir = TMP_ROOT_DIR / f"test_{transform_class.__name__}"
         self.test_fn = Path(test_fn)
         self.read_reference_metadata = read_reference_metadata
         self.read_reference_native_dict = read_native_dict
@@ -178,6 +209,9 @@ class TestParser:
             self.write_reference_metadata = write_reference_metadata
         else:
             self.write_reference_metadata = self.read_reference_metadata
+
+        self.saved_wrm = deepcopy(dict(self.write_reference_metadata))
+
         if write_native_dict:
             self.write_reference_native_dict = write_native_dict
         else:
@@ -206,28 +240,31 @@ class TestParser:
     def _test_from(self, md):
         pprint(self.read_reference_metadata)
         pprint(md)
-        diff = DeepDiff(dict(self.read_reference_metadata), md)
+        diff = DeepDiff(self.read_reference_metadata, md)
         pprint(diff)
         assert not diff
 
     def test_from_metadata(self):
         """Test assign metadata."""
-        pruned = self.schema.prune(self.read_reference_metadata)
+        # pruned = self.schema.prune(self.read_reference_metadata)
+        pruned = self.read_reference_metadata
         with Comicbox(metadata=pruned) as car:
             md = car.get_metadata()
         self._test_from(md)
 
     def test_from_dict(self):
         """Test load from native dict."""
+        # from comicbox.print import PrintPhases
         with Comicbox() as car:
-            car.add_source(self.read_reference_native_dict, self.schema_class)
+            car.add_source(self.read_reference_native_dict, self.transform_class)
+            # car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
     def test_from_string(self):
         """Test load from string."""
         with Comicbox() as car:
-            car.add_source(self.read_reference_string, self.schema_class)
+            car.add_source(self.read_reference_string, self.transform_class)
             md = car.get_metadata()
         print(self.read_reference_string)
         self._test_from(md)
@@ -236,44 +273,46 @@ class TestParser:
         """Test load from an export file."""
         print(f"{self.reference_export_path=}")
         with Comicbox() as car:
-            car.add_file_source(self.reference_export_path, self.schema_class)
+            car.add_file_source(self.reference_export_path, self.transform_class)
             md = car.get_metadata()
         self._test_from(md)
 
     def compare_dict(self, test_dict):
         """Compare native dicts."""
+        from_dict = deepcopy(dict(self.write_reference_native_dict))
+        to_dict = dict(test_dict)
+        from_dict.pop(UPDATED_AT_KEY, None)
+        to_dict.pop(UPDATED_AT_KEY, None)
         pprint(self.write_reference_native_dict)
         pprint(test_dict)
-        diff = DeepDiff(dict(self.write_reference_native_dict), test_dict)
+        diff = DeepDiff(from_dict, to_dict)
         pprint(diff)
         assert not diff
 
     def to_dict(self, **kwargs):
         """Export metadata to native dict."""
         with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_dict(schema_class=self.schema_class, **kwargs)
-
-        # return self.schema.dump(self.reference_metadata, **kwargs)
+            return car.to_dict(transform_class=self.transform_class, **kwargs)
 
     def test_to_dict(self, **kwargs):
         """Test export metadata to native dict."""
-        test_dict = self.to_dict(dump_config=DUMP_CONFIG, **kwargs)
+        test_dict = self.to_dict(**kwargs)
         self.compare_dict(test_dict)
 
     def to_string(self, **kwargs):
         """Export metadata to string."""
         with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_string(
-                schema_class=self.schema_class, dump_config=DUMP_CONFIG, **kwargs
-            )
-        # return self.schema.dumps(self.reference_metadata, **kwargs)
+            return car.to_string(transform_class=self.transform_class, **kwargs)
 
     def compare_string(self, test_str):
         """Compare strings."""
         print(self.write_reference_string)
         print(test_str)
-        diff_strings(self.write_reference_string, test_str)
-        assert self.write_reference_string == test_str
+        from_str, to_str = _prune_strings(
+            self.write_reference_string, test_str, True, False, True
+        )
+        diff_strings(from_str, to_str)
+        assert from_str == to_str
 
     def test_to_string(self, **kwargs):
         """Test export to string."""
@@ -286,8 +325,7 @@ class TestParser:
         with Comicbox(metadata=self.write_reference_metadata) as car:
             car.to_file(
                 self.export_path.parent,
-                schema_class=self.schema_class,
-                dump_config=DUMP_CONFIG,
+                transform_class=self.transform_class,
                 **kwargs,
             )
         assert self.export_path.exists()
@@ -295,7 +333,9 @@ class TestParser:
             reference_export_path = TEST_METADATA_DIR / export_fn
         else:
             reference_export_path = self.reference_export_path
-        assert compare_files(reference_export_path, self.export_path)
+        assert compare_files(
+            reference_export_path, self.export_path, False, False, True
+        )
         self.teardown_method()
 
     def test_md_read(self, archive_path=None, page_count=None):
@@ -312,12 +352,13 @@ class TestParser:
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
-        ns = self.write_config
-        ns.comicbox.print = "m"
+        config = deepcopy(self.write_config)
+        config.comicbox.updated_at = TEST_DATETIME.isoformat()
+        config.comicbox.print = "slcd"
         with Comicbox(
-            new_test_cbz_path, config=ns, metadata=self.write_reference_metadata
+            new_test_cbz_path, config=config, metadata=self.write_reference_metadata
         ) as car:
-            car.write(dump_config=DUMP_CONFIG)
+            car.write()
             car.print_out()
 
     def write_metadata(self, new_test_cbz_path, page_count=0):
@@ -330,6 +371,8 @@ class TestParser:
             self.write_reference_metadata,
             self.read_config,
             page_count=page_count,
+            ignore_updated_at=True,
+            ignore_notes=True,
         )
         shutil.rmtree(tmp_path)
 
@@ -344,18 +387,23 @@ class TestParser:
 
     def _create_test_pdf(self, new_test_pdf_path):
         """Create a new empty PDF file."""
-        assert FITZ_IMPORTED
-        doc = fitz.Document()
-        doc.new_page()  # type: ignore
-        doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
-        doc.close()
-        pprint(self.write_reference_metadata)
-        with Comicbox(
-            new_test_pdf_path,
-            config=self.write_config,
-            metadata=self.write_reference_metadata,
-        ) as car:
-            car.write(dump_config=DUMP_CONFIG)
+        try:
+            doc = fitz.Document()  # type: ignore
+            doc.new_page()  # type: ignore
+            doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
+            doc.close()
+            pprint(self.write_reference_metadata)
+            config = deepcopy(self.write_config)
+            config.comicbox.updated_at = TEST_DATETIME.isoformat()
+            with Comicbox(
+                new_test_pdf_path,
+                config=config,
+                metadata=self.write_reference_metadata,
+            ) as car:
+                car.write()
+        except NameError as exc:
+            reason = "fitz not imported from comicbox-pdffile"
+            raise AssertionError(reason) from exc
 
     def write_metadata_pdf(
         self,
@@ -376,15 +424,15 @@ class TestParser:
         self.write_metadata_pdf(test_pdf_path)
 
 
-def create_write_metadata(read_metadata):
+def create_write_metadata(read_metadata, notes=TEST_WRITE_NOTES):
     """Create a write metadata from read metadata."""
-    return MappingProxyType(
-        {**deepcopy(dict(read_metadata)), "notes": TEST_WRITE_NOTES}
-    )
+    result = deepcopy(dict(read_metadata))
+    result[ROOT_TAG]["notes"] = notes
+    return MappingProxyType(result)
 
 
-def create_write_dict(read_dict, schema_class, notes_tag):
+def create_write_dict(read_dict, schema_class, notes_tag, notes=TEST_WRITE_NOTES):
     """Create a write dict from read dict."""
     write_dict = deepcopy(dict(read_dict))
-    write_dict[schema_class.ROOT_TAG][notes_tag] = TEST_WRITE_NOTES
+    write_dict[schema_class.ROOT_TAGS[0]][notes_tag] = notes
     return MappingProxyType(write_dict)

@@ -19,19 +19,29 @@
       }
     ],
     "day": 1,
-    "genres": "Science Fiction",
+    "genres": [
+      "Science Fiction"
+    ],
+    "identifier": "urn:comicvine:4000-145269",
     "issue": "1",
-    "issueCount": 7,
-    "language": "English",
+    "issue_count": 7,
+    "issue_id": "4000-145269",
+    "language": "en",
     "month": 11,
     "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
-    "pageCount": 0,
+    "page_count": 0,
     "publisher": "Youthful Adventure Stories",
     "series": "Captain Science",
-    "storyArcs": "Captain Arc,Other Arc",
+    "story_arcs": [
+      "Captain Arc",
+      "Other Arc"
+    ],
+    "tag_origin": {
+      "name": "comicvine"
+    },
     "title": "The Beginning",
     "volume": 1950,
-    "webLink": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+    "web_link": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
     "year": 1950
   }
 }
