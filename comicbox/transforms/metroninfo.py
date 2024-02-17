@@ -214,7 +214,7 @@ class MetronInfoTransform(
             if not resources:
                 continue
             names = set()
-            if isinstance(resources, (Sequence, set, frozenset)) and not isinstance(
+            if isinstance(resources, Sequence | set | frozenset) and not isinstance(
                 resources, str
             ):
                 for resource in resources:

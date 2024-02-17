@@ -1,7 +1,6 @@
 """"Getting and storing source metadata."""
 from logging import getLogger
 from pathlib import Path
-from typing import Optional
 
 from comicbox.box.init import SourceData
 from comicbox.box.page_filenames import ComicboxPageFilenamesMixin
@@ -142,7 +141,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             )
 
     def add_source(
-        self, metadata, transform_class: Optional[type[BaseTransform]] = None, path=None
+        self, metadata, transform_class: type[BaseTransform] | None = None, path=None
     ):
         """Add metadata directly to sources cache."""
         if MetadataSources.ADDED not in self._sources:
@@ -155,9 +154,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
         self._loaded.pop(MetadataSources.ADDED, None)
         self._reset_loaded_forward_caches()
 
-    def add_file_source(
-        self, path, transform_class: Optional[type[BaseTransform]] = None
-    ):
+    def add_file_source(self, path, transform_class: type[BaseTransform] | None = None):
         """Add file contents to added sources."""
         path = Path(path)
         with path.open("r") as f:

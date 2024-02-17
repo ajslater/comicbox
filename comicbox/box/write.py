@@ -2,7 +2,6 @@
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
-from typing import Optional
 
 from comicbox.box.archive_read import archive_close
 from comicbox.box.archive_write import ComicboxArchiveWriteMixin
@@ -119,7 +118,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
     def to_file(
         self,
         dest_path=None,
-        metadata: Optional[Mapping] = None,
+        metadata: Mapping | None = None,
         transform_class: type[BaseTransform] = ComicboxJsonTransform,
         **kwargs,
     ):

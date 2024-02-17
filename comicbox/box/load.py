@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from logging import DEBUG, getLogger
 from traceback import format_exc
 from types import MappingProxyType
-from typing import Optional
 
 from comicbox.box.init import SourceData
 from comicbox.box.merge import ComicboxMergeMixin
@@ -23,10 +22,10 @@ class LoadedMetadata(SourceData):
 class ComicboxLoadMixin(ComicboxMergeMixin):
     """Parsing methods."""
 
-    def _call_load(self, schema_class, source_md) -> Optional[Mapping]:
+    def _call_load(self, schema_class, source_md) -> Mapping | None:
         """Load string or dict."""
         schema = schema_class(path=self._path)
-        if isinstance(source_md, (str, bytes)):
+        if isinstance(source_md, str | bytes):
             return schema.loads(source_md)
         return schema.load(source_md)
 
@@ -39,7 +38,7 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
         if LOG.getEffectiveLevel() == DEBUG:
             LOG.debug(format_exc())
 
-    def _load_unknown_metadata(self, label, source_md) -> Optional[Mapping]:
+    def _load_unknown_metadata(self, label, source_md) -> Mapping | None:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
         for source in MetadataSources:

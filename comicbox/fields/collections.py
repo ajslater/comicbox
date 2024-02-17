@@ -1,6 +1,6 @@
 """Marshmallow collection fields."""
 import re
-from typing import Any, Union
+from typing import Any
 
 from marshmallow import fields
 from marshmallow.utils import is_collection
@@ -78,7 +78,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             return super()._deserialize(value, *args, **kwargs)
         return []
 
-    def _serialize(self, value, *args, **kwargs) -> Union[list[Any], str, None]:  # type:ignore
+    def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore
         value = self._seq_to_str_seq(value)
         if self._sort:
             value = sorted(value)
@@ -91,7 +91,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
 class StringSetField(StringListField):
     """A set of non-empty strings."""
 
-    def _deserialize(self, *args, **kwargs) -> Union[set[Any], str, None]:  # type: ignore
+    def _deserialize(self, *args, **kwargs) -> set[Any] | str | None:  # type: ignore
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:

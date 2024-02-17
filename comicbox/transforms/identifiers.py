@@ -19,7 +19,7 @@ from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 
 
 def _sequence_to_map(identifier_sequence, naked_nid=None):
-    if not isinstance(identifier_sequence, (Sequence, set, frozenset)):
+    if not isinstance(identifier_sequence, Sequence | set | frozenset):
         return identifier_sequence
     # Allow multiple identifiers from xml, etc.
     # Technically out of spec.

@@ -7,7 +7,6 @@ from datetime import datetime
 from logging import getLogger
 from sys import maxsize
 from types import MappingProxyType
-from typing import Optional
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 
@@ -78,7 +77,7 @@ class ComputedData:
     """Computed metadata."""
 
     label: str
-    metadata: Optional[Mapping]
+    metadata: Mapping | None
 
 
 class ComicboxComputedMixin(ComicboxNormalizeMixin):

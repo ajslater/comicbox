@@ -1,6 +1,5 @@
 """Confuse config for comicbox."""
 import contextlib
-import typing
 from argparse import Namespace
 from collections.abc import Mapping
 from logging import getLogger
@@ -196,7 +195,7 @@ def _set_tagger(config):
 
 
 def get_config(
-    args: typing.Union[Namespace, Mapping, AttrDict, None] = None,
+    args: Namespace | Mapping | AttrDict | None = None,
     modname: str = PACKAGE_NAME,
 ) -> AttrDict:
     """Get the config dict, layering env and args over defaults."""

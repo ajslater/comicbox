@@ -2,7 +2,6 @@
 from decimal import Decimal
 from enum import Enum
 from sys import maxsize
-from typing import Union
 
 from ruamel.yaml import YAML, StringIO
 
@@ -67,7 +66,7 @@ class YamlRenderModule:
             return buf.getvalue()
 
     @staticmethod
-    def loads(s: Union[bytes, str], *args, **kwargs):
+    def loads(s: bytes | str, *args, **kwargs):
         """Load YAML string into a dict."""
         cleaned_s = StringField().deserialize(s)
         if cleaned_s:
