@@ -1,7 +1,7 @@
 jobs:
   build:
     machine:
-      image: ubuntu-2004:current
+      image: ubuntu-2204:current
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
       DOCKER_BUILDKIT: 1
@@ -32,7 +32,7 @@ jobs:
           root: .
   deploy:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.12.1
     steps:
       - attach_workspace:
           at: .
