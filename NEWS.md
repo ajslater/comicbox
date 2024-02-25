@@ -1,5 +1,11 @@
 # 📰 News
 
+## v1.0.1
+
+- Fix `--import` option crash.
+- ComicInfo.xml accepts spaces as web field separator
+- Accept numeric types for issues.
+
 ## v1.0.0
 
 - This version contains large breaking changes, some detailed in
@@ -11,8 +17,6 @@
 - Comicbox now writes identifiers to the notes field in urn format.
 - You should probably read the code in `comicbox.box` for public facing apis.
 - comicbfn2dict and comicbox-pdffile are now independent packages.
-- Accept numeric types for issues.
-- ComicInfo.xml accepts spaces as web field separator
 
 ## v0.10.2
 
