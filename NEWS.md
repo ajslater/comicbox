@@ -12,6 +12,7 @@
 - You should probably read the code in `comicbox.box` for public facing apis.
 - comicbfn2dict and comicbox-pdffile are now independent packages.
 - Accept numeric types for issues.
+- ComicInfo.xml accepts spaces as web field separator
 
 ## v0.10.2
 
