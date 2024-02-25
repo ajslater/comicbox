@@ -5,7 +5,6 @@ build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
-
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
 
@@ -33,7 +32,7 @@ class FilenameRenderModule:
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
-        data = obj.get(FilenameSchema.ROOT_TAGS[0])
+        data: dict = obj.get(FilenameSchema.ROOT_TAGS[0])  # type: ignore
         return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod

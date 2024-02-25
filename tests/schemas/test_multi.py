@@ -70,7 +70,6 @@ READ_METADATA = MappingProxyType(
             },
             "summary": "A long example description",
             "last_mark": 12,
-            "remainders": ["multi"],
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
@@ -137,7 +136,6 @@ READ_MULTI_DICT = MappingProxyType(
             },
             "summary": "A long example description",
             "last_mark": 12,
-            "remainders": ["multi"],
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}

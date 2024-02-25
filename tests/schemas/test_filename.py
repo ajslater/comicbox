@@ -22,10 +22,9 @@ METADATA = MappingProxyType(
             "ext": "cbz",
             "issue": "001",
             "issue_number": Decimal("1"),
-            "title": "The Beginning",
+            "title": "The Beginning - nothing",
             "series": {"name": "Captain Science"},
             "year": 1950,
-            "remainders": ["nothing"],
         }
     }
 )
@@ -35,19 +34,18 @@ FILENAME_DICT = MappingProxyType(
         FilenameSchema.ROOT_TAGS[0]: {
             "ext": "cbz",
             "issue": "001",
-            "title": "The Beginning",
+            "title": "The Beginning - nothing",
             "series": "Captain Science",
             "year": 1950,
-            "remainders": ["nothing"],
         }
     }
 )
 
 SUB_DATA: Mapping[str, Any] = METADATA[ROOT_TAG]
-_REMAINDERS_STR = " ".join(SUB_DATA["remainders"])  # type: ignore
+# _REMAINDERS_STR = " ".join(SUB_DATA["remainders"])  # type: ignore
 FILENAME_STR = (
     f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
-    f" {SUB_DATA['title']} - {_REMAINDERS_STR}.{SUB_DATA['ext']}"
+    f" {SUB_DATA['title']}.{SUB_DATA['ext']}"
 )
 FILENAME_STR_NO_REMAINDER = (
     f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"

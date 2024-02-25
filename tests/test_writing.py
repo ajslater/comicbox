@@ -84,7 +84,6 @@ METADATA = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"a", "b", "c"},
             "updated_at": TEST_DATETIME,
-            "remainders": ["-cbi"],
         }
     }
 )
