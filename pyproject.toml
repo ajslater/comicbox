@@ -216,6 +216,7 @@ task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 "comicbox/box/print.py" = ["T201", "T203"]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/*" = ["T201", "T203"]
+"tests/test_import.py" = ["DTZ001"]
 
 [tool.ruff.lint.pycodestyle]
 ignore-overlong-task-comments = true

@@ -101,6 +101,8 @@ class ComicBookInfoSchema(JsonSchema):
     @trap_error(pre_load)
     def move_dot_tag_to_root_key_load(self, data, **_kwargs):
         """Hack around the dot delimiter before load."""
+        if self._ROOT_TAG not in data:
+            return {}
         return self._move_tag_to_another(data, self._ROOT_TAG, self._ROOT_KEY)
 
     @trap_error(post_load)

@@ -55,11 +55,7 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
                 if success_md:
                     LOG.debug(f"Parsed {label} with {schema_class.__name__}")
                     transform_class = source.value.transform_class
-                    if (
-                        source.value.from_archive.value
-                        >= SourceFrom.ARCHIVE_CONTENTS.value
-                    ):
-                        break
+                    break
             except Exception as exc:
                 self._except_on_load(source, exc, level=DEBUG)
         if not success_md:
