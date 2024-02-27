@@ -88,7 +88,8 @@ class PDFXmlTransform(XmlTransform):
         transform = transform_class(self._path)
         schema = transform.SCHEMA_CLASS()
         try:
-            tags = unescape(tags)
+            if issubclass(transform_class, XmlTransform):
+                tags = unescape(tags)
             if (
                 (cix_md := schema.loads(tags))
                 and (md := transform.to_comicbox(cix_md))
