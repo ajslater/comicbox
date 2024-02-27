@@ -46,7 +46,7 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
         """Parse import data string from file trying many different file schemas."""
         success_md = None
         transform_class = None
-        for source in MetadataSources:
+        for source in reversed(MetadataSources):
             if source.value.from_archive == SourceFrom.OTHER:
                 continue
             try:
