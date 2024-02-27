@@ -1,8 +1,10 @@
 # 📰 News
 
-## v1.0.1
+## v1.1.0
 
 - Fix `--import` option crash.
+- Fix parsing tagger and updated_at from notes.
+- PDFs read and write group tags from keywords.
 - ComicInfo.xml accepts spaces as web field separator
 - Accept numeric types for issues.
 
