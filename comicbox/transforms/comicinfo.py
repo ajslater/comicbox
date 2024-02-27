@@ -90,7 +90,7 @@ class ComicInfoTransform(
             "ScanInformation": SCAN_INFO_KEY,
             # "Series": SERIES_KEY,
             "SeriesGroup": "series_groups",
-            # StoryArcs
+            # STORY_ARCS
             # "StoryArc": STORY_ARC_KEY,
             # "StoryArcNumber": STORY_ARC_NUMBER_KEY,
             ##
