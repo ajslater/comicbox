@@ -4,7 +4,7 @@
 
 - Fix `--import` option crash.
 - Fix parsing tagger and updated_at from notes.
-- PDFs read and write group tags from keywords.
+- PDFs read and write ComicInfo.xml from the keywords field.
 - ComicInfo.xml accepts spaces as web field separator
 - Accept numeric types for issues.
 - Major improvements to filename parsing and diversity of filename schemas.

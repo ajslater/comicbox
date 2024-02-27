@@ -1,7 +1,7 @@
 {
   "MuPDF": {
     "author": "Joe Orlando",
-    "keywords": "issue:1,publisher:Youthful Adventure Stories,series:Captain Science,urn:comicvine:4000-145269,volume:1950",
+    "keywords": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<ComicInfo xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"https://anansi-project.github.io/docs/comicinfo/schemas/v2.1\">\n\t<Characters>Captain Science,Gordon Dane</Characters>\n\t<Count>7</Count>\n\t<Day>1</Day>\n\t<GTIN>urn:comicvine:4000-145269</GTIN>\n\t<Genre>Science Fiction</Genre>\n\t<Inker>Wally Wood</Inker>\n\t<LanguageISO>en</LanguageISO>\n\t<Month>11</Month>\n\t<Notes>Tagged with comicbox dev on 2024-02-27T04:56:05 [Issue ID 4000-145269] urn:comicvine:4000-145269</Notes>\n\t<Number>1</Number>\n\t<PageCount>0</PageCount>\n\t<Penciller>Wally Wood</Penciller>\n\t<Publisher>Youthful Adventure Stories</Publisher>\n\t<Series>Captain Science</Series>\n\t<StoryArc>Captain Arc,Other Arc</StoryArc>\n\t<StoryArcNumber>4,2</StoryArcNumber>\n\t<Title>The Beginning</Title>\n\t<Volume>1950</Volume>\n\t<Web>https://comicvine.gamespot.com/captain-science-1/4000-145269/</Web>\n\t<Writer>Joe Orlando</Writer>\n\t<Year>1950</Year>\n</ComicInfo>",
     "producer": "comicbox dev",
     "subject": "Science Fiction",
     "title": "The Beginning"

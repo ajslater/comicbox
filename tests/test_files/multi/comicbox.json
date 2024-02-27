@@ -3,9 +3,7 @@
     "country": "United States",
     "day": 1,
     "genres": ["Science Fiction", "comicbox Genre"],
-    "volume": {
-      "issue_count": 77,
-    },
+    "volume": { "issue_count": 77 },
     "month": 11,
     "page_count": 36,
     "tagger": "comicbox dev",

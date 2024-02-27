@@ -136,6 +136,12 @@ export default [
         files: ["*.json", "*.json5", "*.jsonc"],
         //parser: "jsonc-eslint-parser",
       },
+      {
+        files: ["tests/test_files/**/mupdf.json"],
+        rules: {
+          "no-secrets/no-secrets": "off",
+        },
+      },
     ],
     parserOptions: {
       ecmaFeatures: {

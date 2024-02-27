@@ -1,15 +1,18 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
-from collections.abc import Mapping
+
+from logging import getLogger
+from xml.sax.saxutils import unescape
 
 from bidict import bidict
 
+from comicbox.dict_funcs import deep_update
 from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
     GENRES_KEY,
-    IDENTIFIERS_KEY,
     IMPRINT_KEY,
     ISSUE_KEY,
     PUBLISHER_KEY,
+    ROOT_TAG,
     SCAN_INFO_KEY,
     SERIES_KEY,
     TAGGER_KEY,
@@ -17,10 +20,11 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
     WRITER_KEY,
 )
-from comicbox.schemas.identifier import NSS_KEY
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
-from comicbox.transforms.identifiers import to_urn_string
+from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.xml import XmlTransform
+
+LOG = getLogger(__name__)
 
 
 class PDFXmlTransform(XmlTransform):
@@ -58,62 +62,43 @@ class PDFXmlTransform(XmlTransform):
             data[self.AUTHOR_TAG] = authors
         return data
 
-    def parse_groups_from_tags(self, data):
-        """Parse groups from tags."""
+    def parse_comicinfo_from_tags(self, data):
+        """Parse comicinfo from keywords."""
         tags = data.get(TAGS_KEY)
-        if not tags:
-            return data
-        processed_tags = set()
-        for tag in tags:
-            parts = tag.split(self.GROUP_TAG_DELIMETER, 1)
-            key = parts[0].lower()
-            if key not in self.GROUP_KEYS:
-                processed_tags.add(tag)
-                continue
-            data[key] = parts[1]
-        data[TAGS_KEY] = processed_tags
+        transform = ComicInfoTransform()
+        schema = transform.SCHEMA_CLASS()
+        try:
+            tags = unescape(tags)
+            if (
+                (cix_md := schema.loads(tags))
+                and (md := transform.to_comicbox(cix_md))
+                and (sub_md := md.get(ROOT_TAG))
+            ):
+                data.pop(TAGS_KEY, None)
+                deep_update(data, sub_md)
+        except Exception as exc:
+            LOG.debug(
+                f"Failed to parse {schema.__class__.__name__} from keywords in {self._path}: {exc}"
+            )
+
         return data
 
-    def unparse_identifiers_into_tags(self, data):
-        """Write identifiers to keywords only for PDF."""
-        identifiers = data.pop(IDENTIFIERS_KEY, None)
-        if not identifiers:
-            return data
-        new_tags = set()
-        for nid, identifier in identifiers.items():
-            nss = identifier.get(NSS_KEY)
-            identifier_tag = to_urn_string(nid, nss)
-            new_tags.add(identifier_tag)
-        if not new_tags:
-            return data
-        data[TAGS_KEY] = new_tags | data.get(TAGS_KEY, set())
-        return data
-
-    def unparse_groups_into_tags(self, data):
-        """Write groups into keywords."""
-        new_tags = set()
-        for group_key in self.GROUP_KEYS:
-            value = data.pop(group_key, None)
-            if isinstance(value, Mapping):
-                value = value.get("name")
-            if not value:
-                continue
-            keyword = self.GROUP_TAG_DELIMETER.join((group_key, str(value)))
-            new_tags.add(keyword)
-        if not new_tags:
-            return data
-        data[TAGS_KEY] = new_tags | data.get(TAGS_KEY, set())
+    def unparse_comicinfo_to_tags(self, data):
+        """Stuff comicinfo into keywords."""
+        transform = ComicInfoTransform()
+        schema = transform.SCHEMA_CLASS()
+        if (md := transform.from_comicbox(data)) and (tags := schema.dumps(md)):
+            data[TAGS_KEY] = tags
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        parse_groups_from_tags,
         aggregate_contributors,
+        parse_comicinfo_from_tags,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
-        unparse_identifiers_into_tags,
-        unparse_groups_into_tags,
+        unparse_comicinfo_to_tags,
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         disaggregate_contributors,
     )

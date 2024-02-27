@@ -92,6 +92,7 @@ def read_metadata(  # noqa: PLR0913
             else:
                 disk_md.pop(PAGES_KEY, None)
         disk_md = MappingProxyType(disk_md)
+    print(f"{ignore_updated_at=} {ignore_notes=}")
     if ignore_updated_at:
         metadata = dict(metadata)
         metadata[ROOT_TAG].pop(UPDATED_AT_KEY, None)
@@ -348,6 +349,15 @@ class TestParser:
             page_count=page_count,
         )
 
+    def test_pdf_read(self):
+        """Ignore stamps for pdf."""
+        read_metadata(
+            self.reference_path,
+            self.read_reference_metadata,
+            self.read_config,
+            ignore_updated_at=True, ignore_notes=True
+        )
+
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
@@ -413,7 +423,7 @@ class TestParser:
         tmp_path.mkdir(parents=True, exist_ok=True)
         self._create_test_pdf(new_test_pdf_path)
         read_metadata(
-            new_test_pdf_path, self.write_reference_metadata, self.read_config
+            new_test_pdf_path, self.write_reference_metadata, self.read_config,ignore_updated_at=True,ignore_notes=True
         )
         shutil.rmtree(tmp_path)
 
