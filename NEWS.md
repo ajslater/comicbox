@@ -7,6 +7,7 @@
 - PDFs read and write group tags from keywords.
 - ComicInfo.xml accepts spaces as web field separator
 - Accept numeric types for issues.
+- Major improvements to filename parsing and diversity of filename schemas.
 
 ## v1.0.0
 
