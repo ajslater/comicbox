@@ -6,6 +6,7 @@ from xml.sax.saxutils import unescape
 from bidict import bidict
 
 from comicbox.dict_funcs import deep_update
+from comicbox.fields.collections import StringSetField
 from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
     GENRES_KEY,
@@ -21,9 +22,11 @@ from comicbox.schemas.comicbox_mixin import (
     WRITER_KEY,
 )
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
+from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.xml import XmlTransform
 
+_KEYWORD_TRANSFORM_CLASSES = (ComicInfoTransform, ComicboxJsonTransform)
 LOG = getLogger(__name__)
 
 
@@ -62,10 +65,10 @@ class PDFXmlTransform(XmlTransform):
             data[self.AUTHOR_TAG] = authors
         return data
 
-    def parse_comicinfo_from_tags(self, data):
+    def _parse_metadata_from_tags(self, data, transform_class):
         """Parse comicinfo from keywords."""
         tags = data.get(TAGS_KEY)
-        transform = ComicInfoTransform()
+        transform = transform_class()
         schema = transform.SCHEMA_CLASS()
         try:
             tags = unescape(tags)
@@ -76,11 +79,24 @@ class PDFXmlTransform(XmlTransform):
             ):
                 data.pop(TAGS_KEY, None)
                 deep_update(data, sub_md)
+                return True
         except Exception as exc:
             LOG.debug(
                 f"Failed to parse {schema.__class__.__name__} from keywords in {self._path}: {exc}"
             )
+        return False
 
+    def _parse_comma_delimited_tags(self, data):
+        tags = data.get(TAGS_KEY)
+        tags = StringSetField()._deserialize(tags)  # noqa SLF001
+        data[TAGS_KEY] = tags
+
+    def parse_tags(self, data):
+        """Parse different possible keyword schemas."""
+        for transform_class in _KEYWORD_TRANSFORM_CLASSES:
+            if self._parse_metadata_from_tags(data, transform_class):
+                return data
+        self._parse_comma_delimited_tags(data)
         return data
 
     def unparse_comicinfo_to_tags(self, data):
@@ -93,8 +109,8 @@ class PDFXmlTransform(XmlTransform):
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
+        parse_tags,
         aggregate_contributors,
-        parse_comicinfo_from_tags,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
