@@ -355,7 +355,8 @@ class TestParser:
             self.reference_path,
             self.read_reference_metadata,
             self.read_config,
-            ignore_updated_at=True, ignore_notes=True
+            ignore_updated_at=True,
+            ignore_notes=True,
         )
 
     def _create_test_cbz(self, new_test_cbz_path):
@@ -423,7 +424,11 @@ class TestParser:
         tmp_path.mkdir(parents=True, exist_ok=True)
         self._create_test_pdf(new_test_pdf_path)
         read_metadata(
-            new_test_pdf_path, self.write_reference_metadata, self.read_config,ignore_updated_at=True,ignore_notes=True
+            new_test_pdf_path,
+            self.write_reference_metadata,
+            self.read_config,
+            ignore_updated_at=True,
+            ignore_notes=True,
         )
         shutil.rmtree(tmp_path)
 
