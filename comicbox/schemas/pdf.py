@@ -13,6 +13,8 @@ from comicbox.schemas.xml import XmlSchema, XmlSubSchema
 class MuPDFSubSchema(JsonSubSchema):
     """muPDF Sub Schema."""
 
+    # https://pymupdf.readthedocs.io/en/latest/document.html#Document.metadata
+
     author = StringSetField(as_string=True)
     creator = StringField()
     keywords = StringSetField(as_string=True)
