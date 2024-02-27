@@ -4,7 +4,7 @@
 		<rdf:Description xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
 			<pdf:Author>Jon Osterman</pdf:Author>
 			<pdf:Creator>Pages</pdf:Creator>
-			<pdf:Keywords>d,e,f</pdf:Keywords>
+			<pdf:Keywords>d,e,f,publisher:SmallPub,series:test pdf</pdf:Keywords>
 			<pdf:Producer>comicbox dev</pdf:Producer>
 			<pdf:Subject>Science Fiction</pdf:Subject>
 			<pdf:Title>the tangle of their lives</pdf:Title>

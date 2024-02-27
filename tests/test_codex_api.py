@@ -154,6 +154,7 @@ PDF_MD = MappingProxyType(
             "tags": {"d", "f", "e"},
             "title": "the tangle of their lives",
             "tagger": f"comicbox {VERSION}",
+            "publisher": "SmallPub"
         }
     }
 )

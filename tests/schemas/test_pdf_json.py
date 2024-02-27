@@ -24,6 +24,8 @@ METADATA = MappingProxyType(
             "tags": {"d", "e", "f"},
             "title": "the tangle of their lives",
             "tagger": "comicbox dev",
+            "publisher": "SmallPub",
+            "series": {"name": "test pdf"},
         }
     }
 )
@@ -32,7 +34,7 @@ PDF_DICT = MappingProxyType(
         MuPDFSchema.ROOT_TAGS[0]: {
             "author": "Jon Osterman",
             "creator": "Pages",
-            "keywords": "d,e,f",
+            "keywords": "d,e,f,publisher:SmallPub,series:test pdf",
             "subject": "Science Fiction",
             "title": "the tangle of their lives",
             "producer": "comicbox dev",

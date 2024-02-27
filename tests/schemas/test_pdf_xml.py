@@ -24,6 +24,8 @@ METADATA = MappingProxyType(
             "tags": {"d", "e", "f"},
             "title": "the tangle of their lives",
             "tagger": "comicbox dev",
+            "publisher": "SmallPub",
+            "series": {"name": "test pdf"},
         }
     }
 )
@@ -41,7 +43,7 @@ PDF_DICT = MappingProxyType(
                     "@xmlns:pdf": "http://ns.adobe.com/pdf/1.3/",
                     "pdf:Author": "Jon Osterman",
                     "pdf:Creator": "Pages",
-                    "pdf:Keywords": "d,e,f",
+                    "pdf:Keywords": "d,e,f,publisher:SmallPub,series:test pdf",
                     "pdf:Producer": "comicbox dev",
                     "pdf:Subject": "Science Fiction",
                     "pdf:Title": "the tangle of their lives",
