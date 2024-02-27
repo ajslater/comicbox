@@ -9,7 +9,7 @@ class ComicboxYamlSubSchema(YamlSubSchema, ComicboxSubSchemaMixin):
     """YAML sub schema."""
 
 
-class ComicboxYamlSchema(YamlSchema, ComicboxSubSchemaMixin):
+class ComicboxYamlSchema(YamlSchema):
     """YAML schema."""
 
     FILENAME = "comicbox.yaml"
