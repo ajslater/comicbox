@@ -35,6 +35,8 @@ from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.xml import XmlTransform
 
 _KEYWORDS_TRANSFORM_CLASSES = (
+    # Different order than all sources
+    # Doesn't include PDF.
     ComicInfoTransform,
     ComicboxJsonTransform,
     ComicboxYamlTransform,
