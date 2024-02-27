@@ -153,7 +153,7 @@ def parse_urn_identifier(tag: str, warn=True) -> tuple[str | None, str | None]:
         nss = str(parts[-1])
     except Exception:
         if warn:
-            LOG.warning(f"Unable to decode urn: {tag}")
+            LOG.debug(f"Unable to decode urn: {tag}")
         nid = None
         nss = None
     return nid, nss
