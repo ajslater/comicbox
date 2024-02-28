@@ -103,8 +103,8 @@ def _add_option_group(parser):
         dest="metadata_cli",
         metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields. e.g.: 'keyA: value, keyB: [valueA,valueB,valueC],"
-        " keyC: {subkey: {subsubkey: value}'",
+        help="Set metadata fields with YAML. (e.g.: 'keyA: value, keyB: [valueA,valueB,valueC],"
+        " keyC: {subkey: {subsubkey: value}') Place a space after colons so they are properly parsed as YAML key value pairs.",
     )
     option_group.add_argument(
         "-d",
