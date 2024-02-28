@@ -1,12 +1,12 @@
 """Json Schema."""
 from marshmallow.fields import Constant, Nested
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSchemaMixin
+from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSubSchemaMixin
 from comicbox.schemas.json import JsonSchema, JsonSubSchema
 from comicbox.version import VERSION
 
 
-class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSchemaMixin):
+class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSubSchemaMixin):
     """Json Sub Schema."""
 
 

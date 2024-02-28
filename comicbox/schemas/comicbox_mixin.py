@@ -147,8 +147,8 @@ class ReprintSchema(BaseSubSchema):
     issue = StringField()
 
 
-class ComicboxSchemaMixin:
-    """Mixin for Comicbox Schemas."""
+class ComicboxSubSchemaMixin:
+    """Mixin for Comicbox Sub Schemas."""
 
     age_rating = AgeRatingField()
     alternate_images = StringSetField()

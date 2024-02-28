@@ -43,7 +43,7 @@ METADATA = MappingProxyType(
 )
 CBI_DICT = MappingProxyType(
     {
-        ComicBookInfoSchema.ROOT_TAGS[0]: {
+        ComicBookInfoSchema._ROOT_TAG: {  # noqa: SLF001
             "country": "United States",
             "credits": [
                 {"person": "Wally Wood", "role": "Penciller"},

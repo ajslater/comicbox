@@ -71,7 +71,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     Title = XmlStringField()
     Summary = XmlStringField()
     Volume = XmlIntegerField()
-    Web = XmlStringField()
+    Web = XmlStringSetField(separators=" ", as_string=True)
     Year = XmlIntegerField()
 
     # Contributors

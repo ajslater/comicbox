@@ -40,14 +40,14 @@ _TEMPLATE = MappingTemplate(
                 "cbz": Optional(bool),
                 "cover": Optional(bool),
                 "export": Optional(Sequence(str)),
-                "import_paths": Optional(Sequence(str)),
+                "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
                 "index_to": Optional(int),
                 "print": Optional(str),
                 "rename": Optional(bool),
                 "write": Optional(Sequence(str)),
                 # Targets
-                "paths": Optional(Sequence(str)),
+                "paths": Optional(Sequence(OneOf((str, Path)))),
             }
         )
     }

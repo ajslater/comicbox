@@ -1,15 +1,15 @@
 """Comic yaml superclass."""
 from marshmallow.fields import Nested
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSchemaMixin
+from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSubSchemaMixin
 from comicbox.schemas.yaml import YamlSchema, YamlSubSchema
 
 
-class ComicboxYamlSubSchema(YamlSubSchema, ComicboxSchemaMixin):
+class ComicboxYamlSubSchema(YamlSubSchema, ComicboxSubSchemaMixin):
     """YAML sub schema."""
 
 
-class ComicboxYamlSchema(YamlSchema, ComicboxSchemaMixin):
+class ComicboxYamlSchema(YamlSchema):
     """YAML schema."""
 
     FILENAME = "comicbox.yaml"

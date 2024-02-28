@@ -47,18 +47,14 @@ workflows:
             branches:
               only:
                 - develop
-                - circleci
-                - /.*-ci/
                 - main
-                - release
-                - release-candidate
+                - pre-release
       - deploy:
           filters:
             branches:
               only:
                 - main
-                - release
-                - release-candidate
+                - pre-release
           requires:
             - build
   version: 2.1

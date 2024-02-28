@@ -13,10 +13,11 @@ CBZ archives and PDF metadata.
 
 Comicbox reads and writes:
 
-- [ComicRack Comicinfo.xml v2.1 (draft) schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1),
+- [ComicRack ComicInfo.xml v2.1 (draft) schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1),
 - [Comic Book Lover ComicBookInfo schema](https://code.google.com/archive/p/comicbookinfo/)
 - [CoMet schema](https://github.com/wdhongtw/comet-utils).
 - [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
+  - Embedding ComicInfo.xml inside PDFS.
 - A variety of filename schemes that encode metadata.
 
 ### Usefulness
@@ -83,6 +84,9 @@ comicbox test.cbz -m "{Tags: a,b,c, story_arcs: {d:1,e:'',f:3}" -m "Publisher: S
 
 Will write those tags to comicinfo.xml in the archive.
 
+Be sure to add spaces after colons so they are detected as valid YAML key value
+pairs. This is easy to forget.
+
 But it's probably better to use the --print action to see what it's going to do
 before you actually write to the archive:
 
@@ -102,6 +106,27 @@ comicbox --recurse -m "publisher: SC Comics" -w cr ./SmallComicsComics/
 
 Will recursively change the publisher to "SC Comics" for every comic found in
 under the SmallComicsComics directory.
+
+##### Deleting Metadata
+
+To delete metadata from the cli you're best off exporting the current metadata,
+editing the file and then re-importing it with the delete previous metadata
+option:
+
+<!-- eslint-skip -->
+
+```sh
+# export the current metadata
+comicbox --export cix "My Overtagged Comic.cbz"
+# Adjust the metadata in an editor.
+nvim comicinfo.xml
+# Check that importing the metadata will look how you like
+comicbox --import comicinfo.xml -p "My Overtagged Comic.cbz"
+# Delete all previous metadata from the comic (careful!)
+comicbox --delete "My Overtagged Comic.cbz"
+# Import the metadata into the file and write it.
+comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
+```
 
 #### Packages
 
@@ -174,6 +199,26 @@ PDF metadata is only read or written from and to PDF files.
 | ------------- | ---------------- |
 | Archive       | PDF internal     |
 | Import/Export | pdf-metadata.xml |
+
+#### Reading Embedded Metadata from `keywords`
+
+Comicbox will read most any metadata standard it supports from the keywords
+field. If that fails it will consider the keywords field as a comma delimited
+"Tags" field.
+
+#### Writing ComicInfo.xml to `keywords`
+
+By default Comicbox will write ComicInfo XML to the keywords field (e.g.
+`-w pdf`)
+
+[Codex](https://github.com/ajslater/codex) supports this because it uses
+Comicbox. Other comic readers do not support PDF embedded ComicInfo.xml, but
+since they already have ComicInfo.xml parsers it's possible that they might
+someday.
+
+If Comicbox JSON is included in the write formats (e.g. `-w pdf,json`) Comicbox
+will write comicbox.json to the keywords field instead. It is unlikely that any
+other comic reader other than Codex will ever support this.
 
 ### CoMet Schema
 
@@ -261,6 +306,8 @@ YAML is a superset of JSON, so the JSON schema applies here.
 
 The Comicbox CLI uses "flow style" YAML, which is an all on one line format to
 enter metadata on the command line.
+
+Specifying metadata on the command line like this is additive.
 
 | Location      | Name              |
 | ------------- | ----------------- |

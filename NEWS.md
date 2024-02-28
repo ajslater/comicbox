@@ -1,5 +1,15 @@
 # 📰 News
 
+## v1.1.0
+
+- Fix `--import` option crash.
+- Fix parsing tagger and updated_at from notes.
+- PDFs read all metadata formats from the keywords field and writes
+  ComicInfo.xml to it.
+- ComicInfo.xml accepts spaces as web field separator
+- Accept numeric types for issues.
+- Major improvements to filename parsing and diversity of filename schemas.
+
 ## v1.0.0
 
 - This version contains large breaking changes, some detailed in

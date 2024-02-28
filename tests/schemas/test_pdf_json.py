@@ -1,5 +1,6 @@
 """Test CBI module."""
 from argparse import Namespace
+from datetime import datetime
 from types import MappingProxyType
 
 import simplejson as json
@@ -23,7 +24,11 @@ METADATA = MappingProxyType(
             "genres": {"Science Fiction"},
             "tags": {"d", "e", "f"},
             "title": "the tangle of their lives",
+            "publisher": "SmallPub",
+            "series": {"name": "test pdf"},
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
             "tagger": "comicbox dev",
+            "updated_at": datetime(1970, 1, 1, 0, 0, 0),  # noqa DTZ001
         }
     }
 )
@@ -32,7 +37,21 @@ PDF_DICT = MappingProxyType(
         MuPDFSchema.ROOT_TAGS[0]: {
             "author": "Jon Osterman",
             "creator": "Pages",
-            "keywords": "d,e,f",
+            "keywords": '<?xml version="1.0" encoding="utf-8"?>\n'
+            "<ComicInfo "
+            'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
+            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+            'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">\n'
+            "\t<Genre>Science Fiction</Genre>\n"
+            "\t<Notes>Tagged with comicbox dev on "
+            "1970-01-01T00:00:00</Notes>\n"
+            "\t<Publisher>SmallPub</Publisher>\n"
+            "\t<ScanInformation>Pages</ScanInformation>\n"
+            "\t<Series>test pdf</Series>\n"
+            "\t<Tags>d,e,f</Tags>\n"
+            "\t<Title>the tangle of their lives</Title>\n"
+            "\t<Writer>Jon Osterman</Writer>\n"
+            "</ComicInfo>",
             "subject": "Science Fiction",
             "title": "the tangle of their lives",
             "producer": "comicbox dev",
@@ -89,7 +108,7 @@ def test_pdf_to_file():
 
 def test_pdf_read():
     """Read PDF archive."""
-    PDF_TESTER.test_md_read()
+    PDF_TESTER.test_pdf_read()
 
 
 def test_pdf_write():

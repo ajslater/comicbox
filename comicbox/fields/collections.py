@@ -51,13 +51,18 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
     """A list of non empty strings."""
 
     FIELD = StringField
-    STR_LIST_RE = re.compile(r"[,;]")
+    DEFAULT_SEPARATOR_RE = re.compile(r"[,;]")
 
-    def __init__(self, *args, as_string=False, sort=True, **kwargs):
+    def __init__(self, *args, as_string=False, sort=True, separators="", **kwargs):
         """Initialize as a string list."""
         super().__init__(self.FIELD, *args, **kwargs)
         self._as_string = as_string
         self._sort = sort
+        if separators:
+            re_exp = r"[" + separators + r"]"
+            self._split_regex = re.compile(re_exp)
+        else:
+            self._split_regex = self.DEFAULT_SEPARATOR_RE
 
     @staticmethod
     def _seq_to_str_seq(seq):
@@ -71,7 +76,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             # CSV encoding.
             value = StringField().deserialize(value)
             if value:
-                value = self.STR_LIST_RE.split(value)
+                value = self._split_regex.split(value)
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)

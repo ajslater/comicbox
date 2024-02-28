@@ -5,6 +5,7 @@ from logging import getLogger
 from pathlib import Path
 
 from marshmallow import EXCLUDE, Schema, ValidationError, post_dump, post_load
+from marshmallow.decorators import pre_load
 from marshmallow.error_store import ErrorStore
 
 from comicbox.dict_funcs import sort_dict
@@ -100,3 +101,10 @@ class BaseSchema(BaseSubSchema, ABC):
             LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
         else:
             LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
+
+    @trap_error(pre_load)
+    def validate_root_tag(self, data, **_kwargs):
+        """Validate the root tag so we don't confuse it with other JSON."""
+        if data and self.ROOT_TAGS[0] not in data:
+            return {}
+        return data
