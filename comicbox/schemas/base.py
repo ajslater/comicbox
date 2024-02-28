@@ -105,6 +105,6 @@ class BaseSchema(BaseSubSchema, ABC):
     @trap_error(pre_load)
     def validate_root_tag(self, data, **_kwargs):
         """Validate the root tag so we don't confuse it with other JSON."""
-        if self.ROOT_TAGS[0] not in data:
+        if data and self.ROOT_TAGS[0] not in data:
             return {}
         return data
