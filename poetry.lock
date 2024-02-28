@@ -271,13 +271,13 @@ pymupdf = ">=1.23.9,<2.0.0"
 
 [[package]]
 name = "comicfn2dict"
-version = "0.2.0a4"
+version = "0.2.0"
 description = "Parse common comic filenames and return a dict of metadata attributes. Includes a cli."
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-  { file = "comicfn2dict-0.2.0a4-py3-none-any.whl", hash = "sha256:1f6946fa74fbaa6bedd5620561fa6afb1ffc44ed3d105622135f505de012c7e8" },
-  { file = "comicfn2dict-0.2.0a4.tar.gz", hash = "sha256:22b7d98ff73f0815b628f84eb406f8b46b6325a37347c0c332917808230c2c26" },
+  { file = "comicfn2dict-0.2.0-py3-none-any.whl", hash = "sha256:cf2e47c6c6d3e95e59236d9b06ca7fc65844db2ec16bd68b0eecbcc5f13096ed" },
+  { file = "comicfn2dict-0.2.0.tar.gz", hash = "sha256:0635f8216a2c871ffd099927511957c7a75968c20f4a6fe0bf280e4d28b98452" },
 ]
 
 [[package]]
@@ -1497,4 +1497,4 @@ pdf = ["comicbox-pdffile"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "af7552c73ea97fa0ad96fc889db3cdcf78ef7d889efc1d6978a1e59db807c70d"
+content-hash = "7e87730c1b88986ad5ba3e95ff6b843fab16f871d98154c0acebfb3546288ef8"
