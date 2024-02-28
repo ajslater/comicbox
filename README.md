@@ -179,22 +179,25 @@ PDF metadata is only read or written from and to PDF files.
 | Archive       | PDF internal     |
 | Import/Export | pdf-metadata.xml |
 
-#### PDF Embedded ComicInfo
+#### Reading Embedded Metadata from `keywords`
 
-Comicbox will read and write other metadata formats embedded in the PDF keywords
-field. Comicbox will read most any metadata standard it supports from the
-keywords field and if that fails will consider the keywords field as a comma
-delimited "Tags" field.
+Comicbox will read most any metadata standard it supports from the keywords
+field. If that fails it will consider the keywords field as a comma delimited
+"Tags" field.
 
-##### Embedding ComicInfo.xml or Comicbox.json
+#### Writing ComicInfo.xml to `keywords`
 
-By default Comicbox will write ComicInfo XML to the keywords field. While other
-comic readers do not (yet) support this,
-[Codex](https://github.com/ajslater/codex) does because it uses Comicbox..
+By default Comicbox will write ComicInfo XML to the keywords field (e.g.
+`-w pdf`)
 
-If Comicbox JSON is included in the write formats (`cb`, `json`, `comicbox`)
-Comicbox will write comicbox.json to the keywords field instead. It is unlikely
-that any other comic reader other than Codex will ever support this.
+[Codex](https://github.com/ajslater/codex) supports this because it uses
+Comicbox. Other comic readers do not support PDF embedded ComicInfo.xml, but
+since they already have ComicInfo.xml parsers it's possible that they might
+someday.
+
+If Comicbox JSON is included in the write formats (e.g. `-w pdf,json`) Comicbox
+will write comicbox.json to the keywords field instead. It is unlikely that any
+other comic reader other than Codex will ever support this.
 
 ### CoMet Schema
 
