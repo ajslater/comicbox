@@ -107,6 +107,27 @@ comicbox --recurse -m "publisher: SC Comics" -w cr ./SmallComicsComics/
 Will recursively change the publisher to "SC Comics" for every comic found in
 under the SmallComicsComics directory.
 
+##### Deleting Metadata
+
+To delete metadata from the cli you're best off exporting the current metadata,
+editing the file and then re-importing it with the delete previous metadata
+option:
+
+<!-- eslint-skip -->
+
+```sh
+# export the current metadata
+comicbox --export cix "My Overtagged Comic.cbz"
+# Adjust the metadata in an editor.
+nvim comicinfo.xml
+# Check that importing the metadata will look how you like
+comicbox --import comicinfo.xml -p "My Overtagged Comic.cbz"
+# Delete all previous metadata from the comic (careful!)
+comicbox --delete "My Overtagged Comic.cbz"
+# Import the metadata into the file and write it.
+comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
+```
+
 #### Packages
 
 Comicbox actually installs three different packages:
@@ -285,6 +306,8 @@ YAML is a superset of JSON, so the JSON schema applies here.
 
 The Comicbox CLI uses "flow style" YAML, which is an all on one line format to
 enter metadata on the command line.
+
+Specifying metadata on the command line like this is additive.
 
 | Location      | Name              |
 | ------------- | ----------------- |
