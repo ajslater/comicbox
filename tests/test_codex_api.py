@@ -106,7 +106,6 @@ CBZ_MD = MappingProxyType(
                 {"index": 35, "size": 340840},
             ],
             "publisher": "Youthful Adventure Stories",
-            "remainders": ["-cix"],
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
@@ -125,7 +124,7 @@ CBR_MD_PATCH = {
         "country": "US",
         "ext": "cbr",
         "series": {"volume_count": 1},
-        "remainders": ["-cix-cbi"],
+        "title": "The Beginning",
     },
 }
 CBR_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBR_MD_PATCH))
@@ -155,6 +154,7 @@ PDF_MD = MappingProxyType(
             "tags": {"d", "f", "e"},
             "title": "the tangle of their lives",
             "tagger": f"comicbox {VERSION}",
+            "publisher": "SmallPub",
         }
     }
 )

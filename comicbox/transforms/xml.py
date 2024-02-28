@@ -28,9 +28,9 @@ class XmlTransform(BaseTransform):
                     continue
                 if not isinstance(field, self._SEQUENCE_OK_FIELDS):
                     new_value = value
-                    if isinstance(new_value, (set, frozenset)):
+                    if isinstance(new_value, set | frozenset):
                         new_value = list(value)
-                    if isinstance(new_value, (list, tuple)):
+                    if isinstance(new_value, list | tuple):
                         new_value = new_value[0]
                         data_changes[tag] = new_value
             except Exception:

@@ -7,7 +7,6 @@ from difflib import ndiff
 from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
-from typing import Optional, Union
 
 from deepdiff.diff import DeepDiff
 
@@ -46,7 +45,7 @@ def my_cleanup(tmp_dir: Path):
     assert not tmp_dir.exists()
 
 
-def my_setup(tmp_dir: Path, source_path: Optional[Path] = None):
+def my_setup(tmp_dir: Path, source_path: Path | None = None):
     """Set up tmp dir."""
     my_cleanup(tmp_dir)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -93,6 +92,7 @@ def read_metadata(  # noqa: PLR0913
             else:
                 disk_md.pop(PAGES_KEY, None)
         disk_md = MappingProxyType(disk_md)
+    print(f"{ignore_updated_at=} {ignore_notes=}")
     if ignore_updated_at:
         metadata = dict(metadata)
         metadata[ROOT_TAG].pop(UPDATED_AT_KEY, None)
@@ -169,7 +169,7 @@ def compare_files(
         a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
     )
 
-    for line_a, line_b in zip(a_lines, b_lines):
+    for line_a, line_b in zip(a_lines, b_lines, strict=False):
         if line_a != line_b:
             print(f"{path_a}: {line_a}")
             print(f"{path_b}: {line_b}")
@@ -186,15 +186,15 @@ class TestParser:
     def __init__(  # noqa PLR0913
         self,
         transform_class: type[BaseTransform],
-        test_fn: Union[Path, str],
+        test_fn: Path | str,
         read_reference_metadata: Mapping,
         read_native_dict: Mapping,
         read_reference_string: str,
         read_config,
         write_config,
-        write_reference_metadata: Optional[Mapping] = None,
-        write_native_dict: Optional[Mapping] = None,
-        write_reference_string: Optional[str] = None,
+        write_reference_metadata: Mapping | None = None,
+        write_native_dict: Mapping | None = None,
+        write_reference_string: str | None = None,
         export_fn=None,
     ):
         """Initialize common variables."""
@@ -349,6 +349,16 @@ class TestParser:
             page_count=page_count,
         )
 
+    def test_pdf_read(self):
+        """Ignore stamps for pdf."""
+        read_metadata(
+            self.reference_path,
+            self.read_reference_metadata,
+            self.read_config,
+            ignore_updated_at=True,
+            ignore_notes=True,
+        )
+
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
@@ -414,7 +424,11 @@ class TestParser:
         tmp_path.mkdir(parents=True, exist_ok=True)
         self._create_test_pdf(new_test_pdf_path)
         read_metadata(
-            new_test_pdf_path, self.write_reference_metadata, self.read_config
+            new_test_pdf_path,
+            self.write_reference_metadata,
+            self.read_config,
+            ignore_updated_at=True,
+            ignore_notes=True,
         )
         shutil.rmtree(tmp_path)
 

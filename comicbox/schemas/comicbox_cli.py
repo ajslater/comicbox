@@ -65,11 +65,12 @@ class ComicboxCLISchema(ComicboxYamlSchema):
             try:
                 schema = schema_class(path=self._path)
                 transform = transform_class(self._path)
-                if not self._transform_and_load(
+                res = self._transform_and_load(
                     schema, transform, data, final_dict, *args, **kwargs
-                ):
+                )
+                if not res:
                     wrapped_data = transform.wrap(data)
-                    self._transform_and_load(
+                    res = self._transform_and_load(
                         schema, transform, wrapped_data, final_dict, *args, **kwargs
                     )
             except Exception as exc:

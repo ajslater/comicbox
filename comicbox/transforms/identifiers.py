@@ -1,6 +1,7 @@
 """Identifier Fields."""
 from abc import ABC
 from collections.abc import Sequence
+from re import Pattern
 
 from comicbox.identifiers import (
     GTIN_NID_ORDER,
@@ -13,13 +14,9 @@ from comicbox.identifiers import (
 from comicbox.schemas.comicbox_mixin import IDENTIFIERS_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 
-#########
-# PARSE #
-#########
-
 
 def _sequence_to_map(identifier_sequence, naked_nid=None):
-    if not isinstance(identifier_sequence, (Sequence, set, frozenset)):
+    if not isinstance(identifier_sequence, Sequence | set | frozenset):
         return identifier_sequence
     # Allow multiple identifiers from xml, etc.
     # Technically out of spec.
@@ -34,9 +31,21 @@ def _sequence_to_map(identifier_sequence, naked_nid=None):
     return identifier_map
 
 
-###########
-# UNPARSE #
-###########
+def _parse_url_tag_nid(nid: str, regex: Pattern, url: str, data: dict) -> bool:
+    """Try to parse a single nid from a url."""
+    match = regex.search(url)
+    if not match:
+        return False
+    nss = match.group("identifier")
+    if not nss:
+        return False
+    identifier = create_identifier(nid, nss, url)
+    if IDENTIFIERS_KEY not in data:
+        data[IDENTIFIERS_KEY] = {}
+    if nid not in data[IDENTIFIERS_KEY]:
+        data[IDENTIFIERS_KEY][nid] = {}
+    data[IDENTIFIERS_KEY][nid] = identifier
+    return True
 
 
 class IdentifiersTransformMixin(ABC):
@@ -76,21 +85,12 @@ class IdentifiersTransformMixin(ABC):
 
     def parse_url_tag(self, data):
         """Parse url tags into identifiers."""
-        if url := data.get(self.URL_TAG):
-            for nid, regex in WEB_REGEX_URLS.items():
-                match = regex.search(url)
-                if not match:
-                    continue
-                nss = match.group("identifier")
-                if not nss:
-                    continue
-                identifier = create_identifier(nid, nss, url)
-                if IDENTIFIERS_KEY not in data:
-                    data[IDENTIFIERS_KEY] = {}
-                if nid not in data[IDENTIFIERS_KEY]:
-                    data[IDENTIFIERS_KEY][nid] = {}
-                data[IDENTIFIERS_KEY][nid] = identifier
-
+        if urls := data.get(self.URL_TAG):
+            urls = (urls,) if isinstance(urls, str) else tuple(sorted(urls))
+            for url in urls:
+                for nid, regex in WEB_REGEX_URLS.items():
+                    if _parse_url_tag_nid(nid, regex, url, data):
+                        break
         return data
 
     def unparse_url_tag(self, data):

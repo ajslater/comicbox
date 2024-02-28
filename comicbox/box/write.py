@@ -2,7 +2,6 @@
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
-from typing import Optional
 
 from comicbox.box.archive_read import archive_close
 from comicbox.box.archive_write import ComicboxArchiveWriteMixin
@@ -39,18 +38,21 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         return sources
 
     def _get_schema_and_transformed_metadata(
-        self, transform_class: type[BaseTransform], metadata: Mapping
+        self, transform_class: type[BaseTransform], metadata: Mapping, sources=()
     ):
         schema = transform_class.SCHEMA_CLASS(path=self._path)
         transform = transform_class(path=self._path)
-        denormalized_metadata = transform.from_comicbox(metadata)
+        write_transforms = (source.value.transform_class for source in sources)
+        denormalized_metadata = transform.from_comicbox(
+            metadata, write_transforms=write_transforms
+        )
         return schema, denormalized_metadata
 
-    def _write_pdf(self, metadata):
+    def _write_pdf(self, metadata, sources):
         """Write PDF Metadata."""
         if MetadataSources.PDF in self._config.write:
             schema, denormalized_metadata = self._get_schema_and_transformed_metadata(
-                MuPDFTransform, metadata
+                MuPDFTransform, metadata, sources
             )
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if not isinstance(mupdf_md, Mapping):
@@ -105,7 +107,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
                 return None
 
         if self._archive_is_pdf:
-            result = self._write_pdf(metadata)
+            result = self._write_pdf(metadata, sources)
         else:
             result = self._write_archive_metadata(sources, metadata)
         LOG.info(f"Wrote metadata to: {self._path}")
@@ -119,7 +121,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
     def to_file(
         self,
         dest_path=None,
-        metadata: Optional[Mapping] = None,
+        metadata: Mapping | None = None,
         transform_class: type[BaseTransform] = ComicboxJsonTransform,
         **kwargs,
     ):

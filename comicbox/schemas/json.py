@@ -1,6 +1,5 @@
 """Json Schema."""
 from abc import ABC
-from typing import Union
 
 import simplejson as json
 
@@ -32,7 +31,7 @@ class JsonRenderModule:
         )
 
     @staticmethod
-    def loads(s: Union[bytes, str], *args, **kwargs):
+    def loads(s: bytes | str, *args, **kwargs):
         """Load JSON string to dict."""
         cleaned_s = StringField().deserialize(s)
         if cleaned_s:

@@ -7,7 +7,6 @@ from datetime import datetime
 from logging import getLogger
 from sys import maxsize
 from types import MappingProxyType
-from typing import Optional
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 
@@ -71,6 +70,10 @@ _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
 _PAGE_COUNT_KEYS = frozenset({"PageCount", PAGE_COUNT_KEY, "pages"})
 _PAGES_KEYS = frozenset({"Pages", PAGES_KEY})
 _NOTES_RELDATE_RE = re.compile(r"[RELDATE:(.\S)]")
+_NOTES_TAGGER_RE = re.compile(r"Tagged (with|by)\b(?P<tagger>.*)\b(using|on)")
+_NOTES_UPDATED_AT_RE = re.compile(
+    r"on\s(?P<updated_at>\d{2,4}-[01]\d-[0-3]\d[T\s:][0-2]\d:[0-5]\d:[0-5]\d)(.\d+)?\.?"
+)
 
 
 @dataclass
@@ -78,7 +81,7 @@ class ComputedData:
     """Computed metadata."""
 
     label: str
-    metadata: Optional[Mapping]
+    metadata: Mapping | None
 
 
 class ComicboxComputedMixin(ComicboxNormalizeMixin):
@@ -296,6 +299,25 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
             if DAY_KEY not in sub_data:
                 sub_md[DAY_KEY] = date.day
 
+    def _set_computed_notes_tagger(self, sub_data, notes, sub_md):
+        if sub_data.get(TAGGER_KEY):
+            return
+        match = _NOTES_TAGGER_RE.search(notes)
+        if not match:
+            return
+        tagger = match.group("tagger").strip()
+        sub_md[TAGGER_KEY] = tagger
+
+    def _set_computed_notes_updated_at(self, sub_data, notes, sub_md):
+        if sub_data.get(UPDATED_AT_KEY):
+            return
+        match = _NOTES_UPDATED_AT_RE.search(notes)
+        if not match:
+            return
+        dttm_str = match.group("updated_at").strip()
+        updated_at = DateTimeField()._deserialize(dttm_str)  # noqa: SLF001
+        sub_md[UPDATED_AT_KEY] = updated_at
+
     def _get_computed_from_notes(self, sub_data):
         """Parse the tagger, updated_at & identifier from notes if not already set."""
         if not sub_data:
@@ -313,8 +335,10 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
 
         # Extract groups for keys
         sub_md = {}
-        self._set_computed_notes_identifiers(sub_data, notes, sub_md)
+        self._set_computed_notes_tagger(sub_data, notes, sub_md)
+        self._set_computed_notes_updated_at(sub_data, notes, sub_md)
         self._set_computed_notes_date(sub_data, notes, sub_md)
+        self._set_computed_notes_identifiers(sub_data, notes, sub_md)
         return sub_md
 
     def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, md):

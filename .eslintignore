@@ -1,5 +1,13 @@
+!.circleci
+**/__pycache__
+*test-results*
 *~
-/node_modules
-__pycache__
+.git
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+dist
+node_modules
 package-lock.json
-test-results
+typings

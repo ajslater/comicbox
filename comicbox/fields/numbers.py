@@ -2,7 +2,6 @@
 import re
 from decimal import Decimal
 from logging import getLogger
-from typing import Optional, Union
 
 from marshmallow import fields
 
@@ -14,21 +13,21 @@ from comicbox.fields.fields import (
 )
 
 LOG = getLogger(__name__)
-NumberType = Union[int, float, Decimal]
+NumberType = int | float | Decimal
 
 
 class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
     """Number range methods."""
 
-    def _set_range(self, minimum: Optional[NumberType], maximum: Optional[NumberType]):
+    def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
         self._min = minimum
         self._max = maximum
 
     def __init__(
         self,
         *args,
-        minimum: Optional[NumberType] = None,
-        maximum: Optional[NumberType] = None,
+        minimum: NumberType | None = None,
+        maximum: NumberType | None = None,
         **kwargs,
     ):
         """Set the min and max value."""
@@ -36,11 +35,11 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
         self._set_range(minimum, maximum)
 
     @classmethod
-    def parse_str(cls, num_str) -> Optional[NumberType]:
+    def parse_str(cls, num_str) -> NumberType | None:
         """Parse numerical string method."""
         raise NotImplementedError
 
-    def _deserialize(self, value, *args, **kwargs) -> Optional[NumberType]:
+    def _deserialize(self, value, *args, **kwargs) -> NumberType | None:
         if isinstance(value, str):
             value = self.parse_str(value)
         if value in EMPTY_VALUES:
@@ -76,8 +75,8 @@ class IntegerField(RangedNumberMixin, fields.Integer):
     def __init__(
         self,
         *args,
-        minimum: Optional[int] = None,
-        maximum: Optional[int] = None,
+        minimum: int | None = None,
+        maximum: int | None = None,
         **kwargs,
     ):
         """Set the min and max value."""
@@ -106,8 +105,8 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
     def __init__(
         self,
         *args,
-        minimum: Optional[Decimal] = None,
-        maximum: Optional[Decimal] = None,
+        minimum: Decimal | None = None,
+        maximum: Decimal | None = None,
         **kwargs,
     ):
         """Set the min and max value."""

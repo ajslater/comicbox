@@ -1,6 +1,6 @@
 """Marshmallow collection fields."""
 import re
-from typing import Any, Union
+from typing import Any
 
 from marshmallow import fields
 from marshmallow.utils import is_collection
@@ -51,13 +51,18 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
     """A list of non empty strings."""
 
     FIELD = StringField
-    STR_LIST_RE = re.compile(r"[,;]")
+    DEFAULT_SEPARATOR_RE = re.compile(r"[,;]")
 
-    def __init__(self, *args, as_string=False, sort=True, **kwargs):
+    def __init__(self, *args, as_string=False, sort=True, separators="", **kwargs):
         """Initialize as a string list."""
         super().__init__(self.FIELD, *args, **kwargs)
         self._as_string = as_string
         self._sort = sort
+        if separators:
+            re_exp = r"[" + separators + r"]"
+            self._split_regex = re.compile(re_exp)
+        else:
+            self._split_regex = self.DEFAULT_SEPARATOR_RE
 
     @staticmethod
     def _seq_to_str_seq(seq):
@@ -71,14 +76,14 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             # CSV encoding.
             value = StringField().deserialize(value)
             if value:
-                value = self.STR_LIST_RE.split(value)
+                value = self._split_regex.split(value)
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
             return super()._deserialize(value, *args, **kwargs)
         return []
 
-    def _serialize(self, value, *args, **kwargs) -> Union[list[Any], str, None]:  # type:ignore
+    def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore
         value = self._seq_to_str_seq(value)
         if self._sort:
             value = sorted(value)
@@ -91,7 +96,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
 class StringSetField(StringListField):
     """A set of non-empty strings."""
 
-    def _deserialize(self, *args, **kwargs) -> Union[set[Any], str, None]:  # type: ignore
+    def _deserialize(self, *args, **kwargs) -> set[Any] | str | None:  # type: ignore
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:

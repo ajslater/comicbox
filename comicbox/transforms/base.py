@@ -190,7 +190,7 @@ class BaseTransform:
         )
         return MappingProxyType(data)
 
-    def from_comicbox(self, data: Mapping) -> MappingProxyType:
+    def from_comicbox(self, data: Mapping, **_kwargs) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         data = deepcopy(dict(data))
         data = self._run_transforms(

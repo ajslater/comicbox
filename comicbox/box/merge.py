@@ -101,9 +101,9 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 self._merge_contributors(merged_md, value)
             elif key in ORDERED_SET_KEYS:
                 self._merge_ordered_set(merged_md, key, value)
-            elif isinstance(value, (list, tuple)):
+            elif isinstance(value, list | tuple):
                 merged_md[key].extend(value)
-            elif isinstance(value, (set, frozenset)):
+            elif isinstance(value, set | frozenset):
                 merged_md[key].update(value)
             elif isinstance(value, Mapping):
                 self.merge_metadata(merged_md[key], value)

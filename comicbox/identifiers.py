@@ -2,7 +2,6 @@
 import re
 from logging import getLogger
 from types import MappingProxyType
-from typing import Optional
 
 from urnparse import URN8141, NSIdentifier, NSSString
 
@@ -143,7 +142,7 @@ def create_identifier(nid, nss, url=None):
     return {NSS_KEY: nss, URL_KEY: url}
 
 
-def parse_urn_identifier(tag: str, warn=True) -> tuple[Optional[str], Optional[str]]:
+def parse_urn_identifier(tag: str, warn=True) -> tuple[str | None, str | None]:
     """Parse an identifier from a tag."""
     try:
         urn = URN8141.from_string(tag)
@@ -154,7 +153,7 @@ def parse_urn_identifier(tag: str, warn=True) -> tuple[Optional[str], Optional[s
         nss = str(parts[-1])
     except Exception:
         if warn:
-            LOG.warning(f"Unable to decode urn: {tag}")
+            LOG.debug(f"Unable to decode urn: {tag}")
         nid = None
         nss = None
     return nid, nss

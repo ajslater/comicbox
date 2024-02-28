@@ -1,14 +1,14 @@
 """Initialization mixin."""
 import stat
 from argparse import Namespace
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING
 from zipfile import ZipFile, is_zipfile
 
 from confuse import AttrDict
@@ -30,9 +30,9 @@ if TYPE_CHECKING:
 class SourceData:
     """Pre parsed source metadata."""
 
-    metadata: Union[str, bytes, Mapping]
-    transform_class: Optional[type[BaseTransform]] = None
-    path: Optional[str] = None
+    metadata: str | bytes | Mapping
+    transform_class: type[BaseTransform] | None = None
+    path: str | None = None
 
 
 class ComicboxInitMixin:
@@ -42,9 +42,9 @@ class ComicboxInitMixin:
 
     def __init__(
         self,
-        path: Union[Path, str, None] = None,
-        config: Union[AttrDict, Namespace, Mapping, None] = None,
-        metadata: Optional[Mapping] = None,
+        path: Path | str | None = None,
+        config: AttrDict | Namespace | Mapping | None = None,
+        metadata: Mapping | None = None,
     ):
         """Initialize the archive with a path to the archive.
 
@@ -54,7 +54,7 @@ class ComicboxInitMixin:
         metadata: a comicbox.schemas dict to use instead of gathering the metadata
             from the path.
         """
-        self._path: Optional[Path] = Path(path) if path else None
+        self._path: Path | None = Path(path) if path else None
         if self._path and not self._path.exists():
             reason = f"{self._path} does not exist."
             raise ValueError(reason)
@@ -72,13 +72,13 @@ class ComicboxInitMixin:
         self._metadata: MappingProxyType = MappingProxyType({})
 
     def _reset_archive(self, metadata):
-        self._archive_cls: Optional[Callable] = None
-        self._file_type: Optional[str] = None
+        self._archive_cls: Callable | None = None
+        self._file_type: str | None = None
         self._set_archive_cls()
         try:
-            self._archive: Union[ZipFile, RarFile, TarFile, PDFFile, None] = None  # type: ignore
+            self._archive: ZipFile | RarFile | TarFile | PDFFile | None = None  # type: ignore
         except NameError:
-            self._archive: Union[ZipFile, RarFile, TarFile, None] = None
+            self._archive: ZipFile | RarFile | TarFile | None = None
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         self._info_size_attr = (
             "size" if self._archive_cls == tarfile_open else "file_size"

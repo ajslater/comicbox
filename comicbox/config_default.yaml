@@ -10,18 +10,17 @@ comicbox:
   metadata: {}
   metadata_cli: null
   read:
-    [
-      "cli",
-      "comet",
-      "metroninfo",
-      "comicbookinfo",
-      "comicinfo",
-      "comictagger",
-      "filename",
-      "json",
-      "pdf",
-      "yaml",
-    ]
+    - cli
+    - comet
+    - metroninfo
+    - comicbookinfo
+    - comicinfo
+    - comictagger
+    - filename
+    - json
+    - pdf
+    - yaml
+
   read_ignore: []
   recurse: False
   stamp_notes: True

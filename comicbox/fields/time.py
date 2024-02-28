@@ -1,7 +1,6 @@
 """Date & Time fields."""
 from datetime import date, datetime
 from logging import getLogger
-from typing import Optional
 
 from dateutil import parser
 from marshmallow import fields
@@ -15,7 +14,7 @@ LOG = getLogger(__name__)
 class DateField(fields.Date, metaclass=DeserializeMeta):
     """A date only field."""
 
-    def _deserialize(self, value, *_args, **_kwargs) -> Optional[date]:  # type: ignore
+    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore
         """Liberally parse dates from strings and date-like structures."""
         if isinstance(value, date):
             return value
@@ -33,7 +32,7 @@ class DateField(fields.Date, metaclass=DeserializeMeta):
 class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):
     """A Datetime field."""
 
-    def _deserialize(self, value, *_args, **_kwargs) -> Optional[datetime]:  # type: ignore
+    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore
         """Liberally parse datetmess from strings and datetime-like structures."""
         if isinstance(value, TimeStamp):
             return datetime.fromtimestamp(value.timestamp())  # noqa: DTZ006

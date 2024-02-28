@@ -1,4 +1,5 @@
 """Custom Marshmallow fields."""
+from decimal import Decimal
 from logging import getLogger
 
 from marshmallow import fields
@@ -53,7 +54,7 @@ class StringField(fields.String, metaclass=DeserializeMeta):
             value = value.encode("utf8", "replace")
         if isinstance(value, bytes):
             value = value.decode("utf8", "replace")
-        else:
+        if not isinstance(value, str):
             reason = f"{type(value)} is not a string"
             raise ValidationError(reason)
         value = str(value).strip()
@@ -84,5 +85,7 @@ class IssueField(StringField):
         return half_replace(num)
 
     def _deserialize(self, value, *args, **kwargs):
-        value = self.parse_issue(value)
-        return super()._deserialize(value, *args, **kwargs)
+        if isinstance(value, int | float | Decimal):
+            value = str(value)
+        value = super()._deserialize(value, *args, **kwargs)
+        return self.parse_issue(value)

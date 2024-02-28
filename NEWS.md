@@ -1,10 +1,22 @@
 # 📰 News
 
+## v1.1.0
+
+- Fix `--import` option crash.
+- Fix parsing tagger and updated_at from notes.
+- PDFs read all metadata formats from the keywords field. and writes
+- PDFs write ComicInfo.xml to keywords field.
+- ComicInfo.xml accepts spaces as web field separator
+- Accept numeric types for issues.
+- Major improvements to filename parsing and diversity of filename schemas.
+
 ## v1.0.0
 
-- This version contains large breaking changes, some detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
-- Comicbox continues to primarily be an API for reading comic metadata but this version contains an enhanced CLI,
-  and more powerful reading, writing, synthesis and exporting of metadata.
+- This version contains large breaking changes, some detailed in
+  [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- Comicbox continues to primarily be an API for reading comic metadata but this
+  version contains an enhanced CLI, and more powerful reading, writing,
+  synthesis and exporting of metadata.
 - Comicbox now sorts archive filenames case insensitively.
 - Comicbox now writes identifiers to the notes field in urn format.
 - You should probably read the code in `comicbox.box` for public facing apis.
@@ -20,7 +32,8 @@
 
 ## v0.10.1
 
-- Change --metadata cli syntax to use key=\[a,b,c\] for arrays and key=a for simple values.
+- Change --metadata cli syntax to use key=\[a,b,c\] for arrays and key=a for
+  simple values.
 
 ## v0.10.0
 
@@ -36,8 +49,8 @@
 
 ## v0.9.0
 
-- StoryArc & StoryArcNumber for ComicInfo.xml exported
-  as `story_arcs` dict. Supports Mylar multiple story arcs csv values format.
+- StoryArc & StoryArcNumber for ComicInfo.xml exported as `story_arcs` dict.
+  Supports Mylar multiple story arcs csv values format.
 
 ## v0.8.0
 
@@ -78,8 +91,7 @@
 
 ## v0.6.4
 
-- Feature
-  --delete-rar option is now --delete-orig
+- Feature --delete-rar option is now --delete-orig
 - Fix
   - Fix --delete-rar option sometimes deleting original cbzs
 
@@ -152,7 +164,8 @@
 
   - Methods for getting covers and pages as PIL Images.
   - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
-  - closefd option leaves archive open after method calls. Close manually with close().
+  - closefd option leaves archive open after method calls. Close manually with
+    close().
   - .cbt Tarfile comic archive support.
 
 ## v0.5.0
@@ -203,7 +216,8 @@
 
 ## v0.3.0
 
-- CBI changed `critical_rating` to decimal type from string (in CBI it's an int).
+- CBI changed `critical_rating` to decimal type from string (in CBI it's an
+  int).
 - CIX gained the `community_rating` attribute from CIX 2.0 spec.
 - `age_rating` replaces `maturity_rating` to standardize more on CIX
 - `CoverArtist` replaces `Cover` to standardize more on CIX
@@ -241,7 +255,8 @@
 
 ## v0.1.4
 
-- Make metadata read more robust by catching individual tag exceptions and printing them to stdout
+- Make metadata read more robust by catching individual tag exceptions and
+  printing them to stdout
 - Protect against null people names for credits
 - More robust xml volume parsing
 
