@@ -1,4 +1,5 @@
 """Test METRON module."""
+
 from argparse import Namespace
 from datetime import date
 from decimal import Decimal

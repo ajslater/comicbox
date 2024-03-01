@@ -1,4 +1,5 @@
 """Cli for comicbox."""
+
 import sys
 from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from collections.abc import Sequence

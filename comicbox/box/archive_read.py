@@ -1,4 +1,5 @@
 """Comic archive read methods."""
+
 import shutil
 from pathlib import Path
 from tarfile import TarFile

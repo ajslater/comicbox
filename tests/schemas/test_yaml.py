@@ -1,4 +1,5 @@
 """Test CLI metadata parsing."""
+
 from argparse import Namespace
 from io import StringIO
 from pathlib import Path

@@ -1,4 +1,5 @@
 """Test CBI module."""
+
 from argparse import Namespace
 from decimal import Decimal
 from pathlib import Path

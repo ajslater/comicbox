@@ -1,4 +1,5 @@
 """CoMet Reprints Transforms Mixin."""
+
 from abc import ABC
 
 from comicfn2dict.parse import comicfn2dict

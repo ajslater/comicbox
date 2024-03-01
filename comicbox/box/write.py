@@ -1,4 +1,5 @@
 """Writing Methods."""
+
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path

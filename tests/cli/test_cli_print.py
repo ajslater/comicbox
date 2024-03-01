@@ -1,4 +1,5 @@
 """Test CLI metadata parsing."""
+
 import sys
 from io import StringIO
 from pprint import pprint

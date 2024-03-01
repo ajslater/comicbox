@@ -1,4 +1,5 @@
 """Parsing methods."""
+
 from collections.abc import Mapping
 from dataclasses import dataclass
 from logging import DEBUG, WARNING, getLogger

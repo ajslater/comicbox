@@ -1,4 +1,5 @@
 """XML Metadata parser superclass."""
+
 from logging import getLogger
 
 from stringcase import capitalcase

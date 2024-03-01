@@ -1,4 +1,5 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
+
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from types import MappingProxyType
 

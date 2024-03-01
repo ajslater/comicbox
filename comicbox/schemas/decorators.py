@@ -1,4 +1,5 @@
 """Wrapped marshmallow decorators."""
+
 from functools import wraps
 from logging import getLogger
 

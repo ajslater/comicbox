@@ -1,4 +1,5 @@
-""""Comicbox Transform Mixin."""
+"""Comicbox Transform Mixin."""
+
 from types import MappingProxyType
 
 from comicbox.schemas.comicbox_mixin import (

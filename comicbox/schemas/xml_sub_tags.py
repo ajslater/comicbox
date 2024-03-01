@@ -1,4 +1,5 @@
 """Xml Sub Tags like Pages and Metron Resources."""
+
 from types import MappingProxyType
 
 from marshmallow.fields import Field, Nested

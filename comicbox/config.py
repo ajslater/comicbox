@@ -1,4 +1,5 @@
 """Confuse config for comicbox."""
+
 import contextlib
 from argparse import Namespace
 from collections.abc import Mapping

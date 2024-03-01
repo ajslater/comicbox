@@ -1,4 +1,5 @@
 """Utility functions for testing metadata."""
+
 import shutil
 from collections.abc import Mapping
 from contextlib import suppress

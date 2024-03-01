@@ -1,4 +1,5 @@
 """Test CIX module."""
+
 from argparse import Namespace
 from collections.abc import Mapping
 from decimal import Decimal

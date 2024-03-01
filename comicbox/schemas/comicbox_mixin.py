@@ -1,4 +1,5 @@
 """Mixin for Comicbox Schemas."""
+
 from decimal import Decimal
 
 from marshmallow.fields import Nested

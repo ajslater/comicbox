@@ -1,4 +1,5 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+
 from collections.abc import Sequence
 from logging import getLogger
 from types import MappingProxyType

@@ -1,4 +1,5 @@
 """Comicboxs methods for writing to the archive."""
+
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path

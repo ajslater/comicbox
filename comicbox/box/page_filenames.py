@@ -1,4 +1,5 @@
 """Calculate page filenames."""
+
 from sys import maxsize
 
 from comicbox.box.archive import archive_close

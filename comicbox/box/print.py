@@ -1,4 +1,5 @@
 """Print Methods."""
+
 from pprint import pprint
 
 from comicbox.box.archive_read import archive_close

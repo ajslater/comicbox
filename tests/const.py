@@ -1,4 +1,5 @@
 """Constants and paths for tests."""
+
 from argparse import Namespace
 from datetime import datetime
 from pathlib import Path

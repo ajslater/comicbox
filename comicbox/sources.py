@@ -1,4 +1,5 @@
 """Metadata sources definitions."""
+
 from dataclasses import dataclass
 from enum import Enum
 

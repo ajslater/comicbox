@@ -1,4 +1,5 @@
 """Custom Marshmallow fields."""
+
 from decimal import Decimal
 from logging import getLogger
 

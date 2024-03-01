@@ -5,6 +5,7 @@ build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
+
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin

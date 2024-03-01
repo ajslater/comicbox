@@ -1,4 +1,5 @@
 """Export comicbox.schemas to comicapi metadata."""
+
 # https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py
 from decimal import Decimal
 from types import MappingProxyType

@@ -1,4 +1,5 @@
 """Test CLI metadata parsing."""
+
 from argparse import Namespace
 from pprint import pprint
 from types import MappingProxyType

@@ -1,4 +1,5 @@
 """Test CLI extract actions."""
+
 from pprint import pprint
 
 from deepdiff.diff import DeepDiff

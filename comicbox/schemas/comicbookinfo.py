@@ -1,4 +1,5 @@
 """A class to encapsulate the ComicBookInfo data."""
+
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
 from logging import getLogger
 from types import MappingProxyType

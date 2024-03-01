@@ -1,4 +1,5 @@
 """Identifier Fields."""
+
 from abc import ABC
 from collections.abc import Sequence
 from re import Pattern

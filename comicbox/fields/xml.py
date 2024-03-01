@@ -1,4 +1,5 @@
 """Xml versions of fields."""
+
 from collections.abc import Mapping
 from functools import wraps
 

@@ -1,4 +1,5 @@
 """Merge Metadata Methods."""
+
 from collections.abc import Mapping
 from logging import getLogger
 

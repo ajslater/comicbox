@@ -1,4 +1,5 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested

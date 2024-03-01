@@ -1,4 +1,5 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
+
 from collections.abc import Mapping, Sequence
 from logging import getLogger
 from types import MappingProxyType

@@ -1,4 +1,5 @@
-""""Getting and storing source metadata."""
+"""Getting and storing source metadata."""
+
 from logging import getLogger
 from pathlib import Path
 

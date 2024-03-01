@@ -1,4 +1,5 @@
 """Test CBI module."""
+
 from argparse import Namespace
 from datetime import datetime
 from types import MappingProxyType

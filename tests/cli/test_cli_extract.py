@@ -1,4 +1,5 @@
 """Test CLI extract actions."""
+
 from comicbox import cli
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import (

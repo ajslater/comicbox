@@ -1,4 +1,5 @@
 """Reprint sorting."""
+
 from comicfn2dict.unparse import dict2comicfn
 
 from comicbox.schemas.comicbox_mixin import (

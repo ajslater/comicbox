@@ -1,4 +1,5 @@
 """Skip keys instead of throwing errors."""
+
 from abc import ABC
 from collections.abc import Mapping
 from logging import getLogger

@@ -1,4 +1,5 @@
 """XML Metadata parser superclass."""
+
 from abc import ABC
 from types import MappingProxyType
 

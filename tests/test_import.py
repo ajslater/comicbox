@@ -1,4 +1,5 @@
 """Tests for writing."""
+
 from argparse import Namespace
 from datetime import date, datetime
 from decimal import Decimal
