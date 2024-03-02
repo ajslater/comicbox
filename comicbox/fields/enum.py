@@ -1,4 +1,5 @@
 """Marshmallow Enum Fields."""
+
 import re
 from enum import Enum
 from logging import getLogger

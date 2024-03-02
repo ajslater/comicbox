@@ -1,4 +1,5 @@
 """Run comicbox on files."""
+
 import os
 from logging import getLogger
 from pathlib import Path

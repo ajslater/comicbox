@@ -1,4 +1,5 @@
 """JSON Transformer."""
+
 from comicbox.transforms.base import BaseTransform
 
 

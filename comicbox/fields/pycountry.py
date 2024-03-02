@@ -1,4 +1,5 @@
 """Marshmallow pycountry fields."""
+
 from abc import ABC
 from logging import getLogger
 

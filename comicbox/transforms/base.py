@@ -1,4 +1,5 @@
 """Metadata class for a comic archive."""
+
 from collections.abc import Mapping
 from copy import deepcopy
 from logging import DEBUG, getLogger

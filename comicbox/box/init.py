@@ -1,4 +1,5 @@
 """Initialization mixin."""
+
 import stat
 from argparse import Namespace
 from collections.abc import Callable, Mapping

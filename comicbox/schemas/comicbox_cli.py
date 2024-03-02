@@ -1,4 +1,5 @@
 """Metadata cli format."""
+
 from logging import getLogger
 from types import MappingProxyType
 
@@ -28,10 +29,10 @@ _CLI_TRANSFORMS = (
     ComicboxYamlTransform,
 )
 
-CLI_TRANSFORMS_BY_SCHEMA: MappingProxyType[
-    type[BaseSchema], type[BaseTransform]
-] = MappingProxyType(
-    {transform.SCHEMA_CLASS: transform for transform in _CLI_TRANSFORMS}
+CLI_TRANSFORMS_BY_SCHEMA: MappingProxyType[type[BaseSchema], type[BaseTransform]] = (
+    MappingProxyType(
+        {transform.SCHEMA_CLASS: transform for transform in _CLI_TRANSFORMS}
+    )
 )
 
 

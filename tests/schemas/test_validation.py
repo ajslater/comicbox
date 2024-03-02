@@ -1,4 +1,5 @@
 """Test CIX module."""
+
 from argparse import Namespace
 from decimal import Decimal
 from types import MappingProxyType

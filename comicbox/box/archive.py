@@ -1,4 +1,5 @@
 """Comicbox methods on the archive itself."""
+
 import re
 from functools import wraps
 from logging import getLogger

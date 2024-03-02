@@ -1,4 +1,5 @@
 """Test CIX module."""
+
 from argparse import Namespace
 from datetime import datetime
 from decimal import Decimal

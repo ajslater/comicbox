@@ -1,4 +1,5 @@
 """YAML Transformer."""
+
 from comicbox.transforms.base import BaseTransform
 
 

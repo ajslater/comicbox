@@ -1,4 +1,5 @@
 """Get Metadata mixin."""
+
 from types import MappingProxyType
 
 from comicbox.box.archive import archive_close

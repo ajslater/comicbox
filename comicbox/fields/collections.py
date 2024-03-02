@@ -1,4 +1,5 @@
 """Marshmallow collection fields."""
+
 import re
 from typing import Any
 

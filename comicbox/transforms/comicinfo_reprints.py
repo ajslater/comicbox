@@ -1,4 +1,5 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
+
 from copy import deepcopy
 
 from bidict import bidict

@@ -1,4 +1,5 @@
 """Print phases enum."""
+
 from enum import Enum
 
 

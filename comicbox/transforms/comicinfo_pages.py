@@ -1,4 +1,5 @@
 """ComicInfo Pages Transform Mixin."""
+
 from bidict import bidict
 
 from comicbox.dict_funcs import sort_dict

@@ -3,6 +3,7 @@
 Reads and writes metadata via marshmallow schemas.
 Reads and writes file data via ZipFile/RarFile etc.
 """
+
 from logging import getLogger
 
 from comicbox.box.extract import ComicboxExtractMixin

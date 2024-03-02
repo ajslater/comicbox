@@ -1,4 +1,5 @@
 """Identifiers functions."""
+
 import re
 from logging import getLogger
 from types import MappingProxyType

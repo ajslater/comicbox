@@ -1,4 +1,5 @@
 """Test getting pages."""
+
 from pathlib import Path
 
 from comicbox.box import Comicbox

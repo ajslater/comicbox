@@ -1,4 +1,5 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
+
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from types import MappingProxyType
 
@@ -165,7 +166,7 @@ class MetronInfoSchema(XmlSchema):
     """MetronInfo.xml Schema."""
 
     CONFIG_KEYS = frozenset({"metron", "metroninfo", "mi"})
-    FILENAME = "metroninfo.xml"
+    FILENAME = "MetronInfo.xml"
     ROOT_TAGS = ("MetronInfo",)
 
     MetronInfo = Nested(MetronInfoSubSchema)

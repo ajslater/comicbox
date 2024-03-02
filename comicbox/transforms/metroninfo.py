@@ -1,4 +1,5 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+
 from collections.abc import Sequence
 from logging import getLogger
 from types import MappingProxyType
@@ -55,7 +56,7 @@ from comicbox.schemas.identifier import NSS_KEY
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.reprints import reprint_to_filename
+from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
 from comicbox.transforms.xml import XmlTransform
 
 LOG = getLogger(__name__)
@@ -423,6 +424,7 @@ class MetronInfoTransform(
                 new_reprint[REPRINT_ISSUE_KEY] = issue
             if new_reprint:
                 comicbox_reprints.append(new_reprint)
+        comicbox_reprints = sort_reprints(comicbox_reprints)
         return _copy_assign(REPRINTS_KEY, data, comicbox_reprints)
 
     def lower_reprints(self, data):

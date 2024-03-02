@@ -1,4 +1,5 @@
 """Transforms to and from ComicRack's ComicInfo.xml schema."""
+
 from bidict import bidict
 
 from comicbox.identifiers import GTIN_NID

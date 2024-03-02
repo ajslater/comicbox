@@ -1,4 +1,5 @@
 """Methods for extracting files from the archive."""
+
 from logging import INFO, getLogger
 from pathlib import Path
 

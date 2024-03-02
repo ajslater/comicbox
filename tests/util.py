@@ -1,4 +1,5 @@
 """Utility functions for testing metadata."""
+
 import shutil
 from collections.abc import Mapping
 from contextlib import suppress
@@ -222,7 +223,9 @@ class TestParser:
             self.write_reference_string = self.read_reference_string
         self.reference_path = TEST_FILES_DIR / self.test_fn
         if export_fn is None:
-            self.reference_export_path = TEST_METADATA_DIR / self.schema.FILENAME
+            self.reference_export_path = (
+                TEST_METADATA_DIR / self.schema.FILENAME.lower()
+            )
         else:
             self.reference_export_path = TEST_METADATA_DIR / export_fn
         self.read_config = read_config

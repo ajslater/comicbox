@@ -1,4 +1,5 @@
 """Cover methods."""
+
 from logging import getLogger
 
 from comicbox.box.archive_read import archive_close

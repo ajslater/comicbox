@@ -1,4 +1,5 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
+
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested

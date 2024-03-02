@@ -1,4 +1,5 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
+
 from collections.abc import Mapping
 from logging import getLogger
 

@@ -1,4 +1,5 @@
 """Test issue parsing."""
+
 from comicbox.fields.fields import IssueField
 
 ISSUES = {

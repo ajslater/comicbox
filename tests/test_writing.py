@@ -1,4 +1,5 @@
 """Tests for writing."""
+
 from argparse import Namespace
 from decimal import Decimal
 from pprint import pprint

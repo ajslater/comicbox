@@ -1,4 +1,5 @@
 """Comic yaml superclass."""
+
 from marshmallow.fields import Nested
 
 from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSubSchemaMixin

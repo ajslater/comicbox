@@ -1,4 +1,5 @@
 """Comictagger transform to and from Comicbox format."""
+
 from bidict import bidict
 
 from comicbox.identifiers import (

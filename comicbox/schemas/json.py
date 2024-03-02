@@ -1,4 +1,5 @@
 """Json Schema."""
+
 from abc import ABC
 
 import simplejson as json

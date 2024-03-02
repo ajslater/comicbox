@@ -1,4 +1,5 @@
 """Nested Publishing Tags."""
+
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_COUNT_KEY,
     SERIES_KEY,

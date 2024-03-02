@@ -1,4 +1,5 @@
 """Comic Book Info transform to and from Comicbox format."""
+
 from datetime import datetime
 
 from bidict import bidict

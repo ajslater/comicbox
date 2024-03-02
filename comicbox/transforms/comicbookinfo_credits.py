@@ -1,4 +1,5 @@
 """Comic Book Info Credits Transform Mixin."""
+
 from logging import getLogger
 from types import MappingProxyType
 

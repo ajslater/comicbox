@@ -1,4 +1,5 @@
 """Test the API surface that Codex uses."""
+
 from argparse import Namespace
 from contextlib import suppress
 from copy import deepcopy

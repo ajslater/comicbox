@@ -1,4 +1,5 @@
 """Identifiers Schema."""
+
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSubSchema
 

@@ -1,4 +1,5 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+
 from itertools import zip_longest
 from logging import getLogger
 

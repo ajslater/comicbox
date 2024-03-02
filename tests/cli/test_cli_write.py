@@ -1,4 +1,5 @@
 """Test CLI metadata parsing."""
+
 from argparse import Namespace
 from pprint import pprint
 from types import MappingProxyType
@@ -131,7 +132,6 @@ def test_cli_action_cbz():
     cli.main((ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
     assert not TMP_CBR_PATH.exists()
 
-    print("X" * 80)
     # config = Namespace(comicbox=Namespace(print="sl"))
     with Comicbox(TMP_CBZ_PATH) as car:
         # car.print_out()

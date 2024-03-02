@@ -1,4 +1,5 @@
 """Test CLI extract actions."""
+
 from pprint import pprint
 
 from deepdiff.diff import DeepDiff
@@ -61,7 +62,7 @@ def _test_cli_action_export_util(path, args):
     assert len(list_dir) == len(formats)
     print("TEST FILES:")
     for fn in list_dir:
-        test_path = TEST_EXPORT_DIR / fn.name
+        test_path = TEST_EXPORT_DIR / fn.name.lower()
         print(fn.name)
         if fn.name == "comicbox-cli.yaml":
             assert not load_cli_and_compare_dicts(test_path, fn)

@@ -1,4 +1,5 @@
 """Logging classes."""
+
 import logging
 import os
 from logging import INFO, Formatter, StreamHandler, basicConfig

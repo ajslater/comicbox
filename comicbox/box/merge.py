@@ -1,4 +1,5 @@
 """Merge Metadata Methods."""
+
 from collections.abc import Mapping
 from logging import getLogger
 
@@ -8,7 +9,9 @@ from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
     ORDERED_SET_KEYS,
     PAGES_KEY,
+    REPRINTS_KEY,
 )
+from comicbox.transforms.reprints import sort_reprints
 
 LOG = getLogger(__name__)
 
@@ -88,7 +91,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
             ordered_set[value] = None
         return tuple(ordered_set.keys())
 
-    def _merge_key(self, merged_md, key, value):
+    def _merge_key(self, merged_md, key, value):  # noqa: C901
         """Merge complex values."""
         try:
             if value in EMPTY_VALUES:
@@ -101,6 +104,9 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 self._merge_contributors(merged_md, value)
             elif key in ORDERED_SET_KEYS:
                 self._merge_ordered_set(merged_md, key, value)
+            elif key == REPRINTS_KEY:
+                new_value = merged_md[key] + value
+                merged_md[key] = sort_reprints(new_value)
             elif isinstance(value, list | tuple):
                 merged_md[key].extend(value)
             elif isinstance(value, set | frozenset):
