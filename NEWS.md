@@ -3,6 +3,7 @@
 ## V1.1.1
 
 - Write ComicInfo.xml in TitleCase so Comictagger can find it.
+- Write MetronInfo.xml & CoMet.xml in TitleCase for beauty.
 - Fix duplicate reprints.
 
 ## v1.1.0

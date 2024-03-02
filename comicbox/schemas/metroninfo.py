@@ -166,7 +166,7 @@ class MetronInfoSchema(XmlSchema):
     """MetronInfo.xml Schema."""
 
     CONFIG_KEYS = frozenset({"metron", "metroninfo", "mi"})
-    FILENAME = "metroninfo.xml"
+    FILENAME = "MetronInfo.xml"
     ROOT_TAGS = ("MetronInfo",)
 
     MetronInfo = Nested(MetronInfoSubSchema)
