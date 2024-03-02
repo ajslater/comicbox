@@ -1,5 +1,10 @@
 # 📰 News
 
+## V1.1.1
+
+- Write ComicInfo.xml in TitleCase so Comictagger can find it.
+- Fix duplicate reprints.
+
 ## v1.1.0
 
 - Fix `--import` option crash.

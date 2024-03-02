@@ -102,7 +102,7 @@ class ComicInfoSchema(XmlSchema):
     CONFIG_KEYS = frozenset(
         {"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}
     )
-    FILENAME = "comicinfo.xml"
+    FILENAME = "ComicInfo.xml"  # Comictagger doesn't read without CapCase
     ROOT_TAGS = ("ComicInfo",)
 
     ComicInfo = Nested(ComicInfoSubSchema)

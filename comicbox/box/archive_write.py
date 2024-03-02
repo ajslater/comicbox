@@ -8,10 +8,13 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
 from comicbox.sources import MetadataSources
 
-RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
-CBZ_SUFFIX = ".cbz"
-ALL_METADATA_NAMES = frozenset(
-    {source.value.transform_class.SCHEMA_CLASS.FILENAME for source in MetadataSources}
+_RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
+_CBZ_SUFFIX = ".cbz"
+_ALL_METADATA_NAMES = frozenset(
+    {
+        source.value.transform_class.SCHEMA_CLASS.FILENAME.lower()
+        for source in MetadataSources
+    }
 )
 LOG = getLogger(__name__)
 
@@ -26,7 +29,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
 
     def _get_new_archive_path(self):
         self._ensure_write_archive()
-        new_path = self._path.with_suffix(CBZ_SUFFIX)  # type: ignore
+        new_path = self._path.with_suffix(_CBZ_SUFFIX)  # type: ignore
         if new_path.is_file() and new_path != self._path:
             reason = f"{new_path} already exists."
             raise ValueError(reason)
@@ -53,7 +56,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         else:
             namelist = self._get_archive_namelist()
             for filename in namelist:
-                if Path(filename).name.lower() in ALL_METADATA_NAMES:
+                if Path(filename).name.lower() in _ALL_METADATA_NAMES:
                     rewrite = True
                     break
         return rewrite
@@ -75,7 +78,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             raise ValueError(reason)
         namelist = self._get_archive_namelist()
         for filename in namelist:
-            if Path(filename).name.lower() in ALL_METADATA_NAMES:
+            if Path(filename).name.lower() in _ALL_METADATA_NAMES:
                 # remove all metadata files from new archive.
                 continue
 
@@ -97,7 +100,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         """CREATE NEW ARCHIVE."""
         self._ensure_write_archive()
         new_path = self._get_new_archive_path()
-        tmp_path = self._path.with_suffix(RECOMPRESS_SUFFIX)  # type: ignore
+        tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)  # type: ignore
 
         with ZipFile(tmp_path, "x") as zf:
             self._write_archive_metadata_files(zf, files)
