@@ -1,4 +1,4 @@
-FROM python:3.12.1-bookworm
+FROM python:3.12-bookworm
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
@@ -18,7 +18,7 @@ RUN apt-get clean \
 WORKDIR /app
 
 COPY bin ./bin
-COPY package.json package-lock.json pyproject.toml poetry.lock Makefile ./
+COPY .eslintignore .gitignore .prettierignore .remarkignore eslint.config.js package.json package-lock.json pyproject.toml poetry.lock Makefile ./
 RUN make install-all
 
 COPY . .

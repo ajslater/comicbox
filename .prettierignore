@@ -10,3 +10,5 @@
 /tests/**/*.xml
 /tests/**/*.yaml
 __pycache__
+package-lock.json
+poetry.lock

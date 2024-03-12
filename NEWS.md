@@ -1,6 +1,11 @@
 # 📰 News
 
-## V1.1.1
+## v1.1.2
+
+- Fix crash copying directories between archives.
+- Fix crash with leftover temp files.
+
+## v1.1.1
 
 - Write ComicInfo.xml in TitleCase so Comictagger can find it.
 - Write MetronInfo.xml & CoMet.xml in TitleCase for beauty.
