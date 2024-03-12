@@ -90,6 +90,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
     def _archive_readfile(self, filename, to_pixmap=False) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
+        if Path(filename).is_dir():
+            return b""
         self._ensure_read_archive()
         archive = self._get_archive()
         if archive is None:

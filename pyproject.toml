@@ -8,7 +8,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "comicbox"
-version = "1.1.1"
+version = "1.1.2"
 description = "An API for reading comic archive contents and metadata: CBZ, CBR, CBT and PDF"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -62,7 +62,7 @@ wheel = "^0.43.0"
 [tool.poetry.group.lint.dependencies]
 check-jsonschema = "^0.28.0"
 codespell = "^2.1.0"
-pyright = "^1.1"
+pyright = "1.1.352"
 radon = { version = "^6.0.1", extras = ["toml"] }
 ruff = "^0.3.0"
 types-python-dateutil = "^2.8.19.13"

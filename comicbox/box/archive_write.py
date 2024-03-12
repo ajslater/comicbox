@@ -76,8 +76,18 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
             raise ValueError(reason)
-        namelist = self._get_archive_namelist()
-        for filename in namelist:
+        infolist = self._get_archive_infolist()
+        for info in infolist:
+            try:
+                if info.is_dir():  # type: ignore
+                    continue
+            except AttributeError:
+                if info.isdir():  # type: ignore
+                    continue
+            try:
+                filename = info.filename  # type: ignore
+            except AttributeError:
+                filename = info.name  # type: ignore
             if Path(filename).name.lower() in _ALL_METADATA_NAMES:
                 # remove all metadata files from new archive.
                 continue
@@ -101,6 +111,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         self._ensure_write_archive()
         new_path = self._get_new_archive_path()
         tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)  # type: ignore
+        tmp_path.unlink(missing_ok=True)
 
         with ZipFile(tmp_path, "x") as zf:
             self._write_archive_metadata_files(zf, files)
