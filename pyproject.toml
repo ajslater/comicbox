@@ -57,7 +57,7 @@ urnparse = "^0.2.0"
 xmltodict = "^0.13.0"
 
 [tool.poetry.group.dev.dependencies]
-wheel = "^0.42.0"
+wheel = "^0.43.0"
 
 [tool.poetry.group.lint.dependencies]
 check-jsonschema = "^0.28.0"

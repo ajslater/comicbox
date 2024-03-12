@@ -1,6 +1,7 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import arrayFunc from "eslint-plugin-array-func";
+import markdown from "eslint-plugin-markdown";
 // import plugin broken for flag config
 // https://github.com/import-js/eslint-plugin-import/issues/2556
 // import importPlugin from "eslint-plugin-import";
@@ -24,6 +25,8 @@ export default [
     },
     plugins: {
       // import: importPlugin,
+      markdown: markdown,
+      security: pluginSecurity,
       unicorn: eslintPluginUnicorn,
     },
     rules: {
@@ -67,10 +70,31 @@ export default [
     },
      */
   },
+  ...markdown.configs.recommended,
   js.configs.recommended,
   arrayFunc.configs.all,
   pluginSecurity.configs.recommended,
   eslintPluginPrettierRecommended,
+  {
+    files: ["**/*.md"],
+    processor: "markdown/markdown",
+    rules: {
+      "prettier/prettier": ["warn", { parser: "markdown" }],
+    },
+  },
+  {
+    files: ["**/*.md/*.js"], // Will match js code inside *.md files
+    rules: {
+      "no-unused-vars": "off",
+      "no-undef": "off",
+    },
+  },
+  {
+    files: ["**/*.md/*.sh"],
+    rules: {
+      "prettier/prettier": ["error", { parser: "sh" }],
+    },
+  },
   ...compat.config({
     root: true,
     env: {
@@ -81,7 +105,6 @@ export default [
     extends: [
       // LANGS
       "plugin:jsonc/recommended-with-jsonc",
-      "plugin:markdown/recommended",
       "plugin:toml/recommended",
       "plugin:yml/standard",
       "plugin:yml/prettier",
@@ -98,26 +121,6 @@ export default [
       "plugin:no-unsanitized/DOM",
     ],
     overrides: [
-      {
-        files: ["**/*.md"],
-        processor: "markdown/markdown",
-        rules: {
-          "prettier/prettier": ["warn", { parser: "markdown" }],
-        },
-      },
-      {
-        files: ["**/*.md/*.js"], // Will match js code inside *.md files
-        rules: {
-          "no-unused-vars": "off",
-          "no-undef": "off",
-        },
-      },
-      {
-        files: ["**/*.md/*.sh"],
-        rules: {
-          "prettier/prettier": ["error", { parser: "sh" }],
-        },
-      },
       {
         files: ["*.yaml", "*.yml"],
         //parser: "yaml-eslint-parser",
@@ -152,7 +155,6 @@ export default [
     plugins: [
       "eslint-comments",
       //"import",
-      "markdown",
       "no-constructor-bind",
       "no-secrets",
       "no-unsanitized",
@@ -185,6 +187,7 @@ export default [
       "dist",
       "node_modules",
       "package-lock.json",
+      "poetry.lock",
       "test-results",
       "typings",
     ],
