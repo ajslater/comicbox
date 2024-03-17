@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.1.3
+
+- Updated comicfn2dict fixes filename parsing bugs.
+
 ## v1.1.2
 
 - Fix crash copying directories between archives.
