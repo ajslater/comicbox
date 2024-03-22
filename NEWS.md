@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.1.4
+
+- Make language and country code parsing more durable
+
 ## v1.1.3
 
 - Updated comicfn2dict fixes filename parsing bugs.
