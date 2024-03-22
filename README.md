@@ -101,11 +101,18 @@ A recursive example:
 <!-- eslint-skip -->
 
 ```sh
-comicbox --recurse -m "publisher: SC Comics" -w cr ./SmallComicsComics/
+comicbox --recurse -m "publisher: 'SC Comics'" -w cr ./SmallComicsComics/
 ```
 
 Will recursively change the publisher to "SC Comics" for every comic found in
 under the SmallComicsComics directory.
+
+#### Escaping YAML
+
+the `-m` command line argument accepts the YAML language for tags. Certain
+characters like `\,:;_()$%^@` are part of the YAML language. To successful
+include them as data in your tags, look up
+["Escaping YAML" documentation online](https://www.w3schools.io/file/yaml-escape-characters/)
 
 ##### Deleting Metadata
 

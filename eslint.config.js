@@ -7,6 +7,7 @@ import markdown from "eslint-plugin-markdown";
 // import importPlugin from "eslint-plugin-import";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import pluginSecurity from "eslint-plugin-security";
+import eslintPluginToml from "eslint-plugin-toml";
 import eslintPluginUnicorn from "eslint-plugin-unicorn";
 import globals from "globals";
 
@@ -71,6 +72,7 @@ export default [
      */
   },
   ...markdown.configs.recommended,
+  ...eslintPluginToml.configs["flat/recommended"],
   js.configs.recommended,
   arrayFunc.configs.all,
   pluginSecurity.configs.recommended,
@@ -105,7 +107,6 @@ export default [
     extends: [
       // LANGS
       "plugin:jsonc/recommended-with-jsonc",
-      "plugin:toml/recommended",
       "plugin:yml/standard",
       "plugin:yml/prettier",
       // CODE QUALITY
