@@ -110,7 +110,7 @@ under the SmallComicsComics directory.
 #### Escaping YAML
 
 the `-m` command line argument accepts the YAML language for tags. Certain
-characters like `\,:;_()$%^@` are part of the YAML language. To successfull
+characters like `\,:;_()$%^@` are part of the YAML language. To successful
 include them as data in your tags, look up
 ["Escaping YAML" documentation online](https://www.w3schools.io/file/yaml-escape-characters/)
 
