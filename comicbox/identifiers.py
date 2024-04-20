@@ -190,6 +190,8 @@ def parse_identifier(item, naked_nid=None):
 
 def to_urn_string(nid_str: str, nss_str: str):
     """Compose an urn string."""
+    if "." in nid_str:
+        return ""
     nid = NSIdentifier(nid_str)
     nss = NSSString(nss_str)
     urn = URN8141(nid=nid, nss=nss)
