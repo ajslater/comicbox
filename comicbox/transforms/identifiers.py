@@ -129,4 +129,10 @@ class IdentifiersTransformMixin(ABC):
                 if url:
                     data[self.URL_TAG] = url
                     break
+            else:
+                # Get first unknown url
+                identifier = next(iter(identifiers.values()))
+                if url := identifier.get(URL_KEY):
+                    data[self.URL_TAG] = url
+
         return data
