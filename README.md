@@ -135,6 +135,26 @@ comicbox --delete "My Overtagged Comic.cbz"
 comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
 ```
 
+#### Quirks
+
+The comicbox.yaml format represents the ComicInfo.xml Web tag as an
+`identifiers.url` tag. Fear not, you don't have to remember this. The CLI
+accepts heterogeneous tag types with the `-m` option, so you can type:
+
+<!-- eslint-skip -->
+
+```sh
+comicbox -p -m "Web: https://foo.com" mycomic.cbz
+```
+
+and the identifier tag should appear in comicbox.yaml as:
+
+```yaml
+identifiers:
+  nss: foo.com
+  url: https://foo.com
+```
+
 #### Packages
 
 Comicbox actually installs three different packages:

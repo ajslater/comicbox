@@ -3,6 +3,7 @@
 ## v1.1.5
 
 - Fix export of CIX CoverArtist tag.
+- Accept any url for comicbox identifiers.
 
 ## v1.1.4
 
