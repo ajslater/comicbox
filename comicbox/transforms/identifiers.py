@@ -2,7 +2,9 @@
 
 from abc import ABC
 from collections.abc import Sequence
+from logging import getLogger
 from re import Pattern
+from urllib.parse import urlparse
 
 from comicbox.identifiers import (
     GTIN_NID_ORDER,
@@ -14,6 +16,8 @@ from comicbox.identifiers import (
 )
 from comicbox.schemas.comicbox_mixin import IDENTIFIERS_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+
+LOG = getLogger(__name__)
 
 
 def _sequence_to_map(identifier_sequence, naked_nid=None):
@@ -47,6 +51,18 @@ def _parse_url_tag_nid(nid: str, regex: Pattern, url: str, data: dict) -> bool:
         data[IDENTIFIERS_KEY][nid] = {}
     data[IDENTIFIERS_KEY][nid] = identifier
     return True
+
+
+def _parse_unknown_url(url: str, data: dict) -> None:
+    """Parse unknown urls."""
+    try:
+        nss = urlparse(url).netloc
+        identifier = {NSS_KEY: nss, URL_KEY: url}
+        if IDENTIFIERS_KEY not in data:
+            data[IDENTIFIERS_KEY] = {}
+        data[IDENTIFIERS_KEY][nss] = identifier
+    except Exception:
+        LOG.debug(f"Unparsable url: {url}")
 
 
 class IdentifiersTransformMixin(ABC):
@@ -92,6 +108,8 @@ class IdentifiersTransformMixin(ABC):
                 for nid, regex in WEB_REGEX_URLS.items():
                     if _parse_url_tag_nid(nid, regex, url, data):
                         break
+                else:
+                    _parse_unknown_url(url, data)
         return data
 
     def unparse_url_tag(self, data):
@@ -111,4 +129,10 @@ class IdentifiersTransformMixin(ABC):
                 if url:
                     data[self.URL_TAG] = url
                     break
+            else:
+                # Get first unknown url
+                identifier = next(iter(identifiers.values()))
+                if url := identifier.get(URL_KEY):
+                    data[self.URL_TAG] = url
+
         return data

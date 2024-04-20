@@ -1,5 +1,11 @@
 # 📰 News
 
+## v1.1.5
+
+- Fix export of CIX CoverArtist tag.
+- Fix tagging Web and other unknown url tags. Accept any url for comicbox
+  identifiers.
+
 ## v1.1.4
 
 - Make language and country code parsing more durable

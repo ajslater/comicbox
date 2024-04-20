@@ -24,7 +24,7 @@ from comicbox.schemas.xml_sub_tags import create_pages_field
 GTIN_TAG = "GTIN"
 
 COLORIST_TAG = "Colorist"
-COVER_ARTIST_TAG = "CoverArist"
+COVER_ARTIST_TAG = "CoverArtist"
 CREATOR_TAG = "Creator"
 EDITOR_TAG = "Editor"
 INKER_TAG = "Inker"
