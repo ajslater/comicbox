@@ -30,8 +30,9 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
                 namelist = archive.getnames()
             else:
                 namelist = archive.namelist()  # type: ignore
+
             # SORTED CASE INSENSITIVELY
-            self._namelist = sorted(namelist, key=lambda x: x.lower())
+            self._namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
         return self._namelist
 
     def _get_info_fn(self, info):
@@ -56,8 +57,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
                 infolist = archive.infolist()  # type: ignore
 
             # SORTED CASE INSENSITIVELY
-            self._infolist = sorted(
-                infolist, key=lambda i: self._get_info_fn(i).lower()
+            self._infolist = tuple(
+                sorted(infolist, key=lambda i: self._get_info_fn(i).lower())
             )
         return self._infolist
 

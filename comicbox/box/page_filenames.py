@@ -1,9 +1,12 @@
 """Calculate page filenames."""
 
+from pathlib import Path
 from sys import maxsize
 
 from comicbox.box.archive import archive_close
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
+
+IGNORE_PREFIXES = (".", "__macosx")
 
 
 class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
@@ -21,6 +24,10 @@ class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
         else:
             self._page_filenames = []
             for filename in archive_filenames:
+                for part in Path(filename).parts:
+                    for prefix in IGNORE_PREFIXES:
+                        if part.lower().startswith(prefix):
+                            continue
                 if self.IMAGE_EXT_RE.search(filename) is not None:
                     self._page_filenames.append(filename)
 
