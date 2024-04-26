@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.1.6
+
+- Ignore dotfiles and macOS resource forks when finding pages.
+
 ## v1.1.5
 
 - Fix export of CIX CoverArtist tag.
