@@ -1,6 +1,5 @@
 """Identifier Fields."""
 
-from abc import ABC
 from collections.abc import Sequence
 from logging import getLogger
 from re import Pattern
@@ -65,7 +64,7 @@ def _parse_unknown_url(url: str, data: dict) -> None:
         LOG.debug(f"Unparsable url: {url}")
 
 
-class IdentifiersTransformMixin(ABC):
+class IdentifiersTransformMixin:
     """Transform Identifiers."""
 
     IDENTIFIERS_TAG = ""

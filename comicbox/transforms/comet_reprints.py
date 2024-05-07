@@ -1,7 +1,5 @@
 """CoMet Reprints Transforms Mixin."""
 
-from abc import ABC
-
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.schemas.comicbox_mixin import (
@@ -16,7 +14,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
 
 
-class CoMetReprintsTransformMixin(ABC):
+class CoMetReprintsTransformMixin:
     """CoMet Reprints Mixin."""
 
     IS_VERSION_OF_TAG = "isVersionOf"
