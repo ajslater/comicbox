@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.1.7
+
+- Unknown urls give the path, query and fragment as the nss, not the domain
+
 ## v1.1.6
 
 - Ignore dotfiles and macOS resource forks when finding pages.

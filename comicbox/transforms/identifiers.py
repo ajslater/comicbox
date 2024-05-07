@@ -52,16 +52,24 @@ def _parse_url_tag_nid(nid: str, regex: Pattern, url: str, data: dict) -> bool:
     return True
 
 
-def _parse_unknown_url(url: str, data: dict) -> None:
+def _parse_unknown_url(url_str: str, data: dict) -> None:
     """Parse unknown urls."""
     try:
-        nss = urlparse(url).netloc
-        identifier = {NSS_KEY: nss, URL_KEY: url}
+        url = urlparse(url_str)
+        nid = url.netloc
+        nss = ""
+        if url.path:
+            nss += url.path
+        if url.query:
+            nss += "?" + url.query
+        if url.fragment:
+            nss += "#" + url.fragment
+        identifier = {NSS_KEY: nss, URL_KEY: url_str}
         if IDENTIFIERS_KEY not in data:
             data[IDENTIFIERS_KEY] = {}
-        data[IDENTIFIERS_KEY][nss] = identifier
+        data[IDENTIFIERS_KEY][nid] = identifier
     except Exception:
-        LOG.debug(f"Unparsable url: {url}")
+        LOG.debug(f"Unparsable url: {url_str}")
 
 
 class IdentifiersTransformMixin:
