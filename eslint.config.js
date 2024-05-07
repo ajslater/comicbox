@@ -38,6 +38,7 @@ export default [
       "simple-import-sort": simpleImportSort,
       toml: eslintPluginToml,
       unicorn,
+      yml: eslintPluginYml,
     },
     rules: {
       "array-func/prefer-array-from": "off", // for modern browsers the spread operator, as preferred by unicorn, works fine.
@@ -83,20 +84,14 @@ export default [
   },
   js.configs.recommended,
   arrayFunc.configs.all,
-  ...markdown.configs.recommended,
   ...eslintPluginJsonc.configs["flat/recommended-with-jsonc"],
+  ...markdown.configs.recommended,
   eslintPluginPrettierRecommended,
-  sonarjs.configs.recommended,
   eslintPluginSecurity.configs.recommended,
+  sonarjs.configs.recommended,
   ...eslintPluginToml.configs["flat/recommended"],
   ...eslintPluginYml.configs["flat/standard"],
   ...eslintPluginYml.configs["flat/prettier"],
-  /*
-      {
-        files: ["*.json", "*.json5", "*.jsonc"],
-        //parser: "jsonc-eslint-parser",
-      },
-  */
   {
     files: ["**/*.md"],
     processor: "markdown/markdown",
@@ -119,9 +114,6 @@ export default [
       node: true,
     },
     extends: [
-      // LANGS
-      //      "plugin:yml/standard",
-      //      "plugin:yml/prettier",
       // PRACTICES
       "plugin:eslint-comments/recommended",
       // "plugin:import/recommended",
