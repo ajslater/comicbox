@@ -8,7 +8,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "comicbox"
-version = "1.1.7"
+version = "1.1.8"
 description = "An API for reading comic archive contents and metadata: CBZ, CBR, CBT and PDF"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -47,7 +47,7 @@ comicbox-pdffile = { version = "^0.1.5", optional = true }
 comicfn2dict = "^0.2.2"
 marshmallow = "^3.19.0"
 marshmallow-union = "^0.1.15.post1"
-pycountry = "^23.12.11"
+pycountry = "^24.6.1"
 python-dateutil = "^2.8.2"
 rarfile = "^4.0"
 ruamel-yaml = ">=0.17.32,<0.19.00"

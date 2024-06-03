@@ -92,7 +92,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
 
     @archive_close
     def write(self, sources=None):
-        """Write metadata accourding to config.write settings."""
+        """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete
         ):

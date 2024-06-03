@@ -1,43 +1,66 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
-import arrayFunc from "eslint-plugin-array-func";
-// import plugin broken for flag config
-// https://github.com/import-js/eslint-plugin-import/issues/2556
-// import importPlugin from "eslint-plugin-import";
+import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginJsonc from "eslint-plugin-jsonc";
-import markdown from "eslint-plugin-markdown";
-import prettier from "eslint-plugin-prettier";
+import eslintPluginMarkdown from "eslint-plugin-markdown";
+import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
+// import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
+import eslintPluginNoUseExtendNative from "eslint-plugin-no-use-extend-native";
+import eslintPluginPrettier from "eslint-plugin-prettier";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import eslintPluginSecurity from "eslint-plugin-security";
-import simpleImportSort from "eslint-plugin-simple-import-sort";
-import sonarjs from "eslint-plugin-sonarjs";
+import eslintPluginSimpleImportSort from "eslint-plugin-simple-import-sort";
+import eslintPluginSonarjs from "eslint-plugin-sonarjs";
 import eslintPluginToml from "eslint-plugin-toml";
-import unicorn from "eslint-plugin-unicorn";
+import eslintPluginUnicorn from "eslint-plugin-unicorn";
 import eslintPluginYml from "eslint-plugin-yml";
 import globals from "globals";
 
 const compat = new FlatCompat();
+
+const ignores = [
+  "!.circleci",
+  "**/__pycache__",
+  "**/*min.css",
+  "**/*min.js",
+  "*~",
+  ".git",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".venv",
+  "dist",
+  "node_modules",
+  "package-lock.json",
+  "poetry.lock",
+  "test-results",
+  "typings",
+];
 
 export default [
   {
     languageOptions: {
       globals: {
         ...globals.node,
+        ...globals.browser,
       },
     },
     linterOptions: {
       reportUnusedDisableDirectives: "warn",
     },
     plugins: {
-      arrayFunc,
-      // import: importPlugin,
-      markdown,
-      prettier,
+      arrayFunc: eslintPluginArrayFunc,
+      jsonc: eslintPluginJsonc,
+      markdown: eslintPluginMarkdown,
+      "no-secrets": eslintPluginNoSecrets,
+      "no-use-extend-native": eslintPluginNoUseExtendNative,
+      // "no-unsantized": eslintPluginNoUnsanitized,
+      prettier: eslintPluginPrettier,
       security: eslintPluginSecurity,
-      //sonarjs,
-      "simple-import-sort": simpleImportSort,
+      "simple-import-sort": eslintPluginSimpleImportSort,
+      // sonarjs: eslintPluginSonarjs,
       toml: eslintPluginToml,
-      unicorn,
+      unicorn: eslintPluginUnicorn,
       yml: eslintPluginYml,
     },
     rules: {
@@ -47,10 +70,11 @@ export default [
       "no-debugger": "warn",
       "no-constructor-bind/no-constructor-bind": "error",
       "no-constructor-bind/no-constructor-state": "error",
+      "no-secrets/no-secrets": "error",
       "prettier/prettier": "warn",
       "security/detect-object-injection": "off",
-      "simple-import-sort/imports": "warn",
       "simple-import-sort/exports": "warn",
+      "simple-import-sort/imports": "warn",
       "space-before-function-paren": "off",
       "unicorn/switch-case-braces": ["warn", "avoid"],
       "unicorn/prefer-node-protocol": 0,
@@ -81,14 +105,17 @@ export default [
       },
     },
      */
+    ignores,
   },
   js.configs.recommended,
-  arrayFunc.configs.all,
+  eslintPluginArrayFunc.configs.all,
   ...eslintPluginJsonc.configs["flat/recommended-with-jsonc"],
-  ...markdown.configs.recommended,
+  ...eslintPluginMarkdown.configs.recommended,
+  eslintPluginNoUseExtendNative.configs.recommended,
+  // eslintPluginNoUnsanitized.configs.recommended,
   eslintPluginPrettierRecommended,
   eslintPluginSecurity.configs.recommended,
-  sonarjs.configs.recommended,
+  eslintPluginSonarjs.configs.recommended,
   ...eslintPluginToml.configs["flat/recommended"],
   ...eslintPluginYml.configs["flat/standard"],
   ...eslintPluginYml.configs["flat/prettier"],
@@ -106,6 +133,24 @@ export default [
       "no-undef": "off",
     },
   },
+  {
+    files: ["**/*.md/*.sh"],
+    rules: {
+      "prettier/prettier": ["error", { parser: "sh" }],
+    },
+  },
+  {
+    files: ["docker-compose*.yaml"],
+    rules: {
+      "yml/no-empty-mapping-value": "off",
+    },
+  },
+  {
+    files: ["tests/**/*.json"],
+    rules: {
+      "no-secrets/no-secrets": "off",
+    },
+  },
   ...compat.config({
     root: true,
     env: {
@@ -117,20 +162,10 @@ export default [
       // PRACTICES
       "plugin:eslint-comments/recommended",
       // "plugin:import/recommended",
-      "plugin:no-use-extend-native/recommended",
       "plugin:optimize-regex/all",
-      "plugin:promise/recommended",
+      // "plugin:promise/recommended",
       "plugin:switch-case/recommended",
       // SECURITY
-      "plugin:no-unsanitized/DOM",
-    ],
-    overrides: [
-      {
-        files: ["tests/test_files/**/mupdf.json"],
-        rules: {
-          "no-secrets/no-secrets": "off",
-        },
-      },
     ],
     parserOptions: {
       ecmaFeatures: {
@@ -139,38 +174,19 @@ export default [
       ecmaVersion: "latest",
     },
     plugins: [
-      "eslint-comments",
-      //"import",
-      "no-constructor-bind",
-      "no-secrets",
-      "no-unsanitized",
-      "no-use-extend-native",
-      "optimize-regex",
-      "promise",
-      "switch-case",
+      "eslint-comments", // https://github.com/mysticatea/eslint-plugin-eslint-comments/issues/79
+      // "import", // https://github.com/import-js/eslint-plugin-import/issues/2556
+      "no-constructor-bind", // https://github.com/markalfred/eslint-plugin-no-constructor-bind
+      "optimize-regex", // https://github.com/BrainMaestro/eslint-plugin-optimize-regex
+      // "promise", // https://github.com/eslint-community/eslint-plugin-promise/issues/449
+      "switch-case", // https://github.com/lukeapage/eslint-plugin-switch-case
     ],
     rules: {
       "no-constructor-bind/no-constructor-bind": "error",
       "no-constructor-bind/no-constructor-state": "error",
-      "no-secrets/no-secrets": "error",
       "eslint-comments/no-unused-disable": 1,
       "switch-case/newline-between-switch-case": "off", // Malfunctioning
     },
-    ignorePatterns: [
-      "*~",
-      "**/__pycache__",
-      ".git",
-      "!.circleci",
-      ".mypy_cache",
-      ".ruff_cache",
-      ".pytest_cache",
-      ".venv*",
-      "dist",
-      "node_modules",
-      "package-lock.json",
-      "poetry.lock",
-      "test-results",
-      "typings",
-    ],
+    ignorePatterns: ignores,
   }),
 ];
