@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.1.9
+
+- Deps security update
+
 ## v1.1.8
 
 - Update pycountry

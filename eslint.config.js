@@ -1,13 +1,15 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginJsonc from "eslint-plugin-jsonc";
 import eslintPluginMarkdown from "eslint-plugin-markdown";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 // import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
-import eslintPluginNoUseExtendNative from "eslint-plugin-no-use-extend-native";
+// import eslintPluginNoUseExtendNative from "eslint-plugin-no-use-extend-native";
 import eslintPluginPrettier from "eslint-plugin-prettier";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import eslintPluginRegexp from "eslint-plugin-regexp";
 import eslintPluginSecurity from "eslint-plugin-security";
 import eslintPluginSimpleImportSort from "eslint-plugin-simple-import-sort";
 import eslintPluginSonarjs from "eslint-plugin-sonarjs";
@@ -42,7 +44,6 @@ export default [
     languageOptions: {
       globals: {
         ...globals.node,
-        ...globals.browser,
       },
     },
     linterOptions: {
@@ -53,7 +54,7 @@ export default [
       jsonc: eslintPluginJsonc,
       markdown: eslintPluginMarkdown,
       "no-secrets": eslintPluginNoSecrets,
-      "no-use-extend-native": eslintPluginNoUseExtendNative,
+      // "no-use-extend-native": eslintPluginNoUseExtendNative,
       // "no-unsantized": eslintPluginNoUnsanitized,
       prettier: eslintPluginPrettier,
       security: eslintPluginSecurity,
@@ -111,14 +112,16 @@ export default [
   eslintPluginArrayFunc.configs.all,
   ...eslintPluginJsonc.configs["flat/recommended-with-jsonc"],
   ...eslintPluginMarkdown.configs.recommended,
-  eslintPluginNoUseExtendNative.configs.recommended,
+  // eslintPluginNoUseExtendNative.configs.recommended,
   // eslintPluginNoUnsanitized.configs.recommended,
-  eslintPluginPrettierRecommended,
+  eslintPluginRegexp.configs["flat/recommended"],
   eslintPluginSecurity.configs.recommended,
   eslintPluginSonarjs.configs.recommended,
   ...eslintPluginToml.configs["flat/recommended"],
   ...eslintPluginYml.configs["flat/standard"],
   ...eslintPluginYml.configs["flat/prettier"],
+  eslintPluginPrettierRecommended,
+  eslintConfigPrettier, // Best if last
   {
     files: ["**/*.md"],
     processor: "markdown/markdown",
@@ -154,18 +157,13 @@ export default [
   ...compat.config({
     root: true,
     env: {
-      browser: true,
       es2024: true,
       node: true,
     },
     extends: [
       // PRACTICES
-      "plugin:eslint-comments/recommended",
       // "plugin:import/recommended",
-      "plugin:optimize-regex/all",
       // "plugin:promise/recommended",
-      "plugin:switch-case/recommended",
-      // SECURITY
     ],
     parserOptions: {
       ecmaFeatures: {
@@ -174,18 +172,13 @@ export default [
       ecmaVersion: "latest",
     },
     plugins: [
-      "eslint-comments", // https://github.com/mysticatea/eslint-plugin-eslint-comments/issues/79
       // "import", // https://github.com/import-js/eslint-plugin-import/issues/2556
       "no-constructor-bind", // https://github.com/markalfred/eslint-plugin-no-constructor-bind
-      "optimize-regex", // https://github.com/BrainMaestro/eslint-plugin-optimize-regex
       // "promise", // https://github.com/eslint-community/eslint-plugin-promise/issues/449
-      "switch-case", // https://github.com/lukeapage/eslint-plugin-switch-case
     ],
     rules: {
       "no-constructor-bind/no-constructor-bind": "error",
       "no-constructor-bind/no-constructor-state": "error",
-      "eslint-comments/no-unused-disable": 1,
-      "switch-case/newline-between-switch-case": "off", // Malfunctioning
     },
     ignorePatterns: ignores,
   }),
