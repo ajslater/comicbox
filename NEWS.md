@@ -1,5 +1,10 @@
 # 📰 News
 
+## v1.1.10
+
+- Demote logging of archive comments that are not parseable as json to a terse
+  debug line.
+
 ## v1.1.9
 
 - Deps security update
