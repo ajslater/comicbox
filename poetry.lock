@@ -153,13 +153,13 @@ files = [
 
 [[package]]
 name = "check-jsonschema"
-version = "0.28.5"
+version = "0.28.6"
 description = "A jsonschema CLI and pre-commit hook"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "check_jsonschema-0.28.5-py3-none-any.whl", hash = "sha256:5b8a0de1ff64f40d08dccef3a2a767efcfa34a5c18000b8c3b2c1711ccb9739c"},
-    {file = "check_jsonschema-0.28.5.tar.gz", hash = "sha256:8100ff34ed042189c486866b0448ab9930825dc6ad1acb86c1ffb000f4648b42"},
+    {file = "check_jsonschema-0.28.6-py3-none-any.whl", hash = "sha256:34cf368d5ba78a94ec0053d39cf35e3bde41b19e350b5a80eec823730ba61ce1"},
+    {file = "check_jsonschema-0.28.6.tar.gz", hash = "sha256:b4df7b94df5b0ac181969687ad519491b5f47e6c76230c846a05e06623bbb5c6"},
 ]
 
 [package.dependencies]
@@ -233,13 +233,13 @@ pymupdf = ">=1.24.0,<2.0.0"
 
 [[package]]
 name = "comicfn2dict"
-version = "0.2.3"
+version = "0.2.4"
 description = "Parse common comic filenames and return a dict of metadata attributes. Includes a cli."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "comicfn2dict-0.2.3-py3-none-any.whl", hash = "sha256:7c6850e6a2bafe63f674767812c7a95bc3aaaaa3e23da3183335b9c517a53c43"},
-    {file = "comicfn2dict-0.2.3.tar.gz", hash = "sha256:cb4556851f973a38aa4bdeaa484cc5d51f450f2e6170861a1ea433a063dcd676"},
+    {file = "comicfn2dict-0.2.4-py3-none-any.whl", hash = "sha256:666afa89129cbee1fd14414aa7054e4774b2b3e9c516692e4377e1dd39ec3e19"},
+    {file = "comicfn2dict-0.2.4.tar.gz", hash = "sha256:a154d6405824b0323b81471f0977f5b884987012a7904ca135761000511d8835"},
 ]
 
 [[package]]
@@ -1360,4 +1360,4 @@ pdf = ["comicbox-pdffile"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d450b9b88c9992b31a4e09b1d7ca0aa4f892b83e0b0e95cb719cacac3f644d62"
+content-hash = "cc11cdd9dcd729ece4f65b8dc18bc26afc58cc27d54ea7f88370585ea6ab02dc"

@@ -1,5 +1,10 @@
 # 📰 News
 
+## v1.1.11
+
+- Fix parsing negative issue numbers in filenames.
+- Log common non-ComicBookInfo archive comments with less alarm.
+
 ## v1.1.10
 
 - Demote logging of archive comments that are not parseable as json to a terse

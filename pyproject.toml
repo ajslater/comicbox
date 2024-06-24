@@ -43,8 +43,8 @@ python = "^3.10"
 ansicolors = "^1.1.8"
 bidict = "^0.23.0"
 confuse = "^2.0.0"
-comicbox-pdffile = { version = "^0.1.5", optional = true }
-comicfn2dict = "^0.2.2"
+comicbox-pdffile = { version = "^0.1.7", optional = true }
+comicfn2dict = "^0.2.4"
 marshmallow = "^3.19.0"
 marshmallow-union = "^0.1.15.post1"
 pycountry = "^24.6.1"
