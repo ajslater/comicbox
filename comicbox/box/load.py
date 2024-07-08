@@ -6,6 +6,8 @@ from logging import DEBUG, WARNING, getLogger
 from traceback import format_exc
 from types import MappingProxyType
 
+from simplejson.errors import JSONDecodeError
+
 from comicbox.box.init import SourceData
 from comicbox.box.merge import ComicboxMergeMixin
 from comicbox.sources import MetadataSources, SourceFrom
@@ -31,9 +33,27 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
             return schema.loads(source_md)
         return schema.load(source_md)
 
+    @staticmethod
+    def _is_cbi_not_json(source, exc):
+        """Is this CBI not JSON."""
+        return (
+            source == MetadataSources.CBI
+            and isinstance(exc, JSONDecodeError)
+            and exc.pos == 0
+            and exc.lineno == 1
+            and exc.colno == 1
+        )
+
     def _except_on_load(self, source, exc, level=WARNING):
         """When loading fails warn or give stack trace in debug."""
         name = source.value.transform_class.SCHEMA_CLASS.__name__
+        if self._is_cbi_not_json(source, exc):
+            # Demote not json as json to debug warning because there are so many
+            # archive comments that are not intended to be CBI
+            if LOG.getEffectiveLevel() == DEBUG:
+                LOG.debug(f"{self._path}: {name} metadata is not JSON: {exc}")
+            return
+
         LOG.log(
             level,
             f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}",
