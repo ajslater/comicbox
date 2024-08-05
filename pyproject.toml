@@ -57,10 +57,10 @@ urnparse = "^0.2.0"
 xmltodict = "^0.13.0"
 
 [tool.poetry.group.dev.dependencies]
-wheel = "^0.43.0"
+wheel = "^0.44.0"
 
 [tool.poetry.group.lint.dependencies]
-check-jsonschema = "^0.28.0"
+check-jsonschema = "^0.29.1"
 codespell = "^2.1.0"
 pyright = "^1.1.354"
 radon = { version = "^6.0.1", extras = ["toml"] }
