@@ -33,6 +33,7 @@ _TEMPLATE = MappingTemplate(
                 "read": Optional(Sequence(str)),
                 "read_ignore": Optional(Sequence(str)),
                 "recurse": bool,
+                "replace_metadata": bool,
                 "stamp_notes": bool,
                 "tagger": Optional(str),
                 # API Options

@@ -137,6 +137,13 @@ def _add_option_group(parser):
         help=("Never compute page_count or pages metadata from the archive."),
     )
     option_group.add_argument(
+        "-R",
+        "--replace-metadata",
+        action="store_true",
+        default=False,
+        help="Replace metadata keys instead of merging them.",
+    )
+    option_group.add_argument(
         "-Q",
         "--quiet",
         action="count",

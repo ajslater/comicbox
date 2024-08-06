@@ -123,7 +123,10 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
     def merge_metadata(self, base_md, md):
         """Merge a dict into another."""
         for key, value in md.items():
-            self._merge_key(base_md, key, value)
+            if key != "comicbox" and self._config.replace_metadata:
+                base_md[key] = value
+            else:
+                self._merge_key(base_md, key, value)
 
     def merge_metadata_list(self, parsed_md_list, merged_md):
         """Pop off complex values before simple update."""

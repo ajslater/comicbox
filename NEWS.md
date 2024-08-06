@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.2.0
+
+- Add -R --replace_metadata option. Default behavior is to merge keys.
+
 ## v1.1.10
 
 - Fix parsing negative issue numbers in filenames.

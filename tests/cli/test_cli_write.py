@@ -63,7 +63,6 @@ ADDED_MD = MappingProxyType(
     {ROOT_TAG: {"publisher": "Galactic Press", "page_count": 0}}
 )
 
-
 # PATHS
 TMP_DIR = get_tmp_dir(__file__)
 TMP_PATH = TMP_DIR / EMPTY_CBZ_SOURCE_PATH.name
@@ -73,6 +72,7 @@ TMP_MULTI_PATH = TMP_DIR / CBZ_MULTI_SOURCE_PATH.name
 
 TEST_EXPORT_PATH = TMP_DIR / ComicboxCLISchema.FILENAME
 CLI_PATH = TEST_METADATA_DIR / ComicboxCLISchema.FILENAME
+METADATA_REPLACE = MappingProxyType({ ROOT_TAG: {**METADATA[ROOT_TAG], "tags": {"d", "e", "f"}}})
 
 
 def _setup(source_path=EMPTY_CBZ_SOURCE_PATH):
@@ -112,8 +112,41 @@ def test_cli_action_write():
 
     diff = DeepDiff(METADATA, md, ignore_order=True)
     pprint(diff)
-    assert md == METADATA
+    assert not diff
     _cleanup()
+
+def test_cli_action_write_replace():
+    """Test cli metadata write to file."""
+    _setup()
+    with Comicbox(TMP_PATH) as car:
+        md = car.get_metadata()
+    md = MappingProxyType(md)  # type:ignore
+    pprint(md)
+
+    args = (
+        *CLI_METADATA_ARGS,
+        "-w",
+        "cr",
+        "-m", "tags: 'd, e, f'",
+        "-R",
+        str(TMP_PATH),
+    )
+    print(" ".join(args))
+    cli.main(args)
+
+    with Comicbox(TMP_PATH) as car:
+        md = car.get_metadata()
+    md[ROOT_TAG].pop("notes", None)
+    md[ROOT_TAG].pop("updated_at", None)
+    md = MappingProxyType(md)  # type: ignore
+    pprint(METADATA_REPLACE)
+    pprint(md)
+
+    diff = DeepDiff(METADATA_REPLACE, md, ignore_order=True)
+    pprint(diff)
+    assert not diff
+    _cleanup()
+
 
 
 def test_cli_action_cbz():

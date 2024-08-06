@@ -20,6 +20,7 @@ comicbox:
     - json
     - pdf
     - yaml
+  replace_metadata: False
 
   read_ignore: []
   recurse: False
