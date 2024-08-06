@@ -518,7 +518,8 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         # tagger & updated_at
         md = {
             TAGGER_KEY: self._config.tagger,
-            UPDATED_AT_KEY: datetime.utcnow(),  # noqa: DTZ003
+            # Deprecated method needed for python 3.10
+            UPDATED_AT_KEY: datetime.utcnow(),  # noqa: DTZ003, type: ignore
         }
 
         # notes
