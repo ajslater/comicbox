@@ -10,6 +10,7 @@ from comicbox.schemas.comicbox_mixin import (
     ORDERED_SET_KEYS,
     PAGES_KEY,
     REPRINTS_KEY,
+    ROOT_TAG,
 )
 from comicbox.transforms.reprints import sort_reprints
 
@@ -123,7 +124,12 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
     def merge_metadata(self, base_md, md):
         """Merge a dict into another."""
         for key, value in md.items():
-            self._merge_key(base_md, key, value)
+            if key in self._config.delete_keys:
+                continue
+            if key != ROOT_TAG and self._config.replace_metadata:
+                base_md[key] = value
+            else:
+                self._merge_key(base_md, key, value)
 
     def merge_metadata_list(self, parsed_md_list, merged_md):
         """Pop off complex values before simple update."""

@@ -3,6 +3,7 @@ comicbox:
   compute_pages: True
   config: null
   delete: False
+  delete_keys: []
   delete_orig: False
   dest_path: .
   dry_run: False
@@ -20,6 +21,7 @@ comicbox:
     - json
     - pdf
     - yaml
+  replace_metadata: False
 
   read_ignore: []
   recurse: False

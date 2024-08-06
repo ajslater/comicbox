@@ -24,6 +24,7 @@ _TEMPLATE = MappingTemplate(
                 "compute_pages": bool,
                 "config": Optional(str),
                 "delete": bool,
+                "delete_keys": Optional(Sequence(str)),
                 "delete_orig": bool,
                 "dest_path": str,
                 "dry_run": bool,
@@ -33,6 +34,7 @@ _TEMPLATE = MappingTemplate(
                 "read": Optional(Sequence(str)),
                 "read_ignore": Optional(Sequence(str)),
                 "recurse": bool,
+                "replace_metadata": bool,
                 "stamp_notes": bool,
                 "tagger": Optional(str),
                 # API Options
@@ -145,6 +147,11 @@ def _transform_keys_to_sources(config):
     config.all_write_sources = frozenset(config.write | config.export)
 
 
+def _deduplicate_delete_keys(config):
+    """Transform delete keys to a set."""
+    config.delete_keys = frozenset(config.delete_keys)
+
+
 def _parse_print(config):
     if not config.print:
         config.print = ""
@@ -216,6 +223,7 @@ def get_config(
     _clean_paths(ad_config)
     _ensure_cli_yaml(ad_config)
     _transform_keys_to_sources(ad_config)
+    _deduplicate_delete_keys(ad_config)
     _parse_print(ad_config)
     _set_tagger(ad_config)
     init_logging(ad_config.loglevel)

@@ -7,6 +7,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
 from comicbox.sources import MetadataSources
+from comicbox.zipfile_remove import ZipFileWithRemove
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
@@ -22,14 +23,11 @@ LOG = getLogger(__name__)
 class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
     """Comicboxs methods for writing to the archive."""
 
-    def _ensure_write_archive(self, archive="archive"):
-        if not self._archive_cls or not self._path:
-            reason = f"Cannot write {archive} metadata without and archive path."
-            raise ValueError(reason)
-
     def _get_new_archive_path(self):
-        self._ensure_write_archive()
-        new_path = self._path.with_suffix(_CBZ_SUFFIX)  # type: ignore
+        if not self._path:
+            reason = "Cannot write zipfile metadata without a path."
+            raise ValueError(reason)
+        new_path = self._path.with_suffix(_CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
             reason = f"{new_path} already exists."
             raise ValueError(reason)
@@ -48,28 +46,48 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
                 old_path.unlink()
                 LOG.info(f"Removed: {old_path}")
 
-    def _is_rewrite(self):
-        # Determine if we need to to do a rewrite or can append.
-        rewrite = False
-        if self._archive_cls != ZipFile:
-            rewrite = True
-        else:
-            namelist = self._get_archive_namelist()
-            for filename in namelist:
-                if Path(filename).name.lower() in _ALL_METADATA_NAMES:
-                    rewrite = True
-                    break
-        return rewrite
+    def _zipfile_remove_metadata_files(self, zf):
+        """Remove metadata files from archive."""
+        for path in self._get_archive_namelist():
+            fn = Path(path).name.lower()
+            if fn in _ALL_METADATA_NAMES:
+                zf.remove(path)
 
-    @staticmethod
-    def _write_archive_metadata_files(zf, files):
-        for filename, data in files.items():
+    def _write_archive_metadata_files(self, zf, files):
+        # Write metadata files.
+        for path, data in files.items():
+            compress = (
+                ZIP_DEFLATED if self.IMAGE_EXT_RE.search(path) is None else ZIP_STORED
+            )
             zf.writestr(
-                filename,
+                path,
                 data,
-                compress_type=ZIP_DEFLATED,
+                compress_type=compress,
                 compresslevel=9,
             )
+
+    @staticmethod
+    def _get_filename_from_info(info):
+        """Get the filename to write."""
+        try:
+            # Do not write dirs.
+            # Prevents empty dirs. Files write implicit parents.
+            if info.is_dir():  # type: ignore
+                return None
+        except AttributeError:
+            if info.isdir():  # type: ignore
+                return None
+
+        try:
+            filename = info.filename  # type: ignore
+        except AttributeError:
+            filename = info.name  # type: ignore
+
+        # Don't copy old metadata files to new archive.
+        lower_name = Path(filename).name.lower()
+        if lower_name in _ALL_METADATA_NAMES:
+            return None
+        return filename
 
     def _copy_archive_files_to_new_archive(self, zf):
         # copy all files that are *not* metadata files into new archive.
@@ -78,20 +96,9 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             raise ValueError(reason)
         infolist = self._get_archive_infolist()
         for info in infolist:
-            try:
-                if info.is_dir():  # type: ignore
-                    continue
-            except AttributeError:
-                if info.isdir():  # type: ignore
-                    continue
-            try:
-                filename = info.filename  # type: ignore
-            except AttributeError:
-                filename = info.name  # type: ignore
-            if Path(filename).name.lower() in _ALL_METADATA_NAMES:
-                # remove all metadata files from new archive.
+            filename = self._get_filename_from_info(info)
+            if not filename:
                 continue
-
             # images usually end up slightly larger with
             # zip compression, so store them.
             compress = (
@@ -106,11 +113,24 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
                 compresslevel=9,
             )
 
-    def _rewrite_archive(self, files: Mapping, comment: bytes):
-        """CREATE NEW ARCHIVE."""
-        self._ensure_write_archive()
+    def _patch_zipfile(self, files, comment):
+        """In place remove and append to existing zipfile."""
+        if not self._path:
+            reason = "No zipfile path to write to."
+            raise ValueError(reason)
+        self.close()
+        with ZipFileWithRemove(self._path, "a") as zf:
+            self._zipfile_remove_metadata_files(zf)
+            self._write_archive_metadata_files(zf, files)
+            zf.comment = comment
+
+    def _create_zipfile(self, files: Mapping, comment: bytes):
+        """Create new zipfile."""
+        if not self._path:
+            reason = "Cannot write zipfile metadata without a path."
+            raise ValueError(reason)
         new_path = self._get_new_archive_path()
-        tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)  # type: ignore
+        tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)
         tmp_path.unlink(missing_ok=True)
 
         with ZipFile(tmp_path, "x") as zf:
@@ -122,25 +142,15 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         self.close()
         self._cleanup_tmp_archive(tmp_path, new_path)
 
-    def _append_archive(self, files, comment):
-        """APPEND TO EXISTING ARCHIVE."""
-        self._ensure_write_archive()
-        self.close()
-        with ZipFile(self._path, "a") as zf:  # type: ignore
-            self._write_archive_metadata_files(zf, files)
-            zf.comment = comment
-
     def write_archive_metadata(self, files: Mapping, comment: bytes):
         """Write the metadata files and comment to an archive."""
-        self._ensure_write_archive()
         if self._archive_is_pdf:
             LOG.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
             return
-
-        if self._is_rewrite():
-            self._rewrite_archive(files, comment)
+        if self._archive_cls == ZipFile:
+            self._patch_zipfile(files, comment)
         else:
-            self._append_archive(files, comment)
+            self._create_zipfile(files, comment)
 
         # Clear Caches
         old_api_source_data_list = self._sources.get(MetadataSources.API)
@@ -156,7 +166,9 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
 
     def write_pdf_metadata(self, mupdf_metadata):
         """Write PDF Metadata."""
-        self._ensure_write_archive("pdf")
+        if not self._path:
+            reason = "Cannot write pdf metadata without a path."
+            raise ValueError(reason)
         archive = self._get_archive()
         if self._archive_is_pdf:
             archive.save_metadata(mupdf_metadata)  # type: ignore
