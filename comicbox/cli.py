@@ -108,6 +108,12 @@ def _add_option_group(parser):
         " keyC: {subkey: {subsubkey: value}') Place a space after colons so they are properly parsed as YAML key value pairs.",
     )
     option_group.add_argument(
+        "-D",
+        "--delete-keys",
+        action=CSVAction,
+        help="Delete a comma delimited list of comicbox keys entirely from the final metadata.",
+    )
+    option_group.add_argument(
         "-d",
         "--dest-path",
         help="destination path for extracting pages and metadata.",

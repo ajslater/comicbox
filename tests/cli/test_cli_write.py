@@ -72,7 +72,9 @@ TMP_MULTI_PATH = TMP_DIR / CBZ_MULTI_SOURCE_PATH.name
 
 TEST_EXPORT_PATH = TMP_DIR / ComicboxCLISchema.FILENAME
 CLI_PATH = TEST_METADATA_DIR / ComicboxCLISchema.FILENAME
-METADATA_REPLACE = MappingProxyType({ ROOT_TAG: {**METADATA[ROOT_TAG], "tags": {"d", "e", "f"}}})
+METADATA_REPLACE = MappingProxyType(
+    {ROOT_TAG: {**METADATA[ROOT_TAG], "tags": {"d", "e", "f"}}}
+)
 
 
 def _setup(source_path=EMPTY_CBZ_SOURCE_PATH):
@@ -115,6 +117,7 @@ def test_cli_action_write():
     assert not diff
     _cleanup()
 
+
 def test_cli_action_write_replace():
     """Test cli metadata write to file."""
     _setup()
@@ -127,7 +130,8 @@ def test_cli_action_write_replace():
         *CLI_METADATA_ARGS,
         "-w",
         "cr",
-        "-m", "tags: 'd, e, f'",
+        "-m",
+        "tags: 'd, e, f'",
         "-R",
         str(TMP_PATH),
     )
@@ -146,7 +150,6 @@ def test_cli_action_write_replace():
     pprint(diff)
     assert not diff
     _cleanup()
-
 
 
 def test_cli_action_cbz():

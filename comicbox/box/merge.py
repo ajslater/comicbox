@@ -124,6 +124,8 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
     def merge_metadata(self, base_md, md):
         """Merge a dict into another."""
         for key, value in md.items():
+            if key in self._config.delete_keys:
+                continue
             if key != ROOT_TAG and self._config.replace_metadata:
                 base_md[key] = value
             else:
