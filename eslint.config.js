@@ -42,6 +42,7 @@ export default [
       "poetry.lock",
       "test-results/",
       "typings/",
+      "zipfile_remove/",
     ],
   },
   js.configs.recommended,

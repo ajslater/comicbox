@@ -4,6 +4,8 @@
 
 - Add -R --replace_metadata option. Default behavior is to merge keys.
 - Add -D --delete_keys option.
+- Faster metadata writing. Replace files in zipfiles instead of rewriting the
+  entire archive.
 
 ## v1.1.10
 

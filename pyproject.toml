@@ -8,7 +8,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "comicbox"
-version = "1.1.10"
+version = "1.2.0"
 description = "An API for reading comic archive contents and metadata: CBZ, CBR, CBT and PDF"
 license = "LGPL-3.0-only"
 authors = ["AJ Slater <aj@slater.net>"]
@@ -81,7 +81,7 @@ pdf = ["comicbox-pdffile"]
 comicbox = "comicbox.cli:main"
 
 [tool.codespell]
-skip = './cache,./dist,./test-results,.git,.mypy_cache,.pytest_cache,.venv,*~,node_modules,package-lock.json,poetry.lock,./tests/test_files/*'
+skip = './cache,./dist,./test-results,.git,.mypy_cache,.pytest_cache,.venv,*~,node_modules,package-lock.json,poetry.lock,./tests/test_files/*,comicbox/zipfile_remove'
 builtin = 'clear,rare,code'
 check-hidden = true
 ignore-words-list = 'thead,ro,jupyter,coverd'
@@ -100,6 +100,7 @@ omit = [
   "node_modules/*",
   "test-results/*",
   "typings/*",
+  "zipfile_remove/*",
 ]
 
 [tool.coverage.html]
@@ -131,6 +132,7 @@ exclude = [
   "poetry.lock",
   "test-results",
   "typings",
+  "comicbox/zipfile_remove",
 ]
 pythonVersion = "3.10"
 pythonPlatform = "All"
@@ -139,10 +141,10 @@ reportMisingImports = true
 useLibraryCodeForTypes = true
 
 [tool.radon]
-exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*"
+exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*,comicbox/zipfile_remove/*"
 
 [tool.ruff]
-extend-exclude = ["cache", "typings"]
+extend-exclude = ["cache", "typings", "node_modules", "comicbox/zipfile_remove"]
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -234,4 +236,5 @@ exclude = [
   "node_modules/",
   "test_results/",
   "typings/",
+  "comicbox/zipfile_remove/",
 ]
