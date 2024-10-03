@@ -24,7 +24,7 @@ class XmlRenderModule:
     @staticmethod
     def loads(s: bytes | str, *args, **kwargs):
         """Load XML string into a dict."""
-        cleaned_s = StringField().deserialize(s)
+        cleaned_s: str | None = StringField().deserialize(s)  # type:ignore
         if cleaned_s:
             return xmltodict.parse(cleaned_s, *args, **kwargs)
         return None

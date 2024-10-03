@@ -77,7 +77,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             # CSV encoding.
             value = StringField().deserialize(value)
             if value:
-                value = self._split_regex.split(value)
+                value = self._split_regex.split(value)  # type: ignore
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)

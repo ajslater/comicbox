@@ -22,8 +22,9 @@ class DateField(fields.Date, metaclass=DeserializeMeta):
         if isinstance(value, datetime):
             return value.date()
         try:
-            if value := StringField().deserialize(value):
-                dttm = parser.parse(value)
+            value_str: str | None = StringField().deserialize(value)  # type: ignore
+            if value_str:
+                dttm = parser.parse(value_str)
                 return dttm.date()
         except Exception:
             LOG.warning(f"Cannot parse date: {value}")
@@ -42,8 +43,9 @@ class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):
         if isinstance(value, date):
             return datetime.combine(value, datetime.min.time())
         try:
-            if value := StringField().deserialize(value):
-                return parser.parse(value)
+            value_str: str | None = StringField().deserialize(value)  # type: ignore
+            if value_str:
+                return parser.parse(value_str)
         except Exception:
             LOG.warning(f"Cannot parse datetime: {value}")
         return None

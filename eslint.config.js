@@ -6,8 +6,7 @@ import eslintPluginDepend from "eslint-plugin-depend";
 import eslintPluginJsonc from "eslint-plugin-jsonc";
 import eslintPluginMarkdown from "eslint-plugin-markdown";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
-// import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
-// import eslintPluginNoUseExtendNative from "eslint-plugin-no-use-extend-native";
+import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
 import eslintPluginPrettier from "eslint-plugin-prettier";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import eslintPluginPromise from "eslint-plugin-promise";
@@ -51,8 +50,7 @@ export default [
   eslintPluginDepend.configs[FLAT_RECOMMENDED],
   ...eslintPluginJsonc.configs["flat/recommended-with-jsonc"],
   ...eslintPluginMarkdown.configs.recommended,
-  // eslintPluginNoUseExtendNative.configs.recommended,
-  // eslintPluginNoUnsanitized.configs.recommended,
+  eslintPluginNoUnsanitized.configs.recommended,
   eslintPluginPrettierRecommended,
   eslintPluginPromise.configs[FLAT_RECOMMENDED],
   eslintPluginRegexp.configs[FLAT_RECOMMENDED],
@@ -76,8 +74,6 @@ export default [
       jsonc: eslintPluginJsonc,
       markdown: eslintPluginMarkdown,
       "no-secrets": eslintPluginNoSecrets,
-      // "no-use-extend-native": eslintPluginNoUseExtendNative,
-      // "no-unsantized": eslintPluginNoUnsanitized,
       prettier: eslintPluginPrettier,
       promise: eslintPluginPromise,
       security: eslintPluginSecurity,
@@ -133,7 +129,7 @@ export default [
     },
   },
   {
-    files: ["docker-compose*.yaml"],
+    files: ["**/docker-compose*.yaml"],
     rules: {
       "yml/no-empty-mapping-value": "off",
     },

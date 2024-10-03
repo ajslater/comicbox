@@ -70,7 +70,7 @@ vulture = "^2.1"
 
 [tool.poetry.group.test.dependencies]
 coverage = { extras = ["toml"], version = "^7.0" }
-deepdiff = "^7.0.1"
+deepdiff = "^8.0.1"
 pytest-cov = "^5.0"
 pytest-gitignore = "^1.3"
 

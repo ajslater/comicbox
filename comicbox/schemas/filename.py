@@ -54,7 +54,7 @@ class FilenameRenderModule:
         if cls._is_non_filename_format(s):
             return None
 
-        cleaned_s = StringField().deserialize(s)
+        cleaned_s: str | None = StringField().deserialize(s)  # type: ignore
         if not cleaned_s:
             return None
 
