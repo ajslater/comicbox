@@ -104,8 +104,12 @@ def _add_option_group(parser):
         dest="metadata_cli",
         metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields with YAML. (e.g.: 'keyA: value, keyB: [valueA,valueB,valueC],"
-        " keyC: {subkey: {subsubkey: value}') Place a space after colons so they are properly parsed as YAML key value pairs.",
+        help="Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
+        " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
+        " Place a space after colons so they are properly parsed as YAML key"
+        " value pairs. If your value contains a special YAML character (e.g."
+        " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
+        " brackets in place of indentation.",
     )
     option_group.add_argument(
         "-D",
@@ -286,6 +290,7 @@ def get_args(params=None) -> Namespace:
         " story_arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
         "  -m '{publisher: My Press}'\n"
         "  -m 'Title: The Dark Freighter'\n"
+        "  -m \"series: 'Solarpunk: Kaze Bosozoku'\"\n"
         "\n"
         "  Metadata can be any tag from any of the supported metadata formats.\n\n"
         "Format keys for --ignore-read, --write, and --export:\n" + formats
