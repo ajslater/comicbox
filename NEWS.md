@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.2.1
+
+- Dependency xml parsing fixes and better Python 3.13 support.
+
 ## v1.2.0
 
 - Add -R --replace_metadata option. Default behavior is to merge keys.
