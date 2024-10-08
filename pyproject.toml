@@ -54,7 +54,7 @@ ruamel-yaml = ">=0.17.32,<0.19.00"
 simplejson = "^3.19.1"
 stringcase = "^1.2.0"
 urnparse = "^0.2.0"
-xmltodict = "^0.13.0"
+xmltodict = "^0.14.0"
 
 [tool.poetry.group.dev.dependencies]
 wheel = "^0.44.0"
