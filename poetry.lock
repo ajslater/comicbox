@@ -218,13 +218,13 @@ files = [
 
 [[package]]
 name = "comicbox-pdffile"
-version = "0.1.7"
+version = "0.1.8"
 description = "A ZipFile like API for PyMuPDF"
 optional = true
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "comicbox_pdffile-0.1.7-py3-none-any.whl", hash = "sha256:72b1a385760643e15c0239904abf734ec8859dc1af2cc971b07e229488d83b6e"},
-    {file = "comicbox_pdffile-0.1.7.tar.gz", hash = "sha256:57eb0dc18a51aea59d2f34422f71df1012be89db480335322df297f72a7b3049"},
+    {file = "comicbox_pdffile-0.1.8-py3-none-any.whl", hash = "sha256:7a49868774aed22272246db8965e3366c00434d8ee111a3063d187544aaa5556"},
+    {file = "comicbox_pdffile-0.1.8.tar.gz", hash = "sha256:bd1f7dbc844cbd2dee880ded0dff7e4808c704b4ae38852e271836658e5137cb"},
 ]
 
 [package.dependencies]

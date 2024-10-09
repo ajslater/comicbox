@@ -2,6 +2,8 @@
 
 ## v1.2.1
 
+- Fix ignoring MacOS resource forks in archives.
+- Detect .jxl extension (JPEG XL) as a page.
 - Dependency xml parsing fixes and better Python 3.13 support.
 
 ## v1.2.0
