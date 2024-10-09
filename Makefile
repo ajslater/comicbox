@@ -1,22 +1,27 @@
+.PHONY: install-deps
+## Update pip and install poetry and npm packages
+## @category Install
+install-deps:
+	pip install --upgrade pip
+	pip install --upgrade poetry
+	npm install
+
 .PHONY: install
 ## Install for production
 ## @category Install
-install:
-	pip install --upgrade pip
-	pip install --upgrade poetry
+install: install-deps
 	poetry install --no-root
-	npm install
 
 .PHONY: install-dev
 ## Install dev requirements
 ## @category Install
-install-dev: install
+install-dev: install-deps
 	poetry install --no-root --extras dev
 
 .PHONY: install-all
 ## Install all extras
 ## @category Install
-install-all: install
+install-all: install-deps
 	poetry install --no-root --all-extras
 
 .PHONY: clean
