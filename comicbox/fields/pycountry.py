@@ -22,10 +22,10 @@ class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def _clean_name(name):
-        if not name:
+    def _clean_name(name_obj):
+        if not name_obj:
             return None
-        name = StringField().deserialize(name)
+        name: str | None = StringField().deserialize(name_obj)  # type: ignore
         if not name:
             return None
         return name.strip()

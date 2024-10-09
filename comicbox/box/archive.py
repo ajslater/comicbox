@@ -25,7 +25,7 @@ def archive_close(fn):
 class ComicboxArchiveMixin(ComicboxInitMixin):
     """Methods on the archive itself."""
 
-    IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
+    IMAGE_EXT_RE = re.compile(r"\.(jxl|jpe?g|webp|png|gif)$", re.IGNORECASE)
 
     def __enter__(self):
         """Context enter."""

@@ -1,5 +1,11 @@
 # 📰 News
 
+## v1.2.1
+
+- Fix ignoring MacOS resource forks in archives.
+- Detect .jxl extension (JPEG XL) as a comic page.
+- Dependency xml parsing fixes and better Python 3.13 support.
+
 ## v1.2.0
 
 - Add -R --replace_metadata option. Default behavior is to merge keys.

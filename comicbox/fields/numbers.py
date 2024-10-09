@@ -36,7 +36,7 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
         self._set_range(minimum, maximum)
 
     @classmethod
-    def parse_str(cls, num_str) -> NumberType | None:
+    def parse_str(cls, num_obj) -> NumberType | None:
         """Parse numerical string method."""
         raise NotImplementedError
 
@@ -63,12 +63,12 @@ class IntegerField(RangedNumberMixin, fields.Integer):
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
 
     @classmethod
-    def parse_str(cls, num_str):
+    def parse_str(cls, num_obj):
         """Parse the first number out of volume."""
-        num_str = StringField().deserialize(num_str)
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
         if not num_str:
             return None
-        match = cls._FIRST_NUMBER_MATCHER.search(num_str)
+        match: re.Match | None = cls._FIRST_NUMBER_MATCHER.search(num_str)
         if match:
             return int(match.group())
         return None
@@ -91,9 +91,9 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
 
     @classmethod
-    def parse_str(cls, num_str):
+    def parse_str(cls, num_obj):
         """Fix half glyphs."""
-        num_str = StringField().deserialize(num_str)
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
         if not num_str:
             return None
         num_str = num_str.replace(" ", "")

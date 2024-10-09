@@ -10,6 +10,8 @@ IMAGE_DIR = TEST_FILES_DIR / "Captain Science 001"
 PAGE_TMPL = str(IMAGE_DIR / "CaptainScience#1_{page_num}.jpg")
 COVER_IMAGE = Path(PAGE_TMPL.format(page_num="01"))
 PAGE_FIVE = Path(PAGE_TMPL.format(page_num="05"))
+RESOURCE_FORK_ARCHIVE = TEST_FILES_DIR / "macos_resource_fork.cbz"
+RESOURCE_FORK_ARCHIVE_PAGE_COUNT = 2
 
 
 def test_get_covers():
@@ -42,3 +44,10 @@ def test_get_pages_after():
             image = cif.read()
         assert image == page
         page_num += 1
+
+
+def test_ignore_macos_resource_forks():
+    """Test ignoring macos resource forks."""
+    with Comicbox(RESOURCE_FORK_ARCHIVE) as car:
+        page_count = car.get_page_count()
+    assert page_count == RESOURCE_FORK_ARCHIVE_PAGE_COUNT
