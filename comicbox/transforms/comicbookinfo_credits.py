@@ -123,7 +123,7 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
                     cbi_role = self.CONTRIBUTOR_SCHEMA_MAP.get(comicbox_role)
                     credit_dict = {self.ROLE_TAG: cbi_role, self.PERSON_TAG: person}
                     credits_list.append(credit_dict)
-                except Exception as exc:  # noqa: PERF203
+                except Exception as exc:
                     LOG.warning(
                         f"{self._path} Disaggregating credit"
                         f" {comicbox_role}:{person} - {exc}"

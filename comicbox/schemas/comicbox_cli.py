@@ -74,7 +74,7 @@ class ComicboxCLISchema(ComicboxYamlSchema):
                     res = self._transform_and_load(
                         schema, transform, wrapped_data, final_dict, *args, **kwargs
                     )
-            except Exception as exc:  # noqa: PERF203
+            except Exception as exc:
                 LOG.debug(f"schema load {self._path} {schema_class} {exc}")
 
         return final_dict

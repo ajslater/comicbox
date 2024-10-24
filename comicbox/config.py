@@ -161,7 +161,7 @@ def _parse_print(config):
         try:
             enum = PrintPhases(phase)
             enum_print_phases.add(enum)
-        except ValueError as exc:  # noqa: PERF203
+        except ValueError as exc:
             LOG.warning(exc)
     config.print = frozenset(enum_print_phases)
 
