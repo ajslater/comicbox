@@ -49,22 +49,22 @@ class CoMetTransform(
         {
             "character": CHARACTERS_KEY,
             "coverImage": "cover_image",
-            # "date": "date",
+            # "date": "date", handled by code
             "description": "summary",
             "format": ORIGINAL_FORMAT_KEY,
             "genre": "genres",
-            # IDENTIFIER_TAG: "identifiers",
-            # "language": LANGUAGE_KEY,
+            # IDENTIFIER_TAG: "identifiers", handled by code
+            # "language": LANGUAGE_KEY, handled by code
             "lastMark": "last_mark",
             "pages": PAGE_COUNT_KEY,
-            # "publisher": "publisher",
-            # "price": PRICE_KEY,
+            # "publisher": "publisher", handled by code
+            # "price": PRICE_KEY, unused
             "rating": "age_rating",
             "readingDirection": "reading_direction",
-            # "rights": "rights",
-            # "series": SERIES_KEY,
-            # "title": "title",
-            # "volume": VOLUME_KEY,
+            # "rights": "rights", unused
+            # "series": SERIES_KEY,  handled by code
+            # "title": "title", handled by code
+            # "volume": VOLUME_KEY, handled by code
         }
     )
     CONTRIBUTOR_SCHEMA_MAP = bidict(

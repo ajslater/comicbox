@@ -2,28 +2,25 @@
 
 import shutil
 from collections.abc import Mapping
-from contextlib import suppress
 from copy import deepcopy
 from difflib import ndiff
 from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
 
+import fitz
 from deepdiff.diff import DeepDiff
-
-from comicbox.schemas.comicbox_mixin import NOTES_KEY, ROOT_TAG
-from comicbox.transforms.base import BaseTransform
-
-with suppress(ImportError):
-    import fitz
 
 from comicbox.box import Comicbox
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox_mixin import (
+    NOTES_KEY,
     PAGE_COUNT_KEY,
     PAGES_KEY,
+    ROOT_TAG,
     UPDATED_AT_KEY,
 )
+from comicbox.transforms.base import BaseTransform
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_DATETIME,
@@ -74,9 +71,9 @@ def read_metadata(  # noqa: PLR0913
     archive_path,
     metadata,
     read_config,
+    ignore_updated_at: bool,
+    ignore_notes: bool,
     page_count=None,
-    ignore_updated_at=False,
-    ignore_notes=False,
 ):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "nslc"
@@ -132,7 +129,11 @@ def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
 
 
 def _prune_same_lines(
-    a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+    a_lines,
+    b_lines,
+    ignore_last_modified: bool,
+    ignore_notes: bool,
+    ignore_updated_at: bool,
 ):
     a_lines = _prune_lines(
         a_lines, ignore_last_modified, ignore_notes, ignore_updated_at
@@ -143,7 +144,13 @@ def _prune_same_lines(
     return a_lines, b_lines
 
 
-def _prune_strings(a_str, b_str, ignore_last_modified, ignore_notes, ignore_updated_at):
+def _prune_strings(
+    a_str,
+    b_str,
+    ignore_last_modified: bool,
+    ignore_notes: bool,
+    ignore_updated_at: bool,
+):
     a_lines = a_str.splitlines()
     b_lines = b_str.splitlines()
     a_lines, b_lines = _prune_same_lines(
@@ -157,9 +164,9 @@ def _prune_strings(a_str, b_str, ignore_last_modified, ignore_notes, ignore_upda
 def compare_files(
     path_a,
     path_b,
-    ignore_last_modified=False,
-    ignore_notes=False,
-    ignore_updated_at=False,
+    ignore_last_modified: bool,
+    ignore_notes: bool,
+    ignore_updated_at: bool,
 ):
     """Compare file contents."""
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
@@ -184,7 +191,7 @@ class TestParser:
 
     __test__ = False
 
-    def __init__(  # noqa PLR0913
+    def __init__(  # noqa: PLR0913
         self,
         transform_class: type[BaseTransform],
         test_fn: Path | str,
@@ -249,7 +256,6 @@ class TestParser:
 
     def test_from_metadata(self):
         """Test assign metadata."""
-        # pruned = self.schema.prune(self.read_reference_metadata)
         pruned = self.read_reference_metadata
         with Comicbox(metadata=pruned) as car:
             md = car.get_metadata()
@@ -257,10 +263,8 @@ class TestParser:
 
     def test_from_dict(self):
         """Test load from native dict."""
-        # from comicbox.print import PrintPhases
         with Comicbox() as car:
             car.add_source(self.read_reference_native_dict, self.transform_class)
-            # car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
@@ -312,7 +316,11 @@ class TestParser:
         print(self.write_reference_string)
         print(test_str)
         from_str, to_str = _prune_strings(
-            self.write_reference_string, test_str, True, False, True
+            self.write_reference_string,
+            test_str,
+            ignore_last_modified=True,
+            ignore_notes=False,
+            ignore_updated_at=True,
         )
         diff_strings(from_str, to_str)
         assert from_str == to_str
@@ -337,7 +345,11 @@ class TestParser:
         else:
             reference_export_path = self.reference_export_path
         assert compare_files(
-            reference_export_path, self.export_path, False, False, True
+            reference_export_path,
+            self.export_path,
+            ignore_last_modified=False,
+            ignore_notes=False,
+            ignore_updated_at=True,
         )
         self.teardown_method()
 
@@ -349,6 +361,8 @@ class TestParser:
             archive_path,
             self.read_reference_metadata,
             self.read_config,
+            ignore_updated_at=False,
+            ignore_notes=False,
             page_count=page_count,
         )
 
@@ -383,9 +397,9 @@ class TestParser:
             new_test_cbz_path,
             self.write_reference_metadata,
             self.read_config,
-            page_count=page_count,
             ignore_updated_at=True,
             ignore_notes=True,
+            page_count=page_count,
         )
         shutil.rmtree(tmp_path)
 
@@ -401,8 +415,8 @@ class TestParser:
     def _create_test_pdf(self, new_test_pdf_path):
         """Create a new empty PDF file."""
         try:
-            doc = fitz.Document()  # type: ignore
-            doc.new_page()  # type: ignore
+            doc = fitz.Document()
+            doc.new_page()  # type: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
             pprint(self.write_reference_metadata)

@@ -66,8 +66,8 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             self._split_regex = self.DEFAULT_SEPARATOR_RE
 
     @staticmethod
-    def _seq_to_str_seq(seq):
-        return ("" if item is None else str(item) for item in seq)
+    def _seq_to_str_seq(seq) -> list[str]:
+        return ["" if item is None else str(item) for item in seq]
 
     def _deserialize(self, value, *args, **kwargs):
         """Deserialize CSV encodings of lists."""
@@ -77,14 +77,14 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
             # CSV encoding.
             value = StringField().deserialize(value)
             if value:
-                value = self._split_regex.split(value)  # type: ignore
+                value = self._split_regex.split(value)  # type: ignore[reportArgumentType]
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
             return super()._deserialize(value, *args, **kwargs)
         return []
 
-    def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore
+    def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore[reportIncompatibleMethodOverride]
         value = self._seq_to_str_seq(value)
         if self._sort:
             value = sorted(value)
@@ -97,7 +97,7 @@ class StringListField(fields.List, metaclass=DeserializeMeta):
 class StringSetField(StringListField):
     """A set of non-empty strings."""
 
-    def _deserialize(self, *args, **kwargs) -> set[Any] | str | None:  # type: ignore
+    def _deserialize(self, *args, **kwargs) -> set[Any] | str | None:  # type: ignore[reportIncompatibleMethodOverride]
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:

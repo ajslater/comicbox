@@ -49,11 +49,11 @@ class ComictaggerTransform(
 
     TRANSFORM_MAP = bidict(
         {
-            # "tagOrigin": TAG_ORIGIN_KEY,
-            # "issueId": ISSUE_ID_KEY,
-            # "seriesId": SERIES_ID_KEY,
+            # "tagOrigin": TAG_ORIGIN_KEY, code
+            # "issueId": ISSUE_ID_KEY, code
+            # "seriesId": SERIES_ID_KEY, code
             "description": "summary",
-            # "web_link": WEB_KEY,
+            # "web_link": WEB_KEY, code
             "format": ORIGINAL_FORMAT_KEY,
             "black_and_white": "monochrome",
             "maturity_rating": "age_rating",

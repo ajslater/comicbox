@@ -92,7 +92,7 @@ def test_cli_action_write():
     _setup()
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
-    md = MappingProxyType(md)  # type:ignore
+    md = MappingProxyType(md)
     pprint(md)
 
     args = (
@@ -108,7 +108,7 @@ def test_cli_action_write():
         md = car.get_metadata()
     md[ROOT_TAG].pop("notes", None)
     md[ROOT_TAG].pop("updated_at", None)
-    md = MappingProxyType(md)  # type: ignore
+    md = MappingProxyType(md)
     pprint(METADATA)
     pprint(md)
 
@@ -123,7 +123,7 @@ def test_cli_action_write_replace():
     _setup()
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
-    md = MappingProxyType(md)  # type:ignore
+    md = MappingProxyType(md)
     pprint(md)
 
     args = (
@@ -142,7 +142,7 @@ def test_cli_action_write_replace():
         md = car.get_metadata()
     md[ROOT_TAG].pop("notes", None)
     md[ROOT_TAG].pop("updated_at", None)
-    md = MappingProxyType(md)  # type: ignore
+    md = MappingProxyType(md)
     pprint(METADATA_REPLACE)
     pprint(md)
 
@@ -155,28 +155,24 @@ def test_cli_action_write_replace():
 def test_cli_action_cbz():
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    # config = Namespace(comicbox=Namespace(print="sl"))
     with Comicbox(TMP_CBR_PATH) as car:
-        # car.print_out()
         old_md = car.get_metadata()
     old_md[ROOT_TAG].pop("notes", None)
     old_md[ROOT_TAG].pop("updated_at", None)
-    old_md = MappingProxyType(old_md)  # type: ignore
+    old_md = MappingProxyType(old_md)
     pprint(old_md)
 
     _setup(CIX_CBI_CBR_SOURCE_PATH)
     cli.main((ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
     assert not TMP_CBR_PATH.exists()
 
-    # config = Namespace(comicbox=Namespace(print="sl"))
     with Comicbox(TMP_CBZ_PATH) as car:
-        # car.print_out()
         new_md = car.get_metadata()
     assert new_md[ROOT_TAG]["ext"] == "cbz"
     new_md[ROOT_TAG]["ext"] = "cbr"
     new_md[ROOT_TAG].pop("notes", None)
     new_md[ROOT_TAG].pop("updated_at", None)
-    new_md = MappingProxyType(new_md)  # type: ignore
+    new_md = MappingProxyType(new_md)
     pprint(new_md)
 
     diff = DeepDiff(old_md, new_md)

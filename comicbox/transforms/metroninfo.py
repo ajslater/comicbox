@@ -126,9 +126,7 @@ def _copy_assign(key, data, value):
     return data
 
 
-class MetronInfoTransform(
-    XmlTransform, ComicInfoPagesTransformMixin, IdentifiersTransformMixin
-):
+class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixin):
     """MetronInfo.xml Schema."""
 
     TRANSFORM_MAP = bidict(
@@ -142,7 +140,7 @@ class MetronInfoTransform(
             "PageCount": PAGE_COUNT_KEY,
             "Pages": PAGES_KEY,
             "Summary": "summary",
-            # "URL": WEB_KEY,
+            # "URL": WEB_KEY, code
         }
     )
     CONTRIBUTOR_COMICBOX_MAP = MappingProxyType(
@@ -238,10 +236,7 @@ class MetronInfoTransform(
             if not names:
                 continue
             names = sorted(frozenset(names))
-            resources = []
-            for name in names:
-                if name:
-                    resources.append({"#text": name})
+            resources = tuple({"#text": name} for name in names if name)
             tag, single_tag = tags
             self.lower_tag(tag, tag, update_dict, resources, single_tag=single_tag)
         if update_dict:
@@ -327,9 +322,9 @@ class MetronInfoTransform(
             if not name or not metron_roles:
                 continue
             metron_credit = {CREATOR_TAG: {"#text": name}}
-            roles_list = []
-            for metron_role in sorted(metron_roles):
-                roles_list.append({"#text": metron_role})
+            roles_list = [
+                {"#text": metron_role} for metron_role in sorted(metron_roles)
+            ]
             self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, roles_list)
             metron_credits.append(metron_credit)
         self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
@@ -355,7 +350,6 @@ class MetronInfoTransform(
             name = arc.get(ARC_NAME_TAG)
             if not name:
                 continue
-            # arc_id = arc.get("id")
             number = arc.get(ARC_NUMBER_TAG)
             story_arcs[name] = number
         return _copy_assign(STORY_ARCS_KEY, data, story_arcs)
@@ -368,8 +362,6 @@ class MetronInfoTransform(
         arcs = []
         for name, number in story_arcs.items():
             arc = {ARC_NAME_TAG: name}
-            # if arc_id is not None:
-            #    arc[ARC_ID] = arc_id
             if number is not None:
                 arc[ARC_NUMBER_TAG] = number
             arcs.append(arc)
@@ -463,7 +455,6 @@ class MetronInfoTransform(
         metron_series = data.pop(SERIES_TAG, None)
         if not metron_series:
             return data
-        # sort_series = metron_series.get(SORT_NAME_TAG)
         update_dict = {}
         if series := metron_series.get(SERIES_NAME_TAG):
             if SERIES_KEY not in update_dict:

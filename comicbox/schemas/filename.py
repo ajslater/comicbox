@@ -1,4 +1,5 @@
-"""Parse comic book archive names using the simple 'parse' parser.
+"""
+Parse comic book archive names using the simple 'parse' parser.
 
 A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
@@ -36,7 +37,7 @@ class FilenameRenderModule:
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
-        data: dict = obj.get(FilenameSchema.ROOT_TAGS[0])  # type: ignore
+        data: dict = obj.get(FilenameSchema.ROOT_TAGS[0], {})
         return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod
@@ -54,7 +55,7 @@ class FilenameRenderModule:
         if cls._is_non_filename_format(s):
             return None
 
-        cleaned_s: str | None = StringField().deserialize(s)  # type: ignore
+        cleaned_s: str | None = StringField().deserialize(s)  # type: ignore[reportAssignmentType]
         if not cleaned_s:
             return None
 

@@ -20,7 +20,7 @@ LOG = getLogger(__name__)
 class LoadedMetadata(SourceData):
     """Loaded metadata."""
 
-    metadata: Mapping  # type: ignore
+    metadata: Mapping  # type: ignore[reportIncompatibleVariableOverride]
 
 
 class ComicboxLoadMixin(ComicboxMergeMixin):

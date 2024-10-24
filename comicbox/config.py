@@ -161,7 +161,7 @@ def _parse_print(config):
         try:
             enum = PrintPhases(phase)
             enum_print_phases.add(enum)
-        except ValueError as exc:
+        except ValueError as exc:  # noqa: PERF203
             LOG.warning(exc)
     config.print = frozenset(enum_print_phases)
 
@@ -178,7 +178,7 @@ def _read_config_sources(config, args):
     if args:
         with contextlib.suppress(AttributeError, KeyError):
             if isinstance(args, Namespace):
-                config_fn = args.comicbox.config  # type: ignore
+                config_fn = args.comicbox.config
             elif isinstance(args, Mapping):
                 config_fn = args["comicbox"]["config"]
             else:
@@ -217,7 +217,7 @@ def get_config(
 
     # Create config
     ad = config.get(_TEMPLATE)
-    ad_config = ad.comicbox  # type: ignore
+    ad_config = ad.comicbox  # type: ignore[reportAttributeAccessIssue]
 
     # Post Process Config
     _clean_paths(ad_config)

@@ -6,11 +6,12 @@ from stringcase import capitalcase
 
 from comicbox.fields.collections import StringSetField
 from comicbox.schemas.comicbox_mixin import CONTRIBUTORS_KEY
+from comicbox.transforms.base import BaseTransform
 
 LOG = getLogger(__name__)
 
 
-class XmlCreditsTransformMixin:
+class XmlCreditsTransformMixin(BaseTransform):
     """XML Schema customizations."""
 
     @staticmethod
@@ -20,7 +21,7 @@ class XmlCreditsTransformMixin:
 
     def aggregate_contributors(self, data):
         """Aggregate credits from individual role tags to contributors entries."""
-        for schema_role, comicbox_role in self.CONTRIBUTOR_COMICBOX_MAP.items():  # type: ignore
+        for schema_role, comicbox_role in self.CONTRIBUTOR_COMICBOX_MAP.items():
             try:
                 persons = data.pop(schema_role, None)
                 if not persons:
@@ -35,7 +36,7 @@ class XmlCreditsTransformMixin:
                     contributors[comicbox_role] = set()
                 contributors[comicbox_role] |= persons
             except Exception:
-                LOG.exception(f"{self._path} Aggregating credit role {comicbox_role}")  # type: ignore
+                LOG.exception(f"{self._path} Aggregating credit role {comicbox_role}")
         return data
 
     def disaggregate_contributors(self, data):
@@ -47,12 +48,12 @@ class XmlCreditsTransformMixin:
             if not comicbox_persons:
                 continue
             try:
-                schema_role = self.CONTRIBUTOR_SCHEMA_MAP.get(comicbox_role)  # type: ignore
+                schema_role = self.CONTRIBUTOR_SCHEMA_MAP.get(comicbox_role)
                 if schema_role:
                     data[schema_role] = comicbox_persons
             except Exception as exc:
                 LOG.warning(
-                    f"{self._path} Disaggregating credits "  # type: ignore
+                    f"{self._path} Disaggregating credits "
                     f"{comicbox_role}:{comicbox_persons}: {exc}"
                 )
         return data

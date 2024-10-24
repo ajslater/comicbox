@@ -72,16 +72,16 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         try:
             # Do not write dirs.
             # Prevents empty dirs. Files write implicit parents.
-            if info.is_dir():  # type: ignore
+            if info.is_dir():
                 return None
         except AttributeError:
-            if info.isdir():  # type: ignore
+            if info.isdir():
                 return None
 
         try:
-            filename = info.filename  # type: ignore
+            filename = info.filename
         except AttributeError:
-            filename = info.name  # type: ignore
+            filename = info.name
 
         # Don't copy old metadata files to new archive.
         lower_name = Path(filename).name.lower()
@@ -108,7 +108,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             )
             zf.writestr(
                 filename,
-                self._archive_readfile(filename, True),
+                self._archive_readfile(filename, to_pixmap=True),
                 compress_type=compress,
                 compresslevel=9,
             )
@@ -171,7 +171,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             raise ValueError(reason)
         archive = self._get_archive()
         if self._archive_is_pdf:
-            archive.save_metadata(mupdf_metadata)  # type: ignore
+            archive.save_metadata(mupdf_metadata)  # type: ignore[reportCallIssue]
         else:
             LOG.warning(
                 f"{self._path}: Not writing pdf metadata dict to a not PDF archive."

@@ -109,7 +109,7 @@ class PDFXmlTransform(XmlTransform):
 
     def _parse_comma_delimited_tags(self, data):
         tags = data.get(TAGS_KEY)
-        tags = StringSetField()._deserialize(tags)  # noqa SLF001
+        tags = StringSetField()._deserialize(tags)  # noqa: SLF001
         data[TAGS_KEY] = tags
 
     def parse_tags(self, data):
@@ -166,6 +166,6 @@ class MuPDFTransform(PDFXmlTransform):
             "keywords": TAGS_KEY,
             "producer": TAGGER_KEY,
             "subject": GENRES_KEY,
-            # "title": "title",
+            # "title": "title", coded
         }
     )

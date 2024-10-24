@@ -119,7 +119,8 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         return any(getattr(source.value, attr) for source in self._all_sources)
 
     def _get_computed_page_count_metadata(self, sub_md):
-        """Compute page_count from page_filenames.
+        """
+        Compute page_count from page_filenames.
 
         Allow for extra images in the archive that are not pages.
         """
@@ -241,7 +242,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         if not match:
             return identifiers
         for urn in match.groups():
-            nid, nss = parse_urn_identifier(urn)
+            nid, nss = parse_urn_identifier(urn, warn=True)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
                 if nss:
@@ -506,7 +507,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
 
         comictagger_style_notes = self._get_unparsed_comictagger_style_notes(data_copy)
         urn_notes = self._get_unparsed_urns_for_notes(data_copy)
-        notes = " ".join((comictagger_style_notes, urn_notes))
+        notes = f"{comictagger_style_notes} {urn_notes}"
         return notes.strip()
 
     def _get_tagger_stamp(self, sub_data):
@@ -529,7 +530,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         return md
 
     _COMPUTED_ACTIONS = (
-        # Order is important
+        # Order is important here
         ("Page Count", _get_computed_page_count_metadata, True),
         ("Pages", _get_computed_pages_metadata, True),
         ("from issue", _get_computed_from_issue, False),

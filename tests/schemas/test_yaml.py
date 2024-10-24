@@ -155,7 +155,7 @@ READ_YAML_DICT = MappingProxyType(
 )
 WRITE_YAML_DICT = create_write_dict(READ_YAML_DICT, ComicboxYamlSchema, "notes")
 
-yaml = YamlRenderModule.get_write_yaml()
+yaml = YamlRenderModule.get_write_yaml(dfs=False)
 with StringIO() as buf:
     yaml.dump(dict(READ_YAML_DICT), buf)
     READ_YAML_STR = buf.getvalue()

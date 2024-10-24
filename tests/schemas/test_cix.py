@@ -224,12 +224,6 @@ def test_cix_to_dict():
 def test_cix_to_string():
     """Test metadata export to string."""
     test_str = CIX_TESTER.to_string()
-
-    # not tested just for diagnostic
-    # xml_dict = xmltodict.parse(test_str)
-    # diff = DeepDiff(dict(WRITE_CIX_DICT), xml_dict)
-    # print(diff)
-
     CIX_TESTER.compare_string(test_str)
 
 

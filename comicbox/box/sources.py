@@ -25,7 +25,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             for fn in self._get_archive_namelist():
                 lower_name = Path(fn).name.lower()
                 if filename_lower == lower_name:
-                    source_string = self._archive_readfile(fn)
+                    source_string = self._archive_readfile(fn, to_pixmap=False)
                     sd = SourceData(source_string, transform_class, fn)
                     source_data_list.append(sd)
         except Exception as exc:
@@ -48,7 +48,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
         archive = self._get_archive()
         if not archive or not self._archive_is_pdf:
             return None
-        md = archive.get_metadata()  # type: ignore
+        md = archive.get_metadata()  # type: ignore[reportAttributeAccessIssue]
         if md:
             md = {MuPDFSchema.ROOT_TAGS[0]: md}
             return (SourceData(md, transform_class, str(self._path)),)

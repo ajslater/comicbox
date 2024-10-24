@@ -34,7 +34,7 @@ class JsonRenderModule:
     @staticmethod
     def loads(s: bytes | str, *args, **kwargs):
         """Load JSON string to dict."""
-        cleaned_s: str | None = StringField().deserialize(s)  # type:ignore
+        cleaned_s: str | None = StringField().deserialize(s)  # type:ignore[reportAssignmentType]
         if cleaned_s:
             return json.loads(cleaned_s, *args, use_decimal=True, **kwargs)
         return None

@@ -102,7 +102,6 @@ def test_convert_to_cbz_and_cbi_to_cix():
     # inject tags.
     with Comicbox(OLD_TEST_CBR_PATH, config=WRITE_CONFIG) as car:
         car.add_source(TAGS_SOURCE, ComicboxJsonTransform)
-        # car._print_computed(ComicboxJsonSchema(path=OLD_TEST_CBR_PATH))
         car.write()
 
     # test

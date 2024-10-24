@@ -31,23 +31,23 @@ class ComicBookInfoTransform(
     TRANSFORM_MAP = bidict(
         {
             "comments": "summary",
-            # "country": "country",
-            # "credits": "credits_list",
+            # "country": "country", coded
+            # "credits": "credits_list", coded
             "genre": GENRES_KEY,
-            # "issue": ISSUE_KEY,
-            # "language": LANGUAGE_KEY,
-            # "numberOfVolumes": "volume_count",
-            # "numberOfIssues": ISSUE_COUNT_KEY,
+            # "issue": ISSUE_KEY, coded
+            # "language": LANGUAGE_KEY, coded
+            # "numberOfVolumes": "volume_count", coded
+            # "numberOfIssues": ISSUE_COUNT_KEY, coded
             "pages": PAGE_COUNT_KEY,
             "publicationDay": "day",
             "publicationMonth": "month",
             "publicationYear": "year",
-            # "publisher": "publisher",
+            # "publisher": "publisher", coded
             "rating": "critical_rating",
-            # "series": SERIES_KEY,
-            # TAGS_KEY: TAGS_KEY,
-            # "title": "title",
-            # "volume": VOLUME_KEY,
+            # "series": SERIES_KEY, coded
+            # TAGS_KEY: TAGS_KEY, coded
+            # "title": "title", coded
+            # "volume": VOLUME_KEY, coded
         }
     )
     CREDITS_TAG = CREDITS_TAG
@@ -64,13 +64,13 @@ class ComicBookInfoTransform(
             sub_data[UPDATED_AT_KEY] = last_modified
         return sub_data
 
-    def wrap(self, sub_data, root_tags=None, stamp=False, **_kwargs):
+    def wrap(self, sub_data, root_tags=None, stamp=False, **_kwargs):  # noqa: FBT002
         """Add the last modified timestamp."""
         updated_at = sub_data.get(UPDATED_AT_KEY) if stamp else None
-        data = super().wrap(sub_data, root_tags=root_tags)
+        data = super().wrap(sub_data, stamp=False, root_tags=root_tags)
         if stamp:
             field = DateTimeField()
-            timestamp = updated_at if updated_at is not None else datetime.utcnow()  # noqa DTZ003
+            timestamp = updated_at if updated_at is not None else datetime.utcnow()  # noqa: DTZ003
             last_modified = field._serialize(timestamp)  # noqa: SLF001
             if last_modified:
                 data[LAST_MODIFIED_TAG] = last_modified

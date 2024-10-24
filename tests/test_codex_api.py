@@ -1,7 +1,6 @@
 """Test the API surface that Codex uses."""
 
 from argparse import Namespace
-from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal
@@ -9,18 +8,14 @@ from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
 
+import fitz
 import pytest
 from deepdiff.diff import DeepDiff
 
-from comicbox.box.computed import deep_update
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
-
-with suppress(ImportError):
-    import fitz
-
-
 from comicbox.box import Comicbox
+from comicbox.box.computed import deep_update
 from comicbox.fields.enum import PageTypeEnum
+from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.version import VERSION
 from tests.const import (
     CIX_CBI_CBR_SOURCE_PATH,
@@ -216,8 +211,8 @@ def test_cover_image(ft):
     if cover_path.suffix == ".pdf":
         # transform file to image.
         try:
-            doc = fitz.Document(stream=disk_cover)  # type: ignore
-            pix = doc.get_page_pixmap(0)  # type: ignore
+            doc = fitz.Document(stream=disk_cover)
+            pix = doc.get_page_pixmap(0)  # type: ignore[reportAttributeAccessIssue]
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"

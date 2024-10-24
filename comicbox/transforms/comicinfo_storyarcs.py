@@ -5,11 +5,12 @@ from logging import getLogger
 
 from comicbox.fields.numbers import IntegerField
 from comicbox.schemas.comicbox_mixin import STORY_ARCS_KEY
+from comicbox.transforms.base import BaseTransform
 
 LOG = getLogger(__name__)
 
 
-class ComicInfoStoryArcsTransformMixin:
+class ComicInfoStoryArcsTransformMixin(BaseTransform):
     """ComicInfo.xml StoryArcs Schema Mixin."""
 
     STORY_ARC_TAG = "StoryArc"
@@ -37,8 +38,7 @@ class ComicInfoStoryArcsTransformMixin:
                     number = integer_field.deserialize(number_str)
             except Exception:
                 LOG.exception(
-                    f"{self._path}:"  # type: ignore
-                    f" Deserialize story_arc_number{name}:{number_str}"
+                    f"{self._path}:" f" Deserialize story_arc_number{name}:{number_str}"
                 )
                 number = None
             story_arcs[name] = number

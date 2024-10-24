@@ -97,7 +97,6 @@ READ_METADATA = MappingProxyType(
             },
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
-            # "title": "The Beginning",
         }
     }
 )
@@ -195,12 +194,6 @@ CIX_TESTER = TestParser(
 def test_cix_validation_from_metadata():
     """Test metadata import from comicbox.schemas."""
     CIX_TESTER.test_from_metadata()
-
-
-# Don't test this, test from string & file instead.
-# def test_cix_validation_from_dict():
-#    """Test native dict import."""
-#    CIX_TESTER.test_from_dict()
 
 
 def test_cix_validation_from_string():

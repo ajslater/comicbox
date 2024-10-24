@@ -65,7 +65,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):
     @classmethod
     def parse_str(cls, num_obj):
         """Parse the first number out of volume."""
-        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num_str:
             return None
         match: re.Match | None = cls._FIRST_NUMBER_MATCHER.search(num_str)
@@ -93,7 +93,7 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
     @classmethod
     def parse_str(cls, num_obj):
         """Fix half glyphs."""
-        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num_str:
             return None
         num_str = num_str.replace(" ", "")

@@ -111,7 +111,7 @@ NIDS_UNPARSE_NO_RESOURCE = frozenset(
     {ASIN_NID, COMIXOLOGY_NID, GTIN_NID, ISBN_NID, UPC_NID}
 )
 PARSE_COMICVINE_RE = re.compile(COMICVINE_NSS_EXP)
-# XXX I haven't identified which program adds these "extra" notes encodings.
+# I haven't identified which program adds these "extra" notes encodings. Could be mylar.
 _PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
 
 
@@ -143,7 +143,7 @@ def create_identifier(nid, nss, url=None):
     return {NSS_KEY: nss, URL_KEY: url}
 
 
-def parse_urn_identifier(tag: str, warn=True) -> tuple[str | None, str | None]:
+def parse_urn_identifier(tag: str, warn: bool = True) -> tuple[str | None, str | None]:  # noqa: FBT002
     """Parse an identifier from a tag."""
     try:
         urn = URN8141.from_string(tag)
@@ -179,7 +179,7 @@ def _parse_identifier_str(full_identifier):
 
 def parse_identifier(item, naked_nid=None):
     """Parse identifiers from strings."""
-    nid, nss = parse_urn_identifier(item)
+    nid, nss = parse_urn_identifier(item, warn=True)
     if not nss:
         nid, nss = _parse_identifier_str(item)
     if naked_nid and not nid:

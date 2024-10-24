@@ -11,7 +11,7 @@ _STRING_EMPTY_VALUES = (None, "")
 EMPTY_VALUES = (*_STRING_EMPTY_VALUES, [], {})
 
 
-class DeserializeMeta(type(fields.Field)):  # type: ignore
+class DeserializeMeta(type(fields.Field)):  # type: ignore[reportGeneralTypeIssues]
     """Wrap the deserialize method to never throw."""
 
     @classmethod
@@ -76,7 +76,7 @@ class IssueField(StringField):
     @staticmethod
     def parse_issue(num_obj):
         """Parse issues."""
-        num: str | None = StringField().deserialize(num_obj)  # type: ignore
+        num: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num:
             return None
         num = num.replace(" ", "")
