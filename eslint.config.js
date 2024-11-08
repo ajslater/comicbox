@@ -7,6 +7,7 @@ import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
 import eslintPluginImport from "eslint-plugin-import";
+import eslintPluginJsonSchemaValidator from "eslint-plugin-json-schema-validator";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
 import eslintPluginPrettier from "eslint-plugin-prettier";
@@ -124,6 +125,15 @@ export default [
     files: ["*.json", "**/*.json"],
     ...eslintJson.configs.recommended,
     language: "json/json",
+  },
+  {
+    files: ["**/*.schema.json"],
+    plugins: {
+      "json-schema-validator": eslintPluginJsonSchemaValidator,
+    },
+    rules: {
+      ...eslintPluginJsonSchemaValidator.configs[FLAT_RECOMMENDED].rules,
+    },
   },
   {
     files: ["*.md", "**/*.md"],
