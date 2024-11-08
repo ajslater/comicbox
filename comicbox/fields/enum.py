@@ -9,7 +9,7 @@ from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 from marshmallow import fields
 from stringcase import titlecase
 
-from comicbox.fields.fields import DeserializeMeta, StringField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
 from comicbox.fields.numbers import BooleanField
 
 _ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
@@ -21,7 +21,7 @@ _PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
 LOG = getLogger(__name__)
 
 
-class EnumField(fields.Enum, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
     """Durable enum field."""
 
     ENUM = Enum

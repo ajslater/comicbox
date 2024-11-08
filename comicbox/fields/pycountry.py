@@ -6,12 +6,12 @@ from logging import getLogger
 import pycountry
 from marshmallow import fields
 
-from comicbox.fields.fields import DeserializeMeta, StringField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
 
 
-class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class PyCountryField(fields.String, ABC, metaclass=TrapExceptionsMeta):
     """A pycountry value."""
 
     MODULE = pycountry.countries

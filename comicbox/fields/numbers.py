@@ -8,8 +8,8 @@ from marshmallow import fields
 
 from comicbox.fields.fields import (
     EMPTY_VALUES,
-    DeserializeMeta,
     StringField,
+    TrapExceptionsMeta,
     half_replace,
 )
 
@@ -17,7 +17,7 @@ LOG = getLogger(__name__)
 NumberType = int | float | Decimal
 
 
-class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
     """Number range methods."""
 
     def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
@@ -57,7 +57,7 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):  # type: igno
         return result
 
 
-class IntegerField(RangedNumberMixin, fields.Integer):  # type: ignore[reportGeneralTypeIssues]
+class IntegerField(RangedNumberMixin, fields.Integer):
     """Durable integer field."""
 
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
@@ -85,7 +85,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):  # type: ignore[reportGen
         self._set_range(minimum, maximum)
 
 
-class DecimalField(RangedNumberMixin, fields.Decimal):  # type: ignore[reportGeneralTypeIssues]
+class DecimalField(RangedNumberMixin, fields.Decimal):
     """Durable Decimal field that parses some fractions."""
 
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
@@ -115,5 +115,5 @@ class DecimalField(RangedNumberMixin, fields.Decimal):  # type: ignore[reportGen
         self._set_range(minimum, maximum)
 
 
-class BooleanField(fields.Boolean, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class BooleanField(fields.Boolean, metaclass=TrapExceptionsMeta):
     """A liberally parsed boolean field."""

@@ -7,12 +7,12 @@ from dateutil import parser
 from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
 
-from comicbox.fields.fields import DeserializeMeta, StringField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
 
 
-class DateField(fields.Date, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
     def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore[reportIncompatibleMethodOverride]
@@ -31,7 +31,7 @@ class DateField(fields.Date, metaclass=DeserializeMeta):  # type: ignore[reportG
         return None
 
 
-class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
 
     def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore[reportIncompatibleMethodOverride]

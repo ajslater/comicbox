@@ -8,14 +8,14 @@ from marshmallow.utils import is_collection
 
 from comicbox.fields.fields import (
     EMPTY_VALUES,
-    DeserializeMeta,
     StringField,
+    TrapExceptionsMeta,
 )
 from comicbox.fields.numbers import IntegerField
 from comicbox.schemas.identifier import IdentifierSchema
 
 
-class ListField(fields.List, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class ListField(fields.List, metaclass=TrapExceptionsMeta):
     """List that guarauntees no empty values."""
 
     @staticmethod
@@ -32,7 +32,7 @@ class ListField(fields.List, metaclass=DeserializeMeta):  # type: ignore[reportG
         return []
 
 
-class DictStringField(fields.Dict, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class DictStringField(fields.Dict, metaclass=TrapExceptionsMeta):
     """Dict that guarauntees no empty keys."""
 
     def __init__(self, *args, **kwargs):
@@ -48,7 +48,7 @@ class DictStringField(fields.Dict, metaclass=DeserializeMeta):  # type: ignore[r
         return {}
 
 
-class StringListField(fields.List, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
+class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     """A list of non empty strings."""
 
     FIELD = StringField
