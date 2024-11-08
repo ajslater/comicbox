@@ -17,7 +17,7 @@ LOG = getLogger(__name__)
 NumberType = int | float | Decimal
 
 
-class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
+class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """Number range methods."""
 
     def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
@@ -57,7 +57,7 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
         return result
 
 
-class IntegerField(RangedNumberMixin, fields.Integer):
+class IntegerField(RangedNumberMixin, fields.Integer):  # type: ignore[reportGeneralTypeIssues]
     """Durable integer field."""
 
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
@@ -85,7 +85,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):
         self._set_range(minimum, maximum)
 
 
-class DecimalField(RangedNumberMixin, fields.Decimal):
+class DecimalField(RangedNumberMixin, fields.Decimal):  # type: ignore[reportGeneralTypeIssues]
     """Durable Decimal field that parses some fractions."""
 
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
@@ -115,5 +115,5 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
         self._set_range(minimum, maximum)
 
 
-class BooleanField(fields.Boolean, metaclass=DeserializeMeta):
+class BooleanField(fields.Boolean, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """A liberally parsed boolean field."""

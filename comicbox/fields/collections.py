@@ -15,7 +15,7 @@ from comicbox.fields.numbers import IntegerField
 from comicbox.schemas.identifier import IdentifierSchema
 
 
-class ListField(fields.List, metaclass=DeserializeMeta):
+class ListField(fields.List, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """List that guarauntees no empty values."""
 
     @staticmethod
@@ -32,7 +32,7 @@ class ListField(fields.List, metaclass=DeserializeMeta):
         return []
 
 
-class DictStringField(fields.Dict, metaclass=DeserializeMeta):
+class DictStringField(fields.Dict, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """Dict that guarauntees no empty keys."""
 
     def __init__(self, *args, **kwargs):
@@ -48,7 +48,7 @@ class DictStringField(fields.Dict, metaclass=DeserializeMeta):
         return {}
 
 
-class StringListField(fields.List, metaclass=DeserializeMeta):
+class StringListField(fields.List, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """A list of non empty strings."""
 
     FIELD = StringField

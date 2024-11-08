@@ -11,7 +11,7 @@ from comicbox.fields.fields import DeserializeMeta, StringField
 LOG = getLogger(__name__)
 
 
-class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
+class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """A pycountry value."""
 
     MODULE = pycountry.countries

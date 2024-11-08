@@ -12,7 +12,7 @@ from comicbox.fields.fields import DeserializeMeta, StringField
 LOG = getLogger(__name__)
 
 
-class DateField(fields.Date, metaclass=DeserializeMeta):
+class DateField(fields.Date, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """A date only field."""
 
     def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore[reportIncompatibleMethodOverride]
@@ -31,7 +31,7 @@ class DateField(fields.Date, metaclass=DeserializeMeta):
         return None
 
 
-class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):
+class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """A Datetime field."""
 
     def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore[reportIncompatibleMethodOverride]

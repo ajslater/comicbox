@@ -21,7 +21,7 @@ _PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
 LOG = getLogger(__name__)
 
 
-class EnumField(fields.Enum, metaclass=DeserializeMeta):
+class EnumField(fields.Enum, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """Durable enum field."""
 
     ENUM = Enum

@@ -14,6 +14,8 @@ EMPTY_VALUES = (*_STRING_EMPTY_VALUES, [], {})
 class DeserializeMeta(type(fields.Field)):  # type: ignore[reportGeneralTypeIssues]
     """Wrap the deserialize method to never throw."""
 
+    # Messes with the typechecker, possibly should replace with a class wrapper.
+
     @classmethod
     def wrap_deserialize(cls, deserialize_method):
         """Wrap deserialize method to never throw."""
@@ -41,10 +43,10 @@ class DeserializeMeta(type(fields.Field)):  # type: ignore[reportGeneralTypeIssu
                 new_attrs[attr_name] = cls.wrap_deserialize(attr_value)
             else:
                 new_attrs[attr_name] = attr_value
-        return super().__new__(cls, name, bases, new_attrs)
+        return super().__new__(cls, name, bases, new_attrs)  # type: ignore[reportCallIssue]
 
 
-class StringField(fields.String, metaclass=DeserializeMeta):
+class StringField(fields.String, metaclass=DeserializeMeta):  # type: ignore[reportGeneralTypeIssues]
     """Durable Stripping String Field."""
 
     def _deserialize(self, value, *_args, **_kwargs):
