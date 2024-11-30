@@ -105,8 +105,7 @@ def _get_sources_from_keys(key, keys, ignore_keys):
         config_keys = source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
         if (not writable or source.value.writable) and (
             not source.value.configurable
-            or bool(keys & config_keys)
-            and not bool(config_keys & ignore_keys)
+            or (bool(keys & config_keys) and not bool(config_keys & ignore_keys))
         ):
             sources.append(source)
         if source.value.configurable:

@@ -68,7 +68,7 @@ PAGE_TYPE_KEY = "page_type"
 
 INDEX_KEY = "index"
 
-# CONTRIBUTORS
+# CONTRIBUTOR ROLES
 COLORIST_KEY = "colorist"
 COVER_ARTIST_KEY = "cover_artist"
 CREATOR_KEY = "creator"
