@@ -1,6 +1,5 @@
 import eslintJs from "@eslint/js";
 import eslintJson from "@eslint/json";
-import eslintMarkdown from "@eslint/markdown";
 import eslintPluginComments from "@eslint-community/eslint-plugin-eslint-comments/configs";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
@@ -8,6 +7,7 @@ import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
 import eslintPluginImport from "eslint-plugin-import";
 import eslintPluginJsonSchemaValidator from "eslint-plugin-json-schema-validator";
+import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
 import eslintPluginPrettier from "eslint-plugin-prettier";
@@ -122,7 +122,7 @@ export default [
     ...configs.js,
   },
   {
-    files: ["*.json", "**/*.json"],
+    files: ["*.json", "**/*.json", "**/*.md/*.json"],
     ...eslintJson.configs.recommended,
     language: "json/json",
   },
@@ -136,12 +136,13 @@ export default [
     },
   },
   {
-    files: ["*.md", "**/*.md"],
-    language: "markdown/gfm",
-    plugins: { markdown: eslintMarkdown },
-    processor: "markdown/markdown",
+    files: ["*.{md,mdx}", "**/*.{md,mdx}"],
+    ...eslintPluginMdx.flat,
+    ...eslintPluginMdx.flatCodeBlocks,
+    processor: eslintPluginMdx.createRemarkProcessor({
+      lintCodeBlocks: true,
+    }),
     rules: {
-      ...eslintMarkdown.configs.recommended.rules,
       "no-undef": "off",
       "no-unused-vars": "off",
       "prettier/prettier": ["warn", { parser: "markdown" }],
@@ -149,7 +150,7 @@ export default [
   },
   ...eslintPluginToml.configs[FLAT_BASE],
   {
-    files: ["*.toml", "**/*.toml"],
+    files: ["*.toml", "**/*.toml", "**/*.md/*.toml"],
     rules: {
       ...eslintPluginToml.configs[FLAT_RECOMMENDED].rules,
       "prettier/prettier": ["error", { parser: "toml" }],
@@ -157,7 +158,7 @@ export default [
   },
   ...eslintPluginYml.configs[FLAT_BASE],
   {
-    files: ["*.yaml", "**/*.yaml", "*.yml", "**/*.yml"],
+    files: ["*.yaml", "**/*.yaml", "*.yml", "**/*.yml", "**/*.md/*.yaml"],
     rules: {
       ...eslintPluginYml.configs[FLAT_RECOMMENDED].rules,
       ...eslintPluginYml.configs["flat/prettier"].rules,
