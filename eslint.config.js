@@ -108,10 +108,6 @@ export default [
     linterOptions: {
       reportUnusedDisableDirectives: "warn",
     },
-    plugins: {
-      prettier: eslintPluginPrettier,
-      security: eslintPluginSecurity,
-    },
     rules: {
       "prettier/prettier": "warn",
     },
@@ -121,7 +117,7 @@ export default [
     ...configs.js,
   },
   {
-    files: ["*.json", "**/*.json", "**/*.md/*.json"],
+    files: ["**/*.json", "**/*.md/*.json"],
     ...eslintJson.configs.recommended,
     language: "json/json",
   },
@@ -135,7 +131,7 @@ export default [
     },
   },
   {
-    files: ["*.{md,mdx}", "**/*.{md,mdx}"],
+    files: ["**/*.{md,mdx}"],
     ...eslintPluginMdx.flat,
     ...eslintPluginMdx.flatCodeBlocks,
     processor: eslintPluginMdx.createRemarkProcessor({
@@ -149,7 +145,7 @@ export default [
   },
   ...eslintPluginToml.configs[FLAT_BASE],
   {
-    files: ["*.toml", "**/*.toml", "**/*.md/*.toml"],
+    files: ["**/*.toml", "**/*.md/*.toml"],
     rules: {
       ...eslintPluginToml.configs[FLAT_RECOMMENDED].rules,
       "prettier/prettier": ["error", { parser: "toml" }],
@@ -157,7 +153,7 @@ export default [
   },
   ...eslintPluginYml.configs[FLAT_BASE],
   {
-    files: ["*.yaml", "**/*.yaml", "*.yml", "**/*.yml", "**/*.md/*.yaml"],
+    files: ["**/*.yaml", "**/*.yml", "**/*.md/*.yaml"],
     rules: {
       ...eslintPluginYml.configs[FLAT_RECOMMENDED].rules,
       ...eslintPluginYml.configs["flat/prettier"].rules,
