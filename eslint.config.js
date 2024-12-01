@@ -10,7 +10,6 @@ import eslintPluginJsonSchemaValidator from "eslint-plugin-json-schema-validator
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
-import eslintPluginPrettier from "eslint-plugin-prettier";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import eslintPluginPromise from "eslint-plugin-promise";
 import eslintPluginRegexp from "eslint-plugin-regexp";
