@@ -6,7 +6,7 @@ from pprint import pprint
 from types import MappingProxyType
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from tests.const import (

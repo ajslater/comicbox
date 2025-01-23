@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.xml import (
+from comicbox.fields.xml_fields import (
     XmlAgeRatingField,
     XmlCountryField,
     XmlDecimalField,
@@ -18,7 +18,7 @@ from comicbox.fields.xml import (
     XmlStringSetField,
     XmlYesNoField,
 )
-from comicbox.schemas.xml import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
 from comicbox.schemas.xml_sub_tags import create_pages_field
 
 GTIN_TAG = "GTIN"

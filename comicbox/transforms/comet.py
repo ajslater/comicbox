@@ -32,8 +32,8 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.xml import XmlTransform
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
+from comicbox.transforms.xml_transforms import XmlTransform
 
 
 class CoMetTransform(

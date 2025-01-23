@@ -4,6 +4,7 @@ import re
 from logging import getLogger
 from types import MappingProxyType
 
+from bidict import frozenbidict
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
@@ -34,6 +35,15 @@ IDENTIFIER_URL_MAP = MappingProxyType(
         COMIXOLOGY_NID: "https://www.comixology.com/c/digital-comic/",
         ISBN_NID: "https://isbndb.com/book/",
         UPC_NID: "https://barcodelookup.com/",
+    }
+)
+NID_ORIGIN_MAP = frozenbidict(
+    {
+        COMICVINE_NID: "Comic Vine",
+        GCD_NID: "Grand Comics Database",
+        "marvel": "Marvel",
+        METRON_NID: "Metron",
+        LCG_NID: "League of Comic Geeks",
     }
 )
 TRAILING_SLUG = frozenset({LCG_NID})
@@ -126,6 +136,15 @@ def get_url_from_identifier(nid, nss):
     """Get URL from identifier."""
     if not nss:
         return None
+    if nid == METRON_NID:
+        try:
+            # No url to get from Metron numeric ids yet.
+            int(nss)
+        except ValueError:
+            # alphanumeric metron slugs are okay.
+            pass
+        else:
+            return None
     url_prefix = IDENTIFIER_URL_MAP.get(nid)
     if not url_prefix:
         return None
@@ -140,7 +159,9 @@ def create_identifier(nid, nss, url=None):
     nss = _prefix_comicvine_issue_nss(nid, nss)
     if not url:
         url = get_url_from_identifier(nid, nss)
-    return {NSS_KEY: nss, URL_KEY: url}
+    if nss and url:
+        return {NSS_KEY: nss, URL_KEY: url}
+    return {}
 
 
 def parse_urn_identifier(tag: str, warn: bool = True) -> tuple[str | None, str | None]:  # noqa: FBT002

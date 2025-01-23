@@ -11,9 +11,9 @@ from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow import post_load
 from marshmallow.fields import Nested
 
-from comicbox.fields.collections import StringListField
+from comicbox.fields.collection_fields import StringListField
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import IntegerField
+from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_COUNT_KEY,

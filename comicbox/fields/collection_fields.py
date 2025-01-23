@@ -11,7 +11,7 @@ from comicbox.fields.fields import (
     StringField,
     TrapExceptionsMeta,
 )
-from comicbox.fields.numbers import IntegerField
+from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.identifier import IdentifierSchema
 
 

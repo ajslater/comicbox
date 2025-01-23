@@ -10,7 +10,7 @@ from marshmallow import fields
 from stringcase import titlecase
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.fields.numbers import BooleanField
+from comicbox.fields.number_fields import BooleanField
 
 _ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
 _ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)

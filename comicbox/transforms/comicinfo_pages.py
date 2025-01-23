@@ -4,7 +4,7 @@ from bidict import bidict
 
 from comicbox.dict_funcs import sort_dict
 from comicbox.schemas.comicbox_mixin import INDEX_KEY, PAGES_KEY
-from comicbox.transforms.xml import XmlTransform
+from comicbox.transforms.xml_transforms import XmlTransform
 
 
 class ComicInfoPagesTransformMixin(XmlTransform):

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from bidict import bidict
 
-from comicbox.fields.time import DateTimeField
+from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     LAST_MODIFIED_TAG,
@@ -16,7 +16,7 @@ from comicbox.schemas.comicbox_mixin import (
     UPDATED_AT_KEY,
 )
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
-from comicbox.transforms.json import JsonTransform
+from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 
 

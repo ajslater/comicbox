@@ -4,7 +4,7 @@ from logging import getLogger
 
 from stringcase import capitalcase
 
-from comicbox.fields.collections import StringSetField
+from comicbox.fields.collection_fields import StringSetField
 from comicbox.schemas.comicbox_mixin import CONTRIBUTORS_KEY
 from comicbox.transforms.base import BaseTransform
 

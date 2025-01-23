@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.transforms.comicinfo import ComicInfoTransform

@@ -30,7 +30,7 @@ from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransf
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.json import JsonTransform
+from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 
 

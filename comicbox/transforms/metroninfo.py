@@ -8,13 +8,11 @@ from bidict import bidict
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.dict_funcs import sort_dict
-from comicbox.fields.xml import get_cdata
+from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     COMICVINE_NID,
-    GCD_NID,
     ISBN_NID,
-    LCG_NID,
-    METRON_NID,
+    NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
 )
@@ -57,7 +55,7 @@ from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
-from comicbox.transforms.xml import XmlTransform
+from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
@@ -108,15 +106,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     }
 )
 _PARSABLE_METRON_RESOURCE_TAGS = MappingProxyType({PUBLISHER_TAG: PUBLISHER_KEY})
-_METRON_INFORMATION_SOURCES_MAP = MappingProxyType(
-    {
-        COMICVINE_NID: "Comic Vine",
-        GCD_NID: "Grand Comics Database",
-        "marvel": "Marvel",
-        METRON_NID: "Metron",
-        LCG_NID: "League of Comic Geeks",
-    }
-)
 
 
 def _copy_assign(key, data, value):
@@ -487,8 +476,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             for nid, identifier in identifiers.items():
                 if nss := identifier.get(NSS_KEY):
                     metron_series[SERIES_ID_TAG] = nss
-                    metron_id_source = _METRON_INFORMATION_SOURCES_MAP.get(nid)
-                    data = _copy_assign(ID_TAG, data, {"@source": metron_id_source})
+                    metron_id_origin = NID_ORIGIN_MAP.get(nid)
+                    data = _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
                     break
 
         if volume := data.get(VOLUME_KEY, {}).get(VOLUME_NUMBER_KEY):
@@ -508,9 +497,9 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         if not identifiers:
             return data
         for nid in identifiers:
-            metron_id_source = _METRON_INFORMATION_SOURCES_MAP.get(nid)
-            if metron_id_source:
-                return _copy_assign(ID_TAG, data, {"@source": metron_id_source})
+            metron_id_origin = NID_ORIGIN_MAP.get(nid)
+            if metron_id_origin:
+                return _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (

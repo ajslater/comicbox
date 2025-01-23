@@ -12,28 +12,24 @@ from types import MappingProxyType
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 
 from comicbox.box.archive import archive_close
-from comicbox.box.normalize import ComicboxNormalizeMixin
+from comicbox.box.computed_notes import ComicboxComputedNotesMixin
 from comicbox.dict_funcs import deep_update
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.fields.fields import EMPTY_VALUES, StringField
-from comicbox.fields.numbers import DecimalField
-from comicbox.fields.time import DateField, DateTimeField
+from comicbox.fields.number_fields import DecimalField
+from comicbox.fields.time_fields import DateTimeField
 from comicbox.identifiers import (
     COMICVINE_NID,
-    IDENTIFIER_EXP,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
     create_identifier,
     parse_urn_identifier,
     to_urn_string,
 )
 from comicbox.schemas.comicbox_mixin import (
-    DATE_KEY,
-    DAY_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
     ISSUE_NUMBER_KEY,
     ISSUE_SUFFIX_KEY,
-    MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
@@ -44,37 +40,15 @@ from comicbox.schemas.comicbox_mixin import (
     TAGGER_KEY,
     TAGS_KEY,
     UPDATED_AT_KEY,
-    YEAR_KEY,
 )
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.sources import SourceFrom
 
 LOG = getLogger(__name__)
-_DATE_KEYS = frozenset({DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
-_NOTES_RE_EXP = (
-    r"(?:.*(?:by|with)\s*\b(?P<tagger>\w+\s\S+))?"
-    r"(?:.*(?P<updated_at>[12]\d{3}-\d\d?-\d\d?[\sT]\d\d:\d\d:\d\d\S*))"
-    r"(?:.*\[Issue ID (?P<identifier>\w+)\])?"
-)
-_NOTES_RE = re.compile(_NOTES_RE_EXP, flags=re.IGNORECASE)
-_URN_RE_EXP = r"(?P<urn>urn:\S{2,}:\S{2,})"
-_URN_RE = re.compile(_URN_RE_EXP)
-_NOTES_IDENTIFIER_EXTRA_EXP = r"\[" + IDENTIFIER_EXP + r"\]"
-_NOTES_IDENTIFIER_EXTRA_RE = re.compile(
-    _NOTES_IDENTIFIER_EXTRA_EXP, flags=re.IGNORECASE
-)
-_NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
-_ALL_NOTES_KEYS = (*_NOTES_KEYS, IDENTIFIERS_KEY)
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
 _PAGE_COUNT_KEYS = frozenset({"PageCount", PAGE_COUNT_KEY, "pages"})
 _PAGES_KEYS = frozenset({"Pages", PAGES_KEY})
-_NOTES_RELDATE_RE = re.compile(r"[RELDATE:(.\S)]")
-_NOTES_TAGGER_RE = re.compile(r"Tagged (with|by)\b(?P<tagger>.*)\b(using|on)")
-_NOTES_UPDATED_AT_RE = re.compile(
-    r"on\s(?P<updated_at>\d{2,4}-[01]\d-[0-3]\d[T\s:][0-2]\d:[0-5]\d:[0-5]\d)(.\d+)?\.?"
-)
 
 
 @dataclass
@@ -85,7 +59,7 @@ class ComputedData:
     metadata: Mapping | None
 
 
-class ComicboxComputedMixin(ComicboxNormalizeMixin):
+class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     """Computed metadata methods."""
 
     def _get_all_sources(self):
@@ -189,160 +163,6 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
             return self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: None}
 
-    def _set_compute_notes_key(self, data, key, match, md):
-        schema = ComicboxYamlSchema(path=self._path)
-        if not data.get(key) and (new_value := match.group(key)):
-            field = schema.fields.get(key)
-            if not field:
-                return
-            new_value = field.deserialize(new_value)
-            md[key] = new_value
-
-    @staticmethod
-    def _merge_identifiers_md(sub_data, identifiers):
-        """Return only new identifiers."""
-        if not identifiers:
-            return None
-        old_identifiers = frozenset(sub_data.get(IDENTIFIERS_KEY, {}).keys())
-        pruned_identifiers = {}
-        for nid, identifier in identifiers.items():
-            canon_nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
-            if canon_nid in old_identifiers:
-                # Do NOT replace identifiers.
-                continue
-            if nid not in pruned_identifiers:
-                pruned_identifiers[canon_nid] = {}
-            nss = identifier.get(NSS_KEY)
-            url = identifier.get(URL_KEY)
-            new_identifier = create_identifier(canon_nid, nss, url)
-            pruned_identifiers[canon_nid] = new_identifier
-            pruned_identifiers[canon_nid][URL_KEY] = url
-        if not pruned_identifiers:
-            return None
-        return {IDENTIFIERS_KEY: pruned_identifiers}
-
-    def _get_compute_notes_keys_comictagger(self, notes, data, md):
-        identifiers = {}
-        match = _NOTES_RE.search(notes)
-        if not match:
-            return identifiers
-        for key in _NOTES_KEYS:
-            self._set_compute_notes_key(data, key, match, md)
-        nss = match.group("identifier")
-        if nss:
-            nid = COMICVINE_NID
-            identifier = create_identifier(nid, nss)
-            identifiers[nid] = identifier
-        return identifiers
-
-    @staticmethod
-    def _get_compute_notes_urn_identifiers(notes):
-        identifiers = {}
-        match = _URN_RE.search(notes)
-        if not match:
-            return identifiers
-        for urn in match.groups():
-            nid, nss = parse_urn_identifier(urn, warn=True)
-            if nid:
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
-                if nss:
-                    identifier = create_identifier(nid, nss)
-                    identifiers[nid] = identifier
-        return identifiers
-
-    @staticmethod
-    def _get_compute_notes_extra_identifiers(notes):
-        identifiers = {}
-        matches = _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes)
-        if not matches:
-            return identifiers
-        for match in matches:
-            nss = match.group("nss")
-            if nss and (nid := match.group("type")):
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
-                identifier = create_identifier(nid, nss)
-                identifiers[nid] = identifier
-        return identifiers
-
-    def _set_computed_notes_identifiers(self, sub_data, notes, sub_md):
-        identifiers = self._get_compute_notes_keys_comictagger(notes, sub_data, sub_md)
-        extra_identifiers = self._get_compute_notes_extra_identifiers(notes)
-        identifiers.update(extra_identifiers)
-        urn_identifiers = self._get_compute_notes_urn_identifiers(notes)
-        identifiers.update(urn_identifiers)
-        identifiers_md = self._merge_identifiers_md(sub_data, identifiers)
-        if identifiers_md:
-            sub_md.update(identifiers_md)
-
-    @staticmethod
-    def _get_computed_notes_date(notes):
-        """Parse the date from the notes."""
-        match = _NOTES_RELDATE_RE.search(notes)
-        if not match:
-            return None
-        date_str = match.group("reldate")
-        try:
-            return DateField()._deserialize(date_str)  # noqa: SLF001
-        except Exception:
-            LOG.debug(f"Unparsable RELDATE {date_str}")
-            return None
-
-    def _set_computed_notes_date(self, sub_data, notes, sub_md):
-        if frozenset(_DATE_KEYS | frozenset(sub_data.keys())):
-            return
-        date = self._get_computed_notes_date(notes)
-        if date:
-            if DATE_KEY not in sub_data:
-                sub_md[DATE_KEY] = date
-            if YEAR_KEY not in sub_data:
-                sub_md[YEAR_KEY] = date.year
-            if MONTH_KEY not in sub_data:
-                sub_md[MONTH_KEY] = date.month
-            if DAY_KEY not in sub_data:
-                sub_md[DAY_KEY] = date.day
-
-    def _set_computed_notes_tagger(self, sub_data, notes, sub_md):
-        if sub_data.get(TAGGER_KEY):
-            return
-        match = _NOTES_TAGGER_RE.search(notes)
-        if not match:
-            return
-        tagger = match.group("tagger").strip()
-        sub_md[TAGGER_KEY] = tagger
-
-    def _set_computed_notes_updated_at(self, sub_data, notes, sub_md):
-        if sub_data.get(UPDATED_AT_KEY):
-            return
-        match = _NOTES_UPDATED_AT_RE.search(notes)
-        if not match:
-            return
-        dttm_str = match.group("updated_at").strip()
-        updated_at = DateTimeField()._deserialize(dttm_str)  # noqa: SLF001
-        sub_md[UPDATED_AT_KEY] = updated_at
-
-    def _get_computed_from_notes(self, sub_data):
-        """Parse the tagger, updated_at & identifier from notes if not already set."""
-        if not sub_data:
-            return None
-        notes = sub_data.get(NOTES_KEY)
-        if not notes:
-            return None
-        do_extract = False
-        for key in _ALL_NOTES_KEYS:
-            if not sub_data.get(key):
-                do_extract = True
-                break
-        if not do_extract:
-            return None
-
-        # Extract groups for keys
-        sub_md = {}
-        self._set_computed_notes_tagger(sub_data, notes, sub_md)
-        self._set_computed_notes_updated_at(sub_data, notes, sub_md)
-        self._set_computed_notes_date(sub_data, notes, sub_md)
-        self._set_computed_notes_identifiers(sub_data, notes, sub_md)
-        return sub_md
-
     def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, md):
         """Use regex match to break the issue into parts."""
         issue_number, issue_suffix = match.groups()
@@ -426,7 +246,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
                 if nss:
                     identifiers[nid] = create_identifier(nid, nss)
-        return self._merge_identifiers_md(sub_data, identifiers)
+        return self.merge_identifiers_md(sub_data, identifiers)
 
     def _get_computed_from_identifiers(self, sub_data):
         identifiers = sub_data.get(IDENTIFIERS_KEY, {})
@@ -458,7 +278,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         if series_nss:
             identifiers[nid] = series_nss
 
-        return self._merge_identifiers_md(sub_data, identifiers)
+        return self.merge_identifiers_md(sub_data, identifiers)
 
     # Tagger Stamp
     def _get_unparsed_comictagger_style_notes(self, sub_data):
@@ -535,7 +355,7 @@ class ComicboxComputedMixin(ComicboxNormalizeMixin):
         ("Pages", _get_computed_pages_metadata, True),
         ("from issue", _get_computed_from_issue, False),
         ("from issue_number & issue_suffix", _get_computed_issue, False),
-        ("from notes", _get_computed_from_notes, False),
+        ("from notes", ComicboxComputedNotesMixin.get_computed_from_notes, False),
         ("from tags", _get_computed_from_tags, False),
         ("from identifiers", _get_computed_from_identifiers, False),
         ("from scan_info", _get_computed_from_scan_info, False),

@@ -8,9 +8,9 @@ from marshmallow.fields import Constant, Field, Nested
 from marshmallow_union import Union
 
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import DecimalField, IntegerField
+from comicbox.fields.number_fields import DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.xml import (
+from comicbox.fields.xml_fields import (
     XmlAgeRatingField,
     XmlBooleanField,
     XmlDateField,
@@ -19,7 +19,7 @@ from comicbox.fields.xml import (
     XmlStringSetField,
 )
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.xml import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
 from comicbox.schemas.xml_sub_tags import (
     create_pages_field,
     create_sub_tag_field,

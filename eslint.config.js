@@ -1,12 +1,12 @@
 import eslintJs from "@eslint/js";
 import eslintJson from "@eslint/json";
 import eslintPluginComments from "@eslint-community/eslint-plugin-eslint-comments/configs";
+import eslintPluginStylistic from "@stylistic/eslint-plugin";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
 import eslintPluginImport from "eslint-plugin-import";
-import eslintPluginJsonSchemaValidator from "eslint-plugin-json-schema-validator";
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
@@ -21,10 +21,11 @@ import eslintPluginUnicorn from "eslint-plugin-unicorn";
 import eslintPluginYml from "eslint-plugin-yml";
 import globals from "globals";
 
+export const FLAT_ALL = "flat/all";
 export const FLAT_BASE = "flat/base";
 export const FLAT_RECOMMENDED = "flat/recommended";
 
-export const configs = {
+export const CONFIGS = {
   js: {
     ...eslintJs.configs.recommended,
     ...eslintPluginArrayFunc.configs.all,
@@ -37,10 +38,8 @@ export const configs = {
     ...eslintPluginRegexp.configs[FLAT_RECOMMENDED],
     ...eslintPluginSonarjs.configs.recommended,
     plugins: {
-      arrayFunc: eslintPluginArrayFunc,
       depend: eslintPluginDepend,
       "no-secrets": eslintPluginNoSecrets,
-      promise: eslintPluginPromise,
       "simple-import-sort": eslintPluginSimpleImportSort,
       unicorn: eslintPluginUnicorn,
     },
@@ -65,6 +64,7 @@ export const configs = {
       "simple-import-sort/exports": "warn",
       "simple-import-sort/imports": "warn",
       "space-before-function-paren": "off",
+      ...eslintPluginUnicorn.configs[FLAT_RECOMMENDED].rules,
       "unicorn/filename-case": [
         "error",
         { case: "kebabCase", ignore: [".*.md"] },
@@ -75,6 +75,7 @@ export const configs = {
     },
   },
 };
+Object.freeze(CONFIGS);
 
 export default [
   {
@@ -85,9 +86,7 @@ export default [
       "**/*min.js",
       "*~",
       ".git/",
-      ".mypy_cache/",
-      ".pytest_cache/",
-      ".ruff_cache/",
+      ".*cache/",
       ".venv/",
       "dist/",
       "node_modules/",
@@ -99,6 +98,7 @@ export default [
   },
   eslintPluginPrettierRecommended,
   eslintPluginSecurity.configs.recommended,
+  eslintPluginStylistic.configs["all-flat"],
   {
     languageOptions: {
       globals: {
@@ -114,20 +114,24 @@ export default [
   },
   {
     files: ["**/*.js"],
-    ...configs.js,
+    ...CONFIGS.js,
   },
   {
     files: ["**/*.json", "**/*.md/*.json"],
+    plugins: {
+      json: eslintJson,
+    },
     ...eslintJson.configs.recommended,
     language: "json/json",
   },
   {
-    files: ["**/*.schema.json"],
-    plugins: {
-      "json-schema-validator": eslintPluginJsonSchemaValidator,
+    files: ["package.json"],
+    languageOptions: {
+      parser: "jsonc-eslint-parser",
     },
+    plugins: { depend: eslintPluginDepend },
     rules: {
-      ...eslintPluginJsonSchemaValidator.configs[FLAT_RECOMMENDED].rules,
+      "depend/ban-dependencies": "error",
     },
   },
   {

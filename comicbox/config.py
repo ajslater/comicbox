@@ -9,7 +9,7 @@ from pathlib import Path
 from confuse import Configuration, Integer, OneOf, String
 from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
-from comicbox.logging import init_logging
+from comicbox.logger import init_logging
 from comicbox.print import PrintPhases
 from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER, PACKAGE_NAME

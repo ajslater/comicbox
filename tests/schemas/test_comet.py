@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum import ReadingDirectionEnum
+from comicbox.fields.enum_fields import ReadingDirectionEnum
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.transforms.comet import CoMetTransform
@@ -46,7 +46,7 @@ METADATA = MappingProxyType(
             "publisher": "Bell Features",
             "original_format": "Comic",
             "page_count": 36,
-            "price": Decimal(0.10).quantize(Decimal("0.01")),
+            "price": Decimal("0.10").quantize(Decimal("0.01")),
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}

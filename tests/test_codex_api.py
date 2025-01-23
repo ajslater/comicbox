@@ -14,7 +14,7 @@ from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.box.computed import deep_update
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.version import VERSION
 from tests.const import (
@@ -236,4 +236,6 @@ def test_random_access_page(ft):
             with page_path.open("rb") as f:
                 disk_page = f.read()
             print(f"{page_path=}")
+            # with Path( "/tmp/" / Path(page_path.name) ).open("wb") as f:
+            #    f.write(page) # noqa: ERA001
             assert disk_page == page

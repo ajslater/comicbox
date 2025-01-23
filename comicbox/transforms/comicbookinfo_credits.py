@@ -27,7 +27,7 @@ from comicbox.schemas.comicbox_mixin import (
     PENCILLER_KEY,
     WRITER_KEY,
 )
-from comicbox.transforms.json import JsonTransform
+from comicbox.transforms.json_transforms import JsonTransform
 
 LOG = getLogger(__name__)
 
