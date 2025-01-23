@@ -53,7 +53,8 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
     ) -> dict:
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(transform_class)
-        return dict(schema.dump(md, **kwargs))
+        dump =  schema.dump(md, **kwargs)
+        return dict(dump) # type:ignore[reportArgumentType]
 
     @archive_close
     def to_string(

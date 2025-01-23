@@ -57,7 +57,7 @@ class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
         return result
 
 
-class IntegerField(RangedNumberMixin, fields.Integer):
+class IntegerField(fields.Integer, RangedNumberMixin):
     """Durable integer field."""
 
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
@@ -85,7 +85,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):
         self._set_range(minimum, maximum)
 
 
-class DecimalField(RangedNumberMixin, fields.Decimal):
+class DecimalField(fields.Decimal, RangedNumberMixin):
     """Durable Decimal field that parses some fractions."""
 
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
