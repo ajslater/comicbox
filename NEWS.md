@@ -1,5 +1,9 @@
 # 📰 News
 
+## v1.2.2
+
+- Fix Notes parsing for Comictagger beta Metron origin
+
 ## v1.2.1
 
 - Fix ignoring MacOS resource forks in archives.
