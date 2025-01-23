@@ -3,8 +3,8 @@
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from types import MappingProxyType
 
-from marshmallow.base import SchemaABC
 from marshmallow.fields import Constant, Field, Nested
+from marshmallow.schema import Schema
 from marshmallow_union import Union
 
 from comicbox.fields.fields import StringField
@@ -100,18 +100,17 @@ class MetronArcSchema(BaseSubSchema):
 def _create_text_schema(field: Field):
     """Create a text schema with a designated field type."""
     schema_name = field.__class__.__name__ + "TextSchema"
-    schema_class = type(schema_name, (BaseSubSchema,), {})
-    schema_class.Meta = type(
+    schema_meta_class = type(
         "Meta", (BaseSubSchema.Meta,), {"include": {"#text": field}}
     )
-    return schema_class
+    return type(schema_name, (BaseSubSchema,), {"Meta": schema_meta_class})
 
 
 def _get_xml_poly_text_field(
     field: Field | None = None,
     many: bool = False,  # noqa: FBT002
     collection_field: Field | None = None,
-    schema_class: type[SchemaABC] | None = None,
+    schema_class: type[Schema] | None = None,
 ):
     """Get a union field of xml list variations."""
     fields = []
