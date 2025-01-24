@@ -136,22 +136,11 @@ def get_url_from_identifier(nid, nss):
     """Get URL from identifier."""
     if not nss:
         return None
-    if nid == METRON_NID:
-        try:
-            # No url to get from Metron numeric ids yet.
-            int(nss)
-        except ValueError:
-            # alphanumeric metron slugs are okay.
-            pass
-        else:
-            return None
     url_prefix = IDENTIFIER_URL_MAP.get(nid)
     if not url_prefix:
         return None
-    url = url_prefix + nss + "/"
-    if nid in TRAILING_SLUG:
-        url += "s"
-    return url
+    slug = "s" if nid in TRAILING_SLUG else ""
+    return url_prefix + nss + "/" + slug
 
 
 def create_identifier(nid, nss, url=None):
