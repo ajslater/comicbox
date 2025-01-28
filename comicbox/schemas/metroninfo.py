@@ -1,22 +1,34 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
+from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Field, Nested
 from marshmallow.schema import Schema
 from marshmallow_union import Union
 
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import DecimalField, IntegerField
+from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.xml_fields import (
-    XmlAgeRatingField,
     XmlBooleanField,
     XmlDateField,
+    XmlEnumField,
     XmlIntegerField,
     XmlStringField,
     XmlStringSetField,
+)
+from comicbox.identifiers import (
+    ANILIST_NID,
+    COMICVINE_NID,
+    GCD_NID,
+    KITSU_NID,
+    LCG_NID,
+    MANGADEX_NID,
+    MANGAUPDATES_NID,
+    METRON_NID,
+    MYANIMELIST_NID,
+    NID_ORIGIN_MAP,
 )
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
@@ -26,14 +38,65 @@ from comicbox.schemas.xml_sub_tags import (
 )
 
 
-class MetronSourceSchema(BaseSubSchema):
-    """Metron Metadata Source Schema."""
+class MetronAgeRatingField(XmlEnumField):
+    """Metron Age Rating Field."""
+
+    class MetronAgeRatingEnum(Enum):
+        """Metron Age Rating Types."""
+
+        UNKNOWN = "Unknown"
+        EVERYONE = "Everyone"
+        TEEN = "Teen"
+        TEEN_PLUS = "Teen Plus"
+        MATURE = "Mature"
+        EXPLICIT = "Explicit"
+        ADULT = "Adult"
+
+    ENUM = MetronAgeRatingEnum
+
+
+class MetronSourceField(XmlEnumField):
+    """Metron Source Field."""
+
+    class MetronSourceEnum(Enum):
+        """Metron Valid Sources."""
+
+        ANILIST = NID_ORIGIN_MAP[ANILIST_NID]
+        COMICVINE = NID_ORIGIN_MAP[COMICVINE_NID]
+        GCD = NID_ORIGIN_MAP[GCD_NID]
+        KITSU = NID_ORIGIN_MAP[KITSU_NID]
+        LCG = NID_ORIGIN_MAP[LCG_NID]
+        MANGADEX = NID_ORIGIN_MAP[MANGADEX_NID]
+        MANGAUPDATES = NID_ORIGIN_MAP[MANGAUPDATES_NID]
+        METRON = NID_ORIGIN_MAP[METRON_NID]
+        MYANIMELIST = NID_ORIGIN_MAP[MYANIMELIST_NID]
+
+    ENUM = MetronSourceEnum
+
+
+class MetronIDSchema(BaseSubSchema):
+    """Metron ID Schema."""
 
     class Meta(BaseSubSchema.Meta):
         """Attributes."""
 
         include = MappingProxyType(
-            {"#text": IntegerField(minimum=0, required=True), "@source": StringField()}
+            {
+                "#text": XmlStringField(required=True),
+                "@source": MetronSourceField(required=True),
+                "@primary": BooleanField(),
+            }
+        )
+
+
+class MetronURLSchema(BaseSubSchema):
+    """Metron URL Schema."""
+
+    class Meta(BaseSubSchema.Meta):
+        """Attributes."""
+
+        include = MappingProxyType(
+            {"#text": XmlStringField(required=True), "@primary": BooleanField()}
         )
 
 
@@ -44,17 +107,17 @@ class MetronResourceSchema(BaseSubSchema):
         """XML Attributes."""
 
         include = MappingProxyType(
-            {"#text": StringField(required=True), "@id": IntegerField(minimum=0)}
+            {"#text": XmlStringField(required=True), "@id": IntegerField(minimum=0)}
         )
 
 
 class MetronSeriesSchema(BaseSubSchema):
     """Metron Series Schema."""
 
-    Name = StringField()
-    SortName = StringField()
+    Name = XmlStringField()
+    SortName = XmlStringField()
     Volume = IntegerField()
-    Format = StringField()
+    Format = XmlStringField()
 
     class Meta(BaseSchema.Meta):
         """XML Attributes."""
@@ -81,14 +144,14 @@ class MetronPriceSchema(BaseSubSchema):
 class MetronGTINSchema(BaseSubSchema):
     """Metron GTIN Schema."""
 
-    ISBN = StringField()
-    UPC = StringField()
+    ISBN = XmlStringField()
+    UPC = XmlStringField()
 
 
 class MetronArcSchema(BaseSubSchema):
     """Metron Story Arc Schema."""
 
-    Name = StringField()
+    Name = XmlStringField()
     Number = IntegerField(minimum=0)
 
     class Meta(BaseSchema.Meta):
@@ -136,7 +199,7 @@ def _get_metron_polyfield():
 
 def _get_metron_resource_field(
     schema_class: type[BaseSubSchema] = MetronResourceSchema,
-    field_class: type[Field] = StringField,
+    field_class: type[Field] = XmlStringField,
 ):
     """Get metron union resource and simple text field."""
     return _get_xml_poly_text_field(field=field_class(), schema_class=schema_class)
@@ -152,9 +215,7 @@ class MetronCreditSchema(BaseSubSchema):
 class MetronInfoSubSchema(XmlSubSchema):
     """MetronInfo.xml Sub Schema."""
 
-    ID = _get_metron_resource_field(
-        schema_class=MetronSourceSchema, field_class=IntegerField
-    )
+    IDS = create_sub_tag_field("ID", Nested(MetronIDSchema, many=True))
     Publisher = _get_metron_resource_field()
     Series = Nested(MetronSeriesSchema)
     CollectionTitle = XmlStringField()
@@ -177,8 +238,8 @@ class MetronInfoSubSchema(XmlSubSchema):
     Reprints = create_sub_tag_field("Reprint", _get_metron_polyfield())
     GTIN = Nested(MetronGTINSchema)
     BlackAndWhite = XmlBooleanField()
-    AgeRating = XmlAgeRatingField()
-    URL = XmlStringField()
+    AgeRating = MetronAgeRatingField()
+    URLs = create_sub_tag_field("URL", Nested(MetronURLSchema, many=True))
     Credits = create_sub_tag_field("Credit", Nested(MetronCreditSchema, many=True))
     Pages = create_pages_field()
 

@@ -51,10 +51,11 @@ from comicbox.transforms.xml_transforms import XmlTransform
 
 class ComicInfoTransform(
     ComicInfoPagesTransformMixin,
-    XmlCreditsTransformMixin,
-    ComicInfoStoryArcsTransformMixin,
     ComicInfoReprintsTransformMixin,
+    ComicInfoStoryArcsTransformMixin,
+    IdentifiersTransformMixin,
     NestedPublishingTagsMixin,
+    XmlCreditsTransformMixin,
 ):
     """ComicInfo.xml Schema."""
 
@@ -143,7 +144,7 @@ class ComicInfoTransform(
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
-        IdentifiersTransformMixin.unparse_url_tag,
+        # IdentifiersTransformMixin.unparse_url_tag,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,

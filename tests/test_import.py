@@ -137,7 +137,7 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "nss": "4000-145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "issue": "1",
@@ -176,8 +176,8 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
-                    "nss": "issue/captain-science-1/",
-                    "url": "https://metron.cloud/issue/captain-science-1/",
+                    "nss": "issue/c/",
+                    "url": "https://metron.cloud/issue/c/",
                 },
             },
             "issue": "1",

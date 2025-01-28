@@ -26,11 +26,11 @@ METRON_NOTES = (
     "comicbox dev "
     "on "
     "1970-01-01T00:00:00 "
-    "[Issue ID "
-    "145269] "
+    "[Issue ID 145269] "
     "urn:comicvine:4000-145269 "
     "urn:isbn:123-456789-0123 "
-    "urn:upc:12345"
+    "urn:upc:12345 "
+    "urn:metron:999999"
 )
 READ_METADATA = MappingProxyType(
     {
@@ -57,6 +57,10 @@ READ_METADATA = MappingProxyType(
                 "comicvine": {
                     "nss": "4000-145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "metron": {
+                    "nss": "999999",
+                    "url": "https://metron.cloud/issue/999999/",
                 },
                 "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345/"},
                 "isbn": {
@@ -114,7 +118,12 @@ READ_METRON_DICT = MappingProxyType(
             },
             "GTIN": {"ISBN": "123-456789-0123", "UPC": "12345"},
             "Genres": {"Genre": [{"#text": "Science Fiction"}]},
-            "ID": {"@source": "Comic Vine"},
+            "IDS": {
+                "ID": [
+                    {"@source": "Metron", "#text": "999999", "@primary": True},
+                    {"@source": "Comic Vine", "#text": "4000-145269"},
+                ],
+            },
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
@@ -128,7 +137,14 @@ READ_METRON_DICT = MappingProxyType(
             "Stories": {
                 "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
             },
-            "URL": "https://comicvine.gamespot.com/c/4000-145269/",
+            "URLs": {
+                "URL": [
+                    {"#text": "https://metron.cloud/issue/999999/", "@primary": True},
+                    {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
+                    {"#text": "https://isbndb.com/book/123-456789-0123/"},
+                    {"#text": "https://barcodelookup.com/12345/"},
+                ]
+            },
         }
     }
 )
@@ -168,7 +184,12 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "UPC": "12345",
             },
             "Genres": {"Genre": "Science Fiction"},
-            "ID": {"@source": "Comic Vine"},
+            "IDS": {
+                "ID": [
+                    {"@source": "Comic Vine", "#text": "4000-145269"},
+                    {"@source": "Metron", "#text": "999999", "@primary": True},
+                ],
+            },
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
@@ -182,7 +203,14 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Stories": {
                 "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
             },
-            "URL": "https://comicvine.gamespot.com/c/4000-145269/",
+            "URLs": {
+                "URL": [
+                    {"#text": "https://metron.cloud/issue/999999/", "@primary": True},
+                    {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
+                    {"#text": "https://isbndb.com/book/123-456789-0123/"},
+                    {"#text": "https://barcodelookup.com/12345/"},
+                ]
+            },
         }
     }
 )

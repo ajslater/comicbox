@@ -180,7 +180,7 @@ class ComictaggerTransform(
         CoMetReprintsTransformMixin.unparse_reprints,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
-        IdentifiersTransformMixin.unparse_url_tag,
+        # IdentifiersTransformMixin.unparse_url_tag,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,

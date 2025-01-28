@@ -10,6 +10,7 @@ from comicbox.fields.collection_fields import (
 )
 from comicbox.fields.enum_fields import (
     AgeRatingField,
+    EnumField,
     MangaField,
     OriginalFormatField,
     ReadingDirectionField,
@@ -66,6 +67,14 @@ class XmlDateField(DateField):
 
 
 # ENUM
+class XmlEnumField(EnumField):
+    """Check for cdata."""
+
+    @cdata
+    def _deserialize(self, *args, **kwargs):
+        return super()._deserialize(*args, **kwargs)
+
+
 class XmlReadingDirectionField(ReadingDirectionField):
     """Check for cdata."""
 

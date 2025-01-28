@@ -47,7 +47,7 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "nss": "4000-145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "pages": [
@@ -170,7 +170,7 @@ READ_CIX_DICT = MappingProxyType(
             "StoryArcNumber": "4,2",
             "Title": "The Beginning",
             "Volume": 1950,
-            "Web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+            "Web": "https://comicvine.gamespot.com/c/4000-145269/",
             "Writer": "Joe Orlando",
             "Year": 1950,
         }

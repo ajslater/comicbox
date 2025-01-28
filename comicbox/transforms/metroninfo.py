@@ -1,6 +1,7 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 
 from collections.abc import Sequence
+from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
@@ -10,8 +11,16 @@ from comicfn2dict.parse import comicfn2dict
 from comicbox.dict_funcs import sort_dict
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
+    ANILIST_NID,
     COMICVINE_NID,
+    GCD_NID,
     ISBN_NID,
+    KITSU_NID,
+    LCG_NID,
+    MANGADEX_NID,
+    MANGAUPDATES_NID,
+    METRON_NID,
+    MYANIMELIST_NID,
     NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
@@ -50,7 +59,7 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_NUMBER_KEY,
     WRITER_KEY,
 )
-from comicbox.schemas.identifier import NSS_KEY
+from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -62,14 +71,16 @@ LOG = getLogger(__name__)
 ARCS_TAG = "Arcs"
 ARC_NAME_TAG = "Name"
 ARC_NUMBER_TAG = "Number"
-ARC_ID_TAG = "@id"
 CHARACTERS_TAG = "Characters"
 CREATOR_TAG = "Creator"
+CREDITS_TAG = "Credits"
 GTIN_TAG = "GTIN"
+ID_ATTRIBUTE = "@id"
+IDS_TAG = "IDS"
+ID_TAG = "ID"
 ISBN_TAG = "ISBN"
 UPC_TAG = "UPC"
 ROLES_TAG = "Roles"
-CREDITS_TAG = "Credits"
 GENRES_TAG = "Genres"
 LOCATIONS_TAG = "Locations"
 PRICES_TAG = "Prices"
@@ -80,12 +91,13 @@ SERIES_NAME_TAG = "Name"
 SERIES_VOLUME_TAG = "Volume"
 SERIES_FORMAT_TAG = "Format"
 SERIES_LANG_TAG = "@lang"
-SERIES_ID_TAG = "@id"
-ID_TAG = "ID"
 STORIES_TAG = "Stories"
 TEAMS_TAG = "Teams"
 TAGS_TAG = "Tags"
+URLS_TAG = "URLs"
+URL_TAG = "URL"
 
+# Roles
 WRITER_TAG = "Writer"
 COVER_TAG = "Cover"
 COLORIST_TAG = "Colorist"
@@ -106,6 +118,21 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     }
 )
 _PARSABLE_METRON_RESOURCE_TAGS = MappingProxyType({PUBLISHER_TAG: PUBLISHER_KEY})
+_ID_SOURCES = frozenset(
+    {
+        ANILIST_NID,
+        COMICVINE_NID,
+        GCD_NID,
+        KITSU_NID,
+        LCG_NID,
+        MANGADEX_NID,
+        MANGAUPDATES_NID,
+        METRON_NID,
+        MYANIMELIST_NID,
+    }
+)
+
+_GTIN_NIDS = frozenset({ISBN_NID, UPC_NID})
 
 
 def _copy_assign(key, data, value):
@@ -190,7 +217,10 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         }
     )
     SCHEMA_CLASS = MetronInfoSchema
-    URL_TAG = "URL"
+    URLS_TAG = URLS_TAG
+    URL_TAG = URL_TAG
+    IDENTIFIERS_TAG = IDS_TAG
+    IDENTIFIERS_SUB_TAG = ID_TAG
 
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
@@ -369,19 +399,10 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             identifiers[ISBN_NID] = {NSS_KEY: isbn}
         if upc:
             identifiers[UPC_NID] = {NSS_KEY: upc}
-        return _copy_assign(IDENTIFIERS_KEY, data, identifiers)
-
-    def unparse_gtin(self, data):
-        """Unparse identifiers into metron complex gtin structure."""
-        identifiers = data.get(IDENTIFIERS_KEY)
-        if not identifiers:
-            return data
-        complex_gtin = {}
-        if isbn := identifiers.get(ISBN_NID, {}).get(NSS_KEY):
-            complex_gtin[ISBN_TAG] = isbn
-        if upc := identifiers.get(UPC_NID, {}).get(NSS_KEY):
-            complex_gtin[UPC_TAG] = upc
-        return _copy_assign(GTIN_TAG, data, complex_gtin)
+        if IDENTIFIERS_KEY not in data:
+            data[IDENTIFIERS_KEY] = {}
+        data[IDENTIFIERS_KEY].update(identifiers)
+        return data
 
     def hoist_reprints(self, data):
         """Parse reprint names into reprint structures."""
@@ -458,7 +479,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         if language := metron_series.get(SERIES_LANG_TAG):
             update_dict[LANGUAGE_KEY] = language
 
-        series_nss = metron_series.get(SERIES_ID_TAG)
+        series_nss = metron_series.get(ID_ATTRIBUTE)
 
         if update_dict:
             data.update(update_dict)
@@ -475,7 +496,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             identifiers = series.get(IDENTIFIERS_KEY, {})
             for nid, identifier in identifiers.items():
                 if nss := identifier.get(NSS_KEY):
-                    metron_series[SERIES_ID_TAG] = nss
+                    metron_series[ID_ATTRIBUTE] = nss
                     metron_id_origin = NID_ORIGIN_MAP.get(nid)
                     data = _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
                     break
@@ -489,22 +510,67 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         return _copy_assign(SERIES_TAG, data, metron_series)
 
-    def unparse_metron_id_source(self, data):
-        """Get the metron ID source from the identifiers."""
-        if data.get(ID_TAG, {}).get("@source"):
+    def parse_identifier(self, item):
+        """Parse identifier dict."""
+        source = item.get("@source")
+        if isinstance(source, Enum):
+            source = source.value
+        nid = NID_ORIGIN_MAP.inverse.get(source, None)
+        if not nid:
+            return None, None
+        nss = item.get("#text")
+        return nid, nss
+
+    def unparse_identifier(self, data: dict, nid: str, nss: str) -> dict:
+        """Unparse one identifier to an xml metron GTIN or ID tag."""
+        nid_value = NID_ORIGIN_MAP.get(nid)
+        if not nid_value:
             return data
-        identifiers = data.get(IDENTIFIERS_KEY)
-        if not identifiers:
+        if nid in _GTIN_NIDS:
+            # Unparse GTIN
+            if GTIN_TAG not in data:
+                data[GTIN_TAG] = {}
+            data[GTIN_TAG][nid_value] = nss
+        else:
+            # Unparse ID
+            if IDS_TAG not in data:
+                data[IDS_TAG] = {ID_TAG: []}
+                primary = True
+            else:
+                primary = False
+            id_tag: dict[str, str | bool] = {"@source": nid_value, "#text": nss}
+            if primary:
+                id_tag["@primary"] = True
+            data[IDS_TAG][ID_TAG].append(id_tag)
+        return data
+
+    def unparse_url_tag(self, data: dict, nid: str, nss: str, url: str | None) -> dict:
+        """Unparse one identifier to an xml metron URL tag."""
+        if not url:
+            new_identifier = create_identifier(nid, nss)
+            url = new_identifier.get(URL_KEY)
+
+        if not url:
             return data
-        for nid in identifiers:
-            metron_id_origin = NID_ORIGIN_MAP.get(nid)
-            if metron_id_origin:
-                return _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
+
+        if self.URLS_TAG not in data:
+            data[self.URLS_TAG] = {self.URL_TAG: []}
+            primary = True
+        else:
+            primary = False
+
+        url_tag = {"#text": url}
+        if primary:
+            url_tag["@primary"] = True
+
+        data[self.URLS_TAG][self.URL_TAG].append(url_tag)
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicInfoPagesTransformMixin.parse_pages,
+        IdentifiersTransformMixin.parse_identifiers,
+        IdentifiersTransformMixin.parse_url_tag,
         hoist_metron_resource_lists,
         parse_metron_single_resources,
         parse_metron_series,
@@ -517,13 +583,12 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         ComicInfoPagesTransformMixin.unparse_pages,
+        IdentifiersTransformMixin.unparse_identifiers,
+        # IdentifiersTransformMixin.unparse_url_tag,
         lower_metron_resource_lists,
         unparse_metron_single_resources,
         unparse_metron_series,
         lower_metron_credits,
         map_story_arcs_to_arcs,
-        unparse_gtin,
         lower_reprints,
-        unparse_metron_id_source,
-        IdentifiersTransformMixin.unparse_url_tag,
     )
