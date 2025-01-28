@@ -35,14 +35,7 @@ METRON_NOTES = (
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "series": {"name": "Captain Science"},
-            "issue": "1",
-            "issue_number": Decimal("1"),
-            "publisher": "Youthful Adventure Stories",
             "date": date(year=1950, month=11, day=1),
-            "volume": {"name": 1950},
-            "language": "en",
-            "notes": METRON_NOTES,
             "characters": {
                 "Captain Science",
                 "Gordon Dane",
@@ -53,6 +46,7 @@ READ_METADATA = MappingProxyType(
                 "writer": {"Joe Orlando"},
             },
             "genres": {"Science Fiction"},
+            "imprint": "Youthful Imprint",
             "identifiers": {
                 "comicvine": {
                     "nss": "4000-145269",
@@ -68,7 +62,13 @@ READ_METADATA = MappingProxyType(
                     "url": "https://isbndb.com/book/123-456789-0123/",
                 },
             },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "notes": METRON_NOTES,
             "page_count": 0,
+            "publisher": "Youthful Adventure Stories",
+            "series": {"name": "Captain Science"},
             "stories": {"Captain Lost", "Science is Good"},
             "story_arcs": {
                 "Captain Arc": 4,
@@ -79,6 +79,7 @@ READ_METADATA = MappingProxyType(
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
+            "volume": {"name": 1950},
         }
     }
 )
@@ -127,7 +128,10 @@ READ_METRON_DICT = MappingProxyType(
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
-            "Publisher": {"#text": "Youthful Adventure Stories"},
+            "Publisher": {
+                "Imprint": {"#text": "Youthful Imprint"},
+                "Name": "Youthful Adventure Stories",
+            },
             "Reprints": {"Reprint": [{"#text": "Captain Science Alternate #001"}]},
             "Series": {
                 "@lang": "en",
@@ -193,7 +197,10 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
-            "Publisher": "Youthful Adventure Stories",
+            "Publisher": {
+                "Imprint": {"#text": "Youthful Imprint"},
+                "Name": "Youthful Adventure Stories",
+            },
             "Reprints": {"Reprint": [{"#text": "Captain Science Alternate #001"}]},
             "Series": {
                 "@lang": "en",

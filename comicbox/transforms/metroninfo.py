@@ -11,16 +11,8 @@ from comicfn2dict.parse import comicfn2dict
 from comicbox.dict_funcs import sort_dict
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
-    ANILIST_NID,
     COMICVINE_NID,
-    GCD_NID,
     ISBN_NID,
-    KITSU_NID,
-    LCG_NID,
-    MANGADEX_NID,
-    MANGAUPDATES_NID,
-    METRON_NID,
-    MYANIMELIST_NID,
     NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
@@ -34,6 +26,7 @@ from comicbox.schemas.comicbox_mixin import (
     EDITOR_KEY,
     GENRES_KEY,
     IDENTIFIERS_KEY,
+    IMPRINT_KEY,
     INKER_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
@@ -75,6 +68,7 @@ CHARACTERS_TAG = "Characters"
 CREATOR_TAG = "Creator"
 CREDITS_TAG = "Credits"
 GTIN_TAG = "GTIN"
+IMPRINT_TAG = "Imprint"
 ID_ATTRIBUTE = "@id"
 IDS_TAG = "IDS"
 ID_TAG = "ID"
@@ -115,20 +109,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (STORIES_TAG, "Story"): STORIES_KEY,
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
-    }
-)
-_PARSABLE_METRON_RESOURCE_TAGS = MappingProxyType({PUBLISHER_TAG: PUBLISHER_KEY})
-_ID_SOURCES = frozenset(
-    {
-        ANILIST_NID,
-        COMICVINE_NID,
-        GCD_NID,
-        KITSU_NID,
-        LCG_NID,
-        MANGADEX_NID,
-        MANGAUPDATES_NID,
-        METRON_NID,
-        MYANIMELIST_NID,
     }
 )
 
@@ -262,26 +242,32 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             data.update(update_dict)
         return data
 
-    def parse_metron_single_resources(self, data):
-        """Parse Metron resource tags."""
-        update_dict = {}
-        for tag, key in _PARSABLE_METRON_RESOURCE_TAGS.items():
-            name = get_cdata(data.pop(tag, {}))
-            if name:
-                update_dict[key] = name
-        if update_dict:
-            data.update(update_dict)
+    def parse_publisher(self, data):
+        """Parse Metron Publisher."""
+        publisher = data.pop(PUBLISHER_TAG, None)
+        if not publisher:
+            return data
+        publisher_name = publisher.get("Name")
+        imprint = publisher.get(IMPRINT_TAG)
+        imprint_name = imprint.get("#text") if isinstance(imprint, dict) else imprint
+
+        if publisher_name:
+            data[PUBLISHER_KEY] = publisher_name
+        if imprint_name:
+            data[IMPRINT_KEY] = imprint_name
         return data
 
-    def unparse_metron_single_resources(self, data):
-        """Unparse Metron resource tags."""
-        update_dict = {}
-        for tag, key in _PARSABLE_METRON_RESOURCE_TAGS.items():
-            name = data.pop(key, None)
-            if name:
-                update_dict[tag] = {"#text": name}
-        if update_dict:
-            data.update(update_dict)
+    def unparse_publisher(self, data):
+        """Unparse Metron publisher."""
+        publisher_name = data.pop(PUBLISHER_KEY, "")
+        imprint_name = data.get(IMPRINT_KEY)
+        if not publisher_name and not imprint_name:
+            return data
+        publisher = {"Name": publisher_name}
+        if imprint_name:
+            publisher[IMPRINT_TAG] = {"#text": imprint_name}
+
+        data[PUBLISHER_TAG] = publisher
         return data
 
     def _hoist_metron_credit(self, metron_credit, contributors):
@@ -572,7 +558,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_url_tag,
         hoist_metron_resource_lists,
-        parse_metron_single_resources,
+        parse_publisher,
         parse_metron_series,
         hoist_metron_credits,
         map_arcs_to_story_arcs,
@@ -586,7 +572,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         IdentifiersTransformMixin.unparse_identifiers,
         # IdentifiersTransformMixin.unparse_url_tag,
         lower_metron_resource_lists,
-        unparse_metron_single_resources,
+        unparse_publisher,
         unparse_metron_series,
         lower_metron_credits,
         map_story_arcs_to_arcs,

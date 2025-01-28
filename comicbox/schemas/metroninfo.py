@@ -8,6 +8,7 @@ from marshmallow.fields import Constant, Field, Nested
 from marshmallow.schema import Schema
 from marshmallow_union import Union
 
+from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.xml_fields import (
@@ -36,6 +37,66 @@ from comicbox.schemas.xml_sub_tags import (
     create_pages_field,
     create_sub_tag_field,
 )
+
+
+def _create_text_schema(field: Field):
+    """Create a text schema with a designated field type."""
+    schema_name = field.__class__.__name__ + "TextSchema"
+    schema_meta_class = type(
+        "Meta", (BaseSubSchema.Meta,), {"include": {"#text": field}}
+    )
+    return type(schema_name, (BaseSubSchema,), {"Meta": schema_meta_class})
+
+
+def _get_xml_poly_text_field(
+    field: Field | None = None,
+    many: bool = False,  # noqa: FBT002
+    collection_field: Field | None = None,
+    schema_class: type[Schema] | None = None,
+):
+    """Get a union field of xml list variations."""
+    fields = []
+    if not schema_class and field:
+        schema_class = _create_text_schema(field)
+    if schema_class:
+        fields.append(Nested(schema_class, many=many))
+    if collection_field:
+        fields.append(collection_field)
+    if field:
+        fields.append(field)
+    return Union(fields)
+
+
+class MetronIDAttrField(StringField):
+    """Metron ID Field."""
+
+
+class MetronResourceSchema(BaseSubSchema):
+    """Metron Resource Schema."""
+
+    class Meta(BaseSubSchema.Meta):
+        """XML Attributes."""
+
+        include = MappingProxyType(
+            {"#text": StringField(required=True), "@id": MetronIDAttrField()}
+        )
+
+
+def _get_metron_polyfield():
+    """Get a metron union field of xml list variations."""
+    return _get_xml_poly_text_field(
+        many=True,
+        collection_field=XmlStringSetField(),
+        schema_class=MetronResourceSchema,
+    )
+
+
+def _get_metron_resource_field(
+    schema_class: type[BaseSubSchema] = MetronResourceSchema,
+    field_class: type[Field] = XmlStringField,
+):
+    """Get metron union resource and simple text field."""
+    return _get_xml_poly_text_field(field=field_class(), schema_class=schema_class)
 
 
 class MetronAgeRatingField(XmlEnumField):
@@ -82,7 +143,7 @@ class MetronIDSchema(BaseSubSchema):
 
         include = MappingProxyType(
             {
-                "#text": XmlStringField(required=True),
+                "#text": StringField(required=True),
                 "@source": MetronSourceField(required=True),
                 "@primary": BooleanField(),
             }
@@ -96,19 +157,20 @@ class MetronURLSchema(BaseSubSchema):
         """Attributes."""
 
         include = MappingProxyType(
-            {"#text": XmlStringField(required=True), "@primary": BooleanField()}
+            {"#text": StringField(required=True), "@primary": BooleanField()}
         )
 
 
-class MetronResourceSchema(BaseSubSchema):
-    """Metron Resource Schema."""
+class MetronPublisherSchema(BaseSubSchema):
+    """Metron Publisher Schema."""
+
+    Name = XmlStringField()
+    Imprint = _get_metron_resource_field()
 
     class Meta(BaseSubSchema.Meta):
         """XML Attributes."""
 
-        include = MappingProxyType(
-            {"#text": XmlStringField(required=True), "@id": IntegerField(minimum=0)}
-        )
+        include = MappingProxyType({"@id": MetronIDAttrField()})
 
 
 class MetronSeriesSchema(BaseSubSchema):
@@ -116,7 +178,7 @@ class MetronSeriesSchema(BaseSubSchema):
 
     Name = XmlStringField()
     SortName = XmlStringField()
-    Volume = IntegerField()
+    Volume = IntegerField(minimum=0)
     Format = XmlStringField()
 
     class Meta(BaseSchema.Meta):
@@ -125,7 +187,7 @@ class MetronSeriesSchema(BaseSubSchema):
         include = MappingProxyType(
             {
                 "@lang": LanguageField(),
-                "@id": IntegerField(minimum=0),
+                "@id": MetronIDAttrField(),
             }
         )
 
@@ -157,52 +219,7 @@ class MetronArcSchema(BaseSubSchema):
     class Meta(BaseSchema.Meta):
         """XML Attributes."""
 
-        include = MappingProxyType({"@id": IntegerField(minimum=0)})
-
-
-def _create_text_schema(field: Field):
-    """Create a text schema with a designated field type."""
-    schema_name = field.__class__.__name__ + "TextSchema"
-    schema_meta_class = type(
-        "Meta", (BaseSubSchema.Meta,), {"include": {"#text": field}}
-    )
-    return type(schema_name, (BaseSubSchema,), {"Meta": schema_meta_class})
-
-
-def _get_xml_poly_text_field(
-    field: Field | None = None,
-    many: bool = False,  # noqa: FBT002
-    collection_field: Field | None = None,
-    schema_class: type[Schema] | None = None,
-):
-    """Get a union field of xml list variations."""
-    fields = []
-    if not schema_class and field:
-        schema_class = _create_text_schema(field)
-    if schema_class:
-        fields.append(Nested(schema_class, many=many))
-    if collection_field:
-        fields.append(collection_field)
-    if field:
-        fields.append(field)
-    return Union(fields)
-
-
-def _get_metron_polyfield():
-    """Get a metron union field of xml list variations."""
-    return _get_xml_poly_text_field(
-        many=True,
-        collection_field=XmlStringSetField(),
-        schema_class=MetronResourceSchema,
-    )
-
-
-def _get_metron_resource_field(
-    schema_class: type[BaseSubSchema] = MetronResourceSchema,
-    field_class: type[Field] = XmlStringField,
-):
-    """Get metron union resource and simple text field."""
-    return _get_xml_poly_text_field(field=field_class(), schema_class=schema_class)
+        include = MappingProxyType({"@id": MetronIDAttrField()})
 
 
 class MetronCreditSchema(BaseSubSchema):
@@ -216,7 +233,7 @@ class MetronInfoSubSchema(XmlSubSchema):
     """MetronInfo.xml Sub Schema."""
 
     IDS = create_sub_tag_field("ID", Nested(MetronIDSchema, many=True))
-    Publisher = _get_metron_resource_field()
+    Publisher = Nested(MetronPublisherSchema)
     Series = Nested(MetronSeriesSchema)
     CollectionTitle = XmlStringField()
     Number = XmlStringField()
