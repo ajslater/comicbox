@@ -1,9 +1,11 @@
 # 📰 News
 
-## v1.2.2
+## v1.3.0
 
+- Support MetronInfo.xml v1.0 Schema
 - Fix Notes parsing for Comictagger beta Metron origin
 - Simplify Identifier URL construction for Metron pk ids.
+- Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
 
 ## v1.2.1
 
