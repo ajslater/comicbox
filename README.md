@@ -64,10 +64,9 @@ on the path to convert CBR into CBZ or extract files from CBRs.
 
 #### PDF
 
-The pymupdf dependecy usually has wheels that install a local version of
-libmupdf. But for some platforms (e.g. Windows) it may require libstdc++ and
-c/c++ build tools installed to compile a libmupdf. More detail on this is
-available in the
+The pymupdf dependency has wheels that install a local version of libmupdf. But
+for some platforms (e.g. Windows) it may require libstdc++ and c/c++ build tools
+installed to compile a libmupdf. More detail on this is available in the
 [pymupdf docs](https://pymupdf.readthedocs.io/en/latest/installation.html#installation-when-a-suitable-wheel-is-not-available).
 
 ## ⌨️ <a href="usage">Usage</a>
@@ -280,7 +279,7 @@ probably survives because Comictagger supports writing it.
 | Archive       | Zip & Rar Comments   |
 | Import/Export | comic-book-info.json |
 
-### ComicInfo Schema (Comic Rack)
+### ComicInfo Schema (Comic Rack) v2.1 (Draft)
 
 The Comic Rack schema. The de facto standard of comic book metadata. The Comic
 Rack reader is defunct, but the
@@ -295,6 +294,18 @@ multiple Story Arcs and Story Arc Numbers as CSV values.
 | ------------- | ------------- |
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
+
+### MetronInfo Schema v1.0
+
+The
+[MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
+is a new XML schema for comic book's metadata, which hopes to improve some of
+the deficiencies that exist with the ComicInfo.xml schema.
+
+| Location      | Name           |
+| ------------- | -------------- |
+| Archive       | metroninfo.xml |
+| Import/Export | metroninfo.xml |
 
 ### ComicTagger Schema
 
