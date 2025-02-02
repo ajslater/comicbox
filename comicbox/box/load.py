@@ -111,9 +111,8 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
         for source_data in source_metadata:
             md, transform_class = self._load_metadata(source, source_data)
             if md:
-                loaded_list.append(
-                    LoadedMetadata(md, transform_class, source_data.path)
-                )
+                loaded_md = LoadedMetadata(md, transform_class, source_data.path)
+                loaded_list.append(loaded_md)
         if loaded_list:
             if source not in self._loaded:
                 self._loaded[source] = ()
