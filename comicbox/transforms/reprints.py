@@ -4,12 +4,12 @@ from comicfn2dict.unparse import dict2comicfn
 
 from comicbox.schemas.comicbox_mixin import (
     IMPRINT_KEY,
-    ISSUE_COUNT_KEY,
     ISSUE_KEY,
     PUBLISHER_KEY,
     SERIES_KEY,
     SERIES_NAME_KEY,
     VOLUME_COUNT_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
@@ -26,7 +26,7 @@ def _reprint_key(reprint):
             str(series.get(SERIES_NAME_KEY)),
             str(series.get(VOLUME_COUNT_KEY)),
             str(volume.get(VOLUME_NUMBER_KEY)),
-            str(volume.get(ISSUE_COUNT_KEY)),
+            str(volume.get(VOLUME_ISSUE_COUNT_KEY)),
             str(reprint.get(ISSUE_KEY)),
         )
     )
@@ -50,7 +50,7 @@ def reprint_to_filename(reprint):
         volume_number = volume.get(VOLUME_NUMBER_KEY)
         if volume_number is not None:
             filename_dict[VOLUME_TAG] = volume_number
-        if issue_count := volume.get(ISSUE_COUNT_KEY):
+        if issue_count := volume.get(VOLUME_ISSUE_COUNT_KEY):
             filename_dict[ISSUE_COUNT_TAG] = issue_count
     if issue := reprint.get(ISSUE_KEY):
         filename_dict[ISSUE_TAG] = issue

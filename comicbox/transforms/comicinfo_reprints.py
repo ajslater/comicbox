@@ -5,10 +5,10 @@ from copy import deepcopy
 from bidict import bidict
 
 from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
     ISSUE_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
 )
 from comicbox.transforms.reprints import sort_reprints
 
@@ -24,7 +24,7 @@ REPRINT_KEY_MAP = bidict(
     {
         ALTERNATE_SERIES_TAG: SERIES_KEY + ".name",
         ALTERNATE_NUMBER_TAG: ISSUE_KEY,
-        ALTERNATE_COUNT_TAG: "volume." + ISSUE_COUNT_KEY,
+        ALTERNATE_COUNT_TAG: "volume." + VOLUME_ISSUE_COUNT_KEY,
     }
 )
 

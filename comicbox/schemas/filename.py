@@ -16,16 +16,16 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
     ISSUE_KEY,
     ROOT_TAG,
     SERIES_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
 
 SERIES_TAG = SERIES_KEY
 VOLUME_TAG = VOLUME_KEY
-ISSUE_COUNT_TAG = ISSUE_COUNT_KEY
+ISSUE_COUNT_TAG = VOLUME_ISSUE_COUNT_KEY
 ISSUE_TAG = ISSUE_KEY
 _OTHER_SCHEMA_STARTS = ("<?", "<!")
 _OTHER_SCHEMA_ENDS = ("{", ":")

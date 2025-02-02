@@ -3,11 +3,11 @@
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
     ISSUE_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
     SERIES_NAME_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
@@ -29,10 +29,10 @@ class CoMetReprintsTransformMixin:
             reprint[VOLUME_KEY] = {VOLUME_NUMBER_KEY: volume}
         if issue := md.get(ISSUE_KEY):
             reprint[ISSUE_KEY] = issue
-        if issue_count := md.get(ISSUE_COUNT_KEY):
-            if SERIES_KEY not in reprint:
-                reprint[SERIES_KEY] = {}
-            reprint[SERIES_KEY][ISSUE_COUNT_KEY] = issue_count
+        if issue_count := md.get(VOLUME_ISSUE_COUNT_KEY):
+            if VOLUME_KEY not in reprint:
+                reprint[VOLUME_KEY] = {}
+            reprint[VOLUME_KEY][VOLUME_ISSUE_COUNT_KEY] = issue_count
         if reprint:
             reprint = dict(sorted(reprint.items()))
             reprints.append(reprint)

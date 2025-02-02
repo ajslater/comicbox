@@ -6,9 +6,6 @@
   "properties": {
     "type": "object",
     "properties": {
-      "name": {
-        "type": "string"
-      },
       "aliases": {
         "type": "array",
         "items": {
@@ -20,6 +17,15 @@
         "additionalProperties": {
           "type": "string"
         }
+      },
+      "name": {
+        "type": "string"
+      },
+      "sort_name": {
+        "type": "string"
+      },
+      "start_year": {
+        "type": "integer"
       },
       "volume_count": {
         "type": "integer"

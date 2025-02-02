@@ -135,6 +135,25 @@ class MetronSourceField(XmlEnumField):
     ENUM = MetronSourceEnum
 
 
+class MetronFormatField(XmlEnumField):
+    """Metron Series Format Field."""
+
+    class MetronFormatEnum(Enum):
+        """Metron Series Format Values."""
+
+        ANNUAL = "Annual"
+        DIGITAL_CHAPTER = "Digital Chapter"
+        GRAPHIC_NOVEL = "Graphic Novel"
+        HARDCOVER = "Hardcover"
+        LIMITED_SERIES = "Limited Series"
+        OMNIBUS = "Omnibus"
+        ONE_SHOT = "One-Shot"
+        SINGLE_ISSUE = "Single Issue"
+        TRADE_PAPERBACK = "Trade Paperback"
+
+    ENUM = MetronFormatEnum
+
+
 class MetronIDSchema(BaseSubSchema):
     """Metron ID Schema."""
 
@@ -173,13 +192,35 @@ class MetronPublisherSchema(BaseSubSchema):
         include = MappingProxyType({"@id": MetronIDAttrField()})
 
 
+class MetronNameSchema(BaseSubSchema):
+    """Metron Alternative Name Schema."""
+
+    class Meta(BaseSubSchema.Meta):
+        """XML Attributes."""
+
+        include = MappingProxyType(
+            {
+                "#text": StringField(),
+                # "@id": MetronIDAttrField(),
+                "@lang": LanguageField(),
+            }
+        )
+
+
 class MetronSeriesSchema(BaseSubSchema):
     """Metron Series Schema."""
 
     Name = XmlStringField()
     SortName = XmlStringField()
     Volume = IntegerField(minimum=0)
-    Format = XmlStringField()
+    IssueCount = IntegerField(minimum=0)
+    VolumeCount = IntegerField(minimum=0)
+    Format = MetronFormatField()
+    StartYear = IntegerField(minimum=1000, maximum=9999)
+    AlternativeNames = create_sub_tag_field(
+        "AlternativeName",
+        Nested(MetronNameSchema, many=True),
+    )
 
     class Meta(BaseSchema.Meta):
         """XML Attributes."""

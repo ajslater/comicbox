@@ -6,9 +6,6 @@
   "properties": {
     "type": "object",
     "properties": {
-      "name": {
-        "type": "integer"
-      },
       "aliases": {
         "type": "array",
         "items": {
@@ -22,6 +19,9 @@
         }
       },
       "issue_count": {
+        "type": "integer"
+      },
+      "name": {
         "type": "integer"
       }
     }

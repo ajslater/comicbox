@@ -49,11 +49,21 @@
 		<Name>Youthful Adventure Stories</Name>
 	</Publisher>
 	<Reprints>
+		<Reprint>Capitán Ciencia</Reprint>
 		<Reprint>Captain Science Alternate #001</Reprint>
 	</Reprints>
 	<Series lang="en">
+		<AlternativeNames>
+			<AlternativeName lang="es">Capitán Ciencia</AlternativeName>
+			<AlternativeName>Captain Science Alternate</AlternativeName>
+		</AlternativeNames>
+		<Format>Single Issue</Format>
+		<IssueCount>10</IssueCount>
 		<Name>Captain Science</Name>
+		<SortName>Captain Science</SortName>
+		<StartYear>1950</StartYear>
 		<Volume>1950</Volume>
+		<VolumeCount>1</VolumeCount>
 	</Series>
 	<Stories>
 		<Story>Captain Lost</Story>

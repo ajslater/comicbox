@@ -1,10 +1,10 @@
 """Nested Publishing Tags."""
 
 from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
     SERIES_KEY,
     SERIES_NAME_KEY,
     VOLUME_COUNT_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
@@ -50,7 +50,7 @@ class NestedPublishingTagsMixin:
             if volume_number:
                 data[VOLUME_KEY][VOLUME_NUMBER_KEY] = volume_number
             if issue_count:
-                data[VOLUME_KEY][ISSUE_COUNT_KEY] = issue_count
+                data[VOLUME_KEY][VOLUME_ISSUE_COUNT_KEY] = issue_count
         return data
 
     def unparse_volume(self, data):
@@ -59,6 +59,6 @@ class NestedPublishingTagsMixin:
         volume_number = volume_dict.get(VOLUME_NUMBER_KEY)
         if volume_number is not None:
             data[self.VOLUME_TAG] = volume_number
-        if issue_count := volume_dict.get(ISSUE_COUNT_KEY):
+        if issue_count := volume_dict.get(VOLUME_ISSUE_COUNT_KEY):
             data[self.ISSUE_COUNT_TAG] = issue_count
         return data

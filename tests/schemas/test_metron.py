@@ -66,20 +66,27 @@ READ_METADATA = MappingProxyType(
             "issue_number": Decimal("1"),
             "language": "en",
             "notes": METRON_NOTES,
+            "original_format": "Single Issue",
             "page_count": 0,
             "publisher": "Youthful Adventure Stories",
-            "series": {"name": "Captain Science"},
+            "series": {
+                "name": "Captain Science",
+                "sort_name": "Captain Science",
+                "start_year": 1950,
+                "volume_count": 1,
+            },
             "stories": {"Captain Lost", "Science is Good"},
             "story_arcs": {
                 "Captain Arc": 4,
                 "Other Arc": 2,
             },
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {"language": "es", "series": {"name": "Capitán Ciencia"}},
+                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
-            "volume": {"name": 1950},
+            "volume": {"name": 1950, "issue_count": 10},
         }
     }
 )
@@ -132,11 +139,27 @@ READ_METRON_DICT = MappingProxyType(
                 "Imprint": {"#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },
-            "Reprints": {"Reprint": [{"#text": "Captain Science Alternate #001"}]},
+            "Reprints": {
+                "Reprint": [
+                    {"#text": "Capitán Ciencia"},
+                    {"#text": "Captain Science Alternate #001"},
+                ]
+            },
             "Series": {
                 "@lang": "en",
+                "AlternativeNames": {
+                    "AlternativeName": [
+                        {"#text": "Capitán Ciencia", "@lang": "es"},
+                        {"#text": "Captain Science Alternate"},
+                    ]
+                },
+                "Format": "Single Issue",
+                "IssueCount": 10,
                 "Name": "Captain Science",
+                "SortName": "Captain Science",
+                "StartYear": 1950,
                 "Volume": 1950,
+                "VolumeCount": 1,
             },
             "Stories": {
                 "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
@@ -201,11 +224,27 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "Imprint": {"#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },
-            "Reprints": {"Reprint": [{"#text": "Captain Science Alternate #001"}]},
+            "Reprints": {
+                "Reprint": [
+                    {"#text": "Capitán Ciencia"},
+                    {"#text": "Captain Science Alternate #001"},
+                ]
+            },
             "Series": {
                 "@lang": "en",
+                "AlternativeNames": {
+                    "AlternativeName": [
+                        {"#text": "Capitán Ciencia", "@lang": "es"},
+                        {"#text": "Captain Science Alternate"},
+                    ]
+                },
+                "Format": "Single Issue",
+                "IssueCount": 10,
                 "Name": "Captain Science",
+                "SortName": "Captain Science",
+                "StartYear": 1950,
                 "Volume": 1950,
+                "VolumeCount": 1,
             },
             "Stories": {
                 "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]

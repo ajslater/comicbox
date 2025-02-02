@@ -3,7 +3,7 @@
 from bidict import bidict
 
 from comicbox.dict_funcs import sort_dict
-from comicbox.schemas.comicbox_mixin import INDEX_KEY, PAGES_KEY
+from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY, PAGES_KEY
 from comicbox.transforms.xml_transforms import XmlTransform
 
 
@@ -15,7 +15,7 @@ class ComicInfoPagesTransformMixin(XmlTransform):
     INDEX_TAG = "@Image"
     PAGE_TRANSFORM = bidict(
         {
-            INDEX_TAG: INDEX_KEY,
+            INDEX_TAG: PAGE_INDEX_KEY,
             "@Type": "page_type",
             "@DoublePage": "double_page",
             "@ImageSize": "size",
@@ -35,7 +35,7 @@ class ComicInfoPagesTransformMixin(XmlTransform):
             )
             new_page = sort_dict(new_page)
             new_pages_list.append(new_page)
-        sort_key = INDEX_KEY if to_comicbox else self.INDEX_TAG
+        sort_key = PAGE_INDEX_KEY if to_comicbox else self.INDEX_TAG
         return sorted(new_pages_list, key=lambda p: p.get(sort_key))
 
     def _pages_copy(self, data, to_comicbox: bool):
