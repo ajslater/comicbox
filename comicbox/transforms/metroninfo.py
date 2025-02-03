@@ -119,6 +119,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (STORIES_TAG, "Story"): STORIES_KEY,
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
+        (URLS_TAG, None): URL_KEY,
     }
 )
 
