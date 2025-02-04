@@ -17,7 +17,7 @@ Comicbox reads and writes:
 - [Comic Book Lover ComicBookInfo schema](https://code.google.com/archive/p/comicbookinfo/)
 - [CoMet schema](https://github.com/wdhongtw/comet-utils).
 - [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
-  - Embedding ComicInfo.xml inside PDFS.
+  - Embedding ComicInfo.xml or MetronInfo.xml inside PDFs.
 - A variety of filename schemes that encode metadata.
 
 ### Usefulness
@@ -28,16 +28,17 @@ documented, but you can infer what it does pretty easily here:
 [comicbox.comic_archive](https://github.com/ajslater/comicbox/blob/main/comicbox/comic_archive.py)
 as the primary interface.
 
-The command line is increasingly useful and can read and write metadata
-recursively and extract pages.
+The command line can perform most of comicbox's functions including reading and
+writing metadata recursively, converting between metadata formats and extracting
+pages.
 
 ### Limitations and Alternatives
 
 Comicbox does _not_ use popular metadata database APIs or have a GUI!
 
-[Comictagger](https://github.com/comictagger/comictagger) is a popular
-alternative. It does most of what Comicbox does but also automatically tags
-comics with the ComicVine API and has a desktop UI.
+[Comictagger](https://github.com/comictagger/comictagger) probably the most
+useful comicbook tagger. It does most of what Comicbox does but also
+automatically tags comics with the ComicVine API and has a desktop UI.
 
 ## 📦 <a href="install">Installation</a>
 
@@ -220,9 +221,52 @@ number of common fields from comic archive filenames.
 | Archive       | The archive filename  |
 | Import/Export | comicbox-filename.txt |
 
+### ComicInfo Schema (Comic Rack) v2.1 (Draft)
+
+This schema used by the defunct Comic Rack reader is the de facto standard for
+comic book metadata on the internet. The
+[Anansi Project](https://anansi-project.github.io/) now maintains the
+[ComicInfo Schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
+and has compatibly and conservatively extended it.
+
+Comicbox also supports an unofficial, undocumented Mylar extension to
+ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV
+values.
+
+| Location      | Name          |
+| ------------- | ------------- |
+| Archive       | comicinfo.xml |
+| Import/Export | comicinfo.xml |
+
+### MetronInfo Schema v1.0
+
+The
+[MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
+is a new XML schema for comic book metadata, which hopes to improve some of the
+deficiencies that exist with the ComicInfo.xml schema.
+
+| Location      | Name           |
+| ------------- | -------------- |
+| Archive       | metroninfo.xml |
+| Import/Export | metroninfo.xml |
+
+### ComicBookInfo Schema (Comic Book Lover)
+
+The schema used by the defunct
+[Comic Book Lover](https://bitcartel.neocities.org/comicbooklover/) app. It
+supports a few useful tags that ComicInfo.xml does not, but it probably only
+survives because Comictagger supports writing it.
+
+[ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
+
+| Location      | Name                 |
+| ------------- | -------------------- |
+| Archive       | Zip & Rar Comments   |
+| Import/Export | comic-book-info.json |
+
 ### PDF Schema
 
-The pdf metadata standard. Can be exported as an xml file or written directly to
+The PDF metadata standard. Can be exported as an xml file or written directly to
 the pdf itself.
 
 [Adobe PDF Namespace](https://developer.adobe.com/xmp/docs/XMPNamespaces/pdf/)
@@ -256,9 +300,11 @@ If Comicbox JSON is included in the write formats (e.g. `-w pdf,json`) Comicbox
 will write comicbox.json to the keywords field instead. It is unlikely that any
 other comic reader other than Codex will ever support this.
 
-### CoMet Schema
+### CoMet Schema (Comic Viewer)
 
-An old and uncommon comic metadata standard from a defunct comic book reader.
+An old and extremely rare comic metadata standard from the defunct
+[Comic Viewer](https://www.denvog.com/wordpress/app/comic-viewer/) comic book
+reader.
 
 [CoMet Specification](http://www.denvog.com/comet/comet-specification/)
 
@@ -267,49 +313,9 @@ An old and uncommon comic metadata standard from a defunct comic book reader.
 | Archive       | comet.xml |
 | Import/Export | comet.xml |
 
-### ComicBookInfo Schema (Comic Book Lover)
-
-The Comic Book Lover schema. A rare but still encountered JSON schema. It
-probably survives because Comictagger supports writing it.
-
-[ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
-
-| Location      | Name                 |
-| ------------- | -------------------- |
-| Archive       | Zip & Rar Comments   |
-| Import/Export | comic-book-info.json |
-
-### ComicInfo Schema (Comic Rack) v2.1 (Draft)
-
-The Comic Rack schema. The de facto standard of comic book metadata. The Comic
-Rack reader is defunct, but the
-[Anansi Project](https://anansi-project.github.io/) now publishes the ComicInfo
-spec and has compatibly and conservatively extended it.
-
-[Anansi ComicInfo v2.1 Spec](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
-Also, an unofficial, undocumented Mylar extension to ComicInfo.xml that encodes
-multiple Story Arcs and Story Arc Numbers as CSV values.
-
-| Location      | Name          |
-| ------------- | ------------- |
-| Archive       | comicinfo.xml |
-| Import/Export | comicinfo.xml |
-
-### MetronInfo Schema v1.0
-
-The
-[MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
-is a new XML schema for comic book's metadata, which hopes to improve some of
-the deficiencies that exist with the ComicInfo.xml schema.
-
-| Location      | Name           |
-| ------------- | -------------- |
-| Archive       | metroninfo.xml |
-| Import/Export | metroninfo.xml |
-
 ### ComicTagger Schema
 
-The most useful comic book metadata writer is
+The most useful general comic book metadata writer is
 [ComicTagger](https://github.com/comictagger/comictagger). It supports the
 ComicVine API, is extensible to other APIs, and features a nice desktop GUI.
 Internally, Comictagger keeps a metadata object to work with the schemas it
@@ -317,10 +323,11 @@ supports. This schema allows the import and export of that schema.
 
 [Comictaggger genericmetadata.py](https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py)
 
-This schema may only be useful to developers. The author of ComicTagger offers
-no promises as to the stability of this API and I am very lazy, so the chances
-of this drifting out of date are anyone's guess. It was included because it was
-easy to do.
+This schema is possibly only useful to developers using the API to import and
+export python dicts, but the capability to import an export this format json
+format as json exists. The author of ComicTagger offers no promises as to the
+stability of this API and I am very lazy, so the chances of this drifting out of
+date are anyone's guess. It was included because it was easy to do.
 
 | Location      | Name             |
 | ------------- | ---------------- |
@@ -334,14 +341,14 @@ schemas to allow interpolating.
 
 [Comicbox JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json)
 
-#### JSON Format
+#### Comicbox JSON Format
 
 | Location      | Name          |
 | ------------- | ------------- |
 | Archive       | comicbox.json |
 | Import/Export | comicbox.json |
 
-#### YAML Format
+#### Comicbox YAML Format
 
 YAML is a superset of JSON, so the JSON schema applies here.
 
@@ -350,7 +357,7 @@ YAML is a superset of JSON, so the JSON schema applies here.
 | Archive       | comicbox.yaml |
 | Import/Export | comicbox.yaml |
 
-#### CLI Format
+#### Comicbox CLI Format
 
 The Comicbox CLI uses "flow style" YAML, which is an all on one line format to
 enter metadata on the command line.
