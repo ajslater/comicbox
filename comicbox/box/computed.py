@@ -20,10 +20,7 @@ from comicbox.fields.number_fields import DecimalField
 from comicbox.fields.time_fields import DateTimeField
 from comicbox.identifiers import (
     COMICVINE_NID,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     create_identifier,
-    parse_urn_identifier,
-    to_urn_string,
 )
 from comicbox.schemas.comicbox_mixin import (
     IDENTIFIERS_KEY,
@@ -44,6 +41,11 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.sources import SourceFrom
+from comicbox.urns import (
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
+    parse_urn_identifier,
+    to_urn_string,
+)
 
 LOG = getLogger(__name__)
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
@@ -241,7 +243,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         identifiers = {}
         for tag in tags:
             # Silently fail because most tags are not urns
-            nid, nss = parse_urn_identifier(tag, warn=False)
+            nid, nss_type, nss = parse_urn_identifier(tag, warn=False)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
                 if nss:

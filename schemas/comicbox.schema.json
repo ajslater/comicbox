@@ -64,9 +64,17 @@
         }
       },
       "identifiers": {
+        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+      },
+      "identifier_primary_source": {
         "type": "object",
-        "additionalProperties": {
-          "type": "string"
+        "properties": {
+          "nid": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
         }
       },
       "issue": {

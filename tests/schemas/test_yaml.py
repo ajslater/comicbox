@@ -34,7 +34,7 @@ READ_METADATA = MappingProxyType(
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -95,7 +95,7 @@ READ_YAML_DICT = MappingProxyType(
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },

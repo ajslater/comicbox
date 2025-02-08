@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json",
+  "title": "Comicbox Identifier",
+  "type": "object",
+  "properties": {
+    "type": "object",
+    "properties": {
+      "nss": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": {
+      "url": {
+        "type": "string"
+      }
+    }
+  }
+}

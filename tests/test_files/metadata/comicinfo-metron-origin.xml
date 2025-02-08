@@ -5,7 +5,7 @@
 	<Characters>Captain Science,Gordon Dane</Characters>
 	<Count>7</Count>
 	<Day>1</Day>
-	<GTIN>urn:comicvine:4000-145269</GTIN>
+	<GTIN>urn:comicvine:145269</GTIN>
 	<Genre>Science Fiction</Genre>
 	<Inker>Wally Wood</Inker>
 	<LanguageISO>en</LanguageISO>
@@ -58,7 +58,7 @@
 	<StoryArcNumber>4,2</StoryArcNumber>
 	<Title>The Beginning</Title>
 	<Volume>1950</Volume>
-	<Web>https://metron.cloud/issue/c/</Web>
+	<Web>https://metron.cloud/issue/99999</Web>
 	<Writer>Joe Orlando</Writer>
 	<Year>1950</Year>
 </ComicInfo>

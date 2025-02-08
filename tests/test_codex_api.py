@@ -53,7 +53,7 @@ CBZ_MD = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -237,5 +237,5 @@ def test_random_access_page(ft):
                 disk_page = f.read()
             print(f"{page_path=}")
             # with Path( "/tmp/" / Path(page_path.name) ).open("wb") as f:
-            #    f.write(page) # noqa: ERA001
+            #   f.write(page) # noqa: ERA001
             assert disk_page == page

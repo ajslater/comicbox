@@ -28,7 +28,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -84,7 +84,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -108,7 +108,7 @@ FNS = MappingProxyType(
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -136,7 +136,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -172,12 +172,12 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
-                    "nss": "issue/c/",
-                    "url": "https://metron.cloud/issue/c/",
+                    "nss": "99999",
+                    "url": "https://metron.cloud/issue/99999",
                 },
             },
             "issue": "1",
@@ -208,7 +208,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },

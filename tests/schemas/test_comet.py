@@ -35,7 +35,7 @@ METADATA = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -73,7 +73,7 @@ COMET_DICT = MappingProxyType(
             "description": "A long example description",
             "format": "Comic",
             "genre": ["Science Fiction"],
-            "identifier": "urn:comicvine:4000-145269",
+            "identifier": "urn:comicvine:145269",
             "isVersionOf": "Captain Science Alternate #001",
             "issue": "1",
             "language": "en",

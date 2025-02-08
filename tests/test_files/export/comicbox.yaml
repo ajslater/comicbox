@@ -15,7 +15,7 @@ comicbox:
     - Science Fiction
   identifiers:
     comicvine:
-      nss: 4000-145269
+      nss: '145269'
       url: https://comicvine.gamespot.com/captain-science-1/4000-145269/
   issue: '1'
   issue_number: 1.00

@@ -6,6 +6,7 @@
 - Fix Notes parsing for Comictagger beta Metron origin
 - Simplify Identifier URL construction for Metron pk ids.
 - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
+- Fix ISBN & UPC url detection
 
 ## v1.2.1
 

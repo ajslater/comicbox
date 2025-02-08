@@ -27,7 +27,7 @@ METRON_NOTES = (
     "on "
     "1970-01-01T00:00:00 "
     "[Issue ID 145269] "
-    "urn:comicvine:4000-145269 "
+    "urn:comicvine:145269 "
     "urn:isbn:123-456789-0123 "
     "urn:upc:12345 "
     "urn:metron:999999"
@@ -47,19 +47,23 @@ READ_METADATA = MappingProxyType(
             },
             "genres": {"Science Fiction"},
             "imprint": "Youthful Imprint",
+            "identifier_primary_source": {
+                "nid": "metron",
+                "url": "https://metron.cloud/",
+            },
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
                     "nss": "999999",
-                    "url": "https://metron.cloud/issue/999999/",
+                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345/"},
+                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
                 "isbn": {
                     "nss": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123/",
+                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
             },
             "issue": "1",
@@ -129,7 +133,7 @@ READ_METRON_DICT = MappingProxyType(
             "IDS": {
                 "ID": [
                     {"@source": "Metron", "#text": "999999", "@primary": True},
-                    {"@source": "Comic Vine", "#text": "4000-145269"},
+                    {"@source": "Comic Vine", "#text": "145269"},
                 ],
             },
             "Notes": METRON_NOTES,
@@ -166,10 +170,10 @@ READ_METRON_DICT = MappingProxyType(
             },
             "URLs": {
                 "URL": [
-                    {"#text": "https://metron.cloud/issue/999999/", "@primary": True},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
-                    {"#text": "https://isbndb.com/book/123-456789-0123/"},
-                    {"#text": "https://barcodelookup.com/12345/"},
+                    {"#text": "https://isbndb.com/book/123-456789-0123"},
+                    {"#text": "https://barcodelookup.com/12345"},
                 ]
             },
         }
@@ -213,7 +217,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Genres": {"Genre": "Science Fiction"},
             "IDS": {
                 "ID": [
-                    {"@source": "Comic Vine", "#text": "4000-145269"},
+                    {"@source": "Comic Vine", "#text": "145269"},
                     {"@source": "Metron", "#text": "999999", "@primary": True},
                 ],
             },
@@ -251,10 +255,10 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             },
             "URLs": {
                 "URL": [
-                    {"#text": "https://metron.cloud/issue/999999/", "@primary": True},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
-                    {"#text": "https://isbndb.com/book/123-456789-0123/"},
-                    {"#text": "https://barcodelookup.com/12345/"},
+                    {"#text": "https://isbndb.com/book/123-456789-0123"},
+                    {"#text": "https://barcodelookup.com/12345"},
                 ]
             },
         }

@@ -32,12 +32,15 @@ DATE_KEY = "date"
 DAY_KEY = "day"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
+IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
+IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_NUMBER_KEY = "issue_number"
 ISSUE_SUFFIX_KEY = "issue_suffix"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MONTH_KEY = "month"
+NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
@@ -45,7 +48,6 @@ PAGE_COUNT_KEY = "page_count"
 PAGE_INDEX_KEY = "index"
 PAGE_TYPE_KEY = "page_type"
 PUBLISHER_KEY = "publisher"
-IMPRINT_KEY = "imprint"
 PRICE_KEY = "price"
 REPRINTS_KEY = "reprints"
 REPRINT_ISSUE_KEY = "issue"
@@ -82,6 +84,13 @@ PENCILLER_KEY = "penciller"
 WRITER_KEY = "writer"
 
 
+class IdentifiedName(BaseSubSchema):
+    """Named Element with an identifier."""
+
+    name = StringField()
+    identifiers = IdentifiersField()
+
+
 class ContributorsSchema(BaseSubSchema):
     """Contributors."""
 
@@ -108,12 +117,10 @@ class PageInfoSchema(BaseSubSchema):
     page_type = PageTypeField()
 
 
-class GroupSubSchema(BaseSubSchema):
+class GroupSubSchema(IdentifiedName):
     """Group Schema."""
 
-    name = StringField()
     aliases = StringSetField()
-    identifiers = IdentifiersField()
 
 
 class VolumeSchema(GroupSubSchema):
@@ -150,6 +157,13 @@ class ReprintSchema(BaseSubSchema):
     issue = StringField()
 
 
+class IdentifierPrimarySource(BaseSubSchema):
+    """Identifiers Primary Source."""
+
+    nid = StringField(required=True)
+    url = StringField()
+
+
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
@@ -167,6 +181,7 @@ class ComicboxSubSchemaMixin:
     original_format = OriginalFormatField()
     genres = StringSetField()
     identifiers = IdentifiersField()
+    identifier_primary_source = Nested(IdentifierPrimarySource)
     issue = StringField()
     issue_number = DecimalField(minimum=Decimal(0))
     issue_suffix = StringField()

@@ -4,8 +4,6 @@ from bidict import bidict
 
 from comicbox.identifiers import (
     COMICVINE_NID,
-    IDENTIFIER_URN_NIDS,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     create_identifier,
 )
 from comicbox.schemas.comicbox_mixin import (
@@ -32,6 +30,10 @@ from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformM
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.urns import (
+    IDENTIFIER_URN_NIDS,
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
+)
 
 
 class ComictaggerTransform(
@@ -87,7 +89,7 @@ class ComictaggerTransform(
     VOLUME_COUNT_TAG = "volume_count"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "issue_count"
-    URL_TAG = "web_link"
+    URLS_TAG = "web_link"
 
     def parse_comictagger_identifiers(self, data):
         """Parse comictagger tag_origin and ids to identifiers."""
@@ -168,7 +170,7 @@ class ComictaggerTransform(
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
         IdentifiersTransformMixin.parse_identifiers,
-        IdentifiersTransformMixin.parse_url_tag,
+        IdentifiersTransformMixin.parse_urls,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
     )
@@ -180,7 +182,6 @@ class ComictaggerTransform(
         CoMetReprintsTransformMixin.unparse_reprints,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
-        # IdentifiersTransformMixin.unparse_url_tag,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,

@@ -65,7 +65,7 @@ READ_METADATA = MappingProxyType(
             "cover_image": "CaptainScience#1_01.jpg",
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -131,7 +131,7 @@ READ_MULTI_DICT = MappingProxyType(
             "cover_image": "CaptainScience#1_01.jpg",
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },

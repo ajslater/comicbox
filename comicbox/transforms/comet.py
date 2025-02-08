@@ -94,7 +94,7 @@ class CoMetTransform(
         XmlCreditsTransformMixin.aggregate_contributors,
         CoMetReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
-        IdentifiersTransformMixin.parse_url_tag,
+        IdentifiersTransformMixin.parse_urls,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
     )
@@ -103,7 +103,6 @@ class CoMetTransform(
         XmlCreditsTransformMixin.disaggregate_contributors,
         CoMetReprintsTransformMixin.unparse_reprints,
         IdentifiersTransformMixin.unparse_identifiers,
-        # IdentifiersTransformMixin.unparse_url_tag,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
     )

@@ -32,7 +32,7 @@ READ_METADATA = MappingProxyType(
             "day": 1,
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },

@@ -46,7 +46,7 @@ READ_METADATA = MappingProxyType(
             "genres": {"Science Fiction"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -115,7 +115,7 @@ READ_CIX_DICT = MappingProxyType(
             "Characters": "Captain Science,Gordon Dane",
             "Count": 7,
             "Day": 1,
-            "GTIN": "urn:comicvine:4000-145269",
+            "GTIN": "urn:comicvine:145269",
             "Genre": "Science Fiction",
             "Inker": "Wally Wood",
             "LanguageISO": "en",

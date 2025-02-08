@@ -124,7 +124,7 @@ class ComicInfoTransform(
     SERIES_TAG = "Series"
     VOLUME_TAG = "Volume"
     ISSUE_COUNT_TAG = "Count"
-    URL_TAG = "Web"
+    URLS_TAG = "Web"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -135,7 +135,7 @@ class ComicInfoTransform(
         NestedPublishingTagsMixin.parse_volume,
         ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
-        IdentifiersTransformMixin.parse_url_tag,
+        IdentifiersTransformMixin.parse_urls,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -144,7 +144,6 @@ class ComicInfoTransform(
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
-        # IdentifiersTransformMixin.unparse_url_tag,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,

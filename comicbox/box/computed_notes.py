@@ -9,11 +9,8 @@ from comicbox.box.normalize import ComicboxNormalizeMixin
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers import (
     COMICVINE_NID,
-    IDENTIFIER_EXP,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     NID_ORIGIN_MAP,
     create_identifier,
-    parse_urn_identifier,
 )
 from comicbox.schemas.comicbox_mixin import (
     DATE_KEY,
@@ -27,6 +24,11 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+from comicbox.urns import (
+    IDENTIFIER_EXP,
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
+    parse_urn_identifier,
+)
 
 LOG = getLogger(__name__)
 _DATE_KEYS = frozenset({DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
@@ -38,7 +40,7 @@ _NOTES_TAGGER_RE = re.compile(_NOTES_TAGGER_RE_EXP)
 _NOTES_UPDATED_AT_RE_EXP = r"(?:\s+on\s(?P<updated_at>[12]\d{3}-[012]\d-[01]\d[\sT](?:[012]\d:\d{2}:\d{2}\S*)?))"
 _NOTES_UPDATED_AT_RE = re.compile(_NOTES_UPDATED_AT_RE_EXP)
 _NOTES_ORIGIN_RE_EXP = r"(?:\s+using info from (?P<origin>\w+))"
-_NOTES_IDENTIFIER_RE_EXP = r"(?:\s+\[Issue ID (?P<identifier>\w+)\])"
+_NOTES_IDENTIFIER_RE_EXP = r"(?:\s+\[Issue ID (?P<nss>\w+)\])"
 _NOTES_RE_EXP = (
     _NOTES_TAGGER_RE_EXP
     + _NOTES_UPDATED_AT_RE_EXP
@@ -110,7 +112,7 @@ class ComicboxComputedNotesMixin(ComicboxNormalizeMixin):
             return identifiers
         for key in _NOTES_KEYS:
             self._set_compute_notes_key(data, key, match, md)
-        nss = match.group("identifier")
+        nss = match.group("nss")
         if nss:
             origin = match.group("origin")
             nid = NID_ORIGIN_MAP.inverse.get(origin, COMICVINE_NID)
@@ -126,7 +128,7 @@ class ComicboxComputedNotesMixin(ComicboxNormalizeMixin):
         if not match:
             return identifiers
         for urn in match.groups():
-            nid, nss = parse_urn_identifier(urn, warn=True)
+            nid, nss_type, nss = parse_urn_identifier(urn, warn=True)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
                 if nss:
@@ -141,8 +143,7 @@ class ComicboxComputedNotesMixin(ComicboxNormalizeMixin):
         if not matches:
             return identifiers
         for match in matches:
-            nss = match.group("nss")
-            if nss and (nid := match.group("type")):
+            if (nss := match.group("nss")) and (nid := match.group("nid")):
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
                 identifier = create_identifier(nid, nss)
                 identifiers[nid] = identifier
