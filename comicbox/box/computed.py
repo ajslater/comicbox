@@ -310,11 +310,13 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         if not identifiers:
             return notes
         urn_strs = []
+        # The are issues which is the default type.
+        nss_type = ""
         for nid, identifier in identifiers.items():
             nss = identifier.get(NSS_KEY)
             if not nss:
                 continue
-            urn_str = to_urn_string(nid, nss)
+            urn_str = to_urn_string(nid, nss_type, nss)
             urn_strs.append(urn_str)
         notes += " ".join(sorted(urn_strs))
         return notes

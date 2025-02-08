@@ -1,6 +1,5 @@
 """Universal Resource Name support."""
 
-# ruff: noqa: ERA001
 import re
 from logging import getLogger
 from types import MappingProxyType
@@ -12,8 +11,10 @@ from comicbox.identifiers import (
     ASIN_NID,
     COMICVINE_NID,
     COMIXOLOGY_NID,
+    DEFAULT_NSS_TYPE,
     GCD_NID,
     GTIN_NID,
+    IDENTIFIER_PARTS_MAP,
     ISBN_NID,
     KITSU_NID,
     LCG_NID,
@@ -91,24 +92,6 @@ IDENTIFIER_URN_NIDS_REVERSE_MAP = MappingProxyType(
 _PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
 
 
-# def _prefix_comicvine_issue_nss(nid, nss):
-#    """Add prefix to comicvine identifiers."""
-#    if nid == COMICVINE_NID and not PARSE_COMICVINE_RE.search(nss):
-#        return "4000-" + nss
-#    return nss
-
-# def _get_issue_url_from_identifier(nid, nss):
-#    """Get URL from identifier."""
-#    if not nss:
-#        return None
-#    url_prefix = IDENTIFIER_URL_MAP.get(nid, "")
-#    url_prefix += IDENTIFIER_URL_PREFIX_ISSUE_MAP.get(nid, "")
-#    if not url_prefix:
-#        return None
-#    slug = "/s" if nid in TRAILING_SLUG else ""
-#    return url_prefix + nss + slug
-
-
 def parse_urn_identifier(tag: str, warn: bool) -> tuple[str, str, str]:
     """Parse an identifier from a tag."""
     try:
@@ -117,7 +100,10 @@ def parse_urn_identifier(tag: str, warn: bool) -> tuple[str, str, str]:
         if nid:
             nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), "")
         parts = urn.specific_string.parts
-        nss_type = "issue"
+        try:
+            nss_type = str(parts[-2])
+        except IndexError:
+            nss_type = DEFAULT_NSS_TYPE
         nss = str(parts[-1])
     except Exception:
         if warn:
@@ -128,12 +114,15 @@ def parse_urn_identifier(tag: str, warn: bool) -> tuple[str, str, str]:
     return nid, nss_type, nss
 
 
-def _parse_identifier_str(full_identifier) -> tuple[str, str, str]:
+def _parse_identifier_str(full_identifier: str) -> tuple[str, str, str]:
     """Parse an identifier string with optional prefix."""
     if match := PARSE_COMICVINE_RE.search(full_identifier):
         nid = COMICVINE_NID
         try:
-            nss_type = match.group("nss_type")
+            nss_type_code = match.group("nsstype")
+            nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].get_type_by_code(
+                nss_type_code
+            )
             nss = match.group("nss")
         except IndexError:
             pass
@@ -145,7 +134,7 @@ def _parse_identifier_str(full_identifier) -> tuple[str, str, str]:
             nid = match.group("nid")
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), "")
-            nss_type = "issue"
+            nss_type = DEFAULT_NSS_TYPE
             if nss := match.group("nss"):
                 return nid, nss_type, nss
         except IndexError:
@@ -162,16 +151,18 @@ def parse_string_identifier(item: str, naked_nid=None) -> tuple[str, str, str]:
     if naked_nid and not nid:
         nid = naked_nid
     if not nss_type:
-        nss_type = "issue"
+        nss_type = DEFAULT_NSS_TYPE
 
     return nid, nss_type, nss
 
 
-def to_urn_string(nid_str: str, nss_str: str):
+def to_urn_string(nid_str: str, nss_type: str, nss_str: str) -> str:
     """Compose an urn string."""
     if "." in nid_str:
         return ""
     nid = NSIdentifier(nid_str)
+    if nss_type:
+        nss_str = nss_type + ":" + nss_str
     nss = NSSString(nss_str)
     urn = URN8141(nid=nid, nss=nss)
     return str(urn)

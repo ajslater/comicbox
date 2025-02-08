@@ -29,6 +29,7 @@ UPC_NID = "upc"
 SLUG_REXP = r"(?:/\S*)?"
 COMICVINE_LONG_NSS_EXP = r"(?P<nsstype>\d{4})-(?P<nss>\d+)"
 PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_NSS_EXP)
+DEFAULT_NSS_TYPE = "issue"
 
 
 @dataclass
@@ -80,6 +81,10 @@ class IdentifierParts:
         self.url_regex = re.compile(exp, flags=re.IGNORECASE)
         self.url_prefix = f"https://{self.domain}/"
 
+    def get_type_by_code(self, nss_type_code: str, default=DEFAULT_NSS_TYPE):
+        """Get identifier type by url fragment or code."""
+        return self.types.map.inverse.get(nss_type_code, default)
+
     def parse_url(self, url) -> tuple[str, str]:
         """Parse URL with regex."""
         match = self.url_regex.match(url)
@@ -89,9 +94,7 @@ class IdentifierParts:
             nss_type_slug = match.group("nsstype")
         except IndexError:
             nss_type_slug = ""
-        nss_type = self.types.map.inverse.get(
-            nss_type_slug, self.types.default_slug_type
-        )
+        nss_type = self.get_type_by_code(nss_type_slug, self.types.default_slug_type)
         nss = match.group("nss") or ""
         return nss_type, nss
 
@@ -249,7 +252,7 @@ def normalize_comicvine_nss(nss_type, nss):
         nss_type_code = match.group("nsstype")
     except IndexError:
         return nss_type, nss
-    nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].types.map.inverse.get(
+    nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].get_type_by_code(
         nss_type_code, nss_type
     )
     with suppress(IndexError):

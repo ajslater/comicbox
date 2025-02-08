@@ -158,8 +158,10 @@ class IdentifiersTransformMixin:
         return data
 
     def unparse_identifier(self, data: dict, nid: str, nss: str, primary: bool) -> dict:  # noqa: ARG002
-        """Usually add to comma dilneated urn strings. Overridable."""
-        urn_string = to_urn_string(nid, nss)
+        """Usually add to comma delineated urn strings. Overridable."""
+        # These are issues which is the default type.
+        nss_type = ""
+        urn_string = to_urn_string(nid, nss_type, nss)
         if not urn_string:
             return data
         if self.IDENTIFIERS_TAG not in data:

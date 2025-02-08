@@ -7,6 +7,7 @@
 - Simplify Identifier URL construction for Metron pk ids.
 - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
 - Fix ISBN & UPC url detection
+- URNs as serialized identifiers gain an optional tag type attribute in the nss: urn:comicvine:series:1234
 
 ## v1.2.1
 

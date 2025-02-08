@@ -639,11 +639,9 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         if isinstance(source, Enum):
             source = source.value
         nid = NID_ORIGIN_MAP.inverse.get(source, "")
-        if nid:
-            nss_type = "issue"
-            nss = get_cdata(item) or ""
-        else:
-            nss_type, nss = "", ""
+        # These are issues by default.
+        nss_type = ""
+        nss = get_cdata(item) or "" if nid else ""
         return nid, nss_type, nss
 
     def parse_url(self, data: dict, url):
