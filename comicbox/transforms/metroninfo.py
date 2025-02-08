@@ -455,24 +455,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         self.lower_tag(REPRINTS_TAG, REPRINTS_TAG, data, metron_reprints)
         return data
 
-    # @staticmethod
-    # def _parse_metron_series_identifier(series_nss, data):
-    #    nid = data.pop(ID_TAG, COMICVINE_NID) # noqa: ERA001
-    #    if not series_nss:
-    #        return # noqa: ERA001
-    #
-    #    if not data.get(SERIES_KEY):
-    #        data[SERIES_KEY] = {} # noqa: ERA001
-    #    if not data[SERIES_KEY][IDENTIFIERS_KEY]:
-    #        data[SERIES_KEY][IDENTIFIERS_KEY] = {} # noqa: ERA001
-    #
-    #    old_identifiers = data[SERIES_KEY][IDENTIFIERS_KEY] # noqa:ERA001
-    #
-    #    old_identifier = old_identifiers.get(nid) # noqa: ERA001
-    #    if not old_identifier:
-    #        identifier = create_identifier(nid, series_nss) # noqa: ERA001
-    #        old_identifiers[nid] = identifier # noqa: ERA001
-
     def _copy_tags(self, from_dict, to_dict, tag_dict):
         for from_key, to_key in tag_dict.items():
             if value := from_dict.get(from_key):
@@ -505,6 +487,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         if not alternative_names:
             return data
         reprints = []
+        aliases = set()
 
         if isinstance(alternative_names, Mapping):
             # Marshmallow collapses singleton lists unhelpfully.
@@ -513,12 +496,14 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             alternative_name = get_cdata(an)
             if not alternative_name:
                 continue
+            aliases.add(alternative_name)
             reprint = {SERIES_KEY: {SERIES_NAME_KEY: alternative_name}}
             # if alternative_name_id := an.get(ID_ATTRIBUTE):
             # to reprint identifier or main identifier?
             if alternative_name_lang := an.get(SERIES_LANG_ATTRIBUTE):
                 reprint[LANGUAGE_KEY] = alternative_name_lang
             reprints.append(reprint)
+
         reprints += data.get(REPRINTS_KEY, [])
         if reprints:
             data[REPRINTS_KEY] = reprints
@@ -580,11 +565,11 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
     def _unparse_metron_series_alternative_names(self, data, metron_series):
         """Unparse metron series alternative names from reprints."""
-        alt_names = []
+        alt_names: list[dict[str, str]] = []
         if reprints := data.get(REPRINTS_KEY):
             for reprint in reprints:
                 if series := reprint.get(SERIES_KEY):
-                    alt_name = {}
+                    alt_name: dict[str, str] = {}
                     if series_name := series.get(SERIES_NAME_KEY):
                         alt_name["#text"] = series_name
                     if series_lang := reprint.get(LANGUAGE_KEY):
@@ -592,8 +577,9 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
                     if alt_name:
                         alt_names.append(alt_name)
         if alt_names:
+            sorted_alt_names = sorted(alt_names, key=lambda a: ":".join(a.values()))
             metron_series[SERIES_ALTERNATIVE_NAMES_TAG] = {
-                SERIES_ALTERNATIVE_NAME_TAG: alt_names
+                SERIES_ALTERNATIVE_NAME_TAG: sorted_alt_names
             }
 
     def unparse_metron_series(self, data):
@@ -606,14 +592,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             self._copy_tags(series, metron_series, self.SERIES_TAG_MAP.inverse)
         if volume := data.get(VOLUME_KEY):
             self._copy_tags(volume, metron_series, self.SERIES_VOLUME_TAG_MAP.inverse)
-
-        # identifiers = series.get(IDENTIFIERS_KEY, {}) # noqa: ERA001
-        # for nid, identifier in identifiers.items():
-        #    if nss := identifier.get(NSS_KEY):
-        #        metron_series[ID_ATTRIBUTE] = nss # noqa: ERA001
-        #        metron_id_origin = NID_ORIGIN_MAP.get(nid) # noqa: ERA001
-        #        data = _copy_assign(ID_TAG, data, {SOURCE_ATTRIBUTE: metron_id_origin}) # noqa: ERA001
-        #        break # noqa: ERA001
 
         if original_format := data.get(ORIGINAL_FORMAT_KEY):
             metron_series[SERIES_FORMAT_TAG] = original_format

@@ -84,7 +84,7 @@ PENCILLER_KEY = "penciller"
 WRITER_KEY = "writer"
 
 
-class IdentifiedName(BaseSubSchema):
+class IdentifiedNameSchema(BaseSubSchema):
     """Named Element with an identifier."""
 
     name = StringField()
@@ -117,20 +117,14 @@ class PageInfoSchema(BaseSubSchema):
     page_type = PageTypeField()
 
 
-class GroupSubSchema(IdentifiedName):
-    """Group Schema."""
-
-    aliases = StringSetField()
-
-
-class VolumeSchema(GroupSubSchema):
+class VolumeSchema(IdentifiedNameSchema):
     """Volume Schema."""
 
     name = IntegerField()
     issue_count = IntegerField(minimum=0)
 
 
-class SeriesSchema(GroupSubSchema):
+class SeriesSchema(IdentifiedNameSchema):
     """Series Schema."""
 
     sort_name = StringField()

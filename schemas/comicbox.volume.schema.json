@@ -6,12 +6,6 @@
   "properties": {
     "type": "object",
     "properties": {
-      "aliases": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
       "identifiers": {
         "type": "object",
         "additionalProperties": {
