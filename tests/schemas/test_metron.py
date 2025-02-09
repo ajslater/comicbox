@@ -74,6 +74,9 @@ READ_METADATA = MappingProxyType(
             "page_count": 0,
             "publisher": "Youthful Adventure Stories",
             "series": {
+                "identifiers": {
+                    "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
+                },
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
                 "start_year": 1950,
@@ -150,6 +153,7 @@ READ_METRON_DICT = MappingProxyType(
                 ]
             },
             "Series": {
+                "@id": "2222",
                 "@lang": "en",
                 "AlternativeNames": {
                     "AlternativeName": [
@@ -235,6 +239,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 ]
             },
             "Series": {
+                "@id": "2222",
                 "@lang": "en",
                 "AlternativeNames": {
                     "AlternativeName": [

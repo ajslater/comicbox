@@ -52,7 +52,7 @@
 		<Reprint>Capitán Ciencia</Reprint>
 		<Reprint>Captain Science Alternate #001</Reprint>
 	</Reprints>
-	<Series lang="en">
+	<Series id="2222" lang="en">
 		<AlternativeNames>
 			<AlternativeName lang="es">Capitán Ciencia</AlternativeName>
 			<AlternativeName>Captain Science Alternate</AlternativeName>

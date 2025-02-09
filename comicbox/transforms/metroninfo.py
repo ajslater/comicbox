@@ -11,6 +11,7 @@ from comicfn2dict.parse import comicfn2dict
 from comicbox.dict_funcs import deep_update, sort_dict
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
+    DEFAULT_NID,
     ISBN_NID,
     NID_ORIGIN_MAP,
     UPC_NID,
@@ -24,6 +25,7 @@ from comicbox.schemas.comicbox_mixin import (
     CREATOR_KEY,
     EDITOR_KEY,
     GENRES_KEY,
+    IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
     INKER_KEY,
@@ -31,6 +33,7 @@ from comicbox.schemas.comicbox_mixin import (
     LANGUAGE_KEY,
     LETTERER_KEY,
     LOCATIONS_KEY,
+    NID_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
@@ -460,11 +463,21 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
 
-    def _parse_metron_series_series_key(self, metron_series, update_dict) -> None:
+    def _parse_metron_series_identifier(self, data, series_nss, series):
+        """Parse the metron series identifier."""
+        nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
+        series_identifier = create_identifier(nid, series_nss, nss_type="series")
+        series[IDENTIFIERS_KEY] = {nid: series_identifier}
+
+    def _parse_metron_series_series_key(self, data, metron_series, update_dict) -> None:
         """Parse metron series tags into comicbox series key."""
         series = {}
 
         self._copy_tags(metron_series, series, self.SERIES_TAG_MAP)
+
+        if series_nss := metron_series.get(ID_ATTRIBUTE):
+            # I this relies on Metron primary ID
+            self._parse_metron_series_identifier(data, series_nss, series)
 
         if series:
             update_dict[SERIES_KEY] = series
@@ -516,12 +529,9 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             return data
         update_dict = {}
 
-        # if series_nss := metron_series.get(ID_ATTRIBUTE):
-        # I think this relies on Metron primary ID
-        # data = self._parse_metron_series_identifier(data, series_nss) # noqa: ERA001
         if language := metron_series.get(SERIES_LANG_ATTRIBUTE):
             update_dict[LANGUAGE_KEY] = language
-        self._parse_metron_series_series_key(metron_series, update_dict)
+        self._parse_metron_series_series_key(data, metron_series, update_dict)
         self._parse_metron_series_volume_key(metron_series, update_dict)
         if original_format := metron_series.get(SERIES_FORMAT_TAG):
             update_dict[ORIGINAL_FORMAT_KEY] = original_format.value
@@ -582,6 +592,17 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
                 SERIES_ALTERNATIVE_NAME_TAG: sorted_alt_names
             }
 
+    def _unparse_metron_series_identifiers(self, data, metron_series, series):
+        """Unparse Metron series identifiers from series identifiers."""
+        series_identifiers = series.get(IDENTIFIERS_KEY)
+        if not series_identifiers:
+            return
+        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
+        for nid, identifier in series_identifiers.items():
+            if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
+                metron_series[ID_ATTRIBUTE] = nss
+                break
+
     def unparse_metron_series(self, data):
         """Unparse the data into the complex metron series tag."""
         metron_series = {}
@@ -590,6 +611,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         if series := data.get(SERIES_KEY):
             self._copy_tags(series, metron_series, self.SERIES_TAG_MAP.inverse)
+            self._unparse_metron_series_identifiers(data, metron_series, series)
+
         if volume := data.get(VOLUME_KEY):
             self._copy_tags(volume, metron_series, self.SERIES_VOLUME_TAG_MAP.inverse)
 

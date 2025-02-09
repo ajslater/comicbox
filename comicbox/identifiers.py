@@ -142,7 +142,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         ),
         ISBN_NID: IdentifierParts(
             domain="isbndb.com",
-            types=IdentifierTypes(issue="book"),
+            types=IdentifierTypes(issue="book", series="series"),
             url_path_regex=r"(?P<nsstype>book)/(?P<nss>[\d-]+)",
             url_path_template="{nsstype}/{nss}",
         ),
@@ -153,7 +153,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_template="{nsstype}/{nss}",
         ),
         LCG_NID: IdentifierParts(
-            domain="leaugeofcomicgeeks.com",
+            domain="leagueofcomicgeeks.com",
             types=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
             ),
@@ -174,14 +174,14 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         ),
         MARVEL_NID: IdentifierParts(
             domain="marvel.com",
-            types=IdentifierTypes(issue="issue"),
-            url_path_regex=rf"(?P<nsstype>issue)/(?P<nss>\d+){SLUG_REXP}",
+            types=IdentifierTypes(issue="issue", series="series"),
+            url_path_regex=rf"comics/(?P<nsstype>\w+)/(?P<nss>\d+){SLUG_REXP}",
             url_path_template="comics/{nsstype}/{nss}/s",
         ),
         METRON_NID: IdentifierParts(
             # Metron uses the slug for an id in most urls, not the actual metron id.
             domain="metron.cloud",
-            types=IdentifierTypes(issue="issue"),
+            types=IdentifierTypes(issue="issue", series="series"),
             url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",
         ),
@@ -221,6 +221,7 @@ NID_ORIGIN_MAP = frozenbidict(
         UPC_NID: "UPC",
     }
 )
+DEFAULT_NID = COMICVINE_NID
 NID_ORDER = (
     # Comic DBs
     METRON_NID,
@@ -263,6 +264,8 @@ def normalize_comicvine_nss(nss_type, nss):
 def create_identifier(nid, nss, url=None, nss_type="issue"):
     """Create identifier dict from parts."""
     identifier = {}
+    if not nid:
+        nid = DEFAULT_NID
     if nss:
         if nid == COMICVINE_NID:
             nss_type, nss = normalize_comicvine_nss(nss_type, nss)
