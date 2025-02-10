@@ -463,11 +463,13 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
 
-    def _parse_metron_series_identifier(self, data, series_nss, series):
+    def _parse_metron_tag_identifier(
+        self, data: dict, nss_type: str, nss: str, comicbox_obj: dict
+    ):
         """Parse the metron series identifier."""
         nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
-        series_identifier = create_identifier(nid, series_nss, nss_type="series")
-        series[IDENTIFIERS_KEY] = {nid: series_identifier}
+        comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+        comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
 
     def _parse_metron_series_series_key(self, data, metron_series, update_dict) -> None:
         """Parse metron series tags into comicbox series key."""
@@ -476,8 +478,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         self._copy_tags(metron_series, series, self.SERIES_TAG_MAP)
 
         if series_nss := metron_series.get(ID_ATTRIBUTE):
-            # I this relies on Metron primary ID
-            self._parse_metron_series_identifier(data, series_nss, series)
+            self._parse_metron_tag_identifier(data, "series", series_nss, series)
 
         if series:
             update_dict[SERIES_KEY] = series
@@ -592,15 +593,17 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
                 SERIES_ALTERNATIVE_NAME_TAG: sorted_alt_names
             }
 
-    def _unparse_metron_series_identifiers(self, data, metron_series, series):
+    def _unparse_metron_id_attribute(
+        self, data: dict, metron_tag: dict, comicbox_obj: dict
+    ):
         """Unparse Metron series identifiers from series identifiers."""
-        series_identifiers = series.get(IDENTIFIERS_KEY)
-        if not series_identifiers:
+        comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
+        if not comicbox_identifiers:
             return
         primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
-        for nid, identifier in series_identifiers.items():
+        for nid, identifier in comicbox_identifiers.items():
             if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
-                metron_series[ID_ATTRIBUTE] = nss
+                metron_tag[ID_ATTRIBUTE] = nss
                 break
 
     def unparse_metron_series(self, data):
@@ -611,7 +614,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         if series := data.get(SERIES_KEY):
             self._copy_tags(series, metron_series, self.SERIES_TAG_MAP.inverse)
-            self._unparse_metron_series_identifiers(data, metron_series, series)
+            self._unparse_metron_id_attribute(data, metron_series, series)
 
         if volume := data.get(VOLUME_KEY):
             self._copy_tags(volume, metron_series, self.SERIES_VOLUME_TAG_MAP.inverse)
