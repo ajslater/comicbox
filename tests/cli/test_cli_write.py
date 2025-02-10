@@ -27,7 +27,7 @@ METADATA = MappingProxyType(
         ROOT_TAG: {
             "ext": "cbz",
             "imprint": "TestImprint",
-            "publisher": "TestPub",
+            "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tagger": "comicbox dev",
@@ -49,7 +49,7 @@ CLI_DICT = MappingProxyType(
         ROOT_TAG: {
             "ext": "cbz",
             "imprint": "TestImprint",
-            "publisher": "TestPub",
+            "publisher": {"name": "TestPub"},
             "series": "empty",
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tags": ["a", "b", "c"],
@@ -60,7 +60,7 @@ CLI_DICT = MappingProxyType(
 MD_ARGS = ("-m", "publisher: 'Galactic Press'")
 DELETE_ARGS = ("--delete", "-w", "cix")
 ADDED_MD = MappingProxyType(
-    {ROOT_TAG: {"publisher": "Galactic Press", "page_count": 0}}
+    {ROOT_TAG: {"publisher": {"name": "Galactic Press"}, "page_count": 0}}
 )
 
 # PATHS

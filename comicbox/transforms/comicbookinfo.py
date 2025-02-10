@@ -51,6 +51,7 @@ class ComicBookInfoTransform(
         }
     )
     CREDITS_TAG = CREDITS_TAG
+    PUBLISHER_TAG = "publisher"
     SERIES_TAG = "series"
     VOLUME_COUNT_TAG = "numberOfVolumes"
     VOLUME_TAG = "volume"
@@ -79,6 +80,7 @@ class ComicBookInfoTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.aggregate_contributors,
+        NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
     )
@@ -86,6 +88,7 @@ class ComicBookInfoTransform(
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.disaggregate_contributors,
+        NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
     )

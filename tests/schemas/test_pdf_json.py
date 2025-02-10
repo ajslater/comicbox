@@ -25,7 +25,7 @@ METADATA = MappingProxyType(
             "genres": {"Science Fiction"},
             "tags": {"d", "e", "f"},
             "title": "the tangle of their lives",
-            "publisher": "SmallPub",
+            "publisher": {"name": "SmallPub"},
             "series": {"name": "test pdf"},
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
             "tagger": "comicbox dev",

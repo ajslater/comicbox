@@ -39,7 +39,7 @@ FNS = MappingProxyType(
             "original_format": "Comic",
             "page_count": 0,
             "price": Decimal("0.10"),
-            "publisher": "Bell Features",
+            "publisher": {"name": "Bell Features"},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
@@ -60,7 +60,7 @@ FNS = MappingProxyType(
             "language": "en",
             "month": 11,
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
@@ -96,7 +96,7 @@ FNS = MappingProxyType(
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
             "title": "The Beginning",
@@ -117,7 +117,7 @@ FNS = MappingProxyType(
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
-            "publisher": "TestPub",
+            "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tagger": "comicbox dev",
@@ -148,7 +148,7 @@ FNS = MappingProxyType(
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
@@ -188,7 +188,7 @@ FNS = MappingProxyType(
             "1970-01-01T00:00:00 using info from Metron [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
@@ -220,13 +220,71 @@ FNS = MappingProxyType(
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "name": 1950},
             "year": 1950,
+        },
+        "metroninfo.xml": {
+            "characters": {"Captain Science", "Gordon Dane"},
+            "contributors": {
+                "inker": {"Wally Wood"},
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "date": date(1950, 11, 1),
+            "ext": "cbz",
+            "genres": {"Science Fiction"},
+            "identifier_primary_source": {
+                "nid": "metron",
+                "url": "https://metron.cloud/",
+            },
+            "identifiers": {
+                "comicvine": {
+                    "nss": "145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "isbn": {
+                    "nss": "123-456789-0123",
+                    "url": "https://isbndb.com/book/123-456789-0123",
+                },
+                "metron": {"nss": "999999", "url": "https://metron.cloud/issue/999999"},
+                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            },
+            "imprint": "Youthful Imprint",
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999",
+            "original_format": "Single Issue",
+            "page_count": 0,
+            "publisher": {
+                "identifiers": {
+                    "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"}
+                },
+                "name": "Youthful Adventure Stories",
+            },
+            "reprints": [
+                {"language": "es", "series": {"name": "Capitán Ciencia"}},
+                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
+            ],
+            "series": {
+                "identifiers": {
+                    "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
+                },
+                "name": "Captain Science",
+                "sort_name": "Captain Science",
+                "start_year": 1950,
+                "volume_count": 1,
+            },
+            "stories": {"Captain Lost", "Science is Good"},
+            "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
+            "tagger": "comicbox dev",
+            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "volume": {"issue_count": 10, "name": 1950},
         },
     }
 )

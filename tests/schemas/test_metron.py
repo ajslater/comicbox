@@ -72,7 +72,12 @@ READ_METADATA = MappingProxyType(
             "notes": METRON_NOTES,
             "original_format": "Single Issue",
             "page_count": 0,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {
+                "identifiers": {
+                    "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"},
+                },
+                "name": "Youthful Adventure Stories",
+            },
             "series": {
                 "identifiers": {
                     "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
@@ -143,6 +148,7 @@ READ_METRON_DICT = MappingProxyType(
             "Number": "1",
             "PageCount": 0,
             "Publisher": {
+                "@id": "11",
                 "Imprint": {"#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },
@@ -229,6 +235,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Number": "1",
             "PageCount": 0,
             "Publisher": {
+                "@id": "11",
                 "Imprint": {"#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },

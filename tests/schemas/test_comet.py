@@ -43,7 +43,7 @@ METADATA = MappingProxyType(
             "issue_number": Decimal("1"),
             "language": "en",
             "last_mark": 12,
-            "publisher": "Bell Features",
+            "publisher": {"name": "Bell Features"},
             "original_format": "Comic",
             "page_count": 36,
             "price": Decimal("0.10").quantize(Decimal("0.01")),

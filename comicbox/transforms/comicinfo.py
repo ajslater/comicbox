@@ -86,7 +86,7 @@ class ComicInfoTransform(
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
             # "Pages": PAGES_KEY, coded
-            "Publisher": "publisher",
+            # "Publisher": PUBLISHER_KEY coded
             "Review": "review",
             "ScanInformation": SCAN_INFO_KEY,
             # "Series": SERIES_KEY, coded
@@ -121,6 +121,7 @@ class ComicInfoTransform(
     SCHEMA_CLASS = ComicInfoSchema
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
+    PUBLISHER_TAG = "Publisher"
     SERIES_TAG = "Series"
     VOLUME_TAG = "Volume"
     ISSUE_COUNT_TAG = "Count"
@@ -131,6 +132,7 @@ class ComicInfoTransform(
         XmlCreditsTransformMixin.aggregate_contributors,
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
+        NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         ComicInfoReprintsTransformMixin.parse_reprints,
@@ -145,6 +147,7 @@ class ComicInfoTransform(
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
+        NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
     )

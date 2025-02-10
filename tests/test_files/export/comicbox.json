@@ -32,7 +32,9 @@
     "language": "en",
     "month": 11,
     "page_count": 0,
-    "publisher": "Youthful Adventure Stories",
+    "publisher": {
+      "name": "Youthful Adventure Stories"
+    },
     "series": {
       "name": "Captain Science"
     },

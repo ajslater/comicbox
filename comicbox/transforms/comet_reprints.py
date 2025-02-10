@@ -4,9 +4,9 @@ from comicfn2dict.parse import comicfn2dict
 
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
+    NAME_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
-    SERIES_NAME_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
@@ -24,7 +24,7 @@ class CoMetReprintsTransformMixin:
         reprint = {}
         md = comicfn2dict(name)
         if series := md.get(SERIES_KEY):
-            reprint[SERIES_KEY] = {SERIES_NAME_KEY: series}
+            reprint[SERIES_KEY] = {NAME_KEY: series}
         if volume := md.get(VOLUME_KEY):
             reprint[VOLUME_KEY] = {VOLUME_NUMBER_KEY: volume}
         if issue := md.get(ISSUE_KEY):

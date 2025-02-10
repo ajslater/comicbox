@@ -156,7 +156,13 @@
         }
       },
       "publisher": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" }
+        },
+        "additionalProperties": {
+          "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+        }
       },
       "price": {
         "type": "number",

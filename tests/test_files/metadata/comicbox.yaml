@@ -44,7 +44,8 @@ comicbox:
     - {index: 33, size: 438091}
     - {index: 34, size: 353013}
     - {index: 35, size: 340840}
-  publisher: TestPub
+  publisher:
+    name: TestPub
   series:
     name: empty
   story_arcs:

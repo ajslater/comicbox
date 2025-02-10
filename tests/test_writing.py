@@ -77,7 +77,7 @@ METADATA = MappingProxyType(
                 {"index": 34, "size": 353013},
                 {"index": 35, "size": 340840},
             ],
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "title": "The Beginning",
             "volume": {"name": 1950, "issue_count": 7},

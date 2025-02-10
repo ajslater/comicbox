@@ -1,8 +1,9 @@
 """Nested Publishing Tags."""
 
 from comicbox.schemas.comicbox_mixin import (
+    NAME_KEY,
+    PUBLISHER_KEY,
     SERIES_KEY,
-    SERIES_NAME_KEY,
     VOLUME_COUNT_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
@@ -13,6 +14,7 @@ from comicbox.schemas.comicbox_mixin import (
 class NestedPublishingTagsMixin:
     """Nested Publishing Tags."""
 
+    PUBLISHER_TAG = ""
     SERIES_TAG = ""
     VOLUME_COUNT_TAG = ""
     VOLUME_TAG = ""
@@ -25,7 +27,7 @@ class NestedPublishingTagsMixin:
         if series_name or volume_count:
             data[SERIES_KEY] = {}
             if series_name:
-                data[SERIES_KEY][SERIES_NAME_KEY] = series_name
+                data[SERIES_KEY][NAME_KEY] = series_name
             if volume_count:
                 data[SERIES_KEY][VOLUME_COUNT_KEY] = volume_count
         return data
@@ -33,7 +35,7 @@ class NestedPublishingTagsMixin:
     def unparse_series(self, data):
         """Unparse series."""
         series = data.get(SERIES_KEY, {})
-        series_name = series.get(SERIES_NAME_KEY)
+        series_name = series.get(NAME_KEY)
         volume_count = series.get(VOLUME_COUNT_KEY)
         if series_name:
             data[self.SERIES_TAG] = series_name
@@ -61,4 +63,16 @@ class NestedPublishingTagsMixin:
             data[self.VOLUME_TAG] = volume_number
         if issue_count := volume_dict.get(VOLUME_ISSUE_COUNT_KEY):
             data[self.ISSUE_COUNT_TAG] = issue_count
+        return data
+
+    def parse_publisher(self, data):
+        """Parse Publisher."""
+        if publisher_name := data.get(self.PUBLISHER_TAG):
+            data[PUBLISHER_KEY] = {NAME_KEY: publisher_name}
+        return data
+
+    def unparse_publisher(self, data):
+        """Unparse Publisher."""
+        if publisher_name := data.get(PUBLISHER_KEY, {}).get(NAME_KEY):
+            data[self.PUBLISHER_TAG] = publisher_name
         return data

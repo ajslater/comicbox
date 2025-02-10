@@ -13,8 +13,8 @@ from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
+    NAME_KEY,
     SERIES_KEY,
-    SERIES_NAME_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
@@ -37,7 +37,7 @@ class BaseTransform:
     CONTRIBUTOR_COMICBOX_MAP = MappingProxyType({})
     CONTRIBUTOR_SCHEMA_MAP = MappingProxyType({})
     SIMPLE_STRING_SCHEMAS = MappingProxyType(
-        {SERIES_KEY: SERIES_NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
+        {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
     )
 
     def __init__(self, path=None):

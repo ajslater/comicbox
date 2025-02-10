@@ -33,6 +33,7 @@ from comicbox.schemas.comicbox_mixin import (
     LANGUAGE_KEY,
     LETTERER_KEY,
     LOCATIONS_KEY,
+    NAME_KEY,
     NID_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -45,7 +46,6 @@ from comicbox.schemas.comicbox_mixin import (
     REPRINT_SERIES_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
-    SERIES_NAME_KEY,
     SERIES_SORT_NAME_KEY,
     SERIES_START_YEAR_KEY,
     STORIES_KEY,
@@ -80,13 +80,14 @@ ID_TAG = "ID"
 ID_ATTRIBUTE = "@id"
 ISBN_TAG = "ISBN"
 UPC_TAG = "UPC"
-ROLES_TAG = "Roles"
 GENRES_TAG = "Genres"
 LOCATIONS_TAG = "Locations"
+NAME_TAG = "Name"
 PRICES_TAG = "Prices"
 PRIMARY_ATTRIBUTE = "@primary"
 PUBLISHER_TAG = "Publisher"
 REPRINTS_TAG = "Reprints"
+ROLES_TAG = "Roles"
 SERIES_TAG = "Series"
 SERIES_ALTERNATIVE_NAMES_TAG = "AlternativeNames"
 SERIES_ALTERNATIVE_NAME_TAG = "AlternativeName"
@@ -214,7 +215,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
     )
     SERIES_TAG_MAP = frozenbidict(
         {
-            SERIES_NAME_TAG: SERIES_NAME_KEY,
+            SERIES_NAME_TAG: NAME_KEY,
             SERIES_SORT_NAME_TAG: SERIES_SORT_NAME_KEY,
             SERIES_START_YEAR_TAG: SERIES_START_YEAR_KEY,
             SERIES_VOLUME_COUNT_TAG: VOLUME_COUNT_KEY,
@@ -273,34 +274,58 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             data.update(update_dict)
         return data
 
+    def _parse_metron_tag_identifier(
+        self, data: dict, nss_type: str, nss: str, comicbox_obj: dict
+    ):
+        """Parse the metron series identifier."""
+        nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
+        comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+        comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
+
     def parse_publisher(self, data):
         """Parse Metron Publisher."""
-        publisher = data.pop(PUBLISHER_TAG, None)
-        if not publisher:
+        metron_publisher = data.pop(PUBLISHER_TAG, None)
+        if not metron_publisher:
             return data
-        # if publisher_nss := publisher.get(ID_ATTRIBUTE):
-        # self._parse_publisher_nss(data, publisher_nss) # noqa: ERA001
-        publisher_name = publisher.get("Name")
-        imprint = publisher.get(IMPRINT_TAG)
-        imprint_name = imprint.get("#text") if isinstance(imprint, dict) else imprint
-
-        if publisher_name:
-            data[PUBLISHER_KEY] = publisher_name
+        publisher = {NAME_KEY: metron_publisher.get(NAME_TAG)}
+        if publisher_nss := metron_publisher.get(ID_ATTRIBUTE):
+            self._parse_metron_tag_identifier(
+                data, "publisher", publisher_nss, publisher
+            )
+        if publisher:
+            data[PUBLISHER_KEY] = publisher
+        metron_imprint = metron_publisher.get(IMPRINT_TAG)
+        imprint_name = get_cdata(metron_imprint)
         if imprint_name:
             data[IMPRINT_KEY] = imprint_name
         return data
 
+    def _unparse_metron_id_attribute(
+        self, data: dict, metron_tag: dict, comicbox_obj: dict
+    ):
+        """Unparse Metron series identifiers from series identifiers."""
+        comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
+        if not comicbox_identifiers:
+            return
+        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
+        for nid, identifier in comicbox_identifiers.items():
+            if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
+                metron_tag[ID_ATTRIBUTE] = nss
+                break
+
     def unparse_publisher(self, data):
         """Unparse Metron publisher."""
-        publisher_name = data.pop(PUBLISHER_KEY, "")
+        publisher = data.pop(PUBLISHER_KEY, {})
         imprint_name = data.get(IMPRINT_KEY)
+        publisher_name = publisher.get(NAME_KEY)
         if not publisher_name and not imprint_name:
             return data
-        publisher = {"Name": publisher_name}
+        metron_publisher = {NAME_TAG: publisher_name}
+        self._unparse_metron_id_attribute(data, metron_publisher, publisher)
         if imprint_name:
-            publisher[IMPRINT_TAG] = {"#text": imprint_name}
+            metron_publisher[IMPRINT_TAG] = {"#text": imprint_name}
 
-        data[PUBLISHER_TAG] = publisher
+        data[PUBLISHER_TAG] = metron_publisher
         return data
 
     def _hoist_metron_credit(self, metron_credit, contributors):
@@ -434,7 +459,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             new_reprint = {}
             series = fn_dict.get(SERIES_KEY)
             if series:
-                new_reprint[REPRINT_SERIES_KEY] = {SERIES_NAME_KEY: series}
+                new_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
             issue = fn_dict.get(ISSUE_KEY)
             if issue is not None:
                 new_reprint[REPRINT_ISSUE_KEY] = issue
@@ -462,14 +487,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         for from_key, to_key in tag_dict.items():
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
-
-    def _parse_metron_tag_identifier(
-        self, data: dict, nss_type: str, nss: str, comicbox_obj: dict
-    ):
-        """Parse the metron series identifier."""
-        nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
-        comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
-        comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
 
     def _parse_metron_series_series_key(self, data, metron_series, update_dict) -> None:
         """Parse metron series tags into comicbox series key."""
@@ -511,7 +528,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             if not alternative_name:
                 continue
             aliases.add(alternative_name)
-            reprint = {SERIES_KEY: {SERIES_NAME_KEY: alternative_name}}
+            reprint = {SERIES_KEY: {NAME_KEY: alternative_name}}
             # if alternative_name_id := an.get(ID_ATTRIBUTE):
             # to reprint identifier or main identifier?
             if alternative_name_lang := an.get(SERIES_LANG_ATTRIBUTE):
@@ -546,12 +563,12 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
     def _aggregate_reprints(self, reprints, new_reprint):
         """Aggregate new reprint into similar old reprint."""
         new_series = new_reprint.get(SERIES_KEY, {})
-        new_series_name = new_series.get(SERIES_NAME_KEY)
+        new_series_name = new_series.get(NAME_KEY)
         new_lang = new_reprint.get(LANGUAGE_KEY)
 
         for old_reprint in reprints:
             old_series = old_reprint.get(SERIES_KEY, {})
-            old_series_name = old_series.get(SERIES_NAME_KEY)
+            old_series_name = old_series.get(NAME_KEY)
             old_lang = old_reprint.get(LANGUAGE_KEY)
 
             if new_series_name == old_series_name and (
@@ -581,7 +598,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             for reprint in reprints:
                 if series := reprint.get(SERIES_KEY):
                     alt_name: dict[str, str] = {}
-                    if series_name := series.get(SERIES_NAME_KEY):
+                    if series_name := series.get(NAME_KEY):
                         alt_name["#text"] = series_name
                     if series_lang := reprint.get(LANGUAGE_KEY):
                         alt_name[SERIES_LANG_ATTRIBUTE] = series_lang
@@ -592,19 +609,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             metron_series[SERIES_ALTERNATIVE_NAMES_TAG] = {
                 SERIES_ALTERNATIVE_NAME_TAG: sorted_alt_names
             }
-
-    def _unparse_metron_id_attribute(
-        self, data: dict, metron_tag: dict, comicbox_obj: dict
-    ):
-        """Unparse Metron series identifiers from series identifiers."""
-        comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
-        if not comicbox_identifiers:
-            return
-        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
-        for nid, identifier in comicbox_identifiers.items():
-            if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
-                metron_tag[ID_ATTRIBUTE] = nss
-                break
 
     def unparse_metron_series(self, data):
         """Unparse the data into the complex metron series tag."""

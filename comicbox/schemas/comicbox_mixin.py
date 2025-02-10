@@ -40,6 +40,7 @@ ISSUE_SUFFIX_KEY = "issue_suffix"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MONTH_KEY = "month"
+NAME_KEY = "name"
 NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
@@ -54,7 +55,6 @@ REPRINT_ISSUE_KEY = "issue"
 REPRINT_SERIES_KEY = "series"
 SCAN_INFO_KEY = "scan_info"
 SERIES_KEY = "series"
-SERIES_NAME_KEY = "name"
 SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORIES_KEY = "stories"
@@ -87,8 +87,8 @@ WRITER_KEY = "writer"
 class IdentifiedNameSchema(BaseSubSchema):
     """Named Element with an identifier."""
 
-    name = StringField()
     identifiers = IdentifiersField()
+    name = StringField()
 
 
 class ContributorsSchema(BaseSubSchema):
@@ -136,8 +136,8 @@ class SeriesSchema(IdentifiedNameSchema):
 #    """Imprint Schema."""
 
 
-# class PublisherSchema(GroupSubSchema):
-#    """Publisher Schema."""
+class PublisherSchema(IdentifiedNameSchema):
+    """Publisher Schema."""
 
 
 class ReprintSchema(BaseSubSchema):
@@ -189,7 +189,7 @@ class ComicboxSubSchemaMixin:
     notes = StringField()
     page_count = IntegerField(minimum=0)
     pages = Nested(PageInfoSchema, many=True)
-    publisher = StringField()
+    publisher = Nested(PublisherSchema)
     price = DecimalField(places=2, minimum=Decimal(0))
     protagonist = StringField()
     reading_direction = ReadingDirectionField()

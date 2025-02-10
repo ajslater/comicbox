@@ -27,7 +27,7 @@ READ_METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "issue": "1",
             "issue_number": Decimal("1"),
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "year": 1950,
             "month": 11,
             "day": 1,

@@ -26,7 +26,7 @@ CLI_DICT = MappingProxyType(
             "ext": "cbz",
             "imprint": "TestImprint",
             "page_count": 0,
-            "publisher": "TestPub",
+            "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tags": ["a", "b", "c"],

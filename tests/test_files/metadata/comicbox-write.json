@@ -173,7 +173,9 @@
         "size": 340840
       }
     ],
-    "publisher": "Youthful Adventure Stories",
+    "publisher": {
+      "name": "Youthful Adventure Stories"
+    },
     "series": {
       "name": "Captain Science"
     },

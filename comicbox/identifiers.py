@@ -124,7 +124,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         ),
         COMICVINE_NID: IdentifierParts(
             domain="comicvine.gamespot.com",
-            types=IdentifierTypes(issue="4000", series="4050"),
+            types=IdentifierTypes(issue="4000", series="4050", publisher="4010"),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
             url_path_template="c/{nsstype}-{nss}/",
         ),
@@ -136,7 +136,9 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         ),
         GCD_NID: IdentifierParts(
             domain="comics.org",
-            types=IdentifierTypes(),
+            types=IdentifierTypes(
+                issue="issue", series="series", publisher="indicia_publisher"
+            ),
             url_path_regex=r"(?P<nsstype>\w+)/(?P<nss>\d+)/?",
             url_path_template="{nsstype}/{nss}/",
         ),
@@ -181,7 +183,9 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         METRON_NID: IdentifierParts(
             # Metron uses the slug for an id in most urls, not the actual metron id.
             domain="metron.cloud",
-            types=IdentifierTypes(issue="issue", series="series"),
+            types=IdentifierTypes(
+                issue="issue", series="series", publisher="publisher"
+            ),
             url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",
         ),

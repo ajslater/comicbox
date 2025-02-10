@@ -101,7 +101,7 @@ CBZ_MD = MappingProxyType(
                 {"index": 34, "size": 353013},
                 {"index": 35, "size": 340840},
             ],
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
@@ -150,7 +150,7 @@ PDF_MD = MappingProxyType(
             "tags": {"d", "f", "e"},
             "title": "the tangle of their lives",
             "tagger": f"comicbox {VERSION}",
-            "publisher": "SmallPub",
+            "publisher": {"name": "SmallPub"},
         }
     }
 )
