@@ -36,6 +36,7 @@ from comicbox.schemas.comicbox_mixin import (
     NAME_KEY,
     NID_KEY,
     NOTES_KEY,
+    NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PAGES_KEY,
@@ -82,6 +83,7 @@ ISBN_TAG = "ISBN"
 UPC_TAG = "UPC"
 GENRES_TAG = "Genres"
 LOCATIONS_TAG = "Locations"
+MANGA_VOLUME_TAG = "MangaVolume"
 NAME_TAG = "Name"
 PRICES_TAG = "Prices"
 PRIMARY_ATTRIBUTE = "@primary"
@@ -519,8 +521,19 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         self._copy_tags(metron_series, volume, self.SERIES_VOLUME_TAG_MAP)
 
+        if number := metron_series.get(SERIES_VOLUME_TAG):
+            volume[NUMBER_KEY] = number
+
         if volume:
             update_dict[VOLUME_KEY] = volume
+
+    def parse_metron_manga_volume(self, data):
+        """Parse the metron MangaVolume tag."""
+        if volume_name := data.get(MANGA_VOLUME_TAG):
+            volume = data.get(VOLUME_KEY, {})
+            volume[NAME_KEY] = volume_name
+            data[VOLUME_KEY] = volume
+        return data
 
     def _parse_series_alternative_names(self, data, metron_series) -> dict:
         """Parse metron series alternative name tags into reprints."""
@@ -635,6 +648,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         if volume := data.get(VOLUME_KEY):
             self._copy_tags(volume, metron_series, self.SERIES_VOLUME_TAG_MAP.inverse)
+            if manga_volume := volume.get(NAME_KEY):
+                data[MANGA_VOLUME_TAG] = manga_volume
 
         if original_format := data.get(ORIGINAL_FORMAT_KEY):
             metron_series[SERIES_FORMAT_TAG] = original_format
@@ -723,6 +738,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         hoist_metron_resource_lists,
         parse_publisher,
         parse_metron_series,
+        parse_metron_manga_volume,
         hoist_metron_credits,
         map_arcs_to_story_arcs,
         hoist_reprints,

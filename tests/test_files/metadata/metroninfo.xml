@@ -41,6 +41,7 @@
 		<ID source="Metron" primary="True">999999</ID>
 		<ID source="Comic Vine">145269</ID>
 	</IDS>
+	<MangaVolume>NineteenFifty</MangaVolume>
 	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999</Notes>
 	<Number>1</Number>
 	<PageCount>0</PageCount>

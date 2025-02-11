@@ -103,7 +103,11 @@ READ_METADATA = MappingProxyType(
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
-            "volume": {"name": 1950, "issue_count": 10},
+            "volume": {
+                "name": "NineteenFifty",
+                "number": 1950,
+                "issue_count": 10,
+            },
         }
     }
 )
@@ -149,6 +153,7 @@ READ_METRON_DICT = MappingProxyType(
                     {"@source": "Comic Vine", "#text": "145269"},
                 ],
             },
+            "MangaVolume": "NineteenFifty",
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
@@ -236,6 +241,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                     {"@source": "Metron", "#text": "999999", "@primary": True},
                 ],
             },
+            "MangaVolume": "NineteenFifty",
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,

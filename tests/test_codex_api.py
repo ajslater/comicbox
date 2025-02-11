@@ -110,7 +110,7 @@ CBZ_MD = MappingProxyType(
             "title": "The Beginning",
             "tagger": f"comicbox {VERSION}",
             "updated_at": TEST_DATETIME,
-            "volume": {"name": 1950, "issue_count": 7},
+            "volume": {"number": 1950, "issue_count": 7},
             "year": 1950,
         }
     }

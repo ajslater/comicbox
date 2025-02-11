@@ -47,23 +47,24 @@ class NestedPublishingTagsMixin:
 
     def parse_volume(self, data):
         """Parse volume."""
+        volume = {}
         volume_number = data.get(self.VOLUME_TAG)
+        if volume_number is not None:
+            volume[VOLUME_NUMBER_KEY] = volume_number
         issue_count = data.get(self.ISSUE_COUNT_TAG)
-        if volume_number is not None or issue_count:
-            data[VOLUME_KEY] = {}
-            if volume_number:
-                data[VOLUME_KEY][VOLUME_NUMBER_KEY] = volume_number
-            if issue_count:
-                data[VOLUME_KEY][VOLUME_ISSUE_COUNT_KEY] = issue_count
+        if issue_count is not None:
+            volume[VOLUME_ISSUE_COUNT_KEY] = issue_count
+        if volume:
+            data[VOLUME_KEY] = volume
         return data
 
     def unparse_volume(self, data):
         """Unparse Volume."""
-        volume_dict = data.get(VOLUME_KEY, {})
-        volume_number = volume_dict.get(VOLUME_NUMBER_KEY)
+        volume = data.get(VOLUME_KEY, {})
+        volume_number = volume.get(VOLUME_NUMBER_KEY)
         if volume_number is not None:
             data[self.VOLUME_TAG] = volume_number
-        if issue_count := volume_dict.get(VOLUME_ISSUE_COUNT_KEY):
+        if issue_count := volume.get(VOLUME_ISSUE_COUNT_KEY):
             data[self.ISSUE_COUNT_TAG] = issue_count
         return data
 

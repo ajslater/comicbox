@@ -48,7 +48,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "summary": "A long example description",
             "title": "The Beginning",
-            "volume": {"name": 1},
+            "volume": {"number": 1},
         },
         "comic-book-info.json": {
             "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
@@ -64,7 +64,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science", "volume_count": 1},
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 7, "name": 1950},
+            "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "comicbox-filename.txt": {
@@ -101,7 +101,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 7, "name": 1950},
+            "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "comicbox.yaml": {
@@ -157,7 +157,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 7, "name": 1950},
+            "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "comicinfo-metron-origin.xml": {
@@ -197,7 +197,7 @@ FNS = MappingProxyType(
             "tagger": "Comictagger",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 7, "name": 1950},
+            "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "comictagger.json": {
@@ -225,7 +225,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 7, "name": 1950},
+            "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "metroninfo.xml": {
@@ -289,7 +289,7 @@ FNS = MappingProxyType(
             "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 10, "name": 1950},
+            "volume": {"issue_count": 10, "name": "NineteenFifty", "number": 1950},
         },
     }
 )

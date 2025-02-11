@@ -276,6 +276,7 @@ class MetronInfoSubSchema(XmlSubSchema):
     IDS = create_sub_tag_field("ID", Nested(MetronIDSchema, many=True))
     Publisher = Nested(MetronPublisherSchema)
     Series = Nested(MetronSeriesSchema)
+    MangaVolume = XmlStringField()
     CollectionTitle = XmlStringField()
     Number = XmlStringField()
     Stories = create_sub_tag_field("Story", _get_metron_polyfield())

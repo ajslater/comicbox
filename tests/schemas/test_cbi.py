@@ -27,7 +27,7 @@ METADATA = MappingProxyType(
             "year": 1950,
             "genres": {"Science Fiction"},
             "volume": {
-                "name": 1950,
+                "number": 1950,
                 "issue_count": 7,
             },
             "contributors": {

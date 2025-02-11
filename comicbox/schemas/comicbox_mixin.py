@@ -41,6 +41,7 @@ LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MONTH_KEY = "month"
 NAME_KEY = "name"
+NUMBER_KEY = "number"
 NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
@@ -59,14 +60,15 @@ SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORIES_KEY = "stories"
 STORY_ARCS_KEY = "story_arcs"
+SUFFIX_KEY = "suffix"
 TAGGER_KEY = "tagger"
-UPDATED_AT_KEY = "updated_at"
 TAGS_KEY = "tags"
 TEAMS_KEY = "teams"
+UPDATED_AT_KEY = "updated_at"
 VOLUME_KEY = "volume"
 VOLUME_COUNT_KEY = "volume_count"
 VOLUME_ISSUE_COUNT_KEY = "issue_count"
-VOLUME_NUMBER_KEY = "name"
+VOLUME_NUMBER_KEY = "number"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
@@ -117,11 +119,19 @@ class PageInfoSchema(BaseSubSchema):
     page_type = PageTypeField()
 
 
+# class IssueSchema(BaseSubSchema):
+#    """Issue Schema."""
+#
+#    name = StringField() noqa: ERA001
+#    number = DecimalField() noqa: ERA001
+#    suffix = StringField() noqa: ERA001
+
+
 class VolumeSchema(IdentifiedNameSchema):
     """Volume Schema."""
 
-    name = IntegerField()
     issue_count = IntegerField(minimum=0)
+    number = IntegerField(minimum=0)
 
 
 class SeriesSchema(IdentifiedNameSchema):

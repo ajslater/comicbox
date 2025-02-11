@@ -38,7 +38,7 @@ READ_METADATA = MappingProxyType(
             "day": 1,
             "genres": {"Science Fiction"},
             "volume": {
-                "name": 1950,
+                "number": 1950,
                 "issue_count": 7,
             },
             "contributors": {
@@ -123,7 +123,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "title": "The Beginning",
             "updated_at": TEST_DTTM_STR,
             "volume": {
-                "name": 1950,
+                "number": 1950,
                 "issue_count": 7,
             },
             "year": 1950,
