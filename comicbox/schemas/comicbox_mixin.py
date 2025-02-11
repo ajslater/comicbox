@@ -132,8 +132,8 @@ class SeriesSchema(IdentifiedNameSchema):
     volume_count = IntegerField(minimum=0)
 
 
-# class ImprintSchema(GroupSubSchema):
-#    """Imprint Schema."""
+class ImprintSchema(IdentifiedNameSchema):
+    """Imprint Schema."""
 
 
 class PublisherSchema(IdentifiedNameSchema):
@@ -179,7 +179,7 @@ class ComicboxSubSchemaMixin:
     issue = StringField()
     issue_number = DecimalField(minimum=Decimal(0))
     issue_suffix = StringField()
-    imprint = StringField()
+    imprint = Nested(ImprintSchema)
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
     locations = StringSetField()

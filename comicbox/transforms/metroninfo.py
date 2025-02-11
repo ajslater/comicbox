@@ -129,8 +129,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     }
 )
 
-_GTIN_NIDS = frozenset({ISBN_NID, UPC_NID})
-
 
 def _copy_assign(key, data, value):
     if not value:
@@ -282,6 +280,19 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
         comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
 
+    def _parse_imprint(self, data, metron_publisher):
+        metron_imprint = metron_publisher.get(IMPRINT_TAG)
+        if not metron_imprint:
+            return
+        imprint_name = get_cdata(metron_imprint)
+        if not imprint_name:
+            return
+        imprint = {NAME_KEY: imprint_name}
+        if imprint_nss := metron_imprint.get(ID_ATTRIBUTE):
+            self._parse_metron_tag_identifier(data, "imprint", imprint_nss, imprint)
+        if imprint_name:
+            data[IMPRINT_KEY] = imprint
+
     def parse_publisher(self, data):
         """Parse Metron Publisher."""
         metron_publisher = data.pop(PUBLISHER_TAG, None)
@@ -294,10 +305,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             )
         if publisher:
             data[PUBLISHER_KEY] = publisher
-        metron_imprint = metron_publisher.get(IMPRINT_TAG)
-        imprint_name = get_cdata(metron_imprint)
-        if imprint_name:
-            data[IMPRINT_KEY] = imprint_name
+
+        self._parse_imprint(data, metron_publisher)
         return data
 
     def _unparse_metron_id_attribute(
@@ -316,16 +325,20 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
     def unparse_publisher(self, data):
         """Unparse Metron publisher."""
         publisher = data.pop(PUBLISHER_KEY, {})
-        imprint_name = data.get(IMPRINT_KEY)
         publisher_name = publisher.get(NAME_KEY)
-        if not publisher_name and not imprint_name:
-            return data
-        metron_publisher = {NAME_TAG: publisher_name}
+        metron_publisher = {}
+        if publisher_name:
+            metron_publisher[NAME_TAG] = publisher_name
         self._unparse_metron_id_attribute(data, metron_publisher, publisher)
-        if imprint_name:
-            metron_publisher[IMPRINT_TAG] = {"#text": imprint_name}
-
-        data[PUBLISHER_TAG] = metron_publisher
+        imprint = data.pop(IMPRINT_KEY, {})
+        metron_imprint = {}
+        if imprint_name := imprint.get(NAME_KEY):
+            metron_imprint["#text"] = imprint_name
+        self._unparse_metron_id_attribute(data, metron_imprint, imprint)
+        if metron_imprint:
+            metron_publisher[IMPRINT_TAG] = metron_imprint
+        if metron_publisher:
+            data[PUBLISHER_TAG] = metron_publisher
         return data
 
     def _hoist_metron_credit(self, metron_credit, contributors):

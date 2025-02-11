@@ -10,7 +10,6 @@ from comicbox.schemas.comicbox_mixin import (
     CREATOR_KEY,
     EDITOR_KEY,
     GENRES_KEY,
-    IMPRINT_KEY,
     INKER_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
@@ -76,7 +75,7 @@ class ComicInfoTransform(
             "Genre": GENRES_KEY,
             # "GTIN": IDENTIFIERS_KEY, coded
             "Format": ORIGINAL_FORMAT_KEY,
-            "Imprint": IMPRINT_KEY,
+            # "Imprint": IMPRINT_KEY, coded
             "LanguageISO": LANGUAGE_KEY,
             "Locations": "locations",
             "MainCharacterOrTeam": "protagonist",
@@ -122,6 +121,7 @@ class ComicInfoTransform(
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
     PUBLISHER_TAG = "Publisher"
+    IMPRINT_TAG = "Imprint"
     SERIES_TAG = "Series"
     VOLUME_TAG = "Volume"
     ISSUE_COUNT_TAG = "Count"
@@ -133,6 +133,7 @@ class ComicInfoTransform(
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
         NestedPublishingTagsMixin.parse_publisher,
+        NestedPublishingTagsMixin.parse_imprint,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         ComicInfoReprintsTransformMixin.parse_reprints,
@@ -148,6 +149,7 @@ class ComicInfoTransform(
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_publisher,
+        NestedPublishingTagsMixin.unparse_imprint,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
     )

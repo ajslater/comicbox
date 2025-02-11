@@ -1,6 +1,7 @@
 """Nested Publishing Tags."""
 
 from comicbox.schemas.comicbox_mixin import (
+    IMPRINT_KEY,
     NAME_KEY,
     PUBLISHER_KEY,
     SERIES_KEY,
@@ -15,6 +16,7 @@ class NestedPublishingTagsMixin:
     """Nested Publishing Tags."""
 
     PUBLISHER_TAG = ""
+    IMPRINT_TAG = ""
     SERIES_TAG = ""
     VOLUME_COUNT_TAG = ""
     VOLUME_TAG = ""
@@ -75,4 +77,16 @@ class NestedPublishingTagsMixin:
         """Unparse Publisher."""
         if publisher_name := data.get(PUBLISHER_KEY, {}).get(NAME_KEY):
             data[self.PUBLISHER_TAG] = publisher_name
+        return data
+
+    def parse_imprint(self, data):
+        """Parse Imprint."""
+        if imprint_name := data.get(self.IMPRINT_TAG):
+            data[IMPRINT_KEY] = {NAME_KEY: imprint_name}
+        return data
+
+    def unparse_imprint(self, data):
+        """Unparse imprint."""
+        if imprint_name := data.get(IMPRINT_KEY, {}).get(NAME_KEY):
+            data[self.IMPRINT_TAG] = imprint_name
         return data

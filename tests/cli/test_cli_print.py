@@ -18,13 +18,13 @@ CLI_METADATA_ARGS = (
     "-m",
     "Tags: 'a, b, c',Publisher: TestPub,story_arcs: {d: 1,e: 3,f: 5}",
     "-m",
-    "Imprint: TestImprint",
+    "imprint: {name: TestImprint}",
 )
 CLI_DICT = MappingProxyType(
     {
         ROOT_TAG: {
             "ext": "cbz",
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "page_count": 0,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},

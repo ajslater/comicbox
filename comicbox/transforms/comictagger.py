@@ -86,6 +86,7 @@ class ComictaggerTransform(
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
     PUBLISHER_TAG = "publisher"
+    IMPRINT_TAG = "imprint"
     SERIES_TAG = "series"
     VOLUME_COUNT_TAG = "volume_count"
     VOLUME_TAG = "volume"
@@ -173,6 +174,7 @@ class ComictaggerTransform(
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
         NestedPublishingTagsMixin.parse_publisher,
+        NestedPublishingTagsMixin.parse_imprint,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
     )
@@ -186,6 +188,7 @@ class ComictaggerTransform(
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_publisher,
+        NestedPublishingTagsMixin.unparse_imprint,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
     )

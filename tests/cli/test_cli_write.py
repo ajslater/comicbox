@@ -26,7 +26,7 @@ METADATA = MappingProxyType(
     {
         ROOT_TAG: {
             "ext": "cbz",
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
@@ -38,17 +38,17 @@ METADATA = MappingProxyType(
 )
 EMPTY_MD = MappingProxyType({ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
-    ROOT_TAG,
+    "comicbox",
     "-m",
-    "tags: 'a, b, c',publisher: TestPub,story_arcs: {d: 1,e: 3,f: 5}",
+    "tags: 'a, b, c',publisher: {name: TestPub},story_arcs: {d: 1,e: 3,f: 5}",
     "-m",
-    "imprint: TestImprint",
+    "imprint: {name: TestImprint}",
 )
 CLI_DICT = MappingProxyType(
     {
         ROOT_TAG: {
             "ext": "cbz",
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
             "series": "empty",
             "story_arcs": {"d": 1, "e": 3, "f": 5},
@@ -95,12 +95,7 @@ def test_cli_action_write():
     md = MappingProxyType(md)
     pprint(md)
 
-    args = (
-        *CLI_METADATA_ARGS,
-        "-w",
-        "cr",
-        str(TMP_PATH),
-    )
+    args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "-P", "sld")
     print(" ".join(args))
     cli.main(args)
 

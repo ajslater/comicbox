@@ -38,7 +38,7 @@ READ_METADATA = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "notes": TEST_READ_NOTES,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
@@ -99,7 +99,7 @@ READ_YAML_DICT = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "notes": TEST_READ_NOTES,
             "page_count": 36,
             "pages": [

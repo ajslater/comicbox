@@ -46,7 +46,12 @@ READ_METADATA = MappingProxyType(
                 "writer": {"Joe Orlando"},
             },
             "genres": {"Science Fiction"},
-            "imprint": "Youthful Imprint",
+            "imprint": {
+                "identifiers": {
+                    "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"},
+                },
+                "name": "Youthful Imprint",
+            },
             "identifier_primary_source": {
                 "nid": "metron",
                 "url": "https://metron.cloud/",
@@ -149,7 +154,7 @@ READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Publisher": {
                 "@id": "11",
-                "Imprint": {"#text": "Youthful Imprint"},
+                "Imprint": {"@id": "222", "#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },
             "Reprints": {
@@ -236,7 +241,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Publisher": {
                 "@id": "11",
-                "Imprint": {"#text": "Youthful Imprint"},
+                "Imprint": {"@id": "222", "#text": "Youthful Imprint"},
                 "Name": "Youthful Adventure Stories",
             },
             "Reprints": {

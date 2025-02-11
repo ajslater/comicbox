@@ -4,7 +4,8 @@ comicbox:
     comicvine:
       nss: "145269"
       url: https://comicvine.gamespot.com/c/4000-145269/
-  imprint: TestImprint
+  imprint:
+    name: TestImprint
   notes: Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] [CVDB145269]
   page_count: 36
   pages:

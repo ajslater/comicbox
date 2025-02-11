@@ -112,7 +112,7 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "imprint": "TestImprint",
+            "imprint": {"name": "TestImprint"},
             "notes": "Tagged with comicbox dev on "
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
@@ -254,7 +254,12 @@ FNS = MappingProxyType(
                 "metron": {"nss": "999999", "url": "https://metron.cloud/issue/999999"},
                 "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
             },
-            "imprint": "Youthful Imprint",
+            "imprint": {
+                "identifiers": {
+                    "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"}
+                },
+                "name": "Youthful Imprint",
+            },
             "issue": "1",
             "issue_number": Decimal("1"),
             "language": "en",

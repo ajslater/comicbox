@@ -45,7 +45,7 @@
 	<Number>1</Number>
 	<PageCount>0</PageCount>
 	<Publisher id="11">
-		<Imprint>Youthful Imprint</Imprint>
+		<Imprint id="222">Youthful Imprint</Imprint>
 		<Name>Youthful Adventure Stories</Name>
 	</Publisher>
 	<Reprints>

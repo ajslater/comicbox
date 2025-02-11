@@ -1,5 +1,6 @@
 comicbox:
-  imprint: CLIImprint
+  imprint:
+    name: CLIImprint
   story_arcs: { h: 7, i: 11, j: 13 }
   tagger: comicbox dev
   tags:

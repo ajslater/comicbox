@@ -128,7 +128,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
 
         if source_data_list:
             source_data_list = tuple(source_data_list)
-        self._sources[source] = source_data_list
+            self._sources[source] = source_data_list
 
     def get_source_metadata(self, source):
         """Get source metadata by key."""
