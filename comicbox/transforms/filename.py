@@ -10,7 +10,7 @@ effective, simple and easy to read and to contribute to.
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 
 
 class FilenameTransform(BaseTransform, NestedPublishingTagsMixin, TitleStoriesMixin):

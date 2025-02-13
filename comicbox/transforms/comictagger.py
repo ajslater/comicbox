@@ -31,7 +31,7 @@ from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformM
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,

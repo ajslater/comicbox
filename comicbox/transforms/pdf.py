@@ -33,7 +33,7 @@ from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
 _KEYWORDS_TRANSFORM_CLASSES = (

@@ -19,7 +19,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 
 
 class ComicBookInfoTransform(

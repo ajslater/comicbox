@@ -45,7 +45,7 @@ from comicbox.transforms.comicinfo_storyarcs import (
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 

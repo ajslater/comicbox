@@ -33,7 +33,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
+from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -61,7 +61,7 @@ class CoMetTransform(
             "lastMark": "last_mark",
             "pages": PAGE_COUNT_KEY,
             # "publisher": "publisher", handled by code
-            # "price": PRICE_KEY, unused
+            # "price": PRICES_KEY code
             "rating": "age_rating",
             "readingDirection": "reading_direction",
             # "rights": "rights", unused
