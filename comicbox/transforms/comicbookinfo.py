@@ -13,6 +13,7 @@ from comicbox.schemas.comicbookinfo import (
 from comicbox.schemas.comicbox_mixin import (
     GENRES_KEY,
     PAGE_COUNT_KEY,
+    SUMMARY_KEY,
     UPDATED_AT_KEY,
 )
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
@@ -32,7 +33,7 @@ class ComicBookInfoTransform(
     SCHEMA_CLASS = ComicBookInfoSchema
     TRANSFORM_MAP = bidict(
         {
-            "comments": "summary",
+            "comments": SUMMARY_KEY,
             # "country": "country", coded
             # "credits": "credits_list", coded
             "genre": GENRES_KEY,

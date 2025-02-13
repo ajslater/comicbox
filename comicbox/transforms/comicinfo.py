@@ -19,6 +19,7 @@ from comicbox.schemas.comicbox_mixin import (
     PAGE_COUNT_KEY,
     PENCILLER_KEY,
     SCAN_INFO_KEY,
+    SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
     WRITER_KEY,
@@ -99,7 +100,7 @@ class ComicInfoTransform(
             "Tags": TAGS_KEY,
             "Teams": TEAMS_KEY,
             # "Title": "title", coded
-            "Summary": "summary",
+            "Summary": SUMMARY_KEY,
             # "Volume": VOLUME_KEY, coded
             # "Web": WEB_KEY, coded
             "Year": "year",

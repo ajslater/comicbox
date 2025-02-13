@@ -27,6 +27,7 @@ from comicbox.schemas.comicbox_mixin import (
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PENCILLER_KEY,
+    SUMMARY_KEY,
     WRITER_KEY,
 )
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
@@ -52,7 +53,7 @@ class CoMetTransform(
             "character": CHARACTERS_KEY,
             "coverImage": "cover_image",
             # "date": "date", handled by code
-            "description": "summary",
+            "description": SUMMARY_KEY,
             "format": ORIGINAL_FORMAT_KEY,
             "genre": "genres",
             # IDENTIFIER_TAG: "identifiers", handled by code

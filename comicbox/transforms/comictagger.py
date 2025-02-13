@@ -10,6 +10,7 @@ from comicbox.schemas.comicbox_mixin import (
     IDENTIFIERS_KEY,
     ORIGINAL_FORMAT_KEY,
     SERIES_KEY,
+    SUMMARY_KEY,
 )
 from comicbox.schemas.comictagger import (
     IDENTIFIER_TAG,
@@ -56,7 +57,7 @@ class ComictaggerTransform(
             # "tagOrigin": TAG_ORIGIN_KEY, code
             # "issueId": ISSUE_ID_KEY, code
             # "seriesId": SERIES_ID_KEY, code
-            "description": "summary",
+            "description": SUMMARY_KEY,
             # "web_link": WEB_KEY, code
             "format": ORIGINAL_FORMAT_KEY,
             "black_and_white": "monochrome",

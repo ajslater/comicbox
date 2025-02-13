@@ -51,6 +51,7 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_START_YEAR_KEY,
     STORIES_KEY,
     STORY_ARCS_KEY,
+    SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
     VOLUME_COUNT_KEY,
@@ -161,7 +162,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,
             "Pages": PAGES_KEY,
-            "Summary": "summary",
+            "Summary": SUMMARY_KEY,
             # "URL": WEB_KEY, code
         }
     )
