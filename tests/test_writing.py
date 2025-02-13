@@ -79,7 +79,7 @@ METADATA = MappingProxyType(
             ],
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
-            "title": "The Beginning",
+            "stories": [{"name": "cbi"}, {"name": "The Beginning"}],
             "volume": {"number": 1950, "issue_count": 7},
             "year": 1950,
             "tagger": "comicbox dev",

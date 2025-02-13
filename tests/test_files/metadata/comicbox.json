@@ -176,7 +176,7 @@
     "publisher": { "name": "Youthful Adventure Stories"},
     "series": {"name": "Captain Science"},
     "tagger": "comicbox dev",
-    "title": "The Beginning",
+    "stories": [{"name":"The Beginning"}],
     "updated_at": "1970-01-01T00:00:00",
     "volume": {"number": 1950,
     "issue_count": 7

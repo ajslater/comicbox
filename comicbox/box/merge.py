@@ -7,6 +7,7 @@ from comicbox.box.sources import ComicboxSourcesMixin
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
+    NAME_KEY,
     ORDERED_SET_KEYS,
     PAGES_KEY,
     REPRINTS_KEY,
@@ -85,12 +86,17 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
 
     @staticmethod
     def _merge_ordered_set(merged_md, key, sequence):
+        """Merge ordered set of strings or named objects."""
         ordered_set = {}
-        for value in merged_md.get(key, ()):
-            ordered_set[value] = None
-        for value in sequence:
-            ordered_set[value] = None
-        return tuple(ordered_set.keys())
+        zipped = (*merged_md.get(key, ()), *sequence)
+        for value in zipped:
+            if (
+                key_value := value.get(NAME_KEY)
+                if isinstance(value, Mapping)
+                else value
+            ):
+                ordered_set[key_value] = value
+        merged_md[key] = list(ordered_set.values())
 
     def _merge_key(self, merged_md, key, value):  # noqa: C901
         """Merge complex values."""

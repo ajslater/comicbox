@@ -14,6 +14,7 @@
 		<Character>Captain Science</Character>
 		<Character>Gordon Dane</Character>
 	</Characters>
+	<CollectionTitle>Omnibus</CollectionTitle>
 	<CoverDate>1950-11-01</CoverDate>
 	<Credits>
 		<Credit>
@@ -67,7 +68,7 @@
 		<VolumeCount>1</VolumeCount>
 	</Series>
 	<Stories>
-		<Story>Captain Lost</Story>
+		<Story id="5555">Captain Lost</Story>
 		<Story>Science is Good</Story>
 	</Stories>
 	<URLs>

@@ -33,6 +33,7 @@ from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
+from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
 _KEYWORDS_TRANSFORM_CLASSES = (
@@ -46,6 +47,7 @@ _KEYWORDS_TRANSFORM_CLASSES = (
     CoMetTransform,
     ComictaggerTransform,
     FilenameTransform,
+    TitleStoriesMixin,
 )
 LOG = getLogger(__name__)
 
@@ -62,13 +64,15 @@ class PDFXmlTransform(XmlTransform):
             "pdf:Keywords": TAGS_KEY,
             "pdf:Producer": TAGGER_KEY,
             "pdf:Subject": GENRES_KEY,
-            "pdf:Title": "title",
+            # "pdf:Title": TITLE_KEY, coded
         }
     )
     GROUP_KEYS = frozenset(
         {PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY, VOLUME_KEY, ISSUE_KEY}
     )
     GROUP_TAG_DELIMETER = ":"
+    TITLE_TAG = "pdf:Title"
+    TITLE_STORIES_DELIMITER = ";"
 
     def aggregate_contributors(self, data):
         """Convert csv to writer credits."""
@@ -120,7 +124,7 @@ class PDFXmlTransform(XmlTransform):
         self._parse_comma_delimited_tags(data)
         return data
 
-    def unparse_metadata_to_tags(self, data):
+    def unparse_tags(self, data):
         """Stuff comicinfo into keywords."""
         transform = self._transform_class(self._path)
         schema = transform.SCHEMA_CLASS()
@@ -132,12 +136,14 @@ class PDFXmlTransform(XmlTransform):
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         parse_tags,
         aggregate_contributors,
+        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
-        unparse_metadata_to_tags,
+        unparse_tags,
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         disaggregate_contributors,
+        TitleStoriesMixin.unparse_stories,
     )
 
     def from_comicbox(
@@ -159,6 +165,7 @@ class MuPDFTransform(PDFXmlTransform):
 
     SCHEMA_CLASS = MuPDFSchema
     AUTHOR_TAG = "author"
+    TITLE_TAG = "title"
     TRANSFORM_MAP = bidict(
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,

@@ -40,6 +40,7 @@ READ_METADATA = MappingProxyType(
                 "Captain Science",
                 "Gordon Dane",
             },
+            "collection_title": "Omnibus",
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
@@ -92,7 +93,18 @@ READ_METADATA = MappingProxyType(
                 "start_year": 1950,
                 "volume_count": 1,
             },
-            "stories": {"Captain Lost", "Science is Good"},
+            "stories": [
+                {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "5555",
+                            "url": "https://metron.cloud/story/5555",
+                        }
+                    },
+                    "name": "Captain Lost",
+                },
+                {"name": "Science is Good"},
+            ],
             "story_arcs": {
                 "Captain Arc": 4,
                 "Other Arc": 2,
@@ -132,6 +144,7 @@ READ_METRON_DICT = MappingProxyType(
                     {"#text": "Gordon Dane"},
                 ]
             },
+            "CollectionTitle": "Omnibus",
             "CoverDate": "1950-11-01",
             "Credits": {
                 "Credit": [
@@ -186,7 +199,10 @@ READ_METRON_DICT = MappingProxyType(
                 "VolumeCount": 1,
             },
             "Stories": {
-                "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
+                "Story": [
+                    {"@id": "5555", "#text": "Captain Lost"},
+                    {"#text": "Science is Good"},
+                ]
             },
             "URLs": {
                 "URL": [
@@ -217,6 +233,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                     "Gordon Dane",
                 ]
             },
+            "CollectionTitle": "Omnibus",
             "CoverDate": "1950-11-01",
             "Credits": {
                 "Credit": [
@@ -274,7 +291,10 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "VolumeCount": 1,
             },
             "Stories": {
-                "Story": [{"#text": "Captain Lost"}, {"#text": "Science is Good"}]
+                "Story": [
+                    {"@id": "5555", "#text": "Captain Lost"},
+                    {"#text": "Science is Good"},
+                ]
             },
             "URLs": {
                 "URL": [

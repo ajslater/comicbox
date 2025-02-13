@@ -222,6 +222,20 @@
           "type": "string"
         }
       },
+      "stories": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": {
+            "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+          }
+        }
+      },
       "story_arcs": {
         "type": "object",
         "additionalProperties": {
@@ -236,9 +250,6 @@
         "items": {
           "type": "string"
         }
-      },
-      "@title": {
-        "type": "string"
       },
       "teams": {
         "type": "array",

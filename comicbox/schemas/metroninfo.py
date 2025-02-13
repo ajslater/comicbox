@@ -8,6 +8,7 @@ from marshmallow.fields import Constant, Field, Nested
 from marshmallow.schema import Schema
 from marshmallow_union import Union
 
+from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
@@ -65,6 +66,19 @@ def _get_xml_poly_text_field(
     if field:
         fields.append(field)
     return Union(fields)
+
+
+def _get_xml_list_string_or_schema(schema_class: type[Schema]) -> ListField:
+    """Get a List of either strings or nested schemas."""
+    return ListField(
+        Union(
+            [
+                # First field is the unparse type
+                Nested(schema_class),
+                StringField(),
+            ]
+        )
+    )
 
 
 class MetronIDAttrField(StringField):
@@ -279,7 +293,10 @@ class MetronInfoSubSchema(XmlSubSchema):
     MangaVolume = XmlStringField()
     CollectionTitle = XmlStringField()
     Number = XmlStringField()
-    Stories = create_sub_tag_field("Story", _get_metron_polyfield())
+    # List preserves order
+    Stories = create_sub_tag_field(
+        "Story", _get_xml_list_string_or_schema(MetronResourceSchema)
+    )
     Summary = XmlStringField()
     Prices = create_sub_tag_field(
         "Price", _get_metron_resource_field(MetronPriceSchema, DecimalField)

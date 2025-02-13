@@ -32,6 +32,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -42,6 +43,7 @@ class CoMetTransform(
     CoMetReprintsTransformMixin,
     NestedPublishingTagsMixin,
     IdentifiersTransformMixin,
+    TitleStoriesMixin,
 ):
     """CoMet transforms."""
 
@@ -89,6 +91,7 @@ class CoMetTransform(
     SERIES_TAG = "series"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = ""
+    TITLE_TAG = "title"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -99,6 +102,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
+        TitleStoriesMixin.parse_stories,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
@@ -108,6 +112,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
+        TitleStoriesMixin.unparse_stories,
     )
 
     @staticmethod

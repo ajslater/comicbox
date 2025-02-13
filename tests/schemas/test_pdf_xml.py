@@ -21,13 +21,13 @@ METADATA = MappingProxyType(
     {
         ROOT_TAG: {
             "contributors": {"writer": {"Jon Osterman"}},
-            "scan_info": "Pages",
             "genres": {"Science Fiction"},
-            "tags": {"d", "e", "f"},
-            "title": "the tangle of their lives",
-            "publisher": {"name": "SmallPub"},
-            "series": {"name": "test pdf"},
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
+            "publisher": {"name": "SmallPub"},
+            "scan_info": "Pages",
+            "series": {"name": "test pdf"},
+            "stories": [{"name": "the tangle of their lives"}],
+            "tags": {"d", "e", "f"},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0, 0),  # noqa: DTZ001
         }

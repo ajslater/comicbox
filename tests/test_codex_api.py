@@ -39,7 +39,7 @@ class Fixture:
     cover_path: str
 
 
-CBZ_MD = MappingProxyType(
+TEMPLATE_MD = MappingProxyType(
     {
         ROOT_TAG: {
             "characters": {"Captain Science", "Gordon Dane"},
@@ -107,7 +107,6 @@ CBZ_MD = MappingProxyType(
             ],
             "series": {"name": "Captain Science"},
             "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
-            "title": "The Beginning",
             "tagger": f"comicbox {VERSION}",
             "updated_at": TEST_DATETIME,
             "volume": {"number": 1950, "issue_count": 7},
@@ -115,15 +114,30 @@ CBZ_MD = MappingProxyType(
         }
     }
 )
+CBZ_MD_PATCH = {
+    ROOT_TAG: {
+        "stories": [
+            {"name": "cix"},
+            {"name": "The Beginning"},
+            {"name": "The End"},
+        ]
+    }
+}
+CBZ_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
+
 CBR_MD_PATCH = {
     ROOT_TAG: {
         "country": "US",
         "ext": "cbr",
         "series": {"volume_count": 1},
-        "title": "The Beginning",
+        "stories": [
+            {"name": "cix-cbi"},
+            {"name": "The Beginning"},
+            {"name": "The End"},
+        ],
     },
 }
-CBR_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBR_MD_PATCH))
+CBR_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
 CBT_MD_PATCH = {
     ROOT_TAG: {
         "ext": "cbt",
@@ -135,9 +149,14 @@ CBT_MD_PATCH = {
             {"index": 3, "size": 450456},
             {"index": 4, "size": 436648},
         ],
+        "stories": [
+            {"name": "cix"},
+            {"name": "The Beginning"},
+            {"name": "The End"},
+        ],
     }
 }
-CBT_MD = MappingProxyType(deep_update(deepcopy(dict(CBZ_MD)), CBT_MD_PATCH))
+CBT_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
 PDF_MD = MappingProxyType(
     {
         ROOT_TAG: {
@@ -147,8 +166,8 @@ PDF_MD = MappingProxyType(
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
+            "stories": [{"name": "the tangle of their lives"}],
             "tags": {"d", "f", "e"},
-            "title": "the tangle of their lives",
             "tagger": f"comicbox {VERSION}",
             "publisher": {"name": "SmallPub"},
         }

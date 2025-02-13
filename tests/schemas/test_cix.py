@@ -89,15 +89,15 @@ READ_METADATA = MappingProxyType(
                 {"index": 35, "size": 340840},
             ],
             "page_count": 36,
+            "reprints": [
+                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+            ],
+            "stories": [{"name": "The Beginning"}, {"name": "The End"}],
             "story_arcs": {
                 "Captain Arc": 4,
                 "Other Arc": 2,
             },
-            "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
-            ],
             "tagger": "comicbox dev",
-            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
         }
     }
@@ -168,7 +168,7 @@ READ_CIX_DICT = MappingProxyType(
             "Series": "Captain Science",
             "StoryArc": "Captain Arc,Other Arc",
             "StoryArcNumber": "4,2",
-            "Title": "The Beginning",
+            "Title": "The Beginning;The End",
             "Volume": 1950,
             "Web": "https://comicvine.gamespot.com/c/4000-145269/",
             "Writer": "Joe Orlando",

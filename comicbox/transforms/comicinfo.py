@@ -44,6 +44,7 @@ from comicbox.transforms.comicinfo_storyarcs import (
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -55,6 +56,7 @@ class ComicInfoTransform(
     IdentifiersTransformMixin,
     NestedPublishingTagsMixin,
     XmlCreditsTransformMixin,
+    TitleStoriesMixin,
 ):
     """ComicInfo.xml Schema."""
 
@@ -96,7 +98,7 @@ class ComicInfoTransform(
             ##
             "Tags": TAGS_KEY,
             "Teams": TEAMS_KEY,
-            "Title": "title",
+            # "Title": "title", coded
             "Summary": "summary",
             # "Volume": VOLUME_KEY, coded
             # "Web": WEB_KEY, coded
@@ -126,6 +128,7 @@ class ComicInfoTransform(
     VOLUME_TAG = "Volume"
     ISSUE_COUNT_TAG = "Count"
     URLS_TAG = "Web"
+    TITLE_TAG = "Title"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -139,6 +142,7 @@ class ComicInfoTransform(
         ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
+        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -152,4 +156,5 @@ class ComicInfoTransform(
         NestedPublishingTagsMixin.unparse_imprint,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
+        TitleStoriesMixin.unparse_stories,
     )

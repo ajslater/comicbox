@@ -42,7 +42,6 @@ READ_METADATA = MappingProxyType(
             "characters": {"Captain Science", "Gordon Dane", "COMET"},
             "language": "en",
             "country": "US",
-            "title": "The Beginning CBI",
             "page_count": 0,
             "day": 1,
             "story_arcs": {
@@ -76,6 +75,11 @@ READ_METADATA = MappingProxyType(
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
+            "stories": [
+                {"name": "The Beginning - multi"},
+                {"name": "The Beginning COMET"},
+                {"name": "The Beginning CBI"},
+            ],
             "updated_at": TEST_DATETIME,
             "tagger": "comicbox dev",
         }
@@ -110,7 +114,6 @@ READ_MULTI_DICT = MappingProxyType(
             "publisher": {"name": "Youthful Adventure Stories"},
             "imprint": {"name": "CLIImprint"},
             "series": {"name": "Captain Science COMET"},
-            "title": "The Beginning CBI",
             "volume": {"number": 999, "issue_count": 77},
             "day": 1,
             "tags": ["a", "b", "c"],
@@ -136,6 +139,11 @@ READ_MULTI_DICT = MappingProxyType(
                 }
             },
             "summary": "A long example description",
+            "stories": [
+                {"name": "The Beginning - multi"},
+                {"name": "The Beginning COMET"},
+                {"name": "The Beginning CBI"},
+            ],
             "last_mark": 12,
             "original_format": "Comic",
             "reprints": [

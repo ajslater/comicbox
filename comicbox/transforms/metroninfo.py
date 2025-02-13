@@ -103,6 +103,7 @@ SERIES_VOLUME_TAG = "Volume"
 SERIES_VOLUME_COUNT_TAG = "VolumeCount"
 SOURCE_ATTRIBUTE = "@source"
 STORIES_TAG = "Stories"
+STORY_TAG = "Story"
 TEAMS_TAG = "Teams"
 TAGS_TAG = "Tags"
 URLS_TAG = "URLs"
@@ -119,15 +120,22 @@ PENCILLER_TAG = "Penciller"
 
 _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     {
+        # Just hoist
+        (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
+        (PRICES_TAG, None): PRICE_KEY,
+        (URLS_TAG, None): URL_KEY,
+        # Resources
         (CHARACTERS_TAG, None): CHARACTERS_KEY,
         (GENRES_TAG, None): GENRES_KEY,
-        (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
         (LOCATIONS_TAG, None): LOCATIONS_KEY,
-        (PRICES_TAG, None): PRICE_KEY,
-        (STORIES_TAG, "Story"): STORIES_KEY,
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
-        (URLS_TAG, None): URL_KEY,
+        (STORIES_TAG, STORY_TAG): STORIES_KEY,
+        # Add
+        # UNIVERSES
+        # Add
+        # REPRINTS
+        # CREDITS
     }
 )
 
@@ -146,8 +154,9 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         {
             "AgeRating": "age_rating",
             "BlackAndWhite": "monochrome",
-            "CollectionTitle": "series_groups",
+            "CollectionTitle": "collection_title",
             "CoverDate": "date",
+            "StoreDate": "store_date",
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,
@@ -227,6 +236,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             SERIES_ISSUE_COUNT_TAG: VOLUME_ISSUE_COUNT_KEY,
         }
     )
+    NEW_RESOURCE_TAGS = frozenset({STORIES_TAG})
+    NEW_RESOURCE_KEYS = frozenset({STORIES_KEY})
     GTIN_SUBTAGS = frozenbidict({ISBN_TAG: ISBN_NID, UPC_TAG: UPC_NID})
     SCHEMA_CLASS = MetronInfoSchema
     IDENTIFIERS_TAG = IDS_TAG
@@ -243,6 +254,10 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             resources = self.hoist_tag(tag, data, single_tag=single_tag)
             if not resources:
                 continue
+            if tag in self.NEW_RESOURCE_TAGS:
+                update_dict[key] = resources
+                continue
+            # REMOVE after Locations is done
             names = set()
             if isinstance(resources, Sequence | set | frozenset) and not isinstance(
                 resources, str
@@ -263,12 +278,16 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         """Lower comicbox tags into metron resource tags."""
         update_dict = {}
         for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
-            names = data.pop(key, ())
+            names = data.pop(key, None)
             if not names:
                 continue
-            names = sorted(frozenset(names))
-            resources = tuple({"#text": name} for name in names if name)
             tag, single_tag = tags
+            if key in self.NEW_RESOURCE_KEYS:
+                resources = names
+            else:
+                # REMOVE after Locations is done
+                names = sorted(frozenset(names))
+                resources = tuple({"#text": name} for name in names if name)
             self.lower_tag(tag, tag, update_dict, resources, single_tag=single_tag)
         if update_dict:
             data.update(update_dict)
@@ -310,6 +329,52 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
         self._parse_imprint(data, metron_publisher)
         return data
+
+    def _parse_identified_name(self, data: dict, nss_type: str, key: str) -> dict:
+        """Parse Metron Resource Types into comicbox."""
+        if metron_objs := data.get(key):
+            comicbox_objs = []
+            for metron_obj in metron_objs:
+                comicbox_obj = {}
+                if name := get_cdata(metron_obj):
+                    comicbox_obj[NAME_KEY] = name
+                if isinstance(metron_obj, Mapping) and (
+                    nss := metron_obj.get(ID_ATTRIBUTE)
+                ):
+                    self._parse_metron_tag_identifier(data, nss_type, nss, comicbox_obj)
+                if comicbox_obj:
+                    comicbox_objs.append(comicbox_obj)
+            if comicbox_objs:
+                if not isinstance(metron_objs, list | tuple):
+                    comicbox_objs = sorted(comicbox_objs, key=lambda o: o.get(NAME_KEY))
+                data[key] = comicbox_objs
+        return data
+
+    def parse_stories(self, data: dict) -> dict:
+        """Parse Metron Stories."""
+        return self._parse_identified_name(data, "story", STORIES_KEY)
+
+    def _unparse_identified_name(self, data: dict, tag: str) -> dict:
+        """Unparse identifierd names into Metron Resource Types."""
+        sub_tag = STORY_TAG if tag == STORIES_TAG else tag[:-1]
+        if comicbox_objs := data.get(tag, {}).get(sub_tag):
+            metron_objs = []
+            for comicbox_obj in comicbox_objs:
+                metron_obj = {}
+                if name := comicbox_obj.get(NAME_KEY):
+                    metron_obj["#text"] = name
+                self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
+                metron_objs.append(metron_obj)
+            if metron_objs:
+                sort = tag != STORIES_TAG
+                if sort:
+                    metron_objs = sorted(metron_objs, key=lambda o: o.get("#text"))
+                data[tag][sub_tag] = metron_objs
+        return data
+
+    def unparse_stories(self, data: dict) -> dict:
+        """Unparse stories into metron stories."""
+        return self._unparse_identified_name(data, STORIES_TAG)
 
     def _unparse_metron_id_attribute(
         self, data: dict, metron_tag: dict, comicbox_obj: dict
@@ -744,6 +809,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         hoist_reprints,
         consolidate_reprints,
         IdentifiersTransformMixin.parse_default_primary_identifier,
+        parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -756,4 +822,5 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         lower_metron_credits,
         map_story_arcs_to_arcs,
         lower_reprints,
+        unparse_stories,
     )

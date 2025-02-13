@@ -52,8 +52,8 @@ METADATA = MappingProxyType(
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
-            "title": "The Beginning",
             "series": {"name": "Captain Science"},
+            "stories": [{"name": "The Beginning"}],
             "summary": "A long example description",
             "volume": {"number": 1},
         }

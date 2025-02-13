@@ -19,26 +19,26 @@ WRITE_CONFIG = Namespace(
 METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "series": {"name": "Captain Science", "volume_count": 1},
-            "issue": "1",
-            "issue_number": Decimal(1),
-            "publisher": {"name": "Youthful Adventure Stories"},
-            "month": 11,
-            "year": 1950,
-            "genres": {"Science Fiction"},
-            "volume": {
-                "number": 1950,
-                "issue_count": 7,
-            },
             "contributors": {
                 "penciller": {"Wally Wood"},
                 "writer": {"Joe Orlando"},
             },
-            "language": "en",
             "country": "US",
-            "title": "The Beginning",
+            "genres": {"Science Fiction"},
+            "issue": "1",
+            "issue_number": Decimal(1),
+            "language": "en",
+            "month": 11,
             "page_count": 36,
+            "publisher": {"name": "Youthful Adventure Stories"},
+            "series": {"name": "Captain Science", "volume_count": 1},
+            "stories": [{"name": "The Beginning"}],
             "updated_at": TEST_DATETIME,
+            "volume": {
+                "issue_count": 7,
+                "number": 1950,
+            },
+            "year": 1950,
         }
     }
 )

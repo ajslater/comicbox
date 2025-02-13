@@ -72,7 +72,7 @@ VOLUME_NUMBER_KEY = "number"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
-ORDERED_SET_KEYS = frozenset({"remainders"})
+ORDERED_SET_KEYS = frozenset({"stories", "remainders"})
 
 
 # CONTRIBUTOR ROLES
@@ -142,14 +142,6 @@ class SeriesSchema(IdentifiedNameSchema):
     volume_count = IntegerField(minimum=0)
 
 
-class ImprintSchema(IdentifiedNameSchema):
-    """Imprint Schema."""
-
-
-class PublisherSchema(IdentifiedNameSchema):
-    """Publisher Schema."""
-
-
 class ReprintSchema(BaseSubSchema):
     """Schema for Reprints of this issue."""
 
@@ -177,6 +169,7 @@ class ComicboxSubSchemaMixin:
     community_rating = DecimalField(places=2)
     contributors = Nested(ContributorsSchema)
     country = CountryField()
+    collection_title = StringField()
     cover_image = StringField()
     critical_rating = DecimalField(places=2)
     date = DateField()
@@ -189,7 +182,7 @@ class ComicboxSubSchemaMixin:
     issue = StringField()
     issue_number = DecimalField(minimum=Decimal(0))
     issue_suffix = StringField()
-    imprint = Nested(ImprintSchema)
+    imprint = Nested(IdentifiedNameSchema)
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
     locations = StringSetField()
@@ -199,7 +192,7 @@ class ComicboxSubSchemaMixin:
     notes = StringField()
     page_count = IntegerField(minimum=0)
     pages = Nested(PageInfoSchema, many=True)
-    publisher = Nested(PublisherSchema)
+    publisher = Nested(IdentifiedNameSchema)
     price = DecimalField(places=2, minimum=Decimal(0))
     protagonist = StringField()
     reading_direction = ReadingDirectionField()
@@ -210,14 +203,13 @@ class ComicboxSubSchemaMixin:
     scan_info = StringField()
     series = Union([Nested(SeriesSchema), StringField()])
     series_groups = StringSetField()
-    stories = StringSetField()
+    store_date = DateField()
+    stories = Nested(IdentifiedNameSchema, many=True)
     story_arcs = DictStringField(values=IntegerField())
     summary = StringField()
     tagger = StringField()
     tags = StringSetField()
     teams = StringSetField()
-    title = StringField()
-    title_aliases = StringSetField()
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
     year = IntegerField()

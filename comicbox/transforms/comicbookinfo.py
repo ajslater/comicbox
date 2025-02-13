@@ -18,12 +18,14 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.title_stories_mixin import TitleStoriesMixin
 
 
 class ComicBookInfoTransform(
     ComicBookInfoCreditsTransformMixin,
     JsonTransform,
     NestedPublishingTagsMixin,
+    TitleStoriesMixin,
 ):
     """Comic Book Info transform."""
 
@@ -56,6 +58,7 @@ class ComicBookInfoTransform(
     VOLUME_COUNT_TAG = "numberOfVolumes"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "numberOfIssues"
+    TITLE_TAG = "title"
 
     def unwrap(self, data, root_tags=None) -> dict:
         """Retrieve the last modified timestamp."""
@@ -83,6 +86,7 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
+        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -91,4 +95,5 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
+        TitleStoriesMixin.unparse_stories,
     )

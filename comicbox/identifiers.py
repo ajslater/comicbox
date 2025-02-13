@@ -41,6 +41,7 @@ class IdentifierTypes:
     series: str = ""
     imprint: str = ""
     publisher: str = ""
+    story: str = ""
 
     _default_type: str = ""
     _map: frozenbidict[str, str] | None = None
@@ -184,7 +185,11 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             # Metron uses the slug for an id in most urls, not the actual metron id.
             domain="metron.cloud",
             types=IdentifierTypes(
-                issue="issue", series="series", publisher="publisher", imprint="imprint"
+                issue="issue",
+                series="series",
+                publisher="publisher",
+                imprint="imprint",
+                story="story",
             ),
             url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",
