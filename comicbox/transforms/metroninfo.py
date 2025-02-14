@@ -41,7 +41,6 @@ from comicbox.schemas.comicbox_mixin import (
     NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
-    PAGES_KEY,
     PENCILLER_KEY,
     PRICE_KEY,
     PRICES_KEY,
@@ -65,7 +64,6 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -153,7 +151,7 @@ def _copy_assign(key, data, value):
     return data
 
 
-class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixin):
+class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     """MetronInfo.xml Schema."""
 
     TRANSFORM_MAP = frozenbidict(
@@ -166,7 +164,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,
-            "Pages": PAGES_KEY,
             "Summary": SUMMARY_KEY,
             # "URL": WEB_KEY, code
         }
@@ -841,7 +838,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        ComicInfoPagesTransformMixin.parse_pages,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
         parse_gtin,
@@ -860,7 +856,6 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        ComicInfoPagesTransformMixin.unparse_pages,
         IdentifiersTransformMixin.unparse_identifiers,
         lower_metron_resource_lists,
         unparse_publisher,

@@ -4,6 +4,9 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
+from comicbox.fields.enum_fields import PageTypeField
+from comicbox.fields.fields import StringField
+from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.xml_fields import (
     XmlAgeRatingField,
     XmlCountryField,
@@ -18,8 +21,9 @@ from comicbox.fields.xml_fields import (
     XmlStringSetField,
     XmlYesNoField,
 )
+from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
-from comicbox.schemas.xml_sub_tags import create_pages_field
+from comicbox.schemas.xml_sub_tags import create_sub_tag_field
 
 GTIN_TAG = "GTIN"
 
@@ -31,6 +35,26 @@ INKER_TAG = "Inker"
 LETTTER_TAG = "Letterer"
 PENCILLER_TAG = "Penciller"
 WRITER_TAG = "Writer"
+
+
+class XmlPageInfoSchema(BaseSubSchema):
+    """ComicPageInfo Structure for ComicInfo.xml."""
+
+    class Meta(BaseSubSchema.Meta):
+        """Illegal Field Names."""
+
+        include = MappingProxyType(
+            {
+                "@Bookmark": StringField(),
+                "@DoublePage": BooleanField(),
+                "@Key": StringField(),
+                "@Image": IntegerField(minimum=0),
+                "@ImageWidth": IntegerField(minimum=0),
+                "@ImageHeight": IntegerField(minimum=0),
+                "@ImageSize": IntegerField(minimum=0),
+                "@Type": PageTypeField(),
+            }
+        )
 
 
 class ComicInfoSubSchema(XmlSubSchema):
@@ -59,7 +83,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     Notes = XmlStringField()
     Number = XmlStringField()
     PageCount = XmlIntegerField(minimum=0)  # recaluculated by comicbox
-    Pages = create_pages_field()
+    Pages = create_sub_tag_field("Page", Nested(XmlPageInfoSchema, many=True))
     Publisher = XmlStringField()
     Review = XmlStringField()
     ScanInformation = XmlStringField()

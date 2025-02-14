@@ -35,10 +35,7 @@ from comicbox.identifiers import (
 )
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
-from comicbox.schemas.xml_sub_tags import (
-    create_pages_field,
-    create_sub_tag_field,
-)
+from comicbox.schemas.xml_sub_tags import create_sub_tag_field
 
 
 def _create_text_schema(field: Field):
@@ -336,7 +333,6 @@ class MetronInfoSubSchema(XmlSubSchema):
     AgeRating = MetronAgeRatingField()
     URLs = create_sub_tag_field("URL", Nested(MetronURLSchema, many=True))
     Credits = create_sub_tag_field("Credit", Nested(MetronCreditSchema, many=True))
-    Pages = create_pages_field()
 
     class Meta(XmlSubSchema.Meta):
         """Schema Options."""
