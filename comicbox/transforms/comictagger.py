@@ -30,6 +30,7 @@ from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
+from comicbox.transforms.price_mixin import PriceMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.urns import (
@@ -47,6 +48,7 @@ class ComictaggerTransform(
     JsonTransform,
     NestedPublishingTagsMixin,
     TitleStoriesMixin,
+    PriceMixin,
 ):
     """Comictagger transform."""
 
@@ -182,6 +184,7 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
+        PriceMixin.parse_price,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -197,4 +200,5 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
+        PriceMixin.unparse_price,
     )

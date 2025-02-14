@@ -46,7 +46,7 @@ class CoMetSubSchema(XmlSubSchema):
     lastMark = XmlIntegerField(minimum=0)  # noqa: N815
     pages = XmlIntegerField(minimum=0)
     publisher = XmlStringField()
-    price = XmlDecimalField(minimum=Decimal("0.0"))
+    price = XmlDecimalField(minimum=Decimal("0.0"), places=2)
     rating = XmlStringField()
     readingDirection = XmlReadingDirectionField()  # noqa: N815
     rights = XmlStringField()

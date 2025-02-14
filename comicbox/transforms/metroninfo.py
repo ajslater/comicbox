@@ -1,6 +1,7 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
@@ -21,6 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
     CHARACTERS_KEY,
     COLORIST_KEY,
     CONTRIBUTORS_KEY,
+    COUNTRY_KEY,
     COVER_ARTIST_KEY,
     CREATOR_KEY,
     EDITOR_KEY,
@@ -42,6 +44,7 @@ from comicbox.schemas.comicbox_mixin import (
     PAGES_KEY,
     PENCILLER_KEY,
     PRICE_KEY,
+    PRICES_KEY,
     PUBLISHER_KEY,
     REPRINT_ISSUE_KEY,
     REPRINT_SERIES_KEY,
@@ -73,6 +76,7 @@ ARCS_TAG = "Arcs"
 ARC_NAME_TAG = "Name"
 ARC_NUMBER_TAG = "Number"
 CHARACTERS_TAG = "Characters"
+COUNTRY_ATTRIBUTE = "@country"
 CREATOR_TAG = "Creator"
 CREDITS_TAG = "Credits"
 GTIN_TAG = "GTIN"
@@ -87,6 +91,7 @@ LOCATIONS_TAG = "Locations"
 MANGA_VOLUME_TAG = "MangaVolume"
 NAME_TAG = "Name"
 PRICES_TAG = "Prices"
+PRICE_TAG = "Price"
 PRIMARY_ATTRIBUTE = "@primary"
 PUBLISHER_TAG = "Publisher"
 REPRINTS_TAG = "Reprints"
@@ -123,7 +128,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     {
         # Just hoist
         (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
-        (PRICES_TAG, None): PRICE_KEY,
+        (PRICES_TAG, None): PRICES_KEY,
         (URLS_TAG, None): URL_KEY,
         # Resources
         (CHARACTERS_TAG, None): CHARACTERS_KEY,
@@ -237,8 +242,8 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
             SERIES_ISSUE_COUNT_TAG: VOLUME_ISSUE_COUNT_KEY,
         }
     )
-    NEW_RESOURCE_TAGS = frozenset({STORIES_TAG})
-    NEW_RESOURCE_KEYS = frozenset({STORIES_KEY})
+    NEW_RESOURCE_TAGS = frozenset({STORIES_TAG, PRICES_TAG})
+    NEW_RESOURCE_KEYS = frozenset({STORIES_KEY, PRICES_KEY})
     GTIN_SUBTAGS = frozenbidict({ISBN_TAG: ISBN_NID, UPC_TAG: UPC_NID})
     SCHEMA_CLASS = MetronInfoSchema
     IDENTIFIERS_TAG = IDS_TAG
@@ -514,7 +519,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
     def parse_gtin(self, data):
         """Parse complex metron gtin structure into identifiers."""
-        complex_gtin = data.get(GTIN_TAG)
+        complex_gtin = data.pop(GTIN_TAG, None)
         if not complex_gtin:
             return data
         primary = False
@@ -595,7 +600,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
 
     def parse_metron_manga_volume(self, data):
         """Parse the metron MangaVolume tag."""
-        if volume_name := data.get(MANGA_VOLUME_TAG):
+        if volume_name := data.pop(MANGA_VOLUME_TAG, None):
             volume = data.get(VOLUME_KEY, {})
             volume[NAME_KEY] = volume_name
             data[VOLUME_KEY] = volume
@@ -795,6 +800,45 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         data[self.URLS_TAG][self.URLS_SUB_TAG].append(url_tag)
         return data
 
+    def parse_prices(self, data: dict) -> dict:
+        """Parse prices."""
+        if metron_prices := data.pop(PRICES_KEY, None):
+            comicbox_prices = []
+            for metron_price_obj in metron_prices:
+                price = get_cdata(metron_price_obj)
+                comicbox_price = {}
+                if price is not None:
+                    comicbox_price[PRICE_KEY] = price
+                if country := metron_price_obj.get(COUNTRY_ATTRIBUTE):
+                    comicbox_price[COUNTRY_KEY] = country
+                if comicbox_price:
+                    comicbox_prices.append(comicbox_price)
+            if comicbox_prices:
+                data[PRICES_KEY] = comicbox_prices
+        return data
+
+    def unparse_prices(self, data: dict) -> dict:
+        """Unparse Prices."""
+        if comicbox_prices := data.pop(PRICES_TAG, {}).pop(PRICE_TAG, None):
+            metron_prices = []
+            for comicbox_price in comicbox_prices:
+                metron_price = {}
+                price = comicbox_price.get(PRICE_KEY)
+                if price is not None:
+                    metron_price["#text"] = str(
+                        Decimal(price).quantize(Decimal("0.01"))
+                    )
+                    if country := comicbox_price.get(
+                        COUNTRY_KEY, data.get(COUNTRY_KEY)
+                    ):
+                        metron_price[COUNTRY_ATTRIBUTE] = country
+                if metron_price:
+                    metron_prices.append(metron_price)
+            if metron_prices:
+                prices = {PRICE_TAG: metron_prices}
+                data[PRICES_TAG] = prices
+        return data
+
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicInfoPagesTransformMixin.parse_pages,
@@ -811,6 +855,7 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         consolidate_reprints,
         IdentifiersTransformMixin.parse_default_primary_identifier,
         parse_stories,
+        parse_prices,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -824,4 +869,5 @@ class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixi
         map_story_arcs_to_arcs,
         lower_reprints,
         unparse_stories,
+        unparse_prices,
     )

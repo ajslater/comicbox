@@ -1,6 +1,7 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
+from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
 
@@ -68,14 +69,14 @@ def _get_xml_poly_text_field(
     return Union(fields)
 
 
-def _get_xml_list_string_or_schema(schema_class: type[Schema]) -> ListField:
+def _get_xml_list_text_or_schema(field: Field, schema_class: type[Schema]) -> ListField:
     """Get a List of either strings or nested schemas."""
     return ListField(
         Union(
             [
                 # First field is the unparse type
                 Nested(schema_class),
-                StringField(),
+                field,
             ]
         )
     )
@@ -247,6 +248,16 @@ class MetronSeriesSchema(BaseSubSchema):
         )
 
 
+class SpecialDecimalField(DecimalField):
+    """Fix bug in xmltodict."""
+
+    def _serialize(self, value, attr, obj, **kwargs):
+        """Fix bug in xmltodict."""
+        # https://github.com/martinblech/xmltodict/issues/366
+        result = super()._serialize(value, attr, obj, **kwargs)
+        return str(result)
+
+
 class MetronPriceSchema(BaseSubSchema):
     """Metron Price Schema."""
 
@@ -254,7 +265,12 @@ class MetronPriceSchema(BaseSubSchema):
         """XML Attributes."""
 
         include = MappingProxyType(
-            {"#text": DecimalField(required=True), "@country": CountryField()}
+            {
+                "#text": SpecialDecimalField(
+                    required=True, places=2, minimum=Decimal(0)
+                ),
+                "@country": CountryField(),
+            }
         )
 
 
@@ -295,11 +311,14 @@ class MetronInfoSubSchema(XmlSubSchema):
     Number = XmlStringField()
     # List preserves order
     Stories = create_sub_tag_field(
-        "Story", _get_xml_list_string_or_schema(MetronResourceSchema)
+        "Story", _get_xml_list_text_or_schema(StringField(), MetronResourceSchema)
     )
     Summary = XmlStringField()
     Prices = create_sub_tag_field(
-        "Price", _get_metron_resource_field(MetronPriceSchema, DecimalField)
+        "Price",
+        _get_xml_list_text_or_schema(
+            SpecialDecimalField(places=2, minimum=Decimal(0)), MetronPriceSchema
+        ),
     )
     CoverDate = XmlDateField()
     StoreDate = XmlDateField()

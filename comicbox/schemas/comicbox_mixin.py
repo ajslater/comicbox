@@ -28,6 +28,7 @@ from comicbox.schemas.base import BaseSubSchema
 ROOT_TAG = "comicbox"
 CHARACTERS_KEY = "characters"
 CONTRIBUTORS_KEY = "contributors"
+COUNTRY_KEY = "country"
 DATE_KEY = "date"
 DAY_KEY = "day"
 GENRES_KEY = "genres"
@@ -50,6 +51,7 @@ PAGE_COUNT_KEY = "page_count"
 PAGE_INDEX_KEY = "index"
 PAGE_TYPE_KEY = "page_type"
 PUBLISHER_KEY = "publisher"
+PRICES_KEY = "prices"
 PRICE_KEY = "price"
 REPRINTS_KEY = "reprints"
 REPRINT_ISSUE_KEY = "issue"
@@ -161,6 +163,13 @@ class IdentifierPrimarySource(BaseSubSchema):
     url = StringField()
 
 
+class PriceSchema(BaseSubSchema):
+    """Price Schema."""
+
+    country = CountryField()
+    price = DecimalField(places=2, minimum=Decimal(0))
+
+
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
@@ -194,7 +203,7 @@ class ComicboxSubSchemaMixin:
     page_count = IntegerField(minimum=0)
     pages = Nested(PageInfoSchema, many=True)
     publisher = Nested(IdentifiedNameSchema)
-    price = DecimalField(places=2, minimum=Decimal(0))
+    prices = Nested(PriceSchema, many=True)
     protagonist = StringField()
     reading_direction = ReadingDirectionField()
     remainders = StringListField()

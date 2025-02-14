@@ -38,7 +38,7 @@ FNS = MappingProxyType(
             "last_mark": 12,
             "original_format": "Comic",
             "page_count": 0,
-            "price": Decimal("0.10"),
+            "prices": [{"price": Decimal("0.10")}],
             "publisher": {"name": "Bell Features"},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
@@ -267,6 +267,10 @@ FNS = MappingProxyType(
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999",
             "original_format": "Single Issue",
             "page_count": 0,
+            "prices": [
+                {"country": "US", "price": Decimal("1.25")},
+                {"country": "GB", "price": Decimal("0.50")},
+            ],
             "publisher": {
                 "identifiers": {
                     "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"}

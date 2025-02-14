@@ -1,6 +1,7 @@
 """Test METRON module."""
 
 from argparse import Namespace
+from copy import deepcopy
 from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
@@ -9,7 +10,7 @@ import xmltodict
 
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.transforms.metroninfo import MetronInfoTransform
+from comicbox.transforms.metroninfo import PRICE_TAG, PRICES_TAG, MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME
 from tests.util import (
     TestParser,
@@ -78,6 +79,10 @@ READ_METADATA = MappingProxyType(
             "notes": METRON_NOTES,
             "original_format": "Single Issue",
             "page_count": 0,
+            "prices": [
+                {"country": "US", "price": Decimal("1.25").quantize(Decimal("0.01"))},
+                {"country": "GB", "price": Decimal("0.5").quantize(Decimal("0.01"))},
+            ],
             "publisher": {
                 "identifiers": {
                     "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"},
@@ -170,6 +175,12 @@ READ_METRON_DICT = MappingProxyType(
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
+            "Prices": {
+                "Price": [
+                    {"#text": "1.25", "@country": "US"},
+                    {"#text": "0.50", "@country": "GB"},
+                ]
+            },
             "Publisher": {
                 "@id": "11",
                 "Imprint": {"@id": "222", "#text": "Youthful Imprint"},
@@ -262,6 +273,12 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
+            "Prices": {
+                "Price": [
+                    {"#text": "1.25", "@country": "US"},
+                    {"#text": "0.50", "@country": "GB"},
+                ]
+            },
             "Publisher": {
                 "@id": "11",
                 "Imprint": {"@id": "222", "#text": "Youthful Imprint"},
@@ -311,12 +328,20 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
 WRITE_METRON_DICT = create_write_dict(
     READ_METRON_DICT, MetronInfoSchema, "Notes", notes=METRON_NOTES
 )
-READ_METRON_STR = xmltodict.unparse(
-    READ_METRON_DICT, pretty=True, short_empty_elements=True
-)
-WRITE_METRON_STR = xmltodict.unparse(
-    WRITE_METRON_DICT, pretty=True, short_empty_elements=True
-)
+
+
+def unparse_strinfigy_decimals(data):
+    """Stringify decimals for xmltodict."""
+    stringified_data = deepcopy(dict(data))
+    prices = stringified_data[MetronInfoSchema.ROOT_TAGS[0]][PRICES_TAG][PRICE_TAG]
+    for price in prices:
+        price["#text"] = str(price["#text"])
+    stringified_data[MetronInfoSchema.ROOT_TAGS[0]][PRICES_TAG][PRICE_TAG] = prices
+    return xmltodict.unparse(stringified_data, pretty=True, short_empty_elements=True)
+
+
+READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)
+WRITE_METRON_STR = unparse_strinfigy_decimals(WRITE_METRON_DICT)
 
 METRON_TESTER = TestParser(
     MetronInfoTransform,
@@ -334,12 +359,8 @@ METRON_TESTER = TestParser(
 SIMPLE_WRITE_METRON_DICT = create_write_dict(
     READ_METRON_DICT, MetronInfoSchema, "Notes", notes=METRON_NOTES
 )
-SIMPLE_READ_METRON_STR = xmltodict.unparse(
-    SIMPLE_READ_METRON_DICT, pretty=True, short_empty_elements=True
-)
-SIMPLE_WRITE_METRON_STR = xmltodict.unparse(
-    SIMPLE_WRITE_METRON_DICT, pretty=True, short_empty_elements=True
-)
+SIMPLE_READ_METRON_STR = unparse_strinfigy_decimals(SIMPLE_READ_METRON_DICT)
+SIMPLE_WRITE_METRON_STR = unparse_strinfigy_decimals(SIMPLE_WRITE_METRON_DICT)
 
 
 SIMPLE_METRON_TESTER = TestParser(

@@ -32,6 +32,7 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
+from comicbox.transforms.price_mixin import PriceMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
@@ -45,6 +46,7 @@ class CoMetTransform(
     NestedPublishingTagsMixin,
     IdentifiersTransformMixin,
     TitleStoriesMixin,
+    PriceMixin,
 ):
     """CoMet transforms."""
 
@@ -61,7 +63,7 @@ class CoMetTransform(
             "lastMark": "last_mark",
             "pages": PAGE_COUNT_KEY,
             # "publisher": "publisher", handled by code
-            # "price": PRICES_KEY code
+            # "price": PRICES_KEY coded
             "rating": "age_rating",
             "readingDirection": "reading_direction",
             # "rights": "rights", unused
@@ -93,6 +95,7 @@ class CoMetTransform(
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = ""
     TITLE_TAG = "title"
+    PRICE_TAG = "price"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -104,6 +107,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
+        PriceMixin.parse_price,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
@@ -114,6 +118,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
+        PriceMixin.unparse_price,
     )
 
     @staticmethod
