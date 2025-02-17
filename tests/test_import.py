@@ -20,12 +20,12 @@ FNS = MappingProxyType(
     {
         "comet.xml": {
             "age_rating": "Teen",
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
             "cover_image": "CaptainScience#1_01.jpg",
             "date": date(1950, 12, 1),
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -54,7 +54,7 @@ FNS = MappingProxyType(
             "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
             "country": "US",
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "issue": "1",
             "issue_number": Decimal("1"),
             "language": "en",
@@ -81,7 +81,7 @@ FNS = MappingProxyType(
             "country": "US",
             "day": 1,
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -121,11 +121,11 @@ FNS = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tagger": "comicbox dev",
-            "tags": {"a", "c", "b"},
+            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
             "updated_at": datetime(1970, 1, 1, 0, 0),
         },
         "comicinfo.xml": {
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
@@ -133,7 +133,7 @@ FNS = MappingProxyType(
             },
             "day": 1,
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -161,7 +161,7 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "comicinfo-metron-origin.xml": {
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
@@ -169,7 +169,7 @@ FNS = MappingProxyType(
             },
             "day": 1,
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -205,7 +205,7 @@ FNS = MappingProxyType(
             "country": "US",
             "day": 1,
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -229,7 +229,7 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "metroninfo.xml": {
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "collection_title": "Omnibus",
             "contributors": {
                 "inker": {"Wally Wood"},
@@ -238,7 +238,7 @@ FNS = MappingProxyType(
             },
             "date": date(1950, 11, 1),
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifier_primary_source": {
                 "nid": "metron",
                 "url": "https://metron.cloud/",

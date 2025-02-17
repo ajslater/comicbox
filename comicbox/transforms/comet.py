@@ -1,5 +1,7 @@
 """CoMet transforms."""
 
+from types import MappingProxyType
+
 from bidict import bidict
 from stringcase import camelcase
 
@@ -22,6 +24,7 @@ from comicbox.schemas.comicbox_mixin import (
     COVER_ARTIST_KEY,
     CREATOR_KEY,
     EDITOR_KEY,
+    GENRES_KEY,
     INKER_KEY,
     LETTERER_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -52,12 +55,10 @@ class CoMetTransform(
 
     TRANSFORM_MAP = bidict(
         {
-            "character": CHARACTERS_KEY,
             "coverImage": "cover_image",
             # "date": "date", handled by code
             "description": SUMMARY_KEY,
             "format": ORIGINAL_FORMAT_KEY,
-            "genre": "genres",
             # IDENTIFIER_TAG: "identifiers", handled by code
             # "language": LANGUAGE_KEY, handled by code
             "lastMark": "last_mark",
@@ -70,6 +71,12 @@ class CoMetTransform(
             # "series": SERIES_KEY,  handled by code
             # "title": "title", handled by code
             # "volume": VOLUME_KEY, handled by code
+        }
+    )
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            "character": CHARACTERS_KEY,
+            "genre": GENRES_KEY,
         }
     )
     CONTRIBUTOR_SCHEMA_MAP = bidict(

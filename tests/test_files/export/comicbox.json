@@ -2,8 +2,12 @@
   "appID": "comicbox/dev",
   "comicbox": {
     "characters": [
-      "Captain Science",
-      "Gordon Dane"
+      {
+        "name": "Captain Science"
+      },
+      {
+        "name": "Gordon Dane"
+      }
     ],
     "contributors": {
       "inker": [
@@ -19,7 +23,9 @@
     "day": 1,
     "ext": "cbz",
     "genres": [
-      "Science Fiction"
+      {
+        "name": "Science Fiction"
+      }
     ],
     "identifiers": {
       "comicvine": {

@@ -1,6 +1,7 @@
 """Comic Book Info transform to and from Comicbox format."""
 
 from datetime import datetime
+from types import MappingProxyType
 
 from bidict import bidict
 
@@ -36,7 +37,6 @@ class ComicBookInfoTransform(
             "comments": SUMMARY_KEY,
             # "country": "country", coded
             # "credits": "credits_list", coded
-            "genre": GENRES_KEY,
             # "issue": ISSUE_KEY, coded
             # "language": LANGUAGE_KEY, coded
             # "numberOfVolumes": "volume_count", coded
@@ -51,6 +51,11 @@ class ComicBookInfoTransform(
             # TAGS_KEY: TAGS_KEY, coded
             # "title": "title", coded
             # "volume": VOLUME_KEY, coded
+        }
+    )
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            "genre": GENRES_KEY,
         }
     )
     CREDITS_TAG = CREDITS_TAG

@@ -47,12 +47,11 @@ _KEYWORDS_TRANSFORM_CLASSES = (
     CoMetTransform,
     ComictaggerTransform,
     FilenameTransform,
-    TitleStoriesMixin,
 )
 LOG = getLogger(__name__)
 
 
-class PDFXmlTransform(XmlTransform):
+class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     """PDF Schema."""
 
     SCHEMA_CLASS = PDFXmlSchema
@@ -61,10 +60,15 @@ class PDFXmlTransform(XmlTransform):
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,
             "pdf:Creator": SCAN_INFO_KEY,  # original document creator
-            "pdf:Keywords": TAGS_KEY,
             "pdf:Producer": TAGGER_KEY,
-            "pdf:Subject": GENRES_KEY,
             # "pdf:Title": TITLE_KEY, coded
+        }
+    )
+    TAGS_TAG = "pdf:Keywords"
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            # TAGS_TAG: TAGS_KEY, specal code below
+            "pdf:Subject": GENRES_KEY,
         }
     )
     GROUP_KEYS = frozenset(
@@ -73,6 +77,7 @@ class PDFXmlTransform(XmlTransform):
     GROUP_TAG_DELIMETER = ":"
     TITLE_TAG = "pdf:Title"
     TITLE_STORIES_DELIMITER = ";"
+    LIST_KEYS = frozenset({TAGS_KEY})
 
     def aggregate_contributors(self, data):
         """Convert csv to writer credits."""
@@ -91,7 +96,7 @@ class PDFXmlTransform(XmlTransform):
 
     def _parse_metadata_from_tags(self, data, transform_class):
         """Parse comicinfo from keywords."""
-        tags = data.get(TAGS_KEY)
+        tags = data.get(self.TAGS_TAG)
         transform = transform_class(self._path)
         schema = transform.SCHEMA_CLASS()
         try:
@@ -112,16 +117,18 @@ class PDFXmlTransform(XmlTransform):
         return False
 
     def _parse_comma_delimited_tags(self, data):
-        tags = data.get(TAGS_KEY)
-        tags = StringSetField()._deserialize(tags)  # noqa: SLF001
-        data[TAGS_KEY] = tags
+        if tags := data.get(self.TAGS_TAG):
+            tags = StringSetField()._deserialize(tags)  # noqa: SLF001
+            data[self.TAGS_TAG] = tags
 
     def parse_tags(self, data):
         """Parse different possible keyword schemas."""
         for transform_class in _KEYWORDS_TRANSFORM_CLASSES:
             if self._parse_metadata_from_tags(data, transform_class):
                 return data
+        # Comma delimited string
         self._parse_comma_delimited_tags(data)
+        self.string_list_to_names_one(data, self.TAGS_TAG, TAGS_KEY)
         return data
 
     def unparse_tags(self, data):
@@ -129,7 +136,7 @@ class PDFXmlTransform(XmlTransform):
         transform = self._transform_class(self._path)
         schema = transform.SCHEMA_CLASS()
         if (md := transform.from_comicbox(data)) and (tags := schema.dumps(md)):
-            data[TAGS_KEY] = tags
+            data[self.TAGS_TAG] = tags
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (
@@ -166,13 +173,19 @@ class MuPDFTransform(PDFXmlTransform):
     SCHEMA_CLASS = MuPDFSchema
     AUTHOR_TAG = "author"
     TITLE_TAG = "title"
+    TAGS_TAG = "keywords"
     TRANSFORM_MAP = bidict(
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,
             "creator": SCAN_INFO_KEY,  # original document creator
-            "keywords": TAGS_KEY,
             "producer": TAGGER_KEY,
-            "subject": GENRES_KEY,
             # "title": "title", coded
         }
     )
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            # "keywords": TAGS_KEY, code
+            "subject": GENRES_KEY,
+        }
+    )
+    LIST_KEYS = frozenset({TAGS_KEY})

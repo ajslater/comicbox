@@ -34,16 +34,16 @@ READ_METADATA = MappingProxyType(
             "volume": {"number": 1950, "issue_count": 7},
             "language": "en",
             "notes": TEST_READ_NOTES,
-            "characters": {
-                "Captain Science",
-                "Gordon Dane",
-            },
+            "characters": [
+                {"name": "Captain Science"},
+                {"name": "Gordon Dane"},
+            ],
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
                 "writer": {"Joe Orlando"},
             },
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",

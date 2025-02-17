@@ -1,28 +1,37 @@
 """Transforms to and from ComicRack's ComicInfo.xml schema."""
 
+from types import MappingProxyType
+
 from bidict import bidict
 
 from comicbox.identifiers import GTIN_NID
 from comicbox.schemas.comicbox_mixin import (
+    AGE_RATING_KEY,
     CHARACTERS_KEY,
     COLORIST_KEY,
+    COUNTRY_KEY,
     COVER_ARTIST_KEY,
     CREATOR_KEY,
+    DAY_KEY,
     EDITOR_KEY,
     GENRES_KEY,
     INKER_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
     LETTERER_KEY,
+    LOCATIONS_KEY,
+    MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PENCILLER_KEY,
     SCAN_INFO_KEY,
+    SERIES_GROUPS_KEY,
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
     WRITER_KEY,
+    YEAR_KEY,
 )
 from comicbox.schemas.comicinfo import (
     COLORIST_TAG,
@@ -63,27 +72,24 @@ class ComicInfoTransform(
 
     TRANSFORM_MAP = bidict(
         {
-            "AgeRating": "age_rating",
+            "AgeRating": AGE_RATING_KEY,
             # REPRINTS
             # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
             # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
             # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
             #
             "BlackAndWhite": "monochrome",
-            "Characters": CHARACTERS_KEY,
             "CommunityRating": "community_rating",
-            "Country": "country",
+            "Country": COUNTRY_KEY,
             # "Count": ISSUE_COUNT_KEY, coded
-            "Day": "day",
-            "Genre": GENRES_KEY,
+            "Day": DAY_KEY,
             # "GTIN": IDENTIFIERS_KEY, coded
             "Format": ORIGINAL_FORMAT_KEY,
             # "Imprint": IMPRINT_KEY, coded
             "LanguageISO": LANGUAGE_KEY,
-            "Locations": "locations",
             "MainCharacterOrTeam": "protagonist",
             "Manga": "manga",
-            "Month": "month",
+            "Month": MONTH_KEY,
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
@@ -92,21 +98,27 @@ class ComicInfoTransform(
             "Review": "review",
             "ScanInformation": SCAN_INFO_KEY,
             # "Series": SERIES_KEY, coded
-            "SeriesGroup": "series_groups",
             # STORY_ARCS
             # "StoryArc": STORY_ARC_KEY, coded
             # "StoryArcNumber": STORY_ARC_NUMBER_KEY, coded
             ##
-            "Tags": TAGS_KEY,
-            "Teams": TEAMS_KEY,
             # "Title": "title", coded
             "Summary": SUMMARY_KEY,
             # "Volume": VOLUME_KEY, coded
             # "Web": WEB_KEY, coded
-            "Year": "year",
+            "Year": YEAR_KEY,
         }
     )
-
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            "Characters": CHARACTERS_KEY,
+            "Genre": GENRES_KEY,
+            "Locations": LOCATIONS_KEY,
+            "SeriesGroup": SERIES_GROUPS_KEY,
+            "Tags": TAGS_KEY,
+            "Teams": TEAMS_KEY,
+        }
+    )
     CONTRIBUTOR_SCHEMA_MAP = bidict(
         {
             COLORIST_KEY: COLORIST_TAG,

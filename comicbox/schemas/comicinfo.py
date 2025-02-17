@@ -22,8 +22,7 @@ from comicbox.fields.xml_fields import (
     XmlYesNoField,
 )
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
-from comicbox.schemas.xml_sub_tags import create_sub_tag_field
+from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
 GTIN_TAG = "GTIN"
 

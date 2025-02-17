@@ -1,7 +1,7 @@
 comicbox:
   characters:
-    - Captain Science
-    - Gordon Dane
+    - name: Captain Science
+    - name: Gordon Dane
   contributors:
     inker:
       - Wally Wood
@@ -12,7 +12,7 @@ comicbox:
   day: 1
   ext: cbz
   genres:
-    - Science Fiction
+    - name: Science Fiction
   identifiers:
     comicvine:
       nss: '145269'

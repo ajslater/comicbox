@@ -31,7 +31,7 @@ METADATA = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tagger": "comicbox dev",
-            "tags": {"a", "b", "c"},
+            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
             "page_count": 0,
         }
     }
@@ -40,7 +40,7 @@ EMPTY_MD = MappingProxyType({ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
     "comicbox",
     "-m",
-    "tags: 'a, b, c',publisher: {name: TestPub},story_arcs: {d: 1,e: 3,f: 5}",
+    "tags: [{name: a}, {name: b},{name: c}],publisher: {name: TestPub},story_arcs: {d: 1,e: 3,f: 5}",
     "-m",
     "imprint: {name: TestImprint}",
 )
@@ -52,7 +52,7 @@ CLI_DICT = MappingProxyType(
             "publisher": {"name": "TestPub"},
             "series": "empty",
             "story_arcs": {"d": 1, "e": 3, "f": 5},
-            "tags": ["a", "b", "c"],
+            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
             "page_count": 0,
         }
     }
@@ -73,7 +73,16 @@ TMP_MULTI_PATH = TMP_DIR / CBZ_MULTI_SOURCE_PATH.name
 TEST_EXPORT_PATH = TMP_DIR / ComicboxCLISchema.FILENAME
 CLI_PATH = TEST_METADATA_DIR / ComicboxCLISchema.FILENAME
 METADATA_REPLACE = MappingProxyType(
-    {ROOT_TAG: {**METADATA[ROOT_TAG], "tags": {"d", "e", "f"}}}
+    {
+        ROOT_TAG: {
+            **METADATA[ROOT_TAG],
+            "tags": [
+                {"name": "d"},
+                {"name": "e"},
+                {"name": "f"},
+            ],
+        }
+    }
 )
 
 
@@ -126,7 +135,7 @@ def test_cli_action_write_replace():
         "-w",
         "cr",
         "-m",
-        "tags: 'd, e, f'",
+        "tags: [{name: d},{name: e},{name: f}]",
         "-R",
         str(TMP_PATH),
     )

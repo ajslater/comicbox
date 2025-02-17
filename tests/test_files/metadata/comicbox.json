@@ -12,7 +12,9 @@
     "country": "US",
     "day": 1,
     "genres": [
-      "Science Fiction"
+      {
+        "name": "Science Fiction"
+      }
     ],
     "identifiers": {
       "comicvine": {

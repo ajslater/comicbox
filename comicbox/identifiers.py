@@ -42,6 +42,11 @@ class IdentifierTypes:
     imprint: str = ""
     publisher: str = ""
     story: str = ""
+    genre: str = ""
+    tag: str = ""
+    character: str = ""
+    team: str = ""
+    location: str = ""
 
     _default_type: str = ""
     _map: frozenbidict[str, str] | None = None
@@ -125,7 +130,14 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         ),
         COMICVINE_NID: IdentifierParts(
             domain="comicvine.gamespot.com",
-            types=IdentifierTypes(issue="4000", series="4050", publisher="4010"),
+            types=IdentifierTypes(
+                issue="4000",
+                series="4050",
+                publisher="4010",
+                character="4005",
+                team="4060",
+                location="4020",
+            ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
             url_path_template="c/{nsstype}-{nss}/",
         ),
@@ -190,6 +202,11 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 publisher="publisher",
                 imprint="imprint",
                 story="story",
+                genre="genre",
+                character="character",
+                tag="tag",
+                team="team",
+                location="location",
             ),
             url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",

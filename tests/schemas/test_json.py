@@ -36,7 +36,7 @@ READ_METADATA = MappingProxyType(
             "month": 11,
             "year": 1950,
             "day": 1,
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "volume": {
                 "number": 1950,
                 "issue_count": 7,
@@ -104,7 +104,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "writer": ["Joe Orlando"],
             },
             "day": 1,
-            "genres": ["Science Fiction"],
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",

@@ -42,16 +42,13 @@ READ_METADATA = MappingProxyType(
             },
             "language": "en",
             "notes": TEST_READ_NOTES,
-            "characters": {
-                "Captain Science",
-                "Gordon Dane",
-            },
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
                 "writer": {"Joe Orlando"},
             },
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "pages": [
                 {"index": 0, "size": 429985, "page_type": PageTypeEnum.FRONT_COVER},
                 {"index": 1, "size": 332936},

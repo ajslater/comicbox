@@ -12,6 +12,7 @@ from comicbox.schemas.comicbox_mixin import (
     PAGES_KEY,
     REPRINTS_KEY,
     ROOT_TAG,
+    STORIES_KEY,
 )
 from comicbox.transforms.reprints import sort_reprints
 
@@ -98,6 +99,40 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 ordered_set[key_value] = value
         merged_md[key] = list(ordered_set.values())
 
+    @staticmethod
+    def _item_hash(item):
+        if isinstance(item, Mapping):
+            item = frozenset(item.items())
+        elif isinstance(item, set | list | tuple):
+            item = frozenset(item)
+        if isinstance(item, frozenset):
+            return hash(item)
+        return item
+
+    @classmethod
+    def _merge_list(cls, merged_md, key, sequence):
+        """Merge a list, usually eliminating duplicates and sorting."""
+        remove_dupes = True
+        if remove_dupes:
+            old_hashes = {cls._item_hash(item) for item in merged_md[key]}
+            for new_item in sequence:
+                if (
+                    new_item not in EMPTY_VALUES
+                    and cls._item_hash(new_item) not in old_hashes
+                ):
+                    merged_md[key].append(new_item)
+        else:
+            merged_md[key].extend(sequence)
+
+        do_sort = key != STORIES_KEY
+        if do_sort:
+            if isinstance(merged_md[key][0], Mapping):
+                merged_md[key] = sorted(
+                    merged_md[key], key=lambda o: [o.get(NAME_KEY), *sorted(o.items())]
+                )
+            else:
+                merged_md[key] = sorted(merged_md[key])
+
     def _merge_key(self, merged_md, key, value):  # noqa: C901
         """Merge complex values."""
         try:
@@ -115,7 +150,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 new_value = merged_md[key] + value
                 merged_md[key] = sort_reprints(new_value)
             elif isinstance(value, list | tuple):
-                merged_md[key].extend(value)
+                self._merge_list(merged_md, key, value)
             elif isinstance(value, set | frozenset):
                 merged_md[key].update(value)
             elif isinstance(value, Mapping):

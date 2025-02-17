@@ -24,7 +24,7 @@ METADATA = MappingProxyType(
                 "writer": {"Joe Orlando"},
             },
             "country": "US",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "issue": "1",
             "issue_number": Decimal(1),
             "language": "en",

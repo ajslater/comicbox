@@ -37,17 +37,17 @@ READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
             "date": date(year=1950, month=11, day=1),
-            "characters": {
-                "Captain Science",
-                "Gordon Dane",
-            },
+            "characters": [
+                {"name": "Captain Science"},
+                {"name": "Gordon Dane"},
+            ],
             "collection_title": "Omnibus",
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
                 "writer": {"Joe Orlando"},
             },
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "imprint": {
                 "identifiers": {
                     "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"},
@@ -262,7 +262,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "ISBN": "123-456789-0123",
                 "UPC": "12345",
             },
-            "Genres": {"Genre": "Science Fiction"},
+            "Genres": {"Genre": ["Science Fiction"]},
             "IDS": {
                 "ID": [
                     {"@source": "Comic Vine", "#text": "145269"},
@@ -310,7 +310,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Stories": {
                 "Story": [
                     {"@id": "5555", "#text": "Captain Lost"},
-                    {"#text": "Science is Good"},
+                    "Science is Good",
                 ]
             },
             "URLs": {
@@ -391,7 +391,13 @@ def test_metron_from_dict():
 
 def test_metron_from_string():
     """Test metadata import from string."""
+    from pprint import pprint
+
+    print("READ")
+    pprint(METRON_TESTER.read_reference_native_dict)
     METRON_TESTER.test_from_string()
+    print("SIMPLE_READ")
+    pprint(SIMPLE_METRON_TESTER.read_reference_native_dict)
     SIMPLE_METRON_TESTER.test_from_string()
 
 

@@ -42,7 +42,7 @@ class Fixture:
 TEMPLATE_MD = MappingProxyType(
     {
         ROOT_TAG: {
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},
                 "penciller": {"Wally Wood"},
@@ -50,7 +50,7 @@ TEMPLATE_MD = MappingProxyType(
             },
             "day": 1,
             "ext": "cbz",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -162,12 +162,12 @@ PDF_MD = MappingProxyType(
         ROOT_TAG: {
             "contributors": {"writer": {"Jon Osterman"}},
             "ext": "pdf",
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
             "stories": [{"name": "the tangle of their lives"}],
-            "tags": {"d", "f", "e"},
+            "tags": [{"name": "d"}, {"name": "e"}, {"name": "f"}],
             "tagger": f"comicbox {VERSION}",
             "publisher": {"name": "SmallPub"},
         }

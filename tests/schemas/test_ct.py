@@ -35,7 +35,7 @@ READ_METADATA = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "year": 1950,
             "day": 1,
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "volume": {"number": 1950, "issue_count": 7},
             "contributors": {
                 "penciller": {"Wally Wood"},

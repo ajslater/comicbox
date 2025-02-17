@@ -26,6 +26,7 @@ from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
 
 ROOT_TAG = "comicbox"
+AGE_RATING_KEY = "age_rating"
 CHARACTERS_KEY = "characters"
 CONTRIBUTORS_KEY = "contributors"
 COUNTRY_KEY = "country"
@@ -58,6 +59,7 @@ REPRINT_ISSUE_KEY = "issue"
 REPRINT_SERIES_KEY = "series"
 SCAN_INFO_KEY = "scan_info"
 SERIES_KEY = "series"
+SERIES_GROUPS_KEY = "series_groups"
 SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORIES_KEY = "stories"
@@ -175,7 +177,7 @@ class ComicboxSubSchemaMixin:
 
     age_rating = AgeRatingField()
     alternate_images = StringSetField()
-    characters = StringSetField()
+    characters = Nested(IdentifiedNameSchema, many=True)
     community_rating = DecimalField(places=2)
     contributors = Nested(ContributorsSchema)
     country = CountryField()
@@ -186,7 +188,7 @@ class ComicboxSubSchemaMixin:
     day = IntegerField(minimum=1, maximum=31)
     ext = StringField()
     original_format = OriginalFormatField()
-    genres = StringSetField()
+    genres = Nested(IdentifiedNameSchema, many=True)
     identifiers = IdentifiersField()
     identifier_primary_source = Nested(IdentifierPrimarySource)
     issue = StringField()
@@ -195,7 +197,7 @@ class ComicboxSubSchemaMixin:
     imprint = Nested(IdentifiedNameSchema)
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
-    locations = StringSetField()
+    locations = Nested(IdentifiedNameSchema, many=True)
     manga = MangaField()
     month = IntegerField(minimum=1, maximum=12)
     monochrome = BooleanField()
@@ -218,8 +220,8 @@ class ComicboxSubSchemaMixin:
     story_arcs = DictStringField(values=IntegerField())
     summary = StringField()
     tagger = StringField()
-    tags = StringSetField()
-    teams = StringSetField()
+    tags = Nested(IdentifiedNameSchema, many=True)
+    teams = Nested(IdentifiedNameSchema, many=True)
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
     year = IntegerField()

@@ -16,7 +16,7 @@ from tests.util import diff_strings
 CLI_METADATA_ARGS = (
     ROOT_TAG,
     "-m",
-    "Tags: 'a, b, c',Publisher: TestPub,story_arcs: {d: 1,e: 3,f: 5}",
+    "Tags: 'a, b, c',Publisher: TestPub,StoryArc: 'd,e,f', StoryArcNumber: '1,3,5'",
     "-m",
     "imprint: {name: TestImprint}",
 )
@@ -29,7 +29,7 @@ CLI_DICT = MappingProxyType(
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
-            "tags": ["a", "b", "c"],
+            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
         }
     }
 )

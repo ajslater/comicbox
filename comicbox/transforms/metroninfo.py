@@ -70,6 +70,7 @@ from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
+# Move into class.
 ARCS_TAG = "Arcs"
 ARC_NAME_TAG = "Name"
 ARC_NUMBER_TAG = "Number"
@@ -142,9 +143,21 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         # CREDITS
     }
 )
+# change to identifier enums
+_METRON_RESOURCES = MappingProxyType(
+    {
+        CHARACTERS_KEY: ("character", CHARACTERS_TAG),
+        GENRES_KEY: ("genre", GENRES_TAG),
+        LOCATIONS_KEY: ("location", LOCATIONS_TAG),
+        STORIES_KEY: ("story", STORIES_TAG),
+        TAGS_KEY: ("tag", TAGS_TAG),
+        TEAMS_KEY: ("team", TEAMS_TAG),
+    }
+)
 
 
 def _copy_assign(key, data, value):
+    # used in two locations check on that.
     if not value:
         return data
     data[key] = value
@@ -157,7 +170,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     TRANSFORM_MAP = frozenbidict(
         {
             "AgeRating": "age_rating",
-            "BlackAndWhite": "monochrome",
             "CollectionTitle": "collection_title",
             "CoverDate": "date",
             "StoreDate": "store_date",
@@ -239,8 +251,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             SERIES_ISSUE_COUNT_TAG: VOLUME_ISSUE_COUNT_KEY,
         }
     )
-    NEW_RESOURCE_TAGS = frozenset({STORIES_TAG, PRICES_TAG})
-    NEW_RESOURCE_KEYS = frozenset({STORIES_KEY, PRICES_KEY})
     GTIN_SUBTAGS = frozenbidict({ISBN_TAG: ISBN_NID, UPC_TAG: UPC_NID})
     SCHEMA_CLASS = MetronInfoSchema
     IDENTIFIERS_TAG = IDS_TAG
@@ -254,25 +264,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
             # ignores id tag
             tag, single_tag = tags
-            resources = self.hoist_tag(tag, data, single_tag=single_tag)
-            if not resources:
-                continue
-            if tag in self.NEW_RESOURCE_TAGS:
+            if resources := self.hoist_tag(tag, data, single_tag=single_tag):
                 update_dict[key] = resources
-                continue
-            # REMOVE after Locations is done
-            names = set()
-            if isinstance(resources, Sequence | set | frozenset) and not isinstance(
-                resources, str
-            ):
-                for resource in resources:
-                    name = get_cdata(resource)
-                    if name:
-                        names.add(name)
-            else:
-                names.add(resources)
-            if names:
-                update_dict[key] = sorted(names)
         if update_dict:
             data.update(update_dict)
         return data
@@ -285,13 +278,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             if not names:
                 continue
             tag, single_tag = tags
-            if key in self.NEW_RESOURCE_KEYS:
-                resources = names
-            else:
-                # REMOVE after Locations is done
-                names = sorted(frozenset(names))
-                resources = tuple({"#text": name} for name in names if name)
-            self.lower_tag(tag, tag, update_dict, resources, single_tag=single_tag)
+            self.lower_tag(tag, tag, update_dict, names, single_tag=single_tag)
         if update_dict:
             data.update(update_dict)
         return data
@@ -353,9 +340,12 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 data[key] = comicbox_objs
         return data
 
-    def parse_stories(self, data: dict) -> dict:
+    def parse_metron_resources(self, data: dict) -> dict:
         """Parse Metron Stories."""
-        return self._parse_identified_name(data, "story", STORIES_KEY)
+        for key, md in _METRON_RESOURCES.items():
+            nss_type, _ = md
+            data = self._parse_identified_name(data, nss_type, key)
+        return data
 
     def _unparse_identified_name(self, data: dict, tag: str) -> dict:
         """Unparse identifierd names into Metron Resource Types."""
@@ -375,9 +365,12 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 data[tag][sub_tag] = metron_objs
         return data
 
-    def unparse_stories(self, data: dict) -> dict:
+    def unparse_metron_resources(self, data: dict) -> dict:
         """Unparse stories into metron stories."""
-        return self._unparse_identified_name(data, STORIES_TAG)
+        for md in _METRON_RESOURCES.values():
+            _, tag = md
+            data = self._unparse_identified_name(data, tag)
+        return data
 
     def _unparse_metron_id_attribute(
         self, data: dict, metron_tag: dict, comicbox_obj: dict
@@ -850,7 +843,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         hoist_reprints,
         consolidate_reprints,
         IdentifiersTransformMixin.parse_default_primary_identifier,
-        parse_stories,
+        parse_metron_resources,
         parse_prices,
     )
 
@@ -863,6 +856,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         lower_metron_credits,
         map_story_arcs_to_arcs,
         lower_reprints,
-        unparse_stories,
+        unparse_metron_resources,
         unparse_prices,
     )

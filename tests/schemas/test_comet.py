@@ -26,13 +26,13 @@ METADATA = MappingProxyType(
         ROOT_TAG: {
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
-            "characters": {"Captain Science", "Gordon Dane"},
+            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "writer": {"Joe Orlando"},
                 "penciller": {"Wally Wood"},
             },
             "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
-            "genres": {"Science Fiction"},
+            "genres": [{"name": "Science Fiction"}],
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",

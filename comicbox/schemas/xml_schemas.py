@@ -4,8 +4,11 @@ from abc import ABC
 from types import MappingProxyType
 
 import xmltodict
-from marshmallow.fields import Constant
+from marshmallow.fields import Constant, Field, Nested
+from marshmallow.schema import Schema
+from marshmallow_union import Union
 
+from comicbox.fields.always_list_field import AlwaysListField
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 
@@ -39,7 +42,6 @@ class XmlSubSchema(BaseSubSchema, ABC):
 
         include = MappingProxyType(
             {
-                # "@xmlns:comicbox": Constant("https://github.com/ajslater/comicbox/"),
                 "@xmlns:xsd": Constant("http://www.w3.org/2001/XMLSchema"),
                 "@xmlns:xsi": Constant("http://www.w3.org/2001/XMLSchema-instance"),
                 XSI_SCHEMA_LOCATION_KEY: Constant(
@@ -56,3 +58,30 @@ class XmlSchema(BaseSchema, ABC):
         """Schema Options."""
 
         render_module = XmlRenderModule
+
+
+def create_sub_tag_field(
+    sub_tag: str,
+    field: Field,
+) -> Nested:
+    """Create a nested single schema, common to xml schemas."""
+    sub_tag_schema_name = sub_tag + "Schema"
+    sub_tag_schema_class = type(sub_tag_schema_name, (BaseSubSchema,), {sub_tag: field})
+    return Nested(sub_tag_schema_class)
+
+
+def xml_polyfield(schema_class: type[Schema], field: Field) -> Union:
+    """Get a Union of nested schemas and fields."""
+    return Union(
+        [
+            # First field is the unparse type
+            Nested(schema_class),
+            field,
+        ]
+    )
+
+
+def xml_list_polyfield(schema_class: type[Schema], field: Field) -> AlwaysListField:
+    """Get a List of unions."""
+    union_field = xml_polyfield(schema_class, field)
+    return AlwaysListField(union_field)

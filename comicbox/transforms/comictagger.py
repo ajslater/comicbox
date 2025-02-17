@@ -1,5 +1,7 @@
 """Comictagger transform to and from Comicbox format."""
 
+from types import MappingProxyType
+
 from bidict import bidict
 
 from comicbox.identifiers import (
@@ -7,10 +9,16 @@ from comicbox.identifiers import (
     create_identifier,
 )
 from comicbox.schemas.comicbox_mixin import (
+    CHARACTERS_KEY,
+    GENRES_KEY,
     IDENTIFIERS_KEY,
+    LOCATIONS_KEY,
     ORIGINAL_FORMAT_KEY,
+    SERIES_GROUPS_KEY,
     SERIES_KEY,
     SUMMARY_KEY,
+    TAGS_KEY,
+    TEAMS_KEY,
 )
 from comicbox.schemas.comictagger import (
     IDENTIFIER_TAG,
@@ -68,6 +76,16 @@ class ComictaggerTransform(
             # "credits": "credits_list", (copy from cbi, with different tags)
             # "pages": PAGES_KEY, (copy from comicinfo)
             # "is_version_of": (copy from comet with different tags)
+        }
+    )
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+        {
+            "characters": CHARACTERS_KEY,
+            "genres": GENRES_KEY,
+            "locations": LOCATIONS_KEY,
+            "series_group": SERIES_GROUPS_KEY,
+            "tags": TAGS_KEY,
+            "teams": TEAMS_KEY,
         }
     )
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG

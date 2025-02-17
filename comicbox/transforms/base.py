@@ -34,11 +34,13 @@ class BaseTransform:
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = bidict()
+    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType({})
     CONTRIBUTOR_COMICBOX_MAP = MappingProxyType({})
     CONTRIBUTOR_SCHEMA_MAP = MappingProxyType({})
     SIMPLE_STRING_SCHEMAS = MappingProxyType(
         {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
     )
+    LIST_KEYS = frozenset()
 
     def __init__(self, path=None):
         """Initialize instances."""
@@ -86,7 +88,7 @@ class BaseTransform:
     # TRANSFORMS #
     ##############
 
-    def copy_keys(self, data, transform_map, to_comicbox: bool = False):  # noqa: FBT002
+    def copy_keys(self, data: dict, transform_map: bidict, to_comicbox: bool = False):  # noqa: FBT002
         """Copy values between schemas with transformed keys."""
         if to_comicbox:
             transform_map = transform_map.inverse
@@ -96,13 +98,35 @@ class BaseTransform:
                 data[to_key] = value
         return data
 
-    def copy_keys_to(self, data):
+    def copy_keys_to(self, data: dict):
         """Copy keys to comicbox keys."""
         return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=False)
 
-    def copy_keys_from(self, data):
+    def copy_keys_from(self, data: dict):
         """Copy keys from comicbox keys."""
         return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=True)
+
+    def string_list_to_names_one(self, data, from_key, to_key):
+        """Transform one sequence of strings to comicbox name objects."""
+        string_list = sorted(data.pop(from_key, []))
+        if obj_list := [{NAME_KEY: string} for string in string_list if string]:
+            data[to_key] = obj_list
+
+    def string_lists_to_names(self, data: dict):
+        """Copy string lists to named objects in comicbox."""
+        for from_key, to_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
+            self.string_list_to_names_one(data, from_key, to_key)
+        return data
+
+    def named_objs_to_string_lists(self, data: dict):
+        """Copy named objects in comicbox to string lists."""
+        for to_key, from_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
+            obj_list = data.pop(from_key, [])
+            if string_list := [name for obj in obj_list if (name := obj.get(NAME_KEY))]:
+                if to_key not in self.LIST_KEYS:
+                    string_list = set(string_list)
+                data[to_key] = string_list
+        return data
 
     def canonize_contributors(self, data):
         """Force contributors into comicbox canon roles."""
@@ -129,9 +153,9 @@ class BaseTransform:
             data[key] = {subkey: value}
         return data
 
-    TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to,)
+    TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_names)
     TO_COMICBOX_POST_TRANSFORM = (canonize_contributors, expand_str_to_schema)
-    FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from,)
+    FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, named_objs_to_string_lists)
     FROM_COMICBOX_POST_TRANSFORM = ()
 
     ##################################
@@ -154,6 +178,7 @@ class BaseTransform:
             LOG.debug(f"{type(self)} sub_data:")
             LOG.debug(pformat(sub_data))
         for method in methods:
+            # Get the overridden method from this isnstance, not the parents.
             sub_data = method(self, sub_data)
             if debug_transform and LOG.isEnabledFor(DEBUG):
                 LOG.debug(f"{type(self)}.{method}:")

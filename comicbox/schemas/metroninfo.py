@@ -6,20 +6,16 @@ from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Field, Nested
-from marshmallow.schema import Schema
-from marshmallow_union import Union
 
-from comicbox.fields.collection_fields import ListField
+from comicbox.fields.always_list_field import AlwaysListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.xml_fields import (
-    XmlBooleanField,
     XmlDateField,
     XmlEnumField,
     XmlIntegerField,
     XmlStringField,
-    XmlStringSetField,
 )
 from comicbox.identifiers import (
     ANILIST_NID,
@@ -34,49 +30,13 @@ from comicbox.identifiers import (
     NID_ORIGIN_MAP,
 )
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
-from comicbox.schemas.xml_sub_tags import create_sub_tag_field
-
-
-def _create_text_schema(field: Field):
-    """Create a text schema with a designated field type."""
-    schema_name = field.__class__.__name__ + "TextSchema"
-    schema_meta_class = type(
-        "Meta", (BaseSubSchema.Meta,), {"include": {"#text": field}}
-    )
-    return type(schema_name, (BaseSubSchema,), {"Meta": schema_meta_class})
-
-
-def _get_xml_poly_text_field(
-    field: Field | None = None,
-    many: bool = False,  # noqa: FBT002
-    collection_field: Field | None = None,
-    schema_class: type[Schema] | None = None,
-):
-    """Get a union field of xml list variations."""
-    fields = []
-    if not schema_class and field:
-        schema_class = _create_text_schema(field)
-    if schema_class:
-        fields.append(Nested(schema_class, many=many))
-    if collection_field:
-        fields.append(collection_field)
-    if field:
-        fields.append(field)
-    return Union(fields)
-
-
-def _get_xml_list_text_or_schema(field: Field, schema_class: type[Schema]) -> ListField:
-    """Get a List of either strings or nested schemas."""
-    return ListField(
-        Union(
-            [
-                # First field is the unparse type
-                Nested(schema_class),
-                field,
-            ]
-        )
-    )
+from comicbox.schemas.xml_schemas import (
+    XmlSchema,
+    XmlSubSchema,
+    create_sub_tag_field,
+    xml_list_polyfield,
+    xml_polyfield,
+)
 
 
 class MetronIDAttrField(StringField):
@@ -94,21 +54,14 @@ class MetronResourceSchema(BaseSubSchema):
         )
 
 
-def _get_metron_polyfield():
-    """Get a metron union field of xml list variations."""
-    return _get_xml_poly_text_field(
-        many=True,
-        collection_field=XmlStringSetField(),
-        schema_class=MetronResourceSchema,
-    )
-
-
-def _get_metron_resource_field(
-    schema_class: type[BaseSubSchema] = MetronResourceSchema,
-    field_class: type[Field] = XmlStringField,
-):
+def _metron_resource_field() -> Field:
     """Get metron union resource and simple text field."""
-    return _get_xml_poly_text_field(field=field_class(), schema_class=schema_class)
+    return xml_polyfield(MetronResourceSchema, StringField())
+
+
+def _metron_resource_list_field() -> AlwaysListField:
+    """Get metron union resource and simple text field."""
+    return xml_list_polyfield(MetronResourceSchema, StringField())
 
 
 class MetronAgeRatingField(XmlEnumField):
@@ -196,7 +149,7 @@ class MetronPublisherSchema(BaseSubSchema):
     """Metron Publisher Schema."""
 
     Name = XmlStringField()
-    Imprint = _get_metron_resource_field()
+    Imprint = _metron_resource_field()
 
     class Meta(BaseSubSchema.Meta):
         """XML Attributes."""
@@ -245,7 +198,7 @@ class MetronSeriesSchema(BaseSubSchema):
         )
 
 
-class SpecialDecimalField(DecimalField):
+class BugfixComplexDecimalField(DecimalField):
     """Fix bug in xmltodict."""
 
     def _serialize(self, value, attr, obj, **kwargs):
@@ -263,7 +216,7 @@ class MetronPriceSchema(BaseSubSchema):
 
         include = MappingProxyType(
             {
-                "#text": SpecialDecimalField(
+                "#text": BugfixComplexDecimalField(
                     required=True, places=2, minimum=Decimal(0)
                 ),
                 "@country": CountryField(),
@@ -293,8 +246,8 @@ class MetronArcSchema(BaseSubSchema):
 class MetronCreditSchema(BaseSubSchema):
     """Metron Credit Schema."""
 
-    Creator = _get_metron_resource_field()
-    Roles = create_sub_tag_field("Role", _get_metron_polyfield())
+    Creator = _metron_resource_field()
+    Roles = create_sub_tag_field("Role", _metron_resource_list_field())
 
 
 class MetronInfoSubSchema(XmlSubSchema):
@@ -306,30 +259,26 @@ class MetronInfoSubSchema(XmlSubSchema):
     MangaVolume = XmlStringField()
     CollectionTitle = XmlStringField()
     Number = XmlStringField()
-    # List preserves order
-    Stories = create_sub_tag_field(
-        "Story", _get_xml_list_text_or_schema(StringField(), MetronResourceSchema)
-    )
+    Stories = create_sub_tag_field("Story", _metron_resource_list_field())
     Summary = XmlStringField()
     Prices = create_sub_tag_field(
         "Price",
-        _get_xml_list_text_or_schema(
-            SpecialDecimalField(places=2, minimum=Decimal(0)), MetronPriceSchema
+        xml_list_polyfield(
+            MetronPriceSchema, BugfixComplexDecimalField(places=2, minimum=Decimal(0))
         ),
     )
     CoverDate = XmlDateField()
     StoreDate = XmlDateField()
     PageCount = XmlIntegerField(minimum=0)
     Notes = XmlStringField()
-    Genres = create_sub_tag_field("Genre", _get_metron_polyfield())
-    Tags = create_sub_tag_field("Tag", _get_metron_polyfield())
+    Genres = create_sub_tag_field("Genre", _metron_resource_list_field())
+    Tags = create_sub_tag_field("Tag", _metron_resource_list_field())
     Arcs = create_sub_tag_field("Arc", Nested(MetronArcSchema, many=True))
-    Characters = create_sub_tag_field("Character", _get_metron_polyfield())
-    Teams = create_sub_tag_field("Team", _get_metron_polyfield())
-    Locations = create_sub_tag_field("Location", _get_metron_polyfield())
-    Reprints = create_sub_tag_field("Reprint", _get_metron_polyfield())
+    Characters = create_sub_tag_field("Character", _metron_resource_list_field())
+    Teams = create_sub_tag_field("Team", _metron_resource_list_field())
+    Locations = create_sub_tag_field("Location", _metron_resource_list_field())
+    Reprints = create_sub_tag_field("Reprint", _metron_resource_list_field())
     GTIN = Nested(MetronGTINSchema)
-    BlackAndWhite = XmlBooleanField()
     AgeRating = MetronAgeRatingField()
     URLs = create_sub_tag_field("URL", Nested(MetronURLSchema, many=True))
     Credits = create_sub_tag_field("Credit", Nested(MetronCreditSchema, many=True))

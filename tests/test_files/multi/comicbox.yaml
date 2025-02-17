@@ -4,7 +4,7 @@ comicbox:
   story_arcs: { h: 7, i: 11, j: 13 }
   tagger: comicbox dev
   tags:
-    - a
-    - b
-    - c
+    - name: a
+    - name: b
+    - name: c
   updated_at: 1970-01-01T00:00:00

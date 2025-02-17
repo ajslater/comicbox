@@ -10,6 +10,7 @@ from comicbox.schemas.comicbox_mixin import (
     INKER_KEY,
     LETTERER_KEY,
     PENCILLER_KEY,
+    STORIES_KEY,
     WRITER_KEY,
 )
 
@@ -31,3 +32,4 @@ class ComicboxTransformMixin:
         }
     )
     CONTRIBUTOR_SCHEMA_MAP = CONTRIBUTOR_COMICBOX_MAP
+    LIST_KEYS = frozenset({STORIES_KEY})
