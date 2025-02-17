@@ -304,6 +304,7 @@ FNS = MappingProxyType(
             ],
             "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
             "tagger": "comicbox dev",
+            "universes": [{"designation": "4242", "name": "Mirror"}],
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 10, "name": "NineteenFifty", "number": 1950},
         },

@@ -39,7 +39,7 @@
 		<Genre>Science Fiction</Genre>
 	</Genres>
 	<IDS>
-		<ID source="Metron" primary="True">999999</ID>
+		<ID primary="True" source="Metron">999999</ID>
 		<ID source="Comic Vine">145269</ID>
 	</IDS>
 	<MangaVolume>NineteenFifty</MangaVolume>
@@ -81,4 +81,10 @@
 		<URL>https://isbndb.com/book/123-456789-0123</URL>
 		<URL>https://barcodelookup.com/12345</URL>
 	</URLs>
+	<Universes>
+		<Universe>
+			<Designation>4242</Designation>
+			<Name>Mirror</Name>
+		</Universe>
+	</Universes>
 </MetronInfo>

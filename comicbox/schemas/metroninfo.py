@@ -231,6 +231,18 @@ class MetronGTINSchema(BaseSubSchema):
     UPC = XmlStringField()
 
 
+class MetronUniverseSchema(BaseSubSchema):
+    """Metron Universe Schema."""
+
+    Name = XmlStringField(required=True)
+    Designation = XmlStringField()
+
+    class Meta(BaseSchema.Meta):
+        """XML Attributes."""
+
+        include = MappingProxyType({"@id": MetronIDAttrField()})
+
+
 class MetronArcSchema(BaseSubSchema):
     """Metron Story Arc Schema."""
 
@@ -253,7 +265,7 @@ class MetronCreditSchema(BaseSubSchema):
 class MetronInfoSubSchema(XmlSubSchema):
     """MetronInfo.xml Sub Schema."""
 
-    IDS = create_sub_tag_field("ID", Nested(MetronIDSchema, many=True))
+    IDS = create_sub_tag_field("ID", AlwaysListField(Nested(MetronIDSchema)))
     Publisher = Nested(MetronPublisherSchema)
     Series = Nested(MetronSeriesSchema)
     MangaVolume = XmlStringField()
@@ -273,15 +285,20 @@ class MetronInfoSubSchema(XmlSubSchema):
     Notes = XmlStringField()
     Genres = create_sub_tag_field("Genre", _metron_resource_list_field())
     Tags = create_sub_tag_field("Tag", _metron_resource_list_field())
-    Arcs = create_sub_tag_field("Arc", Nested(MetronArcSchema, many=True))
+    Arcs = create_sub_tag_field("Arc", AlwaysListField(Nested(MetronArcSchema)))
     Characters = create_sub_tag_field("Character", _metron_resource_list_field())
     Teams = create_sub_tag_field("Team", _metron_resource_list_field())
+    Universes = create_sub_tag_field(
+        "Universe", AlwaysListField(Nested(MetronUniverseSchema))
+    )
     Locations = create_sub_tag_field("Location", _metron_resource_list_field())
     Reprints = create_sub_tag_field("Reprint", _metron_resource_list_field())
     GTIN = Nested(MetronGTINSchema)
     AgeRating = MetronAgeRatingField()
-    URLs = create_sub_tag_field("URL", Nested(MetronURLSchema, many=True))
-    Credits = create_sub_tag_field("Credit", Nested(MetronCreditSchema, many=True))
+    URLs = create_sub_tag_field("URL", AlwaysListField(Nested(MetronURLSchema)))
+    Credits = create_sub_tag_field(
+        "Credit", AlwaysListField(Nested(MetronCreditSchema))
+    )
 
     class Meta(XmlSubSchema.Meta):
         """Schema Options."""

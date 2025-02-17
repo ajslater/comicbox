@@ -25,6 +25,7 @@ from comicbox.schemas.comicbox_mixin import (
     COUNTRY_KEY,
     COVER_ARTIST_KEY,
     CREATOR_KEY,
+    DESIGNATION_KEY,
     EDITOR_KEY,
     GENRES_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
@@ -56,6 +57,7 @@ from comicbox.schemas.comicbox_mixin import (
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
+    UNIVERSES_KEY,
     VOLUME_COUNT_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
@@ -85,6 +87,7 @@ ID_TAG = "ID"
 ID_ATTRIBUTE = "@id"
 ISBN_TAG = "ISBN"
 UPC_TAG = "UPC"
+DESIGNATION_TAG = "Designation"
 GENRES_TAG = "Genres"
 LOCATIONS_TAG = "Locations"
 MANGA_VOLUME_TAG = "MangaVolume"
@@ -111,6 +114,8 @@ STORIES_TAG = "Stories"
 STORY_TAG = "Story"
 TEAMS_TAG = "Teams"
 TAGS_TAG = "Tags"
+UNIVERSES_TAG = "Universes"
+UNIVERSE_TAG = "Universe"
 URLS_TAG = "URLs"
 URL_TAG = "URL"
 
@@ -137,7 +142,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (TAGS_TAG, None): TAGS_KEY,
         (STORIES_TAG, STORY_TAG): STORIES_KEY,
         # Add
-        # UNIVERSES
+        (UNIVERSES_TAG, None): UNIVERSES_KEY,
         # Add
         # REPRINTS
         # CREDITS
@@ -251,6 +256,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             SERIES_ISSUE_COUNT_TAG: VOLUME_ISSUE_COUNT_KEY,
         }
     )
+    UNIVERSE_TAG_MAP = frozenbidict(
+        {NAME_TAG: NAME_KEY, DESIGNATION_TAG: DESIGNATION_KEY}
+    )
     GTIN_SUBTAGS = frozenbidict({ISBN_TAG: ISBN_NID, UPC_TAG: UPC_NID})
     SCHEMA_CLASS = MetronInfoSchema
     IDENTIFIERS_TAG = IDS_TAG
@@ -284,9 +292,11 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         return data
 
     def _parse_metron_tag_identifier(
-        self, data: dict, nss_type: str, nss: str, comicbox_obj: dict
+        self, data: dict, nss_type: str, metron_obj: Mapping, comicbox_obj: dict
     ):
         """Parse the metron series identifier."""
+        if not (nss := metron_obj.get(ID_ATTRIBUTE)):
+            return
         nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
         comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
         comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
@@ -299,8 +309,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         if not imprint_name:
             return
         imprint = {NAME_KEY: imprint_name}
-        if imprint_nss := metron_imprint.get(ID_ATTRIBUTE):
-            self._parse_metron_tag_identifier(data, "imprint", imprint_nss, imprint)
+        self._parse_metron_tag_identifier(data, "imprint", metron_imprint, imprint)
         if imprint_name:
             data[IMPRINT_KEY] = imprint
 
@@ -310,10 +319,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         if not metron_publisher:
             return data
         publisher = {NAME_KEY: metron_publisher.get(NAME_TAG)}
-        if publisher_nss := metron_publisher.get(ID_ATTRIBUTE):
-            self._parse_metron_tag_identifier(
-                data, "publisher", publisher_nss, publisher
-            )
+        self._parse_metron_tag_identifier(
+            data, "publisher", metron_publisher, publisher
+        )
         if publisher:
             data[PUBLISHER_KEY] = publisher
 
@@ -328,10 +336,10 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 comicbox_obj = {}
                 if name := get_cdata(metron_obj):
                     comicbox_obj[NAME_KEY] = name
-                if isinstance(metron_obj, Mapping) and (
-                    nss := metron_obj.get(ID_ATTRIBUTE)
-                ):
-                    self._parse_metron_tag_identifier(data, nss_type, nss, comicbox_obj)
+                if isinstance(metron_obj, Mapping):
+                    self._parse_metron_tag_identifier(
+                        data, nss_type, metron_obj, comicbox_obj
+                    )
                 if comicbox_obj:
                     comicbox_objs.append(comicbox_obj)
             if comicbox_objs:
@@ -341,7 +349,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         return data
 
     def parse_metron_resources(self, data: dict) -> dict:
-        """Parse Metron Stories."""
+        """Parse Metron Resources."""
         for key, md in _METRON_RESOURCES.items():
             nss_type, _ = md
             data = self._parse_identified_name(data, nss_type, key)
@@ -366,14 +374,14 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         return data
 
     def unparse_metron_resources(self, data: dict) -> dict:
-        """Unparse stories into metron stories."""
+        """Unparse stories into metron Resources."""
         for md in _METRON_RESOURCES.values():
             _, tag = md
             data = self._unparse_identified_name(data, tag)
         return data
 
     def _unparse_metron_id_attribute(
-        self, data: dict, metron_tag: dict, comicbox_obj: dict
+        self, data: dict, metron_obj: dict, comicbox_obj: dict
     ):
         """Unparse Metron series identifiers from series identifiers."""
         comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
@@ -382,7 +390,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
         for nid, identifier in comicbox_identifiers.items():
             if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
-                metron_tag[ID_ATTRIBUTE] = nss
+                metron_obj[ID_ATTRIBUTE] = nss
                 break
 
     def unparse_publisher(self, data):
@@ -569,10 +577,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         series = {}
 
         self._copy_tags(metron_series, series, self.SERIES_TAG_MAP)
-
-        if series_nss := metron_series.get(ID_ATTRIBUTE):
-            self._parse_metron_tag_identifier(data, "series", series_nss, series)
-
+        self._parse_metron_tag_identifier(data, "series", metron_series, series)
         if series:
             update_dict[SERIES_KEY] = series
 
@@ -829,6 +834,43 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 data[PRICES_TAG] = prices
         return data
 
+    def parse_universes(self, data: dict) -> dict:
+        """Parse Universes."""
+        if metron_universes := data.pop(UNIVERSES_KEY, None):
+            comicbox_universes = []
+            for metron_universe in metron_universes:
+                comicbox_universe = {}
+                for tag, key in self.UNIVERSE_TAG_MAP.items():
+                    if value := metron_universe.get(tag):
+                        comicbox_universe[key] = value
+                self._parse_metron_tag_identifier(
+                    data, "universe", metron_universe, comicbox_universe
+                )
+                if comicbox_universe:
+                    comicbox_universes.append(comicbox_universe)
+            if comicbox_universes:
+                data[UNIVERSES_KEY] = comicbox_universes
+        return data
+
+    def unparse_universes(self, data: dict) -> dict:
+        """Unparse Universes."""
+        if comicbox_universes := data.pop(UNIVERSES_TAG, {}).pop(UNIVERSE_TAG, None):
+            metron_universes = []
+            for comicbox_universe in comicbox_universes:
+                metron_universe = {}
+                for tag, key in self.UNIVERSE_TAG_MAP.items():
+                    if value := comicbox_universe.get(key):
+                        metron_universe[tag] = value
+                self._unparse_metron_id_attribute(
+                    data, metron_universe, comicbox_universe
+                )
+                if metron_universe:
+                    metron_universes.append(metron_universe)
+            if metron_universes:
+                universes = {UNIVERSE_TAG: metron_universes}
+                data[UNIVERSES_TAG] = universes
+        return data
+
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         IdentifiersTransformMixin.parse_identifiers,
@@ -845,6 +887,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         IdentifiersTransformMixin.parse_default_primary_identifier,
         parse_metron_resources,
         parse_prices,
+        parse_universes,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -858,4 +901,5 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         lower_reprints,
         unparse_metron_resources,
         unparse_prices,
+        unparse_universes,
     )

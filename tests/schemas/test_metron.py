@@ -1,4 +1,4 @@
-"""Test METRON module."""
+"""Test MetronInfo Schema."""
 
 from argparse import Namespace
 from copy import deepcopy
@@ -120,6 +120,7 @@ READ_METADATA = MappingProxyType(
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
+            "universes": [{"name": "Mirror", "designation": "4242"}],
             "volume": {
                 "name": "NineteenFifty",
                 "number": 1950,
@@ -167,7 +168,7 @@ READ_METRON_DICT = MappingProxyType(
             "Genres": {"Genre": [{"#text": "Science Fiction"}]},
             "IDS": {
                 "ID": [
-                    {"@source": "Metron", "#text": "999999", "@primary": True},
+                    {"@primary": True, "@source": "Metron", "#text": "999999"},
                     {"@source": "Comic Vine", "#text": "145269"},
                 ],
             },
@@ -223,6 +224,7 @@ READ_METRON_DICT = MappingProxyType(
                     {"#text": "https://barcodelookup.com/12345"},
                 ]
             },
+            "Universes": {"Universe": [{"Designation": "4242", "Name": "Mirror"}]},
         }
     }
 )
@@ -266,7 +268,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "IDS": {
                 "ID": [
                     {"@source": "Comic Vine", "#text": "145269"},
-                    {"@source": "Metron", "#text": "999999", "@primary": True},
+                    {"@primary": True, "@source": "Metron", "#text": "999999"},
                 ],
             },
             "MangaVolume": "NineteenFifty",
@@ -313,6 +315,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                     "Science is Good",
                 ]
             },
+            "Universes": {"Universe": [{"Name": "Mirror", "Designation": "4242"}]},
             "URLs": {
                 "URL": [
                     {"#text": "https://metron.cloud/issue/999999", "@primary": True},

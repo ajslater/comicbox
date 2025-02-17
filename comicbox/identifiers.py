@@ -36,17 +36,18 @@ DEFAULT_NSS_TYPE = "issue"
 class IdentifierTypes:
     """URL slugs for identifier types."""
 
-    issue: str = ""
-    volume: str = ""
-    series: str = ""
-    imprint: str = ""
-    publisher: str = ""
-    story: str = ""
-    genre: str = ""
-    tag: str = ""
     character: str = ""
-    team: str = ""
+    genre: str = ""
+    imprint: str = ""
+    issue: str = ""
     location: str = ""
+    publisher: str = ""
+    series: str = ""
+    story: str = ""
+    tag: str = ""
+    team: str = ""
+    universe: str = ""
+    volume: str = ""
 
     _default_type: str = ""
     _map: frozenbidict[str, str] | None = None
@@ -131,12 +132,12 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         COMICVINE_NID: IdentifierParts(
             domain="comicvine.gamespot.com",
             types=IdentifierTypes(
-                issue="4000",
-                series="4050",
-                publisher="4010",
                 character="4005",
-                team="4060",
+                issue="4000",
                 location="4020",
+                publisher="4010",
+                series="4050",
+                team="4060",
             ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
             url_path_template="c/{nsstype}-{nss}/",
@@ -150,7 +151,11 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         GCD_NID: IdentifierParts(
             domain="comics.org",
             types=IdentifierTypes(
-                issue="issue", series="series", publisher="indicia_publisher"
+                character="character",
+                issue="issue",
+                series="series",
+                publisher="indicia_publisher",
+                universe="universe",
             ),
             url_path_regex=r"(?P<nsstype>\w+)/(?P<nss>\d+)/?",
             url_path_template="{nsstype}/{nss}/",
@@ -197,16 +202,17 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             # Metron uses the slug for an id in most urls, not the actual metron id.
             domain="metron.cloud",
             types=IdentifierTypes(
-                issue="issue",
-                series="series",
-                publisher="publisher",
-                imprint="imprint",
-                story="story",
-                genre="genre",
                 character="character",
+                genre="genre",
+                imprint="imprint",
+                issue="issue",
+                location="location",
+                publisher="publisher",
+                series="series",
+                story="story",
                 tag="tag",
                 team="team",
-                location="location",
+                universe="universe",
             ),
             url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",

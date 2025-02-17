@@ -32,6 +32,7 @@ CONTRIBUTORS_KEY = "contributors"
 COUNTRY_KEY = "country"
 DATE_KEY = "date"
 DAY_KEY = "day"
+DESIGNATION_KEY = "designation"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
 IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
@@ -69,6 +70,7 @@ SUMMARY_KEY = "summary"
 TAGGER_KEY = "tagger"
 TAGS_KEY = "tags"
 TEAMS_KEY = "teams"
+UNIVERSES_KEY = "universes"
 UPDATED_AT_KEY = "updated_at"
 VOLUME_KEY = "volume"
 VOLUME_COUNT_KEY = "volume_count"
@@ -172,6 +174,12 @@ class PriceSchema(BaseSubSchema):
     price = DecimalField(places=2, minimum=Decimal(0))
 
 
+class UniverseSchema(IdentifiedNameSchema):
+    """Universe Schema."""
+
+    designation = StringField()
+
+
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
@@ -222,6 +230,7 @@ class ComicboxSubSchemaMixin:
     tagger = StringField()
     tags = Nested(IdentifiedNameSchema, many=True)
     teams = Nested(IdentifiedNameSchema, many=True)
+    universes = Nested(UniverseSchema, many=True)
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
     year = IntegerField()
