@@ -11,7 +11,7 @@ import xmltodict
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.metroninfo import PRICE_TAG, PRICES_TAG, MetronInfoTransform
-from tests.const import METRON_CBZ_FN, TEST_DATETIME
+from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
     create_write_dict,
@@ -174,6 +174,7 @@ READ_METRON_DICT = MappingProxyType(
                     {"@source": "Comic Vine", "#text": "145269"},
                 ],
             },
+            "LastModified": TEST_DTTM_STR,
             "MangaVolume": "NineteenFifty",
             "Notes": METRON_NOTES,
             "Number": "1",
@@ -274,6 +275,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                     {"@primary": True, "@source": "Metron", "#text": "999999"},
                 ],
             },
+            "LastModified": TEST_DTTM_STR,
             "MangaVolume": "NineteenFifty",
             "Notes": METRON_NOTES,
             "Number": "1",
