@@ -18,7 +18,7 @@ from comicbox.fields.enum_fields import (
 from comicbox.fields.fields import IssueField, StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time_fields import DateField
+from comicbox.fields.time_fields import DateField, DateTimeField
 
 
 def get_cdata(value):
@@ -56,8 +56,16 @@ class XmlIssueField(IssueField):
         return super()._deserialize(*args, **kwargs)
 
 
-# TIME
+# DATETIME
 class XmlDateField(DateField):
+    """Check for cdata."""
+
+    @cdata
+    def _deserialize(self, *args, **kwargs):
+        return super()._deserialize(*args, **kwargs)
+
+
+class XmlDateTimeField(DateTimeField):
     """Check for cdata."""
 
     @cdata

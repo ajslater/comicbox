@@ -13,6 +13,7 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.xml_fields import (
     XmlDateField,
+    XmlDateTimeField,
     XmlEnumField,
     XmlIntegerField,
     XmlStringField,
@@ -297,10 +298,13 @@ class MetronInfoSubSchema(XmlSubSchema):
     Reprints = create_sub_tag_field("Reprint", _metron_resource_list_field())
     GTIN = Nested(MetronGTINSchema)
     AgeRating = MetronAgeRatingField()
-    URLs = create_sub_tag_field("URL", xml_list_polyfield(MetronURLSchema, StringField()))
+    URLs = create_sub_tag_field(
+        "URL", xml_list_polyfield(MetronURLSchema, StringField())
+    )
     Credits = create_sub_tag_field(
         "Credit", AlwaysListField(Nested(MetronCreditSchema))
     )
+    LastModified = XmlDateTimeField()
 
     class Meta(XmlSubSchema.Meta):
         """Schema Options."""

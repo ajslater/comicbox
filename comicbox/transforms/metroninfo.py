@@ -10,6 +10,7 @@ from bidict import frozenbidict
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.dict_funcs import deep_update, sort_dict
+from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     DEFAULT_NID,
@@ -26,6 +27,7 @@ from comicbox.schemas.comicbox_mixin import (
     COUNTRY_KEY,
     COVER_ARTIST_KEY,
     CREATOR_KEY,
+    DATE_KEY,
     DESIGNATION_KEY,
     EDITOR_KEY,
     GENRES_KEY,
@@ -59,6 +61,7 @@ from comicbox.schemas.comicbox_mixin import (
     TAGS_KEY,
     TEAMS_KEY,
     UNIVERSES_KEY,
+    UPDATED_AT_KEY,
     VOLUME_COUNT_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
@@ -137,7 +140,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
         (PRICES_TAG, None): PRICES_KEY,
         (URLS_TAG, None): URL_KEY,
-
         # Resources
         (CHARACTERS_TAG, None): CHARACTERS_KEY,
         (GENRES_TAG, None): GENRES_KEY,
@@ -145,7 +147,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
         (STORIES_TAG, STORY_TAG): STORIES_KEY,
-
         # Add
         (UNIVERSES_TAG, None): UNIVERSES_KEY,
         # Add
@@ -168,7 +169,7 @@ _METRON_RESOURCES = MappingProxyType(
 
 def _copy_assign(key, data, value):
     # used in two locations check on that.
-    if not value:
+    if value in EMPTY_VALUES:
         return data
     data[key] = value
     return data
@@ -179,15 +180,14 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     TRANSFORM_MAP = frozenbidict(
         {
-            # "AgeRating": "age_rating", code
             "CollectionTitle": "collection_title",
-            "CoverDate": "date",
+            "CoverDate": DATE_KEY,
             "StoreDate": "store_date",
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,
             "Summary": SUMMARY_KEY,
-            # "URL": WEB_KEY, code
+            "LastModified": UPDATED_AT_KEY,
         }
     )
     CONTRIBUTOR_COMICBOX_MAP = MappingProxyType(
