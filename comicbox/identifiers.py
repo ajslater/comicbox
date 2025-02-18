@@ -44,6 +44,7 @@ class IdentifierTypes:
     publisher: str = ""
     series: str = ""
     story: str = ""
+    story_arc: str = ""
     tag: str = ""
     team: str = ""
     universe: str = ""
@@ -137,6 +138,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 location="4020",
                 publisher="4010",
                 series="4050",
+                story_arc="4045",
                 team="4060",
             ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
@@ -210,6 +212,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 publisher="publisher",
                 series="series",
                 story="story",
+                story_arc="arc",
                 tag="tag",
                 team="team",
                 universe="universe",

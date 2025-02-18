@@ -29,7 +29,7 @@ METADATA = MappingProxyType(
             "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": 1, "e": 3, "f": 5},
+            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
             "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
             "page_count": 0,
@@ -40,7 +40,7 @@ EMPTY_MD = MappingProxyType({ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
     "comicbox",
     "-m",
-    "tags: [{name: a}, {name: b},{name: c}],publisher: {name: TestPub},story_arcs: {d: 1,e: 3,f: 5}",
+    "tags: [{name: a}, {name: b},{name: c}],publisher: {name: TestPub},story_arcs: {d: {number: 1},e: {number: 3},f: {number: 5}}",
     "-m",
     "imprint: {name: TestImprint}",
 )

@@ -111,8 +111,8 @@ READ_METADATA = MappingProxyType(
                 {"name": "Science is Good"},
             ],
             "story_arcs": {
-                "Captain Arc": 4,
-                "Other Arc": 2,
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
             },
             "reprints": [
                 {"language": "es", "series": {"name": "Capitán Ciencia"}},

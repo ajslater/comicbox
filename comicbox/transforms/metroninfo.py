@@ -488,31 +488,36 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         return data
 
     def map_arcs_to_story_arcs(self, data):
-        """Convert metron arcs to story arcs."""
-        arcs = self.hoist_tag(ARCS_TAG, data)
-        if not arcs:
+        """Convert metron arcs list to story arcs map."""
+        if not (metron_arcs := self.hoist_tag(ARCS_TAG, data)):
             return data
-        story_arcs = {}
-        for arc in arcs:
-            name = arc.get(ARC_NAME_TAG)
-            if not name:
+        comicbox_story_arcs = {}
+        for metron_arc in metron_arcs:
+            if not (name := metron_arc.get(ARC_NAME_TAG)):
                 continue
-            number = arc.get(ARC_NUMBER_TAG)
-            story_arcs[name] = number
-        return _copy_assign(STORY_ARCS_KEY, data, story_arcs)
+            comicbox_story_arc = {}
+            number = metron_arc.get(ARC_NUMBER_TAG)
+            if number is not None:
+                comicbox_story_arc[NUMBER_KEY] = number
+            self._parse_metron_tag_identifier(
+                data, "story_arc", metron_arc, comicbox_story_arc
+            )
+            comicbox_story_arcs[name] = comicbox_story_arc
+        return _copy_assign(STORY_ARCS_KEY, data, comicbox_story_arcs)
 
     def map_story_arcs_to_arcs(self, data):
         """Convert story arc dict to metron arcs list."""
-        story_arcs = data.get(STORY_ARCS_KEY)
-        if not story_arcs:
+        if not (comicbox_story_arcs := data.pop(STORY_ARCS_KEY, None)):
             return data
-        arcs = []
-        for name, number in story_arcs.items():
-            arc = {ARC_NAME_TAG: name}
+        metron_arcs = []
+        for name, comicbox_story_arc in comicbox_story_arcs.items():
+            metron_arc = {ARC_NAME_TAG: name}
+            number = comicbox_story_arc.get(NUMBER_KEY)
             if number is not None:
-                arc[ARC_NUMBER_TAG] = number
-            arcs.append(arc)
-        self.lower_tag(ARCS_TAG, ARCS_TAG, data, arcs)
+                metron_arc[ARC_NUMBER_TAG] = number
+            self._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
+            metron_arcs.append(metron_arc)
+        self.lower_tag(ARCS_TAG, ARCS_TAG, data, metron_arcs)
         return data
 
     def parse_gtin(self, data):

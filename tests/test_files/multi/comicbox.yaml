@@ -1,7 +1,13 @@
 comicbox:
   imprint:
     name: CLIImprint
-  story_arcs: { h: 7, i: 11, j: 13 }
+  story_arcs:
+    h: 
+      number: 7
+    i: 
+      number: 11
+    j:
+      number: 13
   tagger: comicbox dev
   tags:
     - name: a

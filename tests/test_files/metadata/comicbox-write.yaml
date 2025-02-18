@@ -50,13 +50,15 @@ comicbox:
   series:
     name: empty
   story_arcs:
-    d: 1
-    e: 3
-    f: 5
+    d:
+      number: 1
+    e:
+      number: 3
+    f:
+      number: 5
   tagger: comicbox dev
   tags:
     - name: a
     - name: b
     - name: c
   updated_at: '1970-01-01T00:00:00'
-

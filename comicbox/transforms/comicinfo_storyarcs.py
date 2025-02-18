@@ -4,7 +4,7 @@ from itertools import zip_longest
 from logging import getLogger
 
 from comicbox.fields.number_fields import IntegerField
-from comicbox.schemas.comicbox_mixin import STORY_ARCS_KEY
+from comicbox.schemas.comicbox_mixin import NUMBER_KEY, STORY_ARCS_KEY
 from comicbox.transforms.base import BaseTransform
 
 LOG = getLogger(__name__)
@@ -41,7 +41,7 @@ class ComicInfoStoryArcsTransformMixin(BaseTransform):
                     f"{self._path}: Deserialize story_arc_number{name}:{number_str}"
                 )
                 number = None
-            story_arcs[name] = number
+            story_arcs[name] = {NUMBER_KEY: number}
 
         data[STORY_ARCS_KEY] = story_arcs
         return data
@@ -54,9 +54,10 @@ class ComicInfoStoryArcsTransformMixin(BaseTransform):
 
         ci_story_arcs = []
         ci_story_arc_numbers = []
-        for name, number in story_arcs.items():
+        for name, story_arc in story_arcs.items():
             if name:
                 ci_story_arcs.append(name)
+                number = story_arc.get(NUMBER_KEY)
                 num_str = "" if number is None else str(number)
                 ci_story_arc_numbers.append(num_str)
         if ci_story_arcs:

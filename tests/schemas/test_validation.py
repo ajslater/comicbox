@@ -89,8 +89,8 @@ READ_METADATA = MappingProxyType(
             ],
             "page_count": 36,
             "story_arcs": {
-                "Captain Arc": 4,
-                "Other Arc": 2,
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
             },
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,

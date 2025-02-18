@@ -180,6 +180,13 @@ class UniverseSchema(IdentifiedNameSchema):
     designation = StringField()
 
 
+class StoryArcSchema(BaseSubSchema):
+    """Story Arc Schema."""
+
+    identifiers = IdentifiersField()
+    number = IntegerField()
+
+
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
@@ -225,7 +232,7 @@ class ComicboxSubSchemaMixin:
     series_groups = StringSetField()
     store_date = DateField()
     stories = Nested(IdentifiedNameSchema, many=True)
-    story_arcs = DictStringField(values=IntegerField())
+    story_arcs = DictStringField(values=Nested(StoryArcSchema))
     summary = StringField()
     tagger = StringField()
     tags = Nested(IdentifiedNameSchema, many=True)
