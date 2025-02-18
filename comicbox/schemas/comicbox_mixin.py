@@ -152,6 +152,7 @@ class SeriesSchema(IdentifiedNameSchema):
 class ReprintSchema(BaseSubSchema):
     """Schema for Reprints of this issue."""
 
+    identifiers = IdentifiersField()
     language = LanguageField()
     publisher = StringField()
     imprint = StringField()

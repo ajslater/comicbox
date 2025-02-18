@@ -552,6 +552,10 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             issue = fn_dict.get(ISSUE_KEY)
             if issue is not None:
                 new_reprint[REPRINT_ISSUE_KEY] = issue
+            if isinstance(metron_reprint, Mapping):
+                self._parse_metron_tag_identifier(
+                    data, "reprint", metron_reprint, new_reprint
+                )
             if new_reprint:
                 comicbox_reprints.append(new_reprint)
         comicbox_reprints += data.get(REPRINTS_KEY, [])
@@ -567,8 +571,11 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         metron_reprints = []
         for reprint in reprints:
             name = reprint_to_filename(reprint)
-            if name:
-                metron_reprints.append({"#text": name})
+            if not name:
+                continue
+            metron_reprint = {"#text": name}
+            self._unparse_metron_id_attribute(data, metron_reprint, reprint)
+            metron_reprints.append(metron_reprint)
         self.lower_tag(REPRINTS_TAG, REPRINTS_TAG, data, metron_reprints)
         return data
 

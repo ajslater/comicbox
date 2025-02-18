@@ -42,6 +42,7 @@ class IdentifierTypes:
     issue: str = ""
     location: str = ""
     publisher: str = ""
+    reprint: str = ""
     series: str = ""
     story: str = ""
     story_arc: str = ""
@@ -210,6 +211,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 issue="issue",
                 location="location",
                 publisher="publisher",
+                reprint="reprint",
                 series="series",
                 story="story",
                 story_arc="arc",
