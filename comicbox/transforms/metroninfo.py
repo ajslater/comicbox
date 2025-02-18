@@ -137,6 +137,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
         (PRICES_TAG, None): PRICES_KEY,
         (URLS_TAG, None): URL_KEY,
+
         # Resources
         (CHARACTERS_TAG, None): CHARACTERS_KEY,
         (GENRES_TAG, None): GENRES_KEY,
@@ -144,6 +145,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
         (STORIES_TAG, STORY_TAG): STORIES_KEY,
+
         # Add
         (UNIVERSES_TAG, None): UNIVERSES_KEY,
         # Add

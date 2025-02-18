@@ -297,7 +297,7 @@ class MetronInfoSubSchema(XmlSubSchema):
     Reprints = create_sub_tag_field("Reprint", _metron_resource_list_field())
     GTIN = Nested(MetronGTINSchema)
     AgeRating = MetronAgeRatingField()
-    URLs = create_sub_tag_field("URL", AlwaysListField(Nested(MetronURLSchema)))
+    URLs = create_sub_tag_field("URL", xml_list_polyfield(MetronURLSchema, StringField()))
     Credits = create_sub_tag_field(
         "Credit", AlwaysListField(Nested(MetronCreditSchema))
     )
