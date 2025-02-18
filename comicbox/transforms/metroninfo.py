@@ -19,6 +19,7 @@ from comicbox.identifiers import (
     create_identifier,
 )
 from comicbox.schemas.comicbox_mixin import (
+    AGE_RATING_KEY,
     CHARACTERS_KEY,
     COLORIST_KEY,
     CONTRIBUTORS_KEY,
@@ -64,8 +65,9 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_NUMBER_KEY,
     WRITER_KEY,
 )
+from comicbox.schemas.comicinfo import ComicInfoAgeRatingEnum
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
-from comicbox.schemas.metroninfo import MetronInfoSchema
+from comicbox.schemas.metroninfo import MetronAgeRatingEnum, MetronInfoSchema
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -73,6 +75,7 @@ from comicbox.transforms.xml_transforms import XmlTransform
 LOG = getLogger(__name__)
 
 # Move into class.
+AGE_RATING_TAG = "AgeRating"
 ARCS_TAG = "Arcs"
 ARC_NAME_TAG = "Name"
 ARC_NUMBER_TAG = "Number"
@@ -174,7 +177,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     TRANSFORM_MAP = frozenbidict(
         {
-            "AgeRating": "age_rating",
+            # "AgeRating": "age_rating", code
             "CollectionTitle": "collection_title",
             "CoverDate": "date",
             "StoreDate": "store_date",
@@ -265,6 +268,24 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     IDENTIFIERS_SUB_TAG = ID_TAG
     URLS_TAG = URLS_TAG
     URLS_SUB_TAG = URL_TAG
+    AGE_RATING_TAG = "AgeRating"
+    AGE_RATING_MAP = MappingProxyType(
+        {
+            ComicInfoAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
+            ComicInfoAgeRatingEnum.EARLY_CHILDHOOD: MetronAgeRatingEnum.EVERYONE,
+            ComicInfoAgeRatingEnum.E_10_PLUS: MetronAgeRatingEnum.EVERYONE,
+            ComicInfoAgeRatingEnum.G: MetronAgeRatingEnum.EVERYONE,
+            ComicInfoAgeRatingEnum.KIDS_TO_ADULTS: MetronAgeRatingEnum.EVERYONE,
+            ComicInfoAgeRatingEnum.TEEN: MetronAgeRatingEnum.TEEN,
+            ComicInfoAgeRatingEnum.PG: MetronAgeRatingEnum.TEEN,
+            ComicInfoAgeRatingEnum.MA_15_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+            ComicInfoAgeRatingEnum.M: MetronAgeRatingEnum.MATURE,
+            ComicInfoAgeRatingEnum.MA_17_PLUS: MetronAgeRatingEnum.MATURE,
+            ComicInfoAgeRatingEnum.R_18_PLUS: MetronAgeRatingEnum.MATURE,
+            ComicInfoAgeRatingEnum.X_18_PLUS: MetronAgeRatingEnum.EXPLICIT,
+            ComicInfoAgeRatingEnum.A_18_PLUS: MetronAgeRatingEnum.ADULT,
+        }
+    )
 
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
@@ -883,6 +904,28 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 data[UNIVERSES_TAG] = universes
         return data
 
+    def parse_age_rating(self, data: dict) -> dict:
+        """Parse Age Rating."""
+        if age_rating_enum := data.pop(AGE_RATING_TAG, None):
+            data[AGE_RATING_KEY] = age_rating_enum.value
+        return data
+
+    def unparse_age_rating(self, data: dict) -> dict:
+        """Unparse Age Rating."""
+        if age_rating := data.pop(AGE_RATING_KEY, None):
+            metron_enum = None
+            try:
+                metron_enum = MetronAgeRatingEnum(age_rating)
+            except ValueError:
+                try:
+                    cix_enum = ComicInfoAgeRatingEnum(age_rating)
+                    metron_enum = self.AGE_RATING_MAP.get(cix_enum)
+                except ValueError:
+                    pass
+            if metron_enum:
+                data[AGE_RATING_TAG] = metron_enum
+        return data
+
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         IdentifiersTransformMixin.parse_identifiers,
@@ -900,6 +943,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         parse_metron_resources,
         parse_prices,
         parse_universes,
+        parse_age_rating,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -914,4 +958,5 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         unparse_metron_resources,
         unparse_prices,
         unparse_universes,
+        unparse_age_rating,
     )

@@ -42,6 +42,7 @@ class Fixture:
 TEMPLATE_MD = MappingProxyType(
     {
         ROOT_TAG: {
+            "age_rating": "Teen",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},

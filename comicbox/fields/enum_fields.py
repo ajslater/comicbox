@@ -3,7 +3,6 @@
 import re
 from enum import Enum
 from logging import getLogger
-from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 from marshmallow import fields
@@ -108,48 +107,6 @@ class MangaField(EnumField):
             else:
                 value = value.capitalize()
         return super()._deserialize(value, attr, data, *args, **kwargs)
-
-
-class AgeRatingEnum(Enum):
-    """Age Ratings."""
-
-    A_18_PLUS = "Adults Only 18+"
-    EARLY_CHILDHOOD = "Early Childhood"
-    EVERYONE = "Everyone"
-    E_10_PLUS = "Everyone 10+"
-    G = "G"
-    KIDS_TO_ADULTS = "Kids to Adults"
-    M = "M"
-    MATURE = "Mature"
-    MA_15_PLUS = "MA15+"
-    MA_17_PLUS = "Mature 17+"
-    PG = "PG"
-    R_18_PLUS = "R18+"
-    PENDING = "Rating Pending"
-    TEEN = "Teen"
-    TEEN_PLUS = "Teen Plus"
-    X_18_PLUS = "X18+"
-
-
-_AGE_RATING_MAP = MappingProxyType(
-    {age_rating.value.lower(): age_rating.value for age_rating in AgeRatingEnum}
-)
-
-
-class AgeRatingField(StringField):
-    """
-    Overly lenient age rating field.
-
-    *Not* an Enum. Accept any string.
-    Age ratings are so messy, I think it hurts to be restrictive.
-    """
-
-    def _deserialize(self, value, *args, **kwargs):
-        """Prettify if possible, but allow anything."""
-        value = super()._deserialize(value, *args, **kwargs)
-        if value and (pretty_value := _AGE_RATING_MAP.get(value.lower())):
-            value = pretty_value
-        return value
 
 
 class YesNoEnum(Enum):

@@ -1,5 +1,7 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
+# https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
 
+from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
@@ -8,9 +10,9 @@ from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.xml_fields import (
-    XmlAgeRatingField,
     XmlCountryField,
     XmlDecimalField,
+    XmlEnumField,
     XmlIntegerField,
     XmlIntegerListField,
     XmlLanguageField,
@@ -36,6 +38,32 @@ PENCILLER_TAG = "Penciller"
 WRITER_TAG = "Writer"
 
 
+class ComicInfoAgeRatingEnum(Enum):
+    """Age Ratings."""
+
+    UNKNOWN = "Unknown"
+    A_18_PLUS = "Adults Only 18+"
+    EARLY_CHILDHOOD = "Early Childhood"
+    EVERYONE = "Everyone"
+    E_10_PLUS = "Everyone 10+"
+    G = "G"
+    KIDS_TO_ADULTS = "Kids to Adults"
+    M = "M"
+    MA_15_PLUS = "MA15+"
+    MA_17_PLUS = "Mature 17+"
+    PG = "PG"
+    R_18_PLUS = "R18+"
+    PENDING = "Rating Pending"
+    TEEN = "Teen"
+    X_18_PLUS = "X18+"
+
+
+class ComicInfoAgeRatingField(XmlEnumField):
+    """Age Rating Field."""
+
+    ENUM = ComicInfoAgeRatingEnum
+
+
 class XmlPageInfoSchema(BaseSubSchema):
     """ComicPageInfo Structure for ComicInfo.xml."""
 
@@ -59,8 +87,7 @@ class XmlPageInfoSchema(BaseSubSchema):
 class ComicInfoSubSchema(XmlSubSchema):
     """ComicInfo.xml Sub Schema."""
 
-    # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
-    AgeRating = XmlAgeRatingField()
+    AgeRating = ComicInfoAgeRatingField()
     AlternateCount = XmlIntegerField(minimum=0)
     AlternateNumber = XmlStringField()
     AlternateSeries = XmlStringField()

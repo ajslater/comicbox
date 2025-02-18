@@ -7,12 +7,13 @@ from types import MappingProxyType
 from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import StringListField, StringSetField
-from comicbox.fields.enum_fields import AgeRatingField, MangaField, YesNoField
+from comicbox.fields.enum_fields import MangaField, YesNoField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbookinfo import ComicBookInfoCreditSchema
+from comicbox.schemas.comicinfo import ComicInfoAgeRatingField
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 TAG_ORIGIN_KEY = "tag_origin"
@@ -85,7 +86,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     manga = MangaField()
     black_and_white = YesNoField()
     page_count = IntegerField(minimum=0)
-    maturity_rating = AgeRatingField()
+    maturity_rating = ComicInfoAgeRatingField()
 
     story_arcs = StringListField(sort=False)
     series_groups = StringSetField()

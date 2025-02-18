@@ -64,38 +64,40 @@ def _metron_resource_list_field() -> AlwaysListField:
     return xml_list_polyfield(MetronResourceSchema, StringField())
 
 
+class MetronAgeRatingEnum(Enum):
+    """Metron Age Rating Types."""
+
+    UNKNOWN = "Unknown"
+    EVERYONE = "Everyone"
+    TEEN = "Teen"
+    TEEN_PLUS = "Teen Plus"
+    MATURE = "Mature"
+    EXPLICIT = "Explicit"
+    ADULT = "Adult"
+
+
 class MetronAgeRatingField(XmlEnumField):
     """Metron Age Rating Field."""
-
-    class MetronAgeRatingEnum(Enum):
-        """Metron Age Rating Types."""
-
-        UNKNOWN = "Unknown"
-        EVERYONE = "Everyone"
-        TEEN = "Teen"
-        TEEN_PLUS = "Teen Plus"
-        MATURE = "Mature"
-        EXPLICIT = "Explicit"
-        ADULT = "Adult"
 
     ENUM = MetronAgeRatingEnum
 
 
+class MetronSourceEnum(Enum):
+    """Metron Valid Sources."""
+
+    ANILIST = NID_ORIGIN_MAP[ANILIST_NID]
+    COMICVINE = NID_ORIGIN_MAP[COMICVINE_NID]
+    GCD = NID_ORIGIN_MAP[GCD_NID]
+    KITSU = NID_ORIGIN_MAP[KITSU_NID]
+    LCG = NID_ORIGIN_MAP[LCG_NID]
+    MANGADEX = NID_ORIGIN_MAP[MANGADEX_NID]
+    MANGAUPDATES = NID_ORIGIN_MAP[MANGAUPDATES_NID]
+    METRON = NID_ORIGIN_MAP[METRON_NID]
+    MYANIMELIST = NID_ORIGIN_MAP[MYANIMELIST_NID]
+
+
 class MetronSourceField(XmlEnumField):
     """Metron Source Field."""
-
-    class MetronSourceEnum(Enum):
-        """Metron Valid Sources."""
-
-        ANILIST = NID_ORIGIN_MAP[ANILIST_NID]
-        COMICVINE = NID_ORIGIN_MAP[COMICVINE_NID]
-        GCD = NID_ORIGIN_MAP[GCD_NID]
-        KITSU = NID_ORIGIN_MAP[KITSU_NID]
-        LCG = NID_ORIGIN_MAP[LCG_NID]
-        MANGADEX = NID_ORIGIN_MAP[MANGADEX_NID]
-        MANGAUPDATES = NID_ORIGIN_MAP[MANGAUPDATES_NID]
-        METRON = NID_ORIGIN_MAP[METRON_NID]
-        MYANIMELIST = NID_ORIGIN_MAP[MYANIMELIST_NID]
 
     ENUM = MetronSourceEnum
 

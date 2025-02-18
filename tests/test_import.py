@@ -125,6 +125,7 @@ FNS = MappingProxyType(
             "updated_at": datetime(1970, 1, 1, 0, 0),
         },
         "comicinfo.xml": {
+            "age_rating": "Teen",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "contributors": {
                 "inker": {"Wally Wood"},
@@ -229,6 +230,7 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "metroninfo.xml": {
+            "age_rating": "Teen Plus",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "collection_title": "Omnibus",
             "contributors": {

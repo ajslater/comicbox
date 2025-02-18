@@ -1,4 +1,5 @@
 """A class to encapsulate CoMet data."""
+# http://www.denvog.com/comet/comet-specification/
 
 from decimal import Decimal
 from types import MappingProxyType
@@ -33,7 +34,6 @@ WRITER_TAG = "writer"
 class CoMetSubSchema(XmlSubSchema):
     """CoMet Sub Schema."""
 
-    # http://www.denvog.com/comet/comet-specification/
     character = XmlStringSetField()
     coverImage = XmlStringField()  # noqa: N815
     date = XmlDateField()

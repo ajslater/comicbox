@@ -36,6 +36,7 @@ METRON_NOTES = (
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
+            "age_rating": "Teen Plus",
             "date": date(year=1950, month=11, day=1),
             "characters": [
                 {"name": "Captain Science"},
@@ -138,6 +139,7 @@ READ_METRON_DICT = MappingProxyType(
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "AgeRating": "Teen Plus",
             "Arcs": {
                 "Arc": [
                     {"Name": "Captain Arc", "Number": 4},
@@ -234,6 +236,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "AgeRating": "Teen Plus",
             "Arcs": {
                 "Arc": [
                     {"Name": "Captain Arc", "Number": 4},

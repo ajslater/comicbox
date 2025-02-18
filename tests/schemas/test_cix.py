@@ -24,6 +24,7 @@ READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"], compute_pages=False))
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
+            "age_rating": "Teen",
             "series": {"name": "Captain Science"},
             "issue": "1",
             "issue_number": Decimal("1"),
@@ -110,6 +111,7 @@ READ_CIX_DICT = MappingProxyType(
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1",
+            "AgeRating": "Teen",
             "AlternateNumber": "001",
             "AlternateSeries": "Captain Science Alternate",
             "Characters": "Captain Science,Gordon Dane",
