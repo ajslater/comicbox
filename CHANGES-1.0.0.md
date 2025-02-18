@@ -89,7 +89,9 @@ metadata values read or submitted.
 `pages` is generated from looking at the archive contents and is merged with
 metadata values read or submitted.
 
-### Field Names
+### Comicbox Schema
+
+#### Field Names
 
 | Old             | New          | Type         |
 | --------------- | ------------ | ------------ |
