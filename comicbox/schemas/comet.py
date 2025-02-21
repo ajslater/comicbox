@@ -54,7 +54,7 @@ class CoMetSubSchema(XmlSubSchema):
     title = XmlStringField()
     volume = XmlIntegerField(minimum=0)
 
-    # Contributors
+    # Credit Roles
     colorist = XmlStringSetField()
     coverDesigner = XmlStringSetField()  # noqa: N815
     creator = XmlStringSetField()

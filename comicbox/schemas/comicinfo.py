@@ -30,7 +30,6 @@ GTIN_TAG = "GTIN"
 
 COLORIST_TAG = "Colorist"
 COVER_ARTIST_TAG = "CoverArtist"
-CREATOR_TAG = "Creator"
 EDITOR_TAG = "Editor"
 INKER_TAG = "Inker"
 LETTTER_TAG = "Letterer"
@@ -120,12 +119,13 @@ class ComicInfoSubSchema(XmlSubSchema):
     Tags = XmlStringSetField(as_string=True)
     Teams = XmlStringSetField(as_string=True)
     Title = XmlStringField()
+    Translator = XmlStringField()
     Summary = XmlStringField()
     Volume = XmlIntegerField()
     Web = XmlStringSetField(separators=" ", as_string=True)
     Year = XmlIntegerField()
 
-    # Contributors
+    # Role Tags
     Colorist = XmlStringSetField(as_string=True)
     CoverArtist = XmlStringSetField(as_string=True)
     Editor = XmlStringSetField(as_string=True)

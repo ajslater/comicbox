@@ -1,6 +1,7 @@
 """A class to encapsulate the ComicBookInfo data."""
 
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
+from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
@@ -33,6 +34,21 @@ LETTERER_TAG = "Letterer"
 OTHER_TAG = "Other"
 PENCILLER_TAG = "Penciller"
 WRITER_TAG = "Writer"
+
+
+class ComicBookInfoRoleEnum(Enum):
+    """ComicBookInfo Roles."""
+
+    # Common but not restricted to
+    ARTIST = "Artist"
+    COLORER = "Colorer"
+    COVER_ARTIST = "Cover Artist"
+    EDITOR = "Editor"
+    INKER = "Inker"
+    LETTERER = "Letterer"
+    OTHER = "Other"
+    PENCILLER = "Penciller"
+    WRITER = "Writer"
 
 
 class ComicBookInfoCreditSchema(Schema):
