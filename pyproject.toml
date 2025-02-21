@@ -58,6 +58,7 @@ xmltodict = "^0.14.0"
 
 [tool.poetry.group.dev.dependencies]
 wheel = "^0.45.1"
+pylint = "^3.3.4"
 
 [tool.poetry.group.lint.dependencies]
 check-jsonschema = "^0.31.0"
