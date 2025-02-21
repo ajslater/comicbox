@@ -1,14 +1,21 @@
 # 📰 News
 
-## v1.3.0
+## v2.0.0
 
-- Support MetronInfo.xml v1.0 Schema
-- Fix Notes parsing for Comictagger beta Metron origin
-- Simplify Identifier URL construction for Metron pk ids.
-- Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
-- Fix ISBN & UPC url detection
-- URNs as serialized identifiers gain an optional tag type attribute in the nss:
-  urn:comicvine:series:1234
+- Features
+
+  - Breaking Comicbox.json and Comicbox.yaml schema changes.
+  - Support new MetronInfo.xml v1.0 Schema
+  - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
+  - Support ComicBookInfo.json Role primary attribute.
+  - Simplify Identifier URL construction for Metron pk ids. URNs as serialized
+    identifiers gain an optional tag type attribute in the nss:
+    urn:comicvine:series:1234
+  - ComicInfo.xml gains the Translator tag
+
+- Fixes
+  - Fix Notes parsing for Comictagger beta Metron origin
+  - Fix ISBN & UPC url detection
 
 ## v1.2.1
 
