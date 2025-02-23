@@ -88,7 +88,7 @@ class ComicBookInfoTransform(
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.aggregate_contributors,
+        ComicBookInfoCreditsTransformMixin.parse_credits,
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
@@ -97,7 +97,7 @@ class ComicBookInfoTransform(
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.disaggregate_contributors,
+        ComicBookInfoCreditsTransformMixin.unparse_credits,
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,

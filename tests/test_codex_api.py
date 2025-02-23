@@ -44,10 +44,9 @@ TEMPLATE_MD = MappingProxyType(
         ROOT_TAG: {
             "age_rating": "Teen",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
@@ -161,7 +160,7 @@ CBT_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH)
 PDF_MD = MappingProxyType(
     {
         ROOT_TAG: {
-            "contributors": {"writer": {"Jon Osterman"}},
+            "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": [{"name": "Science Fiction"}],
             "page_count": 4,

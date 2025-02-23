@@ -1,15 +1,19 @@
 {
   "appID": "comicbox/dev",
   "comicbox": {
-    "contributors": {
-      "penciller": [
-        "Wally Wood"
-      ],
-      "writer": [
-        "Joe Orlando"
-      ]
-    },
     "country": "US",
+    "credits": {
+      "Joe Orlando": { 
+        "roles":{
+          "writer": {}
+        }
+      },
+      "Wally Wood": { 
+        "roles": {
+          "penciller": {}
+        }
+      }
+    },
     "day": 1,
     "genres": [
       {
@@ -175,13 +179,22 @@
         "size": 340840
       }
     ],
-    "publisher": { "name": "Youthful Adventure Stories"},
-    "series": {"name": "Captain Science"},
+    "publisher": {
+      "name": "Youthful Adventure Stories"
+    },
+    "series": {
+      "name": "Captain Science"
+    },
+    "stories": [
+      {
+        "name": "The Beginning"
+      }
+    ],
     "tagger": "comicbox dev",
-    "stories": [{"name":"The Beginning"}],
     "updated_at": "1970-01-01T00:00:00",
-    "volume": {"number": 1950,
-    "issue_count": 7
+    "volume": {
+      "issue_count": 7,
+      "number": 1950
     },
     "year": 1950
   },

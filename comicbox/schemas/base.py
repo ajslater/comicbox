@@ -47,7 +47,7 @@ class BaseSubSchema(Schema, ABC):
         """Dump and recursively sort the results."""
         result = super().dump(*args, **kwargs)
         if isinstance(result, Mapping):
-            result = sort_dict(result)
+            result = sort_dict(dict(result))
         return result
 
     def loadf(self, path):

@@ -1,6 +1,6 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from decimal import Decimal
 from enum import Enum
 from logging import getLogger
@@ -9,7 +9,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 from comicfn2dict.parse import comicfn2dict
 
-from comicbox.dict_funcs import deep_update, sort_dict
+from comicbox.dict_funcs import deep_update
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
@@ -19,25 +19,21 @@ from comicbox.identifiers import (
     UPC_NID,
     create_identifier,
 )
+from comicbox.schemas.comet import CoMetRoleTagEnum
+from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
-    COLORIST_KEY,
-    CONTRIBUTORS_KEY,
     COUNTRY_KEY,
-    COVER_ARTIST_KEY,
-    CREATOR_KEY,
+    CREDITS_KEY,
     DATE_KEY,
     DESIGNATION_KEY,
-    EDITOR_KEY,
     GENRES_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
-    INKER_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
-    LETTERER_KEY,
     LOCATIONS_KEY,
     NAME_KEY,
     NID_KEY,
@@ -45,13 +41,13 @@ from comicbox.schemas.comicbox_mixin import (
     NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
-    PENCILLER_KEY,
     PRICE_KEY,
     PRICES_KEY,
     PUBLISHER_KEY,
     REPRINT_ISSUE_KEY,
     REPRINT_SERIES_KEY,
     REPRINTS_KEY,
+    ROLES_KEY,
     SERIES_KEY,
     SERIES_SORT_NAME_KEY,
     SERIES_START_YEAR_KEY,
@@ -66,11 +62,18 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
-    WRITER_KEY,
 )
-from comicbox.schemas.comicinfo import ComicInfoAgeRatingEnum
+from comicbox.schemas.comicinfo import (
+    ComicInfoAgeRatingEnum,
+    ComicInfoRoleTagEnum,
+)
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
-from comicbox.schemas.metroninfo import MetronAgeRatingEnum, MetronInfoSchema
+from comicbox.schemas.metroninfo import (
+    MetronAgeRatingEnum,
+    MetronInfoSchema,
+    MetronRoleEnum,
+)
+from comicbox.transforms.credit_role_tag import create_role_map
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -190,63 +193,29 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             "LastModified": UPDATED_AT_KEY,
         }
     )
-    CONTRIBUTOR_COMICBOX_MAP = MappingProxyType(
+    PRE_ROLE_MAP: MappingProxyType[Enum, Enum | tuple[Enum, ...]] = MappingProxyType(
         {
-            WRITER_TAG: WRITER_KEY,
-            "Script": WRITER_KEY,
-            "Story": WRITER_KEY,
-            "Plot": WRITER_KEY,
-            "Interviewer": WRITER_KEY,
-            "Artist": PENCILLER_KEY,
-            PENCILLER_TAG: PENCILLER_KEY,
-            "Breakdowns": PENCILLER_KEY,
-            "Illustrator": PENCILLER_KEY,
-            "Layouts": PENCILLER_KEY,
-            INKER_TAG: INKER_KEY,
-            "Embellisher": INKER_KEY,
-            "Finishes": INKER_KEY,
-            "Ink Assists": INKER_KEY,
-            COLORIST_TAG: COLORIST_KEY,
-            "Color Separations": COLORIST_KEY,
-            "Color Assists": COLORIST_KEY,
-            "Color Flats": COLORIST_KEY,
-            "Digital Art Technician": CREATOR_KEY,
-            "Gray Tone": COLORIST_KEY,
-            LETTERER_TAG: LETTERER_KEY,
-            COVER_TAG: COVER_ARTIST_KEY,
-            EDITOR_TAG: EDITOR_KEY,
-            "Consulting Editor": EDITOR_KEY,
-            "Assistant Editor": EDITOR_KEY,
-            "Associate Editor": EDITOR_KEY,
-            "Group Editor": EDITOR_KEY,
-            "Senior Editor": EDITOR_KEY,
-            "Managing Editor": EDITOR_KEY,
-            "Collection Editor": EDITOR_KEY,
-            "Production": EDITOR_KEY,
-            "Designer": CREATOR_KEY,
-            "Logo Design": CREATOR_KEY,
-            "Translator": WRITER_KEY,
-            "Supervising Editor": EDITOR_KEY,
-            "Executive Editor": EDITOR_KEY,
-            "Editor In Chief": EDITOR_KEY,
-            "President": EDITOR_KEY,
-            "Publisher": EDITOR_KEY,
-            "Chief Creative Officer": EDITOR_KEY,
-            "Executive Producer": EDITOR_KEY,
-            "Other": CREATOR_KEY,
+            **{enum: enum for enum in MetronRoleEnum},
+            CoMetRoleTagEnum.COLORIST: MetronRoleEnum.COLORIST,
+            CoMetRoleTagEnum.COVER_DESIGNER: MetronRoleEnum.COVER,
+            CoMetRoleTagEnum.CREATOR: MetronRoleEnum.CHIEF_CREATIVE_OFFICER,
+            CoMetRoleTagEnum.EDITOR: MetronRoleEnum.EDITOR,
+            CoMetRoleTagEnum.INKER: MetronRoleEnum.INKER,
+            CoMetRoleTagEnum.PENCILLER: MetronRoleEnum.PENCILLER,
+            CoMetRoleTagEnum.WRITER: MetronRoleEnum.WRITER,
+            ComicInfoRoleTagEnum.COLORIST: MetronRoleEnum.COLORIST,
+            ComicInfoRoleTagEnum.COVER_ARTIST: MetronRoleEnum.COVER,
+            ComicInfoRoleTagEnum.EDITOR: MetronRoleEnum.EDITOR,
+            ComicInfoRoleTagEnum.INKER: MetronRoleEnum.INKER,
+            ComicInfoRoleTagEnum.LETTERER: MetronRoleEnum.LETTERER,
+            ComicInfoRoleTagEnum.PENCILLER: MetronRoleEnum.PENCILLER,
+            ComicInfoRoleTagEnum.WRITER: MetronRoleEnum.WRITER,
+            ComicInfoRoleTagEnum.TRANSLATOR: MetronRoleEnum.TRANSLATOR,
+            ComicBookInfoRoleEnum.ARTIST: MetronRoleEnum.ARTIST,
+            ComicBookInfoRoleEnum.OTHER: MetronRoleEnum.OTHER,
         }
     )
-    CONTRIBUTOR_SCHEMA_MAP = MappingProxyType(
-        {
-            COLORIST_KEY: COLORIST_TAG,
-            COVER_ARTIST_KEY: COVER_TAG,
-            EDITOR_KEY: EDITOR_TAG,
-            INKER_KEY: INKER_TAG,
-            LETTERER_KEY: LETTERER_TAG,
-            PENCILLER_KEY: PENCILLER_TAG,
-            WRITER_KEY: WRITER_TAG,
-        }
-    )
+    ROLE_MAP = create_role_map(PRE_ROLE_MAP)
     SERIES_TAG_MAP = frozenbidict(
         {
             SERIES_NAME_TAG: NAME_KEY,
@@ -378,16 +347,20 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data = self._parse_identified_name(data, nss_type, key)
         return data
 
-    def _unparse_identified_name(self, data: dict, tag: str) -> dict:
+    def _unparse_identified_name(self, data, comicbox_obj: dict) -> dict:
+        metron_obj = {}
+        if name := comicbox_obj.get(NAME_KEY):
+            metron_obj["#text"] = name
+        self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
+        return metron_obj
+
+    def _unparse_identified_names(self, data: dict, tag: str) -> dict:
         """Unparse identifierd names into Metron Resource Types."""
         sub_tag = STORY_TAG if tag == STORIES_TAG else tag[:-1]
         if comicbox_objs := data.get(tag, {}).get(sub_tag):
             metron_objs = []
             for comicbox_obj in comicbox_objs:
-                metron_obj = {}
-                if name := comicbox_obj.get(NAME_KEY):
-                    metron_obj["#text"] = name
-                self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
+                metron_obj = self._unparse_identified_name(data, comicbox_obj)
                 metron_objs.append(metron_obj)
             if metron_objs:
                 sort = tag != STORIES_TAG
@@ -400,7 +373,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         """Unparse stories into metron Resources."""
         for md in _METRON_RESOURCES.values():
             _, tag = md
-            data = self._unparse_identified_name(data, tag)
+            data = self._unparse_identified_names(data, tag)
         return data
 
     def _unparse_metron_id_attribute(
@@ -435,79 +408,84 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[PUBLISHER_TAG] = metron_publisher
         return data
 
-    def _hoist_metron_credit(self, metron_credit, contributors):
-        """Copy a single emetron style credit dict into contributors."""
-        creator = metron_credit.get(CREATOR_TAG, {})
-        creator = get_cdata(creator)
-        if not creator:
+    def _parse_credit(self, data, metron_credit, comicbox_credits: dict):
+        """Copy a single metron style credit entry into comicbox credits."""
+        metron_creator = metron_credit.get(CREATOR_TAG, {})
+        person_name = get_cdata(metron_creator)
+        if not person_name:
             return
-        roles = self.hoist_tag(ROLES_TAG, metron_credit)
-        if not roles:
+        comicbox_credit = {}
+        if isinstance(metron_creator, Mapping):
+            self._parse_metron_tag_identifier(
+                data, "creator", metron_creator, comicbox_credit
+            )
+        metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
+        if not metron_roles:
             return
-        if isinstance(roles, str):
-            roles = (roles,)
-        for role in roles:
-            metron_role_name = get_cdata(role)
-            if not metron_role_name:
+        comicbox_roles = {}
+        for metron_role in metron_roles:
+            metron_role_enum = get_cdata(metron_role)
+            if not metron_role_enum:
                 continue
-            comicbox_role = self.CONTRIBUTOR_COMICBOX_MAP.get(metron_role_name)
-            if not comicbox_role:
-                continue
-            if comicbox_role not in contributors:
-                contributors[comicbox_role] = set()
-            contributors[comicbox_role].add(creator)
+            role_name = metron_role_enum.value
+            comicbox_role = {}
+            if isinstance(metron_role, Mapping):
+                self._parse_metron_tag_identifier(
+                    data, "role", metron_role, comicbox_role
+                )
+            comicbox_roles[role_name] = comicbox_role
+        if comicbox_roles:
+            comicbox_credit[ROLES_KEY] = comicbox_roles
+        comicbox_credits[person_name] = comicbox_credit
 
-    def hoist_metron_credits(self, data):
+    def parse_credits(self, data):
         """Copy metron style credits dict into contributors."""
         metron_credits = self.hoist_tag(CREDITS_TAG, data)
         if not metron_credits:
             return data
-        contributors = {}
-        if not isinstance(metron_credits, Sequence):
-            metron_credits = (metron_credits,)
+        comicbox_credits = {}
         for metron_credit in metron_credits:
-            self._hoist_metron_credit(metron_credit, contributors)
-        return _copy_assign(CONTRIBUTORS_KEY, data, contributors)
+            try:
+                self._parse_credit(data, metron_credit, comicbox_credits)
+            except Exception as exc:
+                LOG.warning(f"{self._path} Parsing credit {metron_credit}: {exc}")
+        return _copy_assign(CREDITS_KEY, data, comicbox_credits)
 
-    def _aggregate_comicbox_credits_into_metron_credit_dict(self, contributors):
+    def _unparse_credit(self, data, person_name, comicbox_credit, metron_credits):
         """Aggregate comicbox credits into Metron credit dict."""
-        metron_credit_dict = {}
-        for role, names in contributors.items():
-            if not role or not names:
-                continue
-            metron_role = self.CONTRIBUTOR_SCHEMA_MAP.get(role)
-            if not metron_role:
-                continue
-            for name in names:
-                if name not in metron_credit_dict:
-                    metron_credit_dict[name] = set()
-                metron_credit_dict[name].add(metron_role)
+        if not person_name:
+            return
+        metron_creator = self._unparse_identified_name(data, comicbox_credit)
+        metron_creator["#text"] = person_name
+        metron_credit = {CREATOR_TAG: metron_creator}
 
-        return sort_dict(metron_credit_dict)
+        metron_roles = []
+        if comicbox_roles := comicbox_credit.get(ROLES_KEY):
+            for role_name, comicbox_role in comicbox_roles.items():
+                if not role_name:
+                    continue
+                if metron_role_enum := self.ROLE_MAP.get(role_name.lower()):
+                    metron_role = self._unparse_identified_name(data, comicbox_role)
+                    metron_role["#text"] = metron_role_enum
+                    metron_roles.append(metron_role)
+        self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, metron_roles)
+        metron_credits.append(metron_credit)
 
-    def _serialize_metron_credit_dict_to_list(self, data, metron_credit_dict):
-        """Serialize Metron credit dict into list."""
-        metron_credits = []
-        for name, metron_roles in metron_credit_dict.items():
-            if not name or not metron_roles:
-                continue
-            metron_credit = {CREATOR_TAG: {"#text": name}}
-            roles_list = [
-                {"#text": metron_role} for metron_role in sorted(metron_roles)
-            ]
-            self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, roles_list)
-            metron_credits.append(metron_credit)
-        self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
-
-    def lower_metron_credits(self, data):
+    def unparse_credits(self, data):
         """Dump contributors into metron style credits dict."""
-        contributors = data.pop(CONTRIBUTORS_KEY, None)
-        if not contributors:
+        comicbox_credits = data.pop(CREDITS_KEY, None)
+        if not comicbox_credits:
             return data
-        metron_credit_dict = self._aggregate_comicbox_credits_into_metron_credit_dict(
-            contributors
-        )
-        self._serialize_metron_credit_dict_to_list(data, metron_credit_dict)
+        metron_credits = []
+        for person_name, comicbox_credit in comicbox_credits.items():
+            try:
+                self._unparse_credit(data, person_name, comicbox_credit, metron_credits)
+            except Exception as exc:
+                LOG.warning(
+                    f"{self._path} Parsing credit {person_name}:{comicbox_credit}: {exc}"
+                )
+
+        self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
         return data
 
     def map_arcs_to_story_arcs(self, data):
@@ -937,7 +915,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         parse_publisher,
         parse_metron_series,
         parse_metron_manga_volume,
-        hoist_metron_credits,
+        parse_credits,
         map_arcs_to_story_arcs,
         hoist_reprints,
         consolidate_reprints,
@@ -954,7 +932,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         lower_metron_resource_lists,
         unparse_publisher,
         unparse_metron_series,
-        lower_metron_credits,
+        unparse_credits,
         map_story_arcs_to_arcs,
         lower_reprints,
         unparse_metron_resources,

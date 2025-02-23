@@ -1,6 +1,7 @@
 """Utility functions for testing metadata."""
 
 import shutil
+from argparse import Namespace
 from collections.abc import Mapping
 from copy import deepcopy
 from difflib import ndiff
@@ -76,7 +77,7 @@ def read_metadata(  # noqa: PLR0913
     page_count=None,
 ):
     """Read metadata and compare to dict fixture."""
-    read_config.comicbox.print = "nslc"
+    read_config.comicbox.print = "slnmcd"
     print(archive_path)
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
@@ -257,7 +258,9 @@ class TestParser:
     def test_from_metadata(self):
         """Test assign metadata."""
         pruned = self.read_reference_metadata
-        with Comicbox(metadata=pruned) as car:
+        config = Namespace(comicbox=Namespace(print="slmncd"))
+        with Comicbox(metadata=pruned, config=config) as car:
+            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
@@ -381,12 +384,12 @@ class TestParser:
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
         config = deepcopy(self.write_config)
         config.comicbox.updated_at = TEST_DATETIME.isoformat()
-        config.comicbox.print = "slcd"
+        config.comicbox.print = "slmncd"
         with Comicbox(
             new_test_cbz_path, config=config, metadata=self.write_reference_metadata
         ) as car:
-            car.write()
             car.print_out()
+            car.write()
 
     def write_metadata(self, new_test_cbz_path, page_count=0):
         """Create a test metadata file, read it back and compare the original."""

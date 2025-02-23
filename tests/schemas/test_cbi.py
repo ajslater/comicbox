@@ -19,9 +19,9 @@ WRITE_CONFIG = Namespace(
 METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
             "genres": [{"name": "Science Fiction"}],
@@ -47,8 +47,8 @@ CBI_DICT = MappingProxyType(
         ComicBookInfoSchema._ROOT_TAG: {  # noqa: SLF001
             "country": "United States",
             "credits": [
-                {"person": "Wally Wood", "role": "Penciller"},
                 {"person": "Joe Orlando", "role": "Writer"},
+                {"person": "Wally Wood", "role": "Penciller"},
             ],
             "genre": "Science Fiction",
             "issue": "1",

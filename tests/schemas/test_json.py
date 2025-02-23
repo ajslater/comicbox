@@ -41,9 +41,9 @@ READ_METADATA = MappingProxyType(
                 "number": 1950,
                 "issue_count": 7,
             },
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"writer": {}}},
+                "Wally Wood": {"roles": {"penciller": {}}},
             },
             "language": "en",
             "stories": [{"name": "The Beginning"}],
@@ -99,9 +99,9 @@ READ_COMICBOX_DICT = MappingProxyType(
         "appID": "comicbox/dev",
         ComicboxJsonSchema.ROOT_TAGS[0]: {
             "country": "US",
-            "contributors": {
-                "penciller": ["Wally Wood"],
-                "writer": ["Joe Orlando"],
+            "credits": {
+                "Joe Orlando": {"roles": {"writer": {}}},
+                "Wally Wood": {"roles": {"penciller": {}}},
             },
             "day": 1,
             "genres": [{"name": "Science Fiction"}],

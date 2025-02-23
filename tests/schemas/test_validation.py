@@ -23,6 +23,10 @@ READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"]))
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
+            "credits": {
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
+                "Joe Orlando": {"roles": {"Writer": {}}},
+            },
             "series": {"name": "2"},  # "Captain Science",
             "issue": "1",
             "issue_number": Decimal("1"),
@@ -43,11 +47,6 @@ READ_METADATA = MappingProxyType(
             "language": "en",
             "notes": TEST_READ_NOTES,
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
-            },
             "genres": [{"name": "Science Fiction"}],
             "pages": [
                 {"index": 0, "size": 429985, "page_type": PageTypeEnum.FRONT_COVER},

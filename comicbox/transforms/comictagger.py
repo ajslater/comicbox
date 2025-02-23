@@ -194,7 +194,7 @@ class ComictaggerTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         parse_comictagger_identifiers,
-        ComicBookInfoCreditsTransformMixin.aggregate_contributors,
+        ComicBookInfoCreditsTransformMixin.parse_credits,
         CoMetReprintsTransformMixin.parse_reprints,
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
@@ -212,7 +212,7 @@ class ComictaggerTransform(
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         unparse_comictagger_identifiers,
-        ComicBookInfoCreditsTransformMixin.disaggregate_contributors,
+        ComicBookInfoCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,

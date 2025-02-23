@@ -26,6 +26,10 @@ WRITE_CONFIG = Namespace(
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
+            "credits": {
+                "Joe Orlando CBI": {"roles": {"Writer": {}}},
+                "Wally Wood CBI": {"roles": {"Penciller": {}}},
+            },
             "series": {"name": "Captain Science COMET"},
             "issue": "001",
             "issue_number": Decimal(1),
@@ -44,10 +48,6 @@ READ_METADATA = MappingProxyType(
                 {"name": "comicbox Genre"},
             ],
             "volume": {"number": 999, "issue_count": 77},
-            "contributors": {
-                "penciller": {"Wally Wood CBI"},
-                "writer": {"Joe Orlando CBI"},
-            },
             "language": "en",
             "country": "US",
             "page_count": 0,
@@ -101,9 +101,9 @@ READ_MULTI_DICT = MappingProxyType(
         "appID": "comicbox/dev",
         ComicboxJsonSchema.ROOT_TAGS[0]: {
             "country": "US",
-            "contributors": {
-                "penciller": ["Wally Wood CBI"],
-                "writer": ["Joe Orlando CBI"],
+            "credits": {
+                "Joe Orlando CBI": {"roles": {"Writer": {}}},
+                "Wally Wood CBI": {"roles": {"Penciller": {}}},
             },
             "characters": [
                 {"name": "Captain Science"},

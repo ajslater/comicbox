@@ -28,17 +28,22 @@ from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag
 
 GTIN_TAG = "GTIN"
 
-COLORIST_TAG = "Colorist"
-COVER_ARTIST_TAG = "CoverArtist"
-EDITOR_TAG = "Editor"
-INKER_TAG = "Inker"
-LETTTER_TAG = "Letterer"
-PENCILLER_TAG = "Penciller"
-WRITER_TAG = "Writer"
+
+class ComicInfoRoleTagEnum(Enum):
+    """ComicInfo Role tags."""
+
+    COLORIST = "Colorist"
+    COVER_ARTIST = "CoverArtist"
+    EDITOR = "Editor"
+    INKER = "Inker"
+    LETTERER = "Letterer"
+    PENCILLER = "Penciller"
+    TRANSLATOR = "Translator"
+    WRITER = "Writer"
 
 
 class ComicInfoAgeRatingEnum(Enum):
-    """Age Ratings."""
+    """ComicInfo Age Ratings."""
 
     UNKNOWN = "Unknown"
     A_18_PLUS = "Adults Only 18+"

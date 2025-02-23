@@ -20,7 +20,7 @@ WRITE_CONFIG = Namespace(
 METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "contributors": {"writer": {"Jon Osterman"}},
+            "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "scan_info": "Pages",
             "genres": [{"name": "Science Fiction"}],
             "publisher": {"name": "SmallPub"},

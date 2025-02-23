@@ -122,6 +122,59 @@ class MetronFormatField(XmlEnumField):
     ENUM = MetronFormatEnum
 
 
+class MetronRoleEnum(Enum):
+    """Valid Metron Roles."""
+
+    WRITER = "Writer"
+    SCRIPT = "Script"
+    STORY = "Story"
+    PLOT = "Plot"
+    INTERVIEWER = "Interviewer"
+    ARTIST = "Artist"
+    PENCILLER = "Penciller"
+    BREAKDOWNS = "Breakdowns"
+    ILLUSTRATOR = "Illustrator"
+    LAYOUTS = "Layouts"
+    INKER = "Inker"
+    EMBELLISHER = "Embellisher"
+    FINISHES = "Finishes"
+    INK_ASSISTS = "Ink Assists"
+    COLORIST = "Colorist"
+    COLOR_SEPARATIONS = "Color Separations"
+    COLOR_ASSISTS = "Color Assists"
+    COLOR_FLATS = "Color Flats"
+    DIGITAL_ART_TECHNICIAN = "Digital Art Technician"
+    GRAY_TONE = "Gray Tone"
+    LETTERER = "Letterer"
+    COVER = "Cover"
+    EDITOR = "Editor"
+    CONSULTING_EDITOR = "Consulting Editor"
+    ASSISTANT_EDITOR = "Assistant Editor"
+    ASSOCIATE_EDITOR = "Associate Editor"
+    GROUP_EDITOR = "Group Editor"
+    SENIOR_EDITOR = "Senior Editor"
+    MANAGING_EDITOR = "Managing Editor"
+    COLLECTION_EDITOR = "Collection Editor"
+    PRODUCTION = "Production"
+    DESIGNER = "Designer"
+    LOGO_DESIGN = "Logo Design"
+    TRANSLATOR = "Translator"
+    SUPERVISING_EDITOR = "Supervising Editor"
+    EXECUTIVE_EDITOR = "Executive Editor"
+    EDITOR_IN_CHIEF = "Editor In Chief"
+    PRESIDENT = "President"
+    PUBLISHER = "Publisher"
+    CHIEF_CREATIVE_OFFICER = "Chief Creative Officer"
+    EXECUTIVE_PRODUCER = "Executive Producer"
+    OTHER = "Other"
+
+
+class MetronRoleEnumField(XmlEnumField):
+    """Metron Role Enum Field."""
+
+    ENUM = MetronRoleEnum
+
+
 class MetronIDSchema(BaseSubSchema):
     """Metron ID Schema."""
 
@@ -169,7 +222,6 @@ class MetronNameSchema(BaseSubSchema):
         include = MappingProxyType(
             {
                 "#text": StringField(),
-                # "@id": MetronIDAttrField(),
                 "@lang": LanguageField(),
             }
         )
@@ -258,11 +310,24 @@ class MetronArcSchema(BaseSubSchema):
         include = MappingProxyType({"@id": MetronIDAttrField()})
 
 
+class MetronRoleSchema(BaseSubSchema):
+    """Metron Role Schema."""
+
+    class Meta(BaseSubSchema.Meta):
+        """XML Attributes."""
+
+        include = MappingProxyType(
+            {"#text": MetronRoleEnumField(), "@id": MetronIDAttrField()}
+        )
+
+
 class MetronCreditSchema(BaseSubSchema):
     """Metron Credit Schema."""
 
     Creator = _metron_resource_field()
-    Roles = create_sub_tag_field("Role", _metron_resource_list_field())
+    Roles = create_sub_tag_field(
+        "Role", xml_list_polyfield(MetronRoleSchema, MetronRoleEnumField())
+    )
 
 
 class MetronInfoSubSchema(XmlSubSchema):

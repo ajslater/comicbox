@@ -21,6 +21,10 @@ WRITE_CONFIG = Namespace(
 READ_METADATA = MappingProxyType(
     {
         ROOT_TAG: {
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
+            },
             "series": {"name": "Captain Science"},
             "identifiers": {
                 "comicvine": {
@@ -37,10 +41,6 @@ READ_METADATA = MappingProxyType(
             "day": 1,
             "genres": [{"name": "Science Fiction"}],
             "volume": {"number": 1950, "issue_count": 7},
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
-            },
             "language": "en",
             "country": "US",
             "page_count": 0,
@@ -56,11 +56,11 @@ READ_CT_DICT = MappingProxyType(
         ComictaggerSchema.ROOT_TAGS[0]: {
             "country": "US",
             "credits": [
-                {"person": "Wally Wood", "role": "Penciller"},
                 {
                     "person": "Joe Orlando",
                     "role": "Writer",
                 },
+                {"person": "Wally Wood", "role": "Penciller"},
             ],
             "day": 1,
             "genres": ["Science Fiction"],

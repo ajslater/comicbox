@@ -3,12 +3,12 @@
     "country": "United States",
     "credits": [
       {
-        "person": "Wally Wood",
-        "role": "Penciller"
-      },
-      {
         "person": "Joe Orlando",
         "role": "Writer"
+      },
+      {
+        "person": "Wally Wood",
+        "role": "Penciller"
       }
     ],
     "genre": "Science Fiction",

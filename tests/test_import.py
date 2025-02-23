@@ -21,7 +21,10 @@ FNS = MappingProxyType(
         "comet.xml": {
             "age_rating": "Teen",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
+            "credits": {
+                "Joe Orlando": {"roles": {"writer": {}}},
+                "Wally Wood": {"roles": {"penciller": {}}},
+            },
             "cover_image": "CaptainScience#1_01.jpg",
             "date": date(1950, 12, 1),
             "ext": "cbz",
@@ -51,7 +54,10 @@ FNS = MappingProxyType(
             "volume": {"number": 1},
         },
         "comic-book-info.json": {
-            "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
+            },
             "country": "US",
             "ext": "cbz",
             "genres": [{"name": "Science Fiction"}],
@@ -77,7 +83,10 @@ FNS = MappingProxyType(
             "page_count": 0,
         },
         "comicbox.json": {
-            "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
+            "credits": {
+                "Joe Orlando": {"roles": {"writer": {}}},
+                "Wally Wood": {"roles": {"penciller": {}}},
+            },
             "country": "US",
             "day": 1,
             "ext": "cbz",
@@ -127,10 +136,9 @@ FNS = MappingProxyType(
         "comicinfo.xml": {
             "age_rating": "Teen",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
@@ -163,10 +171,9 @@ FNS = MappingProxyType(
         },
         "comicinfo-metron-origin.xml": {
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
@@ -202,7 +209,10 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "comictagger.json": {
-            "contributors": {"penciller": {"Wally Wood"}, "writer": {"Joe Orlando"}},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
+            },
             "country": "US",
             "day": 1,
             "ext": "cbz",
@@ -233,10 +243,9 @@ FNS = MappingProxyType(
             "age_rating": "Teen Plus",
             "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
             "collection_title": "Omnibus",
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": date(1950, 11, 1),
             "ext": "cbz",

@@ -1,15 +1,19 @@
 {
   "appID": "comicbox/dev",
   "comicbox": {
-    "contributors": {
-      "penciller": [
-        "Wally Wood"
-      ],
-      "writer": [
-        "Joe Orlando"
-      ]
-    },
     "country": "US",
+    "credits": {
+      "Joe Orlando": {
+        "roles": {
+          "writer": {}
+        }
+      },
+      "Wally Wood": {
+        "roles": {
+          "penciller": {}
+        }
+      }
+    },
     "day": 1,
     "genres": [
       {

@@ -5,45 +5,33 @@ from types import MappingProxyType
 from bidict import bidict
 
 from comicbox.identifiers import GTIN_NID
+from comicbox.schemas.comet import CoMetRoleTagEnum
+from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
     CHARACTERS_KEY,
-    COLORIST_KEY,
     COUNTRY_KEY,
-    COVER_ARTIST_KEY,
-    CREATOR_KEY,
     DAY_KEY,
-    EDITOR_KEY,
     GENRES_KEY,
-    INKER_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
-    LETTERER_KEY,
     LOCATIONS_KEY,
     MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
-    PENCILLER_KEY,
     SCAN_INFO_KEY,
     SERIES_GROUPS_KEY,
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
-    WRITER_KEY,
     YEAR_KEY,
 )
 from comicbox.schemas.comicinfo import (
-    COLORIST_TAG,
-    COVER_ARTIST_TAG,
-    CREATOR_TAG,
-    EDITOR_TAG,
     GTIN_TAG,
-    INKER_TAG,
-    LETTTER_TAG,
-    PENCILLER_TAG,
-    WRITER_TAG,
+    ComicInfoRoleTagEnum,
     ComicInfoSchema,
 )
+from comicbox.schemas.metroninfo import MetronRoleEnum
 from comicbox.transforms.comicinfo_age_rating import ComicInfoAgeRatingTransform
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
@@ -52,6 +40,7 @@ from comicbox.transforms.comicinfo_reprints import (
 from comicbox.transforms.comicinfo_storyarcs import (
     ComicInfoStoryArcsTransformMixin,
 )
+from comicbox.transforms.credit_role_tag import create_role_map
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
@@ -120,19 +109,68 @@ class ComicInfoTransform(
             "Teams": TEAMS_KEY,
         }
     )
-    CONTRIBUTOR_SCHEMA_MAP = bidict(
+    ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
+    PRE_ROLE_MAP = MappingProxyType(
         {
-            COLORIST_KEY: COLORIST_TAG,
-            COVER_ARTIST_KEY: COVER_ARTIST_TAG,
-            CREATOR_KEY: CREATOR_TAG,
-            EDITOR_KEY: EDITOR_TAG,
-            INKER_KEY: INKER_TAG,
-            LETTERER_KEY: LETTTER_TAG,
-            PENCILLER_KEY: PENCILLER_TAG,
-            WRITER_KEY: WRITER_TAG,
+            **{enum: enum for enum in ComicInfoRoleTagEnum},
+            CoMetRoleTagEnum.COLORIST: ComicInfoRoleTagEnum.COLORIST,
+            CoMetRoleTagEnum.COVER_DESIGNER: ComicInfoRoleTagEnum.COVER_ARTIST,
+            # CoMetRoleTagEnum.creator:ComicInfoRoleTagEnum.,
+            CoMetRoleTagEnum.EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            CoMetRoleTagEnum.INKER: ComicInfoRoleTagEnum.INKER,
+            CoMetRoleTagEnum.PENCILLER: ComicInfoRoleTagEnum.PENCILLER,
+            ComicBookInfoRoleEnum.ARTIST: (
+                ComicInfoRoleTagEnum.WRITER,
+                ComicInfoRoleTagEnum.PENCILLER,
+            ),
+            # ComicBookInfoRoleEnum.OTHER: ComicInfoRoleTagEnum.,
+            MetronRoleEnum.WRITER: ComicInfoRoleTagEnum.WRITER,
+            MetronRoleEnum.SCRIPT: ComicInfoRoleTagEnum.WRITER,
+            MetronRoleEnum.STORY: ComicInfoRoleTagEnum.WRITER,
+            MetronRoleEnum.PLOT: ComicInfoRoleTagEnum.WRITER,
+            MetronRoleEnum.INTERVIEWER: ComicInfoRoleTagEnum.WRITER,
+            MetronRoleEnum.ARTIST: (
+                ComicInfoRoleTagEnum.WRITER,
+                ComicInfoRoleTagEnum.PENCILLER,
+            ),
+            MetronRoleEnum.PENCILLER: ComicInfoRoleTagEnum.PENCILLER,
+            MetronRoleEnum.BREAKDOWNS: ComicInfoRoleTagEnum.PENCILLER,
+            MetronRoleEnum.ILLUSTRATOR: ComicInfoRoleTagEnum.PENCILLER,
+            MetronRoleEnum.LAYOUTS: ComicInfoRoleTagEnum.PENCILLER,
+            MetronRoleEnum.INKER: ComicInfoRoleTagEnum.INKER,
+            MetronRoleEnum.EMBELLISHER: ComicInfoRoleTagEnum.INKER,
+            MetronRoleEnum.FINISHES: ComicInfoRoleTagEnum.INKER,
+            MetronRoleEnum.INK_ASSISTS: ComicInfoRoleTagEnum.INKER,
+            MetronRoleEnum.COLORIST: ComicInfoRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_SEPARATIONS: ComicInfoRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_ASSISTS: ComicInfoRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_FLATS: ComicInfoRoleTagEnum.COLORIST,
+            # MetronRoleEnum.DIGITAL_ART_TECHNICIAN: ComicInfoRoleTagEnum.,
+            MetronRoleEnum.GRAY_TONE: ComicInfoRoleTagEnum.COLORIST,
+            MetronRoleEnum.LETTERER: ComicInfoRoleTagEnum.LETTERER,
+            MetronRoleEnum.COVER: ComicInfoRoleTagEnum.COVER_ARTIST,
+            MetronRoleEnum.EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.CONSULTING_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.ASSISTANT_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.ASSOCIATE_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.GROUP_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.SENIOR_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.MANAGING_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.COLLECTION_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.PRODUCTION: ComicInfoRoleTagEnum.EDITOR,
+            # MetronRoleEnum.DESIGNER: ComicInfoRoleTagEnum.,
+            # MetronRoleEnum.LOGO_DESIGN: ComicInfoRoleTagEnum.,
+            MetronRoleEnum.TRANSLATOR: ComicInfoRoleTagEnum.TRANSLATOR,
+            MetronRoleEnum.SUPERVISING_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.EXECUTIVE_EDITOR: ComicInfoRoleTagEnum.EDITOR,
+            MetronRoleEnum.EDITOR_IN_CHIEF: ComicInfoRoleTagEnum.EDITOR,
+            # MetronRoleEnum.PRESIDENT: ComicInfoRoleTagEnum.,
+            # MetronRoleEnum.CHIEF_CREATIVE_OFFICER: ComicInfoRoleTagEnum.,
+            # MetronRoleEnum.EXECUTIVE_PRODUCER: ComicInfoRoleTagEnum.,
+            # MetronRoleEnum.OTHER: ComicInfoRoleTagEnum.,
         }
     )
-    CONTRIBUTOR_COMICBOX_MAP = CONTRIBUTOR_SCHEMA_MAP.inverse
+    ROLE_MAP = create_role_map(PRE_ROLE_MAP)
     SCHEMA_CLASS = ComicInfoSchema
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
@@ -147,7 +185,7 @@ class ComicInfoTransform(
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.aggregate_contributors,
+        XmlCreditsTransformMixin.parse_credits,
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
         NestedPublishingTagsMixin.parse_publisher,
@@ -163,7 +201,7 @@ class ComicInfoTransform(
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.disaggregate_contributors,
+        XmlCreditsTransformMixin.unparse_credits,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,

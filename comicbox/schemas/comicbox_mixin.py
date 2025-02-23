@@ -27,7 +27,7 @@ from comicbox.schemas.base import BaseSubSchema
 ROOT_TAG = "comicbox"
 AGE_RATING_KEY = "age_rating"
 CHARACTERS_KEY = "characters"
-CONTRIBUTORS_KEY = "contributors"
+CREDITS_KEY = "credits"
 COUNTRY_KEY = "country"
 DATE_KEY = "date"
 DAY_KEY = "day"
@@ -51,12 +51,14 @@ PAGES_KEY = "pages"
 PAGE_COUNT_KEY = "page_count"
 PAGE_INDEX_KEY = "index"
 PAGE_TYPE_KEY = "page_type"
+PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
 PRICES_KEY = "prices"
 PRICE_KEY = "price"
 REPRINTS_KEY = "reprints"
 REPRINT_ISSUE_KEY = "issue"
 REPRINT_SERIES_KEY = "series"
+ROLES_KEY = "roles"
 SCAN_INFO_KEY = "scan_info"
 SERIES_KEY = "series"
 SERIES_GROUPS_KEY = "series_groups"
@@ -81,17 +83,6 @@ YEAR_KEY = "year"
 ORDERED_SET_KEYS = frozenset({"stories", "remainders"})
 
 
-# CONTRIBUTOR ROLES
-COLORIST_KEY = "colorist"
-COVER_ARTIST_KEY = "cover_artist"
-CREATOR_KEY = "creator"
-EDITOR_KEY = "editor"
-INKER_KEY = "inker"
-LETTERER_KEY = "letterer"
-PENCILLER_KEY = "penciller"
-WRITER_KEY = "writer"
-
-
 class IdentifiedNameSchema(BaseSubSchema):
     """Named Element with an identifier."""
 
@@ -99,17 +90,17 @@ class IdentifiedNameSchema(BaseSubSchema):
     name = StringField()
 
 
-class ContributorsSchema(BaseSubSchema):
-    """Contributors."""
+class RoleSchema(BaseSubSchema):
+    """Credit Role Schema."""
 
-    colorist = StringSetField()
-    cover_artist = StringSetField()
-    creator = StringSetField()
-    editor = StringSetField()
-    inker = StringSetField()
-    letterer = StringSetField()
-    penciller = StringSetField()
-    writer = StringSetField()
+    identifiers = IdentifiersField()
+
+
+class PersonSchema(BaseSubSchema):
+    """Credit Person Schema."""
+
+    identifiers = IdentifiersField()
+    roles = DictStringField(values=Nested(RoleSchema), case_insensitive=True)
 
 
 class PageInfoSchema(BaseSubSchema):
@@ -194,7 +185,7 @@ class ComicboxSubSchemaMixin:
     alternate_images = StringSetField()
     characters = Nested(IdentifiedNameSchema, many=True)
     community_rating = DecimalField(places=2)
-    contributors = Nested(ContributorsSchema)
+    credits = DictStringField(values=Nested(PersonSchema), case_insensitive=True)
     country = CountryField()
     collection_title = StringField()
     cover_image = StringField()
@@ -231,6 +222,7 @@ class ComicboxSubSchemaMixin:
     series = Union([Nested(SeriesSchema), StringField()])
     series_groups = StringSetField()
     store_date = DateField()
+    # Turn off sorting in the field if i can?
     stories = Nested(IdentifiedNameSchema, many=True)
     story_arcs = DictStringField(values=Nested(StoryArcSchema))
     summary = StringField()

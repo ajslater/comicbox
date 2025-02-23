@@ -1,6 +1,7 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
 from collections.abc import Mapping, Sequence
+from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 from xml.sax.saxutils import unescape
@@ -9,20 +10,23 @@ from bidict import bidict
 
 from comicbox.dict_funcs import deep_update
 from comicbox.fields.collection_fields import StringSetField
+from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbox_mixin import (
-    CONTRIBUTORS_KEY,
+    CREDITS_KEY,
     GENRES_KEY,
     IMPRINT_KEY,
     ISSUE_KEY,
     PUBLISHER_KEY,
+    ROLES_KEY,
     ROOT_TAG,
     SCAN_INFO_KEY,
     SERIES_KEY,
     TAGGER_KEY,
     TAGS_KEY,
     VOLUME_KEY,
-    WRITER_KEY,
 )
+from comicbox.schemas.comicinfo import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
@@ -31,6 +35,7 @@ from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
+from comicbox.transforms.credit_role_tag import create_role_map
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.title_mixin import TitleStoriesMixin
@@ -58,10 +63,10 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     AUTHOR_TAG = "pdf:Author"
     TRANSFORM_MAP = bidict(
         {
-            # AUTHOR_TAG: CONTRIBUTORS_KEY,
+            # "pdf:Author": coded
             "pdf:Creator": SCAN_INFO_KEY,  # original document creator
             "pdf:Producer": TAGGER_KEY,
-            # "pdf:Title": TITLE_KEY, coded
+            # "pdf:Title": coded
         }
     )
     TAGS_TAG = "pdf:Keywords"
@@ -78,19 +83,45 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     TITLE_TAG = "pdf:Title"
     TITLE_STORIES_DELIMITER = ";"
     LIST_KEYS = frozenset({TAGS_KEY})
+    PRE_ROLE_MAP: MappingProxyType[Enum, None] = MappingProxyType(
+        {
+            MetronRoleEnum.WRITER: None,
+            MetronRoleEnum.SCRIPT: None,
+            MetronRoleEnum.STORY: None,
+            MetronRoleEnum.PLOT: None,
+            MetronRoleEnum.TRANSLATOR: None,
+            CoMetRoleTagEnum.CREATOR: None,
+            CoMetRoleTagEnum.WRITER: None,
+            ComicInfoRoleTagEnum.WRITER: None,
+            ComicInfoRoleTagEnum.TRANSLATOR: None,
+        }
+    )
+    AUTHOR_VALUES = frozenset(create_role_map(PRE_ROLE_MAP).keys())
 
-    def aggregate_contributors(self, data):
+    def parse_credits(self, data):
         """Convert csv to writer credits."""
         authors = data.get(self.AUTHOR_TAG)
         if not authors:
             return data
-        data[CONTRIBUTORS_KEY] = {WRITER_KEY: authors}
+        comicbox_credits = {
+            author: {ROLES_KEY: {"Writer": {}}} for author in authors if author
+        }
+        if comicbox_credits:
+            data[CREDITS_KEY] = comicbox_credits
         return data
 
-    def disaggregate_contributors(self, data):
+    def unparse_credits(self, data):
         """Convert writer credits to csv."""
-        contributors = data.pop(CONTRIBUTORS_KEY, {})
-        if authors := contributors.get(WRITER_KEY):
+        comicbox_credits = data.pop(CREDITS_KEY, {})
+        authors = set()
+        for person_name, comicbox_credit in comicbox_credits.items():
+            if not person_name:
+                continue
+            comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
+            for role_name in comicbox_roles:
+                if role_name.lower() in self.AUTHOR_VALUES:
+                    authors.add(person_name)
+        if authors:
             data[self.AUTHOR_TAG] = authors
         return data
 
@@ -142,14 +173,14 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         parse_tags,
-        aggregate_contributors,
+        parse_credits,
         TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         unparse_tags,
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        disaggregate_contributors,
+        unparse_credits,
         TitleStoriesMixin.unparse_stories,
     )
 

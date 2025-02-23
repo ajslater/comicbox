@@ -4,9 +4,10 @@ from collections.abc import Mapping
 from logging import getLogger
 
 from comicbox.box.sources import ComicboxSourcesMixin
+from comicbox.dict_funcs import deep_update
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.comicbox_mixin import (
-    CONTRIBUTORS_KEY,
+    CREDITS_KEY,
     NAME_KEY,
     ORDERED_SET_KEYS,
     PAGES_KEY,
@@ -70,18 +71,19 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         else:
             merged_md.pop(PAGES_KEY, None)
 
-    @staticmethod
-    def _merge_contributors(merged_md, md_contributors):
+    @classmethod
+    def _merge_credits(cls, merged_md, md_credits):
         """Merge contributors."""
         try:
-            if not md_contributors:
+            if not md_credits:
                 return
-            if CONTRIBUTORS_KEY not in merged_md:
-                merged_md[CONTRIBUTORS_KEY] = {}
-            for role, persons in md_contributors.items():
-                if role not in merged_md[CONTRIBUTORS_KEY]:
-                    merged_md[CONTRIBUTORS_KEY][role] = set()
-                merged_md[CONTRIBUTORS_KEY][role] |= persons
+
+            old_credits = merged_md.get(CREDITS_KEY)
+            if merged_credits := deep_update(
+                old_credits, md_credits, sort=True, case_insensitive=True
+            ):
+                merged_md[CREDITS_KEY] = merged_credits
+
         except KeyError:
             pass
 
@@ -142,8 +144,8 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 merged_md[key] = value
             elif key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif key == CONTRIBUTORS_KEY:
-                self._merge_contributors(merged_md, value)
+            elif key == CREDITS_KEY:
+                self._merge_credits(merged_md, value)
             elif key in ORDERED_SET_KEYS:
                 self._merge_ordered_set(merged_md, key, value)
             elif key == REPRINTS_KEY:

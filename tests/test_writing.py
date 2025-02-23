@@ -26,9 +26,9 @@ WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"]))
 METADATA = MappingProxyType(
     {
         ROOT_TAG: {
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
             "ext": "cbz",

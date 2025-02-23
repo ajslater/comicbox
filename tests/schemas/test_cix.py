@@ -39,10 +39,9 @@ READ_METADATA = MappingProxyType(
                 {"name": "Captain Science"},
                 {"name": "Gordon Dane"},
             ],
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "genres": [{"name": "Science Fiction"}],
             "identifiers": {

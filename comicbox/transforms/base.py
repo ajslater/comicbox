@@ -12,14 +12,12 @@ from bidict import bidict
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import (
-    CONTRIBUTORS_KEY,
     NAME_KEY,
     SERIES_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
-from comicbox.transforms.comicbox_mixin import ComicboxTransformMixin
 
 LOG = getLogger(__name__)
 
@@ -35,8 +33,6 @@ class BaseTransform:
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = bidict()
     STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType({})
-    CONTRIBUTOR_COMICBOX_MAP = MappingProxyType({})
-    CONTRIBUTOR_SCHEMA_MAP = MappingProxyType({})
     SIMPLE_STRING_SCHEMAS = MappingProxyType(
         {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
     )
@@ -128,22 +124,6 @@ class BaseTransform:
                 data[to_key] = string_list
         return data
 
-    def canonize_contributors(self, data):
-        """Force contributors into comicbox canon roles."""
-        contributors = data.get(CONTRIBUTORS_KEY)
-        if not contributors:
-            return data
-        for role, persons in contributors.items():
-            canon_role = ComicboxTransformMixin.CONTRIBUTOR_COMICBOX_MAP.get(role)
-            if canon_role == role:
-                continue
-
-            del data[CONTRIBUTORS_KEY][role]
-            if not canon_role:
-                continue
-            data[CONTRIBUTORS_KEY][canon_role] = persons
-        return data
-
     def expand_str_to_schema(self, data):
         """Expand simple strings into schema structures."""
         for key, subkey in self.SIMPLE_STRING_SCHEMAS.items():
@@ -154,7 +134,7 @@ class BaseTransform:
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_names)
-    TO_COMICBOX_POST_TRANSFORM = (canonize_contributors, expand_str_to_schema)
+    TO_COMICBOX_POST_TRANSFORM = (expand_str_to_schema,)
     FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, named_objs_to_string_lists)
     FROM_COMICBOX_POST_TRANSFORM = ()
 

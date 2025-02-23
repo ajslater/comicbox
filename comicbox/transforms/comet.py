@@ -6,34 +6,26 @@ from bidict import bidict
 from stringcase import camelcase
 
 from comicbox.schemas.comet import (
-    COLORIST_TAG,
-    COVER_DESIGNER_TAG,
-    CREATOR_TAG,
-    EDITOR_TAG,
     IDENTIFIER_TAG,
-    INKER_TAG,
     IS_VERSION_OF_TAG,
-    LETTERER_TAG,
-    PENCILLER_TAG,
-    WRITER_TAG,
+    CoMetRoleTagEnum,
     CoMetSchema,
 )
+from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
     CHARACTERS_KEY,
-    COLORIST_KEY,
-    COVER_ARTIST_KEY,
-    CREATOR_KEY,
-    EDITOR_KEY,
     GENRES_KEY,
-    INKER_KEY,
-    LETTERER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
-    PENCILLER_KEY,
     SUMMARY_KEY,
-    WRITER_KEY,
 )
+from comicbox.schemas.comicinfo import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo import MetronRoleEnum
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
+from comicbox.transforms.credit_role_tag import (
+    CreditRoleTagTransformMixin,
+    create_role_map,
+)
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.price_mixin import PriceMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
@@ -50,6 +42,7 @@ class CoMetTransform(
     IdentifiersTransformMixin,
     TitleStoriesMixin,
     PriceMixin,
+    CreditRoleTagTransformMixin,
 ):
     """CoMet transforms."""
 
@@ -79,19 +72,67 @@ class CoMetTransform(
             "genre": GENRES_KEY,
         }
     )
-    CONTRIBUTOR_SCHEMA_MAP = bidict(
+    ROLE_TAGS_ENUM = CoMetRoleTagEnum
+    PRE_ROLE_MAP = MappingProxyType(
         {
-            COLORIST_KEY: COLORIST_TAG,
-            COVER_ARTIST_KEY: COVER_DESIGNER_TAG,
-            CREATOR_KEY: CREATOR_TAG,  # Unused
-            EDITOR_KEY: EDITOR_TAG,
-            INKER_KEY: INKER_TAG,
-            LETTERER_KEY: LETTERER_TAG,
-            PENCILLER_KEY: PENCILLER_TAG,
-            WRITER_KEY: WRITER_TAG,
+            **{tag: tag for tag in ROLE_TAGS_ENUM},
+            ComicInfoRoleTagEnum.COLORIST: CoMetRoleTagEnum.COLORIST,
+            ComicInfoRoleTagEnum.COVER_ARTIST: CoMetRoleTagEnum.COVER_DESIGNER,
+            ComicInfoRoleTagEnum.EDITOR: CoMetRoleTagEnum.EDITOR,
+            ComicInfoRoleTagEnum.INKER: CoMetRoleTagEnum.INKER,
+            ComicInfoRoleTagEnum.PENCILLER: CoMetRoleTagEnum.PENCILLER,
+            ComicBookInfoRoleEnum.ARTIST: (
+                CoMetRoleTagEnum.WRITER,
+                CoMetRoleTagEnum.PENCILLER,
+            ),
+            # ComicBookInfoRoleEnum.OTHER: CoMetRoleTagEnum.,
+            MetronRoleEnum.WRITER: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.SCRIPT: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.STORY: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.PLOT: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.INTERVIEWER: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.ARTIST: (
+                CoMetRoleTagEnum.WRITER,
+                CoMetRoleTagEnum.PENCILLER,
+            ),
+            MetronRoleEnum.PENCILLER: CoMetRoleTagEnum.PENCILLER,
+            MetronRoleEnum.BREAKDOWNS: CoMetRoleTagEnum.PENCILLER,
+            MetronRoleEnum.ILLUSTRATOR: CoMetRoleTagEnum.PENCILLER,
+            MetronRoleEnum.LAYOUTS: CoMetRoleTagEnum.PENCILLER,
+            MetronRoleEnum.INKER: CoMetRoleTagEnum.INKER,
+            MetronRoleEnum.EMBELLISHER: CoMetRoleTagEnum.INKER,
+            MetronRoleEnum.FINISHES: CoMetRoleTagEnum.INKER,
+            MetronRoleEnum.INK_ASSISTS: CoMetRoleTagEnum.INKER,
+            MetronRoleEnum.COLORIST: CoMetRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_SEPARATIONS: CoMetRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_ASSISTS: CoMetRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLOR_FLATS: CoMetRoleTagEnum.COLORIST,
+            # MetronRoleEnum.DIGITAL_ART_TECHNICIAN: CoMetRoleTagEnum.,
+            MetronRoleEnum.GRAY_TONE: CoMetRoleTagEnum.COLORIST,
+            MetronRoleEnum.LETTERER: CoMetRoleTagEnum.LETTERER,
+            MetronRoleEnum.COVER: CoMetRoleTagEnum.COVER_DESIGNER,
+            MetronRoleEnum.EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.CONSULTING_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.ASSISTANT_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.ASSOCIATE_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.GROUP_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.SENIOR_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.MANAGING_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.COLLECTION_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.PRODUCTION: CoMetRoleTagEnum.EDITOR,
+            # MetronRoleEnum.DESIGNER: CoMetRoleTagEnum.,
+            # MetronRoleEnum.LOGO_DESIGN: CoMetRoleTagEnum.,
+            MetronRoleEnum.TRANSLATOR: CoMetRoleTagEnum.WRITER,
+            MetronRoleEnum.SUPERVISING_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.EXECUTIVE_EDITOR: CoMetRoleTagEnum.EDITOR,
+            MetronRoleEnum.EDITOR_IN_CHIEF: CoMetRoleTagEnum.EDITOR,
+            # MetronRoleEnum.PRESIDENT: CoMetRoleTagEnum.,
+            # MetronRoleEnum.CHIEF_CREATIVE_OFFICER: CoMetRoleTagEnum.,
+            # MetronRoleEnum.EXECUTIVE_PRODUCER: CoMetRoleTagEnum.,
+            # MetronRoleEnum.OTHER: CoMetRoleTagEnum.,
         }
     )
-    CONTRIBUTOR_COMICBOX_MAP = CONTRIBUTOR_SCHEMA_MAP.inverse
+    ROLE_MAP = create_role_map(PRE_ROLE_MAP)
 
     SCHEMA_CLASS = CoMetSchema
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
@@ -106,7 +147,7 @@ class CoMetTransform(
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.aggregate_contributors,
+        XmlCreditsTransformMixin.parse_credits,
         CoMetReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
@@ -118,7 +159,7 @@ class CoMetTransform(
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.disaggregate_contributors,
+        XmlCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_publisher,

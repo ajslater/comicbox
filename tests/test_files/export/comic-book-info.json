@@ -2,16 +2,16 @@
   "ComicBookInfo/1.0": {
     "credits": [
       {
-        "person": "Wally Wood",
-        "role": "Inker"
-      },
-      {
-        "person": "Wally Wood",
-        "role": "Penciller"
-      },
-      {
         "person": "Joe Orlando",
-        "role": "Writer"
+        "role": "writer"
+      },
+      {
+        "person": "Wally Wood",
+        "role": "inker"
+      },
+      {
+        "person": "Wally Wood",
+        "role": "penciller"
       }
     ],
     "genre": "Science Fiction",
