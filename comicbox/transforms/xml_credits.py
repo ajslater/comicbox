@@ -34,9 +34,9 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
                 if not persons:
                     continue
                 for person_name in persons:
-                    if person_name not in comicbox_credits:
-                        comicbox_credits[person_name] = {ROLES_KEY: {}}
-                    comicbox_credits[person_name][ROLES_KEY][role_name] = {}
+                    self.add_credit_role_to_comicbox_credits(
+                        person_name, role_name, comicbox_credits
+                    )
             except Exception:
                 LOG.exception(f"{self._path} parsing credit tag {xml_role_tag_enum}")
 

@@ -26,13 +26,9 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
 
     def _parse_credit(self, cbi_credit: dict, comicbox_credits: dict):
         """Parse one CBI credit into a comicbox credit."""
-        cbi_person = cbi_credit.get(self.PERSON_TAG)
-        if not cbi_person:
-            return
-        if cbi_person not in comicbox_credits:
-            comicbox_credits[cbi_person] = {ROLES_KEY: {}}
-        if cbi_role := cbi_credit.get(self.ROLE_TAG):
-            comicbox_credits[cbi_person][ROLES_KEY][cbi_role] = {}
+        cbi_person = cbi_credit.get(self.PERSON_TAG, "")
+        cbi_role = cbi_credit.get(self.ROLE_TAG, "")
+        self.add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
 
     def parse_credits(self, data):
         """Aggregate dict from comicbookinfo style list."""

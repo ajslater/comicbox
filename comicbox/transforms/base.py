@@ -13,6 +13,7 @@ from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import (
     NAME_KEY,
+    ROLES_KEY,
     SERIES_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
@@ -132,6 +133,17 @@ class BaseTransform:
                 continue
             data[key] = {subkey: value}
         return data
+
+    @staticmethod
+    def add_credit_role_to_comicbox_credits(
+        person_name: str, role_name: str, comicbox_credits: dict
+    ):
+        """Add a credit role to the comicbox credits."""
+        if not (person_name and role_name):
+            return
+        if person_name not in comicbox_credits:
+            comicbox_credits[person_name] = {ROLES_KEY: {}}
+        comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
     TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_names)
     TO_COMICBOX_POST_TRANSFORM = (expand_str_to_schema,)
