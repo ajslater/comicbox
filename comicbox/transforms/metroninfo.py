@@ -38,6 +38,7 @@ from comicbox.schemas.comicbox_mixin import (
     NID_KEY,
     NOTES_KEY,
     NUMBER_KEY,
+    NUMBER_TO_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PRICES_KEY,
@@ -600,9 +601,13 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     def parse_metron_manga_volume(self, data):
         """Parse the metron MangaVolume tag."""
-        if volume_name := data.pop(MANGA_VOLUME_TAG, None):
+        if manga_volume_name := data.pop(MANGA_VOLUME_TAG, None):
             volume = data.get(VOLUME_KEY, {})
-            volume[NAME_KEY] = volume_name
+            parts = manga_volume_name.split("-")
+            if NUMBER_KEY not in volume:
+                volume[NUMBER_KEY] = parts[0]
+            if len(parts) > 1:
+                volume[NUMBER_TO_KEY] = parts[1]
             data[VOLUME_KEY] = volume
         return data
 
@@ -719,8 +724,10 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
         if volume := data.get(VOLUME_KEY):
             self._copy_tags(volume, metron_series, self.SERIES_VOLUME_TAG_MAP.inverse)
-            if manga_volume := volume.get(NAME_KEY):
-                data[MANGA_VOLUME_TAG] = manga_volume
+            number = volume.get(NUMBER_KEY)
+            number_to = volume.get(NUMBER_TO_KEY)
+            if number is not None and number_to is not None:
+                data[MANGA_VOLUME_TAG] = f"{number}-{number_to}"
 
         if original_format := data.get(ORIGINAL_FORMAT_KEY):
             metron_series[SERIES_FORMAT_TAG] = original_format

@@ -44,6 +44,7 @@ LOCATIONS_KEY = "locations"
 MONTH_KEY = "month"
 NAME_KEY = "name"
 NUMBER_KEY = "number"
+NUMBER_TO_KEY = "number_to"
 NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
@@ -138,11 +139,14 @@ class PageInfoSchema(BaseSubSchema):
 #    suffix = StringField() noqa: ERA001
 
 
-class VolumeSchema(IdentifiedNameSchema):
+class VolumeSchema(BaseSubSchema):
     """Volume Schema."""
+
+    # No identifiers in metron
 
     issue_count = IntegerField(minimum=0)
     number = IntegerField(minimum=0)
+    number_to = IntegerField(minimum=0)
 
 
 class SeriesSchema(IdentifiedNameSchema):

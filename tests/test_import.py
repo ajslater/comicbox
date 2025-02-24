@@ -316,7 +316,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "universes": {"Mirror": {"designation": "4242"}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
-            "volume": {"issue_count": 10, "name": "NineteenFifty", "number": 1950},
+            "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
     }
 )

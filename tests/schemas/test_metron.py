@@ -121,8 +121,8 @@ READ_METADATA = MappingProxyType(
             "updated_at": TEST_DATETIME,
             "universes": {"Mirror": {"designation": "4242"}},
             "volume": {
-                "name": "NineteenFifty",
                 "number": 1950,
+                "number_to": 1952,
                 "issue_count": 10,
             },
         }
@@ -173,7 +173,7 @@ READ_METRON_DICT = MappingProxyType(
                 ],
             },
             "LastModified": TEST_DTTM_STR,
-            "MangaVolume": "NineteenFifty",
+            "MangaVolume": "1950-1952",
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
@@ -274,7 +274,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 ],
             },
             "LastModified": TEST_DTTM_STR,
-            "MangaVolume": "NineteenFifty",
+            "MangaVolume": "1950-1952",
             "Notes": METRON_NOTES,
             "Number": "1",
             "PageCount": 0,
