@@ -85,13 +85,15 @@ ORDERED_SET_KEYS = frozenset({"remainders"})
 MAP_KEYS = frozenset(
     {
         CHARACTERS_KEY,
+        CREDITS_KEY,
         GENRES_KEY,
         LOCATIONS_KEY,
+        PRICES_KEY,
         STORIES_KEY,
+        STORY_ARCS_KEY,
         TAGS_KEY,
         TEAMS_KEY,
         UNIVERSES_KEY,
-        CREDITS_KEY,
     }
 )
 

@@ -143,15 +143,15 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 return
             if key not in merged_md:
                 merged_md[key] = value
+            elif key in MAP_KEYS:
+                self._merge_mapping(merged_md, key, value)
             elif key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif key in ORDERED_SET_KEYS:
-                self._merge_ordered_set(merged_md, key, value)
             elif key == REPRINTS_KEY:
                 new_value = merged_md[key] + value
                 merged_md[key] = sort_reprints(new_value)
-            elif key in MAP_KEYS:
-                self._merge_mapping(merged_md, key, value)
+            elif key in ORDERED_SET_KEYS:
+                self._merge_ordered_set(merged_md, key, value)
             elif isinstance(value, list | tuple):
                 self._merge_list(merged_md, key, value)
             elif isinstance(value, set | frozenset):
