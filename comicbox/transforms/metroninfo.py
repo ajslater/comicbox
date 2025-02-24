@@ -484,7 +484,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
         return data
 
-    def map_arcs_to_story_arcs(self, data):
+    def parse_arcs(self, data):
         """Convert metron arcs list to story arcs map."""
         if not (metron_arcs := self.hoist_tag(ARCS_TAG, data)):
             return data
@@ -502,7 +502,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             comicbox_story_arcs[name] = comicbox_story_arc
         return _copy_assign(STORY_ARCS_KEY, data, comicbox_story_arcs)
 
-    def map_story_arcs_to_arcs(self, data):
+    def unparse_arcs(self, data):
         """Convert story arc dict to metron arcs list."""
         if not (comicbox_story_arcs := data.pop(STORY_ARCS_KEY, None)):
             return data
@@ -529,7 +529,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 self.parse_assign_identifier(data, nid, identifier, primary)
         return data
 
-    def hoist_reprints(self, data):
+    def parse_reprints(self, data):
         """Parse reprint names into reprint structures."""
         metron_reprints = self.hoist_tag(REPRINTS_TAG, data)
         if not metron_reprints:
@@ -557,7 +557,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[REPRINTS_KEY] = comicbox_reprints
         return data
 
-    def lower_reprints(self, data):
+    def unparse_reprints(self, data):
         """Unparse reprint structures into metron reprint names."""
         reprints = data.get(REPRINTS_KEY)
         if not reprints:
@@ -903,31 +903,31 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         IdentifiersTransformMixin.parse_urls,
         parse_gtin,
         hoist_metron_resource_lists,
-        parse_publisher,
+        parse_age_rating,
+        parse_arcs,
+        parse_credits,
         parse_metron_series,
         parse_metron_manga_volume,
-        parse_credits,
-        map_arcs_to_story_arcs,
-        hoist_reprints,
-        consolidate_reprints,
-        IdentifiersTransformMixin.parse_default_primary_identifier,
-        parse_metron_resources,
+        parse_publisher,
         parse_prices,
+        parse_metron_resources,
+        parse_reprints,
+        consolidate_reprints,
         parse_universes,
-        parse_age_rating,
+        IdentifiersTransformMixin.parse_default_primary_identifier,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         IdentifiersTransformMixin.unparse_identifiers,
-        unparse_universes,
-        unparse_prices,
-        lower_metron_resource_lists,
-        unparse_publisher,
-        unparse_metron_series,
-        unparse_credits,
-        map_story_arcs_to_arcs,
-        lower_reprints,
-        unparse_metron_resources,
         unparse_age_rating,
+        unparse_arcs,
+        unparse_credits,
+        unparse_publisher,
+        unparse_prices,
+        unparse_metron_series,
+        unparse_reprints,
+        unparse_universes,
+        lower_metron_resource_lists,
+        unparse_metron_resources,
     )
