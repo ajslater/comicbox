@@ -256,6 +256,13 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         }
     )
 
+    # UTILITY
+    ###########################################################################
+    def _copy_tags(self, from_dict, to_dict, tag_dict):
+        for from_key, to_key in tag_dict.items():
+            if value := from_dict.get(from_key):
+                to_dict[to_key] = value
+
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
         update_dict = {}
@@ -299,6 +306,79 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 f"Parsing metron tag identifier {nss_type}:{metron_obj} - {exc}"
             )
 
+    def _parse_identified_name(self, data: dict, nss_type: str, key: str) -> dict:
+        """Parse Metron Resource Types into comicbox."""
+        if metron_objs := data.get(key):
+            comicbox_objs = {}
+            for metron_obj in metron_objs:
+                name = get_cdata(metron_obj)
+                if not name:
+                    continue
+                comicbox_obj = {}
+                self._parse_metron_tag_identifier(
+                    data, nss_type, metron_obj, comicbox_obj
+                )
+                comicbox_objs[name] = comicbox_obj
+            if comicbox_objs:
+                data[key] = comicbox_objs
+        return data
+
+    def _unparse_metron_id_attribute(
+        self, data: dict, metron_obj: dict, comicbox_obj: dict
+    ):
+        """Unparse Metron series identifiers from series identifiers."""
+        comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
+        if not comicbox_identifiers:
+            return
+        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
+        for nid, identifier in comicbox_identifiers.items():
+            if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
+                metron_obj[ID_ATTRIBUTE] = nss
+                break
+
+    def _unparse_identified_name(self, data, name: str, comicbox_obj: dict) -> dict:
+        metron_obj = {"#text": name}
+        self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
+        return metron_obj
+
+    def _unparse_identified_names(self, data: dict, tag: str) -> dict:
+        """Unparse identifierd names into Metron Resource Types."""
+        sub_tag = STORY_TAG if tag == STORIES_TAG else tag[:-1]
+        if comicbox_objs := data.get(tag, {}).get(sub_tag):
+            metron_objs = []
+            for name, comicbox_obj in comicbox_objs.items():
+                metron_obj = self._unparse_identified_name(data, name, comicbox_obj)
+                metron_objs.append(metron_obj)
+            if metron_objs:
+                data[tag][sub_tag] = metron_objs
+        return data
+
+    # AGE RATING
+    ###########################################################################
+    def parse_age_rating(self, data: dict) -> dict:
+        """Parse Age Rating."""
+        if age_rating_enum := data.pop(AGE_RATING_TAG, None):
+            data[AGE_RATING_KEY] = age_rating_enum.value
+        return data
+
+    def unparse_age_rating(self, data: dict) -> dict:
+        """Unparse Age Rating."""
+        if age_rating := data.pop(AGE_RATING_KEY, None):
+            metron_enum = None
+            try:
+                metron_enum = MetronAgeRatingEnum(age_rating)
+            except ValueError:
+                try:
+                    cix_enum = ComicInfoAgeRatingEnum(age_rating)
+                    metron_enum = self.AGE_RATING_MAP.get(cix_enum)
+                except ValueError:
+                    pass
+            if metron_enum:
+                data[AGE_RATING_TAG] = metron_enum
+        return data
+
+    # PUBLISHER
+    ###########################################################################
     def _parse_imprint(self, data, metron_publisher):
         metron_imprint = metron_publisher.get(IMPRINT_TAG)
         if not metron_imprint:
@@ -326,67 +406,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self._parse_imprint(data, metron_publisher)
         return data
 
-    def _parse_identified_name(self, data: dict, nss_type: str, key: str) -> dict:
-        """Parse Metron Resource Types into comicbox."""
-        if metron_objs := data.get(key):
-            comicbox_objs = {}
-            for metron_obj in metron_objs:
-                name = get_cdata(metron_obj)
-                if not name:
-                    continue
-                comicbox_obj = {}
-                self._parse_metron_tag_identifier(
-                    data, nss_type, metron_obj, comicbox_obj
-                )
-                comicbox_objs[name] = comicbox_obj
-            if comicbox_objs:
-                data[key] = comicbox_objs
-        return data
-
-    def parse_metron_resources(self, data: dict) -> dict:
-        """Parse Metron Resources."""
-        for key, md in _METRON_RESOURCES.items():
-            nss_type, _ = md
-            data = self._parse_identified_name(data, nss_type, key)
-        return data
-
-    def _unparse_identified_name(self, data, name: str, comicbox_obj: dict) -> dict:
-        metron_obj = {"#text": name}
-        self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
-        return metron_obj
-
-    def _unparse_identified_names(self, data: dict, tag: str) -> dict:
-        """Unparse identifierd names into Metron Resource Types."""
-        sub_tag = STORY_TAG if tag == STORIES_TAG else tag[:-1]
-        if comicbox_objs := data.get(tag, {}).get(sub_tag):
-            metron_objs = []
-            for name, comicbox_obj in comicbox_objs.items():
-                metron_obj = self._unparse_identified_name(data, name, comicbox_obj)
-                metron_objs.append(metron_obj)
-            if metron_objs:
-                data[tag][sub_tag] = metron_objs
-        return data
-
-    def unparse_metron_resources(self, data: dict) -> dict:
-        """Unparse comicbox maps into metron Resources."""
-        for md in _METRON_RESOURCES.values():
-            _, tag = md
-            data = self._unparse_identified_names(data, tag)
-        return data
-
-    def _unparse_metron_id_attribute(
-        self, data: dict, metron_obj: dict, comicbox_obj: dict
-    ):
-        """Unparse Metron series identifiers from series identifiers."""
-        comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
-        if not comicbox_identifiers:
-            return
-        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
-        for nid, identifier in comicbox_identifiers.items():
-            if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
-                metron_obj[ID_ATTRIBUTE] = nss
-                break
-
     def unparse_publisher(self, data):
         """Unparse Metron publisher."""
         publisher = data.pop(PUBLISHER_KEY, {})
@@ -406,6 +425,24 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[PUBLISHER_TAG] = metron_publisher
         return data
 
+    # RESOURCES
+    ###########################################################################
+    def parse_metron_resources(self, data: dict) -> dict:
+        """Parse Metron Resources."""
+        for key, md in _METRON_RESOURCES.items():
+            nss_type, _ = md
+            data = self._parse_identified_name(data, nss_type, key)
+        return data
+
+    def unparse_metron_resources(self, data: dict) -> dict:
+        """Unparse comicbox maps into metron Resources."""
+        for md in _METRON_RESOURCES.values():
+            _, tag = md
+            data = self._unparse_identified_names(data, tag)
+        return data
+
+    # CREDITS
+    ###########################################################################
     def _parse_credit(self, data, metron_credit, comicbox_credits: dict):
         """Copy a single metron style credit entry into comicbox credits."""
         metron_creator = metron_credit.get(CREATOR_TAG, {})
@@ -484,6 +521,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
         return data
 
+    # ARCS
+    ###########################################################################
     def parse_arcs(self, data):
         """Convert metron arcs list to story arcs map."""
         if not (metron_arcs := self.hoist_tag(ARCS_TAG, data)):
@@ -517,6 +556,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self.lower_tag(ARCS_TAG, ARCS_TAG, data, metron_arcs)
         return data
 
+    # GTIN
+    ###########################################################################
     def parse_gtin(self, data):
         """Parse complex metron gtin structure into identifiers."""
         complex_gtin = data.pop(GTIN_TAG, None)
@@ -529,6 +570,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 self.parse_assign_identifier(data, nid, identifier, primary)
         return data
 
+    # REPRINTS
+    ###########################################################################
     def parse_reprints(self, data):
         """Parse reprint names into reprint structures."""
         metron_reprints = self.hoist_tag(REPRINTS_TAG, data)
@@ -573,11 +616,39 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self.lower_tag(REPRINTS_TAG, REPRINTS_TAG, data, metron_reprints)
         return data
 
-    def _copy_tags(self, from_dict, to_dict, tag_dict):
-        for from_key, to_key in tag_dict.items():
-            if value := from_dict.get(from_key):
-                to_dict[to_key] = value
+    def _aggregate_reprints(self, reprints, new_reprint):
+        """Aggregate new reprint into similar old reprint."""
+        new_series = new_reprint.get(SERIES_KEY, {})
+        new_series_name = new_series.get(NAME_KEY)
+        new_lang = new_reprint.get(LANGUAGE_KEY)
 
+        for old_reprint in reprints:
+            old_series = old_reprint.get(SERIES_KEY, {})
+            old_series_name = old_series.get(NAME_KEY)
+            old_lang = old_reprint.get(LANGUAGE_KEY)
+
+            if new_series_name == old_series_name and (
+                not new_lang or not old_lang or new_lang == old_lang
+            ):
+                deep_update(old_reprint, new_reprint)
+                break
+        else:
+            reprints.append(new_reprint)
+
+    def consolidate_reprints(self, data):
+        """Consolidate reprints after parsing from series & reprints."""
+        old_reprints = data.get(REPRINTS_KEY)
+        if not old_reprints:
+            return data
+        consolidated_reprints = []
+        for reprint in old_reprints:
+            self._aggregate_reprints(consolidated_reprints, reprint)
+        if consolidated_reprints:
+            data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
+        return data
+
+    # SERIES
+    ###########################################################################
     def _parse_metron_series_series_key(self, data, metron_series, update_dict) -> None:
         """Parse metron series tags into comicbox series key."""
         series = {}
@@ -598,18 +669,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
         if volume:
             update_dict[VOLUME_KEY] = volume
-
-    def parse_metron_manga_volume(self, data):
-        """Parse the metron MangaVolume tag."""
-        if manga_volume_name := data.pop(MANGA_VOLUME_TAG, None):
-            volume = data.get(VOLUME_KEY, {})
-            parts = manga_volume_name.split("-")
-            if NUMBER_KEY not in volume:
-                volume[NUMBER_KEY] = parts[0]
-            if len(parts) > 1:
-                volume[NUMBER_TO_KEY] = parts[1]
-            data[VOLUME_KEY] = volume
-        return data
 
     def _parse_series_alternative_names(self, data, metron_series) -> dict:
         """Parse metron series alternative name tags into reprints."""
@@ -659,35 +718,16 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
         return data
 
-    def _aggregate_reprints(self, reprints, new_reprint):
-        """Aggregate new reprint into similar old reprint."""
-        new_series = new_reprint.get(SERIES_KEY, {})
-        new_series_name = new_series.get(NAME_KEY)
-        new_lang = new_reprint.get(LANGUAGE_KEY)
-
-        for old_reprint in reprints:
-            old_series = old_reprint.get(SERIES_KEY, {})
-            old_series_name = old_series.get(NAME_KEY)
-            old_lang = old_reprint.get(LANGUAGE_KEY)
-
-            if new_series_name == old_series_name and (
-                not new_lang or not old_lang or new_lang == old_lang
-            ):
-                deep_update(old_reprint, new_reprint)
-                break
-        else:
-            reprints.append(new_reprint)
-
-    def consolidate_reprints(self, data):
-        """Consolidate reprints after parsing from series & reprints."""
-        old_reprints = data.get(REPRINTS_KEY)
-        if not old_reprints:
-            return data
-        consolidated_reprints = []
-        for reprint in old_reprints:
-            self._aggregate_reprints(consolidated_reprints, reprint)
-        if consolidated_reprints:
-            data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
+    def parse_metron_manga_volume(self, data):
+        """Parse the metron MangaVolume tag."""
+        if manga_volume_name := data.pop(MANGA_VOLUME_TAG, None):
+            volume = data.get(VOLUME_KEY, {})
+            parts = manga_volume_name.split("-")
+            if NUMBER_KEY not in volume:
+                volume[NUMBER_KEY] = parts[0]
+            if len(parts) > 1:
+                volume[NUMBER_TO_KEY] = parts[1]
+            data[VOLUME_KEY] = volume
         return data
 
     def _unparse_metron_series_alternative_names(self, data, metron_series):
@@ -739,6 +779,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
         return data
 
+    # IDENTIFIERS & URLS
+    ###########################################################################
     @staticmethod
     def parse_item_primary(item) -> bool:
         """Parse primary attribute."""
@@ -804,6 +846,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         data[self.URLS_TAG][self.URLS_SUB_TAG].append(url_tag)
         return data
 
+    # PRICES
+    ###########################################################################
     def parse_prices(self, data: dict) -> dict:
         """Parse prices."""
         if metron_prices := data.pop(PRICES_KEY, []):
@@ -834,6 +878,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 data[PRICES_KEY] = metron_prices
         return data
 
+    # UNIVERSES
+    ###########################################################################
     def parse_universes(self, data: dict) -> dict:
         """Parse Universes."""
         if metron_universes := data.pop(UNIVERSES_KEY, None):
@@ -873,28 +919,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                     metron_universes.append(metron_universe)
             if metron_universes:
                 data[UNIVERSES_KEY] = metron_universes
-        return data
-
-    def parse_age_rating(self, data: dict) -> dict:
-        """Parse Age Rating."""
-        if age_rating_enum := data.pop(AGE_RATING_TAG, None):
-            data[AGE_RATING_KEY] = age_rating_enum.value
-        return data
-
-    def unparse_age_rating(self, data: dict) -> dict:
-        """Unparse Age Rating."""
-        if age_rating := data.pop(AGE_RATING_KEY, None):
-            metron_enum = None
-            try:
-                metron_enum = MetronAgeRatingEnum(age_rating)
-            except ValueError:
-                try:
-                    cix_enum = ComicInfoAgeRatingEnum(age_rating)
-                    metron_enum = self.AGE_RATING_MAP.get(cix_enum)
-                except ValueError:
-                    pass
-            if metron_enum:
-                data[AGE_RATING_TAG] = metron_enum
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (
