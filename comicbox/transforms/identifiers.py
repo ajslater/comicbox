@@ -27,10 +27,8 @@ class IdentifiersTransformMixin:
     """Transform Identifiers."""
 
     IDENTIFIERS_TAG = ""
-    IDENTIFIERS_SUB_TAG = ""
     NAKED_NID = None
     URLS_TAG = ""
-    URLS_SUB_TAG = ""
 
     def parse_identifier(self, item) -> tuple[str, str, str]:
         """Parse one identifier urn or string."""
@@ -73,13 +71,9 @@ class IdentifiersTransformMixin:
                 primary = self.parse_item_primary(item)
                 self.parse_assign_identifier(data, nid, identifier, primary)
 
-    def parse_identifiers(self, data: dict):
+    def parse_identifiers(self, data: dict) -> dict:
         """Parse identifier struct from a string or sequence."""
         identifiers = data.pop(self.IDENTIFIERS_TAG, None)
-        if not identifiers:
-            return data
-        if self.IDENTIFIERS_SUB_TAG:
-            identifiers = identifiers.pop(self.IDENTIFIERS_SUB_TAG, None)
         if not identifiers:
             return data
         self._parse_extracted_identifiers(data, identifiers)
@@ -132,8 +126,6 @@ class IdentifiersTransformMixin:
         urls = data.pop(self.URLS_TAG, None)
         if not urls:
             return data
-        if self.URLS_SUB_TAG:
-            urls = urls.pop(self.URLS_SUB_TAG, None)
         if not urls:
             return data
         if isinstance(urls, frozenset | set | tuple | list):
@@ -173,7 +165,7 @@ class IdentifiersTransformMixin:
 
         return data
 
-    def unparse_urls(
+    def unparse_url(
         self,
         data: dict,
         nid: str,
@@ -217,5 +209,5 @@ class IdentifiersTransformMixin:
                 data = self.unparse_identifier(data, nid, nss, primary)
             url = identifiers.get(URL_KEY)
             if url or nss:
-                data = self.unparse_urls(data, nid, nss, url, primary)
+                data = self.unparse_url(data, nid, nss, url, primary)
         return data

@@ -14,7 +14,9 @@ from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     DEFAULT_NID,
+    IDENTIFIER_PARTS_MAP,
     ISBN_NID,
+    METRON_NID,
     NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
@@ -126,56 +128,39 @@ UNIVERSES_TAG = "Universes"
 UNIVERSE_TAG = "Universe"
 URLS_TAG = "URLs"
 URL_TAG = "URL"
+SERIES_REPRINTS_KEY = "series_reprints"
 
-# Roles
-WRITER_TAG = "Writer"
-COVER_TAG = "Cover"
-COLORIST_TAG = "Colorist"
-EDITOR_TAG = "Editor"
-INKER_TAG = "Inker"
-LETTERER_TAG = "Letterer"
-PENCILLER_TAG = "Penciller"
 
 _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     {
-        # Just hoist
         (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
         (PRICES_TAG, None): PRICES_KEY,
         (URLS_TAG, None): URL_KEY,
-        # Resources
         (CHARACTERS_TAG, None): CHARACTERS_KEY,
         (GENRES_TAG, None): GENRES_KEY,
         (LOCATIONS_TAG, None): LOCATIONS_KEY,
         (TEAMS_TAG, None): TEAMS_KEY,
         (TAGS_TAG, None): TAGS_KEY,
         (STORIES_TAG, STORY_TAG): STORIES_KEY,
-        # Add
-        (UNIVERSES_TAG, None): UNIVERSES_KEY,
+        # New
+        (ARCS_TAG, None): STORY_ARCS_KEY,
         (PRICE_TAG, None): PRICES_KEY,
-        # Add
-        # REPRINTS
-        # CREDITS
+        (UNIVERSES_TAG, None): UNIVERSES_KEY,
+        (REPRINTS_TAG, None): REPRINTS_KEY,
+        (CREDITS_TAG, None): CREDITS_KEY,
     }
 )
-# change to identifier enums
+_TYPES = IDENTIFIER_PARTS_MAP[METRON_NID].types
 _METRON_RESOURCES = MappingProxyType(
     {
-        CHARACTERS_KEY: ("character", CHARACTERS_TAG),
-        GENRES_KEY: ("genre", GENRES_TAG),
-        LOCATIONS_KEY: ("location", LOCATIONS_TAG),
-        STORIES_KEY: ("story", STORIES_TAG),
-        TAGS_KEY: ("tag", TAGS_TAG),
-        TEAMS_KEY: ("team", TEAMS_TAG),
+        CHARACTERS_KEY: _TYPES.character,
+        GENRES_KEY: _TYPES.genre,
+        LOCATIONS_KEY: _TYPES.location,
+        STORIES_KEY: _TYPES.story,
+        TAGS_KEY: _TYPES.tag,
+        TEAMS_KEY: _TYPES.team,
     }
 )
-
-
-def _copy_assign(key, data, value):
-    # used in two locations check on that.
-    if value in EMPTY_VALUES:
-        return data
-    data[key] = value
-    return data
 
 
 class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
@@ -233,10 +218,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     UNIVERSE_TAG_MAP = frozenbidict({DESIGNATION_TAG: DESIGNATION_KEY})
     GTIN_SUBTAGS = frozenbidict({ISBN_TAG: ISBN_NID, UPC_TAG: UPC_NID})
     SCHEMA_CLASS = MetronInfoSchema
-    IDENTIFIERS_TAG = IDS_TAG
-    IDENTIFIERS_SUB_TAG = ID_TAG
+    IDENTIFIERS_TAG = IDENTIFIERS_KEY  # IDS_TAG
     URLS_TAG = URLS_TAG
-    URLS_SUB_TAG = URL_TAG
     AGE_RATING_TAG = "AgeRating"
     AGE_RATING_MAP = MappingProxyType(
         {
@@ -258,10 +241,19 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # UTILITY
     ###########################################################################
-    def _copy_tags(self, from_dict, to_dict, tag_dict):
+    @staticmethod
+    def _copy_tags(from_dict, to_dict, tag_dict):
         for from_key, to_key in tag_dict.items():
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
+
+    @staticmethod
+    def _copy_assign(key, data, value):
+        # used in two locations check on that.
+        if value in EMPTY_VALUES:
+            return data
+        data[key] = value
+        return data
 
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
@@ -308,19 +300,18 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     def _parse_identified_name(self, data: dict, nss_type: str, key: str) -> dict:
         """Parse Metron Resource Types into comicbox."""
-        if metron_objs := data.get(key):
-            comicbox_objs = {}
-            for metron_obj in metron_objs:
-                name = get_cdata(metron_obj)
-                if not name:
-                    continue
-                comicbox_obj = {}
-                self._parse_metron_tag_identifier(
-                    data, nss_type, metron_obj, comicbox_obj
-                )
-                comicbox_objs[name] = comicbox_obj
-            if comicbox_objs:
-                data[key] = comicbox_objs
+        if not (metron_objs := data.get(key)):
+            return data
+        comicbox_objs = {}
+        for metron_obj in metron_objs:
+            name = get_cdata(metron_obj)
+            if not name:
+                continue
+            comicbox_obj = {}
+            self._parse_metron_tag_identifier(data, nss_type, metron_obj, comicbox_obj)
+            comicbox_objs[name] = comicbox_obj
+        if comicbox_objs:
+            data[key] = comicbox_objs
         return data
 
     def _unparse_metron_id_attribute(
@@ -343,14 +334,14 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     def _unparse_identified_names(self, data: dict, tag: str) -> dict:
         """Unparse identifierd names into Metron Resource Types."""
-        sub_tag = STORY_TAG if tag == STORIES_TAG else tag[:-1]
-        if comicbox_objs := data.get(tag, {}).get(sub_tag):
-            metron_objs = []
-            for name, comicbox_obj in comicbox_objs.items():
-                metron_obj = self._unparse_identified_name(data, name, comicbox_obj)
-                metron_objs.append(metron_obj)
-            if metron_objs:
-                data[tag][sub_tag] = metron_objs
+        if not (comicbox_objs := data.get(tag)):
+            return data
+        metron_objs = []
+        for name, comicbox_obj in comicbox_objs.items():
+            metron_obj = self._unparse_identified_name(data, name, comicbox_obj)
+            metron_objs.append(metron_obj)
+        if metron_objs:
+            data[tag] = metron_objs
         return data
 
     # AGE RATING
@@ -375,6 +366,291 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                     pass
             if metron_enum:
                 data[AGE_RATING_TAG] = metron_enum
+        return data
+
+    # RESOURCES
+    ###########################################################################
+    def parse_metron_resources(self, data: dict) -> dict:
+        """Parse Metron Resources."""
+        for key, nss_type in _METRON_RESOURCES.items():
+            data = self._parse_identified_name(data, nss_type, key)
+        return data
+
+    def unparse_metron_resources(self, data: dict) -> dict:
+        """Unparse comicbox maps into metron Resources."""
+        for key in _METRON_RESOURCES:
+            data = self._unparse_identified_names(data, key)
+        return data
+
+    # ARCS
+    ###########################################################################
+    def parse_arcs(self, data):
+        """Convert metron arcs list to story arcs map."""
+        if not (metron_arcs := data.pop(STORY_ARCS_KEY, None)):
+            return data
+        comicbox_story_arcs = {}
+        for metron_arc in metron_arcs:
+            if not (name := metron_arc.get(ARC_NAME_TAG)):
+                continue
+            comicbox_story_arc = {}
+            number = metron_arc.get(ARC_NUMBER_TAG)
+            if number is not None:
+                comicbox_story_arc[NUMBER_KEY] = number
+            self._parse_metron_tag_identifier(
+                data, "story_arc", metron_arc, comicbox_story_arc
+            )
+            comicbox_story_arcs[name] = comicbox_story_arc
+        return self._copy_assign(STORY_ARCS_KEY, data, comicbox_story_arcs)
+
+    def unparse_arcs(self, data):
+        """Convert story arc dict to metron arcs list."""
+        if not (comicbox_story_arcs := data.pop(STORY_ARCS_KEY, None)):
+            return data
+        metron_arcs = []
+        for name, comicbox_story_arc in comicbox_story_arcs.items():
+            metron_arc = {ARC_NAME_TAG: name}
+            number = comicbox_story_arc.get(NUMBER_KEY)
+            if number is not None:
+                metron_arc[ARC_NUMBER_TAG] = number
+            self._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
+            metron_arcs.append(metron_arc)
+        if metron_arcs:
+            data[STORY_ARCS_KEY] = metron_arcs
+        return data
+
+    # PRICES
+    ###########################################################################
+    def parse_prices(self, data: dict) -> dict:
+        """Parse prices."""
+        if metron_prices := data.pop(PRICES_KEY, []):
+            comicbox_prices = {}
+            for metron_price_obj in metron_prices:
+                price = get_cdata(metron_price_obj)
+                if price is None:
+                    continue
+                country = metron_price_obj.get(COUNTRY_ATTRIBUTE, "")
+                comicbox_prices[country] = price
+            if comicbox_prices:
+                data[PRICES_KEY] = comicbox_prices
+        return data
+
+    def unparse_prices(self, data: dict) -> dict:
+        """Unparse Prices."""
+        if comicbox_prices := data.pop(PRICES_KEY, {}):
+            metron_prices = []
+            for country, price in comicbox_prices.items():
+                if price is None:
+                    continue
+                metron_price = {
+                    COUNTRY_ATTRIBUTE: country,
+                    "#text": str(Decimal(price).quantize(Decimal("0.01"))),
+                }
+                metron_prices.append(metron_price)
+            if metron_prices:
+                data[PRICES_KEY] = metron_prices
+        return data
+
+    # UNIVERSES
+    ###########################################################################
+    def parse_universes(self, data: dict) -> dict:
+        """Parse Universes."""
+        if metron_universes := data.pop(UNIVERSES_KEY, None):
+            comicbox_universes = {}
+            for metron_universe in metron_universes:
+                name = metron_universe.get(NAME_TAG)
+                if not name:
+                    continue
+                comicbox_universe = {}
+                for tag, key in self.UNIVERSE_TAG_MAP.items():
+                    if value := metron_universe.get(tag):
+                        comicbox_universe[key] = value
+                self._parse_metron_tag_identifier(
+                    data, "universe", metron_universe, comicbox_universe
+                )
+                if comicbox_universe:
+                    comicbox_universes[name] = comicbox_universe
+            if comicbox_universes:
+                data[UNIVERSES_KEY] = comicbox_universes
+        return data
+
+    def unparse_universes(self, data: dict) -> dict:
+        """Unparse Universes."""
+        if comicbox_universes := data.pop(UNIVERSES_KEY, {}):
+            metron_universes = []
+            for name, comicbox_universe in comicbox_universes.items():
+                if not name:
+                    continue
+                metron_universe = {NAME_TAG: name}
+                for tag, key in self.UNIVERSE_TAG_MAP.items():
+                    if value := comicbox_universe.get(key):
+                        metron_universe[tag] = value
+                self._unparse_metron_id_attribute(
+                    data, metron_universe, comicbox_universe
+                )
+                if metron_universe:
+                    metron_universes.append(metron_universe)
+            if metron_universes:
+                data[UNIVERSES_KEY] = metron_universes
+        return data
+
+    # CREDITS
+    ###########################################################################
+    def _parse_credit(self, data, metron_credit, comicbox_credits: dict):
+        """Copy a single metron style credit entry into comicbox credits."""
+        metron_creator = metron_credit.get(CREATOR_TAG, {})
+        person_name = get_cdata(metron_creator)
+        if not person_name:
+            return
+        comicbox_credit = {}
+        self._parse_metron_tag_identifier(
+            data, "creator", metron_creator, comicbox_credit
+        )
+        metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
+        if not metron_roles:
+            return
+        comicbox_roles = {}
+        for metron_role in metron_roles:
+            metron_role_enum = get_cdata(metron_role)
+            if not metron_role_enum:
+                continue
+            role_name = metron_role_enum.value
+            comicbox_role = {}
+            self._parse_metron_tag_identifier(data, "role", metron_role, comicbox_role)
+            comicbox_roles[role_name] = comicbox_role
+        if comicbox_roles:
+            comicbox_credit[ROLES_KEY] = comicbox_roles
+        comicbox_credits[person_name] = comicbox_credit
+
+    def parse_credits(self, data):
+        """Copy metron style credits dict into contributors."""
+        metron_credits = data.pop(CREDITS_KEY, None)
+        if not metron_credits:
+            return data
+        comicbox_credits = {}
+        for metron_credit in metron_credits:
+            try:
+                self._parse_credit(data, metron_credit, comicbox_credits)
+            except Exception as exc:
+                LOG.warning(f"{self._path} Parsing credit {metron_credit}: {exc}")
+        return self._copy_assign(CREDITS_KEY, data, comicbox_credits)
+
+    def _unparse_credit(self, data, person_name, comicbox_credit, metron_credits):
+        """Aggregate comicbox credits into Metron credit dict."""
+        if not person_name:
+            return
+        metron_creator = self._unparse_identified_name(
+            data, person_name, comicbox_credit
+        )
+        metron_credit = {CREATOR_TAG: metron_creator}
+
+        metron_roles = []
+        if comicbox_roles := comicbox_credit.get(ROLES_KEY):
+            for role_name, comicbox_role in comicbox_roles.items():
+                if not role_name:
+                    continue
+                if metron_role_enum := self.ROLE_MAP.get(role_name.lower()):
+                    metron_role = self._unparse_identified_name(
+                        data, metron_role_enum, comicbox_role
+                    )
+                    metron_roles.append(metron_role)
+        self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, metron_roles)
+        metron_credits.append(metron_credit)
+
+    def unparse_credits(self, data):
+        """Dump contributors into metron style credits dict."""
+        comicbox_credits = data.pop(CREDITS_KEY, None)
+        if not comicbox_credits:
+            return data
+        metron_credits = []
+        for person_name, comicbox_credit in comicbox_credits.items():
+            try:
+                self._unparse_credit(data, person_name, comicbox_credit, metron_credits)
+            except Exception as exc:
+                LOG.warning(
+                    f"{self._path} Parsing credit {person_name}:{comicbox_credit}: {exc}"
+                )
+
+        if metron_credits:
+            data[CREDITS_KEY] = metron_credits
+        return data
+
+    # REPRINTS
+    ###########################################################################
+    def parse_reprints(self, data):
+        """Parse reprint names into reprint structures."""
+        metron_reprints = data.pop(REPRINTS_KEY, None)
+        if not metron_reprints:
+            return data
+        comicbox_reprints = []
+        for metron_reprint in metron_reprints:
+            name = get_cdata(metron_reprint)
+            if not name:
+                continue
+            fn_dict = comicfn2dict(name)
+            new_reprint = {}
+            series = fn_dict.get(SERIES_KEY)
+            if series:
+                new_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
+            issue = fn_dict.get(ISSUE_KEY)
+            if issue is not None:
+                new_reprint[REPRINT_ISSUE_KEY] = issue
+            self._parse_metron_tag_identifier(
+                data, "reprint", metron_reprint, new_reprint
+            )
+            if new_reprint:
+                comicbox_reprints.append(new_reprint)
+        comicbox_reprints += data.get(REPRINTS_KEY, [])
+        if comicbox_reprints:
+            data[REPRINTS_KEY] = comicbox_reprints
+        return data
+
+    def _aggregate_reprints(self, reprints, new_reprint):
+        """Aggregate new reprint into similar old reprint."""
+        new_series = new_reprint.get(SERIES_KEY, {})
+        new_series_name = new_series.get(NAME_KEY)
+        new_lang = new_reprint.get(LANGUAGE_KEY)
+
+        for old_reprint in reprints:
+            old_series = old_reprint.get(SERIES_KEY, {})
+            old_series_name = old_series.get(NAME_KEY)
+            old_lang = old_reprint.get(LANGUAGE_KEY)
+
+            if new_series_name == old_series_name and (
+                not new_lang or not old_lang or new_lang == old_lang
+            ):
+                deep_update(old_reprint, new_reprint)
+                break
+        else:
+            reprints.append(new_reprint)
+
+    def consolidate_reprints(self, data):
+        """Consolidate reprints after parsing from both series & reprints."""
+        old_reprints = data.pop(REPRINTS_KEY, [])
+        series_reprints = data.pop(SERIES_REPRINTS_KEY, [])
+        consolidated_reprints = []
+        for reprint in old_reprints:
+            self._aggregate_reprints(consolidated_reprints, reprint)
+        for reprint in series_reprints:
+            self._aggregate_reprints(consolidated_reprints, reprint)
+        if consolidated_reprints:
+            data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
+        return data
+
+    def unparse_reprints(self, data):
+        """Unparse reprint structures into metron reprint names."""
+        reprints = data.pop(REPRINTS_KEY, None)
+        if not reprints:
+            return data
+        metron_reprints = []
+        for reprint in reprints:
+            name = reprint_to_filename(reprint)
+            if not name:
+                continue
+            metron_reprint = {"#text": name}
+            self._unparse_metron_id_attribute(data, metron_reprint, reprint)
+            metron_reprints.append(metron_reprint)
+        if metron_reprints:
+            data[REPRINTS_KEY] = metron_reprints
         return data
 
     # PUBLISHER
@@ -425,228 +701,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[PUBLISHER_TAG] = metron_publisher
         return data
 
-    # RESOURCES
-    ###########################################################################
-    def parse_metron_resources(self, data: dict) -> dict:
-        """Parse Metron Resources."""
-        for key, md in _METRON_RESOURCES.items():
-            nss_type, _ = md
-            data = self._parse_identified_name(data, nss_type, key)
-        return data
-
-    def unparse_metron_resources(self, data: dict) -> dict:
-        """Unparse comicbox maps into metron Resources."""
-        for md in _METRON_RESOURCES.values():
-            _, tag = md
-            data = self._unparse_identified_names(data, tag)
-        return data
-
-    # CREDITS
-    ###########################################################################
-    def _parse_credit(self, data, metron_credit, comicbox_credits: dict):
-        """Copy a single metron style credit entry into comicbox credits."""
-        metron_creator = metron_credit.get(CREATOR_TAG, {})
-        person_name = get_cdata(metron_creator)
-        if not person_name:
-            return
-        comicbox_credit = {}
-        self._parse_metron_tag_identifier(
-            data, "creator", metron_creator, comicbox_credit
-        )
-        metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
-        if not metron_roles:
-            return
-        comicbox_roles = {}
-        for metron_role in metron_roles:
-            metron_role_enum = get_cdata(metron_role)
-            if not metron_role_enum:
-                continue
-            role_name = metron_role_enum.value
-            comicbox_role = {}
-            self._parse_metron_tag_identifier(data, "role", metron_role, comicbox_role)
-            comicbox_roles[role_name] = comicbox_role
-        if comicbox_roles:
-            comicbox_credit[ROLES_KEY] = comicbox_roles
-        comicbox_credits[person_name] = comicbox_credit
-
-    def parse_credits(self, data):
-        """Copy metron style credits dict into contributors."""
-        metron_credits = self.hoist_tag(CREDITS_TAG, data)
-        if not metron_credits:
-            return data
-        comicbox_credits = {}
-        for metron_credit in metron_credits:
-            try:
-                self._parse_credit(data, metron_credit, comicbox_credits)
-            except Exception as exc:
-                LOG.warning(f"{self._path} Parsing credit {metron_credit}: {exc}")
-        return _copy_assign(CREDITS_KEY, data, comicbox_credits)
-
-    def _unparse_credit(self, data, person_name, comicbox_credit, metron_credits):
-        """Aggregate comicbox credits into Metron credit dict."""
-        if not person_name:
-            return
-        metron_creator = self._unparse_identified_name(
-            data, person_name, comicbox_credit
-        )
-        metron_credit = {CREATOR_TAG: metron_creator}
-
-        metron_roles = []
-        if comicbox_roles := comicbox_credit.get(ROLES_KEY):
-            for role_name, comicbox_role in comicbox_roles.items():
-                if not role_name:
-                    continue
-                if metron_role_enum := self.ROLE_MAP.get(role_name.lower()):
-                    metron_role = self._unparse_identified_name(
-                        data, metron_role_enum, comicbox_role
-                    )
-                    metron_roles.append(metron_role)
-        self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, metron_roles)
-        metron_credits.append(metron_credit)
-
-    def unparse_credits(self, data):
-        """Dump contributors into metron style credits dict."""
-        comicbox_credits = data.pop(CREDITS_KEY, None)
-        if not comicbox_credits:
-            return data
-        metron_credits = []
-        for person_name, comicbox_credit in comicbox_credits.items():
-            try:
-                self._unparse_credit(data, person_name, comicbox_credit, metron_credits)
-            except Exception as exc:
-                LOG.warning(
-                    f"{self._path} Parsing credit {person_name}:{comicbox_credit}: {exc}"
-                )
-
-        self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
-        return data
-
-    # ARCS
-    ###########################################################################
-    def parse_arcs(self, data):
-        """Convert metron arcs list to story arcs map."""
-        if not (metron_arcs := self.hoist_tag(ARCS_TAG, data)):
-            return data
-        comicbox_story_arcs = {}
-        for metron_arc in metron_arcs:
-            if not (name := metron_arc.get(ARC_NAME_TAG)):
-                continue
-            comicbox_story_arc = {}
-            number = metron_arc.get(ARC_NUMBER_TAG)
-            if number is not None:
-                comicbox_story_arc[NUMBER_KEY] = number
-            self._parse_metron_tag_identifier(
-                data, "story_arc", metron_arc, comicbox_story_arc
-            )
-            comicbox_story_arcs[name] = comicbox_story_arc
-        return _copy_assign(STORY_ARCS_KEY, data, comicbox_story_arcs)
-
-    def unparse_arcs(self, data):
-        """Convert story arc dict to metron arcs list."""
-        if not (comicbox_story_arcs := data.pop(STORY_ARCS_KEY, None)):
-            return data
-        metron_arcs = []
-        for name, comicbox_story_arc in comicbox_story_arcs.items():
-            metron_arc = {ARC_NAME_TAG: name}
-            number = comicbox_story_arc.get(NUMBER_KEY)
-            if number is not None:
-                metron_arc[ARC_NUMBER_TAG] = number
-            self._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
-            metron_arcs.append(metron_arc)
-        self.lower_tag(ARCS_TAG, ARCS_TAG, data, metron_arcs)
-        return data
-
-    # GTIN
-    ###########################################################################
-    def parse_gtin(self, data):
-        """Parse complex metron gtin structure into identifiers."""
-        complex_gtin = data.pop(GTIN_TAG, None)
-        if not complex_gtin:
-            return data
-        primary = False
-        for tag, nid in self.GTIN_SUBTAGS.items():
-            if nss := complex_gtin.get(tag):
-                identifier = {NSS_KEY: nss}
-                self.parse_assign_identifier(data, nid, identifier, primary)
-        return data
-
-    # REPRINTS
-    ###########################################################################
-    def parse_reprints(self, data):
-        """Parse reprint names into reprint structures."""
-        metron_reprints = self.hoist_tag(REPRINTS_TAG, data)
-        if not metron_reprints:
-            return data
-        comicbox_reprints = []
-        for metron_reprint in metron_reprints:
-            name = get_cdata(metron_reprint)
-            if not name:
-                continue
-            fn_dict = comicfn2dict(name)
-            new_reprint = {}
-            series = fn_dict.get(SERIES_KEY)
-            if series:
-                new_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
-            issue = fn_dict.get(ISSUE_KEY)
-            if issue is not None:
-                new_reprint[REPRINT_ISSUE_KEY] = issue
-            self._parse_metron_tag_identifier(
-                data, "reprint", metron_reprint, new_reprint
-            )
-            if new_reprint:
-                comicbox_reprints.append(new_reprint)
-        comicbox_reprints += data.get(REPRINTS_KEY, [])
-        if comicbox_reprints:
-            data[REPRINTS_KEY] = comicbox_reprints
-        return data
-
-    def unparse_reprints(self, data):
-        """Unparse reprint structures into metron reprint names."""
-        reprints = data.get(REPRINTS_KEY)
-        if not reprints:
-            return data
-        metron_reprints = []
-        for reprint in reprints:
-            name = reprint_to_filename(reprint)
-            if not name:
-                continue
-            metron_reprint = {"#text": name}
-            self._unparse_metron_id_attribute(data, metron_reprint, reprint)
-            metron_reprints.append(metron_reprint)
-        self.lower_tag(REPRINTS_TAG, REPRINTS_TAG, data, metron_reprints)
-        return data
-
-    def _aggregate_reprints(self, reprints, new_reprint):
-        """Aggregate new reprint into similar old reprint."""
-        new_series = new_reprint.get(SERIES_KEY, {})
-        new_series_name = new_series.get(NAME_KEY)
-        new_lang = new_reprint.get(LANGUAGE_KEY)
-
-        for old_reprint in reprints:
-            old_series = old_reprint.get(SERIES_KEY, {})
-            old_series_name = old_series.get(NAME_KEY)
-            old_lang = old_reprint.get(LANGUAGE_KEY)
-
-            if new_series_name == old_series_name and (
-                not new_lang or not old_lang or new_lang == old_lang
-            ):
-                deep_update(old_reprint, new_reprint)
-                break
-        else:
-            reprints.append(new_reprint)
-
-    def consolidate_reprints(self, data):
-        """Consolidate reprints after parsing from series & reprints."""
-        old_reprints = data.get(REPRINTS_KEY)
-        if not old_reprints:
-            return data
-        consolidated_reprints = []
-        for reprint in old_reprints:
-            self._aggregate_reprints(consolidated_reprints, reprint)
-        if consolidated_reprints:
-            data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
-        return data
-
     # SERIES
     ###########################################################################
     def _parse_metron_series_series_key(self, data, metron_series, update_dict) -> None:
@@ -693,9 +747,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 reprint[LANGUAGE_KEY] = alternative_name_lang
             reprints.append(reprint)
 
-        reprints += data.get(REPRINTS_KEY, [])
         if reprints:
-            data[REPRINTS_KEY] = reprints
+            data[SERIES_REPRINTS_KEY] = reprints
         return data
 
     def parse_metron_series(self, data):
@@ -802,6 +855,18 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         url_str = get_cdata(url)
         super().parse_url(data, url_str)
 
+    def parse_gtin(self, data):
+        """Parse complex metron gtin structure into identifiers."""
+        complex_gtin = data.pop(GTIN_TAG, None)
+        if not complex_gtin:
+            return data
+        primary = False
+        for tag, nid in self.GTIN_SUBTAGS.items():
+            if nss := complex_gtin.get(tag):
+                identifier = {NSS_KEY: nss}
+                self.parse_assign_identifier(data, nid, identifier, primary)
+        return data
+
     def unparse_identifier(self, data: dict, nid: str, nss: str, primary: bool) -> dict:
         """Unparse one identifier to an xml metron GTIN or ID tag."""
         if gtin_subtag := self.GTIN_SUBTAGS.inverse.get(nid):
@@ -820,7 +885,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[IDS_TAG][ID_TAG].append(id_tag)
         return data
 
-    def unparse_urls(
+    def unparse_url(
         self, data: dict, nid: str, nss: str, url: str | None, primary: bool
     ) -> dict:
         """Unparse one identifier to an xml metron URL tag."""
@@ -833,8 +898,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
         # Same as parent to here
 
-        if self.URLS_TAG not in data:
-            data[self.URLS_TAG] = {self.URLS_SUB_TAG: []}
+        if URL_KEY not in data:
+            data[URL_KEY] = []
             primary = True
         else:
             primary = False
@@ -843,90 +908,15 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         if primary:
             url_tag[PRIMARY_ATTRIBUTE] = True
 
-        data[self.URLS_TAG][self.URLS_SUB_TAG].append(url_tag)
-        return data
-
-    # PRICES
-    ###########################################################################
-    def parse_prices(self, data: dict) -> dict:
-        """Parse prices."""
-        if metron_prices := data.pop(PRICES_KEY, []):
-            comicbox_prices = {}
-            for metron_price_obj in metron_prices:
-                price = get_cdata(metron_price_obj)
-                if price is None:
-                    continue
-                country = metron_price_obj.get(COUNTRY_ATTRIBUTE, "")
-                comicbox_prices[country] = price
-            if comicbox_prices:
-                data[PRICES_KEY] = comicbox_prices
-        return data
-
-    def unparse_prices(self, data: dict) -> dict:
-        """Unparse Prices."""
-        if comicbox_prices := data.pop(PRICES_KEY, {}):
-            metron_prices = []
-            for country, price in comicbox_prices.items():
-                if price is None:
-                    continue
-                metron_price = {
-                    COUNTRY_ATTRIBUTE: country,
-                    "#text": str(Decimal(price).quantize(Decimal("0.01"))),
-                }
-                metron_prices.append(metron_price)
-            if metron_prices:
-                data[PRICES_KEY] = metron_prices
-        return data
-
-    # UNIVERSES
-    ###########################################################################
-    def parse_universes(self, data: dict) -> dict:
-        """Parse Universes."""
-        if metron_universes := data.pop(UNIVERSES_KEY, None):
-            comicbox_universes = {}
-            for metron_universe in metron_universes:
-                name = metron_universe.get(NAME_TAG)
-                if not name:
-                    continue
-                comicbox_universe = {}
-                for tag, key in self.UNIVERSE_TAG_MAP.items():
-                    if value := metron_universe.get(tag):
-                        comicbox_universe[key] = value
-                self._parse_metron_tag_identifier(
-                    data, "universe", metron_universe, comicbox_universe
-                )
-                if comicbox_universe:
-                    comicbox_universes[name] = comicbox_universe
-            if comicbox_universes:
-                data[UNIVERSES_KEY] = comicbox_universes
-        return data
-
-    def unparse_universes(self, data: dict) -> dict:
-        """Unparse Universes."""
-        if comicbox_universes := data.pop(UNIVERSES_KEY, {}):
-            metron_universes = []
-            for name, comicbox_universe in comicbox_universes.items():
-                if not name:
-                    continue
-                metron_universe = {NAME_TAG: name}
-                for tag, key in self.UNIVERSE_TAG_MAP.items():
-                    if value := comicbox_universe.get(key):
-                        metron_universe[tag] = value
-                self._unparse_metron_id_attribute(
-                    data, metron_universe, comicbox_universe
-                )
-                if metron_universe:
-                    metron_universes.append(metron_universe)
-            if metron_universes:
-                data[UNIVERSES_KEY] = metron_universes
+        data[URL_KEY].append(url_tag)
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
+        hoist_metron_resource_lists,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
         parse_gtin,
-        hoist_metron_resource_lists,
         parse_age_rating,
         parse_arcs,
         parse_credits,
@@ -952,6 +942,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         unparse_metron_series,
         unparse_reprints,
         unparse_universes,
-        lower_metron_resource_lists,
         unparse_metron_resources,
+        lower_metron_resource_lists,
     )
