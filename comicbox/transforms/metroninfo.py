@@ -285,11 +285,18 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self, data: dict, nss_type: str, metron_obj: Mapping, comicbox_obj: dict
     ):
         """Parse the metron series identifier."""
-        if not (nss := metron_obj.get(ID_ATTRIBUTE)):
-            return
-        nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
-        comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
-        comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
+        try:
+            if not (nss := metron_obj.get(ID_ATTRIBUTE)):
+                return
+            nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
+            comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+            comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
+        except AttributeError:
+            pass
+        except Exception as exc:
+            LOG.warning(
+                f"Parsing metron tag identifier {nss_type}:{metron_obj} - {exc}"
+            )
 
     def _parse_imprint(self, data, metron_publisher):
         metron_imprint = metron_publisher.get(IMPRINT_TAG)
@@ -327,10 +334,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 if not name:
                     continue
                 comicbox_obj = {}
-                if isinstance(metron_obj, Mapping):
-                    self._parse_metron_tag_identifier(
-                        data, nss_type, metron_obj, comicbox_obj
-                    )
+                self._parse_metron_tag_identifier(
+                    data, nss_type, metron_obj, comicbox_obj
+                )
                 comicbox_objs[name] = comicbox_obj
             if comicbox_objs:
                 data[key] = comicbox_objs
@@ -406,10 +412,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         if not person_name:
             return
         comicbox_credit = {}
-        if isinstance(metron_creator, Mapping):
-            self._parse_metron_tag_identifier(
-                data, "creator", metron_creator, comicbox_credit
-            )
+        self._parse_metron_tag_identifier(
+            data, "creator", metron_creator, comicbox_credit
+        )
         metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
         if not metron_roles:
             return
@@ -420,10 +425,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 continue
             role_name = metron_role_enum.value
             comicbox_role = {}
-            if isinstance(metron_role, Mapping):
-                self._parse_metron_tag_identifier(
-                    data, "role", metron_role, comicbox_role
-                )
+            self._parse_metron_tag_identifier(data, "role", metron_role, comicbox_role)
             comicbox_roles[role_name] = comicbox_role
         if comicbox_roles:
             comicbox_credit[ROLES_KEY] = comicbox_roles
@@ -532,8 +534,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         if not metron_reprints:
             return data
         comicbox_reprints = []
-        if isinstance(metron_reprints, str):
-            metron_reprints = (metron_reprints,)
         for metron_reprint in metron_reprints:
             name = get_cdata(metron_reprint)
             if not name:
@@ -546,10 +546,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             issue = fn_dict.get(ISSUE_KEY)
             if issue is not None:
                 new_reprint[REPRINT_ISSUE_KEY] = issue
-            if isinstance(metron_reprint, Mapping):
-                self._parse_metron_tag_identifier(
-                    data, "reprint", metron_reprint, new_reprint
-                )
+            self._parse_metron_tag_identifier(
+                data, "reprint", metron_reprint, new_reprint
+            )
             if new_reprint:
                 comicbox_reprints.append(new_reprint)
         comicbox_reprints += data.get(REPRINTS_KEY, [])
@@ -622,9 +621,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         reprints = []
         aliases = set()
 
-        if isinstance(alternative_names, Mapping):
-            # Marshmallow collapses singleton lists unhelpfully.
-            alternative_names = [alternative_names]
         for an in alternative_names:
             alternative_name = get_cdata(an)
             if not alternative_name:
