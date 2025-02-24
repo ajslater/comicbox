@@ -79,10 +79,10 @@ READ_METADATA = MappingProxyType(
             "notes": METRON_NOTES,
             "original_format": "Single Issue",
             "page_count": 0,
-            "prices": [
-                {"country": "US", "price": Decimal("1.25").quantize(Decimal("0.01"))},
-                {"country": "GB", "price": Decimal("0.5").quantize(Decimal("0.01"))},
-            ],
+            "prices": {
+                "GB": Decimal("0.5").quantize(Decimal("0.01")),
+                "US": Decimal("1.25").quantize(Decimal("0.01")),
+            },
             "publisher": {
                 "identifiers": {
                     "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"},
@@ -179,8 +179,8 @@ READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Prices": {
                 "Price": [
-                    {"#text": "1.25", "@country": "US"},
                     {"#text": "0.50", "@country": "GB"},
+                    {"#text": "1.25", "@country": "US"},
                 ]
             },
             "Publisher": {
@@ -280,8 +280,8 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Prices": {
                 "Price": [
-                    {"#text": "1.25", "@country": "US"},
                     {"#text": "0.50", "@country": "GB"},
+                    {"#text": "1.25", "@country": "US"},
                 ]
             },
             "Publisher": {

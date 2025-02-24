@@ -6,7 +6,7 @@ from marshmallow.fields import Nested
 from marshmallow_union import Union
 
 from comicbox.fields.collection_fields import (
-    DictStringField,
+    DictField,
     IdentifiersField,
     ListField,
     StringListField,
@@ -112,7 +112,7 @@ class PersonSchema(BaseSubSchema):
     """Credit Person Schema."""
 
     identifiers = IdentifiersField()
-    roles = DictStringField(values=Nested(IdentifiedSchema))
+    roles = DictField(values=Nested(IdentifiedSchema))
 
 
 class PageInfoSchema(BaseSubSchema):
@@ -170,13 +170,6 @@ class IdentifierPrimarySource(BaseSubSchema):
     url = StringField()
 
 
-class PriceSchema(BaseSubSchema):
-    """Price Schema."""
-
-    country = CountryField()
-    price = DecimalField(places=2, minimum=Decimal(0))
-
-
 class UniverseSchema(IdentifiedSchema):
     """Universe Schema."""
 
@@ -195,9 +188,9 @@ class ComicboxSubSchemaMixin:
 
     age_rating = StringField()
     alternate_images = StringSetField()
-    characters = DictStringField(values=Nested(IdentifiedSchema))
+    characters = DictField(values=Nested(IdentifiedSchema))
     community_rating = DecimalField(places=2)
-    credits = DictStringField(values=Nested(PersonSchema))
+    credits = DictField(values=Nested(PersonSchema))
     country = CountryField()
     collection_title = StringField()
     cover_image = StringField()
@@ -206,7 +199,7 @@ class ComicboxSubSchemaMixin:
     day = IntegerField(minimum=1, maximum=31)
     ext = StringField()
     original_format = OriginalFormatField()
-    genres = DictStringField(values=Nested(IdentifiedSchema))
+    genres = DictField(values=Nested(IdentifiedSchema))
     identifiers = IdentifiersField()
     identifier_primary_source = Nested(IdentifierPrimarySource)
     issue = StringField()
@@ -215,7 +208,7 @@ class ComicboxSubSchemaMixin:
     imprint = Nested(IdentifiedNameSchema)
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
-    locations = DictStringField(values=Nested(IdentifiedSchema))
+    locations = DictField(values=Nested(IdentifiedSchema))
     manga = MangaField()
     month = IntegerField(minimum=1, maximum=12)
     monochrome = BooleanField()
@@ -223,7 +216,12 @@ class ComicboxSubSchemaMixin:
     page_count = IntegerField(minimum=0)
     pages = Nested(PageInfoSchema, many=True)
     publisher = Nested(IdentifiedNameSchema)
-    prices = Nested(PriceSchema, many=True)
+    prices = DictField(
+        keys=CountryField(allow_empty=True),
+        values=DecimalField(places=2, minimum=Decimal(0)),
+        allow_empty=True,
+        sort=False,
+    )
     protagonist = StringField()
     reading_direction = ReadingDirectionField()
     remainders = StringListField()
@@ -235,13 +233,13 @@ class ComicboxSubSchemaMixin:
     series_groups = StringSetField()
     store_date = DateField()
     # Turn off sorting in the field if i can?
-    stories = DictStringField(values=Nested(IdentifiedSchema), sort=False)
-    story_arcs = DictStringField(values=Nested(StoryArcSchema))
+    stories = DictField(values=Nested(IdentifiedSchema), sort=False)
+    story_arcs = DictField(values=Nested(StoryArcSchema))
     summary = StringField()
     tagger = StringField()
-    tags = DictStringField(values=Nested(IdentifiedSchema))
-    teams = DictStringField(values=Nested(IdentifiedSchema))
-    universes = DictStringField(values=Nested(UniverseSchema))
+    tags = DictField(values=Nested(IdentifiedSchema))
+    teams = DictField(values=Nested(IdentifiedSchema))
+    universes = DictField(values=Nested(UniverseSchema))
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
     year = IntegerField()

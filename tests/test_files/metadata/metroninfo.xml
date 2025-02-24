@@ -48,8 +48,8 @@
 	<Number>1</Number>
 	<PageCount>0</PageCount>
 	<Prices>
-		<Price country="US">1.25</Price>
 		<Price country="GB">0.50</Price>
+		<Price country="US">1.25</Price>
 	</Prices>
 	<Publisher id="11">
 		<Imprint id="222">Youthful Imprint</Imprint>

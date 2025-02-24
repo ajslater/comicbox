@@ -24,7 +24,6 @@ from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
-    COUNTRY_KEY,
     CREDITS_KEY,
     DATE_KEY,
     DESIGNATION_KEY,
@@ -41,7 +40,6 @@ from comicbox.schemas.comicbox_mixin import (
     NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
-    PRICE_KEY,
     PRICES_KEY,
     PUBLISHER_KEY,
     REPRINT_ISSUE_KEY,
@@ -152,6 +150,7 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
         (STORIES_TAG, STORY_TAG): STORIES_KEY,
         # Add
         (UNIVERSES_TAG, None): UNIVERSES_KEY,
+        (PRICE_TAG, None): PRICES_KEY,
         # Add
         # REPRINTS
         # CREDITS
@@ -803,41 +802,32 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     def parse_prices(self, data: dict) -> dict:
         """Parse prices."""
-        if metron_prices := data.pop(PRICES_KEY, None):
-            comicbox_prices = []
+        if metron_prices := data.pop(PRICES_KEY, []):
+            comicbox_prices = {}
             for metron_price_obj in metron_prices:
                 price = get_cdata(metron_price_obj)
-                comicbox_price = {}
-                if price is not None:
-                    comicbox_price[PRICE_KEY] = price
-                if country := metron_price_obj.get(COUNTRY_ATTRIBUTE):
-                    comicbox_price[COUNTRY_KEY] = country
-                if comicbox_price:
-                    comicbox_prices.append(comicbox_price)
+                if price is None:
+                    continue
+                country = metron_price_obj.get(COUNTRY_ATTRIBUTE, "")
+                comicbox_prices[country] = price
             if comicbox_prices:
                 data[PRICES_KEY] = comicbox_prices
         return data
 
     def unparse_prices(self, data: dict) -> dict:
         """Unparse Prices."""
-        if comicbox_prices := data.pop(PRICES_TAG, {}).pop(PRICE_TAG, None):
+        if comicbox_prices := data.pop(PRICES_KEY, {}):
             metron_prices = []
-            for comicbox_price in comicbox_prices:
-                metron_price = {}
-                price = comicbox_price.get(PRICE_KEY)
-                if price is not None:
-                    metron_price["#text"] = str(
-                        Decimal(price).quantize(Decimal("0.01"))
-                    )
-                    if country := comicbox_price.get(
-                        COUNTRY_KEY, data.get(COUNTRY_KEY)
-                    ):
-                        metron_price[COUNTRY_ATTRIBUTE] = country
-                if metron_price:
-                    metron_prices.append(metron_price)
+            for country, price in comicbox_prices.items():
+                if price is None:
+                    continue
+                metron_price = {
+                    COUNTRY_ATTRIBUTE: country,
+                    "#text": str(Decimal(price).quantize(Decimal("0.01"))),
+                }
+                metron_prices.append(metron_price)
             if metron_prices:
-                prices = {PRICE_TAG: metron_prices}
-                data[PRICES_TAG] = prices
+                data[PRICES_KEY] = metron_prices
         return data
 
     def parse_universes(self, data: dict) -> dict:
@@ -927,6 +917,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         IdentifiersTransformMixin.unparse_identifiers,
         unparse_universes,
+        unparse_prices,
         lower_metron_resource_lists,
         unparse_publisher,
         unparse_metron_series,
@@ -934,6 +925,5 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         map_story_arcs_to_arcs,
         lower_reprints,
         unparse_metron_resources,
-        unparse_prices,
         unparse_age_rating,
     )

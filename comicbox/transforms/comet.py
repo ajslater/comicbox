@@ -27,7 +27,7 @@ from comicbox.transforms.credit_role_tag import (
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.price_mixin import PriceMixin
+from comicbox.transforms.price_mixin import PriceTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
@@ -41,7 +41,7 @@ class CoMetTransform(
     NestedPublishingTagsMixin,
     IdentifiersTransformMixin,
     TitleStoriesMixin,
-    PriceMixin,
+    PriceTransformMixin,
     CreditRoleTagTransformMixin,
 ):
     """CoMet transforms."""
@@ -155,7 +155,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
-        PriceMixin.parse_price,
+        PriceTransformMixin.parse_price,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
@@ -166,7 +166,7 @@ class CoMetTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
-        PriceMixin.unparse_price,
+        PriceTransformMixin.unparse_price,
     )
 
     @staticmethod

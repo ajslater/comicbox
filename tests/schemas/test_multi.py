@@ -65,7 +65,7 @@ READ_METADATA = MappingProxyType(
             "tags": {"a": {}, "b": {}, "c": {}},
             "date": date(1950, 12, 1),
             "reading_direction": ReadingDirectionEnum.LTR,
-            "prices": [{"price": Decimal("0.10")}],
+            "prices": {"": Decimal("0.10")},
             "ext": "cbz",
             "notes": TEST_READ_NOTES,
             "age_rating": "Teen",
@@ -141,7 +141,7 @@ READ_MULTI_DICT = MappingProxyType(
             },
             "date": "1950-12-01",
             "reading_direction": ReadingDirectionEnum.LTR.value,
-            "prices": [{"price": Decimal("0.10")}],
+            "prices": {"": Decimal("0.10")},
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifiers": {

@@ -33,20 +33,26 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         return []
 
 
-class DictStringField(fields.Dict, metaclass=TrapExceptionsMeta):
-    """Dict that guarauntees no empty keys."""
+class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
+    """Dict field for nested schemas with case insensitive keys and sorting."""
 
     def __init__(
-        self, *args, case_insensitive=True, sort=True, allow_empty=False, **kwargs
+        self,
+        *args,
+        keys: type[fields.Field] | fields.Field = StringField,
+        case_insensitive=True,
+        sort=True,
+        allow_empty=False,
+        **kwargs,
     ):
-        """Set up String Keys."""
+        """Set flags."""
         self._case_insensitive = case_insensitive
         self._sort = sort
         self._allow_empty = allow_empty
-        super().__init__(*args, keys=StringField, **kwargs)
+        super().__init__(*args, keys=keys, **kwargs)
 
     def _deserialize(self, data, *args, **kwargs):
-        """Remove empty key."""
+        """Apply flag conditions."""
         result_dict = super()._deserialize(data, *args, **kwargs)
         result_dict.pop(None, None)
         if not self._allow_empty:
@@ -121,7 +127,7 @@ class IntegerListField(StringListField):
     FIELD = IntegerField
 
 
-class IdentifiersField(DictStringField):
+class IdentifiersField(DictField):
     """Dict of identifiers keyed by namespaces."""
 
     def __init__(self, *args, **kwargs):

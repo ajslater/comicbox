@@ -1,10 +1,10 @@
 """Title to Stories Transform Mixin."""
 
-from comicbox.schemas.comicbox_mixin import PRICE_KEY, PRICES_KEY
+from comicbox.schemas.comicbox_mixin import PRICES_KEY
 
 
-class PriceMixin:
-    """Title to Stories Transform Mixin."""
+class PriceTransformMixin:
+    """Price transformer."""
 
     PRICE_TAG = "price"
 
@@ -12,14 +12,13 @@ class PriceMixin:
         """Parse price into prices."""
         price = data.get(self.PRICE_TAG)
         if price is not None:
-            data[PRICES_KEY] = [{PRICE_KEY: price}]
+            data[PRICES_KEY] = {"": price}
         return data
 
     def unparse_price(self, data):
-        """Unparse prices into single price."""
-        if prices := data.get(PRICES_KEY):
-            for price_obj in prices:
-                price = price_obj.get(PRICE_KEY)
+        """Choose the first price."""
+        if comicbox_prices := data.get(PRICES_KEY):
+            for price in comicbox_prices.values():
                 if price is not None:
                     data[self.PRICE_TAG] = price
                     break

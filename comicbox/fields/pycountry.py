@@ -4,21 +4,22 @@ from abc import ABC
 from logging import getLogger
 
 import pycountry
-from marshmallow import fields
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
 
 
-class PyCountryField(fields.String, ABC, metaclass=TrapExceptionsMeta):
+class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     """A pycountry value."""
 
     MODULE = pycountry.countries
+    EMPTY_CODE = ""
 
-    def __init__(self, *args, serialize_name=False, **kwargs):
+    def __init__(self, *args, serialize_name=False, allow_empty=False, **kwargs):
         """Optionally serialize with full names."""
         self._serialize_name = serialize_name
+        self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -64,21 +65,27 @@ class PyCountryField(fields.String, ABC, metaclass=TrapExceptionsMeta):
             LOG.warning(f"No alpha 2 or alpha 3 code for {pc_obj}")
         return lang_code
 
-    def _deserialize(self, value, attr, *_args, **_kwargs):
+    def _deserialize(self, value, attr, *args, **kwargs):
         """Return the alpha 2 encoding."""
+        value = super()._deserialize(value, attr, *args, **kwargs)
         lang_code = None
         if pc_obj := self._get_pycountry(attr, value):
             lang_code = self._to_alpha_code(pc_obj)
+        if not lang_code and self._allow_empty:
+            lang_code = self.EMPTY_CODE
         return lang_code
 
-    def _serialize(self, value, attr, *_args, **_kwargs):
+    def _serialize(self, value, attr, *args, **kwargs):
         """Return the long name."""
+        value = super()._serialize(value, attr, *args, **kwargs)
         lang_code = None
         if pc_obj := self._get_pycountry(attr, value):
             if self._serialize_name:
                 lang_code = pc_obj.name
             else:
                 lang_code = self._to_alpha_code(pc_obj)
+        if not lang_code and self._allow_empty:
+            lang_code = self.EMPTY_CODE
         return lang_code
 
 
