@@ -292,6 +292,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
             comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
         except AttributeError:
+            # Often strings will be passed as the metron_obj
             pass
         except Exception as exc:
             LOG.warning(
