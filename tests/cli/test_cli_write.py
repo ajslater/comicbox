@@ -31,7 +31,7 @@ METADATA = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 0,
         }
     }
@@ -40,7 +40,7 @@ EMPTY_MD = MappingProxyType({ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
     "comicbox",
     "-m",
-    "tags: [{name: a}, {name: b},{name: c}],publisher: {name: TestPub},story_arcs: {d: {number: 1},e: {number: 3},f: {number: 5}}",
+    "tags: {a: {}, b: {},c: {}},publisher: {name: TestPub},story_arcs: {d: {number: 1},e: {number: 3},f: {number: 5}}",
     "-m",
     "imprint: {name: TestImprint}",
 )
@@ -52,7 +52,7 @@ CLI_DICT = MappingProxyType(
             "publisher": {"name": "TestPub"},
             "series": "empty",
             "story_arcs": {"d": 1, "e": 3, "f": 5},
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 0,
         }
     }
@@ -76,11 +76,7 @@ METADATA_REPLACE = MappingProxyType(
     {
         ROOT_TAG: {
             **METADATA[ROOT_TAG],
-            "tags": [
-                {"name": "d"},
-                {"name": "e"},
-                {"name": "f"},
-            ],
+            "tags": {"d": {}, "e": {}, "f": {}},
         }
     }
 )
@@ -135,7 +131,7 @@ def test_cli_action_write_replace():
         "-w",
         "cr",
         "-m",
-        "tags: [{name: d},{name: e},{name: f}]",
+        "tags: {d: {},e: {},f: {}}",
         "-R",
         str(TMP_PATH),
     )

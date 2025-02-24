@@ -26,13 +26,13 @@ METADATA = MappingProxyType(
         ROOT_TAG: {
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"writer": {}}},
                 "Wally Wood": {"roles": {"penciller": {}}},
             },
             "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -53,7 +53,7 @@ METADATA = MappingProxyType(
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "summary": "A long example description",
             "volume": {"number": 1},
         }

@@ -36,7 +36,7 @@ READ_METADATA = MappingProxyType(
             "month": 11,
             "year": 1950,
             "day": 1,
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "volume": {
                 "number": 1950,
                 "issue_count": 7,
@@ -46,7 +46,7 @@ READ_METADATA = MappingProxyType(
                 "Wally Wood": {"roles": {"penciller": {}}},
             },
             "language": "en",
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
             "notes": TEST_READ_NOTES,
@@ -104,7 +104,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "Wally Wood": {"roles": {"penciller": {}}},
             },
             "day": 1,
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -120,7 +120,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "updated_at": TEST_DTTM_STR,
             "volume": {
                 "number": 1950,

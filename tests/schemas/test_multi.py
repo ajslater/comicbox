@@ -37,16 +37,16 @@ READ_METADATA = MappingProxyType(
             "publisher": {"name": "Youthful Adventure Stories"},
             "month": 11,
             "year": 591,
-            "characters": [
-                {"name": "Captain Science"},
-                {"name": "Gordon Dane"},
-                {"name": "COMET"},
-            ],
-            "genres": [
-                {"name": "Science Fiction"},
-                {"name": "Comic Info Genre"},
-                {"name": "comicbox Genre"},
-            ],
+            "characters": {
+                "Captain Science": {},
+                "COMET": {},
+                "Gordon Dane": {},
+            },
+            "genres": {
+                "Science Fiction": {},
+                "Comic Info Genre": {},
+                "comicbox Genre": {},
+            },
             "volume": {"number": 999, "issue_count": 77},
             "language": "en",
             "country": "US",
@@ -62,7 +62,7 @@ READ_METADATA = MappingProxyType(
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},
             },
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "date": date(1950, 12, 1),
             "reading_direction": ReadingDirectionEnum.LTR,
             "prices": [{"price": Decimal("0.10")}],
@@ -83,11 +83,11 @@ READ_METADATA = MappingProxyType(
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
-            "stories": [
-                {"name": "The Beginning - multi"},
-                {"name": "The Beginning COMET"},
-                {"name": "The Beginning CBI"},
-            ],
+            "stories": {
+                "The Beginning - multi": {},
+                "The Beginning COMET": {},
+                "The Beginning CBI": {},
+            },
             "updated_at": TEST_DATETIME,
             "tagger": "comicbox dev",
         }
@@ -105,16 +105,16 @@ READ_MULTI_DICT = MappingProxyType(
                 "Joe Orlando CBI": {"roles": {"Writer": {}}},
                 "Wally Wood CBI": {"roles": {"Penciller": {}}},
             },
-            "characters": [
-                {"name": "Captain Science"},
-                {"name": "Gordon Dane"},
-                {"name": "COMET"},
-            ],
-            "genres": [
-                {"name": "Science Fiction"},
-                {"name": "Comic Info Genre"},
-                {"name": "comicbox Genre"},
-            ],
+            "characters": {
+                "Captain Science": {},
+                "COMET": {},
+                "Gordon Dane": {},
+            },
+            "genres": {
+                "Science Fiction": {},
+                "Comic Info Genre": {},
+                "comicbox Genre": {},
+            },
             "age_rating": "Teen",
             "issue": "001",
             "notes": TEST_READ_NOTES,
@@ -128,7 +128,7 @@ READ_MULTI_DICT = MappingProxyType(
             "series": {"name": "Captain Science COMET"},
             "volume": {"number": 999, "issue_count": 77},
             "day": 1,
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "story_arcs": {
                 "e": {"number": 1},
                 "f": {"number": 3},
@@ -151,11 +151,11 @@ READ_MULTI_DICT = MappingProxyType(
                 }
             },
             "summary": "A long example description",
-            "stories": [
-                {"name": "The Beginning - multi"},
-                {"name": "The Beginning COMET"},
-                {"name": "The Beginning CBI"},
-            ],
+            "stories": {
+                "The Beginning - multi": {},
+                "The Beginning COMET": {},
+                "The Beginning CBI": {},
+            },
             "last_mark": 12,
             "original_format": "Comic",
             "reprints": [

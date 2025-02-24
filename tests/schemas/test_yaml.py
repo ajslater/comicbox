@@ -43,7 +43,7 @@ READ_METADATA = MappingProxyType(
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 36,
             "pages": [
                 {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -148,7 +148,7 @@ READ_YAML_DICT = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DTTM_STR,
         }
     }

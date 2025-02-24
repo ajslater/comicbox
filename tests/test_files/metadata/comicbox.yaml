@@ -58,7 +58,7 @@ comicbox:
       number: 5
   tagger: comicbox dev
   tags:
-    - name: a
-    - name: b
-    - name: c
+    a: {}
+    b: {}
+    c: {}
   updated_at: '1970-01-01T00:00:00'

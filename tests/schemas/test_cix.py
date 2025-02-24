@@ -35,15 +35,15 @@ READ_METADATA = MappingProxyType(
             "volume": {"number": 1950, "issue_count": 7},
             "language": "en",
             "notes": TEST_READ_NOTES,
-            "characters": [
-                {"name": "Captain Science"},
-                {"name": "Gordon Dane"},
-            ],
+            "characters": {
+                "Captain Science": {},
+                "Gordon Dane": {},
+            },
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -92,7 +92,7 @@ READ_METADATA = MappingProxyType(
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
-            "stories": [{"name": "The Beginning"}, {"name": "The End"}],
+            "stories": {"The Beginning": {}, "The End": {}},
             "story_arcs": {
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},

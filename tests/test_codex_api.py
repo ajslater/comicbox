@@ -43,14 +43,14 @@ TEMPLATE_MD = MappingProxyType(
     {
         ROOT_TAG: {
             "age_rating": "Teen",
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -116,11 +116,11 @@ TEMPLATE_MD = MappingProxyType(
 )
 CBZ_MD_PATCH = {
     ROOT_TAG: {
-        "stories": [
-            {"name": "cix"},
-            {"name": "The Beginning"},
-            {"name": "The End"},
-        ]
+        "stories": {
+            "cix": {},
+            "The Beginning": {},
+            "The End": {},
+        }
     }
 }
 CBZ_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
@@ -130,11 +130,11 @@ CBR_MD_PATCH = {
         "country": "US",
         "ext": "cbr",
         "series": {"volume_count": 1},
-        "stories": [
-            {"name": "cix-cbi"},
-            {"name": "The Beginning"},
-            {"name": "The End"},
-        ],
+        "stories": {
+            "cix-cbi": {},
+            "The Beginning": {},
+            "The End": {},
+        },
     },
 }
 CBR_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
@@ -149,11 +149,11 @@ CBT_MD_PATCH = {
             {"index": 3, "size": 450456},
             {"index": 4, "size": 436648},
         ],
-        "stories": [
-            {"name": "cix"},
-            {"name": "The Beginning"},
-            {"name": "The End"},
-        ],
+        "stories": {
+            "cix": {},
+            "The Beginning": {},
+            "The End": {},
+        },
     }
 }
 CBT_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
@@ -162,12 +162,12 @@ PDF_MD = MappingProxyType(
         ROOT_TAG: {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
-            "stories": [{"name": "the tangle of their lives"}],
-            "tags": [{"name": "d"}, {"name": "e"}, {"name": "f"}],
+            "stories": {"the tangle of their lives": {}},
+            "tags": {"d": {}, "e": {}, "f": {}},
             "tagger": f"comicbox {VERSION}",
             "publisher": {"name": "SmallPub"},
         }

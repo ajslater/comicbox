@@ -15,11 +15,9 @@
       }
     },
     "day": 1,
-    "genres": [
-      {
-        "name": "Science Fiction"
-      }
-    ],
+    "genres": {
+      "Science Fiction": {}
+    },
     "identifiers": {
       "comicvine": {
         "nss": "145269",
@@ -185,11 +183,9 @@
     "series": {
       "name": "Captain Science"
     },
-    "stories": [
-      {
-        "name": "The Beginning"
-      }
-    ],
+    "stories": {
+      "The Beginning": {}
+    },
     "tagger": "comicbox dev",
     "updated_at": "1970-01-01T00:00:00",
     "volume": {

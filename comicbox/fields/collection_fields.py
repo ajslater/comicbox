@@ -6,7 +6,7 @@ from typing import Any
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
-from comicbox.dict_funcs import case_insensitive_dict
+from comicbox.dict_funcs import case_insensitive_dict, sort_dict
 from comicbox.fields.fields import (
     EMPTY_VALUES,
     StringField,
@@ -36,18 +36,25 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
 class DictStringField(fields.Dict, metaclass=TrapExceptionsMeta):
     """Dict that guarauntees no empty keys."""
 
-    def __init__(self, *args, case_insensitive=False, **kwargs):
+    def __init__(
+        self, *args, case_insensitive=True, sort=True, allow_empty=False, **kwargs
+    ):
         """Set up String Keys."""
         self._case_insensitive = case_insensitive
+        self._sort = sort
+        self._allow_empty = allow_empty
         super().__init__(*args, keys=StringField, **kwargs)
 
     def _deserialize(self, data, *args, **kwargs):
         """Remove empty key."""
         result_dict = super()._deserialize(data, *args, **kwargs)
         result_dict.pop(None, None)
-        result_dict.pop("", None)
+        if not self._allow_empty:
+            result_dict.pop("", None)
         if self._case_insensitive:
             result_dict = case_insensitive_dict(result_dict)
+        if self._sort:
+            result_dict = sort_dict(result_dict)
         return result_dict
 
 

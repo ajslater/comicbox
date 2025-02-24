@@ -24,7 +24,7 @@ METADATA = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "issue": "1",
             "issue_number": Decimal(1),
             "language": "en",
@@ -32,7 +32,7 @@ METADATA = MappingProxyType(
             "page_count": 36,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "updated_at": TEST_DATETIME,
             "volume": {
                 "issue_count": 7,

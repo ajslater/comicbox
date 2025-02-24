@@ -7,7 +7,7 @@ from comicbox.box.sources import ComicboxSourcesMixin
 from comicbox.dict_funcs import deep_update
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.comicbox_mixin import (
-    CREDITS_KEY,
+    MAP_KEYS,
     NAME_KEY,
     ORDERED_SET_KEYS,
     PAGES_KEY,
@@ -72,17 +72,18 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
             merged_md.pop(PAGES_KEY, None)
 
     @classmethod
-    def _merge_credits(cls, merged_md, md_credits):
-        """Merge contributors."""
+    def _merge_mapping(cls, merged_md, key, md_credits):
+        """Merge mapping."""
         try:
             if not md_credits:
                 return
 
-            old_credits = merged_md.get(CREDITS_KEY)
+            old_credits = merged_md.get(key)
+            sort = key != STORIES_KEY
             if merged_credits := deep_update(
-                old_credits, md_credits, sort=True, case_insensitive=True
+                old_credits, md_credits, sort=sort, case_insensitive=True
             ):
-                merged_md[CREDITS_KEY] = merged_credits
+                merged_md[key] = merged_credits
 
         except KeyError:
             pass
@@ -126,7 +127,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         else:
             merged_md[key].extend(sequence)
 
-        do_sort = key != STORIES_KEY
+        do_sort = True
         if do_sort:
             if isinstance(merged_md[key][0], Mapping):
                 merged_md[key] = sorted(
@@ -144,13 +145,13 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 merged_md[key] = value
             elif key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif key == CREDITS_KEY:
-                self._merge_credits(merged_md, value)
             elif key in ORDERED_SET_KEYS:
                 self._merge_ordered_set(merged_md, key, value)
             elif key == REPRINTS_KEY:
                 new_value = merged_md[key] + value
                 merged_md[key] = sort_reprints(new_value)
+            elif key in MAP_KEYS:
+                self._merge_mapping(merged_md, key, value)
             elif isinstance(value, list | tuple):
                 self._merge_list(merged_md, key, value)
             elif isinstance(value, set | frozenset):
@@ -158,7 +159,6 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
             elif isinstance(value, Mapping):
                 self.merge_metadata(merged_md[key], value)
             else:
-                # be sure to update
                 merged_md[key] = value
 
         except Exception as exc:

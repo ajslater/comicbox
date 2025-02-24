@@ -1,14 +1,10 @@
 {
   "appID": "comicbox/dev",
   "comicbox": {
-    "characters": [
-      {
-        "name": "Captain Science"
-      },
-      {
-        "name": "Gordon Dane"
-      }
-    ],
+    "characters": {
+      "Captain Science": {},
+      "Gordon Dane": {}
+    },
     "credits": {
       "Joe Orlando": {
         "roles": {
@@ -24,11 +20,9 @@
     },
     "day": 1,
     "ext": "cbz",
-    "genres": [
-      {
-        "name": "Science Fiction"
-      }
-    ],
+    "genres": {
+      "Science Fiction": {}
+    },
     "identifiers": {
       "comicvine": {
         "nss": "145269",
@@ -46,11 +40,9 @@
     "series": {
       "name": "Captain Science"
     },
-    "stories": [
-      {
-        "name": "The Beginning"
-      }
-    ],
+    "stories": {
+      "The Beginning": {}
+    },
     "story_arcs": {
       "Captain Arc": {
         "number": 4

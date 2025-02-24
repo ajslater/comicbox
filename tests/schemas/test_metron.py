@@ -38,16 +38,16 @@ READ_METADATA = MappingProxyType(
         ROOT_TAG: {
             "age_rating": "Teen Plus",
             "date": date(year=1950, month=11, day=1),
-            "characters": [
-                {"name": "Captain Science"},
-                {"name": "Gordon Dane"},
-            ],
+            "characters": {
+                "Captain Science": {},
+                "Gordon Dane": {},
+            },
             "collection_title": "Omnibus",
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "imprint": {
                 "identifiers": {
                     "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"},
@@ -98,18 +98,17 @@ READ_METADATA = MappingProxyType(
                 "start_year": 1950,
                 "volume_count": 1,
             },
-            "stories": [
-                {
+            "stories": {
+                "Captain Lost": {
                     "identifiers": {
                         "metron": {
                             "nss": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
-                    "name": "Captain Lost",
                 },
-                {"name": "Science is Good"},
-            ],
+                "Science is Good": {},
+            },
             "story_arcs": {
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},
@@ -120,7 +119,7 @@ READ_METADATA = MappingProxyType(
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
-            "universes": [{"name": "Mirror", "designation": "4242"}],
+            "universes": {"Mirror": {"designation": "4242"}},
             "volume": {
                 "name": "NineteenFifty",
                 "number": 1950,

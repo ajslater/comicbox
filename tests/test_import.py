@@ -20,7 +20,7 @@ FNS = MappingProxyType(
     {
         "comet.xml": {
             "age_rating": "Teen",
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"writer": {}}},
                 "Wally Wood": {"roles": {"penciller": {}}},
@@ -28,7 +28,7 @@ FNS = MappingProxyType(
             "cover_image": "CaptainScience#1_01.jpg",
             "date": date(1950, 12, 1),
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -49,7 +49,7 @@ FNS = MappingProxyType(
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "summary": "A long example description",
             "volume": {"number": 1},
         },
@@ -60,7 +60,7 @@ FNS = MappingProxyType(
             },
             "country": "US",
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "issue": "1",
             "issue_number": Decimal("1"),
             "language": "en",
@@ -68,7 +68,7 @@ FNS = MappingProxyType(
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
@@ -78,7 +78,7 @@ FNS = MappingProxyType(
             "issue": "001",
             "issue_number": Decimal("1"),
             "year": 1950,
-            "stories": [{"name": "The Beginning - nothing"}],
+            "stories": {"The Beginning - nothing": {}},
             "ext": "cbz",
             "page_count": 0,
         },
@@ -90,7 +90,7 @@ FNS = MappingProxyType(
             "country": "US",
             "day": 1,
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -107,7 +107,7 @@ FNS = MappingProxyType(
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
@@ -130,19 +130,19 @@ FNS = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -162,7 +162,7 @@ FNS = MappingProxyType(
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}, {"name": "The End"}],
+            "stories": {"The Beginning": {}, "The End": {}},
             "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
@@ -170,14 +170,14 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "comicinfo-metron-origin.xml": {
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "day": 1,
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -201,7 +201,7 @@ FNS = MappingProxyType(
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "Comictagger",
             "updated_at": datetime(1970, 1, 1, 0, 0),
@@ -216,7 +216,7 @@ FNS = MappingProxyType(
             "country": "US",
             "day": 1,
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -233,7 +233,7 @@ FNS = MappingProxyType(
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "The Beginning"}],
+            "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
@@ -241,7 +241,7 @@ FNS = MappingProxyType(
         },
         "metroninfo.xml": {
             "age_rating": "Teen Plus",
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "collection_title": "Omnibus",
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -249,7 +249,7 @@ FNS = MappingProxyType(
             },
             "date": date(1950, 11, 1),
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
                 "nid": "metron",
                 "url": "https://metron.cloud/",
@@ -301,21 +301,20 @@ FNS = MappingProxyType(
                 "start_year": 1950,
                 "volume_count": 1,
             },
-            "stories": [
-                {
+            "stories": {
+                "Captain Lost": {
                     "identifiers": {
                         "metron": {
                             "nss": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
-                    "name": "Captain Lost",
                 },
-                {"name": "Science is Good"},
-            ],
+                "Science is Good": {},
+            },
             "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "comicbox dev",
-            "universes": [{"designation": "4242", "name": "Mirror"}],
+            "universes": {"Mirror": {"designation": "4242"}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 10, "name": "NineteenFifty", "number": 1950},
         },

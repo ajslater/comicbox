@@ -29,7 +29,7 @@ CLI_DICT = MappingProxyType(
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
         }
     }
 )

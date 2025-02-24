@@ -1,7 +1,7 @@
 comicbox:
   characters:
-    - name: Captain Science
-    - name: Gordon Dane
+    Captain Science: {}
+    Gordon Dane: {}
   credits:
     Joe Orlando:
       roles:
@@ -13,7 +13,7 @@ comicbox:
   day: 1
   ext: cbz
   genres:
-    - name: Science Fiction
+    Science Fiction: {}
   identifiers:
     comicvine:
       nss: '145269'
@@ -28,7 +28,7 @@ comicbox:
   series:
     name: Captain Science
   stories:
-    - name: The Beginning
+    The Beginning: {}
   story_arcs:
     Captain Arc:
       number: 4

@@ -32,7 +32,7 @@ METADATA = MappingProxyType(
             },
             "country": "US",
             "ext": "cbz",
-            "genres": [{"name": "Science Fiction"}],
+            "genres": {"Science Fiction": {}},
             "issue": "1",
             "issue_number": Decimal("1"),
             "language": "en",
@@ -79,18 +79,16 @@ METADATA = MappingProxyType(
             ],
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
-            "stories": [{"name": "cbi"}, {"name": "The Beginning"}],
+            "stories": {"cbi": {}, "The Beginning": {}},
             "volume": {"number": 1950, "issue_count": 7},
             "year": 1950,
             "tagger": "comicbox dev",
-            "tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}],
+            "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DATETIME,
         }
     }
 )
-TAGS_SOURCE = MappingProxyType(
-    {ROOT_TAG: {"tags": [{"name": "a"}, {"name": "b"}, {"name": "c"}]}}
-)
+TAGS_SOURCE = MappingProxyType({ROOT_TAG: {"tags": {"a": {}, "b": {}, "c": {}}}})
 
 
 def test_convert_to_cbz_and_cbi_to_cix():

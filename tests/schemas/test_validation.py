@@ -46,8 +46,8 @@ READ_METADATA = MappingProxyType(
             },
             "language": "en",
             "notes": TEST_READ_NOTES,
-            "characters": [{"name": "Captain Science"}, {"name": "Gordon Dane"}],
-            "genres": [{"name": "Science Fiction"}],
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
+            "genres": {"Science Fiction": {}},
             "pages": [
                 {"index": 0, "size": 429985, "page_type": PageTypeEnum.FRONT_COVER},
                 {"index": 1, "size": 332936},

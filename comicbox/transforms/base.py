@@ -103,23 +103,23 @@ class BaseTransform:
         """Copy keys from comicbox keys."""
         return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=True)
 
-    def string_list_to_names_one(self, data, from_key, to_key):
+    def string_list_to_dicts_one(self, data, from_key, to_key):
         """Transform one sequence of strings to comicbox name objects."""
-        string_list = sorted(data.pop(from_key, []))
-        if obj_list := [{NAME_KEY: string} for string in string_list if string]:
-            data[to_key] = obj_list
+        names = sorted(data.pop(from_key, []))
+        if obj := {name: {} for name in names if name}:
+            data[to_key] = obj
 
-    def string_lists_to_names(self, data: dict):
+    def string_lists_to_dicts(self, data: dict):
         """Copy string lists to named objects in comicbox."""
         for from_key, to_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            self.string_list_to_names_one(data, from_key, to_key)
+            self.string_list_to_dicts_one(data, from_key, to_key)
         return data
 
-    def named_objs_to_string_lists(self, data: dict):
+    def name_dicts_to_string_lists(self, data: dict):
         """Copy named objects in comicbox to string lists."""
         for to_key, from_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            obj_list = data.pop(from_key, [])
-            if string_list := [name for obj in obj_list if (name := obj.get(NAME_KEY))]:
+            obj = data.pop(from_key, {})
+            if string_list := [name for name in obj if name]:
                 if to_key not in self.LIST_KEYS:
                     string_list = set(string_list)
                 data[to_key] = string_list
@@ -145,9 +145,9 @@ class BaseTransform:
             comicbox_credits[person_name] = {ROLES_KEY: {}}
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
-    TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_names)
+    TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_dicts)
     TO_COMICBOX_POST_TRANSFORM = (expand_str_to_schema,)
-    FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, named_objs_to_string_lists)
+    FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, name_dicts_to_string_lists)
     FROM_COMICBOX_POST_TRANSFORM = ()
 
     ##################################

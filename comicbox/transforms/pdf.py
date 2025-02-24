@@ -159,7 +159,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
                 return data
         # Comma delimited string
         self._parse_comma_delimited_tags(data)
-        self.string_list_to_names_one(data, self.TAGS_TAG, TAGS_KEY)
+        self.string_list_to_dicts_one(data, self.TAGS_TAG, TAGS_KEY)
         return data
 
     def unparse_tags(self, data):
