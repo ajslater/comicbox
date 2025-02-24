@@ -164,7 +164,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 publisher="indicia_publisher",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<nsstype>\w+)/(?P<nss>\d+)/?",
+            url_path_regex=r"(?P<nsstype>\S+)/(?P<nss>\d+)/?",
             url_path_template="{nsstype}/{nss}/",
         ),
         ISBN_NID: IdentifierParts(
@@ -184,7 +184,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             types=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
             ),
-            url_path_regex=rf"(?P<nsstype>)/(?P<nss>){SLUG_REXP}",
+            url_path_regex=rf"(?P<nsstype>\S+)/(?P<nss>\S+){SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
         MANGADEX_NID: IdentifierParts(
@@ -202,30 +202,32 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         MARVEL_NID: IdentifierParts(
             domain="marvel.com",
             types=IdentifierTypes(issue="issue", series="series"),
-            url_path_regex=rf"comics/(?P<nsstype>\w+)/(?P<nss>\d+){SLUG_REXP}",
+            url_path_regex=rf"comics/(?P<nsstype>issue|series)/(?P<nss>\d+){SLUG_REXP}",
             url_path_template="comics/{nsstype}/{nss}/s",
         ),
         METRON_NID: IdentifierParts(
-            # Metron uses the slug for an id in most urls, not the actual metron id.
+            # Metron uses the slug for an id in most urls
+            #   but can also use the numeric metron id which redirects to the slug
+            # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
             domain="metron.cloud",
             types=IdentifierTypes(
                 character="character",
                 creator="creator",
-                genre="genre",
+                genre="genre",  # Not Yet Implemented on API
                 imprint="imprint",
                 issue="issue",
-                location="location",
+                location="location",  # Not Yet Implemented on API
                 publisher="publisher",
-                reprint="reprint",
+                reprint="reprint",  # Not Yet Implemented on API
                 role="role",
                 series="series",
-                story="story",
+                story="story",  # Not Yet Implemented on API
                 story_arc="arc",
                 tag="tag",
                 team="team",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<nsstype>issue)/(?P<nss>\S+)/?",
+            url_path_regex=r"(?P<nsstype>\S+)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",
         ),
         MYANIMELIST_NID: IdentifierParts(
