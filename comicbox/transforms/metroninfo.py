@@ -318,16 +318,20 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         key: str,
         parse_method: Callable[[dict, dict | str], tuple[str, dict]],
         *args,
+        list_type: bool = False,
         **kwargs,
     ) -> dict:
         """Parse a single metron tag with a submitted parser method."""
         if not (metron_objs := data.get(key)):
             return data
-        comicbox_objs = {}
+        comicbox_objs = [] if list_type else {}
         for metron_obj in metron_objs:
             sub_key, comicbox_obj = parse_method(data, metron_obj, *args, **kwargs)
             if sub_key:
-                comicbox_objs[sub_key] = comicbox_obj
+                if isinstance(comicbox_objs, list):
+                    comicbox_objs.append(comicbox_obj)
+                else:
+                    comicbox_objs[sub_key] = comicbox_obj
         if comicbox_objs:
             data[key] = comicbox_objs
         return data
@@ -338,13 +342,15 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         key: str,
         unparse_method: Callable[[dict, str, Any], dict],
         *args,
+        list_type: bool = False,
         **kwargs,
     ) -> dict:
         """Unparse a single metron tag with a submitted unparse method."""
         if not (comicbox_objs := data.get(key)):
             return data
         metron_objs = []
-        for sub_key, sub_value in comicbox_objs.items():
+        for sub_key in comicbox_objs:
+            sub_value = sub_key if list_type else comicbox_objs[sub_key]
             metron_obj = unparse_method(data, sub_key, sub_value, *args, **kwargs)
             if metron_obj:
                 metron_objs.append(metron_obj)
@@ -666,33 +672,29 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # REPRINTS
     ###########################################################################
+    def _parse_reprint(self, data, metron_reprint) -> tuple[str, dict]:
+        """Parse a metron Reprint."""
+        comicbox_reprint = {}
+        name = get_cdata(metron_reprint)
+        if not name:
+            return "", comicbox_reprint
+        fn_dict = comicfn2dict(name)
+        series = fn_dict.get(SERIES_KEY)
+        if series:
+            comicbox_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
+        issue = fn_dict.get(ISSUE_KEY)
+        if issue is not None:
+            comicbox_reprint[REPRINT_ISSUE_KEY] = issue
+        self._parse_metron_tag_identifier(
+            data, "reprint", metron_reprint, comicbox_reprint
+        )
+        return name, comicbox_reprint
+
     def parse_reprints(self, data):
-        """Parse reprint names into reprint structures."""
-        metron_reprints = data.pop(REPRINTS_KEY, None)
-        if not metron_reprints:
-            return data
-        comicbox_reprints = []
-        for metron_reprint in metron_reprints:
-            name = get_cdata(metron_reprint)
-            if not name:
-                continue
-            fn_dict = comicfn2dict(name)
-            new_reprint = {}
-            series = fn_dict.get(SERIES_KEY)
-            if series:
-                new_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
-            issue = fn_dict.get(ISSUE_KEY)
-            if issue is not None:
-                new_reprint[REPRINT_ISSUE_KEY] = issue
-            self._parse_metron_tag_identifier(
-                data, "reprint", metron_reprint, new_reprint
-            )
-            if new_reprint:
-                comicbox_reprints.append(new_reprint)
-        comicbox_reprints += data.get(REPRINTS_KEY, [])
-        if comicbox_reprints:
-            data[REPRINTS_KEY] = comicbox_reprints
-        return data
+        """Parse a metron Reprint."""
+        return self._parse_metron_tag(
+            data, REPRINTS_KEY, self._parse_reprint, list_type=True
+        )
 
     def _aggregate_reprints(self, reprints, new_reprint):
         """Aggregate new reprint into similar old reprint."""
@@ -726,22 +728,20 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
         return data
 
+    def _unparse_reprint(self, data, _, comicbox_reprint) -> dict:
+        """Unparse a structured comicbox reprints into metron reprint."""
+        name = reprint_to_filename(comicbox_reprint)
+        if not name:
+            return {}
+        metron_reprint = {"#text": name}
+        self._unparse_metron_id_attribute(data, metron_reprint, comicbox_reprint)
+        return metron_reprint
+
     def unparse_reprints(self, data):
         """Unparse reprint structures into metron reprint names."""
-        reprints = data.pop(REPRINTS_KEY, None)
-        if not reprints:
-            return data
-        metron_reprints = []
-        for reprint in reprints:
-            name = reprint_to_filename(reprint)
-            if not name:
-                continue
-            metron_reprint = {"#text": name}
-            self._unparse_metron_id_attribute(data, metron_reprint, reprint)
-            metron_reprints.append(metron_reprint)
-        if metron_reprints:
-            data[REPRINTS_KEY] = metron_reprints
-        return data
+        return self._unparse_metron_tag(
+            data, REPRINTS_KEY, self._unparse_reprint, list_type=True
+        )
 
     # PUBLISHER
     ###########################################################################
