@@ -15,9 +15,7 @@ from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     DEFAULT_NID,
-    IDENTIFIER_PARTS_MAP,
     ISBN_NID,
-    METRON_NID,
     NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
@@ -132,34 +130,32 @@ URL_TAG = "URL"
 SERIES_REPRINTS_KEY = "series_reprints"
 
 
-_HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
+_NESTED_METRON_RESOURCE_TAGS = MappingProxyType(
     {
-        (IDS_TAG, ID_TAG): IDENTIFIERS_KEY,
-        (PRICES_TAG, None): PRICES_KEY,
-        (URLS_TAG, None): URL_KEY,
-        (CHARACTERS_TAG, None): CHARACTERS_KEY,
-        (GENRES_TAG, None): GENRES_KEY,
-        (LOCATIONS_TAG, None): LOCATIONS_KEY,
-        (TEAMS_TAG, None): TEAMS_KEY,
-        (TAGS_TAG, None): TAGS_KEY,
-        (STORIES_TAG, STORY_TAG): STORIES_KEY,
-        # New
-        (ARCS_TAG, None): STORY_ARCS_KEY,
-        (PRICE_TAG, None): PRICES_KEY,
-        (UNIVERSES_TAG, None): UNIVERSES_KEY,
-        (REPRINTS_TAG, None): REPRINTS_KEY,
-        (CREDITS_TAG, None): CREDITS_KEY,
+        ARCS_TAG: STORY_ARCS_KEY,
+        CHARACTERS_TAG: CHARACTERS_KEY,
+        CREDITS_TAG: CREDITS_KEY,
+        GENRES_TAG: GENRES_KEY,
+        IDS_TAG: IDENTIFIERS_KEY,
+        LOCATIONS_TAG: LOCATIONS_KEY,
+        PRICES_TAG: PRICES_KEY,
+        REPRINTS_TAG: REPRINTS_KEY,
+        STORIES_TAG: STORIES_KEY,
+        TAGS_TAG: TAGS_KEY,
+        TEAMS_TAG: TEAMS_KEY,
+        UNIVERSES_TAG: UNIVERSES_KEY,
+        URLS_TAG: URL_KEY,
     }
 )
-_TYPES = IDENTIFIER_PARTS_MAP[METRON_NID].types
+_IRREGULAR_SINGLE_TAGS = MappingProxyType({IDS_TAG: ID_TAG, STORIES_TAG: STORY_TAG})
 _METRON_RESOURCES = MappingProxyType(
     {
-        CHARACTERS_KEY: _TYPES.character,
-        GENRES_KEY: _TYPES.genre,
-        LOCATIONS_KEY: _TYPES.location,
-        STORIES_KEY: _TYPES.story,
-        TAGS_KEY: _TYPES.tag,
-        TEAMS_KEY: _TYPES.team,
+        CHARACTERS_KEY: "character",
+        GENRES_KEY: "genre",
+        LOCATIONS_KEY: "location",
+        STORIES_KEY: "story",
+        TAGS_KEY: "tag",
+        TEAMS_KEY: "team",
     }
 )
 
@@ -282,9 +278,8 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     def hoist_metron_resource_lists(self, data):
         """Hoist metron resources into comicbox tags."""
         update_dict = {}
-        for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
-            # ignores id tag
-            tag, single_tag = tags
+        for tag, key in _NESTED_METRON_RESOURCE_TAGS.items():
+            single_tag = _IRREGULAR_SINGLE_TAGS.get(tag)
             if resources := self.hoist_tag(tag, data, single_tag=single_tag):
                 update_dict[key] = resources
         if update_dict:
@@ -294,11 +289,11 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     def lower_metron_resource_lists(self, data):
         """Lower comicbox tags into metron resource tags."""
         update_dict = {}
-        for tags, key in _HOISTABLE_METRON_RESOURCE_TAGS.items():
+        for tag, key in _NESTED_METRON_RESOURCE_TAGS.items():
             names = data.pop(key, None)
             if not names:
                 continue
-            tag, single_tag = tags
+            single_tag = _IRREGULAR_SINGLE_TAGS.get(tag)
             self.lower_tag(tag, tag, update_dict, names, single_tag=single_tag)
         if update_dict:
             data.update(update_dict)
