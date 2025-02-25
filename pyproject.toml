@@ -160,6 +160,8 @@ extend-ignore = [
   "E114",    # formatted
   "E117",    # over-indented
   "E501",    # 88 char line
+  "FIX002",  # TODO
+  "FIX003",  # XXX
   "FBT001",  # boolean params
   "ISC001",  # formatted
   "PERF203", # try block in loop
