@@ -132,20 +132,20 @@ SERIES_REPRINTS_KEY = "series_reprints"
 
 _NESTED_METRON_RESOURCE_TAGS = frozenbidict(
     {
-        ARCS_TAG: STORY_ARCS_KEY,
-        CHARACTERS_TAG: CHARACTERS_KEY,
-        CREDITS_TAG: CREDITS_KEY,
-        GENRES_TAG: GENRES_KEY,
-        IDS_TAG: IDENTIFIERS_KEY,
-        LOCATIONS_TAG: LOCATIONS_KEY,
-        PRICES_TAG: PRICES_KEY,
-        REPRINTS_TAG: REPRINTS_KEY,
-        ROLES_TAG: ROLES_KEY,
-        STORIES_TAG: STORIES_KEY,
-        TAGS_TAG: TAGS_KEY,
-        TEAMS_TAG: TEAMS_KEY,
-        UNIVERSES_TAG: UNIVERSES_KEY,
-        URLS_TAG: URL_KEY,
+        STORY_ARCS_KEY: ARCS_TAG,
+        CHARACTERS_KEY: CHARACTERS_TAG,
+        CREDITS_KEY: CREDITS_TAG,
+        GENRES_KEY: GENRES_TAG,
+        IDENTIFIERS_KEY: IDS_TAG,
+        LOCATIONS_KEY: LOCATIONS_TAG,
+        PRICES_KEY: PRICES_TAG,
+        REPRINTS_KEY: REPRINTS_TAG,
+        ROLES_KEY: ROLES_TAG,
+        STORIES_KEY: STORIES_TAG,
+        TAGS_KEY: TAGS_TAG,
+        TEAMS_KEY: TEAMS_TAG,
+        UNIVERSES_KEY: UNIVERSES_TAG,
+        URL_KEY: URLS_TAG,
     }
 )
 _IRREGULAR_SINGLE_TAGS = MappingProxyType({IDS_TAG: ID_TAG, STORIES_TAG: STORY_TAG})
@@ -308,14 +308,14 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                 else:
                     comicbox_objs[sub_key] = comicbox_obj
         if comicbox_objs not in EMPTY_VALUES:
-            key = _NESTED_METRON_RESOURCE_TAGS[tag]
+            key = _NESTED_METRON_RESOURCE_TAGS.inverse[tag]
             base_obj[key] = comicbox_objs
         return base_obj
 
     def _lower_metron_tag(self, base_obj: dict, key: str, value) -> dict:
         if value in EMPTY_VALUES:
             return base_obj
-        tag = _NESTED_METRON_RESOURCE_TAGS.inverse[key]
+        tag = _NESTED_METRON_RESOURCE_TAGS[key]
         single_tag = _IRREGULAR_SINGLE_TAGS.get(tag, tag[:-1])
         base_obj[tag] = {single_tag: value}
         return base_obj
@@ -391,7 +391,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     def parse_resources(self, data: dict) -> dict:
         """Parse Metron Resources."""
         for key, nss_type in _METRON_RESOURCES.items():
-            tag = _NESTED_METRON_RESOURCE_TAGS.inverse[key]
+            tag = _NESTED_METRON_RESOURCE_TAGS[key]
             data = self._parse_metron_tag(
                 data,
                 tag,
