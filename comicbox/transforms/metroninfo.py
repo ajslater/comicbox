@@ -336,7 +336,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self,
         data: dict,
         key: str,
-        unparse_method: Callable[[dict, str, Any, list], None],
+        unparse_method: Callable[[dict, str, Any], dict],
         *args,
         **kwargs,
     ) -> dict:
@@ -345,7 +345,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             return data
         metron_objs = []
         for sub_key, sub_value in comicbox_objs.items():
-            unparse_method(data, sub_key, sub_value, metron_objs, *args, **kwargs)
+            metron_obj = unparse_method(data, sub_key, sub_value, *args, **kwargs)
+            if metron_obj:
+                metron_objs.append(metron_obj)
         if metron_objs:
             data[key] = metron_objs
         return data
@@ -361,7 +363,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         self._parse_metron_tag_identifier(data, nss_type, metron_obj, comicbox_obj)
         return name, comicbox_obj
 
-    def _unparse_identified_name(self, data, name: str, comicbox_obj: dict) -> dict:
+    def _unparse_identified_name(
+        self, data: dict, name: str, comicbox_obj: dict
+    ) -> dict:
         metron_obj = {"#text": name}
         self._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)
         return metron_obj
@@ -404,53 +408,43 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             )
         return data
 
-    def _unparse_metron_resource_tag(self, data, name, comicbox_obj, metron_objs):
-        metron_obj = self._unparse_identified_name(data, name, comicbox_obj)
-        metron_objs.append(metron_obj)
-
     def unparse_metron_resources(self, data: dict) -> dict:
         """Unparse comicbox maps into metron Resources."""
         for key in _METRON_RESOURCES:
-            data = self._unparse_metron_tag(
-                data, key, self._unparse_metron_resource_tag
-            )
+            data = self._unparse_metron_tag(data, key, self._unparse_identified_name)
         return data
 
     # ARCS
     ###########################################################################
+    def _parse_arc(self, data, metron_arc) -> tuple[str, dict]:
+        """Parse one metron Arc."""
+        comicbox_story_arc = {}
+        if not (name := metron_arc.get(ARC_NAME_TAG, "")):
+            return (name, comicbox_story_arc)
+        number = metron_arc.get(ARC_NUMBER_TAG)
+        if number is not None:
+            comicbox_story_arc[NUMBER_KEY] = number
+        self._parse_metron_tag_identifier(
+            data, "story_arc", metron_arc, comicbox_story_arc
+        )
+        return name, comicbox_story_arc
+
     def parse_arcs(self, data):
         """Convert metron arcs list to story arcs map."""
-        if not (metron_arcs := data.pop(STORY_ARCS_KEY, None)):
-            return data
-        comicbox_story_arcs = {}
-        for metron_arc in metron_arcs:
-            if not (name := metron_arc.get(ARC_NAME_TAG)):
-                continue
-            comicbox_story_arc = {}
-            number = metron_arc.get(ARC_NUMBER_TAG)
-            if number is not None:
-                comicbox_story_arc[NUMBER_KEY] = number
-            self._parse_metron_tag_identifier(
-                data, "story_arc", metron_arc, comicbox_story_arc
-            )
-            comicbox_story_arcs[name] = comicbox_story_arc
-        return self._copy_assign(STORY_ARCS_KEY, data, comicbox_story_arcs)
+        return self._parse_metron_tag(data, STORY_ARCS_KEY, self._parse_arc)
+
+    def _unparse_arc(self, data, name, comicbox_story_arc: dict) -> dict:
+        """Unparse one metron Arc."""
+        metron_arc = {ARC_NAME_TAG: name}
+        number = comicbox_story_arc.get(NUMBER_KEY)
+        if number is not None:
+            metron_arc[ARC_NUMBER_TAG] = number
+        self._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
+        return metron_arc
 
     def unparse_arcs(self, data):
         """Convert story arc dict to metron arcs list."""
-        if not (comicbox_story_arcs := data.pop(STORY_ARCS_KEY, None)):
-            return data
-        metron_arcs = []
-        for name, comicbox_story_arc in comicbox_story_arcs.items():
-            metron_arc = {ARC_NAME_TAG: name}
-            number = comicbox_story_arc.get(NUMBER_KEY)
-            if number is not None:
-                metron_arc[ARC_NUMBER_TAG] = number
-            self._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
-            metron_arcs.append(metron_arc)
-        if metron_arcs:
-            data[STORY_ARCS_KEY] = metron_arcs
-        return data
+        return self._unparse_metron_tag(data, STORY_ARCS_KEY, self._unparse_arc)
 
     # PRICES
     ###########################################################################
