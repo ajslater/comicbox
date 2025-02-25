@@ -484,7 +484,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # UNIVERSES
     ###########################################################################
-    def _parse_universe(self, data, metron_universe) -> tuple[str, dict]:
+    def _parse_universe(self, data: dict, metron_universe) -> tuple[str, dict]:
         """Parse metron Universe."""
         name = metron_universe.get(NAME_TAG, "")
         comicbox_universe = {}
@@ -502,7 +502,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         """Parse Universes."""
         return self._parse_metron_tag(data, UNIVERSES_KEY, self._parse_universe)
 
-    def _unparse_universe(self, data, name, comicbox_universe) -> dict:
+    def _unparse_universe(self, data: dict, name: str, comicbox_universe) -> dict:
         """Unparse metron Universe."""
         if not name:
             return {}
@@ -598,7 +598,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # CREDITS
     ###########################################################################
-    def _parse_credit(self, data, metron_credit, comicbox_credits: dict):
+    def _parse_credit(self, data: dict, metron_credit) -> tuple[str, dict]:
         """Copy a single metron style credit entry into comicbox credits."""
         metron_creator = metron_credit.get(CREATOR_TAG, {})
         person_name, comicbox_credit = self._parse_identified_name(
@@ -606,7 +606,7 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         )
         metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
         if not metron_roles:
-            return
+            return "", {}
         comicbox_roles = {}
         for metron_role in metron_roles:
             role_name, comicbox_role = self._parse_identified_name(
@@ -615,25 +615,18 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             comicbox_roles[role_name] = comicbox_role
         if comicbox_roles:
             comicbox_credit[ROLES_KEY] = comicbox_roles
-        comicbox_credits[person_name] = comicbox_credit
+        return person_name, comicbox_credit
 
-    def parse_credits(self, data):
+    def parse_credits(self, data: dict):
         """Copy metron style credits dict into contributors."""
-        metron_credits = data.pop(CREDITS_KEY, None)
-        if not metron_credits:
-            return data
-        comicbox_credits = {}
-        for metron_credit in metron_credits:
-            try:
-                self._parse_credit(data, metron_credit, comicbox_credits)
-            except Exception as exc:
-                LOG.warning(f"{self._path} Parsing credit {metron_credit}: {exc}")
-        return self._copy_assign(CREDITS_KEY, data, comicbox_credits)
+        return self._parse_metron_tag(data, CREDITS_KEY, self._parse_credit)
 
-    def _unparse_credit(self, data, person_name, comicbox_credit, metron_credits):
+    def _unparse_credit(
+        self, data: dict, person_name: str, comicbox_credit: dict
+    ) -> dict:
         """Aggregate comicbox credits into Metron credit dict."""
         if not person_name:
-            return
+            return {}
         metron_creator = self._unparse_identified_name(
             data, person_name, comicbox_credit
         )
@@ -650,25 +643,11 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                     )
                     metron_roles.append(metron_role)
         self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, metron_roles)
-        metron_credits.append(metron_credit)
+        return metron_credit
 
     def unparse_credits(self, data):
         """Dump contributors into metron style credits dict."""
-        comicbox_credits = data.pop(CREDITS_KEY, None)
-        if not comicbox_credits:
-            return data
-        metron_credits = []
-        for person_name, comicbox_credit in comicbox_credits.items():
-            try:
-                self._unparse_credit(data, person_name, comicbox_credit, metron_credits)
-            except Exception as exc:
-                LOG.warning(
-                    f"{self._path} Parsing credit {person_name}:{comicbox_credit}: {exc}"
-                )
-
-        if metron_credits:
-            data[CREDITS_KEY] = metron_credits
-        return data
+        return self._unparse_metron_tag(data, CREDITS_KEY, self._unparse_credit)
 
     # REPRINTS
     ###########################################################################
