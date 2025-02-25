@@ -400,9 +400,9 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         """Parse Metron Resources."""
         for key, nss_type in _METRON_RESOURCES.items():
             data = self._parse_metron_tag(
-                # Don't know how to specify optional args to the Callable type
                 data,
                 key,
+                # TODO Don't know how to specify optional args to the Callable type
                 self._parse_identified_name,  # type: ignore[reportInvalidTypeForm]
                 nss_type,
             )
@@ -448,37 +448,33 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # PRICES
     ###########################################################################
+    def _parse_price(self, _data, metron_price) -> tuple[str, dict]:
+        """Parse a metron Price."""
+        price = get_cdata(metron_price)
+        if price is None:
+            return "", {}
+        country = metron_price.get(COUNTRY_ATTRIBUTE, "")
+        # TODO allow empty countries later
+        return country, price
+
     def parse_prices(self, data: dict) -> dict:
         """Parse prices."""
-        if not (metron_prices := data.pop(PRICES_KEY, None)):
-            return data
-        comicbox_prices = {}
-        for metron_price_obj in metron_prices:
-            price = get_cdata(metron_price_obj)
-            if price is None:
-                continue
-            country = metron_price_obj.get(COUNTRY_ATTRIBUTE, "")
-            comicbox_prices[country] = price
-        if comicbox_prices:
-            data[PRICES_KEY] = comicbox_prices
-        return data
+        return self._parse_metron_tag(data, PRICES_KEY, self._parse_price)
+
+    def _unparse_price(self, _data, country, price) -> dict:
+        """Unparse a metron Price."""
+        if price is None:
+            return {}
+        metron_price = {
+            "#text": str(Decimal(price).quantize(Decimal("0.01"))),
+        }
+        if country:
+            metron_price[COUNTRY_ATTRIBUTE] = country
+        return metron_price
 
     def unparse_prices(self, data: dict) -> dict:
         """Unparse Prices."""
-        if not (comicbox_prices := data.pop(PRICES_KEY, None)):
-            return data
-        metron_prices = []
-        for country, price in comicbox_prices.items():
-            if price is None:
-                continue
-            metron_price = {
-                COUNTRY_ATTRIBUTE: country,
-                "#text": str(Decimal(price).quantize(Decimal("0.01"))),
-            }
-            metron_prices.append(metron_price)
-        if metron_prices:
-            data[PRICES_KEY] = metron_prices
-        return data
+        return self._unparse_metron_tag(data, PRICES_KEY, self._unparse_price)
 
     # UNIVERSES
     ###########################################################################
