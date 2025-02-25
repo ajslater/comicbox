@@ -248,14 +248,6 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
 
-    @staticmethod
-    def _copy_assign(key, data, value):
-        # used in two locations check on that.
-        if value in EMPTY_VALUES:
-            return data
-        data[key] = value
-        return data
-
     def _parse_metron_tag_identifier(
         self, data: dict, nss_type: str, metron_obj: Mapping | str, comicbox_obj: dict
     ):
@@ -314,17 +306,20 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     def _parse_metron_tag(
         self,
-        data: dict,
+        base_obj: dict,
         key: str,
         parse_method: Callable[[dict, dict | str], tuple[str, dict]],
         *args,
         list_type: bool = False,
+        data: dict | None = None,
         **kwargs,
     ) -> dict:
         """Parse a single metron tag with a submitted parser method."""
-        if not (metron_objs := data.get(key)):
-            return data
+        if not (metron_objs := base_obj.get(key)):
+            return base_obj
         comicbox_objs = [] if list_type else {}
+        if data is None:
+            data = base_obj
         for metron_obj in metron_objs:
             sub_key, comicbox_obj = parse_method(data, metron_obj, *args, **kwargs)
             if sub_key:
@@ -332,31 +327,34 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
                     comicbox_objs.append(comicbox_obj)
                 else:
                     comicbox_objs[sub_key] = comicbox_obj
-        if comicbox_objs:
-            data[key] = comicbox_objs
-        return data
+        if comicbox_objs not in EMPTY_VALUES:
+            base_obj[key] = comicbox_objs
+        return base_obj
 
     def _unparse_metron_tag(
         self,
-        data: dict,
+        base_obj: dict,
         key: str,
         unparse_method: Callable[[dict, str, Any], dict],
         *args,
         list_type: bool = False,
+        data: dict | None = None,
         **kwargs,
     ) -> dict:
         """Unparse a single metron tag with a submitted unparse method."""
-        if not (comicbox_objs := data.get(key)):
-            return data
+        if not (comicbox_objs := base_obj.get(key)):
+            return base_obj
         metron_objs = []
+        if data is None:
+            data = base_obj
         for sub_key in comicbox_objs:
             sub_value = sub_key if list_type else comicbox_objs[sub_key]
             metron_obj = unparse_method(data, sub_key, sub_value, *args, **kwargs)
             if metron_obj:
                 metron_objs.append(metron_obj)
-        if metron_objs:
-            data[key] = metron_objs
-        return data
+        if metron_objs not in EMPTY_VALUES:
+            base_obj[key] = metron_objs
+        return base_obj
 
     def _parse_identified_name(
         self, data: dict, metron_obj: dict | str, nss_type: str
@@ -600,26 +598,30 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
     ###########################################################################
     def _parse_credit(self, data: dict, metron_credit) -> tuple[str, dict]:
         """Copy a single metron style credit entry into comicbox credits."""
-        metron_creator = metron_credit.get(CREATOR_TAG, {})
+        metron_creator = metron_credit.pop(CREATOR_TAG, {})
         person_name, comicbox_credit = self._parse_identified_name(
             data, metron_creator, "creator"
         )
-        metron_roles = self.hoist_tag(ROLES_TAG, metron_credit)
-        if not metron_roles:
-            return "", {}
-        comicbox_roles = {}
-        for metron_role in metron_roles:
-            role_name, comicbox_role = self._parse_identified_name(
-                data, metron_role, "role"
-            )
-            comicbox_roles[role_name] = comicbox_role
-        if comicbox_roles:
-            comicbox_credit[ROLES_KEY] = comicbox_roles
+        metron_credit[ROLES_KEY] = self.hoist_tag(ROLES_TAG, metron_credit)
+        comicbox_credit = self._parse_metron_tag(
+            metron_credit,
+            ROLES_KEY,
+            # TODO Don't know how to specify optional args to the Callable type
+            self._parse_identified_name,  # type: ignore[reportInvalidTypeForm]
+            "role",
+            data=data,
+        )
         return person_name, comicbox_credit
 
     def parse_credits(self, data: dict):
         """Copy metron style credits dict into contributors."""
         return self._parse_metron_tag(data, CREDITS_KEY, self._parse_credit)
+
+    def _unparse_role(self, data, role_name, comicbox_role):
+        """Unparse a metron role to an enum only value."""
+        if role_name and (metron_role_enum := self.ROLE_MAP.get(role_name.lower())):
+            return self._unparse_identified_name(data, metron_role_enum, comicbox_role)
+        return {}
 
     def _unparse_credit(
         self, data: dict, person_name: str, comicbox_credit: dict
@@ -632,16 +634,10 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
         )
         metron_credit = {CREATOR_TAG: metron_creator}
 
-        metron_roles = []
-        if comicbox_roles := comicbox_credit.get(ROLES_KEY):
-            for role_name, comicbox_role in comicbox_roles.items():
-                if not role_name:
-                    continue
-                if metron_role_enum := self.ROLE_MAP.get(role_name.lower()):
-                    metron_role = self._unparse_identified_name(
-                        data, metron_role_enum, comicbox_role
-                    )
-                    metron_roles.append(metron_role)
+        metron_roles = self._unparse_metron_tag(
+            comicbox_credit, ROLES_KEY, self._unparse_role, data=data
+        )
+        metron_roles = metron_roles.get(ROLES_KEY, [])
         self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, metron_roles)
         return metron_credit
 
