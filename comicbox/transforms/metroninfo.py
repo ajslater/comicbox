@@ -478,46 +478,38 @@ class MetronInfoTransform(XmlTransform, IdentifiersTransformMixin):
 
     # UNIVERSES
     ###########################################################################
+    def _parse_universe(self, data, metron_universe) -> tuple[str, dict]:
+        """Parse metron Universe."""
+        name = metron_universe.get(NAME_TAG, "")
+        comicbox_universe = {}
+        if not name:
+            return name, comicbox_universe
+        for tag, key in self.UNIVERSE_TAG_MAP.items():
+            if value := metron_universe.get(tag):
+                comicbox_universe[key] = value
+        self._parse_metron_tag_identifier(
+            data, "universe", metron_universe, comicbox_universe
+        )
+        return name, comicbox_universe
+
     def parse_universes(self, data: dict) -> dict:
         """Parse Universes."""
-        if metron_universes := data.pop(UNIVERSES_KEY, None):
-            comicbox_universes = {}
-            for metron_universe in metron_universes:
-                name = metron_universe.get(NAME_TAG)
-                if not name:
-                    continue
-                comicbox_universe = {}
-                for tag, key in self.UNIVERSE_TAG_MAP.items():
-                    if value := metron_universe.get(tag):
-                        comicbox_universe[key] = value
-                self._parse_metron_tag_identifier(
-                    data, "universe", metron_universe, comicbox_universe
-                )
-                if comicbox_universe:
-                    comicbox_universes[name] = comicbox_universe
-            if comicbox_universes:
-                data[UNIVERSES_KEY] = comicbox_universes
-        return data
+        return self._parse_metron_tag(data, UNIVERSES_KEY, self._parse_universe)
+
+    def _unparse_universe(self, data, name, comicbox_universe) -> dict:
+        """Unparse metron Universe."""
+        if not name:
+            return {}
+        metron_universe = {NAME_TAG: name}
+        for tag, key in self.UNIVERSE_TAG_MAP.items():
+            if value := comicbox_universe.get(key):
+                metron_universe[tag] = value
+        self._unparse_metron_id_attribute(data, metron_universe, comicbox_universe)
+        return metron_universe
 
     def unparse_universes(self, data: dict) -> dict:
         """Unparse Universes."""
-        if comicbox_universes := data.pop(UNIVERSES_KEY, {}):
-            metron_universes = []
-            for name, comicbox_universe in comicbox_universes.items():
-                if not name:
-                    continue
-                metron_universe = {NAME_TAG: name}
-                for tag, key in self.UNIVERSE_TAG_MAP.items():
-                    if value := comicbox_universe.get(key):
-                        metron_universe[tag] = value
-                self._unparse_metron_id_attribute(
-                    data, metron_universe, comicbox_universe
-                )
-                if metron_universe:
-                    metron_universes.append(metron_universe)
-            if metron_universes:
-                data[UNIVERSES_KEY] = metron_universes
-        return data
+        return self._unparse_metron_tag(data, UNIVERSES_KEY, self._unparse_universe)
 
     # IDENTIFIERS & URLS
     ###########################################################################
