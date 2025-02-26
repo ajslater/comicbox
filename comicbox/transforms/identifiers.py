@@ -60,23 +60,25 @@ class IdentifiersTransformMixin:
         merged_identifiers.update(comicbox_identifiers)
         data[IDENTIFIERS_KEY] = merged_identifiers
 
+    @classmethod
     def parse_identifier_native(
-        self, native_identifier: str | dict
+        cls, native_identifier: str | dict
     ) -> tuple[str, str, str]:
         """Parse the native identifier type into components. Defaults to string input."""
-        return parse_string_identifier(native_identifier, naked_nid=self.NAKED_NID)  # type: ignore[reportArgumentType]
+        return parse_string_identifier(native_identifier, naked_nid=cls.NAKED_NID)  # type: ignore[reportArgumentType]
 
-    def parse_identifier(self, data, native_identifier) -> tuple[str, dict]:
+    @classmethod
+    def parse_identifier(cls, data, native_identifier) -> tuple[str, dict]:
         """Parse one identifier urn or string."""
-        nid, nss_type, nss = self.parse_identifier_native(native_identifier)
+        nid, nss_type, nss = cls.parse_identifier_native(native_identifier)
         comicbox_identifier = {}
         if (
             (nid or nss)
             and (comicbox_identifier := create_identifier(nid, nss, nss_type=nss_type))
             and IDENTIFIER_PRIMARY_SOURCE_KEY not in data
-            and self.parse_item_primary(native_identifier)
+            and cls.parse_item_primary(native_identifier)
         ):
-            self.assign_identifier_primary_source(data, nid)
+            cls.assign_identifier_primary_source(data, nid)
         return nid, comicbox_identifier
 
     def parse_identifiers(self, data: dict) -> dict:
@@ -128,9 +130,10 @@ class IdentifiersTransformMixin:
             identifier = {}
         return nid, identifier
 
+    @classmethod
     def parse_url(
-        self,
-        data: dict,  # noqa: ARG002
+        cls,
+        data: dict,  # noqa: ARG003
         native_url: str | dict,
     ) -> tuple[str, dict]:
         """Parse one url into identifier."""
@@ -138,10 +141,10 @@ class IdentifiersTransformMixin:
         if not url_str:
             return "", {}
         for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if identifier := self._parse_url(nid, id_parts, url_str):
+            if identifier := cls._parse_url(nid, id_parts, url_str):
                 break
         else:
-            nid, identifier = self._parse_unknown_url(url_str)
+            nid, identifier = cls._parse_unknown_url(url_str)
         return nid, identifier
 
     def parse_urls(self, data):
@@ -168,9 +171,10 @@ class IdentifiersTransformMixin:
                 break
         return data
 
+    @classmethod
     def unparse_identifier(
-        self,
-        data: dict,  # noqa: ARG002
+        cls,
+        data: dict,  # noqa: ARG003
         nid: str,
         comicbox_identifier: dict,
     ) -> dict:
@@ -183,9 +187,10 @@ class IdentifiersTransformMixin:
             native_identifier["#text"] = urn_str
         return native_identifier
 
+    @classmethod
     def unparse_url(
-        self,
-        data: dict,  # noqa: ARG002
+        cls,
+        data: dict,  # noqa: ARG003
         nid: str,
         comicbox_identifier: dict,
     ) -> dict:
