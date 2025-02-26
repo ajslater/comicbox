@@ -1,6 +1,7 @@
 """Marshmallow collection fields."""
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 from marshmallow import fields
@@ -23,14 +24,74 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
     def _is_not_empty(value):
         return value not in EMPTY_VALUES
 
-    def _deserialize(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        sort: bool = True,
+        sort_key: Any = "",
+        allow_empty: bool = False,
+        **kwargs,
+    ):
+        """Add instance variables."""
+        self._sort = sort
+        self._sort_keys = sort_key.split(".")
+        self._allow_empty = allow_empty
+        super().__init__(*args, **kwargs)
+
+    def _deserialize(self, value, *args, **kwargs):
         """Remove empty values."""
-        value = args[0]
-        value = super()._deserialize(*args, **kwargs)
-        value = list(filter(self._is_not_empty, value))
-        if value:
-            return value
-        return []
+        if value is None:
+            return []
+        values = value if isinstance(value, list) else [value]
+        values = super()._deserialize(values, *args, **kwargs)
+        if not self._allow_empty:
+            values = list(filter(self._is_not_empty, values))
+        if not values:
+            return []
+        return values
+
+    def _get_deep_key(self, e):
+        value = ""
+        obj = e
+        for key in self._sort_keys:
+            value = obj.get(key)
+            obj = value
+        return "" if value is None else value
+
+    @staticmethod
+    def _get_non_dict_values(e):
+        return (
+            value
+            for value in sort_dict(e).values()
+            if (value not in EMPTY_VALUES and not isinstance(value, dict))
+        )
+
+    def _sort_key(self, e) -> tuple:
+        """Sort a mix of dicts and strings."""
+        return (
+            (self._get_deep_key(e), *self._get_non_dict_values(e))
+            if isinstance(e, Mapping)
+            else (e,)
+        )
+
+    def _sorted(self, values):
+        if not self._sort:
+            return values
+        return sorted(values, key=self._sort_key)
+
+    def _serialize(self, value: Any, *args, **kwargs):
+        if value is None:
+            return []
+        values = value if isinstance(value, list) else [value]
+        values = super()._serialize(values, *args, **kwargs)
+        if not values:
+            return []
+        if not self._allow_empty:
+            values = list(filter(self._is_not_empty, list(values)))
+        if not values:
+            return []
+        # Only sort on serialize
+        return self._sorted(values)
 
 
 class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
@@ -59,8 +120,20 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
             result_dict.pop("", None)
         if self._case_insensitive:
             result_dict = case_insensitive_dict(result_dict)
+        return result_dict
+
+    def _serialize(self, data, *args, **kwargs):
+        result_dict = super()._serialize(data, *args, **kwargs)
+        if result_dict is None:
+            return None
+        result_dict.pop(None, None)
+        if not self._allow_empty:
+            result_dict.pop("", None)
+        if self._case_insensitive:
+            result_dict = case_insensitive_dict(result_dict)
         if self._sort:
             result_dict = sort_dict(result_dict)
+        # Only sort on serialize
         return result_dict
 
 
@@ -103,6 +176,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore[reportIncompatibleMethodOverride]
         value = self._seq_to_str_seq(value)
         if self._sort:
+            # Only sort on serialize
             value = sorted(value)
         if self._as_string:
             # For subclasses where items aren't always strings
@@ -125,6 +199,10 @@ class IntegerListField(StringListField):
     """A list of integers."""
 
     FIELD = IntegerField
+
+    def __init__(self, *args, sort=False, **kwargs):
+        """Use not sorting as the default."""
+        super().__init__(*args, sort=sort, **kwargs)
 
 
 class IdentifiersField(DictField):

@@ -4,7 +4,9 @@ from collections.abc import Sequence
 from logging import getLogger
 from urllib.parse import urlparse
 
+from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
+    DEFAULT_NID,
     IDENTIFIER_PARTS_MAP,
     NID_ORDER,
     create_identifier,
@@ -30,9 +32,15 @@ class IdentifiersTransformMixin:
     NAKED_NID = None
     URLS_TAG = ""
 
-    def parse_identifier(self, item) -> tuple[str, str, str]:
-        """Parse one identifier urn or string."""
-        return parse_string_identifier(item, naked_nid=self.NAKED_NID)
+    @staticmethod
+    def get_primary_source_nid(data) -> str:
+        """Get the primary source nid."""
+        return data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
+
+    @staticmethod
+    def parse_item_primary(native_identifier) -> bool:  # noqa: ARG004
+        """Parse if an item has a primary attribute."""
+        return False
 
     @staticmethod
     def assign_identifier_primary_source(data, nid):
@@ -43,40 +51,52 @@ class IdentifiersTransformMixin:
             ips[URL_KEY] = url
         data[IDENTIFIER_PRIMARY_SOURCE_KEY] = ips
 
-    def parse_assign_identifier(self, data, nid, identifier, primary):
-        """Assign identifier by nid."""
-        if IDENTIFIERS_KEY not in data:
-            data[IDENTIFIERS_KEY] = {}
-        data[IDENTIFIERS_KEY][nid] = identifier
-        if primary and IDENTIFIER_PRIMARY_SOURCE_KEY not in data:
-            self.assign_identifier_primary_source(data, nid)
-
     @staticmethod
-    def parse_item_primary(item) -> bool:  # noqa: ARG004
-        """Parse if an item has a primary attribute."""
-        return False
-
-    def _parse_extracted_identifiers(self, data: dict, identifiers) -> None:
-        """Parse extracted identifier sequence to a map."""
-        if not isinstance(identifiers, Sequence | set | frozenset):
+    def merge_identifiers(data: dict, comicbox_identifiers: dict):
+        """Merge parsed identifiers with the currently assigned identifiers."""
+        if not comicbox_identifiers:
             return
-        # Allow multiple identifiers from xml, etc.
-        # Technically out of spec.
-        for item in identifiers:
-            nid, nss_type, nss = self.parse_identifier(item)
-            if not nid or not nss:
-                continue
+        merged_identifiers = data.get(IDENTIFIERS_KEY, {})
+        merged_identifiers.update(comicbox_identifiers)
+        data[IDENTIFIERS_KEY] = merged_identifiers
 
-            if identifier := create_identifier(nid, nss):
-                primary = self.parse_item_primary(item)
-                self.parse_assign_identifier(data, nid, identifier, primary)
+    def parse_identifier_native(
+        self, native_identifier: str | dict
+    ) -> tuple[str, str, str]:
+        """Parse the native identifier type into components. Defaults to string input."""
+        return parse_string_identifier(native_identifier, naked_nid=self.NAKED_NID)  # type: ignore[reportArgumentType]
+
+    def parse_identifier(self, data, native_identifier) -> tuple[str, dict]:
+        """Parse one identifier urn or string."""
+        nid, nss_type, nss = self.parse_identifier_native(native_identifier)
+        comicbox_identifier = {}
+        if (
+            (nid or nss)
+            and (comicbox_identifier := create_identifier(nid, nss, nss_type=nss_type))
+            and IDENTIFIER_PRIMARY_SOURCE_KEY not in data
+            and self.parse_item_primary(native_identifier)
+        ):
+            self.assign_identifier_primary_source(data, nid)
+        return nid, comicbox_identifier
 
     def parse_identifiers(self, data: dict) -> dict:
         """Parse identifier struct from a string or sequence."""
-        identifiers = data.pop(self.IDENTIFIERS_TAG, None)
-        if not identifiers:
+        native_identifiers = data.pop(self.IDENTIFIERS_TAG, None)
+        if not native_identifiers or not isinstance(
+            native_identifiers, Sequence | set | frozenset
+        ):
             return data
-        self._parse_extracted_identifiers(data, identifiers)
+        # Allow multiple identifiers from xml, etc.
+        # Technically out of spec.
+        comicbox_identifiers = {}
+        for native_identifier in native_identifiers:
+            try:
+                nid, identifier = self.parse_identifier(data, native_identifier)
+                comicbox_identifiers[nid] = identifier
+            except Exception as exc:
+                LOG.warning(f"Parsing identifier {native_identifier}: {exc}")
+        if comicbox_identifiers:
+            data[IDENTIFIERS_KEY] = comicbox_identifiers
 
         return data
 
@@ -108,32 +128,31 @@ class IdentifiersTransformMixin:
             identifier = {}
         return nid, identifier
 
-    def parse_url(self, data, url):
+    def parse_url(
+        self,
+        data: dict,  # noqa: ARG002
+        native_url: str | dict,
+    ) -> tuple[str, dict]:
         """Parse one url into identifier."""
-        if not url:
-            return
+        url_str = get_cdata(native_url)
+        if not url_str:
+            return "", {}
         for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if identifier := self._parse_url(nid, id_parts, url):
+            if identifier := self._parse_url(nid, id_parts, url_str):
                 break
         else:
-            nid, identifier = self._parse_unknown_url(url)
-        if identifier:
-            primary = self.parse_item_primary(url)
-            self.parse_assign_identifier(data, nid, identifier, primary)
+            nid, identifier = self._parse_unknown_url(url_str)
+        return nid, identifier
 
     def parse_urls(self, data):
         """Parse url tags into identifiers."""
-        urls = data.pop(self.URLS_TAG, None)
-        if not urls:
-            return data
-        if not urls:
-            return data
-        if isinstance(urls, frozenset | set | tuple | list):
-            urls = tuple(sorted(urls, key=lambda d: tuple(d)))
-        else:
-            urls = (urls,)
+        urls = data.pop(self.URLS_TAG, [])
+        comicbox_identifiers = {}
         for url in urls:
-            self.parse_url(data, url)
+            nid, identifier = self.parse_url(data, url)
+            if nid or identifier:
+                comicbox_identifiers[nid] = identifier
+        self.merge_identifiers(data, comicbox_identifiers)
         return data
 
     def parse_default_primary_identifier(self, data):
@@ -149,65 +168,63 @@ class IdentifiersTransformMixin:
                 break
         return data
 
-    def unparse_identifier(self, data: dict, nid: str, nss: str, primary: bool) -> dict:  # noqa: ARG002
+    def unparse_identifier(
+        self,
+        data: dict,  # noqa: ARG002
+        nid: str,
+        comicbox_identifier: dict,
+    ) -> dict:
         """Usually add to comma delineated urn strings. Overridable."""
         # These are issues which is the default type.
-        nss_type = ""
-        urn_string = to_urn_string(nid, nss_type, nss)
-        if not urn_string:
-            return data
-        if self.IDENTIFIERS_TAG not in data:
-            data[self.IDENTIFIERS_TAG] = ""
-        else:
-            urn_string = urn_string + ","
-
-        data[self.IDENTIFIERS_TAG] += urn_string
-
-        return data
+        native_identifier = {}
+        if (nss := comicbox_identifier.get(NSS_KEY)) and (
+            urn_str := to_urn_string(nid, "", nss)
+        ):
+            native_identifier["#text"] = urn_str
+        return native_identifier
 
     def unparse_url(
         self,
-        data: dict,
+        data: dict,  # noqa: ARG002
         nid: str,
-        nss: str,
-        url: str | None,
-        primary: bool,  # noqa: ARG002
+        comicbox_identifier: dict,
     ) -> dict:
         """Unparse one identifier into one url tag."""
-        if not self.URLS_TAG:
-            return data
-
-        if not url:
+        url = comicbox_identifier.get(URL_KEY)
+        if not url and (nss := comicbox_identifier.get(NSS_KEY)):
             new_identifier = create_identifier(nid, nss)
             url = new_identifier.get(URL_KEY)
+        native_url = {}
+        if url:
+            native_url["#text"] = url
+        return native_url
 
-        if not url:
-            return data
-
-        if self.URLS_TAG not in data:
-            data[self.URLS_TAG] = ""
-        add_url = "," + url if data[self.URLS_TAG] else url
-        data[self.URLS_TAG] += add_url
-        return data
-
-    def unparse_identifiers(self, data: dict):
+    def unparse_identifiers(self, data: dict) -> dict:
         """Unparse identifier struct to a string."""
-        if not self.IDENTIFIERS_TAG:
+        if not self.IDENTIFIERS_TAG and not self.URLS_TAG:
             return data
-        identifiers = data.pop(IDENTIFIERS_KEY, {})
-        if not identifiers:
+        comicbox_identifiers = data.pop(IDENTIFIERS_KEY, {})
+        if not comicbox_identifiers:
             return data
-        primary_nid = data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY)
+        urn_strings = set()
+        url_strings = set()
         for nid in NID_ORDER:
-            identifier = identifiers.get(nid)
-            if not identifier:
+            comicbox_identifier = comicbox_identifiers.get(nid)
+            if not comicbox_identifier:
                 continue
-            if not primary_nid:
-                primary_nid = nid
-            primary = nid == primary_nid
-            if nss := identifier.get(NSS_KEY):
-                data = self.unparse_identifier(data, nid, nss, primary)
-            url = identifiers.get(URL_KEY)
-            if url or nss:
-                data = self.unparse_url(data, nid, nss, url, primary)
+            if self.IDENTIFIERS_TAG and (
+                urn_dict := self.unparse_identifier(data, nid, comicbox_identifier)
+            ):
+                urn_strings.add(urn_dict.get("#text"))
+            if self.URLS_TAG and (
+                url_dict := self.unparse_url(data, nid, comicbox_identifier)
+            ):
+                url_strings.add(url_dict.get("#text"))
+
+        if urn_strings:
+            urn_strings = data.get(self.IDENTIFIERS_TAG, set()) | urn_strings
+            data[self.IDENTIFIERS_TAG] = urn_strings
+        if url_strings:
+            url_strings = data.get(self.URLS_TAG, set()) | url_strings
+            data[self.URLS_TAG] = url_strings
         return data

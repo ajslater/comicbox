@@ -8,7 +8,7 @@ from marshmallow.fields import Constant, Field, Nested
 from marshmallow.schema import Schema
 from marshmallow_union import Union
 
-from comicbox.fields.always_list_field import AlwaysListField
+from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 
@@ -81,7 +81,9 @@ def xml_polyfield(schema_class: type[Schema], field: Field) -> Union:
     )
 
 
-def xml_list_polyfield(schema_class: type[Schema], field: Field) -> AlwaysListField:
+def xml_list_polyfield(
+    schema_class: type[Schema], field: Field, sort_key="#text"
+) -> ListField:
     """Get a List of unions."""
     union_field = xml_polyfield(schema_class, field)
-    return AlwaysListField(union_field)
+    return ListField(union_field, sort_key=sort_key)

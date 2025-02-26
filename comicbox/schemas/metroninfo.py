@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Field, Nested
 
-from comicbox.fields.always_list_field import AlwaysListField
+from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
@@ -60,7 +60,7 @@ def _metron_resource_field() -> Field:
     return xml_polyfield(MetronResourceSchema, StringField())
 
 
-def _metron_resource_list_field() -> AlwaysListField:
+def _metron_resource_list_field() -> ListField:
     """Get metron union resource and simple text field."""
     return xml_list_polyfield(MetronResourceSchema, StringField())
 
@@ -333,7 +333,9 @@ class MetronCreditSchema(BaseSubSchema):
 class MetronInfoSubSchema(XmlSubSchema):
     """MetronInfo.xml Sub Schema."""
 
-    IDS = create_sub_tag_field("ID", AlwaysListField(Nested(MetronIDSchema)))
+    IDS = create_sub_tag_field(
+        "ID", ListField(Nested(MetronIDSchema), sort_key="@source")
+    )
     Publisher = Nested(MetronPublisherSchema)
     Series = Nested(MetronSeriesSchema)
     MangaVolume = XmlStringField()
@@ -344,7 +346,9 @@ class MetronInfoSubSchema(XmlSubSchema):
     Prices = create_sub_tag_field(
         "Price",
         xml_list_polyfield(
-            MetronPriceSchema, BugfixComplexDecimalField(places=2, minimum=Decimal(0))
+            MetronPriceSchema,
+            BugfixComplexDecimalField(places=2, minimum=Decimal(0)),
+            sort_key="@country",
         ),
     )
     CoverDate = XmlDateField()
@@ -353,11 +357,13 @@ class MetronInfoSubSchema(XmlSubSchema):
     Notes = XmlStringField()
     Genres = create_sub_tag_field("Genre", _metron_resource_list_field())
     Tags = create_sub_tag_field("Tag", _metron_resource_list_field())
-    Arcs = create_sub_tag_field("Arc", AlwaysListField(Nested(MetronArcSchema)))
+    Arcs = create_sub_tag_field(
+        "Arc", ListField(Nested(MetronArcSchema), sort_key="Name")
+    )
     Characters = create_sub_tag_field("Character", _metron_resource_list_field())
     Teams = create_sub_tag_field("Team", _metron_resource_list_field())
     Universes = create_sub_tag_field(
-        "Universe", AlwaysListField(Nested(MetronUniverseSchema))
+        "Universe", ListField(Nested(MetronUniverseSchema), sort_key="Name")
     )
     Locations = create_sub_tag_field("Location", _metron_resource_list_field())
     Reprints = create_sub_tag_field("Reprint", _metron_resource_list_field())
@@ -367,7 +373,7 @@ class MetronInfoSubSchema(XmlSubSchema):
         "URL", xml_list_polyfield(MetronURLSchema, StringField())
     )
     Credits = create_sub_tag_field(
-        "Credit", AlwaysListField(Nested(MetronCreditSchema))
+        "Credit", ListField(Nested(MetronCreditSchema), sort_key="Creator.#text")
     )
     LastModified = XmlDateTimeField()
 

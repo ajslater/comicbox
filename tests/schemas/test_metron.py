@@ -168,8 +168,8 @@ READ_METRON_DICT = MappingProxyType(
             "Genres": {"Genre": [{"#text": "Science Fiction"}]},
             "IDS": {
                 "ID": [
-                    {"@primary": True, "@source": "Metron", "#text": "999999"},
                     {"@source": "Comic Vine", "#text": "145269"},
+                    {"@primary": True, "@source": "Metron", "#text": "999999"},
                 ],
             },
             "LastModified": TEST_DTTM_STR,
@@ -219,10 +219,10 @@ READ_METRON_DICT = MappingProxyType(
             },
             "URLs": {
                 "URL": [
-                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
+                    {"#text": "https://barcodelookup.com/12345"},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
                     {"#text": "https://isbndb.com/book/123-456789-0123"},
-                    {"#text": "https://barcodelookup.com/12345"},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
                 ]
             },
             "Universes": {"Universe": [{"Designation": "4242", "Name": "Mirror"}]},
@@ -321,10 +321,10 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Universes": {"Universe": [{"Name": "Mirror", "Designation": "4242"}]},
             "URLs": {
                 "URL": [
-                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
+                    {"#text": "https://barcodelookup.com/12345"},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
                     {"#text": "https://isbndb.com/book/123-456789-0123"},
-                    {"#text": "https://barcodelookup.com/12345"},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
                 ]
             },
         }

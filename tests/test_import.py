@@ -217,6 +217,10 @@ FNS = MappingProxyType(
             "day": 1,
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
+            "identifier_primary_source": {
+                "nid": "comicvine",
+                "url": "https://comicvine.gamespot.com/",
+            },
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",

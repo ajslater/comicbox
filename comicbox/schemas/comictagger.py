@@ -81,7 +81,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     alternate_count = IntegerField()
     imprint = StringField()
     notes = StringField()
-    web_link = StringField()
+    web_link = StringSetField(as_string=True)
     # format in include
     manga = MangaField()
     black_and_white = YesNoField()

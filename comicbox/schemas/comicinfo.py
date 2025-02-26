@@ -120,7 +120,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     Series = XmlStringField()
     SeriesGroup = XmlStringSetField(as_string=True)
     StoryArc = XmlStringListField(as_string=True, sort=False)
-    StoryArcNumber = XmlIntegerListField(as_string=True, sort=False)
+    StoryArcNumber = XmlIntegerListField(as_string=True)
     Tags = XmlStringSetField(as_string=True)
     Teams = XmlStringSetField(as_string=True)
     Title = XmlStringField()

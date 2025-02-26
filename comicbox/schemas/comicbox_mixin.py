@@ -42,6 +42,7 @@ ISSUE_SUFFIX_KEY = "issue_suffix"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MONTH_KEY = "month"
+MONOCHROME_KEY = "monochrome"
 NAME_KEY = "name"
 NUMBER_KEY = "number"
 NUMBER_TO_KEY = "number_to"
@@ -231,7 +232,7 @@ class ComicboxSubSchemaMixin:
     protagonist = StringField()
     reading_direction = ReadingDirectionField()
     remainders = StringListField()
-    reprints = ListField(Nested(ReprintSchema))
+    reprints = ListField(Nested(ReprintSchema), sort_key="language")
     review = StringField()
     rights = StringField()
     scan_info = StringField()

@@ -34,6 +34,10 @@ READ_METADATA = MappingProxyType(
             },
             "issue": "1",
             "issue_number": Decimal("1"),
+            "identifier_primary_source": {
+                "nid": "comicvine",
+                "url": "https://comicvine.gamespot.com/",
+            },
             "publisher": {"name": "Youthful Adventure Stories"},
             "month": 11,
             "notes": TEST_READ_NOTES,

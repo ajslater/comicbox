@@ -70,6 +70,10 @@ READ_METADATA = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
+            "identifier_primary_source": {
+                "nid": "comicvine",
+                "url": "https://comicvine.gamespot.com/",
+            },
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -144,6 +148,10 @@ READ_MULTI_DICT = MappingProxyType(
             "prices": {"": Decimal("0.10")},
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
+            "identifier_primary_source": {
+                "nid": "comicvine",
+                "url": "https://comicvine.gamespot.com/",
+            },
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
