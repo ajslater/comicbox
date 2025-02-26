@@ -37,8 +37,8 @@ class IdentifiersTransformMixin:
         """Get the primary source nid."""
         return data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, DEFAULT_NID)
 
-    @staticmethod
-    def parse_item_primary(native_identifier) -> bool:  # noqa: ARG004
+    @classmethod
+    def parse_item_primary(cls, native_identifier) -> bool:  # noqa: ARG003
         """Parse if an item has a primary attribute."""
         return False
 

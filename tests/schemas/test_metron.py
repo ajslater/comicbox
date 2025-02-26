@@ -10,7 +10,7 @@ import xmltodict
 
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.transforms.metroninfo import PRICE_TAG, PRICES_TAG, MetronInfoTransform
+from comicbox.transforms.metroninfo import MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
@@ -339,10 +339,14 @@ WRITE_METRON_DICT = create_write_dict(
 def unparse_strinfigy_decimals(data):
     """Stringify decimals for xmltodict."""
     stringified_data = deepcopy(dict(data))
-    prices = stringified_data[MetronInfoSchema.ROOT_TAGS[0]][PRICES_TAG][PRICE_TAG]
+    prices = stringified_data[MetronInfoSchema.ROOT_TAGS[0]][
+        MetronInfoTransform.PRICES_TAG
+    ][MetronInfoTransform.PRICE_TAG]
     for price in prices:
         price["#text"] = str(price["#text"])
-    stringified_data[MetronInfoSchema.ROOT_TAGS[0]][PRICES_TAG][PRICE_TAG] = prices
+    stringified_data[MetronInfoSchema.ROOT_TAGS[0]][MetronInfoTransform.PRICES_TAG][
+        MetronInfoTransform.PRICE_TAG
+    ] = prices
     return xmltodict.unparse(stringified_data, pretty=True, short_empty_elements=True)
 
 
