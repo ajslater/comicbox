@@ -19,7 +19,7 @@ from tests.util import (
 )
 
 _TMP_DIR = get_tmp_dir(__file__)
-_FORMATS = "comet,cbi,cli,json,yaml,cix,ct,pdf"
+_FORMATS = "comet,cbi,cli,json,yaml,cix,ct,pdf,metron"
 
 
 def load_cli_and_compare_dicts(path_a, path_b):

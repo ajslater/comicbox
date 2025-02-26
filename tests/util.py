@@ -1,5 +1,6 @@
 """Utility functions for testing metadata."""
 
+import re
 import shutil
 from argparse import Namespace
 from collections.abc import Mapping
@@ -13,7 +14,7 @@ import fitz
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
-from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG
+from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox_mixin import (
     NOTES_KEY,
     PAGE_COUNT_KEY,
@@ -21,6 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
     ROOT_TAG,
     UPDATED_AT_KEY,
 )
+from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
 from comicbox.transforms.base import BaseTransform
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
@@ -109,20 +111,22 @@ def read_metadata(  # noqa: PLR0913
 
 
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
+_NOTES_REXP = "|".join(_NOTES_TAGS)
+_NOTES_RE = re.compile(_NOTES_REXP)
+_LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
+_LAST_MODIFIED_REXP = "|".join(_LAST_MODIFIED_TAGS)
+_LAST_MODIFIED_RE = re.compile(_LAST_MODIFIED_REXP)
 
 
 def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
     pruned_lines = []
+
+    print(_LAST_MODIFIED_REXP)
     for line in lines:
-        if ignore_last_modified and f'"{LAST_MODIFIED_TAG}":' in line:
+        if ignore_last_modified and _LAST_MODIFIED_RE.search(line):
             continue
-        if ignore_notes:
-            skip = False
-            for tag in _NOTES_TAGS:
-                if tag in line:
-                    skip = True
-            if skip:
-                continue
+        if ignore_notes and _NOTES_RE.search(line):
+            continue
         if ignore_updated_at and UPDATED_AT_KEY in line:
             continue
         pruned_lines.append(line)

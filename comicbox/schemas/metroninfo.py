@@ -39,6 +39,8 @@ from comicbox.schemas.xml_schemas import (
     xml_polyfield,
 )
 
+LAST_MODIFIED_TAG = "LastModified"
+
 
 class MetronIDAttrField(StringField):
     """Metron ID Field."""
