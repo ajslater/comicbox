@@ -216,18 +216,23 @@ Comicbox supports reading and writing several comic book metadata schemas.
 Comicbox includes a pretty good comic archive filename parser. It can extract a
 number of common fields from comic archive filenames.
 
+The filename parser is available as a separate library:
+[comicfn2dict](https://github.com/ajslater/comicfn2dict)
+
 | Location      | Name                  |
 | ------------- | --------------------- |
 | Archive       | The archive filename  |
 | Import/Export | comicbox-filename.txt |
 
-### ComicInfo Schema (Comic Rack) v2.1 (Draft)
+### ComicInfo Schema v2.1 Draft (Comic Rack)
 
 This schema used by the defunct Comic Rack reader is the de facto standard for
 comic book metadata on the internet. The
 [Anansi Project](https://anansi-project.github.io/) now maintains the
 [ComicInfo Schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
 and has compatibly and conservatively extended it.
+
+#### ComicInfo StoryArcs
 
 Comicbox also supports an unofficial, undocumented Mylar extension to
 ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV
@@ -250,24 +255,36 @@ deficiencies that exist with the ComicInfo.xml schema.
 | Archive       | metroninfo.xml |
 | Import/Export | metroninfo.xml |
 
-### ComicBookInfo Schema (Comic Book Lover)
+#### Metron MangaVolume
+
+The MangaVolume tag is interpreted not as an arbitrary string, but as a range of
+integers delineated by a "-". e.g "1-3".
+
+### ComicBookInfo Schema v1.0 (Comic Book Lover)
 
 The schema used by the defunct
 [Comic Book Lover](https://bitcartel.neocities.org/comicbooklover/) app. It
 supports a few useful tags that ComicInfo.xml does not, but it probably only
 survives because Comictagger supports writing it.
 
+I have interpreted the
 [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
+example json into a
+[ComicBookInfo JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json).
 
 | Location      | Name                 |
 | ------------- | -------------------- |
 | Archive       | Zip & Rar Comments   |
 | Import/Export | comic-book-info.json |
 
-### PDF Schema
+#### ComicBookInfo Role primary attribute
 
-The PDF metadata standard. Can be exported as an xml file or written directly to
-the pdf itself.
+Comicbox discards the <Role primary/> attribute.
+
+### PDF XMP Schema
+
+The PDF metadata standard. Written directly to the pdf itself or exported as an
+xml file.
 
 [Adobe PDF Namespace](https://developer.adobe.com/xmp/docs/XMPNamespaces/pdf/)
 [Adobe PDF Standard](https://opensource.adobe.com/dc-acrobat-sdk-docs/standards/pdfstandards/pdf/PDF32000_2008.pdf)
@@ -300,13 +317,15 @@ If Comicbox JSON is included in the write formats (e.g. `-w pdf,json`) Comicbox
 will write comicbox.json to the keywords field instead. It is unlikely that any
 other comic reader other than Codex will ever support this.
 
-### CoMet Schema (Comic Viewer)
+### CoMet Schema v1.1 (Comic Viewer)
 
 An old and extremely rare comic metadata standard from the defunct
 [Comic Viewer](https://www.denvog.com/wordpress/app/comic-viewer/) comic book
 reader.
 
-[CoMet Specification](http://www.denvog.com/comet/comet-specification/)
+I have interpreted the
+[CoMet Specification](http://www.denvog.com/comet/comet-specification/) into a
+[CoMet XSD](https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd).
 
 | Location      | Name      |
 | ------------- | --------- |
@@ -334,12 +353,12 @@ date are anyone's guess. It was included because it was easy to do.
 | Archive       | comictagger.json |
 | Import/Export | comictagger.json |
 
-### Comicbox Schema
+### Comicbox 2.0 Schema
 
 The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
-[Comicbox JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json)
+[Comicbox 2.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox-v2.0.schema.json)
 
 #### Comicbox JSON Format
 
