@@ -200,7 +200,10 @@ class MetronURLSchema(BaseSubSchema):
         """Attributes."""
 
         include = MappingProxyType(
-            {"#text": StringField(required=True), "@primary": XmlBooleanAttributeField()}
+            {
+                "#text": StringField(required=True),
+                "@primary": XmlBooleanAttributeField(),
+            }
         )
 
 

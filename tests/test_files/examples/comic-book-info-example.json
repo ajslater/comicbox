@@ -1,0 +1,49 @@
+{
+  "appID": "ComicBookLover/888",
+  "lastModified": "2009-10-25 14:51:31 +0000",
+  "ComicBookInfo/1.0": {
+    "series": "Watchmen",
+    "title": "At Midnight, All the Agents",
+    "publisher": "DC Comics",
+    "publicationMonth": 9,
+    "publicationYear": 1986,
+    "issue": 1,
+    "numberOfIssues": 12,
+    "volume": 1,
+    "numberOfVolumes": 1,
+    "rating": 5,
+    "genre": "Superhero",
+    "language": "English",
+    "country": "United States",
+    "credits": [
+      {
+        "person": "Moore, Alan",
+        "role": "Writer",
+        "primary": "TRUE"
+      },
+      {
+        "person": "Gibbons, Dave",
+        "role": "Artist",
+        "primary": "TRUE"
+      },
+      {
+        "person": "Gibbons, Dave",
+        "role": "Letterer"
+      },
+      {
+        "person": "Gibbons, John",
+        "role": "Colorer"
+      },
+      {
+        "person": "Wein, Len",
+        "role": "Editor"
+      },
+      {
+        "person": "Kesel, Barbara",
+        "role": "Editor"
+      }
+    ],
+    "tags": ["Rorschach", "Ozymandias", "Nite Owl"],
+    "comments": "Tales of the Black Freighter..."
+  }
+}

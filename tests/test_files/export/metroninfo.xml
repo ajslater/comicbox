@@ -33,7 +33,7 @@
 		<Genre>Science Fiction</Genre>
 	</Genres>
 	<IDS>
-		<ID primary="True" source="Comic Vine">145269</ID>
+		<ID primary="true" source="Comic Vine">145269</ID>
 	</IDS>
 	<LastModified>2025-02-26T21:55:05</LastModified>
 	<Notes>Tagged with comicbox dev on 2025-02-26T21:55:05 [Issue ID 145269] urn:comicvine:145269</Notes>
@@ -51,6 +51,6 @@
 		<Story>The Beginning</Story>
 	</Stories>
 	<URLs>
-		<URL primary="True">https://comicvine.gamespot.com/captain-science-1/4000-145269/</URL>
+		<URL primary="true">https://comicvine.gamespot.com/captain-science-1/4000-145269/</URL>
 	</URLs>
 </MetronInfo>

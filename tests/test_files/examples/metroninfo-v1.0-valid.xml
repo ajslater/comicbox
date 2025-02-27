@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetronInfo>
+    <IDS>
+        <ID source="Metron" primary="true">290431</ID>
+        <ID source="Comic Vine">12345</ID>
+        <ID source="Grand Comics Database">543</ID>
+    </IDS>
+    <Publisher id="12345">
+        <Name>DC Comics</Name>
+        <Imprint id="1234">Vertigo</Imprint>
+    </Publisher>
+    <Series id="65478" lang="en">
+        <Name>Justice League</Name>
+        <SortName>Justice League</SortName>
+        <Volume>2</Volume>
+        <Format>Single Issue</Format>
+        <StartYear>1970</StartYear>
+        <IssueCount>60</IssueCount>
+        <VolumeCount>3</VolumeCount>
+        <AlternativeNames>
+            <AlternativeName id="1234">Foo</AlternativeName>
+            <AlternativeName lang="de">Hüsker Dü</AlternativeName>
+        </AlternativeNames>
+    </Series>
+    <Number>1</Number>
+    <Stories>
+        <Story id="12">Justice League, Part One</Story>
+        <Story>Justice League, Part Two</Story>
+    </Stories>
+    <Summary>In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!</Summary>
+    <Notes>Nothing really to say.</Notes>
+    <Prices>
+        <Price country="US">3.99</Price>
+        <Price country="GB">1.51</Price>
+    </Prices>
+    <CoverDate>2011-10-01</CoverDate>
+    <StoreDate>2011-08-31</StoreDate>
+    <PageCount>32</PageCount>
+    <Genres>
+        <Genre id="98745">Super-Hero</Genre>
+        <Genre>Crime</Genre>
+        <Genre>Foo Bar</Genre>
+    </Genres>
+    <Tags>
+        <Tag id="78945">Foo</Tag>
+        <Tag>Bar</Tag>
+    </Tags>
+    <Arcs>
+        <Arc id="78945">
+            <Name>Origin</Name>
+            <Number>1</Number>
+        </Arc>
+        <Arc>
+            <Name>The New 52!</Name>
+        </Arc>
+    </Arcs>
+    <Characters>
+        <Character id="45678">Aquaman</Character>
+        <Character>Batman</Character>
+        <Character>Cyborg</Character>
+        <Character>Deadman</Character>
+        <Character>Barry Allen</Character>
+        <Character>Hal Jordan</Character>
+        <Character>Hawkman</Character>
+        <Character>Mera</Character>
+        <Character>Pandora</Character>
+        <Character>Ray Palmer</Character>
+        <Character>Superman</Character>
+        <Character>Wonder Woman</Character>
+    </Characters>
+    <Teams>
+        <Team id="49948">Justice League</Team>
+        <Team>Parademons</Team>
+    </Teams>
+    <Universes>
+        <Universe id="24">
+            <Name>ABC</Name>
+            <Designation>Earth 25</Designation>
+        </Universe>
+        <Universe>
+            <Name>Amalgam</Name>
+        </Universe>
+    </Universes>
+    <Locations>
+        <Location id="12389">Gotham City</Location>
+        <Location>Metropolis</Location>
+    </Locations>
+    <GTIN>
+        <ISBN>1234567890123</ISBN>
+        <UPC>76194130593600111</UPC>
+    </GTIN>
+    <AgeRating>Everyone</AgeRating>
+    <Reprints>
+        <Reprint id="65498">Foo Bar #001 (2002)</Reprint>
+        <Reprint>Foo Bar #002 (2022)</Reprint>
+    </Reprints>
+    <URLs>
+        <URL primary="true">https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/</URL>
+        <URL>https://foo.bar</URL>
+        <URL>https://bar.foo</URL>
+    </URLs>
+    <Credits>
+        <Credit>
+            <Creator id="32165">Geoff Johns</Creator>
+            <Roles>
+                <Role id="32165">Writer</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>David Finch</Creator>
+            <Roles>
+                <Role>Cover</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Richard Friend</Creator>
+            <Roles>
+                <Role>Cover</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Jim Lee</Creator>
+            <Roles>
+                <Role>Penciller</Role>
+                <Role>Cover</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Scott Williams</Creator>
+            <Roles>
+                <Role>Inker</Role>
+                <Role>Cover</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Alex Sinclair</Creator>
+            <Roles>
+                <Role>Colorist</Role>
+                <Role>Cover</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Pat Brosseau</Creator>
+            <Roles>
+                <Role>Letterer</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Rex Ogle</Creator>
+            <Roles>
+                <Role>Associate Editor</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Eddie Berganza</Creator>
+            <Roles>
+                <Role>Editor</Role>
+            </Roles>
+        </Credit>
+        <Credit>
+            <Creator>Dan DiDio</Creator>
+            <Roles>
+                <Role>Publisher</Role>
+            </Roles>
+        </Credit>
+    </Credits>
+    <LastModified>2023-05-31T09:00:46.300882-04:00</LastModified>
+</MetronInfo>

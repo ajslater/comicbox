@@ -7,7 +7,7 @@ from pprint import pprint
 from types import MappingProxyType
 
 import pytest
-from dateutil.tz.tz import tzoffset
+from dateutil.tz.tz import tzoffset, tzutc
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
@@ -77,6 +77,28 @@ FNS = MappingProxyType(
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
+        },
+        "comic-book-info-example.json": {
+            "country": "US",
+            "credits": {
+                "Gibbons, Dave": {"roles": {"Artist": {}, "Letterer": {}}},
+                "Gibbons, John": {"roles": {"Colorer": {}}},
+                "Kesel, Barbara": {"roles": {"Editor": {}}},
+                "Moore, Alan": {"roles": {"Writer": {}}},
+                "Wein, Len": {"roles": {"Editor": {}}},
+            },
+            "ext": "cbz",
+            "genres": {"Superhero": {}},
+            "language": "en",
+            "month": 9,
+            "page_count": 0,
+            "publisher": {"name": "DC Comics"},
+            "series": {"name": "Watchmen", "volume_count": 1},
+            "stories": {"At Midnight, All the Agents": {}},
+            "summary": "Tales of the Black Freighter...",
+            "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=tzutc()),
+            "volume": {"issue_count": 12, "number": 1},
+            "year": 1986,
         },
         "comicbox-filename.txt": {
             "series": {"name": "Captain Science"},
