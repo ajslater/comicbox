@@ -169,7 +169,7 @@ READ_METRON_DICT = MappingProxyType(
             "IDS": {
                 "ID": [
                     {"@source": "Comic Vine", "#text": "145269"},
-                    {"@primary": True, "@source": "Metron", "#text": "999999"},
+                    {"@primary": "true", "@source": "Metron", "#text": "999999"},
                 ],
             },
             "LastModified": TEST_DTTM_STR,
@@ -222,7 +222,7 @@ READ_METRON_DICT = MappingProxyType(
                     {"#text": "https://barcodelookup.com/12345"},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
                     {"#text": "https://isbndb.com/book/123-456789-0123"},
-                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": "true"},
                 ]
             },
             "Universes": {"Universe": [{"Designation": "4242", "Name": "Mirror"}]},
@@ -270,7 +270,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "IDS": {
                 "ID": [
                     {"@source": "Comic Vine", "#text": "145269"},
-                    {"@primary": True, "@source": "Metron", "#text": "999999"},
+                    {"@primary": "true", "@source": "Metron", "#text": "999999"},
                 ],
             },
             "LastModified": TEST_DTTM_STR,
@@ -324,7 +324,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                     {"#text": "https://barcodelookup.com/12345"},
                     {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
                     {"#text": "https://isbndb.com/book/123-456789-0123"},
-                    {"#text": "https://metron.cloud/issue/999999", "@primary": True},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": "true"},
                 ]
             },
         }
