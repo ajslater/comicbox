@@ -1,6 +1,8 @@
 """Comic Book Info transform to and from Comicbox format."""
 
 from datetime import datetime
+from decimal import Decimal
+from math import ceil, floor
 from types import MappingProxyType
 
 from bidict import bidict
@@ -13,6 +15,8 @@ from comicbox.schemas.comicbookinfo import (
 )
 from comicbox.schemas.comicbox_mixin import (
     GENRES_KEY,
+    ISSUE_KEY,
+    ISSUE_NUMBER_KEY,
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
     UPDATED_AT_KEY,
@@ -65,6 +69,7 @@ class ComicBookInfoTransform(
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "numberOfIssues"
     TITLE_TAG = "title"
+    ISSUE_TAG = "issue"
 
     def unwrap(self, data, root_tags=None) -> dict:
         """Retrieve the last modified timestamp."""
@@ -86,6 +91,25 @@ class ComicBookInfoTransform(
                 data[LAST_MODIFIED_TAG] = last_modified
         return data
 
+    def parse_issue(self, data) -> dict:
+        """Parse Issue integer."""
+        issue_number = data.get(self.ISSUE_TAG)
+        if issue_number is None:
+            return data
+        data[ISSUE_KEY] = str(issue_number)
+        data[ISSUE_NUMBER_KEY] = Decimal(issue_number)
+        return data
+
+    def unparse_issue(self, data: dict) -> dict:
+        """Parse Issue into an integer."""
+        issue_number = data.get(ISSUE_NUMBER_KEY)
+        if issue_number is None:
+            return data
+        # Discard decimal places
+        issue_number = floor(issue_number) if issue_number >= 0 else ceil(issue_number)
+        data[self.ISSUE_TAG] = issue_number
+        return data
+
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.parse_credits,
@@ -93,6 +117,7 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
+        parse_issue,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -102,4 +127,5 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
+        unparse_issue,
     )

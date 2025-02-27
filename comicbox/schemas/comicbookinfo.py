@@ -65,7 +65,7 @@ class ComicBookInfoSubSchema(JsonSubSchema):
     comments = StringField()
     country = CountryField(serialize_name=True)
     genre = StringSetField(as_string=True)
-    issue = StringField()
+    issue = IntegerField()
     language = LanguageField(serialize_name=True)
     numberOfVolumes = IntegerField(minimum=0)  # noqa: N815
     numberOfIssues = IntegerField(minimum=0)  # noqa: N815

@@ -89,6 +89,8 @@ FNS = MappingProxyType(
             },
             "ext": "cbz",
             "genres": {"Superhero": {}},
+            "issue": "1",
+            "issue_number": Decimal("1"),
             "language": "en",
             "month": 9,
             "page_count": 0,
@@ -615,5 +617,5 @@ def deactivated_test_export(fn):
 
     tmp_fn = _REGULAR_FN.get(fmt, fn)
     tmp_path = _TMP_DIR / tmp_fn
-    compare_export(TEST_METADATA_DIR, tmp_path)
+    compare_export(TEST_METADATA_DIR, tmp_path, fmt)
     tmp_path.unlink()

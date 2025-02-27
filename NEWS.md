@@ -17,6 +17,7 @@
   - Fix Notes parsing for Comictagger beta Metron origin
   - Fix ISBN & UPC url detection
   - Fix proper lowercasing of serialized boolean values in xml attributes.
+  - ComicBookInfo issue becomes an integer.
 
 ## v1.2.1
 

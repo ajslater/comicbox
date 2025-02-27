@@ -51,7 +51,7 @@ CBI_DICT = MappingProxyType(
                 {"person": "Wally Wood", "role": "Penciller"},
             ],
             "genre": "Science Fiction",
-            "issue": "1",
+            "issue": 1,
             "language": "English",
             "numberOfIssues": 7,
             "numberOfVolumes": 1,
