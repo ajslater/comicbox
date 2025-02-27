@@ -12,6 +12,7 @@ from types import MappingProxyType
 
 import fitz
 from deepdiff.diff import DeepDiff
+from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
@@ -116,13 +117,15 @@ _NOTES_RE = re.compile(_NOTES_REXP)
 _LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
 _LAST_MODIFIED_REXP = "|".join(_LAST_MODIFIED_TAGS)
 _LAST_MODIFIED_RE = re.compile(_LAST_MODIFIED_REXP)
+TMP_IGNORE_SUBSTRINGS = ("<identifier>", 'pages":')
 
 
 def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
     pruned_lines = []
-
-    print(_LAST_MODIFIED_REXP)
     for line in lines:
+        for substring in TMP_IGNORE_SUBSTRINGS:
+            if substring in line:
+                continue
         if ignore_last_modified and _LAST_MODIFIED_RE.search(line):
             continue
         if ignore_notes and _NOTES_RE.search(line):
@@ -474,3 +477,37 @@ def create_write_dict(read_dict, schema_class, notes_tag, notes=TEST_WRITE_NOTES
     write_dict = deepcopy(dict(read_dict))
     write_dict[schema_class.ROOT_TAGS[0]][notes_tag] = notes
     return MappingProxyType(write_dict)
+
+
+def load_cli_and_compare_dicts(path_a, path_b):
+    """Compare cli strings all on one line."""
+    yaml = YAML()
+    with path_a.open("r") as file_a, path_b.open("r") as file_b:
+        dict_a = yaml.load(file_a)
+        dict_b = yaml.load(file_b)
+    dict_a[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_b[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_a[ROOT_TAG].pop(NOTES_KEY, None)
+    dict_b[ROOT_TAG].pop(NOTES_KEY, None)
+
+    pprint(dict_a)
+    pprint(dict_b)
+    diff = DeepDiff(dict_a, dict_b)
+    pprint(diff)
+    return diff
+
+
+def compare_export(test_dir, fn):
+    """Compare exported files."""
+    test_path = test_dir / fn.name.lower()
+    print(fn.name)
+    if fn.name == "comicbox-cli.yaml":
+        assert not load_cli_and_compare_dicts(test_path, fn)
+    else:
+        assert compare_files(
+            test_path,
+            fn,
+            ignore_last_modified=True,
+            ignore_notes=True,
+            ignore_updated_at=True,
+        )

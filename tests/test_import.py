@@ -7,6 +7,7 @@ from pprint import pprint
 from types import MappingProxyType
 
 import pytest
+from dateutil.tz.tz import tzoffset
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
@@ -15,6 +16,10 @@ from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_METADATA_DIR,
 )
+from tests.util import compare_export, get_tmp_dir
+
+_TMP_DIR = get_tmp_dir(__file__)
+
 
 FNS = MappingProxyType(
     {
@@ -322,13 +327,239 @@ FNS = MappingProxyType(
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
+        # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
+        "metroninfo-v1.0-valid.xml": {
+            "age_rating": "Everyone",
+            "characters": {
+                "Aquaman": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "45678",
+                            "url": "https://metron.cloud/character/45678",
+                        }
+                    }
+                },
+                "Barry Allen": {},
+                "Batman": {},
+                "Cyborg": {},
+                "Deadman": {},
+                "Hal Jordan": {},
+                "Hawkman": {},
+                "Mera": {},
+                "Pandora": {},
+                "Ray Palmer": {},
+                "Superman": {},
+                "Wonder Woman": {},
+            },
+            "credits": {
+                "Alex Sinclair": {"roles": {"Colorist": {}, "Cover": {}}},
+                "Dan DiDio": {"roles": {"Publisher": {}}},
+                "David Finch": {"roles": {"Cover": {}}},
+                "Eddie Berganza": {"roles": {"Editor": {}}},
+                "Geoff Johns": {
+                    "roles": {
+                        "Writer": {
+                            "identifiers": {
+                                "metron": {
+                                    "nss": "32165",
+                                    "url": "https://metron.cloud/role/32165",
+                                }
+                            }
+                        }
+                    }
+                },
+                "Jim Lee": {"roles": {"Cover": {}, "Penciller": {}}},
+                "Pat Brosseau": {"roles": {"Letterer": {}}},
+                "Rex Ogle": {"roles": {"Associate Editor": {}}},
+                "Richard Friend": {"roles": {"Cover": {}}},
+                "Scott Williams": {"roles": {"Cover": {}, "Inker": {}}},
+            },
+            "date": date(2011, 10, 1),
+            "ext": "cbz",
+            "genres": {
+                "Crime": {},
+                "Foo Bar": {},
+                "Super-Hero": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "98745",
+                            "url": "https://metron.cloud/genre/98745",
+                        }
+                    }
+                },
+            },
+            "identifier_primary_source": {
+                "nid": "metron",
+                "url": "https://metron.cloud/",
+            },
+            "identifiers": {
+                "comicvine": {
+                    "nss": "12345",
+                    "url": "https://comicvine.gamespot.com/c/4000-12345/",
+                },
+                "grandcomicsdatabase": {
+                    "nss": "543",
+                    "url": "https://comics.org/issue/543/",
+                },
+                "isbn": {
+                    "nss": "1234567890123",
+                    "url": "https://isbndb.com/book/1234567890123",
+                },
+                "metron": {"nss": "290431", "url": "https://metron.cloud/issue/290431"},
+                "upc": {
+                    "nss": "76194130593600111",
+                    "url": "https://barcodelookup.com/76194130593600111",
+                },
+            },
+            "imprint": {
+                "identifiers": {
+                    "metron": {
+                        "nss": "1234",
+                        "url": "https://metron.cloud/imprint/1234",
+                    }
+                },
+                "name": "Vertigo",
+            },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "locations": {
+                "Gotham City": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "12389",
+                            "url": "https://metron.cloud/location/12389",
+                        }
+                    }
+                },
+                "Metropolis": {},
+            },
+            "notes": "Nothing really to say.",
+            "original_format": "Single Issue",
+            "page_count": 0,
+            "prices": {"GB": Decimal("1.51"), "US": Decimal("3.99")},
+            "publisher": {
+                "identifiers": {
+                    "metron": {
+                        "nss": "12345",
+                        "url": "https://metron.cloud/publisher/12345",
+                    }
+                },
+                "name": "DC Comics",
+            },
+            "reprints": [
+                {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "65498",
+                            "url": "https://metron.cloud/reprint/65498",
+                        }
+                    },
+                    "issue": "002",
+                    "series": {"name": "Foo Bar"},
+                },
+                {"series": {"name": "Foo"}},
+                {"language": "de", "series": {"name": "Hüsker Dü"}},
+            ],
+            "series": {
+                "identifiers": {
+                    "metron": {
+                        "nss": "65478",
+                        "url": "https://metron.cloud/series/65478",
+                    }
+                },
+                "name": "Justice League",
+                "sort_name": "Justice League",
+                "start_year": 1970,
+                "volume_count": 3,
+            },
+            "store_date": date(2011, 8, 31),
+            "stories": {
+                "Justice League, Part One": {
+                    "identifiers": {
+                        "metron": {"nss": "12", "url": "https://metron.cloud/story/12"}
+                    }
+                },
+                "Justice League, Part Two": {},
+            },
+            "story_arcs": {
+                "Origin": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "78945",
+                            "url": "https://metron.cloud/arc/78945",
+                        }
+                    },
+                    "number": 1,
+                },
+                "The New 52!": {},
+            },
+            "summary": "In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!",
+            "tags": {
+                "Bar": {},
+                "Foo": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "78945",
+                            "url": "https://metron.cloud/tag/78945",
+                        }
+                    }
+                },
+            },
+            "teams": {
+                "Justice League": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "49948",
+                            "url": "https://metron.cloud/team/49948",
+                        }
+                    }
+                },
+                "Parademons": {},
+            },
+            "universes": {
+                "ABC": {
+                    "designation": "Earth 25",
+                    "identifiers": {
+                        "metron": {
+                            "nss": "24",
+                            "url": "https://metron.cloud/universe/24",
+                        }
+                    },
+                },
+                "Amalgam": {},
+            },
+            "updated_at": datetime(
+                2023, 5, 31, 9, 0, 46, 300882, tzinfo=tzoffset(None, -14400)
+            ),
+            "volume": {"issue_count": 60, "number": 2},
+        },
     }
+)
+
+_FORMAT_MAP = MappingProxyType(
+    {
+        "comet.xml": "comet",
+        "comic-book-info.json": "cbi",
+        "comicbox-filename.txt": "fn",
+        "comicbox.json": "json",
+        "comicbox.yaml": "yaml",
+        "comicinfo.xml": "cix",
+        "comicinfo-metron-origin.xml": "cix",
+        "comictagger.json": "ct",
+        "metroninfo.xml": "metron",
+        "metroninfo-v1.0-valid.xml": "metron",
+    }
+)
+
+_REGULAR_FN = MappingProxyType(
+    {"cix": "ComicInfo.xml", "metron": "MetronInfo.xml", "fn": "comicbox-filename.txt"}
 )
 
 
 @pytest.mark.parametrize("fn", FNS)
 def test_import(fn):
-    """Test converting cbr to cbz and writing cbi info as cix."""
+    """Test importing metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     import_path = TEST_METADATA_DIR / fn
     cns = Namespace(import_paths=[import_path])
@@ -340,4 +571,27 @@ def test_import(fn):
     pprint(test_md)
     pprint(md)
     print(diff)
+
     assert not diff
+
+
+@pytest.mark.parametrize("fn", FNS)
+def deactivated_test_export(fn):
+    """Test exporting metadata files."""
+    # TODO Activate
+    fmt = _FORMAT_MAP[fn]
+    if fmt == "fn":
+        # no export file possible
+        return
+    test_md = MappingProxyType({"comicbox": FNS[fn]})
+    formats = (fmt,)
+    cns = Namespace(metadata=test_md, dest_path=str(_TMP_DIR), export=formats)
+    config = Namespace(comicbox=cns)
+    _TMP_DIR.mkdir(exist_ok=True)
+    with Comicbox("", config=config) as car:
+        car.export_files()
+
+    tmp_fn = _REGULAR_FN.get(fmt, fn)
+    tmp_path = _TMP_DIR / tmp_fn
+    compare_export(TEST_METADATA_DIR, tmp_path)
+    tmp_path.unlink()
