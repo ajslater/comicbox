@@ -33,6 +33,7 @@ from tests.const import (
     TEST_WRITE_NOTES,
     TMP_ROOT_DIR,
 )
+from tests.validate import validate_path
 
 
 def get_tmp_dir(filename: str):
@@ -497,8 +498,9 @@ def load_cli_and_compare_dicts(path_a, path_b):
     return diff
 
 
-def compare_export(test_dir, fn):
+def compare_export(test_dir, fn, fmt=None):
     """Compare exported files."""
+    validate_path(fn, fmt=fmt)
     test_path = test_dir / fn.name.lower()
     print(fn.name)
     if fn.name == "comicbox-cli.yaml":

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki",
+  "title": "ComicBookInfo",
+  "version": "1.0",
+  "type": "object",
+  "properties": {
+    "appID": {
+      "type": "string"
+    },
+    "lastModified": {
+      "type": "string"
+    },
+    "ComicBookInfo/1.0": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "publisher": {
+          "type": "string"
+        },
+        "publicationMonth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "publicationYear": {
+          "type": "integer"
+        },
+        "issue": {
+          "type": "integer"
+        },
+        "numberOfIssues": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "volume": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "numberOfVolumes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rating": {
+          "type": "integer"
+        },
+        "genre": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "credits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "person": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "primary": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "comments": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

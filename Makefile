@@ -69,16 +69,10 @@ kill-eslint_d:
 fix:
 	./bin/fix-lint-backend.sh
 
-.PHONY: lint-schemas
-## Lint schemas
-## @category Lint
-lint-schemas:
-	./bin/lint-schemas.sh
-
 .PHONY: lint
 ## Lint
 ## @category Lint
-lint: lint-schemas
+lint:
 	./bin/lint-backend.sh
 
 ## test

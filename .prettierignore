@@ -5,6 +5,7 @@
 .ruff_cache
 .venv
 /node_modules
+/schemas/*.xsd
 /test-results
 /tests/**/*.json
 /tests/**/*.xml
