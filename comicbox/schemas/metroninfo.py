@@ -9,9 +9,10 @@ from marshmallow.fields import Constant, Field, Nested
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
+from comicbox.fields.number_fields import DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.xml_fields import (
+    XmlBooleanAttributeField,
     XmlDateField,
     XmlDateTimeField,
     XmlEnumField,
@@ -187,7 +188,7 @@ class MetronIDSchema(BaseSubSchema):
             {
                 "#text": StringField(required=True),
                 "@source": MetronSourceField(required=True),
-                "@primary": BooleanField(),
+                "@primary": XmlBooleanAttributeField(),
             }
         )
 
@@ -199,7 +200,7 @@ class MetronURLSchema(BaseSubSchema):
         """Attributes."""
 
         include = MappingProxyType(
-            {"#text": StringField(required=True), "@primary": BooleanField()}
+            {"#text": StringField(required=True), "@primary": XmlBooleanAttributeField()}
         )
 
 

@@ -124,6 +124,13 @@ class XmlBooleanField(BooleanField):
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
 
+class XmlBooleanAttributeField(BooleanField):
+    """Fix xmltodict bug: https://github.com/martinblech/xmltodict/pull/310."""
+
+    def _serialize(self, *args, **kwargs) -> str | None:
+        result = super()._serialize(*args, **kwargs)
+        return result if result is None else str(result).lower()
+
 
 class XmlIntegerField(IntegerField):
     """Check for cdata."""

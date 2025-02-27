@@ -8,8 +8,9 @@ from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import BooleanField, IntegerField
+from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
+    XmlBooleanAttributeField,
     XmlCountryField,
     XmlDecimalField,
     XmlEnumField,
@@ -77,7 +78,7 @@ class XmlPageInfoSchema(BaseSubSchema):
         include = MappingProxyType(
             {
                 "@Bookmark": StringField(),
-                "@DoublePage": BooleanField(),
+                "@DoublePage": XmlBooleanAttributeField(),
                 "@Key": StringField(),
                 "@Image": IntegerField(minimum=0),
                 "@ImageWidth": IntegerField(minimum=0),
