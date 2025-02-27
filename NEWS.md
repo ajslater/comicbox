@@ -13,6 +13,7 @@
   - ComicInfo.xml gains the Translator tag
 
 - Fixes
+  - ComicInfo.xml StoryArcs tag was not loaded.
   - Fix proper lowercasing of serialized boolean values in xml attributes.
   - ComicBookInfo `issue` tag becomes an integer.
   - Fix ISBN & UPC url detection
