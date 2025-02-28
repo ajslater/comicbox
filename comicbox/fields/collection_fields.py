@@ -214,13 +214,17 @@ class StringSetField(StringListField):
             return None
         return set(str_list)
 
+    def _serialize(self, value, *args, **kwargs):
+        value = set(value)
+        return super()._serialize(value, *args, **kwargs)
+
 
 class IntegerListField(StringListField):
     """A list of integers."""
 
     FIELD = IntegerField
 
-    def __init__(self, *args, sort=False, **kwargs):
+    def __init__(self, *args, sort: bool = False, **kwargs):
         """Use not sorting as the default."""
         super().__init__(*args, sort=sort, **kwargs)
 
