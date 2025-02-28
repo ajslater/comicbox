@@ -30,7 +30,6 @@ METADATA = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "country": "US",
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "issue": "1",
