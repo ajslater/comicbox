@@ -27,14 +27,16 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
     def __init__(
         self,
         *args,
+        # Sorting also does deduplication
         sort: bool = True,
-        sort_key: Any = "",
+        sort_keys: tuple[str, ...] | list[str] = (),
         allow_empty: bool = False,
         **kwargs,
     ):
         """Add instance variables."""
         self._sort = sort
-        self._sort_keys = sort_key.split(".")
+        # A tuple of dot delimited keys becomes a tuple of tuples.
+        self._sort_keys = tuple(tuple(sort_key.split(".")) for sort_key in sort_keys)
         self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
@@ -50,34 +52,52 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
             return []
         return values
 
-    def _get_deep_key(self, e):
+    @staticmethod
+    def get_tag_value(value):
+        """Override in XmlListField."""
+        return value
+
+    @classmethod
+    def _get_deep_key(cls, element, key_path):
         value = ""
-        obj = e
-        for key in self._sort_keys:
+        obj = element
+        for key in key_path:
+            if not obj:
+                value = ""
+                break
             value = obj.get(key)
             obj = value
+        value = cls.get_tag_value(value)
         return "" if value is None else value
 
-    @staticmethod
-    def _get_non_dict_values(e):
-        return (
-            value
-            for value in sort_dict(e).values()
-            if (value not in EMPTY_VALUES and not isinstance(value, dict))
-        )
-
-    def _sort_key(self, e) -> tuple:
-        """Sort a mix of dicts and strings."""
-        return (
-            (self._get_deep_key(e), *self._get_non_dict_values(e))
-            if isinstance(e, Mapping)
-            else (e,)
-        )
-
-    def _sorted(self, values):
+    def _sorted(self, values) -> list:
+        """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
             return values
-        return sorted(values, key=self._sort_key)
+
+        # If dedupe ever needs to be decoupled, add an index to the key.
+        sort_dict = {}
+        for value in values:
+            if value in EMPTY_VALUES:
+                continue
+            key = []
+            if self._sort_keys:
+                for key_path in self._sort_keys:
+                    sort_value = self._get_deep_key(value, key_path)
+                    key.append(sort_value)
+            else:
+                key = (self.get_tag_value(value),)
+            key = tuple(key)
+
+            # combine elements by key
+            if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
+                new_value = old_value.update(value)
+            else:
+                new_value = value
+
+            sort_dict[key] = new_value
+
+        return [item[1] for item in sorted(sort_dict.items())]
 
     def _serialize(self, value: Any, *args, **kwargs):
         if value is None:

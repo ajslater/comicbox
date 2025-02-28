@@ -5,6 +5,7 @@ from functools import wraps
 
 from comicbox.fields.collection_fields import (
     IntegerListField,
+    ListField,
     StringListField,
     StringSetField,
 )
@@ -171,7 +172,20 @@ class XmlLanguageField(LanguageField):
 # COLLECTIONS
 
 
-class XmlStringListField(StringListField):
+class XmlListFieldMixin:
+    """Check for cdata."""
+
+    @staticmethod
+    def get_tag_value(value):
+        """Get data for the tag value."""
+        return get_cdata(value)
+
+
+class XmlListField(XmlListFieldMixin, ListField):
+    """Check for cdata."""
+
+
+class XmlStringListField(XmlListFieldMixin, StringListField):
     """Check for cdata."""
 
     @cdata
@@ -179,7 +193,7 @@ class XmlStringListField(StringListField):
         return super()._deserialize(*args, **kwargs)
 
 
-class XmlStringSetField(StringSetField):
+class XmlStringSetField(XmlListFieldMixin, StringSetField):
     """Check for cdata."""
 
     FIELD = XmlStringField
@@ -189,7 +203,7 @@ class XmlStringSetField(StringSetField):
         return super()._deserialize(*args, **kwargs)
 
 
-class XmlIntegerListField(IntegerListField):
+class XmlIntegerListField(XmlListFieldMixin, IntegerListField):
     """Check for cdata."""
 
     FIELD = XmlIntegerField

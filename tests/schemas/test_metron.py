@@ -269,8 +269,8 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "Genres": {"Genre": ["Science Fiction"]},
             "IDS": {
                 "ID": [
-                    {"@source": "Comic Vine", "#text": "145269"},
                     {"@primary": "true", "@source": "Metron", "#text": "999999"},
+                    {"@source": "Comic Vine", "#text": "145269"},
                 ],
             },
             "LastModified": TEST_DTTM_STR,

@@ -232,14 +232,24 @@ class ComicboxSubSchemaMixin:
     protagonist = StringField()
     reading_direction = ReadingDirectionField()
     remainders = StringListField()
-    reprints = ListField(Nested(ReprintSchema), sort_key="language")
+    reprints = ListField(
+        Nested(ReprintSchema),
+        sort_keys=(
+            "language",
+            "publisher",
+            "imprint",
+            "series.sort_name",
+            "volume.number",
+            "volume.number_to",
+            "issue",
+        ),
+    )
     review = StringField()
     rights = StringField()
     scan_info = StringField()
     series = Union([Nested(SeriesSchema), StringField()])
     series_groups = StringSetField()
     store_date = DateField()
-    # Turn off sorting in the field if i can?
     stories = DictField(values=Nested(IdentifiedSchema), sort=False)
     story_arcs = DictField(values=Nested(StoryArcSchema))
     summary = StringField()

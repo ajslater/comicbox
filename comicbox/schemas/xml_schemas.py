@@ -82,8 +82,11 @@ def xml_polyfield(schema_class: type[Schema], field: Field) -> Union:
 
 
 def xml_list_polyfield(
-    schema_class: type[Schema], field: Field, sort_key="#text"
+    schema_class: type[Schema],
+    field: Field,
+    sort_keys: tuple[str, ...] = ("#text",),
+    **kwargs,
 ) -> ListField:
     """Get a List of unions."""
     union_field = xml_polyfield(schema_class, field)
-    return ListField(union_field, sort_key=sort_key)
+    return ListField(union_field, sort_keys=sort_keys, **kwargs)
