@@ -11,7 +11,6 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
     XmlBooleanAttributeField,
-    XmlCountryField,
     XmlDecimalField,
     XmlEnumField,
     XmlIntegerField,
@@ -92,53 +91,54 @@ class XmlPageInfoSchema(BaseSubSchema):
 class ComicInfoSubSchema(XmlSubSchema):
     """ComicInfo.xml Sub Schema."""
 
-    AgeRating = ComicInfoAgeRatingField()
-    AlternateCount = XmlIntegerField(minimum=0)
-    AlternateNumber = XmlStringField()
-    AlternateSeries = XmlStringField()
-    BlackAndWhite = XmlYesNoField()
-    Characters = XmlStringSetField(as_string=True)
-    CommunityRating = XmlDecimalField()
-    Country = XmlCountryField()
-    Count = XmlIntegerField(minimum=0)
-    Day = XmlIntegerField(minimum=0, maximum=31)
-    Genre = XmlStringSetField(as_string=True)
-    GTIN = XmlStringSetField(as_string=True)
-    Format = XmlOriginalFormatField()
-    Imprint = XmlStringField()
-    LanguageISO = XmlLanguageField()
-    Locations = XmlStringSetField(as_string=True)
-    MainCharacterOrTeam = XmlStringSetField(as_string=True)
-    Manga = XmlMangaField()
-    Month = XmlIntegerField(minimum=0, maximum=12)
-    Notes = XmlStringField()
-    Number = XmlStringField()
-    PageCount = XmlIntegerField(minimum=0)  # recaluculated by comicbox
-    Pages = create_sub_tag_field("Page", Nested(XmlPageInfoSchema, many=True))
-    Publisher = XmlStringField()
-    Review = XmlStringField()
-    ScanInformation = XmlStringField()
-    Series = XmlStringField()
-    SeriesGroup = XmlStringSetField(as_string=True)
-    StoryArc = XmlStringListField(as_string=True, sort=False)
-    StoryArcNumber = XmlIntegerListField(as_string=True)
-    Tags = XmlStringSetField(as_string=True)
-    Teams = XmlStringSetField(as_string=True)
-    Title = XmlStringField()
-    Translator = XmlStringField()
-    Summary = XmlStringField()
-    Volume = XmlIntegerField()
-    Web = XmlStringSetField(separators=" ", as_string=True)
-    Year = XmlIntegerField()
+    # ComicInfo.xsd specifies this tag order
 
-    # Role Tags
+    Title = XmlStringField()
+    Series = XmlStringField()
+    Number = XmlStringField()
+    Count = XmlIntegerField(minimum=0)
+    Volume = XmlIntegerField()
+    AlternateSeries = XmlStringField()
+    AlternateNumber = XmlStringField()
+    AlternateCount = XmlIntegerField(minimum=0)
+    Summary = XmlStringField()
+    Notes = XmlStringField()
+    Year = XmlIntegerField()
+    Month = XmlIntegerField(minimum=0, maximum=12)
+    Day = XmlIntegerField(minimum=0, maximum=31)
+    # Start Role Tags
+    Writer = XmlStringSetField(as_string=True)
+    Penciller = XmlStringSetField(as_string=True)
+    Inker = XmlStringSetField(as_string=True)
     Colorist = XmlStringSetField(as_string=True)
+    Letterer = XmlStringSetField(as_string=True)
     CoverArtist = XmlStringSetField(as_string=True)
     Editor = XmlStringSetField(as_string=True)
-    Inker = XmlStringSetField(as_string=True)
-    Letterer = XmlStringSetField(as_string=True)
-    Penciller = XmlStringSetField(as_string=True)
-    Writer = XmlStringSetField(as_string=True)
+    Translator = XmlStringField()
+    # End Role Tags
+    Publisher = XmlStringField()
+    Imprint = XmlStringField()
+    Genre = XmlStringSetField(as_string=True)
+    Tags = XmlStringSetField(as_string=True)
+    Web = XmlStringSetField(separators=" ", as_string=True)
+    PageCount = XmlIntegerField(minimum=0)  # recaluculated by comicbox
+    LanguageISO = XmlLanguageField()
+    Format = XmlOriginalFormatField()
+    BlackAndWhite = XmlYesNoField()
+    Manga = XmlMangaField()
+    Characters = XmlStringSetField(as_string=True)
+    Teams = XmlStringSetField(as_string=True)
+    Locations = XmlStringSetField(as_string=True)
+    ScanInformation = XmlStringField()
+    StoryArc = XmlStringListField(as_string=True, sort=False)
+    StoryArcNumber = XmlIntegerListField(as_string=True)
+    SeriesGroup = XmlStringSetField(as_string=True)
+    AgeRating = ComicInfoAgeRatingField()
+    Pages = create_sub_tag_field("Page", Nested(XmlPageInfoSchema, many=True))
+    CommunityRating = XmlDecimalField()
+    MainCharacterOrTeam = XmlStringSetField(as_string=True)
+    Review = XmlStringField()
+    GTIN = XmlStringSetField(as_string=True)
 
     class Meta(XmlSubSchema.Meta):
         """Schema options."""
