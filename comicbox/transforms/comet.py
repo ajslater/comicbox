@@ -148,6 +148,7 @@ class CoMetTransform(
             "genre": GENRES_KEY,
         }
     )
+    ROLE_TAGS_ENUM = CoMetRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
 
     SCHEMA_CLASS = CoMetSchema

@@ -184,6 +184,7 @@ class ComicInfoTransform(
             "Teams": TEAMS_KEY,
         }
     )
+    ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
     SCHEMA_CLASS = ComicInfoSchema
     IDENTIFIERS_TAG = GTIN_TAG
