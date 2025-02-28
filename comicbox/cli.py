@@ -71,7 +71,7 @@ def _create_format_help():
         if not source.value.configurable:
             continue
         label = source.value.label
-        keys = ", ".join(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS)
+        keys = ", ".join(sorted(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
         space = (max_space - len(label)) * " "
         lines += f"  {label}:{space}{keys}"
         if not source.value.writable:
