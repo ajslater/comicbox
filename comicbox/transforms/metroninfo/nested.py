@@ -188,7 +188,7 @@ class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
 
     @classmethod
     def _unparse_identified_name(
-        cls, data: dict, name: str, comicbox_obj: dict
+        cls, data: dict, name: str | Enum, comicbox_obj: dict
     ) -> dict:
         metron_obj = {"#text": name}
         cls._unparse_metron_id_attribute(data, metron_obj, comicbox_obj)

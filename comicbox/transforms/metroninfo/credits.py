@@ -15,7 +15,11 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.metroninfo import (
     MetronRoleEnum,
 )
-from comicbox.transforms.credit_role_tag import GenericRoleAliases, create_role_map
+from comicbox.transforms.credit_role_tag import (
+    CreditRoleTagTransformMixin,
+    GenericRoleAliases,
+    create_role_map,
+)
 from comicbox.transforms.metroninfo.identifiers import MetronInfoTransformIdentifiers
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
@@ -97,7 +101,9 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 )
 
 
-class MetronInfoTransformCredits(MetronInfoTransformIdentifiers):
+class MetronInfoTransformCredits(
+    MetronInfoTransformIdentifiers, CreditRoleTagTransformMixin
+):
     """MetronInfo.xml Transforms for credits."""
 
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -126,19 +132,16 @@ class MetronInfoTransformCredits(MetronInfoTransformIdentifiers):
     @classmethod
     def _unparse_role(cls, data, role_name, comicbox_role):
         """Unparse a metron role to an enum only value."""
-        metron_role = {}
-        if role_name and (metron_role_enums := cls.ROLE_MAP.get(role_name.lower())):
-            if len(metron_role_enums) == 1:
+        metron_roles = []
+        if metron_role_enums := cls.get_role_enums(role_name):
+            # Handle expanding one role into many.
+            metron_role = []
+            for metron_role_enum in metron_role_enums:
                 metron_role = cls._unparse_identified_name(
-                    data, role_name, comicbox_role
+                    data, metron_role_enum, comicbox_role
                 )
-            else:
-                # Handle expanding one role into many.
-                metron_role = []
-                for metron_role_enum in metron_role_enums:
-                    new_role_name = metron_role_enum.value
-                    metron_role.append({"#text": new_role_name})
-        return metron_role
+                metron_roles.append(metron_role)
+        return metron_roles
 
     @classmethod
     def _unparse_credit(

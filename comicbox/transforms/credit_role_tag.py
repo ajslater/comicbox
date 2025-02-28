@@ -47,3 +47,11 @@ class CreditRoleTagTransformMixin(BaseTransform):
     """Credit Roles defined as Tags."""
 
     ROLE_MAP: MappingProxyType[str, tuple[Enum, ...]] = MappingProxyType({})
+
+    @classmethod
+    def get_role_enums(cls, comicbox_role_name: str) -> tuple[Enum, ...]:
+        """Get a this transform's role enums for a comicbox role name."""
+        if not comicbox_role_name:
+            return ()
+        lower_role_name = comicbox_role_name.lower()
+        return cls.ROLE_MAP.get(lower_role_name, ())
