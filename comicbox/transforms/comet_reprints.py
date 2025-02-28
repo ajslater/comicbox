@@ -34,7 +34,7 @@ class CoMetReprintsTransformMixin:
                 reprint[VOLUME_KEY] = {}
             reprint[VOLUME_KEY][VOLUME_ISSUE_COUNT_KEY] = issue_count
         if reprint:
-            reprint = dict(sorted(reprint.items()))
+            # reprint = dict(sorted(reprint.items()))
             reprints.append(reprint)
 
     def parse_reprints(self, data):

@@ -50,7 +50,7 @@ def move_key_to_dict(key_map, source_dict):
         for subkey in reversed(keys[1:]):
             target_value = {subkey: target_value}
         target_dict[keys[0]] = target_value
-    return dict(sorted(target_dict.items()))
+    return target_dict
 
 
 class ComicInfoReprintsTransformMixin:

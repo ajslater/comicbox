@@ -106,7 +106,7 @@ class BaseTransform:
 
     def string_list_to_dicts_one(self, data, from_key, to_key):
         """Transform one sequence of strings to comicbox name objects."""
-        names = sorted(data.pop(from_key, []))
+        names = data.pop(from_key, [])
         if obj := {name: {} for name in names if name}:
             data[to_key] = obj
 
