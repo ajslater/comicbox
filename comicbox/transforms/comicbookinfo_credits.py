@@ -1,6 +1,7 @@
 """Comic Book Info Credits Transform Mixin."""
 
 from logging import getLogger
+from types import MappingProxyType
 
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
@@ -23,6 +24,7 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
     CREDITS_TAG = CREDITS_TAG
     ROLE_TAG = ROLE_TAG
     PERSON_TAG = PERSON_TAG
+    ROLE_MISPELLING_MAP = MappingProxyType({"penciler": "Penciller"})
 
     def _parse_credit(self, cbi_credit: dict, comicbox_credits: dict):
         """Parse one CBI credit into a comicbox credit."""

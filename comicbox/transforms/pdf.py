@@ -1,7 +1,6 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
 from collections.abc import Mapping, Sequence
-from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 from xml.sax.saxutils import unescape
@@ -35,7 +34,7 @@ from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
-from comicbox.transforms.credit_role_tag import create_role_map
+from comicbox.transforms.credit_role_tag import GenericRoleAliases
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.title_mixin import TitleStoriesMixin
@@ -83,20 +82,23 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     TITLE_TAG = "pdf:Title"
     TITLE_STORIES_DELIMITER = ";"
     LIST_KEYS = frozenset({TAGS_KEY})
-    PRE_ROLE_MAP: MappingProxyType[Enum, None] = MappingProxyType(
+    AUTHOR_VALUES = frozenset(
         {
-            MetronRoleEnum.WRITER: None,
-            MetronRoleEnum.SCRIPT: None,
-            MetronRoleEnum.STORY: None,
-            MetronRoleEnum.PLOT: None,
-            MetronRoleEnum.TRANSLATOR: None,
-            CoMetRoleTagEnum.CREATOR: None,
-            CoMetRoleTagEnum.WRITER: None,
-            ComicInfoRoleTagEnum.WRITER: None,
-            ComicInfoRoleTagEnum.TRANSLATOR: None,
+            enum.value
+            for enum in (
+                MetronRoleEnum.WRITER,
+                MetronRoleEnum.SCRIPT,
+                MetronRoleEnum.STORY,
+                MetronRoleEnum.PLOT,
+                MetronRoleEnum.TRANSLATOR,
+                CoMetRoleTagEnum.CREATOR,
+                CoMetRoleTagEnum.WRITER,
+                ComicInfoRoleTagEnum.WRITER,
+                ComicInfoRoleTagEnum.TRANSLATOR,
+            )
         }
+        | {*GenericRoleAliases.WRITER.value}
     )
-    AUTHOR_VALUES = frozenset(create_role_map(PRE_ROLE_MAP).keys())
 
     def parse_credits(self, data):
         """Convert csv to writer credits."""

@@ -148,7 +148,7 @@ class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
         cls,
         base_obj: dict,
         key: str,
-        unparse_method: Callable[[dict, str, Any], dict],
+        unparse_method: Callable[[dict, str, Any], dict | list],
         *args,
         list_type: bool = False,
         data: dict | None = None,
@@ -165,7 +165,11 @@ class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
             sub_value = sub_key if list_type else comicbox_objs[sub_key]
             metron_obj = unparse_method(data, sub_key, sub_value, *args, **kwargs)
             if metron_obj:
-                metron_objs.append(metron_obj)
+                if isinstance(metron_obj, list):
+                    # Expand one metron obj into many
+                    metron_objs += metron_obj
+                else:
+                    metron_objs.append(metron_obj)
         return cls._lower_metron_tag(base_obj, key, metron_objs)
 
     # IDENTIFIED NAME TAG

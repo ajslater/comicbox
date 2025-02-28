@@ -48,6 +48,7 @@ class ComicBookInfoRoleEnum(Enum):
     LETTERER = "Letterer"
     OTHER = "Other"
     PENCILLER = "Penciller"
+    TRANSLATOR = "Translator"
     WRITER = "Writer"
 
 

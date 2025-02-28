@@ -45,10 +45,12 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
 
         return data
 
-    def _unparse_credit_role(self, xml_role_tag, person_name, xml_role_tags):
-        if xml_role_tag not in xml_role_tags:
-            xml_role_tags[xml_role_tag] = set()
-        xml_role_tags[xml_role_tag].add(person_name)
+    def _unparse_credit_role(self, person_name, comicbox_role_name, xml_role_tags):
+        if xml_role_tag_tuple := self.ROLE_MAP.get(comicbox_role_name.lower()):
+            for xml_role_tag in xml_role_tag_tuple:
+                persons = xml_role_tags.get(xml_role_tag, set())
+                persons.add(person_name)
+                xml_role_tags[xml_role_tag] = persons
 
     def _unparse_credit(self, person_name, comicbox_credit, xml_role_tags):
         """Unparse one comicbox credit to an xml tag."""
@@ -56,11 +58,7 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
             return
         comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
         for comicbox_role_name in comicbox_roles:
-            if xml_role_tag_tuple := self.ROLE_MAP.get(comicbox_role_name.lower()):
-                if not isinstance(xml_role_tag_tuple, tuple):
-                    xml_role_tag_tuple = (xml_role_tag_tuple,)
-                for xml_role_tag in xml_role_tag_tuple:
-                    self._unparse_credit_role(xml_role_tag, person_name, xml_role_tags)
+            self._unparse_credit_role(person_name, comicbox_role_name, xml_role_tags)
 
     def unparse_credits(self, data):
         """Disaggregate credits from comicbox credits to individual role tags."""

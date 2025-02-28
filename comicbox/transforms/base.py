@@ -38,6 +38,7 @@ class BaseTransform:
         {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
     )
     LIST_KEYS = frozenset()
+    ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
     def __init__(self, path=None):
         """Initialize instances."""
@@ -134,15 +135,16 @@ class BaseTransform:
             data[key] = {subkey: value}
         return data
 
-    @staticmethod
+    @classmethod
     def add_credit_role_to_comicbox_credits(
-        person_name: str, role_name: str, comicbox_credits: dict
+        cls, person_name: str, role_name: str, comicbox_credits: dict
     ):
         """Add a credit role to the comicbox credits."""
         if not (person_name and role_name):
             return
         if person_name not in comicbox_credits:
             comicbox_credits[person_name] = {ROLES_KEY: {}}
+        role_name = cls.ROLE_SPELLING.get(role_name.lower(), role_name)
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
     TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_dicts)

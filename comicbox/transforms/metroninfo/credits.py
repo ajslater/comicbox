@@ -15,36 +15,92 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.metroninfo import (
     MetronRoleEnum,
 )
-from comicbox.transforms.credit_role_tag import create_role_map
+from comicbox.transforms.credit_role_tag import GenericRoleAliases, create_role_map
 from comicbox.transforms.metroninfo.identifiers import MetronInfoTransformIdentifiers
+
+ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
+    {
+        MetronRoleEnum.ARTIST: (ComicBookInfoRoleEnum.ARTIST,),
+        MetronRoleEnum.ASSISTANT_EDITOR: (),
+        MetronRoleEnum.ASSOCIATE_EDITOR: (),
+        MetronRoleEnum.BREAKDOWNS: (),
+        MetronRoleEnum.CHIEF_CREATIVE_OFFICER: (CoMetRoleTagEnum.CREATOR,),
+        MetronRoleEnum.COLLECTION_EDITOR: (),
+        MetronRoleEnum.COLORIST: (
+            *GenericRoleAliases.COLORIST.value,
+            CoMetRoleTagEnum.COLORIST,
+            ComicInfoRoleTagEnum.COLORIST,
+        ),
+        MetronRoleEnum.COLOR_ASSISTS: (),
+        MetronRoleEnum.COLOR_FLATS: (),
+        MetronRoleEnum.COLOR_SEPARATIONS: (),
+        MetronRoleEnum.CONSULTING_EDITOR: (),
+        MetronRoleEnum.COVER: (
+            *GenericRoleAliases.COVER.value,
+            CoMetRoleTagEnum.COVER_DESIGNER,
+            ComicInfoRoleTagEnum.COVER_ARTIST,
+        ),
+        MetronRoleEnum.DESIGNER: (),
+        MetronRoleEnum.DIGITAL_ART_TECHNICIAN: (),
+        MetronRoleEnum.EDITOR: (
+            *GenericRoleAliases.EDITOR.value,
+            CoMetRoleTagEnum.EDITOR,
+            ComicInfoRoleTagEnum.EDITOR,
+        ),
+        MetronRoleEnum.EDITOR_IN_CHIEF: (),
+        MetronRoleEnum.EMBELLISHER: (),
+        MetronRoleEnum.EXECUTIVE_EDITOR: (),
+        MetronRoleEnum.EXECUTIVE_PRODUCER: (),
+        MetronRoleEnum.FINISHES: (),
+        MetronRoleEnum.GRAY_TONE: (),
+        MetronRoleEnum.GROUP_EDITOR: (),
+        MetronRoleEnum.ILLUSTRATOR: (),
+        MetronRoleEnum.INKER: (
+            *GenericRoleAliases.INKER.value,
+            CoMetRoleTagEnum.INKER,
+            ComicInfoRoleTagEnum.INKER,
+        ),
+        MetronRoleEnum.INK_ASSISTS: (),
+        MetronRoleEnum.INTERVIEWER: (),
+        MetronRoleEnum.LAYOUTS: (),
+        MetronRoleEnum.LETTERER: (
+            *GenericRoleAliases.LETTERER.value,
+            CoMetRoleTagEnum.LETTERER,
+            ComicInfoRoleTagEnum.LETTERER,
+        ),
+        MetronRoleEnum.LOGO_DESIGN: (),
+        MetronRoleEnum.MANAGING_EDITOR: (),
+        MetronRoleEnum.OTHER: (ComicBookInfoRoleEnum.OTHER,),
+        MetronRoleEnum.PENCILLER: (
+            *GenericRoleAliases.PENCILLER.value,
+            CoMetRoleTagEnum.PENCILLER,
+            ComicInfoRoleTagEnum.PENCILLER,
+        ),
+        MetronRoleEnum.PLOT: (),
+        MetronRoleEnum.PRESIDENT: (),
+        MetronRoleEnum.PRODUCTION: (),
+        MetronRoleEnum.PUBLISHER: (),
+        MetronRoleEnum.SCRIPT: (),
+        MetronRoleEnum.SENIOR_EDITOR: (),
+        MetronRoleEnum.STORY: (),
+        MetronRoleEnum.SUPERVISING_EDITOR: (),
+        MetronRoleEnum.TRANSLATOR: (
+            *GenericRoleAliases.TRANSLATOR.value,
+            ComicInfoRoleTagEnum.TRANSLATOR,
+        ),
+        MetronRoleEnum.WRITER: (
+            *GenericRoleAliases.WRITER.value,
+            CoMetRoleTagEnum.WRITER,
+            ComicInfoRoleTagEnum.WRITER,
+        ),
+    }
+)
 
 
 class MetronInfoTransformCredits(MetronInfoTransformIdentifiers):
     """MetronInfo.xml Transforms for credits."""
 
-    PRE_ROLE_MAP: MappingProxyType[Enum, Enum | tuple[Enum, ...]] = MappingProxyType(
-        {
-            **{enum: enum for enum in MetronRoleEnum},
-            CoMetRoleTagEnum.COLORIST: MetronRoleEnum.COLORIST,
-            CoMetRoleTagEnum.COVER_DESIGNER: MetronRoleEnum.COVER,
-            CoMetRoleTagEnum.CREATOR: MetronRoleEnum.CHIEF_CREATIVE_OFFICER,
-            CoMetRoleTagEnum.EDITOR: MetronRoleEnum.EDITOR,
-            CoMetRoleTagEnum.INKER: MetronRoleEnum.INKER,
-            CoMetRoleTagEnum.PENCILLER: MetronRoleEnum.PENCILLER,
-            CoMetRoleTagEnum.WRITER: MetronRoleEnum.WRITER,
-            ComicInfoRoleTagEnum.COLORIST: MetronRoleEnum.COLORIST,
-            ComicInfoRoleTagEnum.COVER_ARTIST: MetronRoleEnum.COVER,
-            ComicInfoRoleTagEnum.EDITOR: MetronRoleEnum.EDITOR,
-            ComicInfoRoleTagEnum.INKER: MetronRoleEnum.INKER,
-            ComicInfoRoleTagEnum.LETTERER: MetronRoleEnum.LETTERER,
-            ComicInfoRoleTagEnum.PENCILLER: MetronRoleEnum.PENCILLER,
-            ComicInfoRoleTagEnum.WRITER: MetronRoleEnum.WRITER,
-            ComicInfoRoleTagEnum.TRANSLATOR: MetronRoleEnum.TRANSLATOR,
-            ComicBookInfoRoleEnum.ARTIST: MetronRoleEnum.ARTIST,
-            ComicBookInfoRoleEnum.OTHER: MetronRoleEnum.OTHER,
-        }
-    )
-    ROLE_MAP = create_role_map(PRE_ROLE_MAP)
+    ROLE_MAP = create_role_map(ROLE_ALIASES)
     CREATOR_TAG = "Creator"
 
     def _parse_credit(self, data: dict, metron_credit) -> tuple[str, dict]:
@@ -70,9 +126,19 @@ class MetronInfoTransformCredits(MetronInfoTransformIdentifiers):
     @classmethod
     def _unparse_role(cls, data, role_name, comicbox_role):
         """Unparse a metron role to an enum only value."""
-        if role_name and (metron_role_enum := cls.ROLE_MAP.get(role_name.lower())):
-            return cls._unparse_identified_name(data, metron_role_enum, comicbox_role)
-        return {}
+        metron_role = {}
+        if role_name and (metron_role_enums := cls.ROLE_MAP.get(role_name.lower())):
+            if len(metron_role_enums) == 1:
+                metron_role = cls._unparse_identified_name(
+                    data, role_name, comicbox_role
+                )
+            else:
+                # Handle expanding one role into many.
+                metron_role = []
+                for metron_role_enum in metron_role_enums:
+                    new_role_name = metron_role_enum.value
+                    metron_role.append({"#text": new_role_name})
+        return metron_role
 
     @classmethod
     def _unparse_credit(

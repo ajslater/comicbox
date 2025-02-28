@@ -1,5 +1,6 @@
 """CoMet transforms."""
 
+from enum import Enum
 from types import MappingProxyType
 
 from bidict import bidict
@@ -24,6 +25,7 @@ from comicbox.schemas.metroninfo import MetronRoleEnum
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
+    GenericRoleAliases,
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -32,6 +34,80 @@ from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
+
+ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
+    {
+        CoMetRoleTagEnum.COLORIST: (
+            *GenericRoleAliases.COLORIST.value,
+            ComicInfoRoleTagEnum.COLORIST,
+            MetronRoleEnum.COLORIST,
+            MetronRoleEnum.COLOR_SEPARATIONS,
+            MetronRoleEnum.COLOR_ASSISTS,
+            MetronRoleEnum.COLOR_FLATS,
+            MetronRoleEnum.GRAY_TONE,
+        ),
+        CoMetRoleTagEnum.COVER_DESIGNER: (
+            *GenericRoleAliases.COVER.value,
+            ComicInfoRoleTagEnum.COVER_ARTIST,
+            MetronRoleEnum.COVER,
+        ),
+        CoMetRoleTagEnum.CREATOR: (),
+        CoMetRoleTagEnum.EDITOR: (
+            *GenericRoleAliases.EDITOR.value,
+            MetronRoleEnum.EDITOR,
+            MetronRoleEnum.CONSULTING_EDITOR,
+            MetronRoleEnum.ASSISTANT_EDITOR,
+            MetronRoleEnum.ASSOCIATE_EDITOR,
+            MetronRoleEnum.GROUP_EDITOR,
+            MetronRoleEnum.SENIOR_EDITOR,
+            MetronRoleEnum.MANAGING_EDITOR,
+            MetronRoleEnum.COLLECTION_EDITOR,
+            MetronRoleEnum.PRODUCTION,
+            MetronRoleEnum.SUPERVISING_EDITOR,
+            MetronRoleEnum.EXECUTIVE_EDITOR,
+            MetronRoleEnum.EDITOR_IN_CHIEF,
+        ),
+        CoMetRoleTagEnum.INKER: (
+            *GenericRoleAliases.INKER.value,
+            ComicInfoRoleTagEnum.INKER,
+            MetronRoleEnum.INKER,
+            MetronRoleEnum.EMBELLISHER,
+            MetronRoleEnum.FINISHES,
+            MetronRoleEnum.INK_ASSISTS,
+            ComicBookInfoRoleEnum.ARTIST,
+            MetronRoleEnum.ARTIST,
+        ),
+        CoMetRoleTagEnum.LETTERER: (
+            *GenericRoleAliases.LETTERER.value,
+            ComicInfoRoleTagEnum.LETTERER,
+            MetronRoleEnum.LETTERER,
+        ),
+        CoMetRoleTagEnum.PENCILLER: (
+            *GenericRoleAliases.PENCILLER.value,
+            ComicBookInfoRoleEnum.ARTIST,
+            MetronRoleEnum.ARTIST,
+            ComicInfoRoleTagEnum.PENCILLER,
+            MetronRoleEnum.PENCILLER,
+            MetronRoleEnum.BREAKDOWNS,
+            MetronRoleEnum.ILLUSTRATOR,
+            MetronRoleEnum.LAYOUTS,
+        ),
+        CoMetRoleTagEnum.WRITER: (
+            *GenericRoleAliases.WRITER.value,
+            MetronRoleEnum.WRITER,
+            MetronRoleEnum.SCRIPT,
+            MetronRoleEnum.STORY,
+            MetronRoleEnum.PLOT,
+            MetronRoleEnum.INTERVIEWER,
+            MetronRoleEnum.WRITER,
+            MetronRoleEnum.SCRIPT,
+            MetronRoleEnum.STORY,
+            MetronRoleEnum.PLOT,
+            MetronRoleEnum.INTERVIEWER,
+            MetronRoleEnum.TRANSLATOR,
+        ),
+    }
+)
 
 
 class CoMetTransform(
@@ -72,67 +148,7 @@ class CoMetTransform(
             "genre": GENRES_KEY,
         }
     )
-    ROLE_TAGS_ENUM = CoMetRoleTagEnum
-    PRE_ROLE_MAP = MappingProxyType(
-        {
-            **{tag: tag for tag in ROLE_TAGS_ENUM},
-            ComicInfoRoleTagEnum.COLORIST: CoMetRoleTagEnum.COLORIST,
-            ComicInfoRoleTagEnum.COVER_ARTIST: CoMetRoleTagEnum.COVER_DESIGNER,
-            ComicInfoRoleTagEnum.EDITOR: CoMetRoleTagEnum.EDITOR,
-            ComicInfoRoleTagEnum.INKER: CoMetRoleTagEnum.INKER,
-            ComicInfoRoleTagEnum.PENCILLER: CoMetRoleTagEnum.PENCILLER,
-            ComicBookInfoRoleEnum.ARTIST: (
-                CoMetRoleTagEnum.WRITER,
-                CoMetRoleTagEnum.PENCILLER,
-            ),
-            # ComicBookInfoRoleEnum.OTHER: CoMetRoleTagEnum.,
-            MetronRoleEnum.WRITER: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.SCRIPT: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.STORY: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.PLOT: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.INTERVIEWER: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.ARTIST: (
-                CoMetRoleTagEnum.WRITER,
-                CoMetRoleTagEnum.PENCILLER,
-            ),
-            MetronRoleEnum.PENCILLER: CoMetRoleTagEnum.PENCILLER,
-            MetronRoleEnum.BREAKDOWNS: CoMetRoleTagEnum.PENCILLER,
-            MetronRoleEnum.ILLUSTRATOR: CoMetRoleTagEnum.PENCILLER,
-            MetronRoleEnum.LAYOUTS: CoMetRoleTagEnum.PENCILLER,
-            MetronRoleEnum.INKER: CoMetRoleTagEnum.INKER,
-            MetronRoleEnum.EMBELLISHER: CoMetRoleTagEnum.INKER,
-            MetronRoleEnum.FINISHES: CoMetRoleTagEnum.INKER,
-            MetronRoleEnum.INK_ASSISTS: CoMetRoleTagEnum.INKER,
-            MetronRoleEnum.COLORIST: CoMetRoleTagEnum.COLORIST,
-            MetronRoleEnum.COLOR_SEPARATIONS: CoMetRoleTagEnum.COLORIST,
-            MetronRoleEnum.COLOR_ASSISTS: CoMetRoleTagEnum.COLORIST,
-            MetronRoleEnum.COLOR_FLATS: CoMetRoleTagEnum.COLORIST,
-            # MetronRoleEnum.DIGITAL_ART_TECHNICIAN: CoMetRoleTagEnum.,
-            MetronRoleEnum.GRAY_TONE: CoMetRoleTagEnum.COLORIST,
-            MetronRoleEnum.LETTERER: CoMetRoleTagEnum.LETTERER,
-            MetronRoleEnum.COVER: CoMetRoleTagEnum.COVER_DESIGNER,
-            MetronRoleEnum.EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.CONSULTING_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.ASSISTANT_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.ASSOCIATE_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.GROUP_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.SENIOR_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.MANAGING_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.COLLECTION_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.PRODUCTION: CoMetRoleTagEnum.EDITOR,
-            # MetronRoleEnum.DESIGNER: CoMetRoleTagEnum.,
-            # MetronRoleEnum.LOGO_DESIGN: CoMetRoleTagEnum.,
-            MetronRoleEnum.TRANSLATOR: CoMetRoleTagEnum.WRITER,
-            MetronRoleEnum.SUPERVISING_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.EXECUTIVE_EDITOR: CoMetRoleTagEnum.EDITOR,
-            MetronRoleEnum.EDITOR_IN_CHIEF: CoMetRoleTagEnum.EDITOR,
-            # MetronRoleEnum.PRESIDENT: CoMetRoleTagEnum.,
-            # MetronRoleEnum.CHIEF_CREATIVE_OFFICER: CoMetRoleTagEnum.,
-            # MetronRoleEnum.EXECUTIVE_PRODUCER: CoMetRoleTagEnum.,
-            # MetronRoleEnum.OTHER: CoMetRoleTagEnum.,
-        }
-    )
-    ROLE_MAP = create_role_map(PRE_ROLE_MAP)
+    ROLE_MAP = create_role_map(ROLE_ALIASES)
 
     SCHEMA_CLASS = CoMetSchema
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
