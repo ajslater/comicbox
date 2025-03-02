@@ -3,7 +3,7 @@
 from enum import Enum
 from types import MappingProxyType
 
-from bidict import bidict
+from bidict import frozenbidict
 from stringcase import camelcase
 
 from comicbox.schemas.comet import (
@@ -122,7 +122,7 @@ class CoMetTransform(
 ):
     """CoMet transforms."""
 
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             "coverImage": "cover_image",
             # "date": "date", handled by code

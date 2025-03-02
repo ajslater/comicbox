@@ -7,7 +7,7 @@ from os import environ
 from pprint import pformat
 from types import MappingProxyType
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
@@ -32,7 +32,7 @@ class BaseTransform:
     """Base Transform methods."""
 
     SCHEMA_CLASS = BaseSchema
-    TRANSFORM_MAP = bidict()
+    TRANSFORM_MAP = frozenbidict()
     STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType({})
     SIMPLE_STRING_SCHEMAS = MappingProxyType(
         {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
@@ -88,7 +88,9 @@ class BaseTransform:
     # TRANSFORMS #
     ##############
 
-    def copy_keys(self, data: dict, transform_map: bidict, to_comicbox: bool = False):  # noqa: FBT002
+    def copy_keys(
+        self, data: dict, transform_map: frozenbidict, to_comicbox: bool = False
+    ):  # noqa: FBT002
         """Copy values between schemas with transformed keys."""
         if to_comicbox:
             transform_map = transform_map.inverse

@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
@@ -20,7 +20,7 @@ ALTERNATE_COUNT_TAG = "AlternateCount"
 ALTERNATE_NUMBER_TAG = "AlternateNumber"
 ALTERNATE_SERIES_TAG = "AlternateSeries"
 
-REPRINT_KEY_MAP = bidict(
+REPRINT_KEY_MAP = frozenbidict(
     {
         ALTERNATE_SERIES_TAG: SERIES_KEY + ".name",
         ALTERNATE_NUMBER_TAG: ISSUE_KEY,

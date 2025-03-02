@@ -3,7 +3,7 @@
 from enum import Enum
 from types import MappingProxyType
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.identifiers import GTIN_NID
 from comicbox.schemas.comet import CoMetRoleTagEnum
@@ -135,7 +135,7 @@ class ComicInfoTransform(
 ):
     """ComicInfo.xml Schema."""
 
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             # "AgeRating": AGE_RATING_KEY, coded
             # REPRINTS

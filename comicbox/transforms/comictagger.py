@@ -2,7 +2,7 @@
 
 from types import MappingProxyType
 
-from bidict import bidict, frozenbidict
+from bidict import frozenbidict
 
 from comicbox.identifiers import (
     COMICVINE_NID,
@@ -66,7 +66,7 @@ class ComictaggerTransform(
 
     SCHEMA_CLASS = ComictaggerSchema
 
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             # "tagOrigin": TAG_ORIGIN_KEY, code
             # "issueId": ISSUE_ID_KEY, code

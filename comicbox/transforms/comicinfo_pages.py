@@ -1,6 +1,6 @@
 """ComicInfo Pages Transform Mixin."""
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY, PAGES_KEY
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -12,7 +12,7 @@ class ComicInfoPagesTransformMixin(XmlTransform):
     PAGES_TAG = "Pages"
     PAGES_SUB_TAG = "Page"
     INDEX_TAG = "@Image"
-    PAGE_TRANSFORM = bidict(
+    PAGE_TRANSFORM = frozenbidict(
         {
             INDEX_TAG: PAGE_INDEX_KEY,
             "@Type": "page_type",

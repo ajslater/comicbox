@@ -5,7 +5,7 @@ from decimal import Decimal
 from math import ceil, floor
 from types import MappingProxyType
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.comicbookinfo import (
@@ -36,7 +36,7 @@ class ComicBookInfoTransform(
     """Comic Book Info transform."""
 
     SCHEMA_CLASS = ComicBookInfoSchema
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             "comments": SUMMARY_KEY,
             # "country": "country", coded
