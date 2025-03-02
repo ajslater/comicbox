@@ -143,6 +143,7 @@ FNS = MappingProxyType(
             "year": 1950,
         },
         "comicbox.yaml": {
+            "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
@@ -157,13 +158,13 @@ FNS = MappingProxyType(
             "page_count": 0,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
+            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -192,13 +193,13 @@ FNS = MappingProxyType(
             ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}, "The End": {}},
-            "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
         },
         "comicinfo-metron-origin.xml": {
+            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -231,7 +232,6 @@ FNS = MappingProxyType(
             ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
-            "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "Comictagger",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
@@ -274,6 +274,7 @@ FNS = MappingProxyType(
         },
         "metroninfo.xml": {
             "age_rating": "Teen Plus",
+            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "collection_title": "Omnibus",
             "credits": {
@@ -345,7 +346,6 @@ FNS = MappingProxyType(
                 },
                 "Science is Good": {},
             },
-            "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": "comicbox dev",
             "universes": {"Mirror": {"designation": "4242"}},
             "updated_at": datetime(1970, 1, 1, 0, 0),
@@ -354,6 +354,18 @@ FNS = MappingProxyType(
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
         "metroninfo-v1.0-valid.xml": {
             "age_rating": "Everyone",
+            "arcs": {
+                "Origin": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "78945",
+                            "url": "https://metron.cloud/arc/78945",
+                        }
+                    },
+                    "number": 1,
+                },
+                "The New 52!": {},
+            },
             "characters": {
                 "Aquaman": {
                     "identifiers": {
@@ -505,18 +517,6 @@ FNS = MappingProxyType(
                     }
                 },
                 "Justice League, Part Two": {},
-            },
-            "story_arcs": {
-                "Origin": {
-                    "identifiers": {
-                        "metron": {
-                            "nss": "78945",
-                            "url": "https://metron.cloud/arc/78945",
-                        }
-                    },
-                    "number": 1,
-                },
-                "The New 52!": {},
             },
             "summary": "In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!",
             "tags": {

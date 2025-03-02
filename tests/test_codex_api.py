@@ -42,6 +42,7 @@ class Fixture:
 TEMPLATE_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
+            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "age_rating": "Teen",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
@@ -106,7 +107,6 @@ TEMPLATE_MD = MappingProxyType(
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
             "series": {"name": "Captain Science"},
-            "story_arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "tagger": f"comicbox {VERSION}",
             "updated_at": TEST_DATETIME,
             "volume": {"number": 1950, "issue_count": 7},

@@ -24,11 +24,11 @@ WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cli"], read=["cli"]))
 METADATA = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
+            "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 0,
@@ -39,18 +39,18 @@ EMPTY_MD = MappingProxyType({ComicboxCLISchema.ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
     "comicbox",
     "-m",
-    "tags: {a: {}, b: {},c: {}},publisher: {name: TestPub},story_arcs: {d: {number: 1},e: {number: 3},f: {number: 5}}",
+    "tags: {a: {}, b: {},c: {}}, publisher: {name: TestPub}, arcs: {d: {number: 1},e: {number: 3},f: {number: 5}}",
     "-m",
     "imprint: {name: TestImprint}",
 )
 CLI_DICT = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
+            "arcs": {"d": 1, "e": 3, "f": 5},
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
             "series": "empty",
-            "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 0,
         }

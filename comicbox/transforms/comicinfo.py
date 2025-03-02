@@ -163,9 +163,9 @@ class ComicInfoTransform(
             "Review": "review",
             "ScanInformation": SCAN_INFO_KEY,
             # "Series": SERIES_KEY, coded
-            # STORY_ARCS
-            # "StoryArc": STORY_ARC_KEY, coded
-            # "StoryArcNumber": STORY_ARC_NUMBER_KEY, coded
+            # STORY_ARCS coded
+            # "StoryArc":
+            # "StoryArcNumber":
             ##
             # "Title": "title", coded
             "Summary": SUMMARY_KEY,
@@ -202,7 +202,7 @@ class ComicInfoTransform(
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
         ComicInfoPagesTransformMixin.parse_pages,
-        ComicInfoStoryArcsTransformMixin.aggregate_story_arcs,
+        ComicInfoStoryArcsTransformMixin.parse_arcs,
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_imprint,
         NestedPublishingTagsMixin.parse_series,
@@ -219,7 +219,7 @@ class ComicInfoTransform(
         XmlCreditsTransformMixin.unparse_credits,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoReprintsTransformMixin.unparse_reprints,
-        ComicInfoStoryArcsTransformMixin.disaggregate_story_arcs,
+        ComicInfoStoryArcsTransformMixin.unparse_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_imprint,

@@ -12,6 +12,7 @@ from bidict import frozenbidict
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comicbox_mixin import (
+    ARCS_KEY,
     CHARACTERS_KEY,
     CREDITS_KEY,
     DESIGNATION_KEY,
@@ -23,7 +24,6 @@ from comicbox.schemas.comicbox_mixin import (
     REPRINTS_KEY,
     ROLES_KEY,
     STORIES_KEY,
-    STORY_ARCS_KEY,
     TAGS_KEY,
     TEAMS_KEY,
     UNIVERSES_KEY,
@@ -66,7 +66,7 @@ class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
     SOURCE_ATTRIBUTE = "@source"
     _NESTED_METRON_RESOURCE_TAGS = frozenbidict(
         {
-            STORY_ARCS_KEY: ARCS_TAG,
+            ARCS_KEY: ARCS_TAG,
             CHARACTERS_KEY: CHARACTERS_TAG,
             CREDITS_KEY: CREDITS_TAG,
             GENRES_KEY: GENRES_TAG,
@@ -220,34 +220,32 @@ class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
     @classmethod
     def _parse_arc(cls, data, metron_arc) -> tuple[str, dict]:
         """Parse one metron Arc."""
-        comicbox_story_arc = {}
+        comicbox_arc = {}
         if not (name := metron_arc.get(cls.ARC_NAME_TAG, "")):
-            return (name, comicbox_story_arc)
+            return (name, comicbox_arc)
         number = metron_arc.get(cls.ARC_NUMBER_TAG)
         if number is not None:
-            comicbox_story_arc[NUMBER_KEY] = number
-        cls._parse_metron_id_attribute(
-            data, "story_arc", metron_arc, comicbox_story_arc
-        )
-        return name, comicbox_story_arc
+            comicbox_arc[NUMBER_KEY] = number
+        cls._parse_metron_id_attribute(data, "arc", metron_arc, comicbox_arc)
+        return name, comicbox_arc
 
     def parse_arcs(self, data):
         """Convert metron arcs list to story arcs map."""
         return self._parse_metron_tag(data, self.ARCS_TAG, self._parse_arc)
 
     @classmethod
-    def _unparse_arc(cls, data, name, comicbox_story_arc: dict) -> dict:
+    def _unparse_arc(cls, data, name, comicbox_arc: dict) -> dict:
         """Unparse one metron Arc."""
         metron_arc = {cls.ARC_NAME_TAG: name}
-        number = comicbox_story_arc.get(NUMBER_KEY)
+        number = comicbox_arc.get(NUMBER_KEY)
         if number is not None:
             metron_arc[cls.ARC_NUMBER_TAG] = number
-        cls._unparse_metron_id_attribute(data, comicbox_story_arc, metron_arc)
+        cls._unparse_metron_id_attribute(data, comicbox_arc, metron_arc)
         return metron_arc
 
     def unparse_arcs(self, data):
         """Convert story arc dict to metron arcs list."""
-        return self._unparse_metron_tag(data, STORY_ARCS_KEY, self._unparse_arc)
+        return self._unparse_metron_tag(data, ARCS_KEY, self._unparse_arc)
 
     # PRICES
     ###########################################################################

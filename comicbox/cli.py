@@ -287,7 +287,7 @@ def get_args(params=None) -> Namespace:
         "Complex --metadata Example:\n"
         "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
         " writer: [Other Name, Writer Name]},"
-        " story_arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
+        " arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
         "  -m '{publisher: My Press}'\n"
         "  -m \"Title: 'GI Robot: Foreign and Domestic'\"\n"
         "  -m \"series: 'Solarpunk: Kaze Bosozoku'\"\n"

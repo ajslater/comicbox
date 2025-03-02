@@ -1,4 +1,11 @@
 comicbox:
+  arcs:
+    d:
+      number: 1
+    e:
+      number: 3
+    f:
+      number: 5
   ext: cbz
   identifiers:
     comicvine:
@@ -49,13 +56,6 @@ comicbox:
     name: TestPub
   series:
     name: empty
-  story_arcs:
-    d:
-      number: 1
-    e:
-      number: 3
-    f:
-      number: 5
   tagger: comicbox dev
   tags:
     a: {}

@@ -23,6 +23,10 @@ READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"]))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
             "credits": {
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -87,10 +91,6 @@ READ_METADATA = MappingProxyType(
                 {"index": 35, "size": 340840},
             ],
             "page_count": 36,
-            "story_arcs": {
-                "Captain Arc": {"number": 4},
-                "Other Arc": {"number": 2},
-            },
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
         }

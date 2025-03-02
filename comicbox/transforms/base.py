@@ -89,8 +89,11 @@ class BaseTransform:
     ##############
 
     def copy_keys(
-        self, data: dict, transform_map: frozenbidict, to_comicbox: bool = False
-    ):  # noqa: FBT002
+        self,
+        data: dict,
+        transform_map: frozenbidict,
+        to_comicbox: bool = False,  # noqa: FBT002
+    ):
         """Copy values between schemas with transformed keys."""
         if to_comicbox:
             transform_map = transform_map.inverse

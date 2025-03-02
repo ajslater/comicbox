@@ -66,7 +66,7 @@ SERIES_GROUPS_KEY = "series_groups"
 SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORIES_KEY = "stories"
-STORY_ARCS_KEY = "story_arcs"
+ARCS_KEY = "arcs"
 SUFFIX_KEY = "suffix"
 SUMMARY_KEY = "summary"
 TAGGER_KEY = "tagger"
@@ -91,7 +91,7 @@ MAP_KEYS = frozenset(
         LOCATIONS_KEY,
         PRICES_KEY,
         STORIES_KEY,
-        STORY_ARCS_KEY,
+        ARCS_KEY,
         TAGS_KEY,
         TEAMS_KEY,
         UNIVERSES_KEY,
@@ -182,7 +182,7 @@ class UniverseSchema(IdentifiedSchema):
     designation = StringField()
 
 
-class StoryArcSchema(BaseSubSchema):
+class ArcSchema(BaseSubSchema):
     """Story Arc Schema."""
 
     identifiers = IdentifiersField()
@@ -194,6 +194,7 @@ class ComicboxSubSchemaMixin:
 
     age_rating = StringField()
     alternate_images = StringSetField()
+    arcs = DictField(values=Nested(ArcSchema))
     characters = DictField(values=Nested(IdentifiedSchema))
     community_rating = DecimalField(places=2)
     credits = DictField(values=Nested(PersonSchema))
@@ -250,7 +251,6 @@ class ComicboxSubSchemaMixin:
     series_groups = StringSetField()
     store_date = DateField()
     stories = DictField(values=Nested(IdentifiedSchema), sort=False)
-    story_arcs = DictField(values=Nested(StoryArcSchema))
     summary = StringField()
     tagger = StringField()
     tags = DictField(values=Nested(IdentifiedSchema))

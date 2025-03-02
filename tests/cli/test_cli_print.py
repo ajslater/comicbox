@@ -23,12 +23,12 @@ CLI_METADATA_ARGS = (
 CLI_DICT = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
+            "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "page_count": 0,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tags": {"a": {}, "b": {}, "c": {}},
         }
     }
@@ -117,8 +117,8 @@ def test_cli_print():
     output_dict[ComicboxCLISchema.ROOT_TAG] = dict(
         output_dict[ComicboxCLISchema.ROOT_TAG]
     )
-    output_dict[ComicboxCLISchema.ROOT_TAG]["story_arcs"] = dict(
-        output_dict[ComicboxCLISchema.ROOT_TAG]["story_arcs"]
+    output_dict[ComicboxCLISchema.ROOT_TAG]["arcs"] = dict(
+        output_dict[ComicboxCLISchema.ROOT_TAG]["arcs"]
     )
     output_dict = MappingProxyType(output_dict)
     diff = DeepDiff(CLI_DICT, output_dict, ignore_order=True)

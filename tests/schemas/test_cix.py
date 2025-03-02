@@ -25,6 +25,10 @@ READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen",
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
             "series": {"name": "Captain Science"},
             "issue": "1",
             "issue_number": Decimal("1"),
@@ -93,10 +97,6 @@ READ_METADATA = MappingProxyType(
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "stories": {"The Beginning": {}, "The End": {}},
-            "story_arcs": {
-                "Captain Arc": {"number": 4},
-                "Other Arc": {"number": 2},
-            },
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
         }

@@ -37,6 +37,10 @@ READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen Plus",
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
             "date": date(year=1950, month=11, day=1),
             "characters": {
                 "Captain Science": {},
@@ -108,10 +112,6 @@ READ_METADATA = MappingProxyType(
                     },
                 },
                 "Science is Good": {},
-            },
-            "story_arcs": {
-                "Captain Arc": {"number": 4},
-                "Other Arc": {"number": 2},
             },
             "reprints": [
                 {"language": "es", "series": {"name": "Capitán Ciencia"}},

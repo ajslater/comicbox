@@ -31,6 +31,7 @@ WRITE_CONFIG = Namespace(
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
+            "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
@@ -42,7 +43,6 @@ READ_METADATA = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 36,
             "pages": [
@@ -92,6 +92,7 @@ WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_YAML_DICT = MappingProxyType(
     {
         ComicboxYamlSchema.ROOT_TAG: {
+            "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
@@ -146,7 +147,6 @@ READ_YAML_DICT = MappingProxyType(
             ],
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
-            "story_arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DTTM_STR,

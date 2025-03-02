@@ -52,7 +52,7 @@ READ_METADATA = MappingProxyType(
             "country": "US",
             "page_count": 0,
             "day": 1,
-            "story_arcs": {
+            "arcs": {
                 "e": {"number": 1},
                 "f": {"number": 3},
                 "g": {"number": 5},
@@ -133,7 +133,7 @@ READ_MULTI_DICT = MappingProxyType(
             "volume": {"number": 999, "issue_count": 77},
             "day": 1,
             "tags": {"a": {}, "b": {}, "c": {}},
-            "story_arcs": {
+            "arcs": {
                 "e": {"number": 1},
                 "f": {"number": 3},
                 "g": {"number": 5},

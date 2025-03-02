@@ -36,6 +36,7 @@ DEFAULT_NSS_TYPE = "issue"
 class IdentifierTypes:
     """URL slugs for identifier types."""
 
+    arc: str = ""
     character: str = ""
     genre: str = ""
     imprint: str = ""
@@ -45,7 +46,6 @@ class IdentifierTypes:
     reprint: str = ""
     series: str = ""
     story: str = ""
-    story_arc: str = ""
     tag: str = ""
     team: str = ""
     universe: str = ""
@@ -136,13 +136,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         COMICVINE_NID: IdentifierParts(
             domain="comicvine.gamespot.com",
             types=IdentifierTypes(
+                arc="4045",
                 character="4005",
                 creator="4040",
                 issue="4000",
                 location="4020",
                 publisher="4010",
                 series="4050",
-                story_arc="4045",
                 team="4060",
             ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
@@ -211,6 +211,7 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
             domain="metron.cloud",
             types=IdentifierTypes(
+                arc="arc",
                 character="character",
                 creator="creator",
                 genre="genre",  # Not Yet Implemented on API
@@ -222,7 +223,6 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 role="role",
                 series="series",
                 story="story",  # Not Yet Implemented on API
-                story_arc="arc",
                 tag="tag",
                 team="team",
                 universe="universe",
