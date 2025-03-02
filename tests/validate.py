@@ -8,9 +8,6 @@ from jsonschema import validate as jsonschema_validate
 from ruamel.yaml import YAML
 from xmlschema import XMLSchema11
 
-TEST_FILES_PATH = Path("tests/test_files")
-# TODO replace this with a validator for each written file in regular tests.
-
 
 def get_xml_schema(path):
     """Get the xml11 schema."""
