@@ -558,6 +558,20 @@ FNS = MappingProxyType(
             ),
             "volume": {"issue_count": 60, "number": 2},
         },
+        "pdf.xml": {
+            "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
+            "ext": "cbz",
+            "genres": {"Science Fiction": {}},
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
+            "page_count": 0,
+            "publisher": {"name": "SmallPub"},
+            "scan_info": "Pages",
+            "series": {"name": "test pdf"},
+            "stories": {"the tangle of their lives": {}},
+            "tagger": "comicbox dev",
+            "tags": {"d": {}, "e": {}, "f": {}},
+            "updated_at": datetime(1970, 1, 1, 0, 0),
+        },
     }
 )
 
@@ -599,10 +613,10 @@ def test_import(fn):
     assert not diff
 
 
+# TODO Activate
 @pytest.mark.parametrize("fn", FNS)
 def deactivated_test_export(fn):
     """Test exporting metadata files."""
-    # TODO Activate
     fmt = _FORMAT_MAP[fn]
     if fmt == "fn":
         # no export file possible
