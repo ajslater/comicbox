@@ -7,7 +7,7 @@ from types import MappingProxyType
 import xmltodict
 
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
@@ -22,7 +22,7 @@ WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
 READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"]))
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -99,7 +99,7 @@ READ_METADATA = MappingProxyType(
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_CIX_DICT = MappingProxyType(
     {
-        ComicInfoSchema.ROOT_TAGS[0]: {
+        ComicInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1",

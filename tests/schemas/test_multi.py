@@ -9,7 +9,7 @@ import simplejson as json
 
 from comicbox.fields.enum_fields import ReadingDirectionEnum
 from comicbox.schemas.comicbox_json import ComicboxJsonSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from tests.const import (
     CBZ_MULTI_FN,
@@ -25,7 +25,7 @@ WRITE_CONFIG = Namespace(
 )
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
                 "Joe Orlando CBI": {"roles": {"Writer": {}}},
                 "Wally Wood CBI": {"roles": {"Penciller": {}}},
@@ -103,7 +103,7 @@ READ_MULTI_DICT = MappingProxyType(
     {
         "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
         "appID": "comicbox/dev",
-        ComicboxJsonSchema.ROOT_TAGS[0]: {
+        ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
             "credits": {
                 "Joe Orlando CBI": {"roles": {"Writer": {}}},

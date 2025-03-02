@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<MetronInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0">
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd">
 	<Arcs>
 		<Arc>
 			<Name>Captain Arc</Name>
@@ -35,8 +35,8 @@
 	<IDS>
 		<ID primary="true" source="Comic Vine">145269</ID>
 	</IDS>
-	<LastModified>2025-02-26T21:55:05</LastModified>
-	<Notes>Tagged with comicbox dev on 2025-02-26T21:55:05 [Issue ID 145269] urn:comicvine:145269</Notes>
+	<LastModified>2025-03-02T00:47:48</LastModified>
+	<Notes>Tagged with comicbox dev on 2025-03-02T00:47:48 [Issue ID 145269] urn:comicvine:145269</Notes>
 	<Number>1</Number>
 	<PageCount>0</PageCount>
 	<Publisher>

@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 import simplejson as json
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comictagger import ComictaggerSchema
 from comicbox.transforms.comictagger import ComictaggerTransform
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
@@ -20,7 +20,7 @@ WRITE_CONFIG = Namespace(
 )
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
@@ -57,7 +57,7 @@ READ_METADATA = MappingProxyType(
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_CT_DICT = MappingProxyType(
     {
-        ComictaggerSchema.ROOT_TAGS[0]: {
+        ComictaggerSchema.ROOT_TAG: {
             "country": "US",
             "credits": [
                 {

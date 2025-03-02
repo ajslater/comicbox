@@ -12,8 +12,8 @@ from comicbox.schemas.comicbox_mixin import (
     ORDERED_SET_KEYS,
     PAGES_KEY,
     REPRINTS_KEY,
-    ROOT_TAG,
     STORIES_KEY,
+    ComicboxSchemaMixin,
 )
 from comicbox.transforms.reprints import sort_reprints
 
@@ -169,7 +169,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         for key, value in md.items():
             if key in self._config.delete_keys:
                 continue
-            if key != ROOT_TAG and self._config.replace_metadata:
+            if key != ComicboxSchemaMixin.ROOT_TAG and self._config.replace_metadata:
                 base_md[key] = value
             else:
                 self._merge_key(base_md, key, value)

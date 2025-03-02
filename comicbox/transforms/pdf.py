@@ -5,7 +5,7 @@ from logging import getLogger
 from types import MappingProxyType
 from xml.sax.saxutils import unescape
 
-from bidict import bidict
+from bidict import frozenbidict
 
 from comicbox.dict_funcs import deep_update
 from comicbox.fields.collection_fields import StringSetField
@@ -17,12 +17,12 @@ from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
     PUBLISHER_KEY,
     ROLES_KEY,
-    ROOT_TAG,
     SCAN_INFO_KEY,
     SERIES_KEY,
     TAGGER_KEY,
     TAGS_KEY,
     VOLUME_KEY,
+    ComicboxSchemaMixin,
 )
 from comicbox.schemas.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo import MetronRoleEnum
@@ -44,10 +44,10 @@ _KEYWORDS_TRANSFORM_CLASSES = (
     # Different order than all sources
     # Doesn't include PDF.
     ComicInfoTransform,
+    MetronInfoTransform,
     ComicboxJsonTransform,
     ComicboxYamlTransform,
     ComicBookInfoTransform,
-    MetronInfoTransform,
     CoMetTransform,
     ComictaggerTransform,
     FilenameTransform,
@@ -60,7 +60,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
 
     SCHEMA_CLASS = PDFXmlSchema
     AUTHOR_TAG = "pdf:Author"
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             # "pdf:Author": coded
             "pdf:Creator": SCAN_INFO_KEY,  # original document creator
@@ -131,27 +131,27 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
         """Parse comicinfo from keywords."""
         tags = data.get(self.TAGS_TAG)
         transform = transform_class(self._path)
-        schema = transform.SCHEMA_CLASS()
+        schema_cls = transform.SCHEMA_CLASS
         try:
             if issubclass(transform_class, XmlTransform):
                 tags = unescape(tags)
             if (
-                (cix_md := schema.loads(tags))
+                (cix_md := schema_cls().loads(tags))
                 and (md := transform.to_comicbox(cix_md))
-                and (sub_md := md.get(ROOT_TAG))
+                and (sub_md := md.get(ComicboxSchemaMixin.ROOT_TAG))
             ):
                 data.pop(TAGS_KEY, None)
                 deep_update(data, sub_md)
                 return True
         except Exception as exc:
             LOG.debug(
-                f"Failed to parse {schema.__class__.__name__} from keywords in {self._path}: {exc}"
+                f"Failed to parse {schema_cls.__name__} from keywords in {self._path}: {exc}"
             )
         return False
 
     def _parse_comma_delimited_tags(self, data):
         if tags := data.get(self.TAGS_TAG):
-            tags = StringSetField()._deserialize(tags)  # noqa: SLF001
+            tags = StringSetField()._deserialize(tags, self.TAGS_TAG, data)  # noqa: SLF001
             data[self.TAGS_TAG] = tags
 
     def parse_tags(self, data):
@@ -207,7 +207,7 @@ class MuPDFTransform(PDFXmlTransform):
     AUTHOR_TAG = "author"
     TITLE_TAG = "title"
     TAGS_TAG = "keywords"
-    TRANSFORM_MAP = bidict(
+    TRANSFORM_MAP = frozenbidict(
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,
             "creator": SCAN_INFO_KEY,  # original document creator

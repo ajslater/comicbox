@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<MetronInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0">
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd">
 	<AgeRating>Teen Plus</AgeRating>
 	<Arcs>
 		<Arc>

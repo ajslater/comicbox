@@ -6,7 +6,7 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.filename import FilenameTransform
 from tests.util import TestParser
@@ -17,22 +17,18 @@ WRITE_CONFIG = Namespace(
     comicbox=Namespace(read=["fn"], write=["fn"], compute_pages=False)
 )
 
-METADATA = MappingProxyType(
-    {
-        ROOT_TAG: {
-            "ext": "cbz",
-            "issue": "001",
-            "issue_number": Decimal("1"),
-            "series": {"name": "Captain Science"},
-            "stories": {"The Beginning - nothing": {}},
-            "year": 1950,
-        }
-    }
-)
-
+SUB_DATA: Mapping[str, Any] = {
+    "ext": "cbz",
+    "issue": "001",
+    "issue_number": Decimal("1"),
+    "series": {"name": "Captain Science"},
+    "stories": {"The Beginning - nothing": {}},
+    "year": 1950,
+}
+METADATA = MappingProxyType({ComicboxSchemaMixin.ROOT_TAG: SUB_DATA})
 FILENAME_DICT = MappingProxyType(
     {
-        FilenameSchema.ROOT_TAGS[0]: {
+        FilenameSchema.ROOT_TAG: {
             "ext": "cbz",
             "issue": "001",
             "title": "The Beginning - nothing",
@@ -42,7 +38,6 @@ FILENAME_DICT = MappingProxyType(
     }
 )
 
-SUB_DATA: Mapping[str, Any] = METADATA[ROOT_TAG]
 FILENAME_STR = (
     f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
     f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"

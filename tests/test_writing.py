@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from tests.const import (
     CBI_CBR_FN,
@@ -25,7 +25,7 @@ NEW_TEST_CBZ_PATH = OLD_TEST_CBR_PATH.with_suffix(".cbz")
 WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"]))
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
@@ -87,7 +87,9 @@ METADATA = MappingProxyType(
         }
     }
 )
-TAGS_SOURCE = MappingProxyType({ROOT_TAG: {"tags": {"a": {}, "b": {}, "c": {}}}})
+TAGS_SOURCE = MappingProxyType(
+    {ComicboxSchemaMixin.ROOT_TAG: {"tags": {"a": {}, "b": {}, "c": {}}}}
+)
 
 
 def test_convert_to_cbz_and_cbi_to_cix():

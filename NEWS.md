@@ -18,6 +18,8 @@
   - ComicBookInfo `issue` tag becomes an integer.
   - Fix ISBN & UPC url detection
   - Fix Notes parsing for Comictagger beta Metron origin
+  - ComicInfo.xml orders tags properly per the xsd.
+  - Corrected schemaLocation tags for xml formats to be valid.
 
 ## v1.2.1
 

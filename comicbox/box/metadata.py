@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 
@@ -16,7 +16,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         # collect metadata
         computed_merged_metadata = self.get_computed_merged_metadata()
         if not computed_merged_metadata:
-            computed_merged_metadata = {ROOT_TAG: {}}
+            computed_merged_metadata = {ComicboxSchemaMixin.ROOT_TAG: {}}
         self._metadata = MappingProxyType(computed_merged_metadata)
 
     def _get_metadata(self) -> MappingProxyType:

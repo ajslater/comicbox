@@ -24,7 +24,6 @@ from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
 
-ROOT_TAG = "comicbox"
 AGE_RATING_KEY = "age_rating"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
@@ -260,3 +259,10 @@ class ComicboxSubSchemaMixin:
     updated_at = DateTimeField()
     volume = Union([Nested(VolumeSchema), StringField()])
     year = IntegerField()
+
+
+class ComicboxSchemaMixin:
+    """Mixin for comicbox schemas."""
+
+    ROOT_TAG = "comicbox"
+    WRAP_TAGS = (ROOT_TAG,)

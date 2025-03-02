@@ -7,7 +7,7 @@ from types import MappingProxyType
 import simplejson as json
 
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
@@ -18,7 +18,7 @@ WRITE_CONFIG = Namespace(
 )
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
@@ -44,7 +44,10 @@ METADATA = MappingProxyType(
 )
 CBI_DICT = MappingProxyType(
     {
-        ComicBookInfoSchema._ROOT_TAG: {  # noqa: SLF001
+        "appID": "comicbox/dev",
+        "lastModified": TEST_DTTM_STR,
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json",
+        ComicBookInfoSchema.ROOT_TAG: {
             "country": "United States",
             "credits": [
                 {"person": "Joe Orlando", "role": "Writer"},
@@ -63,9 +66,6 @@ CBI_DICT = MappingProxyType(
             "title": "The Beginning",
             "volume": 1950,
         },
-        "appID": "comicbox/dev",
-        "lastModified": TEST_DTTM_STR,
-        "schema": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki",
     }
 )
 

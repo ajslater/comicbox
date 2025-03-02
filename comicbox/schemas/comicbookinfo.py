@@ -5,8 +5,7 @@ from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
-from marshmallow import Schema, post_dump, post_load
-from marshmallow.decorators import pre_dump, pre_load
+from marshmallow import Schema
 from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.collection_fields import StringSetField
@@ -14,7 +13,6 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.version import VERSION
 
@@ -92,53 +90,25 @@ class ComicBookInfoSubSchema(JsonSubSchema):
 class ComicBookInfoSchema(JsonSchema):
     """ComicBookInfo JSON schema."""
 
-    ROOT_TAGS = ("ComicBookInfo/1.0",)
+    ROOT_TAG = "ComicBookInfo/1.0"
+    ROOT_KEY = "root"
+    WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"})
     FILENAME = "comic-book-info.json"
+    TAG_ORDER = ("schema", "appID", "lastModified", ROOT_TAG)
 
-    _ROOT_TAG = ROOT_TAGS[0]
-    _ROOT_KEY = "root"
-
+    schema = Constant(
+        "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
+    )
     appID = Constant(f"comicbox/{VERSION}")  # noqa: N815
     lastModified = DateTimeField()  # noqa: N815
-    schema = Constant(
-        "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki"
-    )
     root = Nested(ComicBookInfoSubSchema)
 
-    @staticmethod
-    def _move_tag_to_another(data, tag_a, tag_b):
-        """Move one tag to another."""
-        if tag_a in data:
-            data = dict(data)
-            if root := data.pop(tag_a, None):
-                data[tag_b] = root
-            return MappingProxyType(data)
-        return data
-
-    @trap_error(pre_load)
-    def move_dot_tag_to_root_key_load(self, data, **_kwargs):
-        """Hack around the dot delimiter before load."""
-        data = super().validate_root_tag(data)
-        if not data:
-            return data
-        return self._move_tag_to_another(data, self._ROOT_TAG, self._ROOT_KEY)
-
-    def validate_root_tag(self, data, **_kwargs):
-        """Move this check into the mover method above."""
-        return data
-
-    @trap_error(post_load)
-    def move_root_key_to_dot_tag_load(self, data, **_kwargs):
-        """Hack around the dot delimiter after load."""
-        return self._move_tag_to_another(data, self._ROOT_KEY, self._ROOT_TAG)
-
-    @pre_dump
-    def move_dot_tag_to_root_key_dump(self, data, **_kwargs):
-        """Hack around the dot delimiter before dump."""
-        return self._move_tag_to_another(data, self._ROOT_TAG, self._ROOT_KEY)
-
-    @post_dump
-    def move_root_key_to_dot_tag_dump(self, data, **_kwargs):
-        """Hack around the dot delimiter after dump."""
-        return self._move_tag_to_another(data, self._ROOT_KEY, self._ROOT_TAG)
+    TAG_MOVE_MAP = MappingProxyType(
+        {
+            "pre_load": (ROOT_TAG, ROOT_KEY),
+            "post_load": (ROOT_KEY, ROOT_TAG),
+            "pre_dump": (ROOT_TAG, ROOT_KEY),
+            "post_dump": (ROOT_KEY, ROOT_TAG),
+        }
+    )

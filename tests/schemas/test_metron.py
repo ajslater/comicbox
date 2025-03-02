@@ -8,7 +8,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
@@ -35,7 +35,7 @@ METRON_NOTES = (
 )
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen Plus",
             "date": date(year=1950, month=11, day=1),
             "characters": {
@@ -133,10 +133,11 @@ WRITE_METADATA = create_write_metadata(READ_METADATA, notes=METRON_NOTES)
 
 READ_METRON_DICT = MappingProxyType(
     {
-        MetronInfoSchema.ROOT_TAGS[0]: {
+        MetronInfoSchema.ROOT_TAG: {
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd",
             "AgeRating": "Teen Plus",
             "Arcs": {
                 "Arc": [
@@ -231,7 +232,7 @@ READ_METRON_DICT = MappingProxyType(
 )
 SIMPLE_READ_METRON_DICT = MappingProxyType(
     {
-        MetronInfoSchema.ROOT_TAGS[0]: {
+        MetronInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
@@ -339,12 +340,12 @@ WRITE_METRON_DICT = create_write_dict(
 def unparse_strinfigy_decimals(data):
     """Stringify decimals for xmltodict."""
     stringified_data = deepcopy(dict(data))
-    prices = stringified_data[MetronInfoSchema.ROOT_TAGS[0]][
+    prices = stringified_data[MetronInfoSchema.ROOT_TAG][
         MetronInfoTransform.PRICES_TAG
     ][MetronInfoTransform.PRICE_TAG]
     for price in prices:
         price["#text"] = str(price["#text"])
-    stringified_data[MetronInfoSchema.ROOT_TAGS[0]][MetronInfoTransform.PRICES_TAG][
+    stringified_data[MetronInfoSchema.ROOT_TAG][MetronInfoTransform.PRICES_TAG][
         MetronInfoTransform.PRICE_TAG
     ] = prices
     return xmltodict.unparse(stringified_data, pretty=True, short_empty_elements=True)

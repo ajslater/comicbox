@@ -10,7 +10,6 @@ from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.schemas.comicbox_cli import ComicboxCLISchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import (
     CBZ_MULTI_SOURCE_PATH,
     CIX_CBI_CBR_SOURCE_PATH,
@@ -24,7 +23,7 @@ READ_CONFIG_IGNORE_FN = Namespace(comicbox=Namespace(read_ignore=["fn"]))
 WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cli"], read=["cli"]))
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxCLISchema.ROOT_TAG: {
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
@@ -36,7 +35,7 @@ METADATA = MappingProxyType(
         }
     }
 )
-EMPTY_MD = MappingProxyType({ROOT_TAG: {}})
+EMPTY_MD = MappingProxyType({ComicboxCLISchema.ROOT_TAG: {}})
 CLI_METADATA_ARGS = (
     "comicbox",
     "-m",
@@ -46,7 +45,7 @@ CLI_METADATA_ARGS = (
 )
 CLI_DICT = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxCLISchema.ROOT_TAG: {
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "publisher": {"name": "TestPub"},
@@ -60,7 +59,12 @@ CLI_DICT = MappingProxyType(
 MD_ARGS = ("-m", "publisher: 'Galactic Press'")
 DELETE_ARGS = ("--delete", "-w", "cix")
 ADDED_MD = MappingProxyType(
-    {ROOT_TAG: {"publisher": {"name": "Galactic Press"}, "page_count": 0}}
+    {
+        ComicboxCLISchema.ROOT_TAG: {
+            "publisher": {"name": "Galactic Press"},
+            "page_count": 0,
+        }
+    }
 )
 
 # PATHS
@@ -74,8 +78,8 @@ TEST_EXPORT_PATH = TMP_DIR / ComicboxCLISchema.FILENAME
 CLI_PATH = TEST_METADATA_DIR / ComicboxCLISchema.FILENAME
 METADATA_REPLACE = MappingProxyType(
     {
-        ROOT_TAG: {
-            **METADATA[ROOT_TAG],
+        ComicboxCLISchema.ROOT_TAG: {
+            **METADATA[ComicboxCLISchema.ROOT_TAG],
             "tags": {"d": {}, "e": {}, "f": {}},
         }
     }
@@ -106,8 +110,8 @@ def test_cli_action_write():
 
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
-    md[ROOT_TAG].pop("notes", None)
-    md[ROOT_TAG].pop("updated_at", None)
+    md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
+    md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
     pprint(METADATA)
     pprint(md)
@@ -140,8 +144,8 @@ def test_cli_action_write_replace():
 
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
-    md[ROOT_TAG].pop("notes", None)
-    md[ROOT_TAG].pop("updated_at", None)
+    md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
+    md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
     pprint(METADATA_REPLACE)
     pprint(md)
@@ -157,21 +161,21 @@ def test_cli_action_cbz():
     _setup(CIX_CBI_CBR_SOURCE_PATH)
     with Comicbox(TMP_CBR_PATH) as car:
         old_md = car.get_metadata()
-    old_md[ROOT_TAG].pop("notes", None)
-    old_md[ROOT_TAG].pop("updated_at", None)
+    old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
+    old_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     old_md = MappingProxyType(old_md)
     pprint(old_md)
 
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    cli.main((ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
+    cli.main((ComicboxCLISchema.ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
     assert not TMP_CBR_PATH.exists()
 
     with Comicbox(TMP_CBZ_PATH) as car:
         new_md = car.get_metadata()
-    assert new_md[ROOT_TAG]["ext"] == "cbz"
-    new_md[ROOT_TAG]["ext"] = "cbr"
-    new_md[ROOT_TAG].pop("notes", None)
-    new_md[ROOT_TAG].pop("updated_at", None)
+    assert new_md[ComicboxCLISchema.ROOT_TAG]["ext"] == "cbz"
+    new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
+    new_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
+    new_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     new_md = MappingProxyType(new_md)
     pprint(new_md)
 
@@ -188,12 +192,12 @@ def test_cli_action_delete_tags():
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
         old_md = car.get_metadata()
-    old_md[ROOT_TAG].pop("notes", None)
+    old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     pprint(old_md)
     assert old_md
 
-    args = (ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS)
+    args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS)
     print(args)
     cli.main(args)
 
@@ -213,15 +217,15 @@ def test_cli_action_delete_tags_add_metadata():
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
         old_md = car.get_metadata()
-    old_md[ROOT_TAG].pop("notes", None)
+    old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     pprint(old_md)
     assert old_md
 
-    cli.main((ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS))
+    cli.main((ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS))
     cli.main(
         (
-            ROOT_TAG,
+            ComicboxCLISchema.ROOT_TAG,
             str(TMP_MULTI_PATH),
             *MD_ARGS,
             "-w",

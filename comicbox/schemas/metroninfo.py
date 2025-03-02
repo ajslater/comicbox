@@ -390,9 +390,12 @@ class MetronInfoSubSchema(XmlSubSchema):
 
         include = MappingProxyType(
             {
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
+                "@xmlns:metroninfo": Constant(
                     "https://metron-project.github.io/docs/metroninfo/schemas/v1.0"
-                )
+                ),
+                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
+                    "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd"
+                ),
             }
         )
 
@@ -400,8 +403,9 @@ class MetronInfoSubSchema(XmlSubSchema):
 class MetronInfoSchema(XmlSchema):
     """MetronInfo.xml Schema."""
 
+    ROOT_TAG = "MetronInfo"
+    WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"metron", "metroninfo", "mi", "mix"})
     FILENAME = "MetronInfo.xml"
-    ROOT_TAGS = ("MetronInfo",)
 
     MetronInfo = Nested(MetronInfoSubSchema)

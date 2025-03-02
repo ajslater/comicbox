@@ -6,7 +6,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
@@ -30,7 +30,7 @@ WRITE_CONFIG = Namespace(
 )
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {
@@ -91,7 +91,7 @@ READ_METADATA = MappingProxyType(
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_YAML_DICT = MappingProxyType(
     {
-        ComicboxYamlSchema.ROOT_TAGS[0]: {
+        ComicboxYamlSchema.ROOT_TAG: {
             "ext": "cbz",
             "identifiers": {
                 "comicvine": {

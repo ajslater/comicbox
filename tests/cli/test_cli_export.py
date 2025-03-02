@@ -1,7 +1,6 @@
 """Test CLI extract actions."""
 
 from comicbox import cli
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import (
     EXPORT_SOURCE_PATH,
     TEST_EXPORT_DIR,
@@ -23,7 +22,7 @@ def _test_cli_action_export_util(path, args):
 
     cli.main(
         (
-            ROOT_TAG,
+            "comicbox",
             "-d",
             str(_TMP_DIR),
             *args,

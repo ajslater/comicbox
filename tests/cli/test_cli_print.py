@@ -8,13 +8,13 @@ from types import MappingProxyType
 from deepdiff.diff import DeepDiff
 
 from comicbox import cli
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_cli import ComicboxCLISchema
 from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH
 from tests.util import diff_strings
 
 CLI_METADATA_ARGS = (
-    ROOT_TAG,
+    "comicbox",
     "-m",
     "Tags: 'a, b, c',Publisher: TestPub,StoryArc: 'd,e,f', StoryArcNumber: '1,3,5'",
     "-m",
@@ -22,7 +22,7 @@ CLI_METADATA_ARGS = (
 )
 CLI_DICT = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxCLISchema.ROOT_TAG: {
             "ext": "cbz",
             "imprint": {"name": "TestImprint"},
             "page_count": 0,
@@ -62,7 +62,7 @@ CBZ
 
 def test_cli_filetype():
     """Test filetype action."""
-    args = (ROOT_TAG, "-P", "t", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "t", str(EMPTY_CBZ_SOURCE_PATH))
     output = "\n" + _get_output(args)
     assert output == FILETYPE_OUTPUT
 
@@ -76,7 +76,7 @@ empty.cbz
 
 def test_cli_source():
     """Test print source action."""
-    args = (ROOT_TAG, "-P", "s", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "s", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(SOURCE_OUTPUT)
@@ -95,7 +95,7 @@ comicbox:
 
 def test_cli_loaded():
     """Test print loaded action."""
-    args = (ROOT_TAG, "-P", "l", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "l", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(LOADED_OUTPUT)
@@ -114,8 +114,12 @@ def test_cli_print():
 
     yaml = YamlRenderModule.get_write_yaml(dfs=False)
     output_dict = yaml.load(output)
-    output_dict[ROOT_TAG] = dict(output_dict[ROOT_TAG])
-    output_dict[ROOT_TAG]["story_arcs"] = dict(output_dict[ROOT_TAG]["story_arcs"])
+    output_dict[ComicboxCLISchema.ROOT_TAG] = dict(
+        output_dict[ComicboxCLISchema.ROOT_TAG]
+    )
+    output_dict[ComicboxCLISchema.ROOT_TAG]["story_arcs"] = dict(
+        output_dict[ComicboxCLISchema.ROOT_TAG]["story_arcs"]
+    )
     output_dict = MappingProxyType(output_dict)
     diff = DeepDiff(CLI_DICT, output_dict, ignore_order=True)
     pprint(CLI_DICT)
@@ -170,7 +174,7 @@ Page	Archive Path
 
 def test_cli_print_contents():
     """Test list contents."""
-    args = (ROOT_TAG, "-P", "f", str(CIX_CBI_CBR_SOURCE_PATH))
+    args = ("comicbox", "-P", "f", str(CIX_CBI_CBR_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(LIST_OUTPUT)

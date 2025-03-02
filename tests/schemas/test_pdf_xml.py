@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.pdf import PDFXmlSchema
 from comicbox.transforms.pdf import PDFXmlTransform
 from tests.const import PDF_FN
@@ -19,7 +19,7 @@ WRITE_CONFIG = Namespace(
 
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "genres": {"Science Fiction": {}},
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
@@ -35,32 +35,54 @@ METADATA = MappingProxyType(
 )
 PDF_DICT = MappingProxyType(
     {
-        PDFXmlSchema.ROOT_TAGS[0]: {
+        PDFXmlSchema.ROOT_TAG: {
             "@x:xmptk": "Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21",
             "@xmlns:x": "adobe:ns:meta/",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "http://ns.adobe.com/pdf/1.3/",
-            PDFXmlSchema.ROOT_TAGS[1]: {
+            PDFXmlSchema.WRAP_TAGS[1]: {
                 "@xmlns:rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns",
-                PDFXmlSchema.ROOT_TAGS[2]: {
+                PDFXmlSchema.WRAP_TAGS[2]: {
                     "@xmlns:pdf": "http://ns.adobe.com/pdf/1.3/",
                     "pdf:Author": "Jon Osterman",
                     "pdf:Creator": "Pages",
-                    "pdf:Keywords": '<?xml version="1.0" encoding="utf-8"?>\n'
+                    "pdf:Keywords": "<?xml "
+                    'version="1.0" '
+                    'encoding="utf-8"?>\n'
                     "<ComicInfo "
                     'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
                     'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-                    'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">\n'
-                    "\t<Genre>Science Fiction</Genre>\n"
-                    "\t<Notes>Tagged with comicbox dev on "
+                    'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/ '
+                    'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
+                    "\t"
+                    "<Title>the "
+                    "tangle "
+                    "of "
+                    "their "
+                    "lives</Title>\n"
+                    "\t"
+                    "<Series>test "
+                    "pdf</Series>\n"
+                    "\t"
+                    "<Notes>Tagged "
+                    "with "
+                    "comicbox "
+                    "dev "
+                    "on "
                     "1970-01-01T00:00:00</Notes>\n"
-                    "\t<Publisher>SmallPub</Publisher>\n"
-                    "\t<ScanInformation>Pages</ScanInformation>\n"
-                    "\t<Series>test pdf</Series>\n"
-                    "\t<Tags>d,e,f</Tags>\n"
-                    "\t<Title>the tangle of their lives</Title>\n"
-                    "\t<Writer>Jon Osterman</Writer>\n"
+                    "\t"
+                    "<Writer>Jon "
+                    "Osterman</Writer>\n"
+                    "\t"
+                    "<Publisher>SmallPub</Publisher>\n"
+                    "\t"
+                    "<Genre>Science "
+                    "Fiction</Genre>\n"
+                    "\t"
+                    "<Tags>d,e,f</Tags>\n"
+                    "\t"
+                    "<ScanInformation>Pages</ScanInformation>\n"
                     "</ComicInfo>",
                     "pdf:Producer": "comicbox dev",
                     "pdf:Subject": "Science Fiction",

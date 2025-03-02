@@ -50,7 +50,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             return None
         md = archive.get_metadata()  # type: ignore[reportAttributeAccessIssue]
         if md:
-            md = {MuPDFSchema.ROOT_TAGS[0]: md}
+            md = {MuPDFSchema.ROOT_TAG: md}
             return (SourceData(md, transform_class, str(self._path)),)
         return None
 

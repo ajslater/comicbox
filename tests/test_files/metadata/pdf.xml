@@ -5,15 +5,15 @@
 			<pdf:Author>Jon Osterman</pdf:Author>
 			<pdf:Creator>Pages</pdf:Creator>
 			<pdf:Keywords>&lt;?xml version="1.0" encoding="utf-8"?&gt;
-&lt;ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1"&gt;
-	&lt;Genre&gt;Science Fiction&lt;/Genre&gt;
-	&lt;Notes&gt;Tagged with comicbox dev on 1970-01-01T00:00:00&lt;/Notes&gt;
-	&lt;Publisher&gt;SmallPub&lt;/Publisher&gt;
-	&lt;ScanInformation&gt;Pages&lt;/ScanInformation&gt;
-	&lt;Series&gt;test pdf&lt;/Series&gt;
-	&lt;Tags&gt;d,e,f&lt;/Tags&gt;
+&lt;ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/ https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"&gt;
 	&lt;Title&gt;the tangle of their lives&lt;/Title&gt;
+	&lt;Series&gt;test pdf&lt;/Series&gt;
+	&lt;Notes&gt;Tagged with comicbox dev on 1970-01-01T00:00:00&lt;/Notes&gt;
 	&lt;Writer&gt;Jon Osterman&lt;/Writer&gt;
+	&lt;Publisher&gt;SmallPub&lt;/Publisher&gt;
+	&lt;Genre&gt;Science Fiction&lt;/Genre&gt;
+	&lt;Tags&gt;d,e,f&lt;/Tags&gt;
+	&lt;ScanInformation&gt;Pages&lt;/ScanInformation&gt;
 &lt;/ComicInfo&gt;</pdf:Keywords>
 			<pdf:Producer>comicbox dev</pdf:Producer>
 			<pdf:Subject>Science Fiction</pdf:Subject>

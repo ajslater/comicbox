@@ -71,18 +71,18 @@ class ComicBookInfoTransform(
     TITLE_TAG = "title"
     ISSUE_TAG = "issue"
 
-    def unwrap(self, data, root_tags=None) -> dict:
+    def unwrap(self, data, wrap_tags=None) -> dict:
         """Retrieve the last modified timestamp."""
         last_modified = data.get(LAST_MODIFIED_TAG)
-        sub_data = super().unwrap(data, root_tags=root_tags)
+        sub_data = super().unwrap(data, wrap_tags=wrap_tags)
         if last_modified:
             sub_data[UPDATED_AT_KEY] = last_modified
         return sub_data
 
-    def wrap(self, sub_data, root_tags=None, stamp=False, **_kwargs):  # noqa: FBT002
+    def wrap(self, sub_data, wrap_tags=None, stamp=False, **_kwargs):  # noqa: FBT002
         """Add the last modified timestamp."""
         updated_at = sub_data.get(UPDATED_AT_KEY) if stamp else None
-        data = super().wrap(sub_data, stamp=False, root_tags=root_tags)
+        data = super().wrap(sub_data, stamp=False, wrap_tags=wrap_tags)
         if stamp:
             field = DateTimeField()
             timestamp = updated_at if updated_at is not None else datetime.utcnow()  # noqa: DTZ003

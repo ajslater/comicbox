@@ -15,7 +15,7 @@ from deepdiff.diff import DeepDiff
 from comicbox.box import Comicbox
 from comicbox.box.computed import deep_update
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
     CIX_CBI_CBR_SOURCE_PATH,
@@ -41,7 +41,7 @@ class Fixture:
 
 TEMPLATE_MD = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
@@ -115,7 +115,7 @@ TEMPLATE_MD = MappingProxyType(
     }
 )
 CBZ_MD_PATCH = {
-    ROOT_TAG: {
+    ComicboxSchemaMixin.ROOT_TAG: {
         "stories": {
             "cix": {},
             "The Beginning": {},
@@ -126,7 +126,7 @@ CBZ_MD_PATCH = {
 CBZ_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
 
 CBR_MD_PATCH = {
-    ROOT_TAG: {
+    ComicboxSchemaMixin.ROOT_TAG: {
         "country": "US",
         "ext": "cbr",
         "series": {"volume_count": 1},
@@ -139,7 +139,7 @@ CBR_MD_PATCH = {
 }
 CBR_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
 CBT_MD_PATCH = {
-    ROOT_TAG: {
+    ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
         "page_count": 5,
         "pages": [
@@ -159,7 +159,7 @@ CBT_MD_PATCH = {
 CBT_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
 PDF_MD = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},

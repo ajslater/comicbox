@@ -27,9 +27,10 @@ class MuPDFSubSchema(JsonSubSchema):
 class MuPDFSchema(JsonSchema):
     """muPDFSchema."""
 
+    ROOT_TAG = "MuPDF"
+    WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"pdf", "mudpdf"})
     FILENAME = "mupdf.json"
-    ROOT_TAGS = ("MuPDF",)
 
     MuPDF = Nested(MuPDFSubSchema)
 
@@ -90,9 +91,10 @@ class PDFXMPMetaSchema(XmlSubSchema):
 class PDFXmlSchema(XmlSchema):
     """PDF Schema."""
 
+    ROOT_TAG = "x:xmpmeta"
+    WRAP_TAGS = (ROOT_TAG, "rdf:RDF", "rdf:Description")
     CONFIG_KEYS = frozenset({"pdfxml"})
     FILENAME = "pdf.xml"
-    ROOT_TAGS = ("x:xmpmeta", "rdf:RDF", "rdf:Description")
 
     class Meta(XmlSchema.Meta):
         """Schema options."""

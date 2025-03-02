@@ -8,7 +8,7 @@ from ruamel.yaml import YAML, StringIO
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY, ROOT_TAG
+from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY
 
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"
@@ -91,16 +91,16 @@ class YamlSchema(BaseSchema):
         """Allow null keys on dump."""
         saved_null_keys = set()
         if allowed_null_keys:
-            sub_data = obj.get(ROOT_TAG, {})
+            sub_data = obj.get(self.ROOT_TAG, {})
             for key in allowed_null_keys:
                 if key in sub_data and sub_data.get(key) is None:
                     saved_null_keys.add(key)
         serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
         if saved_null_keys:
-            if ROOT_TAG not in serialized:
-                serialized[ROOT_TAG] = {}
+            if self.ROOT_TAG not in serialized:
+                serialized[self.ROOT_TAG] = {}
             for key in saved_null_keys:
-                serialized[ROOT_TAG][key] = None
+                serialized[self.ROOT_TAG][key] = None
         return serialized
 
     def dumps(self, obj, *args, dfs=False, allowed_null_keys=None, **kwargs):

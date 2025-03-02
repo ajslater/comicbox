@@ -6,6 +6,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
+from comicbox.fields.collection_fields import ListField
 from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
@@ -27,6 +28,57 @@ from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
 GTIN_TAG = "GTIN"
+
+
+TAG_ORDER = (
+    "@xmlns:xsd",
+    "@xmlns:xsi",
+    "@xsi:schemaLocation",
+    "Title",
+    "Series",
+    "Number",
+    "Count",
+    "Volume",
+    "AlternateSeries",
+    "AlternateNumber",
+    "AlternateCount",
+    "Summary",
+    "Notes",
+    "Year",
+    "Month",
+    "Day",
+    "Writer",
+    "Penciller",
+    "Inker",
+    "Colorist",
+    "Letterer",
+    "CoverArtist",
+    "Editor",
+    "Translator",
+    "Publisher",
+    "Imprint",
+    "Genre",
+    "Tags",
+    "Web",
+    "PageCount",
+    "LanguageISO",
+    "Format",
+    "BlackAndWhite",
+    "Manga",
+    "Characters",
+    "Teams",
+    "Locations",
+    "ScanInformation",
+    "StoryArc",
+    "StoryArcNumber",
+    "SeriesGroup",
+    "AgeRating",
+    "Pages",
+    "CommunityRating",
+    "MainCharacterOrTeam",
+    "Review",
+    "GTIN",
+)
 
 
 class ComicInfoRoleTagEnum(Enum):
@@ -92,6 +144,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     """ComicInfo.xml Sub Schema."""
 
     # ComicInfo.xsd specifies this tag order
+    TAG_ORDER = TAG_ORDER
 
     Title = XmlStringField()
     Series = XmlStringField()
@@ -134,7 +187,9 @@ class ComicInfoSubSchema(XmlSubSchema):
     StoryArcNumber = XmlIntegerListField(as_string=True)
     SeriesGroup = XmlStringSetField(as_string=True)
     AgeRating = ComicInfoAgeRatingField()
-    Pages = create_sub_tag_field("Page", Nested(XmlPageInfoSchema, many=True))
+    Pages = create_sub_tag_field(
+        "Page", ListField(Nested(XmlPageInfoSchema), sort_keys=("@Image",))
+    )
     CommunityRating = XmlDecimalField()
     MainCharacterOrTeam = XmlStringSetField(as_string=True)
     Review = XmlStringField()
@@ -145,8 +200,11 @@ class ComicInfoSubSchema(XmlSubSchema):
 
         include = MappingProxyType(
             {
+                "@xmlns:comicinfo": Constant(
+                    "https://anansi-project.github.io/docs/comicinfo/"
+                ),
                 XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1"
+                    "https://anansi-project.github.io/docs/comicinfo/ https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
                 ),
             }
         )
@@ -155,10 +213,12 @@ class ComicInfoSubSchema(XmlSubSchema):
 class ComicInfoSchema(XmlSchema):
     """ComicInfo.xml Schema."""
 
+    ROOT_TAG = "ComicInfo"
+    WRAP_TAGS = (ROOT_TAG,)
+    TAG_ORDER = (ROOT_TAG,)
     CONFIG_KEYS = frozenset(
         {"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}
     )
     FILENAME = "ComicInfo.xml"  # Comictagger doesn't read without CapCase
-    ROOT_TAGS = ("ComicInfo",)
 
     ComicInfo = Nested(ComicInfoSubSchema)

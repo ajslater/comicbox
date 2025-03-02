@@ -123,8 +123,9 @@ class ComictaggerSubSchema(JsonSubSchema):
 class ComictaggerSchema(JsonSchema):
     """Comictagger Schema."""
 
+    ROOT_TAG = "comictagger"
+    WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"comictagger", "ct"})
     FILENAME = "comictagger.json"
-    ROOT_TAGS = ("comictagger",)
 
     comictagger = Nested(ComictaggerSubSchema)

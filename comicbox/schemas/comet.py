@@ -76,7 +76,7 @@ class CoMetSubSchema(XmlSubSchema):
             {
                 "@xmlns:comet": Constant("http://www.denvog.com/comet/"),
                 XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "http://www.denvog.com/comet/comet.xsd"
+                    "http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd"
                 ),
                 "format": XmlStringField(),
             }
@@ -88,6 +88,7 @@ class CoMetSchema(XmlSchema):
 
     CONFIG_KEYS = frozenset({"comet"})
     FILENAME = "CoMet.xml"
-    ROOT_TAGS = ("comet",)
+    ROOT_TAG = "comet"
+    WRAP_TAGS = (ROOT_TAG,)
 
     comet = Nested(CoMetSubSchema)

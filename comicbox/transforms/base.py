@@ -49,37 +49,39 @@ class BaseTransform:
     # UNRAP and WRAP #
     ##################
 
-    def unwrap(self, data, root_tags=None) -> dict:
+    def unwrap(self, data, wrap_tags=None) -> dict:
         """Unwrap the data from root tags."""
         result = data
-        if not root_tags:
-            root_tags = self.SCHEMA_CLASS.ROOT_TAGS
+        if not wrap_tags:
+            wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
         try:
-            for tag in root_tags:
+            for tag in wrap_tags:
                 result = result[tag]
         except KeyError:
             pass
         return result
 
-    def wrap(self, sub_data, root_tags=None, **_kwargs) -> dict:
+    def wrap(self, sub_data, wrap_tags=None, **_kwargs) -> dict:
         """Wrap the data in root tags."""
-        if not root_tags:
-            root_tags = self.SCHEMA_CLASS.ROOT_TAGS
+        if not wrap_tags:
+            wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
         data = sub_data
-        for tag in reversed(root_tags):
+        for tag in reversed(wrap_tags):
             data = {tag: data}
 
         return data
 
-    def insert_sub_data(self, data, sub_data, root_tags=None):
+    def insert_sub_data(self, data, sub_data, wrap_tags=None):
         """Insert sub data into loaded data."""
-        if not root_tags:
-            root_tags = self.SCHEMA_CLASS.ROOT_TAGS
+        if not wrap_tags:
+            wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
+        if not wrap_tags:
+            return data
         sub_root = data
-        for tag in root_tags[:-1]:
+        for tag in wrap_tags[:-1]:
             sub_root = sub_root[tag]
         sub_root = dict(sub_root)
-        sub_root[root_tags[-1]] = sub_data
+        sub_root[wrap_tags[-1]] = sub_data
         return data
 
     ##############
@@ -157,7 +159,7 @@ class BaseTransform:
     ##################################
 
     def _run_transforms(  # noqa: PLR0913
-        self, data, methods, unwrap_root_tags, wrap_root_tags, insert: bool, stamp: bool
+        self, data, methods, unwrap_wrap_tags, wrap_wrap_tags, insert: bool, stamp: bool
     ):
         """
         Run transform methods.
@@ -167,7 +169,7 @@ class BaseTransform:
         if not methods:
             return data
         debug_transform = environ.get("DEBUG_TRANSFORM", False)
-        sub_data = self.unwrap(data, root_tags=unwrap_root_tags)
+        sub_data = self.unwrap(data, wrap_tags=unwrap_wrap_tags)
         if debug_transform and LOG.isEnabledFor(DEBUG):
             LOG.debug(f"{type(self)} sub_data:")
             LOG.debug(pformat(sub_data))
@@ -178,9 +180,9 @@ class BaseTransform:
                 LOG.debug(f"{type(self)}.{method}:")
                 LOG.debug(pformat(sub_data))
         if insert:
-            data = self.insert_sub_data(data, sub_data, root_tags=wrap_root_tags)
+            data = self.insert_sub_data(data, sub_data, wrap_tags=wrap_wrap_tags)
         else:
-            data = self.wrap(sub_data, root_tags=wrap_root_tags, stamp=stamp)
+            data = self.wrap(sub_data, wrap_tags=wrap_wrap_tags, stamp=stamp)
         return data
 
     def _transform_load(self, schema, data):
@@ -198,7 +200,7 @@ class BaseTransform:
             data,
             self.TO_COMICBOX_PRE_TRANSFORM,
             None,
-            ComicboxYamlSchema.ROOT_TAGS,
+            ComicboxYamlSchema.WRAP_TAGS,
             insert=False,
             stamp=False,
         )
@@ -206,8 +208,8 @@ class BaseTransform:
         data = self._run_transforms(
             data,
             self.TO_COMICBOX_POST_TRANSFORM,
-            ComicboxYamlSchema.ROOT_TAGS,
-            ComicboxYamlSchema.ROOT_TAGS,
+            ComicboxYamlSchema.WRAP_TAGS,
+            ComicboxYamlSchema.WRAP_TAGS,
             insert=True,
             stamp=False,
         )
@@ -219,7 +221,7 @@ class BaseTransform:
         data = self._run_transforms(
             data,
             self.FROM_COMICBOX_PRE_TRANSFORM,
-            ComicboxYamlSchema.ROOT_TAGS,
+            ComicboxYamlSchema.WRAP_TAGS,
             None,
             insert=False,
             stamp=True,

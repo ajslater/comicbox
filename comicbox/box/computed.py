@@ -32,11 +32,11 @@ from comicbox.schemas.comicbox_mixin import (
     PAGE_COUNT_KEY,
     PAGE_TYPE_KEY,
     PAGES_KEY,
-    ROOT_TAG,
     SCAN_INFO_KEY,
     TAGGER_KEY,
     TAGS_KEY,
     UPDATED_AT_KEY,
+    ComicboxSchemaMixin,
 )
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
@@ -371,7 +371,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         computed_list = []
         merged_md = self.get_merged_metadata()
         computed_merged_md = deepcopy(dict(merged_md))
-        sub_data = computed_merged_md.get(ROOT_TAG, {})
+        sub_data = computed_merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
 
         # Compute each
         for label, method, update in self._COMPUTED_ACTIONS:
@@ -379,7 +379,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             if not sub_md:
                 continue
 
-            md = {ROOT_TAG: sub_md}
+            md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
             computed_list.append(ComputedData(label, md))
             if update:
                 deep_update(sub_data, sub_md)

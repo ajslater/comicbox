@@ -1,7 +1,6 @@
 """Test CLI extract actions."""
 
 from comicbox import cli
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import EXPORT_SOURCE_PATH
 from tests.util import get_tmp_dir, my_cleanup, my_setup
 
@@ -27,7 +26,7 @@ def test_cli_action_rename():
 
     cli.main(
         (
-            ROOT_TAG,
+            "comicbox",
             "--rename",
             str(TMP_PATH),
         )

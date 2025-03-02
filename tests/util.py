@@ -20,8 +20,8 @@ from comicbox.schemas.comicbox_mixin import (
     NOTES_KEY,
     PAGE_COUNT_KEY,
     PAGES_KEY,
-    ROOT_TAG,
     UPDATED_AT_KEY,
+    ComicboxSchemaMixin,
 )
 from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
 from comicbox.transforms.base import BaseTransform
@@ -88,7 +88,7 @@ def read_metadata(  # noqa: PLR0913
         disk_md = MappingProxyType(car.get_metadata())
     if page_count is not None:
         disk_md = dict(disk_md)
-        disk_md[ROOT_TAG][PAGE_COUNT_KEY] = page_count
+        disk_md[ComicboxSchemaMixin.ROOT_TAG][PAGE_COUNT_KEY] = page_count
         if pages := disk_md.get(PAGES_KEY):
             if page_count:
                 disk_md[PAGES_KEY] = pages[:page_count]
@@ -98,13 +98,13 @@ def read_metadata(  # noqa: PLR0913
     print(f"{ignore_updated_at=} {ignore_notes=}")
     if ignore_updated_at:
         metadata = dict(metadata)
-        metadata[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
         disk_md = dict(disk_md)
-        disk_md[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
     if ignore_notes:
         metadata = dict(metadata)
-        metadata[ROOT_TAG].pop(NOTES_KEY, None)
-        disk_md[ROOT_TAG].pop(NOTES_KEY, None)
+        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
     pprint(metadata)
     pprint(disk_md)
     diff = DeepDiff(metadata, disk_md, ignore_order=True)
@@ -469,14 +469,14 @@ class TestParser:
 def create_write_metadata(read_metadata, notes=TEST_WRITE_NOTES):
     """Create a write metadata from read metadata."""
     result = deepcopy(dict(read_metadata))
-    result[ROOT_TAG]["notes"] = notes
+    result[ComicboxSchemaMixin.ROOT_TAG]["notes"] = notes
     return MappingProxyType(result)
 
 
 def create_write_dict(read_dict, schema_class, notes_tag, notes=TEST_WRITE_NOTES):
     """Create a write dict from read dict."""
     write_dict = deepcopy(dict(read_dict))
-    write_dict[schema_class.ROOT_TAGS[0]][notes_tag] = notes
+    write_dict[schema_class.ROOT_TAG][notes_tag] = notes
     return MappingProxyType(write_dict)
 
 
@@ -486,10 +486,10 @@ def load_cli_and_compare_dicts(path_a, path_b):
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
         dict_a = yaml.load(file_a)
         dict_b = yaml.load(file_b)
-    dict_a[ROOT_TAG].pop(UPDATED_AT_KEY, None)
-    dict_b[ROOT_TAG].pop(UPDATED_AT_KEY, None)
-    dict_a[ROOT_TAG].pop(NOTES_KEY, None)
-    dict_b[ROOT_TAG].pop(NOTES_KEY, None)
+    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
 
     pprint(dict_a)
     pprint(dict_b)

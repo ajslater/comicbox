@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 import simplejson as json
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.pdf import MuPDFSchema
 from comicbox.transforms.pdf import MuPDFTransform
 from tests.const import PDF_FN
@@ -19,7 +19,7 @@ WRITE_CONFIG = Namespace(
 
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "scan_info": "Pages",
             "genres": {"Science Fiction": {}},
@@ -35,23 +35,39 @@ METADATA = MappingProxyType(
 )
 PDF_DICT = MappingProxyType(
     {
-        MuPDFSchema.ROOT_TAGS[0]: {
+        MuPDFSchema.ROOT_TAG: {
             "author": "Jon Osterman",
             "creator": "Pages",
-            "keywords": '<?xml version="1.0" encoding="utf-8"?>\n'
+            "keywords": "<?xml "
+            'version="1.0" '
+            'encoding="utf-8"?>\n'
             "<ComicInfo "
             'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
             'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-            'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">\n'
-            "\t<Genre>Science Fiction</Genre>\n"
-            "\t<Notes>Tagged with comicbox dev on "
+            'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/ '
+            'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
+            "\t<Title>the "
+            "tangle of "
+            "their "
+            "lives</Title>\n"
+            "\t<Series>test "
+            "pdf</Series>\n"
+            "\t"
+            "<Notes>Tagged "
+            "with comicbox "
+            "dev on "
             "1970-01-01T00:00:00</Notes>\n"
-            "\t<Publisher>SmallPub</Publisher>\n"
-            "\t<ScanInformation>Pages</ScanInformation>\n"
-            "\t<Series>test pdf</Series>\n"
-            "\t<Tags>d,e,f</Tags>\n"
-            "\t<Title>the tangle of their lives</Title>\n"
-            "\t<Writer>Jon Osterman</Writer>\n"
+            "\t<Writer>Jon "
+            "Osterman</Writer>\n"
+            "\t"
+            "<Publisher>SmallPub</Publisher>\n"
+            "\t"
+            "<Genre>Science "
+            "Fiction</Genre>\n"
+            "\t"
+            "<Tags>d,e,f</Tags>\n"
+            "\t"
+            "<ScanInformation>Pages</ScanInformation>\n"
             "</ComicInfo>",
             "subject": "Science Fiction",
             "title": "the tangle of their lives",

@@ -9,7 +9,7 @@ import xmltodict
 
 from comicbox.fields.enum_fields import ReadingDirectionEnum
 from comicbox.schemas.comet import CoMetSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.comet import CoMetTransform
 from tests.util import (
     TestParser,
@@ -23,7 +23,7 @@ WRITE_CONFIG = Namespace(
 
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
@@ -61,11 +61,11 @@ METADATA = MappingProxyType(
 )
 COMET_DICT = MappingProxyType(
     {
-        CoMetSchema.ROOT_TAGS[0]: {
-            "@xmlns:comet": "http://www.denvog.com/comet/",
+        CoMetSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "http://www.denvog.com/comet/comet.xsd",
+            "@xmlns:comet": "http://www.denvog.com/comet/",
+            "@xsi:schemaLocation": "http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd",
             "character": ["Captain Science", "Gordon Dane"],
             "writer": ["Joe Orlando"],
             "coverImage": "CaptainScience#1_01.jpg",

@@ -58,7 +58,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if not isinstance(mupdf_md, Mapping):
                 return None
-            pdf_md = mupdf_md.get(schema.ROOT_TAGS[0], {})
+            pdf_md = mupdf_md.get(schema.ROOT_TAG, {})
             return self.write_pdf_metadata(pdf_md)
         reason = "Can only write pdf format to pdf files."
         LOG.warning(reason)

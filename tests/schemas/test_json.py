@@ -9,7 +9,7 @@ import simplejson as json
 
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_json import ComicboxJsonSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
@@ -21,7 +21,7 @@ WRITE_CONFIG = Namespace(
 )
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "country": "US",
             "series": {"name": "Captain Science"},
             "identifiers": {
@@ -97,7 +97,7 @@ READ_COMICBOX_DICT = MappingProxyType(
     {
         "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
         "appID": "comicbox/dev",
-        ComicboxJsonSchema.ROOT_TAGS[0]: {
+        ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
             "credits": {
                 "Joe Orlando": {"roles": {"writer": {}}},

@@ -7,7 +7,7 @@ from types import MappingProxyType
 import xmltodict
 
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
@@ -23,7 +23,7 @@ WRITE_CONFIG = Namespace(
 READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"], compute_pages=False))
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen",
             "series": {"name": "Captain Science"},
             "issue": "1",
@@ -106,24 +106,34 @@ WRITE_METADATA = create_write_metadata(READ_METADATA)
 
 READ_CIX_DICT = MappingProxyType(
     {
-        "ComicInfo": {
+        ComicInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1",
-            "AgeRating": "Teen",
-            "AlternateNumber": "001",
-            "AlternateSeries": "Captain Science Alternate",
-            "Characters": "Captain Science,Gordon Dane",
-            "Count": 7,
-            "Day": 1,
-            "GTIN": "urn:comicvine:145269",
-            "Genre": "Science Fiction",
-            "Inker": "Wally Wood",
-            "LanguageISO": "en",
-            "Month": 11,
-            "Notes": TEST_READ_NOTES,
+            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/ "
+            "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd",
+            "Title": "The Beginning;The End",
+            "Series": "Captain Science",
             "Number": "1",
+            "Count": 7,
+            "Volume": 1950,
+            "AlternateSeries": "Captain Science Alternate",
+            "AlternateNumber": "001",
+            "Notes": TEST_READ_NOTES,
+            "Year": 1950,
+            "Month": 11,
+            "Day": 1,
+            "Writer": "Joe Orlando",
+            "Penciller": "Wally Wood",
+            "Inker": "Wally Wood",
+            "Publisher": "Youthful Adventure Stories",
+            "Genre": "Science Fiction",
+            "Web": "https://comicvine.gamespot.com/c/4000-145269/",
             "PageCount": 36,
+            "LanguageISO": "en",
+            "Characters": "Captain Science,Gordon Dane",
+            "StoryArc": "Captain Arc,Other Arc",
+            "StoryArcNumber": "4,2",
+            "AgeRating": "Teen",
             "Pages": {
                 "Page": [
                     {"@Image": 0, "@ImageSize": 429985, "@Type": "FrontCover"},
@@ -164,16 +174,7 @@ READ_CIX_DICT = MappingProxyType(
                     {"@Image": 35, "@ImageSize": 340840},
                 ]
             },
-            "Penciller": "Wally Wood",
-            "Publisher": "Youthful Adventure Stories",
-            "Series": "Captain Science",
-            "StoryArc": "Captain Arc,Other Arc",
-            "StoryArcNumber": "4,2",
-            "Title": "The Beginning;The End",
-            "Volume": 1950,
-            "Web": "https://comicvine.gamespot.com/c/4000-145269/",
-            "Writer": "Joe Orlando",
-            "Year": 1950,
+            "GTIN": "urn:comicvine:145269",
         }
     }
 )
