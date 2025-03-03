@@ -17,6 +17,13 @@ from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
+try:
+    from pdffile import PDFFile  # noqa: F401
+
+    PDF_ENABLED = False
+except ImportError:
+    PDF_ENABLED = False
+
 
 class SourceFrom(Enum):
     """How to get the source."""
@@ -39,6 +46,7 @@ class MetadataSource:
     writable: bool = False
     has_page_count: bool = False
     has_pages: bool = False
+    enabled: bool = True
 
 
 class MetadataSources(Enum):
@@ -70,6 +78,7 @@ class MetadataSources(Enum):
         from_archive=SourceFrom.ARCHIVE_CONTENTS,
         writable=True,
         has_page_count=True,
+        enabled=PDF_ENABLED,
     )
     PDF_XML = MetadataSource(
         "PDF XML",
@@ -78,6 +87,7 @@ class MetadataSources(Enum):
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
         has_page_count=True,
+        enabled=PDF_ENABLED,
     )
     COMET = MetadataSource(
         "CoMet",

@@ -68,7 +68,10 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
         success_md = None
         transform_class = None
         for source in reversed(MetadataSources):
-            if source.value.from_archive == SourceFrom.OTHER:
+            if (
+                not source.value.enabled
+                or source.value.from_archive == SourceFrom.OTHER
+            ):
                 continue
             try:
                 schema_class = source.value.transform_class.SCHEMA_CLASS

@@ -60,7 +60,9 @@ class ComicboxNormalizeMixin(ComicboxLoadMixin):
         # precedence.
         merged_md = {}
         for source in MetadataSources:
-            if normalized_md_list := self.get_normalized_metadata(source):
+            if source.value.enabled and (
+                normalized_md_list := self.get_normalized_metadata(source)
+            ):
                 self.merge_metadata_list(normalized_md_list, merged_md)
         if merged_md:
             return MappingProxyType(merged_md)

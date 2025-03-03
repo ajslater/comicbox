@@ -119,6 +119,8 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         if not _SOURCES_LOADED_NORMALIZED & self._config.print:
             return
         for source in MetadataSources:
+            if not source.value.enabled:
+                continue
             if PrintPhases.SOURCE in self._config.print:
                 self._print_sources(source)
             if PrintPhases.LOADED in self._config.print:

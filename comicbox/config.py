@@ -102,6 +102,8 @@ def _get_sources_from_keys(key, keys, ignore_keys):
     sources = []
     writable = key in _WRITABLE_SOURCE_KEYS
     for source in MetadataSources:
+        if not source.value.enabled:
+            continue
         config_keys = source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
         if (not writable or source.value.writable) and (
             not source.value.configurable

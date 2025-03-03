@@ -15,6 +15,7 @@ _ALL_METADATA_NAMES = frozenset(
     {
         source.value.transform_class.SCHEMA_CLASS.FILENAME.lower()
         for source in MetadataSources
+        if source.value.enabled
     }
 )
 LOG = getLogger(__name__)

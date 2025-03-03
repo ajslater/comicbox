@@ -8,7 +8,7 @@ from logging import INFO
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
-from comicbox.sources import MetadataSources
+from comicbox.sources import PDF_ENABLED, MetadataSources
 
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
 
@@ -66,9 +66,16 @@ def map_keys(config, prefix, list_key, maps, value):
 
 def _create_format_help():
     lines = ""
-    max_space = max(len(source.value.label) for source in MetadataSources) + 1
+    max_space = (
+        max(
+            len(source.value.label)
+            for source in MetadataSources
+            if source.value.enabled
+        )
+        + 1
+    )
     for source in MetadataSources:
-        if not source.value.configurable:
+        if not source.value.enabled or not source.value.configurable:
             continue
         label = source.value.label
         keys = ", ".join(sorted(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
@@ -271,6 +278,8 @@ def _add_target_group(parser):
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive read/write tool."
+    if not PDF_ENABLED:
+        description += "\nComicbox is not installed with PDF support."
     formats = _create_format_help()
     epilog = (
         "PRINT_PHASES Characters:\n"
