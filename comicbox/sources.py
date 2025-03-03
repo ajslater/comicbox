@@ -20,7 +20,7 @@ from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 try:
     from pdffile import PDFFile  # noqa: F401
 
-    PDF_ENABLED = False
+    PDF_ENABLED = True
 except ImportError:
     PDF_ENABLED = False
 
