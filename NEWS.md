@@ -11,6 +11,7 @@
   - URNs as serialized identifiers in `notes` tag gain an optional tag type
     attribute in the nss: urn:comicvine:series:1234
   - ComicInfo.xml gains the Translator tag
+  - PDF modDate is now read and written.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
