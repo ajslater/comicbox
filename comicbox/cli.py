@@ -290,7 +290,7 @@ def get_args(params=None) -> Namespace:
         " arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
         "  -m '{publisher: My Press}'\n"
         "  -m \"Title: 'GI Robot: Foreign and Domestic'\"\n"
-        "  -m \"series: 'Solarpunk: Kaze Bosozoku'\"\n"
+        "  -m \"series: 'Solarpunk: Kūchū Bōsōzoku'\"\n"
         "\n"
         "  Metadata can be any tag from any of the supported metadata formats.\n\n"
         "Format keys for --ignore-read, --write, and --export:\n" + formats
