@@ -49,6 +49,7 @@ DEFAULT_FORMAT_MAP = MappingProxyType(
         "comet.xml": "comet",
         "comictagger.json": "no-validation",
         "mupdf.json": "no-validation",
+        "pdf-metadata.xml": "temp-autopass",
         "comicbox.json": "temp-autopass",
         "comicbox.yaml": "temp-autopass",
         "comicbox-cli.yaml": "temp-autopass",

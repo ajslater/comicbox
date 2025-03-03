@@ -21,6 +21,7 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_KEY,
     TAGGER_KEY,
     TAGS_KEY,
+    UPDATED_AT_KEY,
     VOLUME_KEY,
     ComicboxSchemaMixin,
 )
@@ -65,6 +66,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
             # "pdf:Author": coded
             "pdf:Creator": SCAN_INFO_KEY,  # original document creator
             "pdf:Producer": TAGGER_KEY,
+            "pdf:ModDate": UPDATED_AT_KEY,
             # "pdf:Title": coded
         }
     )
@@ -211,6 +213,7 @@ class MuPDFTransform(PDFXmlTransform):
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,
             "creator": SCAN_INFO_KEY,  # original document creator
+            "modDate": UPDATED_AT_KEY,
             "producer": TAGGER_KEY,
             # "title": "title", coded
         }

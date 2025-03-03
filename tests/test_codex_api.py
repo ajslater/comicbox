@@ -3,6 +3,7 @@
 from argparse import Namespace
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from pprint import pprint
@@ -163,6 +164,7 @@ PDF_MD = MappingProxyType(
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},
+            "notes": "Tagged with comicbox dev on 2025-03-03T21:50:22",
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
@@ -170,6 +172,7 @@ PDF_MD = MappingProxyType(
             "tags": {"d": {}, "e": {}, "f": {}},
             "tagger": f"comicbox {VERSION}",
             "publisher": {"name": "SmallPub"},
+            "updated_at": datetime(2025, 3, 3, 21, 50, 22, tzinfo=timezone.utc),
         }
     }
 )

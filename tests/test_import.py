@@ -1,7 +1,7 @@
 """Tests for writing."""
 
 from argparse import Namespace
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pprint import pprint
 from types import MappingProxyType
@@ -570,7 +570,7 @@ FNS = MappingProxyType(
             "stories": {"the tangle of their lives": {}},
             "tagger": "comicbox dev",
             "tags": {"d": {}, "e": {}, "f": {}},
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(2025, 3, 2, 18, 33, 50, tzinfo=timezone.utc),
         },
     }
 )

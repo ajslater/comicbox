@@ -79,32 +79,34 @@ def read_metadata(  # noqa: PLR0913
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
+    ignore_page_count=False,  # noqa: FBT002
 ):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "slnmcd"
     print(archive_path)
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
-        disk_md = MappingProxyType(car.get_metadata())
+        disk_md = dict(car.get_metadata())
+    if ignore_page_count:
+        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(PAGE_COUNT_KEY, None)
     if page_count is not None:
-        disk_md = dict(disk_md)
         disk_md[ComicboxSchemaMixin.ROOT_TAG][PAGE_COUNT_KEY] = page_count
         if pages := disk_md.get(PAGES_KEY):
             if page_count:
                 disk_md[PAGES_KEY] = pages[:page_count]
             else:
                 disk_md.pop(PAGES_KEY, None)
-        disk_md = MappingProxyType(disk_md)
     print(f"{ignore_updated_at=} {ignore_notes=}")
     if ignore_updated_at:
         metadata = dict(metadata)
         metadata[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
-        disk_md = dict(disk_md)
         disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
     if ignore_notes:
         metadata = dict(metadata)
         metadata[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
         disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+    metadata = MappingProxyType(metadata)
+    disk_md = MappingProxyType(disk_md)
     pprint(metadata)
     pprint(disk_md)
     diff = DeepDiff(metadata, disk_md, ignore_order=True)
@@ -113,69 +115,81 @@ def read_metadata(  # noqa: PLR0913
 
 
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
-_NOTES_REXP = "|".join(_NOTES_TAGS)
-_NOTES_RE = re.compile(_NOTES_REXP)
 _LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
-_LAST_MODIFIED_REXP = "|".join(_LAST_MODIFIED_TAGS)
-_LAST_MODIFIED_RE = re.compile(_LAST_MODIFIED_REXP)
-TMP_IGNORE_SUBSTRINGS = ("<identifier>", 'pages":')
+_TMP_IGNORE_SUBSTRINGS = ("<identifier>", "pages:", '"pages":')
+_MOD_DATE_KEYS = ('"modDate":', "<pdf:ModDate>")
 
 
-def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
+def _prune_lines(
+    lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
+):
+    skip_substrings = [*_TMP_IGNORE_SUBSTRINGS]
+    if ignore_updated_at:
+        skip_substrings += [UPDATED_AT_KEY]
+    if ignore_mod_date:
+        skip_substrings += _MOD_DATE_KEYS
+    if ignore_last_modified:
+        skip_substrings += _LAST_MODIFIED_TAGS
+    if ignore_notes:
+        skip_substrings += _NOTES_TAGS
+
+    skipped_line_re = re.compile("|".join(skip_substrings))
+
     pruned_lines = []
     for line in lines:
-        for substring in TMP_IGNORE_SUBSTRINGS:
-            if substring in line:
-                continue
-        if ignore_last_modified and _LAST_MODIFIED_RE.search(line):
-            continue
-        if ignore_notes and _NOTES_RE.search(line):
-            continue
-        if ignore_updated_at and UPDATED_AT_KEY in line:
+        if skipped_line_re.search(line):
             continue
         pruned_lines.append(line)
     return pruned_lines
 
 
-def _prune_same_lines(
+def _prune_same_lines(  # noqa: PLR0913
     a_lines,
     b_lines,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
 ):
     a_lines = _prune_lines(
-        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
     )
     b_lines = _prune_lines(
-        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
     )
     return a_lines, b_lines
 
 
-def _prune_strings(
+def _prune_strings(  # noqa: PLR0913
     a_str,
     b_str,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
 ):
     a_lines = a_str.splitlines()
     b_lines = b_str.splitlines()
     a_lines, b_lines = _prune_same_lines(
-        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines,
+        b_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
     )
     a_str = "\n".join(a_lines)
     b_str = "\n".join(b_lines)
     return a_str, b_str
 
 
-def compare_files(
+def compare_files(  # noqa: PLR0913
     path_a,
     path_b,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
 ):
     """Compare file contents."""
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
@@ -183,7 +197,12 @@ def compare_files(
         b_lines = file_b.readlines()
 
     a_lines, b_lines = _prune_same_lines(
-        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines,
+        b_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
     )
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
@@ -332,6 +351,7 @@ class TestParser:
             ignore_last_modified=True,
             ignore_notes=False,
             ignore_updated_at=True,
+            ignore_mod_date=True,
         )
         diff_strings(from_str, to_str)
         assert from_str == to_str
@@ -361,6 +381,7 @@ class TestParser:
             ignore_last_modified=False,
             ignore_notes=False,
             ignore_updated_at=True,
+            ignore_mod_date=True,
         )
         self.teardown_method()
 
@@ -385,6 +406,7 @@ class TestParser:
             self.read_config,
             ignore_updated_at=True,
             ignore_notes=True,
+            ignore_page_count=True,
         )
 
     def _create_test_cbz(self, new_test_cbz_path):
@@ -512,4 +534,5 @@ def compare_export(test_dir, fn, fmt=None):
             ignore_last_modified=True,
             ignore_notes=True,
             ignore_updated_at=True,
+            ignore_mod_date=True,
         )

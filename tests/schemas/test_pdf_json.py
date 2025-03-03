@@ -69,9 +69,10 @@ PDF_DICT = MappingProxyType(
             "\t"
             "<ScanInformation>Pages</ScanInformation>\n"
             "</ComicInfo>",
+            "modDate": "D:19700101000000+00'00'",
+            "producer": "comicbox dev",
             "subject": "Science Fiction",
             "title": "the tangle of their lives",
-            "producer": "comicbox dev",
         }
     }
 )

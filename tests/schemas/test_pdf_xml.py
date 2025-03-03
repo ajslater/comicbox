@@ -29,7 +29,7 @@ METADATA = MappingProxyType(
             "stories": {"the tangle of their lives": {}},
             "tags": {"d": {}, "e": {}, "f": {}},
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0, 0),  # noqa: DTZ001
+            "updated_at": datetime(2025, 3, 2, 18, 33, 50),  # noqa: DTZ001
         }
     }
 )
@@ -84,6 +84,7 @@ PDF_DICT = MappingProxyType(
                     "\t"
                     "<ScanInformation>Pages</ScanInformation>\n"
                     "</ComicInfo>",
+                    "pdf:ModDate": "D:20250302183350+00'00'",
                     "pdf:Producer": "comicbox dev",
                     "pdf:Subject": "Science Fiction",
                     "pdf:Title": "the tangle of their lives",

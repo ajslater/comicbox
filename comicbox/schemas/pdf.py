@@ -6,6 +6,12 @@ from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.collection_fields import StringSetField
 from comicbox.fields.fields import StringField
+from comicbox.fields.pdf import PdfDateTimeField
+from comicbox.fields.xml_fields import (
+    XmlPdfDateTimeField,
+    XmlStringField,
+    XmlStringSetField,
+)
 from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
@@ -19,6 +25,7 @@ class MuPDFSubSchema(JsonSubSchema):
     author = StringSetField(as_string=True)
     creator = StringField()
     keywords = StringField()
+    modDate = PdfDateTimeField()  # noqa: N815
     producer = StringField()
     subject = StringSetField(as_string=True)
     title = StringField()
@@ -44,12 +51,13 @@ class PDFSubSchema(BaseSubSchema):
         include = MappingProxyType(
             {
                 "@xmlns:pdf": Constant("http://ns.adobe.com/pdf/1.3/"),
-                "pdf:Author": StringSetField(as_string=True),
-                "pdf:Creator": StringField(),
-                "pdf:Keywords": StringField(),
-                "pdf:Producer": StringField(),
-                "pdf:Subject": StringSetField(as_string=True),
-                "pdf:Title": StringField(),
+                "pdf:Author": XmlStringSetField(as_string=True),
+                "pdf:Creator": XmlStringField(),
+                "pdf:Keywords": XmlStringField(),
+                "pdf:ModDate": XmlPdfDateTimeField(),
+                "pdf:Producer": XmlStringField(),
+                "pdf:Subject": XmlStringSetField(as_string=True),
+                "pdf:Title": XmlStringField(),
             }
         )
 
