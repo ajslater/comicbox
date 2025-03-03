@@ -38,6 +38,7 @@ FMT_SCHEMA_MAP = MappingProxyType(
     }
 )
 
+
 DEFAULT_FORMAT_MAP = MappingProxyType(
     {
         # "comicbox.json": "json",
@@ -47,9 +48,9 @@ DEFAULT_FORMAT_MAP = MappingProxyType(
         "comic-book-info.json": "cbi",
         "metroninfo.xml": "metron",
         "comet.xml": "comet",
-        "comictagger.json": "no-validation",
-        "mupdf.json": "no-validation",
-        "pdf-metadata.xml": "temp-autopass",
+        # "comictagger.json": "no-validation",
+        # "mupdf.json": "no-validation",
+        # "pdf-metadata.xml": "no-validation",
         "comicbox.json": "temp-autopass",
         "comicbox.yaml": "temp-autopass",
         "comicbox-cli.yaml": "temp-autopass",
@@ -60,10 +61,8 @@ DEFAULT_FORMAT_MAP = MappingProxyType(
 def validate_path(path, fmt=None):
     """Validate a metadata file from disk."""
     if fmt is None:
-        fmt = DEFAULT_FORMAT_MAP[path.name.lower()]
-    if fmt == "temp-autopass":
-        return
-    if fmt == "no-validation":
+        fmt = DEFAULT_FORMAT_MAP.get(path.name.lower())
+    if not fmt or fmt == "temp-autopass":
         return
     path = Path(path)
     schema = FMT_SCHEMA_MAP[fmt]
