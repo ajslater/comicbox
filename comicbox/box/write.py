@@ -152,7 +152,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             sources = self._config.export
 
         Path(self._config.dest_path)
-        self._get_metadata()
+        self._get_metadata()  # TODO this looks useless
         for source in sources:
             self.to_file(transform_class=source.value.transform_class)
 

@@ -26,7 +26,7 @@ class JsonRenderModule:
             indent=indent,
             iterable_as_array=True,
             separators=separators,
-            sort_keys=True,
+            sort_keys=False,
             use_decimal=True,
             **kwargs,
         )

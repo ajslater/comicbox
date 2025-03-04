@@ -14,7 +14,6 @@ from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
-from comicbox.version import VERSION
 
 LOG = getLogger(__name__)
 
@@ -53,9 +52,9 @@ class ComicBookInfoRoleEnum(Enum):
 class ComicBookInfoCreditSchema(Schema):
     """ComicBookInfo Credit Dict Schema."""
 
-    role = StringField()
     person = StringField()
     primary = BooleanField()
+    role = StringField()
 
 
 class ComicBookInfoSubSchema(JsonSubSchema):
@@ -73,9 +72,9 @@ class ComicBookInfoSubSchema(JsonSubSchema):
     publicationMonth = IntegerField(minimum=0, maximum=12)  # noqa: N815
     publicationYear = IntegerField()  # noqa: N815
     publisher = StringField()
-    rating = StringField()
+    rating = IntegerField()
     series = StringField()
-    tags = StringSetField(as_string=True)
+    tags = StringSetField()
     title = StringField()
     volume = IntegerField()
 
@@ -95,14 +94,14 @@ class ComicBookInfoSchema(JsonSchema):
     WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"})
     FILENAME = "comic-book-info.json"
-    TAG_ORDER = ("schema", "appID", "lastModified", ROOT_TAG)
+    TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")
 
+    appID = StringField()  # noqa: N815
+    lastModified = DateTimeField()  # noqa: N815
+    root = Nested(ComicBookInfoSubSchema)
     schema = Constant(
         "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
     )
-    appID = Constant(f"comicbox/{VERSION}")  # noqa: N815
-    lastModified = DateTimeField()  # noqa: N815
-    root = Nested(ComicBookInfoSubSchema)
 
     TAG_MOVE_MAP = MappingProxyType(
         {

@@ -27,7 +27,7 @@
     "title": "The Beginning",
     "volume": 1950
   },
-  "appID": "comicbox/dev",
+  "appID": "comicbox dev",
   "lastModified": "2025-03-02T00:48:02",
   "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
 }

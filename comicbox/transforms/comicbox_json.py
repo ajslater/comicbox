@@ -5,7 +5,7 @@ from comicbox.transforms.comicbox_mixin import ComicboxTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 
 
-class ComicboxJsonTransform(JsonTransform, ComicboxTransformMixin):
+class ComicboxJsonTransform(ComicboxTransformMixin, JsonTransform):
     """Comicbox JSON transform."""
 
     SCHEMA_CLASS = ComicboxJsonSchema

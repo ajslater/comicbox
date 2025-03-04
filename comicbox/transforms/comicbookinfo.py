@@ -1,16 +1,13 @@
 """Comic Book Info transform to and from Comicbox format."""
 
-from datetime import datetime
 from decimal import Decimal
 from math import ceil, floor
 from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
-    LAST_MODIFIED_TAG,
     ComicBookInfoSchema,
 )
 from comicbox.schemas.comicbox_mixin import (
@@ -19,6 +16,8 @@ from comicbox.schemas.comicbox_mixin import (
     ISSUE_NUMBER_KEY,
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
+    TAGGER_KEY,
+    TAGS_KEY,
     UPDATED_AT_KEY,
 )
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
@@ -39,7 +38,7 @@ class ComicBookInfoTransform(
     TRANSFORM_MAP = frozenbidict(
         {
             "comments": SUMMARY_KEY,
-            # "country": "country", coded
+            # "country": COUNTRY_KEY, same
             # "credits": "credits_list", coded
             # "issue": ISSUE_KEY, coded
             # "language": LANGUAGE_KEY, coded
@@ -60,6 +59,7 @@ class ComicBookInfoTransform(
     STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
         {
             "genre": GENRES_KEY,
+            "tags": TAGS_KEY,
         }
     )
     CREDITS_TAG = CREDITS_TAG
@@ -70,26 +70,11 @@ class ComicBookInfoTransform(
     ISSUE_COUNT_TAG = "numberOfIssues"
     TITLE_TAG = "title"
     ISSUE_TAG = "issue"
-
-    def unwrap(self, data, wrap_tags=None) -> dict:
-        """Retrieve the last modified timestamp."""
-        last_modified = data.get(LAST_MODIFIED_TAG)
-        sub_data = super().unwrap(data, wrap_tags=wrap_tags)
-        if last_modified:
-            sub_data[UPDATED_AT_KEY] = last_modified
-        return sub_data
-
-    def wrap(self, sub_data, wrap_tags=None, stamp=False, **_kwargs):  # noqa: FBT002
-        """Add the last modified timestamp."""
-        updated_at = sub_data.get(UPDATED_AT_KEY) if stamp else None
-        data = super().wrap(sub_data, stamp=False, wrap_tags=wrap_tags)
-        if stamp:
-            field = DateTimeField()
-            timestamp = updated_at if updated_at is not None else datetime.utcnow()  # noqa: DTZ003
-            last_modified = field._serialize(timestamp)  # noqa: SLF001
-            if last_modified:
-                data[LAST_MODIFIED_TAG] = last_modified
-        return data
+    TAGGER_TAG = "appID"
+    UPDATED_AT_TAG = "lastModified"
+    TOP_TAG_MAP = MappingProxyType(
+        {TAGGER_KEY: TAGGER_TAG, UPDATED_AT_KEY: UPDATED_AT_TAG}
+    )
 
     def parse_issue(self, data) -> dict:
         """Parse Issue integer."""

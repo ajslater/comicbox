@@ -102,7 +102,7 @@ TEST_LAST_MODIFIED = "1970-1-1"
 READ_MULTI_DICT = MappingProxyType(
     {
         "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
-        "appID": "comicbox/dev",
+        "appID": "comicbox dev",
         ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
             "credits": {

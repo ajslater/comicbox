@@ -2,12 +2,12 @@
 
 from marshmallow.fields import Constant, Nested
 
+from comicbox.fields.fields import StringField
 from comicbox.schemas.comicbox_mixin import (
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
 )
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
-from comicbox.version import VERSION
 
 
 class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSubSchemaMixin):
@@ -19,8 +19,9 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
 
     CONFIG_KEYS = frozenset({"cb", "comicbox", "json"})
     FILENAME = "comicbox.json"
+    TAG_ORDER = ("appID", ComicboxSchemaMixin.ROOT_TAG, "schema")
 
-    appID = Constant(f"comicbox/{VERSION}")  # noqa: N815
+    appID = StringField()  # noqa: N815
     comicbox = Nested(ComicboxJsonSubSchema)
     schema = Constant(
         "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"

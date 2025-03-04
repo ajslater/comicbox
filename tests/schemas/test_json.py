@@ -89,14 +89,13 @@ READ_METADATA = MappingProxyType(
                 {"index": 34, "size": 353013},
                 {"index": 35, "size": 340840},
             ],
-        }
+        },
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_COMICBOX_DICT = MappingProxyType(
     {
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
-        "appID": "comicbox/dev",
+        "appID": "comicbox dev",
         ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
             "credits": {
@@ -170,6 +169,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 {"index": 35, "size": 340840},
             ],
         },
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
     }
 )
 WRITE_COMICBOX_DICT = create_write_dict(READ_COMICBOX_DICT, ComicboxJsonSchema, "notes")

@@ -117,21 +117,37 @@ def read_metadata(  # noqa: PLR0913
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
 _LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
 _TMP_IGNORE_SUBSTRINGS = ("<identifier>", "pages:", '"pages":')
-_MOD_DATE_KEYS = ('"modDate":', "<pdf:ModDate>")
+_MOD_DATE_TAGS = ('"modDate":', "<pdf:ModDate>")
+_PAGE_COUNT_TAGS = ('"page_count:"', "<pages>")
+_IDENTIFIERS_TAGS = ('"identifiers:"',)
+_TAGGER_TAGS = ('"appID":',)
 
 
-def _prune_lines(
-    lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
+def _prune_lines(  # noqa: PLR0913
+    lines,
+    ignore_last_modified,
+    ignore_notes,
+    ignore_updated_at,
+    ignore_mod_date,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
 ):
     skip_substrings = [*_TMP_IGNORE_SUBSTRINGS]
     if ignore_updated_at:
         skip_substrings += [UPDATED_AT_KEY]
     if ignore_mod_date:
-        skip_substrings += _MOD_DATE_KEYS
+        skip_substrings += _MOD_DATE_TAGS
     if ignore_last_modified:
         skip_substrings += _LAST_MODIFIED_TAGS
     if ignore_notes:
         skip_substrings += _NOTES_TAGS
+    if ignore_page_count:
+        skip_substrings += _PAGE_COUNT_TAGS
+    if ignore_identifiers:
+        skip_substrings += _IDENTIFIERS_TAGS
+    if ignore_tagger:
+        skip_substrings += _TAGGER_TAGS
 
     skipped_line_re = re.compile("|".join(skip_substrings))
 
@@ -150,12 +166,29 @@ def _prune_same_lines(  # noqa: PLR0913
     ignore_notes: bool,
     ignore_updated_at: bool,
     ignore_mod_date: bool,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
 ):
     a_lines = _prune_lines(
-        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
+        a_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
+        ignore_page_count,
+        ignore_identifiers,
+        ignore_tagger,
     )
     b_lines = _prune_lines(
-        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at, ignore_mod_date
+        b_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
+        ignore_page_count,
+        ignore_identifiers,
+        ignore_tagger,
     )
     return a_lines, b_lines
 
@@ -177,6 +210,9 @@ def _prune_strings(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
+        ignore_page_count=False,
+        ignore_identifiers=False,
+        ignore_tagger=False,
     )
     a_str = "\n".join(a_lines)
     b_str = "\n".join(b_lines)
@@ -190,6 +226,9 @@ def compare_files(  # noqa: PLR0913
     ignore_notes: bool,
     ignore_updated_at: bool,
     ignore_mod_date: bool,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
 ):
     """Compare file contents."""
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
@@ -203,6 +242,9 @@ def compare_files(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
+        ignore_page_count,
+        ignore_identifiers,
+        ignore_tagger,
     )
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
@@ -382,6 +424,9 @@ class TestParser:
             ignore_notes=False,
             ignore_updated_at=True,
             ignore_mod_date=True,
+            ignore_page_count=False,
+            ignore_identifiers=False,
+            ignore_tagger=False,
         )
         self.teardown_method()
 
@@ -520,10 +565,12 @@ def load_cli_and_compare_dicts(path_a, path_b):
     return diff
 
 
-def compare_export(test_dir, fn, fmt=None):
+def compare_export(test_dir, fn, fmt=None, test_fn=None):
     """Compare exported files."""
     validate_path(fn, fmt=fmt)
-    test_path = test_dir / fn.name.lower()
+    if test_fn is None:
+        test_fn = fn.name.lower()
+    test_path = test_dir / test_fn
     print(fn.name)
     if fn.name == "comicbox-cli.yaml":
         assert not load_cli_and_compare_dicts(test_path, fn)
@@ -535,4 +582,7 @@ def compare_export(test_dir, fn, fmt=None):
             ignore_notes=True,
             ignore_updated_at=True,
             ignore_mod_date=True,
+            ignore_page_count=True,
+            ignore_identifiers=True,
+            ignore_tagger=True,
         )

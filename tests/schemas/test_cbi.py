@@ -33,6 +33,7 @@ METADATA = MappingProxyType(
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
+            "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
             "volume": {
                 "issue_count": 7,
@@ -44,9 +45,8 @@ METADATA = MappingProxyType(
 )
 CBI_DICT = MappingProxyType(
     {
-        "appID": "comicbox/dev",
+        "appID": "comicbox dev",
         "lastModified": TEST_DTTM_STR,
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json",
         ComicBookInfoSchema.ROOT_TAG: {
             "country": "United States",
             "credits": [
@@ -66,10 +66,11 @@ CBI_DICT = MappingProxyType(
             "title": "The Beginning",
             "volume": 1950,
         },
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json",
     }
 )
 
-CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=True, indent=2)
+CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=False, indent=2)
 
 CBI_TESTER = TestParser(
     ComicBookInfoTransform,

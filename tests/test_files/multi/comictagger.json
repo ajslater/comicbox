@@ -1,5 +1,5 @@
 {
-  "appID": "comicbox/dev",
+  "appID": "comicbox dev",
   "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
   "comictagger": {
     "country": "US",

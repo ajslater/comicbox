@@ -74,6 +74,7 @@ FNS = MappingProxyType(
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
+            "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
             "year": 1950,
@@ -95,9 +96,12 @@ FNS = MappingProxyType(
             "month": 9,
             "page_count": 0,
             "publisher": {"name": "DC Comics"},
+            "critical_rating": Decimal(5),
             "series": {"name": "Watchmen", "volume_count": 1},
             "stories": {"At Midnight, All the Agents": {}},
             "summary": "Tales of the Black Freighter...",
+            "tags": {"Rorschach": {}, "Ozymandias": {}, "Nite Owl": {}},
+            "tagger": "ComicBookLover/888",
             "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=tzutc()),
             "volume": {"issue_count": 12, "number": 1},
             "year": 1986,
@@ -579,6 +583,7 @@ _FORMAT_MAP = MappingProxyType(
     {
         "comet.xml": "comet",
         "comic-book-info.json": "cbi",
+        "comic-book-info-example.json": "cbi",
         "comicbox-filename.txt": "fn",
         "comicbox.json": "json",
         "comicbox.yaml": "yaml",
@@ -591,7 +596,12 @@ _FORMAT_MAP = MappingProxyType(
 )
 
 _REGULAR_FN = MappingProxyType(
-    {"cix": "ComicInfo.xml", "metron": "MetronInfo.xml", "fn": "comicbox-filename.txt"}
+    {
+        "cix": "ComicInfo.xml",
+        "metron": "MetronInfo.xml",
+        "fn": "comicbox-filename.txt",
+        "cbi": "comic-book-info.json",
+    }
 )
 
 
@@ -631,5 +641,5 @@ def deactivated_test_export(fn):
 
     tmp_fn = _REGULAR_FN.get(fmt, fn)
     tmp_path = _TMP_DIR / tmp_fn
-    compare_export(TEST_METADATA_DIR, tmp_path, fmt)
+    compare_export(TEST_METADATA_DIR, tmp_path, fmt, test_fn=fn)
     tmp_path.unlink()

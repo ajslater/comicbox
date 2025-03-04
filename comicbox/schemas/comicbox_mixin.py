@@ -25,6 +25,7 @@ from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
 
 AGE_RATING_KEY = "age_rating"
+APP_ID_KEY = "appID"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
 COUNTRY_KEY = "country"
