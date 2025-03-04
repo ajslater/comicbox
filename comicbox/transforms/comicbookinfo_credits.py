@@ -6,9 +6,11 @@ from types import MappingProxyType
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     PERSON_TAG,
+    PRIMARY_TAG,
     ROLE_TAG,
 )
 from comicbox.schemas.comicbox_mixin import (
+    CREDIT_PRIMARIES_KEY,
     CREDITS_KEY,
     ROLES_KEY,
 )
@@ -26,11 +28,20 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
     PERSON_TAG = PERSON_TAG
     ROLE_MISPELLING_MAP = MappingProxyType({"penciler": "Penciller"})
 
-    def _parse_credit(self, cbi_credit: dict, comicbox_credits: dict):
+    @staticmethod
+    def _add_credit_primary(data, role: str, person: str):
+        credit_primaries = data.get(CREDIT_PRIMARIES_KEY, {})
+        credit_primaries[role] = person
+        data[CREDIT_PRIMARIES_KEY] = credit_primaries
+
+    def _parse_credit(self, data, cbi_credit: dict, comicbox_credits: dict):
         """Parse one CBI credit into a comicbox credit."""
         cbi_person = cbi_credit.get(self.PERSON_TAG, "")
         cbi_role = cbi_credit.get(self.ROLE_TAG, "")
+        primary = cbi_credit.get(PRIMARY_TAG)
         self.add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
+        if primary:
+            self._add_credit_primary(data, cbi_role, cbi_person)
 
     def parse_credits(self, data):
         """Aggregate dict from comicbookinfo style list."""
@@ -40,7 +51,7 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
         comicbox_credits = {}
         for cbi_credit in cbi_credits:
             try:
-                self._parse_credit(cbi_credit, comicbox_credits)
+                self._parse_credit(data, cbi_credit, comicbox_credits)
             except Exception as exc:
                 LOG.warning(f"{self._path}: Parsing credit {cbi_credit}: {exc}")
 
@@ -48,13 +59,15 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
             data[CREDITS_KEY] = comicbox_credits
         return data
 
-    def _unparse_credit(self, person_name, comicbox_credit, cbi_credits):
+    def _unparse_credit(self, data, person_name, comicbox_credit, cbi_credits):
         """Unparse one comicbox credit into cbi credits."""
         if not person_name:
             return
         comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
         for role_name in comicbox_roles:
             cbi_credit = {PERSON_TAG: person_name, ROLE_TAG: role_name}
+            if data.get(CREDIT_PRIMARIES_KEY, {}).get(role_name) == person_name:
+                cbi_credit[PRIMARY_TAG] = True
             cbi_credits.append(cbi_credit)
 
     def unparse_credits(self, data):
@@ -65,7 +78,7 @@ class ComicBookInfoCreditsTransformMixin(JsonTransform):
         cbi_credits = []
         for person_name, comicbox_credit in comicbox_credits.items():
             try:
-                self._unparse_credit(person_name, comicbox_credit, cbi_credits)
+                self._unparse_credit(data, person_name, comicbox_credit, cbi_credits)
             except Exception as exc:
                 LOG.warning(f"{self._path}: Unparsing credit {comicbox_credit} - {exc}")
         if cbi_credits:

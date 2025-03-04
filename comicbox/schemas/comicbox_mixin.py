@@ -28,6 +28,7 @@ AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
+CREDIT_PRIMARIES_KEY = "credit_primaries"
 COUNTRY_KEY = "country"
 DATE_KEY = "date"
 DAY_KEY = "day"
@@ -199,6 +200,7 @@ class ComicboxSubSchemaMixin:
     characters = DictField(values=Nested(IdentifiedSchema))
     community_rating = DecimalField(places=2)
     credits = DictField(values=Nested(PersonSchema))
+    credit_primaries = DictField(values=DictField)
     country = CountryField()
     collection_title = StringField()
     cover_image = StringField()

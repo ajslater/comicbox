@@ -22,6 +22,7 @@
   - ComicInfo.xml orders tags properly per the xsd.
   - Corrected schemaLocation tags for xml formats to be valid.
   - ComicBookInfo.json `rating`, and `tags` tags fixed.
+  - Support ComicBookInfo.json `primary` credit tag.
 
 ## v1.2.1
 

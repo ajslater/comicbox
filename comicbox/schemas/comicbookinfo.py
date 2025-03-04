@@ -21,16 +21,7 @@ LAST_MODIFIED_TAG = "lastModified"
 ROLE_TAG = "role"
 PERSON_TAG = "person"
 CREDITS_TAG = "credits"
-
-ARTIST_TAG = "Artist"
-COLORER_TAG = "Colorer"
-COVER_ARTIST_TAG = "Cover Artist"
-EDITOR_TAG = "Editor"
-INKER_TAG = "Inker"
-LETTERER_TAG = "Letterer"
-OTHER_TAG = "Other"
-PENCILLER_TAG = "Penciller"
-WRITER_TAG = "Writer"
+PRIMARY_TAG = "primary"
 
 
 class ComicBookInfoRoleEnum(Enum):
