@@ -27,8 +27,8 @@ FNS = MappingProxyType(
             "age_rating": "Teen",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
-                "Joe Orlando": {"roles": {"writer": {}}},
-                "Wally Wood": {"roles": {"penciller": {}}},
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "cover_image": "CaptainScience#1_01.jpg",
             "date": date(1950, 12, 1),
@@ -117,8 +117,8 @@ FNS = MappingProxyType(
         },
         "comicbox.json": {
             "credits": {
-                "Joe Orlando": {"roles": {"writer": {}}},
-                "Wally Wood": {"roles": {"penciller": {}}},
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
             "day": 1,

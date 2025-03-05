@@ -1,6 +1,7 @@
 """Mixin for Comicbox Schemas."""
 
 from decimal import Decimal
+from types import MappingProxyType
 
 from marshmallow.fields import Nested
 from marshmallow_union import Union
@@ -17,6 +18,7 @@ from comicbox.fields.enum_fields import (
     ComicInfoMangaField,
     OriginalFormatField,
     PageTypeField,
+    PrettifiedStringField,
     ReadingDirectionField,
 )
 from comicbox.fields.fields import StringField
@@ -24,6 +26,10 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
+from comicbox.schemas.comet import CoMetRoleTagEnum
+from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
@@ -114,11 +120,27 @@ class IdentifiedNameSchema(IdentifiedSchema):
     name = StringField()
 
 
+COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
+    {
+        **{enum: enum for enum in CoMetRoleTagEnum},
+        **{enum: enum for enum in ComicBookInfoRoleEnum},
+        **{enum: enum for enum in ComicInfoRoleTagEnum},
+        **{enum: enum for enum in MetronRoleEnum},
+    }
+)
+
+
+class RoleField(PrettifiedStringField):
+    """Prettified Role Field."""
+
+    ENUM_ALIAS_MAP = COMICBOX_ROLE_ALIAS_MAP
+
+
 class PersonSchema(BaseSubSchema):
     """Credit Person Schema."""
 
     identifiers = IdentifiersField()
-    roles = DictField(values=Nested(IdentifiedSchema))
+    roles = DictField(keys=RoleField, values=Nested(IdentifiedSchema))
 
 
 class PageInfoSchema(BaseSubSchema):

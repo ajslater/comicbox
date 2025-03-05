@@ -28,8 +28,8 @@ METADATA = MappingProxyType(
             "cover_image": "CaptainScience#1_01.jpg",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
-                "Joe Orlando": {"roles": {"writer": {}}},
-                "Wally Wood": {"roles": {"penciller": {}}},
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
             "genres": {"Science Fiction": {}},

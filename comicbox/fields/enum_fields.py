@@ -209,8 +209,8 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         super().__init__(*args, **kwargs)
         self.init_enum_map()
 
-    def _deserialize(self, value, *args, **kwargs):
-        value = super()._deserialize(value, *args, **kwargs)
+    def _prettify(self, value) -> str:
+        """Conform a value to a known enum or titlecase."""
         enum = self.get_enum(value)
         if enum:
             value = enum.value
@@ -218,6 +218,10 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
             value = titlecase(value)
             value = value.replace("  ", " ")
         return value
+
+    def _deserialize(self, value, *args, **kwargs):
+        value = super()._deserialize(value, *args, **kwargs)
+        return self._prettify(value)
 
 
 ORIGINAL_FORMAT_ENUM_MAP = MappingProxyType(

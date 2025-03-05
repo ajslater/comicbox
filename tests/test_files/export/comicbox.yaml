@@ -10,11 +10,11 @@ comicbox:
   credits:
     Joe Orlando:
       roles:
-        writer: {}
+        Writer: {}
     Wally Wood:
       roles:
-        inker: {}
-        penciller: {}
+        Inker: {}
+        Penciller: {}
   day: 1
   ext: cbz
   genres:
