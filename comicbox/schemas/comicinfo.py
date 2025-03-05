@@ -1,6 +1,7 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
 
+from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
@@ -22,6 +23,11 @@ from comicbox.fields.xml_fields import (
     XmlStringListField,
     XmlStringSetField,
     XmlYesNoField,
+)
+from comicbox.schemas.age_rating_enum import (
+    DCAgeRatingEnum,
+    GenericAgeRatingEnum,
+    MarvelAgeRatingEnum,
 )
 from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
@@ -82,8 +88,40 @@ TAG_ORDER = (
 )
 
 
-COMICINFO_AGE_RATING_MAP = MappingProxyType(
+COMICINFO_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     {
+        MarvelAgeRatingEnum.ALL_AGES: ComicInfoAgeRatingEnum.EVERYONE,
+        MarvelAgeRatingEnum.PG: ComicInfoAgeRatingEnum.E_10_PLUS,
+        MarvelAgeRatingEnum.PG_PLUS: ComicInfoAgeRatingEnum.E_10_PLUS,
+        MarvelAgeRatingEnum.PARENTAL_ADVISORY: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        MarvelAgeRatingEnum.PSR: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        MarvelAgeRatingEnum.PSR_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        MarvelAgeRatingEnum.A: ComicInfoAgeRatingEnum.EVERYONE,
+        MarvelAgeRatingEnum.T_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        MarvelAgeRatingEnum.T: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        MarvelAgeRatingEnum.EXPLICIT_CONTENT: ComicInfoAgeRatingEnum.X_18_PLUS,
+        DCAgeRatingEnum.E: ComicInfoAgeRatingEnum.EVERYONE,
+        DCAgeRatingEnum.EVERYONE: ComicInfoAgeRatingEnum.EVERYONE,
+        DCAgeRatingEnum.T: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        DCAgeRatingEnum.TEEN: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        DCAgeRatingEnum.T_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        DCAgeRatingEnum.TEEN_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        DCAgeRatingEnum.M: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        DCAgeRatingEnum.MATURE: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        DCAgeRatingEnum.THIRTEEN_PLUS: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        DCAgeRatingEnum.FIFTEEN_PLUS: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        DCAgeRatingEnum.SEVENTEEN_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        GenericAgeRatingEnum.PG13: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        GenericAgeRatingEnum.R: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        GenericAgeRatingEnum.X: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.XXX: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.ADULT: ComicInfoAgeRatingEnum.A_18_PLUS,
+        GenericAgeRatingEnum.PORN: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.PORNOGRAPHY: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.SEX: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.SEXUALLY_EXPLICIT: ComicInfoAgeRatingEnum.X_18_PLUS,
+        GenericAgeRatingEnum.VIOLENT: ComicInfoAgeRatingEnum.A_18_PLUS,
+        GenericAgeRatingEnum.VIOLENCE: ComicInfoAgeRatingEnum.A_18_PLUS,
         MetronAgeRatingEnum.EVERYONE: ComicInfoAgeRatingEnum.EVERYONE,
         MetronAgeRatingEnum.TEEN: ComicInfoAgeRatingEnum.TEEN,
         MetronAgeRatingEnum.TEEN_PLUS: ComicInfoAgeRatingEnum.MA_15_PLUS,

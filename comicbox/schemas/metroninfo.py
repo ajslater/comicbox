@@ -2,6 +2,7 @@
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from decimal import Decimal
+from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Field, Nested
@@ -18,6 +19,11 @@ from comicbox.fields.xml_fields import (
     XmlIntegerField,
     XmlListField,
     XmlStringField,
+)
+from comicbox.schemas.age_rating_enum import (
+    DCAgeRatingEnum,
+    GenericAgeRatingEnum,
+    MarvelAgeRatingEnum,
 )
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
@@ -63,8 +69,40 @@ def _metron_resource_list_field(**kwargs) -> ListField:
     return xml_list_polyfield(MetronResourceSchema, StringField(), **kwargs)
 
 
-METRON_AGE_RATING_MAP = MappingProxyType(
+METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     {
+        MarvelAgeRatingEnum.ALL_AGES: MetronAgeRatingEnum.EVERYONE,
+        MarvelAgeRatingEnum.PG: MetronAgeRatingEnum.TEEN,
+        MarvelAgeRatingEnum.PG_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        MarvelAgeRatingEnum.PARENTAL_ADVISORY: MetronAgeRatingEnum.TEEN_PLUS,
+        MarvelAgeRatingEnum.PSR: MetronAgeRatingEnum.TEEN,
+        MarvelAgeRatingEnum.PSR_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        MarvelAgeRatingEnum.A: MetronAgeRatingEnum.EVERYONE,
+        MarvelAgeRatingEnum.T_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        MarvelAgeRatingEnum.T: MetronAgeRatingEnum.TEEN,
+        MarvelAgeRatingEnum.EXPLICIT_CONTENT: MetronAgeRatingEnum.EXPLICIT,
+        DCAgeRatingEnum.E: MetronAgeRatingEnum.EVERYONE,
+        DCAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
+        DCAgeRatingEnum.T: MetronAgeRatingEnum.TEEN,
+        DCAgeRatingEnum.TEEN: MetronAgeRatingEnum.TEEN,
+        DCAgeRatingEnum.T_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        DCAgeRatingEnum.TEEN_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        DCAgeRatingEnum.M: MetronAgeRatingEnum.MATURE,
+        DCAgeRatingEnum.MATURE: MetronAgeRatingEnum.MATURE,
+        DCAgeRatingEnum.THIRTEEN_PLUS: MetronAgeRatingEnum.TEEN,
+        DCAgeRatingEnum.FIFTEEN_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        DCAgeRatingEnum.SEVENTEEN_PLUS: MetronAgeRatingEnum.MATURE,
+        GenericAgeRatingEnum.PG13: MetronAgeRatingEnum.TEEN,
+        GenericAgeRatingEnum.R: MetronAgeRatingEnum.MATURE,
+        GenericAgeRatingEnum.X: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.XXX: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.ADULT: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.PORN: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.PORNOGRAPHY: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.SEX: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.SEXUALLY_EXPLICIT: MetronAgeRatingEnum.ADULT,
+        GenericAgeRatingEnum.VIOLENT: MetronAgeRatingEnum.EXPLICIT,
+        GenericAgeRatingEnum.VIOLENCE: MetronAgeRatingEnum.EXPLICIT,
         ComicInfoAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
         ComicInfoAgeRatingEnum.EARLY_CHILDHOOD: MetronAgeRatingEnum.EVERYONE,
         ComicInfoAgeRatingEnum.E_10_PLUS: MetronAgeRatingEnum.EVERYONE,
