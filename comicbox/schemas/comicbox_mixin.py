@@ -13,6 +13,7 @@ from comicbox.fields.collection_fields import (
     StringSetField,
 )
 from comicbox.fields.enum_fields import (
+    AgeRatingField,
     ComicInfoMangaField,
     OriginalFormatField,
     PageTypeField,
@@ -194,7 +195,7 @@ class ArcSchema(BaseSubSchema):
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
-    age_rating = StringField()
+    age_rating = AgeRatingField()
     alternate_images = StringSetField()
     arcs = DictField(values=Nested(ArcSchema))
     characters = DictField(values=Nested(IdentifiedSchema))

@@ -8,7 +8,17 @@ from marshmallow import fields
 from stringcase import snakecase, titlecase
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.schemas.metroninfo_enum import GenericFormatEnum, MetronFormatEnum
+from comicbox.schemas.age_rating_enum import (
+    DCAgeRatingEnum,
+    GenericAgeRatingEnum,
+    MarvelAgeRatingEnum,
+)
+from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
+from comicbox.schemas.metroninfo_enum import (
+    GenericFormatEnum,
+    MetronAgeRatingEnum,
+    MetronFormatEnum,
+)
 
 LOG = getLogger(__name__)
 
@@ -222,3 +232,20 @@ class OriginalFormatField(PrettifiedStringField):
     """Prettify Original Format."""
 
     ENUM_ALIAS_MAP = ORIGINAL_FORMAT_ENUM_MAP
+
+
+AGE_RATING_ENUM_MAP = MappingProxyType(
+    {
+        **{enum: enum for enum in GenericAgeRatingEnum},
+        **{enum: enum for enum in DCAgeRatingEnum},
+        **{enum: enum for enum in MarvelAgeRatingEnum},
+        **{enum: enum for enum in ComicInfoAgeRatingEnum},
+        **{enum: enum for enum in MetronAgeRatingEnum},
+    }
+)
+
+
+class AgeRatingField(PrettifiedStringField):
+    """Prettified Age Rating."""
+
+    ENUM_ALIAS_MAP = AGE_RATING_ENUM_MAP
