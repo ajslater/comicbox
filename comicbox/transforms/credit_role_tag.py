@@ -8,27 +8,6 @@ from comicbox.fields.enum_fields import EnumField
 from comicbox.transforms.base import BaseTransform
 
 
-class GenericRoleAliases(Enum):
-    """Generic Role Aliases."""
-
-    COLORIST = (
-        "colourist",
-        "colorer",
-        "colourer",
-        "colors",
-        "colours",
-        "painting",
-        "painter",
-    )
-    COVER = ("covers",)
-    EDITOR = ("edits", "editing")
-    INKER = ("finishes", "inks", "painting", "painter")
-    LETTERER = ("letters",)
-    PENCILLER = ("breakdowns", "pencils", "painting", "painter")
-    TRANSLATOR = ("translation",)
-    WRITER = ("plotter", "scripter", "script", "author")
-
-
 def create_role_map(
     role_aliases: Mapping[Enum, tuple[Enum | str, ...]],
 ) -> MappingProxyType[str, tuple[Enum, ...]]:

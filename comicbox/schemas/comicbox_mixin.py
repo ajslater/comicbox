@@ -30,6 +30,7 @@ from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
+from comicbox.schemas.role_enum import GenericRoleEnum
 
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
@@ -126,6 +127,7 @@ COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
         **{enum: enum for enum in ComicBookInfoRoleEnum},
         **{enum: enum for enum in ComicInfoRoleTagEnum},
         **{enum: enum for enum in MetronRoleEnum},
+        **{enum: enum for enum in GenericRoleEnum},
     }
 )
 

@@ -34,6 +34,7 @@ from comicbox.schemas.comicinfo import (
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
+from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
@@ -42,7 +43,6 @@ from comicbox.transforms.comicinfo_storyarcs import (
     ComicInfoStoryArcsTransformMixin,
 )
 from comicbox.transforms.credit_role_tag import (
-    GenericRoleAliases,
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -54,7 +54,9 @@ from comicbox.transforms.xml_transforms import XmlTransform
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
         ComicInfoRoleTagEnum.COLORIST: (
+            GenericRoleEnum.COLOURIST,
             *GenericRoleAliases.COLORIST.value,
+            *GenericRoleAliases.PAINTER.value,
             CoMetRoleTagEnum.COLORIST,
             MetronRoleEnum.COLORIST,
             MetronRoleEnum.COLOR_SEPARATIONS,
@@ -85,6 +87,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
         ComicInfoRoleTagEnum.INKER: (
             *GenericRoleAliases.INKER.value,
+            *GenericRoleAliases.PAINTER.value,
             CoMetRoleTagEnum.INKER,
             MetronRoleEnum.INKER,
             MetronRoleEnum.EMBELLISHER,
@@ -99,6 +102,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
         ComicInfoRoleTagEnum.PENCILLER: (
             *GenericRoleAliases.PENCILLER.value,
+            *GenericRoleAliases.PAINTER.value,
             CoMetRoleTagEnum.PENCILLER,
             MetronRoleEnum.PENCILLER,
             MetronRoleEnum.BREAKDOWNS,
@@ -112,6 +116,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
             MetronRoleEnum.TRANSLATOR,
         ),
         ComicInfoRoleTagEnum.WRITER: (
+            GenericRoleEnum.AUTHOR,
             *GenericRoleAliases.WRITER.value,
             MetronRoleEnum.WRITER,
             MetronRoleEnum.SCRIPT,

@@ -22,10 +22,10 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
+from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
-    GenericRoleAliases,
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -38,7 +38,9 @@ from comicbox.transforms.xml_transforms import XmlTransform
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
         CoMetRoleTagEnum.COLORIST: (
+            GenericRoleEnum.COLOURIST,
             *GenericRoleAliases.COLORIST.value,
+            *GenericRoleAliases.PAINTER.value,
             ComicInfoRoleTagEnum.COLORIST,
             MetronRoleEnum.COLORIST,
             MetronRoleEnum.COLOR_SEPARATIONS,
@@ -69,6 +71,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
         CoMetRoleTagEnum.INKER: (
             *GenericRoleAliases.INKER.value,
+            *GenericRoleAliases.PAINTER.value,
             ComicInfoRoleTagEnum.INKER,
             MetronRoleEnum.INKER,
             MetronRoleEnum.EMBELLISHER,
@@ -84,6 +87,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
         CoMetRoleTagEnum.PENCILLER: (
             *GenericRoleAliases.PENCILLER.value,
+            *GenericRoleAliases.PAINTER.value,
             ComicBookInfoRoleEnum.ARTIST,
             MetronRoleEnum.ARTIST,
             ComicInfoRoleTagEnum.PENCILLER,
@@ -93,6 +97,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
             MetronRoleEnum.LAYOUTS,
         ),
         CoMetRoleTagEnum.WRITER: (
+            GenericRoleEnum.AUTHOR,
             *GenericRoleAliases.WRITER.value,
             MetronRoleEnum.WRITER,
             MetronRoleEnum.SCRIPT,

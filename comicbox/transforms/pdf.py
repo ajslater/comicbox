@@ -28,6 +28,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
+from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
@@ -35,7 +36,6 @@ from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
-from comicbox.transforms.credit_role_tag import GenericRoleAliases
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.title_mixin import TitleStoriesMixin
@@ -88,6 +88,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
         {
             enum.value
             for enum in (
+                GenericRoleEnum.AUTHOR,
                 MetronRoleEnum.WRITER,
                 MetronRoleEnum.SCRIPT,
                 MetronRoleEnum.STORY,
