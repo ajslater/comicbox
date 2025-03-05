@@ -174,23 +174,19 @@ pdf = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "hatchling" },
-    { name = "toml-cli" },
-]
-lint = [
-    { name = "codespell" },
-    { name = "pyright" },
-    { name = "radon", extra = ["toml"] },
-    { name = "ruff" },
-    { name = "types-python-dateutil" },
-    { name = "vulture" },
-]
-test = [
     { name = "check-jsonschema" },
+    { name = "codespell" },
     { name = "coverage", extra = ["toml"] },
     { name = "deepdiff" },
+    { name = "hatchling" },
+    { name = "pyright" },
     { name = "pytest-cov" },
     { name = "pytest-gitignore" },
+    { name = "radon", extra = ["toml"] },
+    { name = "ruff" },
+    { name = "toml-cli" },
+    { name = "types-python-dateutil" },
+    { name = "vulture" },
     { name = "xmlschema" },
 ]
 
@@ -216,23 +212,19 @@ provides-extras = ["pdf"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "hatchling", specifier = ">=1.27.0,<2.0.0" },
-    { name = "toml-cli", specifier = ">=0.7.0,<1.0.0" },
-]
-lint = [
-    { name = "codespell", specifier = ">=2.1.0,<3.0.0" },
-    { name = "pyright", specifier = ">=1.1.354,<2.0.0" },
-    { name = "radon", extras = ["toml"], specifier = ">=6.0.1,<7.0.0" },
-    { name = "ruff", specifier = ">=0.9.1,<1.0.0" },
-    { name = "types-python-dateutil", specifier = ">=2.8.19.13,<3.0.0.0" },
-    { name = "vulture", specifier = ">=2.1,<3.0" },
-]
-test = [
     { name = "check-jsonschema", specifier = ">=0.31.0,<1.0.0" },
+    { name = "codespell", specifier = ">=2.1.0,<3.0.0" },
     { name = "coverage", extras = ["toml"], specifier = ">=7.0,<8.0" },
     { name = "deepdiff", specifier = ">=8.2.0,<9.0.0" },
+    { name = "hatchling", specifier = ">=1.27.0,<2.0.0" },
+    { name = "pyright", specifier = ">=1.1.354,<2.0.0" },
     { name = "pytest-cov", specifier = ">=6.0,<7.0" },
     { name = "pytest-gitignore", specifier = ">=1.3,<2.0" },
+    { name = "radon", extras = ["toml"], specifier = ">=6.0.1,<7.0.0" },
+    { name = "ruff", specifier = ">=0.9.1,<1.0.0" },
+    { name = "toml-cli", specifier = ">=0.7.0,<1.0.0" },
+    { name = "types-python-dateutil", specifier = ">=2.8.19.13,<3.0.0.0" },
+    { name = "vulture", specifier = ">=2.1,<3.0" },
     { name = "xmlschema", specifier = ">=3.4.3,<4.0.0" },
 ]
 
