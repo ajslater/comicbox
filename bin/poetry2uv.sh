@@ -26,6 +26,13 @@ echo "Configure pyright for venv..."
 uv run toml set "$TOML_PATH" tool.pyright.venvPath '.'
 uv run toml set "$TOML_PATH" tool.pyright.venv '.venv'
 
+CCI_CONFIG=.circleci/config.yml
+if [ -f "$CCI_CONFIG" ]; then
+  echo "Configure circleci for uv..."
+  uv run yq eval '.jobs.deploy.docker[0].image =  ghcr.io/astral-sh/uv:bookworm-slim' -i "$CCI_CONFIG"
+  uv run yq eval '.jobs.deploy.steps[1].run = uv publish' -i "$CCI_CONFIG"
+fi
+
 echo "Remove old files..."
 rm -rf builder-requirements.txt bin/update-builder-requirement.sh bin/publish-pypi.sh __pycache__ .venv uv.lock poetry.lock
 echo "Replace referenecs to poetry.lock with uv.lock"
