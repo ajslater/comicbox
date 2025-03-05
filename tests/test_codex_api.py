@@ -9,7 +9,7 @@ from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
 
-import fitz
+import pymupdf
 import pytest
 from deepdiff.diff import DeepDiff
 
@@ -233,7 +233,7 @@ def test_cover_image(ft):
     if cover_path.suffix == ".pdf":
         # transform file to image.
         try:
-            doc = fitz.Document(stream=disk_cover)
+            doc = pymupdf.Document(stream=disk_cover)
             pix = doc.get_page_pixmap(0)  # type: ignore[reportAttributeAccessIssue]
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:

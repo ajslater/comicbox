@@ -28,7 +28,7 @@ from comicbox.schemas.age_rating_enum import (
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
 from comicbox.schemas.metroninfo_enum import (
-    GenericFormatsEnum,
+    GenericFormatEnum,
     MetronAgeRatingEnum,
     MetronFormatEnum,
     MetronRoleEnum,
@@ -125,32 +125,32 @@ class MetronAgeRatingField(XmlEnumField):
     """Metron Age Rating Field."""
 
     ENUM = MetronAgeRatingEnum
-    ENUM_MAP = METRON_AGE_RATING_MAP
+    ENUM_ALIAS_MAP = METRON_AGE_RATING_MAP
 
 
 METRON_FORMAT_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     {
-        # GenericFormatsEnum.ANTHOLOGY: MetronFormatEnum.,
-        # GenericFormatsEnum.ANNOTATION: MetronFormatEnum.,
-        GenericFormatsEnum.BOX_SET: MetronFormatEnum.OMNIBUS,
-        GenericFormatsEnum.DIGITAL: MetronFormatEnum.DIGITAL_CHAPTER,
-        # GenericFormatsEnum.DIRECTORS_CUT: MetronFormatEnum.,
-        # GenericFormatsEnum.DIRECTOR_S_CUT: MetronFormatEnum.,
-        GenericFormatsEnum.GIANT_SIZED: MetronFormatEnum.ANNUAL,
-        GenericFormatsEnum.GN: MetronFormatEnum.GRAPHIC_NOVEL,
-        GenericFormatsEnum.HARD_COVER: MetronFormatEnum.HARDCOVER,
-        GenericFormatsEnum.HC: MetronFormatEnum.HARDCOVER,
-        GenericFormatsEnum.HD_UPSCALED: MetronFormatEnum.DIGITAL_CHAPTER,
-        GenericFormatsEnum.KING_SIZED: MetronFormatEnum.ANNUAL,
-        # GenericFormatsEnum.MAGAZINE: MetronFormatEnum.,
-        # GenericFormatsEnum.MANGA: MetronFormatEnum.,
-        GenericFormatsEnum.ONE_DASH_SHOT: MetronFormatEnum.ONE_SHOT,
-        # GenericFormatsEnum.PDF_RIP: MetronFormatEnum.,
-        # GenericFormatsEnum.PREVIEW: MetronFormatEnum.,
-        # GenericFormatsEnum.PROLOGUE: MetronFormatEnum.,
-        # GenericFormatsEnum.SCANLATION: MetronFormatEnum.,
-        # GenericFormatsEnum.SCRIPT: MetronFormatEnum.,
-        GenericFormatsEnum.TBP: MetronFormatEnum.TRADE_PAPERBACK,
+        # GenericFormatEnum.ANTHOLOGY: MetronFormatEnum.,
+        # GenericFormatEnum.ANNOTATION: MetronFormatEnum.,
+        GenericFormatEnum.BOX_SET: MetronFormatEnum.OMNIBUS,
+        GenericFormatEnum.DIGITAL: MetronFormatEnum.DIGITAL_CHAPTER,
+        # GenericFormatEnum.DIRECTORS_CUT: MetronFormatEnum.,
+        # GenericFormatEnum.DIRECTOR_S_CUT: MetronFormatEnum.,
+        GenericFormatEnum.GIANT_SIZED: MetronFormatEnum.ANNUAL,
+        GenericFormatEnum.GN: MetronFormatEnum.GRAPHIC_NOVEL,
+        GenericFormatEnum.HARD_COVER: MetronFormatEnum.HARDCOVER,
+        GenericFormatEnum.HC: MetronFormatEnum.HARDCOVER,
+        GenericFormatEnum.HD_UPSCALED: MetronFormatEnum.DIGITAL_CHAPTER,
+        GenericFormatEnum.KING_SIZED: MetronFormatEnum.ANNUAL,
+        # GenericFormatEnum.MAGAZINE: MetronFormatEnum.,
+        # GenericFormatEnum.MANGA: MetronFormatEnum.,
+        GenericFormatEnum.ONE_DASH_SHOT: MetronFormatEnum.ONE_SHOT,
+        # GenericFormatEnum.PDF_RIP: MetronFormatEnum.,
+        # GenericFormatEnum.PREVIEW: MetronFormatEnum.,
+        # GenericFormatEnum.PROLOGUE: MetronFormatEnum.,
+        # GenericFormatEnum.SCANLATION: MetronFormatEnum.,
+        # GenericFormatEnum.SCRIPT: MetronFormatEnum.,
+        GenericFormatEnum.TBP: MetronFormatEnum.TRADE_PAPERBACK,
         # GenericFormatsEnum.WEB_COMIC: MetronFormatEnum.,
         # GenericFormatsEnum.WEB_RIP: MetronFormatEnum.,
     }
@@ -161,7 +161,7 @@ class MetronFormatField(XmlEnumField):
     """Metron Series Format Field."""
 
     ENUM = MetronFormatEnum
-    ENUM_MAP = METRON_FORMAT_MAP
+    ENUM_ALIAS_MAP = METRON_FORMAT_MAP
 
 
 class MetronRoleEnumField(XmlEnumField):

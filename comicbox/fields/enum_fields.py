@@ -1,30 +1,22 @@
 """Marshmallow Enum Fields."""
 
-import re
 from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
-from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 from marshmallow import fields
 from stringcase import snakecase, titlecase
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-
-_ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
-_ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)
-_CAPS_FORMATS = frozenset({"HC", "TPB"})
-_PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
-
+from comicbox.schemas.metroninfo_enum import GenericFormatEnum, MetronFormatEnum
 
 LOG = getLogger(__name__)
 
 
-class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
-    """Fuzzy lookup Enum field that allows caseless enum lookups with variations."""
+class FuzzyEnumMixin:
+    """Fuzzy lookup get_enum() method that allows caseless enum lookups with variations."""
 
-    ENUM = Enum
-    ENUM_MAP = MappingProxyType({})
+    ENUM_ALIAS_MAP = MappingProxyType({})
 
     @staticmethod
     def get_key_variations(key: str | Enum) -> set[str]:
@@ -38,33 +30,52 @@ class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
         return key_variations
 
     @classmethod
-    def _add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict):
+    def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict):
         """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
         key_variations = cls.get_key_variations(key)
         for key_variation in key_variations:
             enum_map[key_variation] = enum
 
+    def init_enum_map(self):
+        """Transform the ENUM_ALIAS_MAP into the enum lookup map."""
+        enum_map = {}
+        for key, enum in self.ENUM_ALIAS_MAP.items():
+            self.add_enum_map_item(key, enum, enum_map)
+        self._enum_map = MappingProxyType(enum_map)
+
+    def get_enum(self, value) -> Enum | None:
+        """Get an enum from the fuzzy lookup map."""
+        if isinstance(value, Enum):
+            value = value.value
+        return self._enum_map.get(value.lower())
+
+
+class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
+    """Fuzzy lookup Enum field that allows caseless enum lookups with variations."""
+
+    ENUM = Enum
+
+    def init_enum_map(self):
+        """Transform the ENUM_ALIAS_MAP into the enum lookup map and add the field enum to it as well."""
+        super().init_enum_map()
+        enum_map = dict(self._enum_map)
+        for enum in self.ENUM:
+            self.add_enum_map_item(enum, enum, enum_map)
+        self._enum_map = MappingProxyType(enum_map)
+
     def __init__(self, *args, **kwargs):
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
-        enum_map = {}
-        for key, enum in self.ENUM_MAP.items():
-            self._add_enum_map_item(key, enum, enum_map)
-        for enum in self.ENUM:
-            self._add_enum_map_item(enum, enum, enum_map)
-        self._enum_map = MappingProxyType(enum_map)
-
-    def _get_enum(self, value):
-        if isinstance(value, Enum):
-            value = value.value
-        return self._enum_map.get(value.lower(), value)
+        self.init_enum_map()
 
     def _deserialize(self, value, *args, **kwargs):
-        enum = self._get_enum(value)
+        enum = self.get_enum(value)
+        enum = enum if enum else value
         return super()._deserialize(enum, *args, **kwargs)
 
     def _serialize(self, value, *args, **kwargs):
-        enum = self._get_enum(value)
+        enum = self.get_enum(value)
+        enum = enum if enum else value
         return super()._serialize(enum, *args, **kwargs)
 
 
@@ -112,7 +123,7 @@ class ReadingDirectionField(EnumField):
     """Reading direction enum."""
 
     ENUM = ReadingDirectionEnum
-    ENUM_MAP = MappingProxyType(
+    ENUM_ALIAS_MAP = MappingProxyType(
         {
             GenericReadingDirectionEnum.LTR: ReadingDirectionEnum.LTR,
             GenericReadingDirectionEnum.RTL: ReadingDirectionEnum.RTL,
@@ -178,23 +189,36 @@ class YesNoField(EnumBooleanField):
     ENUM = YesNoEnum
 
 
-class OriginalFormatField(StringField):
-    """Prettify Original Format."""
+class PrettifiedStringField(FuzzyEnumMixin, StringField):
+    """A string fields that tries to match to an enum and falls back to just titlecasing."""
+
+    ENUM_ALIAS_MAP = MappingProxyType({})
+
+    def __init__(self, *args, **kwargs):
+        """Use the enum."""
+        super().__init__(*args, **kwargs)
+        self.init_enum_map()
 
     def _deserialize(self, value, *args, **kwargs):
-        """Prettify Original Format if it's known."""
         value = super()._deserialize(value, *args, **kwargs)
-        if not value or not _ORIGINAL_FORMAT_RE.search(value):
-            return value
-        value_upper = value.upper()
-        for preformatted_value in _PREFORMATTED_FORMATS:
-            if value_upper == preformatted_value.upper():
-                value = preformatted_value
-                break
+        enum = self.get_enum(value)
+        if enum:
+            value = enum.value
         else:
-            if value_upper in _CAPS_FORMATS:
-                value = value_upper
-            else:
-                value = titlecase(value)
-                value = value.replace("  ", " ")
+            value = titlecase(value)
+            value = value.replace("  ", " ")
         return value
+
+
+ORIGINAL_FORMAT_ENUM_MAP = MappingProxyType(
+    {
+        **{enum: enum for enum in GenericFormatEnum},
+        **{enum: enum for enum in MetronFormatEnum},
+    }
+)
+
+
+class OriginalFormatField(PrettifiedStringField):
+    """Prettify Original Format."""
+
+    ENUM_ALIAS_MAP = ORIGINAL_FORMAT_ENUM_MAP

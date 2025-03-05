@@ -28,7 +28,7 @@ class MetronAgeRatingEnum(Enum):
     ADULT = "Adult"
 
 
-class GenericFormatsEnum(Enum):
+class GenericFormatEnum(Enum):
     """Generic Format Values."""
 
     ANTHOLOGY = "Anthology"

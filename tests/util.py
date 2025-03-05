@@ -10,7 +10,7 @@ from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
 
-import fitz
+import pymupdf
 from deepdiff.diff import DeepDiff
 from ruamel.yaml import YAML
 
@@ -493,7 +493,7 @@ class TestParser:
     def _create_test_pdf(self, new_test_pdf_path):
         """Create a new empty PDF file."""
         try:
-            doc = fitz.Document()
+            doc = pymupdf.Document()
             doc.new_page()  # type: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
@@ -507,7 +507,7 @@ class TestParser:
             ) as car:
                 car.write()
         except NameError as exc:
-            reason = "fitz not imported from comicbox-pdffile"
+            reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc
 
     def write_metadata_pdf(

@@ -136,7 +136,7 @@ class ComicInfoAgeRatingField(XmlEnumField):
     """Age Rating Field."""
 
     ENUM = ComicInfoAgeRatingEnum
-    ENUM_MAP = COMICINFO_AGE_RATING_MAP
+    ENUM_ALIAS_MAP = COMICINFO_AGE_RATING_MAP
 
 
 class XmlPageInfoSchema(BaseSubSchema):
