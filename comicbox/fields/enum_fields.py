@@ -26,14 +26,21 @@ class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
     ENUM = Enum
     ENUM_MAP = MappingProxyType({})
 
-    def _add_enum_map_item(self, key: str | Enum, enum: Enum, enum_map: dict):
-        """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
+    @staticmethod
+    def get_key_variations(key: str | Enum) -> set[str]:
+        """Get enum caseless slightly fuzzy lookup key variations for a key."""
         new_key = key.value if isinstance(key, Enum) else key
         new_key = new_key.lower()
         key_variations = {new_key}
         key_variations.add(new_key.replace(" ", ""))
         space_case = snakecase(new_key).replace("_", "")
         key_variations.add(space_case)
+        return key_variations
+
+    @classmethod
+    def _add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict):
+        """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
+        key_variations = cls.get_key_variations(key)
         for key_variation in key_variations:
             enum_map[key_variation] = enum
 
