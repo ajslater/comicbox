@@ -36,7 +36,8 @@ def create_role_map(
     role_map = {}
     for native_enum, aliases in role_aliases.items():
         key_variations = set()
-        for alias in aliases:
+        all_aliases = (*aliases, native_enum)
+        for alias in all_aliases:
             key_variations |= EnumField.get_key_variations(alias)
         for key_varation in key_variations:
             roles = role_map.get(key_varation, set())

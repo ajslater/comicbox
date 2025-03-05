@@ -129,7 +129,6 @@ class MetronInfoTransformCredits(
     def _unparse_role(cls, data, role_name, comicbox_role):
         """Unparse a metron role to an enum only value."""
         metron_roles = []
-        # TODO IS the transform
         if metron_role_enums := cls.get_role_enums(role_name):
             # Handle expanding one role into many.
             metron_role = []
