@@ -1,4 +1,5 @@
-FROM python:3.13-bookworm
+# hadolint ignore=DL3007
+FROM nikolaik/python-nodejs:latest
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
@@ -8,7 +9,6 @@ RUN apt-get clean \
   && apt-get install --no-install-recommends -y \
     bash \
     mupdf \
-    npm \
     ruamel.yaml.clib \
     unrar \
     zlib1g \
@@ -18,7 +18,7 @@ RUN apt-get clean \
 WORKDIR /app
 
 COPY bin ./bin
-COPY .gitignore .prettierignore .remarkignore eslint.config.js package.json package-lock.json pyproject.toml poetry.lock Makefile ./
+COPY .gitignore .prettierignore .remarkignore eslint.config.js package.json package-lock.json pyproject.toml uv.lock Makefile ./
 RUN make install-all
 
 COPY . .

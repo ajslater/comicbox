@@ -13,4 +13,4 @@
 __pycache__
 dist
 package-lock.json
-poetry.lock
+uv.lock
