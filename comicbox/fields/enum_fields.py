@@ -3,13 +3,13 @@
 import re
 from enum import Enum
 from logging import getLogger
+from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 from marshmallow import fields
-from stringcase import titlecase
+from stringcase import snakecase, titlecase
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.fields.number_fields import BooleanField
 
 _ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
 _ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)
@@ -21,19 +21,44 @@ LOG = getLogger(__name__)
 
 
 class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
-    """Durable enum field."""
+    """Fuzzy lookup Enum field that allows caseless enum lookups with variations."""
 
     ENUM = Enum
+    ENUM_MAP = MappingProxyType({})
+
+    def _add_enum_map_item(self, key: str | Enum, enum: Enum, enum_map: dict):
+        """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
+        new_key = key.value if isinstance(key, Enum) else key
+        new_key = new_key.lower()
+        key_variations = {new_key}
+        key_variations.add(new_key.replace(" ", ""))
+        space_case = snakecase(new_key).replace("_", "")
+        key_variations.add(space_case)
+        for key_variation in key_variations:
+            enum_map[key_variation] = enum
 
     def __init__(self, *args, **kwargs):
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
+        enum_map = {}
+        for key, enum in self.ENUM_MAP.items():
+            self._add_enum_map_item(key, enum, enum_map)
+        for enum in self.ENUM:
+            self._add_enum_map_item(enum, enum, enum_map)
+        self._enum_map = MappingProxyType(enum_map)
+
+    def _get_enum(self, value):
+        if isinstance(value, Enum):
+            value = value.value
+        return self._enum_map.get(value.lower(), value)
 
     def _deserialize(self, value, *args, **kwargs):
-        if isinstance(value, Enum):
-            """Because by_value is StringField, convert to string first."""
-            value = value.value
-        return super()._deserialize(value, *args, **kwargs)
+        enum = self._get_enum(value)
+        return super()._deserialize(enum, *args, **kwargs)
+
+    def _serialize(self, value, *args, **kwargs):
+        enum = self._get_enum(value)
+        return super()._serialize(enum, *args, **kwargs)
 
 
 class PageTypeEnum(Enum):
@@ -58,6 +83,15 @@ class PageTypeField(EnumField):
     ENUM = PageTypeEnum
 
 
+class GenericReadingDirectionEnum(Enum):
+    """Long generic reading directions."""
+
+    LTR = "LeftToRight"
+    RTL = "RightToLeft"
+    TTB = "TopToBottom"
+    BTT = "BottomToTop"
+
+
 class ReadingDirectionEnum(Enum):
     """Four reading directions."""
 
@@ -71,15 +105,35 @@ class ReadingDirectionField(EnumField):
     """Reading direction enum."""
 
     ENUM = ReadingDirectionEnum
+    ENUM_MAP = MappingProxyType(
+        {
+            GenericReadingDirectionEnum.LTR: ReadingDirectionEnum.LTR,
+            GenericReadingDirectionEnum.RTL: ReadingDirectionEnum.RTL,
+            GenericReadingDirectionEnum.TTB: ReadingDirectionEnum.TTB,
+            GenericReadingDirectionEnum.BTT: ReadingDirectionEnum.BTT,
+        }
+    )
+
+
+class EnumBooleanField(EnumField):
+    """An Enum Field that also accepts boolean values."""
+
+    TRUTHY = frozenset({True, "1", "true"})
 
     def _deserialize(self, value, *args, **kwargs):
-        """Match a reading direction to an acceptable value."""
-        if isinstance(value, str):
-            value = value.lower()
-        return super()._deserialize(value, *args, **kwargs)
+        result = super()._deserialize(value, *args, **kwargs)
+        if not isinstance(result, self.ENUM) and value in self.TRUTHY:
+            result = super()._deserialize("yes", *args, **kwargs)
+        return result
+
+    def _serialize(self, value, *args, **kwargs):
+        result = super()._serialize(value, *args, **kwargs)
+        if not isinstance(result, self.ENUM) and value in self.TRUTHY:
+            result = super()._serialize("yes", *args, **kwargs)
+        return result
 
 
-class MangaEnum(Enum):
+class ComicInfoMangaEnum(Enum):
     """Manga enum for ComicInfo."""
 
     YES = "Yes"
@@ -87,25 +141,19 @@ class MangaEnum(Enum):
     NO = "No"
 
 
-class MangaField(EnumField):
+class ComicInfoMangaField(EnumBooleanField):
     """Manga field from ComicInfo."""
 
-    ENUM = MangaEnum
+    ENUM = ComicInfoMangaEnum
 
     def _deserialize(self, value, attr, data, *args, **kwargs):
         """Match a manga value to an acceptable value."""
         if data.get("reading_direction") == ReadingDirectionEnum.RTL:
             LOG.warning(
-                f"Coerced manga {value} to {MangaEnum.YES_RTL.value}"
+                f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
                 "because of reading_direction"
             )
-            value = MangaEnum.YES_RTL
-        elif isinstance(value, str):
-            value = value.strip()
-            if value.lower() == MangaEnum.YES_RTL.value.lower():
-                value = MangaEnum.YES_RTL
-            else:
-                value = value.capitalize()
+            value = ComicInfoMangaEnum.YES_RTL
         return super()._deserialize(value, attr, data, *args, **kwargs)
 
 
@@ -117,24 +165,10 @@ class YesNoEnum(Enum):
     UNKNOWN = "Unknown"
 
 
-class YesNoField(BooleanField):
+class YesNoField(EnumBooleanField):
     """A yes no kind of boolean field."""
 
-    _UNKNOWN_LOWER = YesNoEnum.UNKNOWN.value.lower()
-
-    def _deserialize(self, value, *args, **kwargs) -> bool | None:  # type: ignore[reportIncompatibleMethodOverride]
-        """Accept any boolean value."""
-        if isinstance(value, str) and value.lower() == self._UNKNOWN_LOWER:
-            return None
-        return super()._deserialize(value, *args, **kwargs)
-
-    def _serialize(self, value, *_args, **_kwargs) -> str:  # type: ignore[reportIncompatibleMethodOverride]
-        """Serialize to specific values."""
-        if value is None:
-            return YesNoEnum.UNKNOWN.value
-        if value:
-            return YesNoEnum.YES.value
-        return YesNoEnum.NO.value
+    ENUM = YesNoEnum
 
 
 class OriginalFormatField(StringField):

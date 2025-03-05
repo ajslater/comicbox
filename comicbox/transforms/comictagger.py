@@ -36,7 +36,6 @@ from comicbox.schemas.comictagger import (
 from comicbox.schemas.identifier import NSS_KEY
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
-from comicbox.transforms.comicinfo_age_rating import ComicInfoAgeRatingTransform
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -60,7 +59,6 @@ class ComictaggerTransform(
     NestedPublishingTagsMixin,
     TitleStoriesMixin,
     PriceTransformMixin,
-    ComicInfoAgeRatingTransform,
 ):
     """Comictagger transform."""
 
@@ -196,7 +194,6 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
         PriceTransformMixin.parse_price,
-        ComicInfoAgeRatingTransform.parse_age_rating,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -212,5 +209,4 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
         PriceTransformMixin.unparse_price,
-        ComicInfoAgeRatingTransform.unparse_age_rating,
     )

@@ -9,6 +9,7 @@ from comicbox.identifiers import GTIN_NID
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
+    AGE_RATING_KEY,
     CHARACTERS_KEY,
     COUNTRY_KEY,
     DAY_KEY,
@@ -29,11 +30,10 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.comicinfo import (
     GTIN_TAG,
-    ComicInfoRoleTagEnum,
     ComicInfoSchema,
 )
-from comicbox.schemas.metroninfo import MetronRoleEnum
-from comicbox.transforms.comicinfo_age_rating import ComicInfoAgeRatingTransform
+from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
@@ -131,13 +131,12 @@ class ComicInfoTransform(
     NestedPublishingTagsMixin,
     XmlCreditsTransformMixin,
     TitleStoriesMixin,
-    ComicInfoAgeRatingTransform,
 ):
     """ComicInfo.xml Schema."""
 
     TRANSFORM_MAP = frozenbidict(
         {
-            # "AgeRating": AGE_RATING_KEY, coded
+            "AgeRating": AGE_RATING_KEY,
             # REPRINTS
             # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
             # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
@@ -211,7 +210,6 @@ class ComicInfoTransform(
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
         TitleStoriesMixin.parse_stories,
-        ComicInfoAgeRatingTransform.parse_age_rating,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -226,5 +224,4 @@ class ComicInfoTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
-        ComicInfoAgeRatingTransform.unparse_age_rating,
     )

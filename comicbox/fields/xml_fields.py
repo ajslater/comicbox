@@ -10,8 +10,8 @@ from comicbox.fields.collection_fields import (
     StringSetField,
 )
 from comicbox.fields.enum_fields import (
+    ComicInfoMangaField,
     EnumField,
-    MangaField,
     OriginalFormatField,
     ReadingDirectionField,
     YesNoField,
@@ -108,7 +108,7 @@ class XmlOriginalFormatField(OriginalFormatField):
         return super()._deserialize(*args, **kwargs)
 
 
-class XmlMangaField(MangaField):
+class XmlComicInfoMangaField(ComicInfoMangaField):
     """Check for cdata."""
 
     @cdata

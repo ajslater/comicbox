@@ -13,7 +13,7 @@ from comicbox.fields.collection_fields import (
     StringSetField,
 )
 from comicbox.fields.enum_fields import (
-    MangaField,
+    ComicInfoMangaField,
     OriginalFormatField,
     PageTypeField,
     ReadingDirectionField,
@@ -219,7 +219,7 @@ class ComicboxSubSchemaMixin:
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
     locations = DictField(values=Nested(IdentifiedSchema))
-    manga = MangaField()
+    manga = ComicInfoMangaField()
     month = IntegerField(minimum=1, maximum=12)
     monochrome = BooleanField()
     notes = StringField()

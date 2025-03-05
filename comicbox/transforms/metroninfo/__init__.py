@@ -14,7 +14,6 @@ class MetronInfoTransform(MetronInfoTransformCredits):
         MetronInfoTransformCredits.parse_urls,
         MetronInfoTransformCredits.parse_gtin,
         IdentifiersTransformMixin.parse_default_primary_identifier,
-        MetronInfoTransformCredits.parse_age_rating,
         MetronInfoTransformCredits.parse_arcs,
         MetronInfoTransformCredits.parse_credits,
         MetronInfoTransformCredits.parse_manga_volume,
@@ -29,7 +28,6 @@ class MetronInfoTransform(MetronInfoTransformCredits):
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        MetronInfoTransformCredits.unparse_age_rating,
         MetronInfoTransformCredits.unparse_arcs,
         MetronInfoTransformCredits.unparse_credits,
         MetronInfoTransformCredits.unparse_identifiers,

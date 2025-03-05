@@ -9,12 +9,8 @@ from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.schemas.comicinfo import (
-    ComicInfoRoleTagEnum,
-)
-from comicbox.schemas.metroninfo import (
-    MetronRoleEnum,
-)
+from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
     GenericRoleAliases,
@@ -133,6 +129,7 @@ class MetronInfoTransformCredits(
     def _unparse_role(cls, data, role_name, comicbox_role):
         """Unparse a metron role to an enum only value."""
         metron_roles = []
+        # TODO IS the transform
         if metron_role_enums := cls.get_role_enums(role_name):
             # Handle expanding one role into many.
             metron_role = []

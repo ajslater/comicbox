@@ -7,7 +7,7 @@ from types import MappingProxyType
 from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import StringListField, StringSetField
-from comicbox.fields.enum_fields import MangaField, YesNoField
+from comicbox.fields.enum_fields import ComicInfoMangaField, YesNoField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
@@ -83,7 +83,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     notes = StringField()
     web_link = StringSetField(as_string=True)
     # format in include
-    manga = MangaField()
+    manga = ComicInfoMangaField()
     black_and_white = YesNoField()
     page_count = IntegerField(minimum=0)
     maturity_rating = ComicInfoAgeRatingField()

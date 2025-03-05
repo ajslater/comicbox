@@ -1,7 +1,6 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 # https://anansi-project.github.io/docs/comicinfo/schemas/v2.1
 
-from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
@@ -12,12 +11,12 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
     XmlBooleanAttributeField,
+    XmlComicInfoMangaField,
     XmlDecimalField,
     XmlEnumField,
     XmlIntegerField,
     XmlIntegerListField,
     XmlLanguageField,
-    XmlMangaField,
     XmlOriginalFormatField,
     XmlStringField,
     XmlStringListField,
@@ -25,6 +24,8 @@ from comicbox.fields.xml_fields import (
     XmlYesNoField,
 )
 from comicbox.schemas.base import BaseSubSchema
+from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
+from comicbox.schemas.metroninfo import MetronAgeRatingEnum
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
 GTIN_TAG = "GTIN"
@@ -81,43 +82,23 @@ TAG_ORDER = (
 )
 
 
-class ComicInfoRoleTagEnum(Enum):
-    """ComicInfo Role tags."""
-
-    COLORIST = "Colorist"
-    COVER_ARTIST = "CoverArtist"
-    EDITOR = "Editor"
-    INKER = "Inker"
-    LETTERER = "Letterer"
-    PENCILLER = "Penciller"
-    TRANSLATOR = "Translator"
-    WRITER = "Writer"
-
-
-class ComicInfoAgeRatingEnum(Enum):
-    """ComicInfo Age Ratings."""
-
-    UNKNOWN = "Unknown"
-    A_18_PLUS = "Adults Only 18+"
-    EARLY_CHILDHOOD = "Early Childhood"
-    EVERYONE = "Everyone"
-    E_10_PLUS = "Everyone 10+"
-    G = "G"
-    KIDS_TO_ADULTS = "Kids to Adults"
-    M = "M"
-    MA_15_PLUS = "MA15+"
-    MA_17_PLUS = "Mature 17+"
-    PG = "PG"
-    R_18_PLUS = "R18+"
-    PENDING = "Rating Pending"
-    TEEN = "Teen"
-    X_18_PLUS = "X18+"
+COMICINFO_AGE_RATING_MAP = MappingProxyType(
+    {
+        MetronAgeRatingEnum.EVERYONE: ComicInfoAgeRatingEnum.EVERYONE,
+        MetronAgeRatingEnum.TEEN: ComicInfoAgeRatingEnum.TEEN,
+        MetronAgeRatingEnum.TEEN_PLUS: ComicInfoAgeRatingEnum.MA_15_PLUS,
+        MetronAgeRatingEnum.MATURE: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        MetronAgeRatingEnum.EXPLICIT: ComicInfoAgeRatingEnum.R_18_PLUS,
+        MetronAgeRatingEnum.ADULT: ComicInfoAgeRatingEnum.X_18_PLUS,
+    }
+)
 
 
 class ComicInfoAgeRatingField(XmlEnumField):
     """Age Rating Field."""
 
     ENUM = ComicInfoAgeRatingEnum
+    ENUM_MAP = COMICINFO_AGE_RATING_MAP
 
 
 class XmlPageInfoSchema(BaseSubSchema):
@@ -178,7 +159,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     LanguageISO = XmlLanguageField()
     Format = XmlOriginalFormatField()
     BlackAndWhite = XmlYesNoField()
-    Manga = XmlMangaField()
+    Manga = XmlComicInfoMangaField()
     Characters = XmlStringSetField(as_string=True)
     Teams = XmlStringSetField(as_string=True)
     Locations = XmlStringSetField(as_string=True)

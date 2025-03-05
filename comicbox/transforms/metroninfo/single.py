@@ -1,13 +1,10 @@
 """MetronInfo.xml Transformer for single tags."""
 
-from types import MappingProxyType
-
 from bidict import frozenbidict
 
 from comicbox.dict_funcs import deep_update
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comicbox_mixin import (
-    AGE_RATING_KEY,
     IMPRINT_KEY,
     LANGUAGE_KEY,
     NAME_KEY,
@@ -24,35 +21,11 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
-from comicbox.schemas.comicinfo import (
-    ComicInfoAgeRatingEnum,
-)
-from comicbox.schemas.metroninfo import (
-    MetronAgeRatingEnum,
-)
 from comicbox.transforms.metroninfo.base import MetronInfoTransformBase
 
 
 class MetronInfoTransformSingleTags(MetronInfoTransformBase):
     """MetronInfo Transformer for single tags."""
-
-    AGE_RATING_MAP = MappingProxyType(
-        {
-            ComicInfoAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
-            ComicInfoAgeRatingEnum.EARLY_CHILDHOOD: MetronAgeRatingEnum.EVERYONE,
-            ComicInfoAgeRatingEnum.E_10_PLUS: MetronAgeRatingEnum.EVERYONE,
-            ComicInfoAgeRatingEnum.G: MetronAgeRatingEnum.EVERYONE,
-            ComicInfoAgeRatingEnum.KIDS_TO_ADULTS: MetronAgeRatingEnum.EVERYONE,
-            ComicInfoAgeRatingEnum.TEEN: MetronAgeRatingEnum.TEEN,
-            ComicInfoAgeRatingEnum.PG: MetronAgeRatingEnum.TEEN,
-            ComicInfoAgeRatingEnum.MA_15_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
-            ComicInfoAgeRatingEnum.M: MetronAgeRatingEnum.MATURE,
-            ComicInfoAgeRatingEnum.MA_17_PLUS: MetronAgeRatingEnum.MATURE,
-            ComicInfoAgeRatingEnum.R_18_PLUS: MetronAgeRatingEnum.MATURE,
-            ComicInfoAgeRatingEnum.X_18_PLUS: MetronAgeRatingEnum.EXPLICIT,
-            ComicInfoAgeRatingEnum.A_18_PLUS: MetronAgeRatingEnum.ADULT,
-        }
-    )
 
     SERIES_TAG_MAP = frozenbidict(
         {
@@ -69,7 +42,6 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
             "IssueCount": VOLUME_ISSUE_COUNT_KEY,
         }
     )
-    AGE_RATING_TAG = "AgeRating"
     GTIN_TAG = "GTIN"
     IMPRINT_TAG = "Imprint"
     MANGA_VOLUME_TAG = "MangaVolume"
@@ -89,30 +61,6 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
         for from_key, to_key in tag_dict.items():
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
-
-    # AGE RATING
-    ###########################################################################
-    def parse_age_rating(self, data: dict) -> dict:
-        """Parse Age Rating."""
-        if age_rating_enum := data.pop(self.AGE_RATING_TAG, None):
-            data[AGE_RATING_KEY] = age_rating_enum.value
-        return data
-
-    def unparse_age_rating(self, data: dict) -> dict:
-        """Unparse Age Rating."""
-        if age_rating := data.pop(AGE_RATING_KEY, None):
-            metron_enum = None
-            try:
-                metron_enum = MetronAgeRatingEnum(age_rating)
-            except ValueError:
-                try:
-                    cix_enum = ComicInfoAgeRatingEnum(age_rating)
-                    metron_enum = self.AGE_RATING_MAP.get(cix_enum)
-                except ValueError:
-                    pass
-            if metron_enum:
-                data[self.AGE_RATING_TAG] = metron_enum
-        return data
 
     # PUBLISHER
     ###########################################################################

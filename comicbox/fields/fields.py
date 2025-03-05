@@ -2,6 +2,7 @@
 
 from abc import ABCMeta
 from decimal import Decimal
+from enum import Enum
 from logging import getLogger
 
 from marshmallow import fields
@@ -55,6 +56,8 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         if value in _STRING_EMPTY_VALUES:
             return None
 
+        if isinstance(value, Enum):
+            value = value.value
         if isinstance(value, str):
             value = value.encode("utf8", "replace")
         if isinstance(value, bytes):

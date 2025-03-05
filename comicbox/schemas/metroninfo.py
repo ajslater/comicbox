@@ -2,7 +2,6 @@
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from decimal import Decimal
-from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Field, Nested
@@ -20,19 +19,14 @@ from comicbox.fields.xml_fields import (
     XmlListField,
     XmlStringField,
 )
-from comicbox.identifiers import (
-    ANILIST_NID,
-    COMICVINE_NID,
-    GCD_NID,
-    KITSU_NID,
-    LCG_NID,
-    MANGADEX_NID,
-    MANGAUPDATES_NID,
-    METRON_NID,
-    MYANIMELIST_NID,
-    NID_ORIGIN_MAP,
-)
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
+from comicbox.schemas.metroninfo_enum import (
+    MetronAgeRatingEnum,
+    MetronFormatEnum,
+    MetronRoleEnum,
+    MetronSourceEnum,
+)
 from comicbox.schemas.xml_schemas import (
     XmlSchema,
     XmlSubSchema,
@@ -69,114 +63,48 @@ def _metron_resource_list_field(**kwargs) -> ListField:
     return xml_list_polyfield(MetronResourceSchema, StringField(), **kwargs)
 
 
-class MetronAgeRatingEnum(Enum):
-    """Metron Age Rating Types."""
-
-    UNKNOWN = "Unknown"
-    EVERYONE = "Everyone"
-    TEEN = "Teen"
-    TEEN_PLUS = "Teen Plus"
-    MATURE = "Mature"
-    EXPLICIT = "Explicit"
-    ADULT = "Adult"
+METRON_AGE_RATING_MAP = MappingProxyType(
+    {
+        ComicInfoAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
+        ComicInfoAgeRatingEnum.EARLY_CHILDHOOD: MetronAgeRatingEnum.EVERYONE,
+        ComicInfoAgeRatingEnum.E_10_PLUS: MetronAgeRatingEnum.EVERYONE,
+        ComicInfoAgeRatingEnum.G: MetronAgeRatingEnum.EVERYONE,
+        ComicInfoAgeRatingEnum.KIDS_TO_ADULTS: MetronAgeRatingEnum.EVERYONE,
+        ComicInfoAgeRatingEnum.TEEN: MetronAgeRatingEnum.TEEN,
+        ComicInfoAgeRatingEnum.PG: MetronAgeRatingEnum.TEEN,
+        ComicInfoAgeRatingEnum.MA_15_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
+        ComicInfoAgeRatingEnum.M: MetronAgeRatingEnum.MATURE,
+        ComicInfoAgeRatingEnum.MA_17_PLUS: MetronAgeRatingEnum.MATURE,
+        ComicInfoAgeRatingEnum.R_18_PLUS: MetronAgeRatingEnum.MATURE,
+        ComicInfoAgeRatingEnum.X_18_PLUS: MetronAgeRatingEnum.EXPLICIT,
+        ComicInfoAgeRatingEnum.A_18_PLUS: MetronAgeRatingEnum.ADULT,
+    }
+)
 
 
 class MetronAgeRatingField(XmlEnumField):
     """Metron Age Rating Field."""
 
     ENUM = MetronAgeRatingEnum
-
-
-class MetronSourceEnum(Enum):
-    """Metron Valid Sources."""
-
-    ANILIST = NID_ORIGIN_MAP[ANILIST_NID]
-    COMICVINE = NID_ORIGIN_MAP[COMICVINE_NID]
-    GCD = NID_ORIGIN_MAP[GCD_NID]
-    KITSU = NID_ORIGIN_MAP[KITSU_NID]
-    LCG = NID_ORIGIN_MAP[LCG_NID]
-    MANGADEX = NID_ORIGIN_MAP[MANGADEX_NID]
-    MANGAUPDATES = NID_ORIGIN_MAP[MANGAUPDATES_NID]
-    METRON = NID_ORIGIN_MAP[METRON_NID]
-    MYANIMELIST = NID_ORIGIN_MAP[MYANIMELIST_NID]
-
-
-class MetronSourceField(XmlEnumField):
-    """Metron Source Field."""
-
-    ENUM = MetronSourceEnum
+    ENUM_MAP = METRON_AGE_RATING_MAP
 
 
 class MetronFormatField(XmlEnumField):
     """Metron Series Format Field."""
 
-    class MetronFormatEnum(Enum):
-        """Metron Series Format Values."""
-
-        ANNUAL = "Annual"
-        DIGITAL_CHAPTER = "Digital Chapter"
-        GRAPHIC_NOVEL = "Graphic Novel"
-        HARDCOVER = "Hardcover"
-        LIMITED_SERIES = "Limited Series"
-        OMNIBUS = "Omnibus"
-        ONE_SHOT = "One-Shot"
-        SINGLE_ISSUE = "Single Issue"
-        TRADE_PAPERBACK = "Trade Paperback"
-
     ENUM = MetronFormatEnum
-
-
-class MetronRoleEnum(Enum):
-    """Valid Metron Roles."""
-
-    WRITER = "Writer"
-    SCRIPT = "Script"
-    STORY = "Story"
-    PLOT = "Plot"
-    INTERVIEWER = "Interviewer"
-    ARTIST = "Artist"
-    PENCILLER = "Penciller"
-    BREAKDOWNS = "Breakdowns"
-    ILLUSTRATOR = "Illustrator"
-    LAYOUTS = "Layouts"
-    INKER = "Inker"
-    EMBELLISHER = "Embellisher"
-    FINISHES = "Finishes"
-    INK_ASSISTS = "Ink Assists"
-    COLORIST = "Colorist"
-    COLOR_SEPARATIONS = "Color Separations"
-    COLOR_ASSISTS = "Color Assists"
-    COLOR_FLATS = "Color Flats"
-    DIGITAL_ART_TECHNICIAN = "Digital Art Technician"
-    GRAY_TONE = "Gray Tone"
-    LETTERER = "Letterer"
-    COVER = "Cover"
-    EDITOR = "Editor"
-    CONSULTING_EDITOR = "Consulting Editor"
-    ASSISTANT_EDITOR = "Assistant Editor"
-    ASSOCIATE_EDITOR = "Associate Editor"
-    GROUP_EDITOR = "Group Editor"
-    SENIOR_EDITOR = "Senior Editor"
-    MANAGING_EDITOR = "Managing Editor"
-    COLLECTION_EDITOR = "Collection Editor"
-    PRODUCTION = "Production"
-    DESIGNER = "Designer"
-    LOGO_DESIGN = "Logo Design"
-    TRANSLATOR = "Translator"
-    SUPERVISING_EDITOR = "Supervising Editor"
-    EXECUTIVE_EDITOR = "Executive Editor"
-    EDITOR_IN_CHIEF = "Editor In Chief"
-    PRESIDENT = "President"
-    PUBLISHER = "Publisher"
-    CHIEF_CREATIVE_OFFICER = "Chief Creative Officer"
-    EXECUTIVE_PRODUCER = "Executive Producer"
-    OTHER = "Other"
 
 
 class MetronRoleEnumField(XmlEnumField):
     """Metron Role Enum Field."""
 
     ENUM = MetronRoleEnum
+
+
+class MetronSourceField(XmlEnumField):
+    """Metron Source Field."""
+
+    ENUM = MetronSourceEnum
 
 
 class MetronIDSchema(BaseSubSchema):

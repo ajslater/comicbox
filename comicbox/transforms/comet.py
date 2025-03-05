@@ -20,8 +20,8 @@ from comicbox.schemas.comicbox_mixin import (
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
 )
-from comicbox.schemas.comicinfo import ComicInfoRoleTagEnum
-from comicbox.schemas.metroninfo import MetronRoleEnum
+from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
