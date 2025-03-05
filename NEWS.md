@@ -12,6 +12,7 @@
     attribute in the nss: urn:comicvine:series:1234
   - ComicInfo.xml gains the Translator tag
   - PDF modDate is now read and written.
+  - Enum fields now interpret caseless slightly fuzzy value lookups.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
