@@ -28,6 +28,34 @@ class MetronAgeRatingEnum(Enum):
     ADULT = "Adult"
 
 
+class GenericFormatsEnum(Enum):
+    """Generic Format Values."""
+
+    ANTHOLOGY = "Anthology"
+    ANNOTATION = "Annotation"
+    BOX_SET = "Box Set"
+    DIGITAL = "Digital"
+    DIRECTORS_CUT = "Directors Cut"
+    DIRECTOR_S_CUT = "Director's Cut"
+    GIANT_SIZED = "Giant Sized"
+    GN = "GN"
+    HARD_COVER = "Hard Cover"
+    HC = "HC"
+    HD_UPSCALED = "HD Upscaled"
+    KING_SIZED = "King Sized"
+    MAGAZINE = "Magazine"
+    MANGA = "Manga"
+    ONE_DASH_SHOT = "1-Shot"
+    PDF_RIP = "PDF Rip"
+    PREVIEW = "Preview"
+    PROLOGUE = "Prologue"
+    SCANLATION = "Scanlation"
+    SCRIPT = "Script"
+    TBP = "TPB"
+    WEB_COMIC = "Web Comic"
+    WEB_RIP = "Web Rip"
+
+
 class MetronFormatEnum(Enum):
     """Metron Series Format Values."""
 
