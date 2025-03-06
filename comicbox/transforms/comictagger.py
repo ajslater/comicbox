@@ -15,9 +15,12 @@ from comicbox.schemas.comicbox_mixin import (
     IDENTIFIERS_KEY,
     LOCATIONS_KEY,
     MONOCHROME_KEY,
+    NAME_KEY,
     ORIGINAL_FORMAT_KEY,
+    REPRINTS_KEY,
     SERIES_GROUPS_KEY,
     SERIES_KEY,
+    STORIES_KEY,
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
@@ -28,9 +31,11 @@ from comicbox.schemas.comictagger import (
     IS_VERSION_OF_TAG,
     ISSUE_ID_KEY,
     PAGES_TAG,
+    SERIES_ALIASES_TAG,
     SERIES_ID_KEY,
     STORY_ARC_TAG,
     TAG_ORIGIN_KEY,
+    TITLE_ALIASES_TAG,
     ComictaggerSchema,
 )
 from comicbox.schemas.identifier import NSS_KEY
@@ -180,10 +185,50 @@ class ComictaggerTransform(
 
         return super().unparse_identifiers(data)
 
+    def parse_reprints(self, data: dict) -> dict:
+        """Parse series aliases and title aliases into reprints."""
+        data = super().parse_reprints(data)
+        reprints = []
+        if series_aliases := data.get(SERIES_ALIASES_TAG):
+            for series_alias in series_aliases:
+                reprint = {SERIES_KEY: series_alias}
+                reprints.append(reprint)
+
+        if title_aliases := data.get(TITLE_ALIASES_TAG):
+            for title_alias in title_aliases:
+                stories = title_alias.split(";")
+                reprint = {STORIES_KEY: stories}
+                reprints.append(reprint)
+
+        if reprints:
+            reprints = data.get(REPRINTS_KEY, []) + reprints
+            data[REPRINTS_KEY] = reprints
+        return data
+
+    def unparse_reprints(self, data: dict) -> dict:
+        """Unparse reprints into series aliases and title aliases."""
+        data = super().unparse_reprints(data)
+        reprints = data.get(REPRINTS_KEY, [])
+        series_aliases = set()
+        title_aliases = set()
+        for reprint in reprints:
+            if series_name := reprint.get(SERIES_KEY, {}).get(NAME_KEY):
+                series_aliases.add(series_name)
+            if story_names := reprint.get(STORIES_KEY, {}).keys():
+                title = ";".join(story_names)
+                title_aliases.add(title)
+        if series_aliases:
+            series_aliases = data.get(SERIES_ALIASES_TAG, set()) | series_aliases
+            data[SERIES_ALIASES_TAG] = series_aliases
+        if title_aliases:
+            title_aliases = data.get(TITLE_ALIASES_TAG, set()) | title_aliases
+            data[TITLE_ALIASES_TAG] = title_aliases
+        return data
+
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.parse_credits,
-        CoMetReprintsTransformMixin.parse_reprints,
+        parse_reprints,
         ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.parse_arcs,
         parse_identifiers,
@@ -200,6 +245,7 @@ class ComictaggerTransform(
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
+        unparse_reprints,
         ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
         unparse_identifiers,

@@ -24,6 +24,8 @@ IDENTIFIER_TAG = "identifier"
 STORY_ARC_TAG = "story_arcs"
 PAGES_TAG = "pages"
 INDEX_TAG = "Image"
+SERIES_ALIASES_TAG = "series_aliases"
+TITLE_ALIASES_TAG = "title_aliases"
 
 
 class TagOriginSchema(BaseSubSchema):

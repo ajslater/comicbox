@@ -15,6 +15,7 @@
   - Enum fields now interpret caseless slightly fuzzy value lookups.
   - For convenice, named or numbered types or collections in the comicbox schema
     can also parse by their simple name instead of requiring a complex object.
+  - Comictagger schema supports series_aliases and title_aliases as reprints
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
