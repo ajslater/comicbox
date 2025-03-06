@@ -20,6 +20,7 @@ dependencies = [
   "stringcase<2.0.0,>=1.2.0",
   "urnparse<1.0.0,>=0.2.0",
   "xmltodict<1.0.0,>=0.14.0",
+  "py7zr>=0.22.0",
 ]
 readme = "README.md"
 keywords = [

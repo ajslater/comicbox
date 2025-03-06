@@ -156,10 +156,12 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
                     continue
                 size = self._get_info_size(info)
                 # height & width could go here.
-                computed_page = {"index": index, "size": size}
-                pages.append(computed_page)
+                if size is not None:
+                    computed_page = {"index": index, "size": size}
+                    pages.append(computed_page)
                 index += 1
         except Exception as exc:
+            LOG.exception("")
             LOG.warning(f"{self._path}: Compute pages metadata: {exc}")
         if pages:
             return self._get_computed_merged_pages_metadata(sub_md, pages)

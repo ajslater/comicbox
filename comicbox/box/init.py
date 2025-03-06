@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from zipfile import ZipFile, is_zipfile
 
 from confuse import AttrDict
+from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
@@ -21,8 +22,10 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.sources import MetadataSources
 from comicbox.transforms.base import BaseTransform
 
-with suppress(ImportError):
+try:
     from pdffile import PDFFile
+except ImportError:
+    from comicbox.box.dummy import PDFFile
 
 if TYPE_CHECKING:
     from tarfile import TarFile
@@ -81,12 +84,20 @@ class ComicboxInitMixin:
         self._set_archive_cls()
         try:
             # FUTURE Custom archive type possible in python 3.12
-            self._archive: ZipFile | RarFile | TarFile | PDFFile | None = None  # type: ignore[reportRedeclaration]
+            self._archive: (
+                ZipFile | RarFile | TarFile | SevenZipFile | PDFFile | None
+            ) = None  # type: ignore[reportRedeclaration]
         except NameError:
-            self._archive: ZipFile | RarFile | TarFile | None = None
+            self._archive: (
+                ZipFile | RarFile | TarFile | SevenZipFile | PDFFile | None
+            ) = None
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         self._info_size_attr = (
-            "size" if self._archive_cls == tarfile_open else "file_size"
+            "size"
+            if self._archive_cls == tarfile_open
+            else None
+            if self._archive_cls == SevenZipFile
+            else "file_size"
         )
         self._namelist = None
         self._infolist = None
@@ -131,6 +142,9 @@ class ComicboxInitMixin:
         if self._set_archive_cls_pdf():
             # Important to have PDFile before zipfile
             self._file_type = "PDF"
+        elif is_7zfile(self._path):
+            self._archive_cls = SevenZipFile
+            self._file_type = "CB7"
         elif is_zipfile(self._path):
             self._archive_cls = ZipFile
             self._file_type = "CBZ"

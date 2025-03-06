@@ -5,6 +5,7 @@ from pathlib import Path
 from tarfile import TarFile
 from zipfile import ZipFile
 
+from py7zr import SevenZipFile
 from rarfile import BadRarFile, RarFile
 
 from comicbox.box.archive import ComicboxArchiveMixin, archive_close
@@ -34,11 +35,11 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             self._namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
         return self._namelist
 
-    def _get_info_fn(self, info):
+    def _get_info_fn(self, info) -> str:
         return getattr(info, self._info_fn_attr)
 
-    def _get_info_size(self, info):
-        return getattr(info, self._info_size_attr)
+    def _get_info_size(self, info) -> int | None:
+        return getattr(info, self._info_size_attr) if self._info_size_attr else None
 
     @archive_close
     def namelist(self):
@@ -52,6 +53,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             archive = self._get_archive()
             if isinstance(archive, TarFile):
                 infolist = archive.getmembers()
+            elif isinstance(archive, SevenZipFile):
+                infolist = archive.list()
             else:
                 infolist = archive.infolist()
 
@@ -87,6 +90,22 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         except UnsupportedArchiveTypeError:
             return False
 
+    @staticmethod
+    def _read_tarfile(archive, filename: str) -> bytes:
+        file_obj = archive.extractfile(filename)
+        return file_obj.read() if file_obj else b""
+
+    @staticmethod
+    def _read_7zipfile(archive, filename: str) -> bytes:
+        """Read a single file from 7zip."""
+        data = b""
+        if files := archive.read(targets=[filename]):
+            for name, file_obj in files.items():
+                if name == filename:
+                    data = file_obj.read()
+        archive.reset()
+        return data
+
     def _archive_readfile(self, filename, to_pixmap: bool) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
@@ -100,13 +119,13 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         data = b""
         try:
             if isinstance(archive, TarFile):
-                file_obj = archive.extractfile(filename)
-                if file_obj:
-                    data = file_obj.read()
+                data = self._read_tarfile(archive, filename)
+            elif isinstance(archive, SevenZipFile):
+                data = self._read_7zipfile(archive, filename)
             elif to_pixmap and self._archive_is_pdf:
                 data = archive.read(filename, to_pixmap=to_pixmap)  # type: ignore[reportCallIssue]
             else:
-                data = archive.read(filename)
+                data = archive.read(filename)  # type: ignore[reportCallIssue]
         except BadRarFile:
             self.check_unrar_executable()
             raise

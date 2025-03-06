@@ -29,6 +29,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                     sd = SourceData(source_string, transform_class, fn)
                     source_data_list.append(sd)
         except Exception as exc:
+            LOG.exception("")
             LOG.warning(f"Error reading {self._path}: {exc}")
         if source_data_list:
             return tuple(source_data_list)

@@ -6,9 +6,16 @@ from logging import getLogger
 from tarfile import TarFile
 from zipfile import ZipFile
 
+from py7zr import SevenZipFile
 from rarfile import RarFile
 
 from comicbox.box.init import ComicboxInitMixin
+
+try:
+    from pdffile import PDFFile
+except ImportError:
+    from comicbox.box.dummy import PDFFile
+
 
 LOG = getLogger(__name__)
 
@@ -50,7 +57,7 @@ class ComicboxArchiveMixin(ComicboxInitMixin):
         finally:
             self._archive = None
 
-    def _get_archive(self) -> ZipFile | RarFile | TarFile:
+    def _get_archive(self) -> ZipFile | RarFile | TarFile | SevenZipFile | PDFFile:
         """Set archive instance open for reading."""
         if not self._archive and self._archive_cls:
             self._archive = self._archive_cls(self._path)

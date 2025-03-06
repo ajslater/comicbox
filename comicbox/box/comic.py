@@ -2,7 +2,7 @@
 Comic Archive.
 
 Reads and writes metadata via marshmallow schemas.
-Reads and writes file data via ZipFile/RarFile etc.
+Reads and writes archive file data.
 """
 
 from logging import getLogger

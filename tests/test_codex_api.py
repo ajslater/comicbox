@@ -3,7 +3,7 @@
 from argparse import Namespace
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from pprint import pprint
@@ -19,6 +19,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
+    CB7_SOURCE_PATH,
     CIX_CBI_CBR_SOURCE_PATH,
     CIX_CBT_SOURCE_PATH,
     CIX_CBZ_SOURCE_PATH,
@@ -177,6 +178,36 @@ PDF_MD = MappingProxyType(
     }
 )
 
+CB7_MD_PATCH = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "ext": "cb7",
+            "date": date(1950, 11, 1),
+            "identifier_primary_source": {
+                "nid": "comicvine",
+                "url": "https://comicvine.gamespot.com/",
+            },
+            "identifiers": {
+                "comicvine": {
+                    "nss": "145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "isbn": {
+                    "nss": "123-456789-0123",
+                    "url": "https://isbndb.com/book/123-456789-0123",
+                },
+                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            },
+            "page_count": 5,
+            "stories": {"The Beginning": {}, "The End": {}},
+        }
+    }
+)
+CB7_MD = deep_update(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
+CB7_MD[ComicboxSchemaMixin.ROOT_TAG].pop("pages")
+CB7_MD = MappingProxyType(CB7_MD)
+
+
 CS = "Captain Science 001"
 CS_COVER = CS + "/CaptainScience#1_01.jpg"
 FIXTURES = MappingProxyType(
@@ -185,6 +216,7 @@ FIXTURES = MappingProxyType(
         "CBR": Fixture(CIX_CBI_CBR_SOURCE_PATH, 36, CBR_MD, CS, CS_COVER),
         "CBT": Fixture(CIX_CBT_SOURCE_PATH, 5, CBT_MD, CS, CS_COVER),
         "PDF": Fixture(PDF_SOURCE_PATH, 4, PDF_MD, "pdf", "pdf/0.pdf"),
+        "CB7": Fixture(CB7_SOURCE_PATH, 5, CB7_MD, CS, CS_COVER),
     }
 )
 INDEXES = (2, 0, 1, 3)
