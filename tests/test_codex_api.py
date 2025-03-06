@@ -184,8 +184,8 @@ CB7_MD_PATCH = MappingProxyType(
             "ext": "cb7",
             "date": date(1950, 11, 1),
             "identifier_primary_source": {
-                "nid": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
+                "nid": "isbn",
+                "url": "https://isbndb.com/",
             },
             "identifiers": {
                 "comicvine": {
