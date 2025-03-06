@@ -55,28 +55,28 @@ def _get_output(args):
 
 
 FILETYPE_OUTPUT = """
-===== tests/test_files/empty.cbz ===============================================
+ ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
 CBZ
 """
 
 
 def test_cli_filetype():
     """Test filetype action."""
-    args = ("comicbox", "-P", "t", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "t", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = "\n" + _get_output(args)
     assert output == FILETYPE_OUTPUT
 
 
 SOURCE_OUTPUT = """
-===== tests/test_files/empty.cbz ===============================================
------ Source Filename tests/test_files/empty.cbz -------------------------------
+ ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
+ ⎯ Source Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 empty.cbz
 """
 
 
 def test_cli_source():
     """Test print source action."""
-    args = ("comicbox", "-P", "s", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "s", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(SOURCE_OUTPUT)
@@ -85,8 +85,8 @@ def test_cli_source():
 
 
 LOADED_OUTPUT = """
-===== tests/test_files/empty.cbz ===============================================
------ Loaded Filename tests/test_files/empty.cbz -------------------------------
+ ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
+ ⎯ Loaded Filename: tests/test_files/empty.cbz ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 comicbox:
   ext: cbz
   series: empty
@@ -95,7 +95,7 @@ comicbox:
 
 def test_cli_loaded():
     """Test print loaded action."""
-    args = ("comicbox", "-P", "l", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "-P", "l", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(LOADED_OUTPUT)
@@ -107,10 +107,10 @@ def test_cli_loaded():
 
 def test_cli_print():
     """Simple cli metadata print test."""
-    args = (*CLI_METADATA_ARGS, "-p", str(EMPTY_CBZ_SOURCE_PATH))
+    args = (*CLI_METADATA_ARGS, "-p", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
     output = _get_output(args)
-    output = output.split("\n", 1)[1]  # remove first line
+    output = output.split("\n", 2)[2]  # remove first two lines
 
     yaml = YamlRenderModule.get_write_yaml(dfs=False)
     output_dict = yaml.load(output)
@@ -130,51 +130,54 @@ def test_cli_print():
 
 
 LIST_OUTPUT = """
-===== tests/test_files/Captain Science #001-cix-cbi.cbr ========================
-Page	Archive Path
-  0	Captain Science 001/CaptainScience#1_01.jpg
-  1	Captain Science 001/CaptainScience#1_02.jpg
-  2	Captain Science 001/CaptainScience#1_03.jpg
-  3	Captain Science 001/CaptainScience#1_04.jpg
-  4	Captain Science 001/CaptainScience#1_05.jpg
-  5	Captain Science 001/CaptainScience#1_06.jpg
-  6	Captain Science 001/CaptainScience#1_07.jpg
-  7	Captain Science 001/CaptainScience#1_08.jpg
-  8	Captain Science 001/CaptainScience#1_09.jpg
-  9	Captain Science 001/CaptainScience#1_10.jpg
- 10	Captain Science 001/CaptainScience#1_11.jpg
- 11	Captain Science 001/CaptainScience#1_12.jpg
- 12	Captain Science 001/CaptainScience#1_13.jpg
- 13	Captain Science 001/CaptainScience#1_14.jpg
- 14	Captain Science 001/CaptainScience#1_15.jpg
- 15	Captain Science 001/CaptainScience#1_16.jpg
- 16	Captain Science 001/CaptainScience#1_17.jpg
- 17	Captain Science 001/CaptainScience#1_18.jpg
- 18	Captain Science 001/CaptainScience#1_19.jpg
- 19	Captain Science 001/CaptainScience#1_20.jpg
- 20	Captain Science 001/CaptainScience#1_21.jpg
- 21	Captain Science 001/CaptainScience#1_22.jpg
- 22	Captain Science 001/CaptainScience#1_23.jpg
- 23	Captain Science 001/CaptainScience#1_24.jpg
- 24	Captain Science 001/CaptainScience#1_25.jpg
- 25	Captain Science 001/CaptainScience#1_26.jpg
- 26	Captain Science 001/CaptainScience#1_27.jpg
- 27	Captain Science 001/CaptainScience#1_28.jpg
- 28	Captain Science 001/CaptainScience#1_29.jpg
- 29	Captain Science 001/CaptainScience#1_30.jpg
- 30	Captain Science 001/CaptainScience#1_31.jpg
- 31	Captain Science 001/CaptainScience#1_32.jpg
- 32	Captain Science 001/CaptainScience#1_33.jpg
- 33	Captain Science 001/CaptainScience#1_34.jpg
- 34	Captain Science 001/CaptainScience#1_35.jpg
- 35	Captain Science 001/CaptainScience#1_36.jpg
-   	comicinfo.xml
-"""  # noqa: E101
+ ═ tests/test_files/Captain Science #001-cix-cbi.cbr ═══════════════════════════
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
+│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
+│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
+│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
+│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
+│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
+│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
+│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
+│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
+│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
+│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
+│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
+│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
+│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
+│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
+│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
+│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
+│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
+│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
+│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
+│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
+│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
+│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
+│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
+│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
+│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
+│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
+│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
+│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
+│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
+│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
+│      │ comicinfo.xml                               │
+└──────┴─────────────────────────────────────────────┘
+"""
 
 
 def test_cli_print_contents():
     """Test list contents."""
-    args = ("comicbox", "-P", "f", str(CIX_CBI_CBR_SOURCE_PATH))
+    args = ("comicbox", "-P", "f", "-t", "none", str(CIX_CBI_CBR_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     print(LIST_OUTPUT)

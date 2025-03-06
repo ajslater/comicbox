@@ -37,6 +37,7 @@ _TEMPLATE = MappingTemplate(
                 "replace_metadata": bool,
                 "stamp_notes": bool,
                 "tagger": Optional(str),
+                "theme": Optional(str),
                 # API Options
                 "close_fd": bool,
                 # Actions
@@ -69,7 +70,7 @@ def _clean_paths(config):
             if not path:
                 continue
             if Path(path).is_dir() and not config.recurse:
-                LOG.warn(f"{path} is a directory. Ignored without --recurse.")
+                LOG.warning(f"{path} is a directory. Ignored without --recurse.")
                 paths_removed = True
                 continue
             filtered_paths.add(path)

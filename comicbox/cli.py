@@ -5,6 +5,8 @@ from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormat
 from collections.abc import Sequence
 from logging import INFO
 
+from rich import print as rich_print
+
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
@@ -176,6 +178,11 @@ def _add_option_group(parser):
         help="Do not write the notes field with tagger, timestamp and identifiers "
         "when writing metadata out to a file.",
     )
+    option_group.add_argument(
+        "-t",
+        "--theme",
+        help="Pygments theme to use for syntax highlighting. https://pygments.org/styles/. 'none' will stop highlighting.",
+    )
 
 
 def _add_action_group(parser):
@@ -344,5 +351,5 @@ def main(params=None):
     try:
         runner.run()
     except HANDLED_EXCEPTIONS as exc:
-        print(exc)  # noqa: T201
+        rich_print(f"[yellow]{exc}[/yellow]")
         sys.exit(1)

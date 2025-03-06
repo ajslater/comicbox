@@ -1,6 +1,13 @@
 """Print Methods."""
 
-from pprint import pprint
+from collections.abc import Mapping
+
+from rich.console import Console
+from rich.default_styles import DEFAULT_STYLES
+from rich.pretty import Pretty
+from rich.rule import Rule
+from rich.syntax import Syntax
+from rich.table import Table
 
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
@@ -22,18 +29,53 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
 
     _HEADER_WIDTH = 5
     _TERM_WIDTH = 80
+    _CONSOLE = Console()
+    _RULE_CHAR = "⎯"
+    _RULE_COLOR = DEFAULT_STYLES["rule.line"].color.name  # type: ignore[reportOptionalMemberAccess]
+    _RULE_HEAD = f" [{_RULE_COLOR}]{_RULE_CHAR}[/{_RULE_COLOR}] "
+    _FILE_RULE_CHAR = "═"
+    _FILE_RULE_HEAD = f" [{_RULE_COLOR}]{_FILE_RULE_CHAR}[/{_RULE_COLOR}] "
+
+    def _is_themed(self):
+        """Use rich printing for code or not."""
+        return self._config.theme and self._config.theme.lower() != "none"
+
+    def _syntax(self, code: str, lexer: str):
+        """Apply rich syntax highlighting to code."""
+        return (
+            Syntax(code, lexer, theme=self._config.theme, background_color="black")
+            if self._is_themed()
+            else code
+        )
+
+    def _print(self, renderable):
+        if self._is_themed():
+            self._CONSOLE.print(renderable)
+        else:
+            print(renderable)  # noqa: T201
+
+    def print_section(self, title, renderable, subtitle=""):
+        """Pretty print a renderable in a panel."""
+        if subtitle:
+            title += f": {subtitle}"
+
+        title = self._RULE_HEAD + title
+        rule = Rule(title, align="left", characters=self._RULE_CHAR)
+        self._CONSOLE.print(rule)
+        self._print(renderable)
 
     def _print_version(self):
         """Print package version."""
         if PrintPhases.VERSION not in self._config.print:
             return
-        print(VERSION)
+        self._print(VERSION)
 
     def _print_file_type(self):
         """Print the file type."""
         if PrintPhases.FILE_TYPE not in self._config.print:
             return
-        print(self.get_file_type())
+        ft = self.get_file_type()
+        self._print(ft)
 
     def _print_file_names(self):
         """Print archive namelist."""
@@ -41,31 +83,25 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             return
         namelist = self._get_archive_namelist()
         pagenames = self.get_page_filenames()
-        print("Page\tArchive Path")
+        table = Table(style="cyan")
+        table.add_column("Page")
+        table.add_column("Archive Path")
         for name in namelist:
             try:
                 index = str(pagenames.index(name))
             except Exception:
                 index = ""
             index = index.rjust(3)
-            print(f"{index}\t{name}")
-
-    @classmethod
-    def _print_header(cls, prefix=None, label=None, path=None, char="-"):
-        """Print a header."""
-        first_part_list = [char * cls._HEADER_WIDTH, prefix, label]
-        if path:
-            first_part_list.append(path)
-
-        first_part = " ".join(filter(None, first_part_list)) + " "
-        end_len = cls._TERM_WIDTH - len(first_part)
-        print(first_part + char * end_len)
+            table.add_row(index, name)
+        self._CONSOLE.print(table)
 
     def print_file_header(self):
         """Print header for this Archive's path."""
         if not self._path:
             return
-        self._print_header(path=str(self._path), char="=")
+        title = self._FILE_RULE_HEAD + str(self._path)
+        rule = Rule(title, align="left", characters=self._FILE_RULE_CHAR)
+        self._CONSOLE.print(rule)
 
     def _print_sources(self, source):
         """Print source metadtata."""
@@ -75,13 +111,14 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         for source_data in source_data_list:
             if not source_data or not source_data.metadata:
                 continue
-            self._print_header("Source", source.value.label, source_data.path)
             md = source_data.metadata
-            if isinstance(md, dict):
-                pprint(md)
+            if isinstance(md, Mapping):
+                renderable = Pretty(dict(md)) if self._is_themed() else md
             else:
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
-                print(print_md)
+                renderable = self._syntax(print_md, source.value.lexer)
+            title = f"Source {source.value.label}"
+            self.print_section(title, renderable)
 
     def _print_loaded(self, source):
         """Print loaded metadata."""
@@ -93,10 +130,11 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         for loaded_md in loaded_md_list:
             if not loaded_md:
                 continue
-            self._print_header("Loaded", source.value.label, loaded_md.path)
             str_data = YamlRenderModule.dumps(dict(loaded_md.metadata))
             str_data = str_data.removesuffix("\n")
-            print(str_data)
+            syntax = self._syntax(str_data, "yaml")
+            title = f"Loaded {source.value.label}"
+            self.print_section(title, syntax, loaded_md.path)
 
     def _print_normalized(self, source):
         """Print normalized metadata."""
@@ -108,11 +146,12 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         for normalized_md in normalized_md_list:
             if not normalized_md:
                 continue
-            self._print_header("Normalized", source.value.label, normalized_md.path)
             schema = ComicboxYamlSchema(path=normalized_md.path)
             str_data = schema.dumps(normalized_md.metadata)
             str_data = str_data.removesuffix("\n")
-            print(str_data)
+            syntax = self._syntax(str_data, "yaml")
+            title = f"Normalized {source.value.label}"
+            self.print_section(title, syntax, subtitle=normalized_md.path)
 
     def _print_sources_loaded_normalized(self):
         """Print sources, loaded, and normalized metadata."""
@@ -132,9 +171,10 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         if PrintPhases.MERGED not in self._config.print:
             return
         md = self.get_merged_metadata()
-        self._print_header("Normalized Merged (Not Final)")
         str_data = schema.dumps(md)
-        print(str_data)
+        syntax = self._syntax(str_data, "yaml")
+        title = "Normalized Merged"
+        self.print_section(title, syntax, subtitle="Not Final")
 
     def _print_computed(self, schema):
         """Print parsed metadata."""
@@ -144,19 +184,19 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         for computed_md in computed:
             if not computed_md or not computed_md.metadata:
                 continue
-            self._print_header("Computed", computed_md.label)
             str_data = schema.dumps(
                 computed_md.metadata, allowed_null_keys=_ALLOWED_NULL_KEYS
             )
-            print(str_data)
+            syntax = self._syntax(str_data, "yaml")
+            self.print_section("Computed", syntax, subtitle=computed_md.label)
 
     def _print_metadata(self):
         """Pretty print the metadata."""
         if PrintPhases.METADATA in self._config.print:
-            if len(self._config.print) > 1:
-                self._print_header("Merged", "Metadata")
+            # if len(self._config.print) > 1:
             md = self.to_string()
-            print(md)
+            syntax = self._syntax(md, "yaml")
+            self.print_section("Merged Metadata", syntax)
 
     @archive_close
     def print_out(self):

@@ -21,6 +21,7 @@ comicbox:
     - json
     - pdf
     - yaml
+  theme: gruvbox-dark
   replace_metadata: False
 
   read_ignore: []

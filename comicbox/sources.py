@@ -47,6 +47,7 @@ class MetadataSource:
     has_page_count: bool = False
     has_pages: bool = False
     enabled: bool = True
+    lexer: str = "yaml"
 
 
 class MetadataSources(Enum):
@@ -70,6 +71,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         has_pages=True,
+        lexer="json",
     )
     PDF = MetadataSource(
         "MuPDF",
@@ -79,6 +81,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         enabled=PDF_ENABLED,
+        lexer="json",
     )
     PDF_XML = MetadataSource(
         "PDF XML",
@@ -88,6 +91,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         enabled=PDF_ENABLED,
+        lexer="xml",
     )
     COMET = MetadataSource(
         "CoMet",
@@ -96,6 +100,7 @@ class MetadataSources(Enum):
         from_archive=SourceFrom.ARCHIVE_FILE,
         writable=True,
         has_page_count=True,
+        lexer="xml",
     )
     METRON = MetadataSource(
         "MetronInfo",
@@ -105,6 +110,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         has_pages=True,
+        lexer="xml",
     )
     CBI = MetadataSource(
         "ComicBookInfo",
@@ -113,6 +119,7 @@ class MetadataSources(Enum):
         from_archive=SourceFrom.ARCHIVE_COMMENT,
         writable=True,
         has_page_count=True,
+        lexer="json",
     )
     CIX = MetadataSource(
         "ComicInfo",
@@ -122,6 +129,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         has_pages=True,
+        lexer="xml",
     )
     COMICBOX_YAML = MetadataSource(
         "Comicbox YAML",
@@ -140,6 +148,7 @@ class MetadataSources(Enum):
         writable=True,
         has_page_count=True,
         has_pages=True,
+        lexer="json",
     )
     IMPORT = MetadataSource("Imported File")
     CLI = MetadataSource(
