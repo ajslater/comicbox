@@ -1,4 +1,5 @@
 """Mixin for Comicbox Schemas."""
+
 from decimal import Decimal
 from inspect import isclass
 from types import MappingProxyType
@@ -122,6 +123,60 @@ class IdentifiedNameSchema(IdentifiedSchema):
     name = StringField()
 
 
+class SimpleNamedDictField(Union):
+    """A dict that also accepts a simple string set and builds a dict from that."""
+
+    def __init__(
+        self,
+        *args,
+        keys: Field | type[Field] = StringField,
+        values: Field | type[Field] | None = None,
+        **kwargs,
+    ):
+        """Create the union."""
+        if values is None:
+            values = Nested(IdentifiedSchema)
+        fields = [DictField(keys=keys, values=values), StringSetField()]
+        super().__init__(fields, *args, **kwargs)
+
+    def _deserialize(self, value, attr, *args, **kwargs):
+        result = super()._deserialize(value, attr, *args, **kwargs)
+        if isinstance(result, set | frozenset):
+            dict_value = {}
+            for key in result:
+                dict_value[key] = {}
+                result = super()._deserialize(dict_value, attr, *args, **kwargs)
+        return result
+
+
+class SimpleNamedNestedField(Union):
+    """Return a union of a nested schema and an alternate field."""
+
+    def __init__(
+        self,
+        *args,
+        schema: type[Schema] = IdentifiedNameSchema,
+        field: Field | type[Field] = StringField,
+        name_key: str = NAME_KEY,
+        primitive_type: type = str,
+        **kwargs,
+    ):
+        """Create the union."""
+        self._name_key = name_key
+        self._primitive_type = primitive_type
+        if isclass(field):
+            field = field()
+        fields = [Nested(schema), field]
+        super().__init__(fields, *args, **kwargs)
+
+    def _deserialize(self, value, attr, *args, **kwargs):
+        result = super()._deserialize(value, attr, *args, **kwargs)
+        if isinstance(result, self._primitive_type):
+            complex_value = {self._name_key: result}
+            result = super()._deserialize(complex_value, attr, *args, **kwargs)
+        return result
+
+
 COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
     {
         **{enum: enum for enum in CoMetRoleTagEnum},
@@ -143,7 +198,7 @@ class PersonSchema(BaseSubSchema):
     """Credit Person Schema."""
 
     identifiers = IdentifiersField()
-    roles = DictField(keys=RoleField, values=Nested(IdentifiedSchema))
+    roles = SimpleNamedDictField(keys=RoleField)
 
 
 class PageInfoSchema(BaseSubSchema):
@@ -217,43 +272,15 @@ class ArcSchema(BaseSubSchema):
     number = IntegerField()
 
 
-class SimpleNamedNestedField(Union):
-    """Return a union of a nested schema and an alternate field."""
-
-    def __init__(
-        self,
-        *args,
-        schema: type[Schema] = IdentifiedNameSchema,
-        field: Field | type[Field] = StringField,
-        name_key: str = NAME_KEY,
-        primitive_type: type = str,
-        **kwargs,
-    ):
-        """Create the union."""
-        self._name_key = name_key
-        self._primitive_type = primitive_type
-        if isclass(field):
-            field = field()
-        fields = [Nested(schema), field]
-        super().__init__(fields, *args, **kwargs)
-
-    def _deserialize(self, value, attr, *args, **kwargs):
-        result = super()._deserialize(value, attr, *args, **kwargs)
-        if isinstance(result, self._primitive_type):
-            complex_value = {self._name_key: result}
-            result = super()._deserialize(complex_value, attr, *args, **kwargs)
-        return result
-
-
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
     age_rating = AgeRatingField()
     alternate_images = StringSetField()
-    arcs = DictField(values=Nested(ArcSchema))
-    characters = DictField(values=Nested(IdentifiedSchema))
+    arcs = SimpleNamedDictField(values=Nested(ArcSchema))
+    characters = SimpleNamedDictField()
     community_rating = DecimalField(places=2)
-    credits = DictField(values=Nested(PersonSchema))
+    credits = SimpleNamedDictField(values=Nested(PersonSchema))
     credit_primaries = DictField(values=DictField)
     country = CountryField()
     collection_title = StringField()
@@ -263,7 +290,7 @@ class ComicboxSubSchemaMixin:
     day = IntegerField(minimum=1, maximum=31)
     ext = StringField()
     original_format = OriginalFormatField()
-    genres = DictField(values=Nested(IdentifiedSchema))
+    genres = SimpleNamedDictField()
     identifiers = IdentifiersField()
     identifier_primary_source = Nested(IdentifierPrimarySource)
     issue = StringField()
@@ -272,7 +299,7 @@ class ComicboxSubSchemaMixin:
     imprint = SimpleNamedNestedField()
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
-    locations = DictField(values=Nested(IdentifiedSchema))
+    locations = SimpleNamedDictField()
     manga = ComicInfoMangaField()
     month = IntegerField(minimum=1, maximum=12)
     monochrome = BooleanField()
@@ -307,12 +334,12 @@ class ComicboxSubSchemaMixin:
     series = SimpleNamedNestedField(schema=SeriesSchema)
     series_groups = StringSetField()
     store_date = DateField()
-    stories = DictField(values=Nested(IdentifiedSchema), sort=False)
+    stories = SimpleNamedDictField(sort=False)
     summary = StringField()
     tagger = StringField()
-    tags = DictField(values=Nested(IdentifiedSchema))
-    teams = DictField(values=Nested(IdentifiedSchema))
-    universes = DictField(values=Nested(UniverseSchema))
+    tags = SimpleNamedDictField()
+    teams = SimpleNamedDictField()
+    universes = SimpleNamedDictField(values=Nested(UniverseSchema))
     updated_at = DateTimeField()
     volume = SimpleNamedNestedField(
         schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int

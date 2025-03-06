@@ -13,8 +13,8 @@
   - ComicInfo.xml gains the Translator tag
   - PDF modDate is now read and written.
   - Enum fields now interpret caseless slightly fuzzy value lookups.
-  - For convenice, named or numbered types in the comicbox schema can also parse by their simple name
-    instead of requiring a complex object.
+  - For convenice, named or numbered types or collections in the comicbox schema
+    can also parse by their simple name instead of requiring a complex object.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
