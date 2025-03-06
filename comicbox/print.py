@@ -16,4 +16,5 @@ class PrintPhases(Enum):
     NORMALIZED = "n"
     MERGED = "m"
     COMPUTED = "c"
-    METADATA = "d"
+    METADATA_OLD = "d"
+    METADATA = "p"

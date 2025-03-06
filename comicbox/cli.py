@@ -1,11 +1,12 @@
 """Cli for comicbox."""
 
 import sys
-from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
 from logging import INFO
 
 from rich import print as rich_print
+from rich_argparse import RawDescriptionRichHelpFormatter
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.print import PrintPhases
@@ -298,9 +299,9 @@ def get_args(params=None) -> Namespace:
         "  n  Loaded metadata normalized to comicbox schema\n"
         "  m  Merged normalized intermediate metadata\n"
         "  c  Computed metadata sources\n"
-        "  d  Final metadata merged with computed sources. (Shortcut -p)\n"
+        "  p  Final metadata merged with computed sources. (Shortcut -p)\n"
         "\n"
-        "Complex --metadata Example:\n"
+        "Complex --metadata Examples:\n"
         "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
         " writer: [Other Name, Writer Name]},"
         " arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
@@ -314,7 +315,7 @@ def get_args(params=None) -> Namespace:
     parser = ArgumentParser(
         description=description,
         epilog=epilog,
-        formatter_class=RawDescriptionHelpFormatter,
+        formatter_class=RawDescriptionRichHelpFormatter,
         add_help=False,
     )
     _add_option_group(parser)
