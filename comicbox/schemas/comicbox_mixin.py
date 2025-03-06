@@ -1,9 +1,10 @@
 """Mixin for Comicbox Schemas."""
-
 from decimal import Decimal
+from inspect import isclass
 from types import MappingProxyType
 
-from marshmallow.fields import Nested
+from marshmallow import Schema
+from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 
 from comicbox.fields.collection_fields import (
@@ -216,6 +217,34 @@ class ArcSchema(BaseSubSchema):
     number = IntegerField()
 
 
+class SimpleNamedNestedField(Union):
+    """Return a union of a nested schema and an alternate field."""
+
+    def __init__(
+        self,
+        *args,
+        schema: type[Schema] = IdentifiedNameSchema,
+        field: Field | type[Field] = StringField,
+        name_key: str = NAME_KEY,
+        primitive_type: type = str,
+        **kwargs,
+    ):
+        """Create the union."""
+        self._name_key = name_key
+        self._primitive_type = primitive_type
+        if isclass(field):
+            field = field()
+        fields = [Nested(schema), field]
+        super().__init__(fields, *args, **kwargs)
+
+    def _deserialize(self, value, attr, *args, **kwargs):
+        result = super()._deserialize(value, attr, *args, **kwargs)
+        if isinstance(result, self._primitive_type):
+            complex_value = {self._name_key: result}
+            result = super()._deserialize(complex_value, attr, *args, **kwargs)
+        return result
+
+
 class ComicboxSubSchemaMixin:
     """Mixin for Comicbox Sub Schemas."""
 
@@ -240,7 +269,7 @@ class ComicboxSubSchemaMixin:
     issue = StringField()
     issue_number = DecimalField(minimum=Decimal(0))
     issue_suffix = StringField()
-    imprint = Nested(IdentifiedNameSchema)
+    imprint = SimpleNamedNestedField()
     language = LanguageField()
     last_mark = IntegerField(minimum=0)
     locations = DictField(values=Nested(IdentifiedSchema))
@@ -250,7 +279,7 @@ class ComicboxSubSchemaMixin:
     notes = StringField()
     page_count = IntegerField(minimum=0)
     pages = Nested(PageInfoSchema, many=True)
-    publisher = Nested(IdentifiedNameSchema)
+    publisher = SimpleNamedNestedField()
     prices = DictField(
         keys=CountryField(allow_empty=True),
         values=DecimalField(places=2, minimum=Decimal(0)),
@@ -275,7 +304,7 @@ class ComicboxSubSchemaMixin:
     review = StringField()
     rights = StringField()
     scan_info = StringField()
-    series = Union([Nested(SeriesSchema), StringField()])
+    series = SimpleNamedNestedField(schema=SeriesSchema)
     series_groups = StringSetField()
     store_date = DateField()
     stories = DictField(values=Nested(IdentifiedSchema), sort=False)
@@ -285,7 +314,9 @@ class ComicboxSubSchemaMixin:
     teams = DictField(values=Nested(IdentifiedSchema))
     universes = DictField(values=Nested(UniverseSchema))
     updated_at = DateTimeField()
-    volume = Union([Nested(VolumeSchema), StringField()])
+    volume = SimpleNamedNestedField(
+        schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int
+    )
     year = IntegerField()
 
 

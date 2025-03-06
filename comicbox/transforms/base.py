@@ -11,13 +11,7 @@ from bidict import frozenbidict
 
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
-from comicbox.schemas.comicbox_mixin import (
-    NAME_KEY,
-    ROLES_KEY,
-    SERIES_KEY,
-    VOLUME_KEY,
-    VOLUME_NUMBER_KEY,
-)
+from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 
 LOG = getLogger(__name__)
@@ -34,9 +28,6 @@ class BaseTransform:
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
     STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType({})
-    SIMPLE_STRING_SCHEMAS = MappingProxyType(
-        {SERIES_KEY: NAME_KEY, VOLUME_KEY: VOLUME_NUMBER_KEY}
-    )
     LIST_KEYS = frozenset()
     ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
@@ -133,15 +124,6 @@ class BaseTransform:
                 data[to_key] = string_list
         return data
 
-    def expand_str_to_schema(self, data):
-        """Expand simple strings into schema structures."""
-        for key, subkey in self.SIMPLE_STRING_SCHEMAS.items():
-            value = data.get(key)
-            if value is None or isinstance(value, Mapping):
-                continue
-            data[key] = {subkey: value}
-        return data
-
     @classmethod
     def add_credit_role_to_comicbox_credits(
         cls, person_name: str, role_name: str, comicbox_credits: dict
@@ -155,7 +137,7 @@ class BaseTransform:
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
     TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_dicts)
-    TO_COMICBOX_POST_TRANSFORM = (expand_str_to_schema,)
+    TO_COMICBOX_POST_TRANSFORM = ()
     FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, name_dicts_to_string_lists)
     FROM_COMICBOX_POST_TRANSFORM = ()
 

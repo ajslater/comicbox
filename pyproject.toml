@@ -69,6 +69,7 @@ dev = [
   "types-python-dateutil<3.0.0.0,>=2.8.19.13",
   "vulture<3.0,>=2.1",
   "xmlschema<4.0.0,>=3.4.3",
+  "icecream>=2.1.4",
 ]
 
 [build-system]
