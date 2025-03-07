@@ -14,7 +14,7 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_KEY,
 )
 from comicbox.transforms.metroninfo.nested import MetronInfoTransformNestedTags
-from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
+from comicbox.transforms.xml_reprints import reprint_to_filename
 
 
 class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
@@ -73,7 +73,7 @@ class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
         for reprint in old_reprints + series_reprints:
             self._aggregate_reprints(consolidated_reprints, reprint)
         if consolidated_reprints:
-            data[REPRINTS_KEY] = sort_reprints(consolidated_reprints)
+            data[REPRINTS_KEY] = consolidated_reprints
         return data
 
     @classmethod

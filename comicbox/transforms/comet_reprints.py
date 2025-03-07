@@ -11,7 +11,7 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
-from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
+from comicbox.transforms.xml_reprints import reprint_to_filename
 
 
 class CoMetReprintsTransformMixin:
@@ -51,7 +51,6 @@ class CoMetReprintsTransformMixin:
         if reprints:
             old_reprints = data.get(REPRINTS_KEY, [])
             reprints = old_reprints + reprints
-            reprints = sort_reprints(reprints)
             data[REPRINTS_KEY] = reprints
         return data
 
@@ -66,6 +65,5 @@ class CoMetReprintsTransformMixin:
             if name:
                 names.add(name)
         if names:
-            names = sorted(names)
             data[self.IS_VERSION_OF_TAG] = names
         return data

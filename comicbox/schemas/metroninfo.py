@@ -243,7 +243,7 @@ class MetronSeriesSchema(BaseSubSchema):
     StartYear = IntegerField(minimum=1000, maximum=9999)
     AlternativeNames = create_sub_tag_field(
         "AlternativeName",
-        Nested(MetronNameSchema, many=True),
+        XmlListField(Nested(MetronNameSchema)),
     )
 
     class Meta(BaseSchema.Meta):

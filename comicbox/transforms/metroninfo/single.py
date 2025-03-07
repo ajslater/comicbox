@@ -198,21 +198,26 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
     @classmethod
     def _unparse_series_alternative_names(cls, data, metron_series):
         """Unparse metron series alternative names from reprints."""
-        alt_names: list[dict[str, str]] = []
+        # set dedupes
+        alt_names: set[tuple[tuple[str, str], ...]] = set()
         if reprints := data.get(REPRINTS_KEY):
             for reprint in reprints:
                 if series := reprint.get(SERIES_KEY):
-                    alt_name: dict[str, str] = {}
+                    alt_name: list[tuple[str, str]] = []
                     if series_name := series.get(NAME_KEY):
-                        alt_name["#text"] = series_name
+                        pair = ("#text", series_name)
+                        alt_name.append(pair)
                     if series_lang := reprint.get(LANGUAGE_KEY):
-                        alt_name[cls.SERIES_LANG_ATTRIBUTE] = series_lang
+                        pair = (cls.SERIES_LANG_ATTRIBUTE, series_lang)
+                        alt_name.append(pair)
                     if alt_name:
-                        alt_names.append(alt_name)
+                        alt_names.add(tuple(alt_name))
         if alt_names:
-            sorted_alt_names = sorted(alt_names, key=lambda a: ":".join(a.values()))
+            alt_names_list: list[dict[str, str]] = [
+                dict(alt_name) for alt_name in alt_names
+            ]
             metron_series[cls.SERIES_ALTERNATIVE_NAMES_TAG] = {
-                cls.SERIES_ALTERNATIVE_NAME_TAG: sorted_alt_names
+                cls.SERIES_ALTERNATIVE_NAME_TAG: alt_names_list
             }
 
     def unparse_series(self, data):

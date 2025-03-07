@@ -10,7 +10,6 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
 )
-from comicbox.transforms.reprints import sort_reprints
 
 ALTERNATE_SERIES_KEY = "alternate_series"
 ALTERNATE_ISSUE_KEY = "alternate_issue"
@@ -61,7 +60,6 @@ class ComicInfoReprintsTransformMixin:
         if reprint := move_key_to_dict(REPRINT_KEY_MAP, data):
             old_reprints = data.get(REPRINTS_KEY, [])
             reprints = [*old_reprints, reprint]
-            reprints = sort_reprints(reprints)
             data[REPRINTS_KEY] = reprints
         return data
 
