@@ -3,17 +3,6 @@
 from collections.abc import Mapping
 
 
-def sort_dict(d: Mapping) -> dict:
-    """Recursively sort a Mapping type."""
-    result = {}
-    for k, v in sorted(d.items()):
-        if isinstance(v, Mapping):
-            result[k] = sort_dict(v)
-        else:
-            result[k] = v
-    return result
-
-
 def case_insensitive_dict(d: dict) -> dict:
     """Make a dict with string keys case insensitive."""
     cid = {k.lower(): (k, v) for k, v in d.items()}

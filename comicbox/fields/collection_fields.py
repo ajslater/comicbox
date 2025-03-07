@@ -7,7 +7,7 @@ from typing import Any
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
-from comicbox.dict_funcs import case_insensitive_dict, sort_dict
+from comicbox.dict_funcs import case_insensitive_dict
 from comicbox.fields.fields import (
     EMPTY_VALUES,
     StringField,
@@ -152,7 +152,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         if self._case_insensitive:
             result_dict = case_insensitive_dict(result_dict)
         if self._sort:
-            result_dict = sort_dict(result_dict)
+            result_dict = dict(sorted(result_dict.items()))
         # Only sort on serialize
         return result_dict
 
