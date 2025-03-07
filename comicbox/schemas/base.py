@@ -14,7 +14,6 @@ from marshmallow.decorators import (
 )
 from marshmallow.error_store import ErrorStore
 
-from comicbox.dict_funcs import sort_dict
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.error_store import ClearingErrorStore
@@ -97,10 +96,8 @@ class BaseSubSchema(Schema, ABC):
                 cls._rename_tag(data, *args)
             data = cls._sort_tag_by_order(data)
         elif isinstance(data, dict):
-            # TODO only sort keys, fields take care of themselves.
-            # TODO remove empty during sort_dict
             data = cls._remove_empty_values(data, phase=phase)
-            data = sort_dict(data)
+            data = dict(sorted(data.items()))
         return data
 
     @post_dump

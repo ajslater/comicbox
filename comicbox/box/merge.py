@@ -115,8 +115,11 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         """Merge a list, but don't add dupes."""
         old_hashes = {cls._item_hash(item) for item in merged_md[key]}
         for new_item in sequence:
-            if (new_item not in EMPTY_VALUES and cls._item_hash(new_item) not in old_hashes):
-               merged_md[key].append(new_item)
+            if (
+                new_item not in EMPTY_VALUES
+                and cls._item_hash(new_item) not in old_hashes
+            ):
+                merged_md[key].append(new_item)
 
     def _merge_key(self, merged_md, key, value):
         """Merge complex values."""
