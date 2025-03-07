@@ -66,8 +66,9 @@ on the path to convert CBR into CBZ or extract files from CBRs.
 #### PDF
 
 The pymupdf dependency has wheels that install a local version of libmupdf. But
-for some platforms (e.g. Linux on ARM, Windows) it may require libstdc++ and c/c++ build tools
-installed to compile a libmupdf. More detail on this is available in the
+for some platforms (e.g. Linux on ARM, Windows) it may require libstdc++ and
+c/c++ build tools installed to compile a libmupdf. More detail on this is
+available in the
 [pymupdf docs](https://pymupdf.readthedocs.io/en/latest/installation.html#installation-when-a-suitable-wheel-is-not-available).
 
 ##### Installing Comicbox on ARM (AARCH64) with Python 3.13
