@@ -311,7 +311,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         identifiers = sub_data.get(IDENTIFIERS_KEY)
         if not identifiers:
             return notes
-        urn_strs = []
+        urn_strs = set()
         # The are issues which is the default type.
         nss_type = ""
         for nid, identifier in identifiers.items():
@@ -319,7 +319,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             if not nss:
                 continue
             urn_str = to_urn_string(nid, nss_type, nss)
-            urn_strs.append(urn_str)
+            urn_strs.add(urn_str)
         notes += " ".join(sorted(urn_strs))
         return notes
 
