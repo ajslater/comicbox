@@ -192,7 +192,10 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
 
     def _print_metadata(self):
         """Pretty print the metadata."""
-        if PrintPhases.METADATA in self._config.print or PrintPhases.METADATA_OLD in self._config.print:
+        if (
+            PrintPhases.METADATA in self._config.print
+            or PrintPhases.METADATA_OLD in self._config.print
+        ):
             # if len(self._config.print) > 1:
             md = self.to_string()
             syntax = self._syntax(md, "yaml")

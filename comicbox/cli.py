@@ -4,9 +4,14 @@ import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
 from logging import INFO
+from types import MappingProxyType
 
+from rich import box
 from rich import print as rich_print
-from rich_argparse import RawDescriptionRichHelpFormatter
+from rich.console import Group
+from rich.styled import Styled
+from rich.table import Table
+from rich_argparse import RichHelpFormatter
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.print import PrintPhases
@@ -14,6 +19,30 @@ from comicbox.run import Runner
 from comicbox.sources import PDF_ENABLED, MetadataSources
 
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+PRINT_PHASES_DESC = MappingProxyType(
+    {
+        "v": ("Software version", "v"),
+        "t": ("File type", ""),
+        "f": ("File names", "l"),
+        "s": ("Source metadata", ""),
+        "l": ("Loaded metadata sources", ""),
+        "n": ("Loaded metadata normalized to comicbox schema", ""),
+        "m": ("Merged normalized intermediate metadata", ""),
+        "c": ("Computed metadata sources", ""),
+        "p": ("Final metadata merged with computed sources", "p"),
+    }
+)
+METADATA_EXAMPLES = Styled(
+    """
+Metadata can be any tag from any of the supported metadata formats.
+Complex [cyan]--metadata[/cyan] Examples:
+  [cyan]-m[/cyan] 'Character: anna,bea,carol, contributors: {inker: [Other Name], writer: [Other Name, Writer Name]}, arcs: {Arc Name: 1, Other Arc Name: 5}'
+  [cyan]-m[/cyan] '{publisher: My Press}'
+  [cyan]-m[/cyan] \"Title: 'GI Robot: Foreign and Domestic'\"
+  [cyan]-m[/cyan] \"series: 'Solarpunk: Kūchū Bōsōzoku'\"
+""",
+    style="argparse.text",
+)
 
 
 class CSVAction(Action):
@@ -67,28 +96,44 @@ def map_keys(config, prefix, list_key, maps, value):
     delattr(config, list_key)
 
 
-def _create_format_help():
-    lines = ""
-    max_space = (
-        max(
-            len(source.value.label)
-            for source in MetadataSources
-            if source.value.enabled
-        )
-        + 1
-    )
+TABLE_ARGS = MappingProxyType(
+    {
+        "box": box.HEAVY,
+        "border_style": "bright_black",
+        "row_styles": ("", "on grey7"),
+        "title_justify": "left",
+    }
+)
+
+
+def _get_help_print_phases_table():
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table.add_column("Phase", style="green")
+    table.add_column("Description")
+    table.add_column("Shortcut", style="cyan")
+    for phase, attrs in PRINT_PHASES_DESC.items():
+        desc, shortcut = attrs
+        if shortcut:
+            shortcut = "-" + shortcut
+        table.add_row(phase, desc, shortcut)
+    return table
+
+
+def _get_help_format_table():
+    title = "Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]"
+    table = Table(title=title, **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table.add_column("Format")
+    table.add_column("Keys", style="green")
     for source in MetadataSources:
         if not source.value.enabled or not source.value.configurable:
             continue
         label = source.value.label
         keys = ", ".join(sorted(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
-        space = (max_space - len(label)) * " "
-        lines += f"  {label}:{space}{keys}"
         if not source.value.writable:
-            lines += " (read only)"
-        lines += "\n"
+            keys += " [bright_black](read only)[/bright_black]"
+        table.add_row(label, keys)
 
-    return lines
+    return table
 
 
 def _add_option_group(parser):
@@ -135,7 +180,7 @@ def _add_option_group(parser):
     option_group.add_argument(
         "--delete-orig",
         action="store_true",
-        help="Delete the original cbr or cbt file if it was converted to a cbz successfully.",
+        help="Delete the original cbr, cbt, or cb7 file if it was converted to a cbz successfully.",
     )
     option_group.add_argument(
         "--recurse",
@@ -285,37 +330,20 @@ def _add_target_group(parser):
 
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
-    description = "Comic book archive read/write tool."
+    description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
     if not PDF_ENABLED:
-        description += "\nComicbox is not installed with PDF support."
-    formats = _create_format_help()
-    epilog = (
-        "PRINT_PHASES Characters:\n"
-        "  v  Software version (Shortcut -v)\n"
-        "  t  File type\n"
-        "  f  File names (Shortcut -l)\n"
-        "  s  Source metadata\n"
-        "  l  Loaded metadata sources\n"
-        "  n  Loaded metadata normalized to comicbox schema\n"
-        "  m  Merged normalized intermediate metadata\n"
-        "  c  Computed metadata sources\n"
-        "  p  Final metadata merged with computed sources. (Shortcut -p)\n"
-        "\n"
-        "Complex --metadata Examples:\n"
-        "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
-        " writer: [Other Name, Writer Name]},"
-        " arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
-        "  -m '{publisher: My Press}'\n"
-        "  -m \"Title: 'GI Robot: Foreign and Domestic'\"\n"
-        "  -m \"series: 'Solarpunk: Kūchū Bōsōzoku'\"\n"
-        "\n"
-        "  Metadata can be any tag from any of the supported metadata formats.\n\n"
-        "Format keys for --ignore-read, --write, and --export:\n" + formats
+        description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
+
+    epilog = Group(
+        _get_help_print_phases_table(),
+        METADATA_EXAMPLES,
+        _get_help_format_table(),
     )
+
     parser = ArgumentParser(
         description=description,
-        epilog=epilog,
-        formatter_class=RawDescriptionRichHelpFormatter,
+        epilog=epilog,  # type: ignore[reportArgumentType]
+        formatter_class=RichHelpFormatter,
         add_help=False,
     )
     _add_option_group(parser)
