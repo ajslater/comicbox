@@ -190,7 +190,7 @@ class ComicboxSubSchemaMixin:
     series = Union([Nested(SeriesSchema), StringField()])
     series_groups = StringSetField()
     stories = StringSetField()
-    story_arcs = DictStringField(values=IntegerField())
+    story_arcs = DictStringField(values=IntegerField(allow_none=True))
     summary = StringField()
     tagger = StringField()
     tags = StringSetField()
