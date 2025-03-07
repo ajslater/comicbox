@@ -64,7 +64,7 @@ on the path to convert CBR into CBZ or extract files from CBRs.
 
 #### PDF
 
-The pymupdf dependecy usually has wheels that install a local version of
+The pymupdf dependency usually has wheels that install a local version of
 libmupdf. But for some platforms (e.g. Windows) it may require libstdc++ and
 c/c++ build tools installed to compile a libmupdf. More detail on this is
 available in the
