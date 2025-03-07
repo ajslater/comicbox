@@ -11,11 +11,8 @@ from comicbox.schemas.comicbox_mixin import (
     NAME_KEY,
     ORDERED_SET_KEYS,
     PAGES_KEY,
-    REPRINTS_KEY,
-    STORIES_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.transforms.reprints import sort_reprints
 
 LOG = getLogger(__name__)
 
@@ -79,9 +76,8 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 return
 
             old_credits = merged_md.get(key)
-            sort = key != STORIES_KEY
             if merged_credits := deep_update(
-                old_credits, md_credits, sort=sort, case_insensitive=True
+                old_credits, md_credits, sort=False, case_insensitive=True
             ):
                 merged_md[key] = merged_credits
 
@@ -106,37 +102,23 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
     def _item_hash(item):
         if isinstance(item, Mapping):
             item = frozenset(item.items())
-        elif isinstance(item, set | list | tuple):
+        elif isinstance(item, set):
             item = frozenset(item)
-        if isinstance(item, frozenset):
+        elif isinstance(item, list | tuple):
+            item = tuple(sorted(item))
+        if isinstance(item, frozenset | tuple):
             return hash(item)
         return item
 
     @classmethod
     def _merge_list(cls, merged_md, key, sequence):
-        """Merge a list, usually eliminating duplicates and sorting."""
-        remove_dupes = True
-        if remove_dupes:
-            old_hashes = {cls._item_hash(item) for item in merged_md[key]}
-            for new_item in sequence:
-                if (
-                    new_item not in EMPTY_VALUES
-                    and cls._item_hash(new_item) not in old_hashes
-                ):
-                    merged_md[key].append(new_item)
-        else:
-            merged_md[key].extend(sequence)
+        """Merge a list, but don't add dupes."""
+        old_hashes = {cls._item_hash(item) for item in merged_md[key]}
+        for new_item in sequence:
+            if (new_item not in EMPTY_VALUES and cls._item_hash(new_item) not in old_hashes):
+               merged_md[key].append(new_item)
 
-        do_sort = True
-        if do_sort:
-            if isinstance(merged_md[key][0], Mapping):
-                merged_md[key] = sorted(
-                    merged_md[key], key=lambda o: [o.get(NAME_KEY), *sorted(o.items())]
-                )
-            else:
-                merged_md[key] = sorted(merged_md[key])
-
-    def _merge_key(self, merged_md, key, value):  # noqa: C901
+    def _merge_key(self, merged_md, key, value):
         """Merge complex values."""
         try:
             if value in EMPTY_VALUES:
@@ -147,9 +129,6 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 self._merge_mapping(merged_md, key, value)
             elif key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif key == REPRINTS_KEY:
-                new_value = merged_md[key] + value
-                merged_md[key] = sort_reprints(new_value)
             elif key in ORDERED_SET_KEYS:
                 self._merge_ordered_set(merged_md, key, value)
             elif isinstance(value, list | tuple):
