@@ -1,4 +1,4 @@
-FROM python:3.13-bookworm
+FROM nikolaik/python-nodejs:python3.13-nodejs23
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
@@ -8,7 +8,6 @@ RUN apt-get clean \
   && apt-get install --no-install-recommends -y \
     bash \
     mupdf \
-    npm \
     ruamel.yaml.clib \
     unrar \
     zlib1g \
