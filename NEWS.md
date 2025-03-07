@@ -24,11 +24,19 @@
   - Fix proper lowercasing of serialized boolean values in xml attributes.
   - ComicBookInfo `issue` tag becomes an integer.
   - Fix ISBN & UPC url detection
-  - Fix Notes parsing for Comictagger beta Metron origin
   - ComicInfo.xml orders tags properly per the xsd.
   - Corrected schemaLocation tags for xml formats to be valid.
   - ComicBookInfo.json `rating`, and `tags` tags fixed.
   - Support ComicBookInfo.json `primary` credit tag.
+
+## v1.2.3
+
+- Fix story arc parsing.
+
+## v1.2.2
+
+- Fix Notes parsing for Comictagger beta Metron origin
+- Simplify Identifier URL construction for Metron pk ids.
 
 ## v1.2.1
 

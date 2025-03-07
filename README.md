@@ -104,8 +104,8 @@ comicbox test.cbz -m "{Tags: a,b,c, story_arcs: {d:1,e:'',f:3}" -m "Publisher: S
 
 Will write those tags to comicinfo.xml in the archive.
 
-Be sure to add spaces after colons so they are detected as valid YAML key value
-pairs. This is easy to forget.
+Be sure to add spaces after colons so they parse as valid YAML key value pairs.
+This is easy to forget.
 
 But it's probably better to use the --print action to see what it's going to do
 before you actually write to the archive:

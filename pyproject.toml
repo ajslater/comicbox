@@ -241,7 +241,6 @@ external = ["V101"]
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.lint.per-file-ignores]
-# "comicbox/box/print.py" = ["T201", "T203"]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/*" = ["T201", "T203"]
 "tests/test_import.py" = ["DTZ001"]
