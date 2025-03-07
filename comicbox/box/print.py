@@ -95,8 +95,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 continue
             self._print_header("Loaded", source.value.label, loaded_md.path)
             str_data = YamlRenderModule.dumps(dict(loaded_md.metadata))
-            if str_data.endswith("\n"):
-                str_data = str_data[:-1]
+            str_data = str_data.removesuffix("\n")
             print(str_data)
 
     def _print_normalized(self, source):
@@ -112,8 +111,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             self._print_header("Normalized", source.value.label, normalized_md.path)
             schema = ComicboxYamlSchema(path=normalized_md.path)
             str_data = schema.dumps(normalized_md.metadata)
-            if str_data.endswith("\n"):
-                str_data = str_data[:-1]
+            str_data = str_data.removesuffix("\n")
             print(str_data)
 
     def _print_sources_loaded_normalized(self):

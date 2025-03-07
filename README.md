@@ -57,8 +57,18 @@ pip install comicbox[pdf]
 
 ### Dependencies
 
+#### Base
+
 Comicbox generally works without any binary dependencies but requires `unrar` be
 on the path to convert CBR into CBZ or extract files from CBRs.
+
+#### PDF
+
+The pymupdf dependency usually has wheels that install a local version of
+libmupdf. But for some platforms (e.g. Windows) it may require libstdc++ and
+c/c++ build tools installed to compile a libmupdf. More detail on this is
+available in the
+[pymupdf docs](https://pymupdf.readthedocs.io/en/latest/installation.html#installation-when-a-suitable-wheel-is-not-available).
 
 ## ⌨️ <a href="usage">Usage</a>
 

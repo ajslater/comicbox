@@ -4,6 +4,7 @@ import re
 from logging import getLogger
 from types import MappingProxyType
 
+from bidict import frozenbidict
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
@@ -34,6 +35,15 @@ IDENTIFIER_URL_MAP = MappingProxyType(
         COMIXOLOGY_NID: "https://www.comixology.com/c/digital-comic/",
         ISBN_NID: "https://isbndb.com/book/",
         UPC_NID: "https://barcodelookup.com/",
+    }
+)
+NID_ORIGIN_MAP = frozenbidict(
+    {
+        COMICVINE_NID: "Comic Vine",
+        GCD_NID: "Grand Comics Database",
+        "marvel": "Marvel",
+        METRON_NID: "Metron",
+        LCG_NID: "League of Comic Geeks",
     }
 )
 TRAILING_SLUG = frozenset({LCG_NID})
@@ -111,7 +121,7 @@ NIDS_UNPARSE_NO_RESOURCE = frozenset(
     {ASIN_NID, COMIXOLOGY_NID, GTIN_NID, ISBN_NID, UPC_NID}
 )
 PARSE_COMICVINE_RE = re.compile(COMICVINE_NSS_EXP)
-# XXX I haven't identified which program adds these "extra" notes encodings.
+# I haven't identified which program adds these "extra" notes encodings. Could be mylar.
 _PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
 
 
@@ -129,10 +139,8 @@ def get_url_from_identifier(nid, nss):
     url_prefix = IDENTIFIER_URL_MAP.get(nid)
     if not url_prefix:
         return None
-    url = url_prefix + nss + "/"
-    if nid in TRAILING_SLUG:
-        url += "s"
-    return url
+    slug = "s" if nid in TRAILING_SLUG else ""
+    return url_prefix + nss + "/" + slug
 
 
 def create_identifier(nid, nss, url=None):
@@ -140,10 +148,12 @@ def create_identifier(nid, nss, url=None):
     nss = _prefix_comicvine_issue_nss(nid, nss)
     if not url:
         url = get_url_from_identifier(nid, nss)
-    return {NSS_KEY: nss, URL_KEY: url}
+    if nss and url:
+        return {NSS_KEY: nss, URL_KEY: url}
+    return {}
 
 
-def parse_urn_identifier(tag: str, warn=True) -> tuple[str | None, str | None]:
+def parse_urn_identifier(tag: str, warn: bool = True) -> tuple[str | None, str | None]:  # noqa: FBT002
     """Parse an identifier from a tag."""
     try:
         urn = URN8141.from_string(tag)
@@ -179,7 +189,7 @@ def _parse_identifier_str(full_identifier):
 
 def parse_identifier(item, naked_nid=None):
     """Parse identifiers from strings."""
-    nid, nss = parse_urn_identifier(item)
+    nid, nss = parse_urn_identifier(item, warn=True)
     if not nss:
         nid, nss = _parse_identifier_str(item)
     if naked_nid and not nid:

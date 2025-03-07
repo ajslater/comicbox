@@ -268,14 +268,6 @@ def test_metron_to_dict():
 def test_metron_to_string():
     """Test metadata export to string."""
     test_str = METRON_TESTER.to_string()
-    # with Path("/tmp/metron.xml").open("w") as f:
-    #    f.write(test_str)
-
-    # not tested just for diagnostic
-    # xml_dict = xmltodict.parse(test_str)
-    # diff = DeepDiff(dict(WRITE_METRON_DICT), xml_dict)
-    # print(diff)
-
     METRON_TESTER.compare_string(test_str)
 
     simple_test_str = SIMPLE_METRON_TESTER.to_string()

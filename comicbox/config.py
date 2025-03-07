@@ -9,7 +9,7 @@ from pathlib import Path
 from confuse import Configuration, Integer, OneOf, String
 from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
-from comicbox.logging import init_logging
+from comicbox.logger import init_logging
 from comicbox.print import PrintPhases
 from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER, PACKAGE_NAME
@@ -105,8 +105,7 @@ def _get_sources_from_keys(key, keys, ignore_keys):
         config_keys = source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
         if (not writable or source.value.writable) and (
             not source.value.configurable
-            or bool(keys & config_keys)
-            and not bool(config_keys & ignore_keys)
+            or (bool(keys & config_keys) and not bool(config_keys & ignore_keys))
         ):
             sources.append(source)
         if source.value.configurable:
@@ -178,7 +177,7 @@ def _read_config_sources(config, args):
     if args:
         with contextlib.suppress(AttributeError, KeyError):
             if isinstance(args, Namespace):
-                config_fn = args.comicbox.config  # type: ignore
+                config_fn = args.comicbox.config
             elif isinstance(args, Mapping):
                 config_fn = args["comicbox"]["config"]
             else:
@@ -217,7 +216,7 @@ def get_config(
 
     # Create config
     ad = config.get(_TEMPLATE)
-    ad_config = ad.comicbox  # type: ignore
+    ad_config = ad.comicbox  # type: ignore[reportAttributeAccessIssue]
 
     # Post Process Config
     _clean_paths(ad_config)

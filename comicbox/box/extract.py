@@ -12,7 +12,7 @@ LOG = getLogger(__name__)
 class ComicboxExtractMixin(ComicboxPagesMixin):
     """Methods for extracting files from the archive."""
 
-    def _extract_page(self, path, fn, to_pixmap=False):
+    def _extract_page(self, path, fn, to_pixmap: bool):
         path = path / Path(fn).name if path.is_dir() else path
         if self._archive_is_pdf:
             path = path.with_suffix(self._pdf_suffix)
@@ -25,7 +25,7 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
         try:
             for fn in pagenames:
                 try:
-                    self._extract_page(path, fn)
+                    self._extract_page(path, fn, to_pixmap=False)
                     success_page_count += 1
                     if not path.is_dir():
                         break
@@ -38,7 +38,7 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
         except Exception as exc:
             LOG.warning(f"No pages extracted: {exc}")
 
-    def _extract_pagenames(self, pagenames, path=None, check_path_is_dir=False):
+    def _extract_pagenames(self, pagenames, check_path_is_dir: bool, path=None):
         if not pagenames:
             LOG.warning("No pages to extract.")
             return
@@ -59,11 +59,11 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
     def extract_pages(self, page_from=None, page_to=None, path=None):
         """Extract pages from archive and write to a path."""
         pagenames = self.get_pagenames_from(page_from, page_to)
-        self._extract_pagenames(pagenames, path, check_path_is_dir=True)
+        self._extract_pagenames(pagenames, check_path_is_dir=True, path=path)
 
     @archive_close
     def extract_cover_as(self, path=None):
         """Extract the cover image to a destination file."""
         pagenames = self.get_cover_path_list()
 
-        self._extract_pagenames(pagenames, path)
+        self._extract_pagenames(pagenames, check_path_is_dir=False, path=path)

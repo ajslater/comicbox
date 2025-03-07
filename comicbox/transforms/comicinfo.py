@@ -45,14 +45,13 @@ from comicbox.transforms.comicinfo_storyarcs import (
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.xml import XmlTransform
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
+from comicbox.transforms.xml_transforms import XmlTransform
 
 
 class ComicInfoTransform(
-    XmlTransform,
-    XmlCreditsTransformMixin,
     ComicInfoPagesTransformMixin,
+    XmlCreditsTransformMixin,
     ComicInfoStoryArcsTransformMixin,
     ComicInfoReprintsTransformMixin,
     NestedPublishingTagsMixin,
@@ -63,18 +62,18 @@ class ComicInfoTransform(
         {
             "AgeRating": "age_rating",
             # REPRINTS
-            # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY,
-            # "AlternateNumber": ALTERNATE_ISSUE_KEY,
-            # "AlternateSeries": ALTERNATE_SERIES_KEY,
+            # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
+            # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
+            # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
             #
             "BlackAndWhite": "monochrome",
             "Characters": CHARACTERS_KEY,
             "CommunityRating": "community_rating",
             "Country": "country",
-            # "Count": ISSUE_COUNT_KEY,
+            # "Count": ISSUE_COUNT_KEY, coded
             "Day": "day",
             "Genre": GENRES_KEY,
-            # "GTIN": IDENTIFIERS_KEY,
+            # "GTIN": IDENTIFIERS_KEY, coded
             "Format": ORIGINAL_FORMAT_KEY,
             "Imprint": IMPRINT_KEY,
             "LanguageISO": LANGUAGE_KEY,
@@ -85,22 +84,22 @@ class ComicInfoTransform(
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
-            # "Pages": PAGES_KEY,
+            # "Pages": PAGES_KEY, coded
             "Publisher": "publisher",
             "Review": "review",
             "ScanInformation": SCAN_INFO_KEY,
-            # "Series": SERIES_KEY,
+            # "Series": SERIES_KEY, coded
             "SeriesGroup": "series_groups",
             # STORY_ARCS
-            # "StoryArc": STORY_ARC_KEY,
-            # "StoryArcNumber": STORY_ARC_NUMBER_KEY,
+            # "StoryArc": STORY_ARC_KEY, coded
+            # "StoryArcNumber": STORY_ARC_NUMBER_KEY, coded
             ##
             "Tags": TAGS_KEY,
             "Teams": TEAMS_KEY,
             "Title": "title",
             "Summary": "summary",
-            # "Volume": VOLUME_KEY,
-            # "Web": WEB_KEY,
+            # "Volume": VOLUME_KEY, coded
+            # "Web": WEB_KEY, coded
             "Year": "year",
         }
     )

@@ -100,7 +100,6 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             return None
 
         # Must get metadata *before* get write sources.
-        # metadata = self.get_metadata()
         metadata = self.get_metadata()
         if sources is None:
             sources = self._get_write_sources()

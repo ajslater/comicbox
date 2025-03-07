@@ -3,12 +3,12 @@
 from collections.abc import Mapping
 from functools import wraps
 
-from comicbox.fields.collections import (
+from comicbox.fields.collection_fields import (
     IntegerListField,
     StringListField,
     StringSetField,
 )
-from comicbox.fields.enum import (
+from comicbox.fields.enum_fields import (
     AgeRatingField,
     MangaField,
     OriginalFormatField,
@@ -16,9 +16,9 @@ from comicbox.fields.enum import (
     YesNoField,
 )
 from comicbox.fields.fields import IssueField, StringField
-from comicbox.fields.numbers import BooleanField, DecimalField, IntegerField
+from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time import DateField
+from comicbox.fields.time_fields import DateField
 
 
 def get_cdata(value):

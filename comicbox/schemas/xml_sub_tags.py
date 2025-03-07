@@ -4,9 +4,9 @@ from types import MappingProxyType
 
 from marshmallow.fields import Field, Nested
 
-from comicbox.fields.enum import PageTypeField
+from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import BooleanField, IntegerField
+from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.schemas.base import BaseSubSchema
 
 

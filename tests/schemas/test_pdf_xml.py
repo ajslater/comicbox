@@ -29,7 +29,7 @@ METADATA = MappingProxyType(
             "series": {"name": "test pdf"},
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0, 0),  # noqa DTZ001
+            "updated_at": datetime(1970, 1, 1, 0, 0, 0),  # noqa: DTZ001
         }
     }
 )

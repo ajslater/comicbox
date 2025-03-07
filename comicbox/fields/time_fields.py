@@ -7,22 +7,22 @@ from dateutil import parser
 from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
 
-from comicbox.fields.fields import DeserializeMeta, StringField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
 
 
-class DateField(fields.Date, metaclass=DeserializeMeta):
+class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
-    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore
+    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore[reportIncompatibleMethodOverride]
         """Liberally parse dates from strings and date-like structures."""
         if isinstance(value, date):
             return value
         if isinstance(value, datetime):
             return value.date()
         try:
-            value_str: str | None = StringField().deserialize(value)  # type: ignore
+            value_str: str | None = StringField().deserialize(value)  # type: ignore[reportAssignmentType]
             if value_str:
                 dttm = parser.parse(value_str)
                 return dttm.date()
@@ -31,10 +31,10 @@ class DateField(fields.Date, metaclass=DeserializeMeta):
         return None
 
 
-class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):
+class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
 
-    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore
+    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore[reportIncompatibleMethodOverride]
         """Liberally parse datetmess from strings and datetime-like structures."""
         if isinstance(value, TimeStamp):
             return datetime.fromtimestamp(value.timestamp())  # noqa: DTZ006
@@ -43,7 +43,7 @@ class DateTimeField(fields.DateTime, metaclass=DeserializeMeta):
         if isinstance(value, date):
             return datetime.combine(value, datetime.min.time())
         try:
-            value_str: str | None = StringField().deserialize(value)  # type: ignore
+            value_str: str | None = StringField().deserialize(value)  # type: ignore[reportAssignmentType]
             if value_str:
                 return parser.parse(value_str)
         except Exception:

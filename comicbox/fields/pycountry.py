@@ -6,15 +6,15 @@ from logging import getLogger
 import pycountry
 from marshmallow import fields
 
-from comicbox.fields.fields import DeserializeMeta, StringField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
 
 
-class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
+class PyCountryField(fields.String, ABC, metaclass=TrapExceptionsMeta):
     """A pycountry value."""
 
-    MODULE = None
+    MODULE = pycountry.countries
 
     def __init__(self, *args, serialize_name=False, **kwargs):
         """Optionally serialize with full names."""
@@ -25,7 +25,7 @@ class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
     def _clean_name(name_obj):
         if not name_obj:
             return None
-        name: str | None = StringField().deserialize(name_obj)  # type: ignore
+        name: str | None = StringField().deserialize(name_obj)  # type: ignore[reportAssignmentType]
         if not name:
             return None
         return name.strip()
@@ -38,11 +38,11 @@ class PyCountryField(fields.String, ABC, metaclass=DeserializeMeta):
             if not name:
                 return None
 
-            if len(name) == 2:  # noqa PLR2004
+            if len(name) == 2:  # noqa: PLR2004
                 # Language lookup fails for 'en' unless alpha_2 is specified.
-                obj = cls.MODULE.get(alpha_2=name)  # type: ignore
+                obj = cls.MODULE.get(alpha_2=name)
             else:
-                obj = cls.MODULE.lookup(name)  # type: ignore
+                obj = cls.MODULE.lookup(name)
         except Exception as exc:
             LOG.warning(exc)
             obj = None

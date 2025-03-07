@@ -86,7 +86,7 @@ class BaseTransform:
     # TRANSFORMS #
     ##############
 
-    def copy_keys(self, data, transform_map, to_comicbox=False):
+    def copy_keys(self, data, transform_map, to_comicbox: bool = False):  # noqa: FBT002
         """Copy values between schemas with transformed keys."""
         if to_comicbox:
             transform_map = transform_map.inverse
@@ -98,11 +98,11 @@ class BaseTransform:
 
     def copy_keys_to(self, data):
         """Copy keys to comicbox keys."""
-        return self.copy_keys(data, self.TRANSFORM_MAP)
+        return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=False)
 
     def copy_keys_from(self, data):
         """Copy keys from comicbox keys."""
-        return self.copy_keys(data, self.TRANSFORM_MAP, True)
+        return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=True)
 
     def canonize_contributors(self, data):
         """Force contributors into comicbox canon roles."""
@@ -139,9 +139,10 @@ class BaseTransform:
     ##################################
 
     def _run_transforms(  # noqa: PLR0913
-        self, data, methods, unwrap_root_tags, wrap_root_tags, insert, stamp=False
+        self, data, methods, unwrap_root_tags, wrap_root_tags, insert: bool, stamp: bool
     ):
-        """Run transform methods.
+        """
+        Run transform methods.
 
         Transform methods operate on the sub schema, so this method unwraps and re-wraps them.
         """
@@ -179,7 +180,8 @@ class BaseTransform:
             self.TO_COMICBOX_PRE_TRANSFORM,
             None,
             ComicboxYamlSchema.ROOT_TAGS,
-            False,
+            insert=False,
+            stamp=False,
         )
         data = self._transform_load(ComicboxYamlSchema(path=self._path), data)
         data = self._run_transforms(
@@ -187,7 +189,8 @@ class BaseTransform:
             self.TO_COMICBOX_POST_TRANSFORM,
             ComicboxYamlSchema.ROOT_TAGS,
             ComicboxYamlSchema.ROOT_TAGS,
-            True,
+            insert=True,
+            stamp=False,
         )
         return MappingProxyType(data)
 
@@ -199,11 +202,16 @@ class BaseTransform:
             self.FROM_COMICBOX_PRE_TRANSFORM,
             ComicboxYamlSchema.ROOT_TAGS,
             None,
-            False,
+            insert=False,
             stamp=True,
         )
         data = self._transform_load(self._schema, data)
         data = self._run_transforms(
-            data, self.FROM_COMICBOX_POST_TRANSFORM, None, None, True
+            data,
+            self.FROM_COMICBOX_POST_TRANSFORM,
+            None,
+            None,
+            insert=True,
+            stamp=False,
         )
         return MappingProxyType(data)

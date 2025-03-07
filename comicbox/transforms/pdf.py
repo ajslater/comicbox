@@ -8,7 +8,7 @@ from xml.sax.saxutils import unescape
 from bidict import bidict
 
 from comicbox.dict_funcs import deep_update
-from comicbox.fields.collections import StringSetField
+from comicbox.fields.collection_fields import StringSetField
 from comicbox.schemas.comicbox_mixin import (
     CONTRIBUTORS_KEY,
     GENRES_KEY,
@@ -33,7 +33,7 @@ from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
-from comicbox.transforms.xml import XmlTransform
+from comicbox.transforms.xml_transforms import XmlTransform
 
 _KEYWORDS_TRANSFORM_CLASSES = (
     # Different order than all sources
@@ -109,7 +109,7 @@ class PDFXmlTransform(XmlTransform):
 
     def _parse_comma_delimited_tags(self, data):
         tags = data.get(TAGS_KEY)
-        tags = StringSetField()._deserialize(tags)  # noqa SLF001
+        tags = StringSetField()._deserialize(tags)  # noqa: SLF001
         data[TAGS_KEY] = tags
 
     def parse_tags(self, data):
@@ -166,6 +166,6 @@ class MuPDFTransform(PDFXmlTransform):
             "keywords": TAGS_KEY,
             "producer": TAGGER_KEY,
             "subject": GENRES_KEY,
-            # "title": "title",
+            # "title": "title", coded
         }
     )

@@ -1,4 +1,5 @@
-"""Comic Archive.
+"""
+Comic Archive.
 
 Reads and writes metadata via marshmallow schemas.
 Reads and writes file data via ZipFile/RarFile etc.
@@ -19,7 +20,8 @@ class Comicbox(
     ComicboxWriteMixin,
     ComicboxExtractMixin,
 ):
-    """Represent a comic archive.
+    """
+    Represent a comic archive.
 
     Contains the compressed archive file and its parsed metadata
     """

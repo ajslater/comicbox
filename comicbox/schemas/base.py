@@ -20,7 +20,8 @@ LOG = getLogger(__name__)
 class BaseSubSchema(Schema, ABC):
     """Base schema."""
 
-    def __init__(self, **kwargs):  # noqa ARG002
+    def __init__(self, **kwargs):
+        """Initialize path and always use partial."""
         kwargs["partial"] = True
         self._path = kwargs.pop("path", None)
         super().__init__(**kwargs)

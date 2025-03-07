@@ -10,7 +10,7 @@ import pytest
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum import ReadingDirectionEnum
+from comicbox.fields.enum_fields import ReadingDirectionEnum
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_METADATA_DIR,
@@ -42,7 +42,7 @@ FNS = MappingProxyType(
             "publisher": "Bell Features",
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science " "Alternate"}}
+                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},
@@ -150,11 +150,51 @@ FNS = MappingProxyType(
             "page_count": 0,
             "publisher": "Youthful Adventure Stories",
             "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science " "Alternate"}}
+                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
             ],
             "series": {"name": "Captain Science"},
             "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
+            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "volume": {"issue_count": 7, "name": 1950},
+            "year": 1950,
+        },
+        "comicinfo-metron-origin.xml": {
+            "characters": {"Captain Science", "Gordon Dane"},
+            "contributors": {
+                "inker": {"Wally Wood"},
+                "penciller": {"Wally Wood"},
+                "writer": {"Joe Orlando"},
+            },
+            "day": 1,
+            "ext": "cbz",
+            "genres": {"Science Fiction"},
+            "identifiers": {
+                "comicvine": {
+                    "nss": "4000-145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "metron": {
+                    "nss": "issue/captain-science-1/",
+                    "url": "https://metron.cloud/issue/captain-science-1/",
+                },
+            },
+            "issue": "1",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "month": 11,
+            "notes": "Tagged with Comictagger on "
+            "1970-01-01T00:00:00 using info from Metron [Issue ID 145269] "
+            "[CVDB145269]",
+            "page_count": 0,
+            "publisher": "Youthful Adventure Stories",
+            "reprints": [
+                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
+            ],
+            "series": {"name": "Captain Science"},
+            "story_arcs": {"Captain Arc": 4, "Other Arc": 2},
+            "tagger": "Comictagger",
             "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "name": 1950},

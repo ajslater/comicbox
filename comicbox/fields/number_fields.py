@@ -8,8 +8,8 @@ from marshmallow import fields
 
 from comicbox.fields.fields import (
     EMPTY_VALUES,
-    DeserializeMeta,
     StringField,
+    TrapExceptionsMeta,
     half_replace,
 )
 
@@ -17,7 +17,7 @@ LOG = getLogger(__name__)
 NumberType = int | float | Decimal
 
 
-class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
+class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
     """Number range methods."""
 
     def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
@@ -57,7 +57,7 @@ class RangedNumberMixin(fields.Number, metaclass=DeserializeMeta):
         return result
 
 
-class IntegerField(RangedNumberMixin, fields.Integer):
+class IntegerField(fields.Integer, RangedNumberMixin):
     """Durable integer field."""
 
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
@@ -65,7 +65,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):
     @classmethod
     def parse_str(cls, num_obj):
         """Parse the first number out of volume."""
-        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num_str:
             return None
         match: re.Match | None = cls._FIRST_NUMBER_MATCHER.search(num_str)
@@ -85,7 +85,7 @@ class IntegerField(RangedNumberMixin, fields.Integer):
         self._set_range(minimum, maximum)
 
 
-class DecimalField(RangedNumberMixin, fields.Decimal):
+class DecimalField(fields.Decimal, RangedNumberMixin):
     """Durable Decimal field that parses some fractions."""
 
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
@@ -93,7 +93,7 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
     @classmethod
     def parse_str(cls, num_obj):
         """Fix half glyphs."""
-        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore
+        num_str: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num_str:
             return None
         num_str = num_str.replace(" ", "")
@@ -115,5 +115,5 @@ class DecimalField(RangedNumberMixin, fields.Decimal):
         self._set_range(minimum, maximum)
 
 
-class BooleanField(fields.Boolean, metaclass=DeserializeMeta):
+class BooleanField(fields.Boolean, metaclass=TrapExceptionsMeta):
     """A liberally parsed boolean field."""

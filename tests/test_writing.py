@@ -6,7 +6,7 @@ from pprint import pprint
 from types import MappingProxyType
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from tests.const import (
@@ -102,7 +102,6 @@ def test_convert_to_cbz_and_cbi_to_cix():
     # inject tags.
     with Comicbox(OLD_TEST_CBR_PATH, config=WRITE_CONFIG) as car:
         car.add_source(TAGS_SOURCE, ComicboxJsonTransform)
-        # car._print_computed(ComicboxJsonSchema(path=OLD_TEST_CBR_PATH))
         car.write()
 
     # test

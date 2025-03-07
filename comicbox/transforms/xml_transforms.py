@@ -15,7 +15,8 @@ class XmlTransform(BaseTransform):
     _SEQUENCE_OK_FIELDS = (List, Mapping, Tuple)
 
     def first_if_sequence(self, data):
-        """If a collection is submitted for a single value, take the first value.
+        """
+        If a collection is submitted for a single value, take the first value.
 
         Mostly useful when xmltodict parses multiple values into lists.
         """

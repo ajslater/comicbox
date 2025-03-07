@@ -8,13 +8,13 @@ from marshmallow import Schema, post_dump, post_load
 from marshmallow.decorators import pre_dump, pre_load
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collections import StringSetField
+from comicbox.fields.collection_fields import StringSetField
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import BooleanField, IntegerField
+from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time import DateTimeField
+from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.decorators import trap_error
-from comicbox.schemas.json import JsonSchema, JsonSubSchema
+from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.version import VERSION
 
 LOG = getLogger(__name__)

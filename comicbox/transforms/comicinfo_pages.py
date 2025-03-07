@@ -4,9 +4,10 @@ from bidict import bidict
 
 from comicbox.dict_funcs import sort_dict
 from comicbox.schemas.comicbox_mixin import INDEX_KEY, PAGES_KEY
+from comicbox.transforms.xml_transforms import XmlTransform
 
 
-class ComicInfoPagesTransformMixin:
+class ComicInfoPagesTransformMixin(XmlTransform):
     """ComicInfo Pages Transform Mixin."""
 
     PAGES_TAG = "Pages"
@@ -29,13 +30,15 @@ class ComicInfoPagesTransformMixin:
     def _create_new_pages_list(self, pages_list, to_comicbox):
         new_pages_list = []
         for page in pages_list:
-            new_page = self.copy_keys(page, self.PAGE_TRANSFORM, not to_comicbox)  # type: ignore
+            new_page = self.copy_keys(
+                page, self.PAGE_TRANSFORM, to_comicbox=not to_comicbox
+            )
             new_page = sort_dict(new_page)
             new_pages_list.append(new_page)
         sort_key = INDEX_KEY if to_comicbox else self.INDEX_TAG
         return sorted(new_pages_list, key=lambda p: p.get(sort_key))
 
-    def _pages_copy(self, data, to_comicbox=False):
+    def _pages_copy(self, data, to_comicbox: bool):
         """Copy pages keys to other schema."""
         pages_key = self.PAGES_TAG if to_comicbox else PAGES_KEY
         pages_list = data.get(pages_key)
@@ -52,8 +55,8 @@ class ComicInfoPagesTransformMixin:
 
     def parse_pages(self, data):
         """Copy pages keys to comicbox schema."""
-        return self._pages_copy(data, True)
+        return self._pages_copy(data, to_comicbox=True)
 
     def unparse_pages(self, data):
         """Copy pages keys from comicbox schema."""
-        return self._pages_copy(data)
+        return self._pages_copy(data, to_comicbox=False)

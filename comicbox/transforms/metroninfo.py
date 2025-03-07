@@ -8,13 +8,11 @@ from bidict import bidict
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.dict_funcs import sort_dict
-from comicbox.fields.xml import get_cdata
+from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     COMICVINE_NID,
-    GCD_NID,
     ISBN_NID,
-    LCG_NID,
-    METRON_NID,
+    NID_ORIGIN_MAP,
     UPC_NID,
     create_identifier,
 )
@@ -57,7 +55,7 @@ from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.reprints import reprint_to_filename, sort_reprints
-from comicbox.transforms.xml import XmlTransform
+from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
@@ -108,15 +106,6 @@ _HOISTABLE_METRON_RESOURCE_TAGS = MappingProxyType(
     }
 )
 _PARSABLE_METRON_RESOURCE_TAGS = MappingProxyType({PUBLISHER_TAG: PUBLISHER_KEY})
-_METRON_INFORMATION_SOURCES_MAP = MappingProxyType(
-    {
-        COMICVINE_NID: "Comic Vine",
-        GCD_NID: "Grand Comics Database",
-        "marvel": "Marvel",
-        METRON_NID: "Metron",
-        LCG_NID: "League of Comic Geeks",
-    }
-)
 
 
 def _copy_assign(key, data, value):
@@ -126,9 +115,7 @@ def _copy_assign(key, data, value):
     return data
 
 
-class MetronInfoTransform(
-    XmlTransform, ComicInfoPagesTransformMixin, IdentifiersTransformMixin
-):
+class MetronInfoTransform(ComicInfoPagesTransformMixin, IdentifiersTransformMixin):
     """MetronInfo.xml Schema."""
 
     TRANSFORM_MAP = bidict(
@@ -142,7 +129,7 @@ class MetronInfoTransform(
             "PageCount": PAGE_COUNT_KEY,
             "Pages": PAGES_KEY,
             "Summary": "summary",
-            # "URL": WEB_KEY,
+            # "URL": WEB_KEY, code
         }
     )
     CONTRIBUTOR_COMICBOX_MAP = MappingProxyType(
@@ -238,10 +225,7 @@ class MetronInfoTransform(
             if not names:
                 continue
             names = sorted(frozenset(names))
-            resources = []
-            for name in names:
-                if name:
-                    resources.append({"#text": name})
+            resources = tuple({"#text": name} for name in names if name)
             tag, single_tag = tags
             self.lower_tag(tag, tag, update_dict, resources, single_tag=single_tag)
         if update_dict:
@@ -327,9 +311,9 @@ class MetronInfoTransform(
             if not name or not metron_roles:
                 continue
             metron_credit = {CREATOR_TAG: {"#text": name}}
-            roles_list = []
-            for metron_role in sorted(metron_roles):
-                roles_list.append({"#text": metron_role})
+            roles_list = [
+                {"#text": metron_role} for metron_role in sorted(metron_roles)
+            ]
             self.lower_tag(ROLES_TAG, ROLES_TAG, metron_credit, roles_list)
             metron_credits.append(metron_credit)
         self.lower_tag(CREDITS_TAG, CREDITS_TAG, data, metron_credits)
@@ -355,7 +339,6 @@ class MetronInfoTransform(
             name = arc.get(ARC_NAME_TAG)
             if not name:
                 continue
-            # arc_id = arc.get("id")
             number = arc.get(ARC_NUMBER_TAG)
             story_arcs[name] = number
         return _copy_assign(STORY_ARCS_KEY, data, story_arcs)
@@ -368,8 +351,6 @@ class MetronInfoTransform(
         arcs = []
         for name, number in story_arcs.items():
             arc = {ARC_NAME_TAG: name}
-            # if arc_id is not None:
-            #    arc[ARC_ID] = arc_id
             if number is not None:
                 arc[ARC_NUMBER_TAG] = number
             arcs.append(arc)
@@ -463,7 +444,6 @@ class MetronInfoTransform(
         metron_series = data.pop(SERIES_TAG, None)
         if not metron_series:
             return data
-        # sort_series = metron_series.get(SORT_NAME_TAG)
         update_dict = {}
         if series := metron_series.get(SERIES_NAME_TAG):
             if SERIES_KEY not in update_dict:
@@ -496,8 +476,8 @@ class MetronInfoTransform(
             for nid, identifier in identifiers.items():
                 if nss := identifier.get(NSS_KEY):
                     metron_series[SERIES_ID_TAG] = nss
-                    metron_id_source = _METRON_INFORMATION_SOURCES_MAP.get(nid)
-                    data = _copy_assign(ID_TAG, data, {"@source": metron_id_source})
+                    metron_id_origin = NID_ORIGIN_MAP.get(nid)
+                    data = _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
                     break
 
         if volume := data.get(VOLUME_KEY, {}).get(VOLUME_NUMBER_KEY):
@@ -517,9 +497,9 @@ class MetronInfoTransform(
         if not identifiers:
             return data
         for nid in identifiers:
-            metron_id_source = _METRON_INFORMATION_SOURCES_MAP.get(nid)
-            if metron_id_source:
-                return _copy_assign(ID_TAG, data, {"@source": metron_id_source})
+            metron_id_origin = NID_ORIGIN_MAP.get(nid)
+            if metron_id_origin:
+                return _copy_assign(ID_TAG, data, {"@source": metron_id_origin})
         return data
 
     TO_COMICBOX_PRE_TRANSFORM = (

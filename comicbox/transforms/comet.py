@@ -32,8 +32,8 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.xml import XmlTransform
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
+from comicbox.transforms.xml_transforms import XmlTransform
 
 
 class CoMetTransform(
@@ -49,22 +49,22 @@ class CoMetTransform(
         {
             "character": CHARACTERS_KEY,
             "coverImage": "cover_image",
-            # "date": "date",
+            # "date": "date", handled by code
             "description": "summary",
             "format": ORIGINAL_FORMAT_KEY,
             "genre": "genres",
-            # IDENTIFIER_TAG: "identifiers",
-            # "language": LANGUAGE_KEY,
+            # IDENTIFIER_TAG: "identifiers", handled by code
+            # "language": LANGUAGE_KEY, handled by code
             "lastMark": "last_mark",
             "pages": PAGE_COUNT_KEY,
-            # "publisher": "publisher",
-            # "price": PRICE_KEY,
+            # "publisher": "publisher", handled by code
+            # "price": PRICE_KEY, unused
             "rating": "age_rating",
             "readingDirection": "reading_direction",
-            # "rights": "rights",
-            # "series": SERIES_KEY,
-            # "title": "title",
-            # "volume": VOLUME_KEY,
+            # "rights": "rights", unused
+            # "series": SERIES_KEY,  handled by code
+            # "title": "title", handled by code
+            # "volume": VOLUME_KEY, handled by code
         }
     )
     CONTRIBUTOR_SCHEMA_MAP = bidict(

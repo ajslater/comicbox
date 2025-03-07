@@ -27,11 +27,12 @@ from comicbox.schemas.comicbox_mixin import (
     PENCILLER_KEY,
     WRITER_KEY,
 )
+from comicbox.transforms.json_transforms import JsonTransform
 
 LOG = getLogger(__name__)
 
 
-class ComicBookInfoCreditsTransformMixin:
+class ComicBookInfoCreditsTransformMixin(JsonTransform):
     """Comic Book Info Credits Transform Mixin."""
 
     # comicbookinfo and comictagger use the same tag names
@@ -76,7 +77,7 @@ class ComicBookInfoCreditsTransformMixin:
             extra_credit = inker_dict
             cbi_role = "Penciller"
 
-        comicbox_role = self.CONTRIBUTOR_COMICBOX_MAP.get(cbi_role)  # type: ignore
+        comicbox_role = self.CONTRIBUTOR_COMICBOX_MAP.get(cbi_role)
         return comicbox_role, extra_credit
 
     def _aggregate_contributor(self, contributors, credit_dict):
@@ -93,7 +94,7 @@ class ComicBookInfoCreditsTransformMixin:
                 contributors[comicbox_role] = set()
             contributors[comicbox_role].add(person)
         except Exception:
-            LOG.exception(f"{self._path} Could not parse credit: {credit_dict}")  # type: ignore
+            LOG.exception(f"{self._path} Could not parse credit: {credit_dict}")
         return extra_credit
 
     def aggregate_contributors(self, data):
@@ -124,7 +125,7 @@ class ComicBookInfoCreditsTransformMixin:
                     credits_list.append(credit_dict)
                 except Exception as exc:
                     LOG.warning(
-                        f"{self._path} Disaggregating credit"  # type: ignore
+                        f"{self._path} Disaggregating credit"
                         f" {comicbox_role}:{person} - {exc}"
                     )
         if credits_list:

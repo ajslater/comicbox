@@ -30,7 +30,6 @@ CLI_DICT = MappingProxyType(
             "series": {"name": "empty"},
             "story_arcs": {"d": 1, "e": 3, "f": 5},
             "tags": ["a", "b", "c"],
-            # "updated_at": TEST_DTTM_STR,
         }
     }
 )
@@ -98,11 +97,6 @@ def test_cli_loaded():
     """Test print loaded action."""
     args = (ROOT_TAG, "-P", "l", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
-    # filtered_output = []
-    # for line in output.split("\n"):
-    #    if "updated_at:" not in line:
-    #        filtered_output.append(line)
-    # output = "\n".join(filtered_output)
     output = "\n" + output
     print(LOADED_OUTPUT)
     print(output)
@@ -118,7 +112,7 @@ def test_cli_print():
     output = _get_output(args)
     output = output.split("\n", 1)[1]  # remove first line
 
-    yaml = YamlRenderModule.get_write_yaml()
+    yaml = YamlRenderModule.get_write_yaml(dfs=False)
     output_dict = yaml.load(output)
     output_dict[ROOT_TAG] = dict(output_dict[ROOT_TAG])
     output_dict[ROOT_TAG]["story_arcs"] = dict(output_dict[ROOT_TAG]["story_arcs"])

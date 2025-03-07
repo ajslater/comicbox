@@ -43,7 +43,6 @@ FILENAME_DICT = MappingProxyType(
 )
 
 SUB_DATA: Mapping[str, Any] = METADATA[ROOT_TAG]
-# _REMAINDERS_STR = " ".join(SUB_DATA["remainders"])  # type: ignore
 FILENAME_STR = (
     f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
     f" {SUB_DATA['title']}.{SUB_DATA['ext']}"

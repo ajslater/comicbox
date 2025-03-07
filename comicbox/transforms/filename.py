@@ -1,4 +1,5 @@
-"""Parse comic book archive names using the simple 'parse' parser.
+"""
+Parse comic book archive names using the simple 'parse' parser.
 
 A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with

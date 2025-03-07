@@ -9,8 +9,8 @@ from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
 from marshmallow import fields
 from stringcase import titlecase
 
-from comicbox.fields.fields import DeserializeMeta, StringField
-from comicbox.fields.numbers import BooleanField
+from comicbox.fields.fields import StringField, TrapExceptionsMeta
+from comicbox.fields.number_fields import BooleanField
 
 _ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
 _ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)
@@ -21,7 +21,7 @@ _PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
 LOG = getLogger(__name__)
 
 
-class EnumField(fields.Enum, metaclass=DeserializeMeta):
+class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
     """Durable enum field."""
 
     ENUM = Enum
@@ -93,7 +93,7 @@ class MangaField(EnumField):
 
     ENUM = MangaEnum
 
-    def _deserialize(self, value, attr, data, *args, **kwargs):  # type: ignore
+    def _deserialize(self, value, attr, data, *args, **kwargs):
         """Match a manga value to an acceptable value."""
         if data.get("reading_direction") == ReadingDirectionEnum.RTL:
             LOG.warning(
@@ -137,7 +137,8 @@ _AGE_RATING_MAP = MappingProxyType(
 
 
 class AgeRatingField(StringField):
-    """Overly lenient age rating field.
+    """
+    Overly lenient age rating field.
 
     *Not* an Enum. Accept any string.
     Age ratings are so messy, I think it hurts to be restrictive.
@@ -164,13 +165,13 @@ class YesNoField(BooleanField):
 
     _UNKNOWN_LOWER = YesNoEnum.UNKNOWN.value.lower()
 
-    def _deserialize(self, value, *args, **kwargs):  # type: ignore
+    def _deserialize(self, value, *args, **kwargs) -> bool | None:  # type: ignore[reportIncompatibleMethodOverride]
         """Accept any boolean value."""
         if isinstance(value, str) and value.lower() == self._UNKNOWN_LOWER:
             return None
         return super()._deserialize(value, *args, **kwargs)
 
-    def _serialize(self, value, *_args, **_kwargs) -> str:  # type: ignore
+    def _serialize(self, value, *_args, **_kwargs) -> str:  # type: ignore[reportIncompatibleMethodOverride]
         """Serialize to specific values."""
         if value is None:
             return YesNoEnum.UNKNOWN.value

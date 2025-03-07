@@ -42,7 +42,7 @@ class YamlRenderModule:
         return dumper.represent_str(data.value)
 
     @classmethod
-    def get_write_yaml(cls, dfs=False):
+    def get_write_yaml(cls, dfs: bool = False):  # noqa: FBT002
         """Get write yaml with special formatting."""
         yaml = YAML()
         yaml.default_flow_style = dfs
@@ -51,7 +51,7 @@ class YamlRenderModule:
         else:
             yaml.indent(mapping=2, sequence=4, offset=2)
 
-        yaml.sort_base_mapping_type_on_output = True  # type: ignore
+        yaml.sort_base_mapping_type_on_output = True  # type: ignore[reportAssignmentType]
         yaml.representer.add_representer(Decimal, cls._decimal_representer)
         yaml.representer.add_representer(type(None), cls._none_representer)
         yaml.representer.add_representer(dict, cls._dict_flow_representer)
@@ -87,7 +87,7 @@ class YamlSchema(BaseSchema):
 
         render_module = YamlRenderModule
 
-    def dump(self, obj, *args, allowed_null_keys=None, **kwargs):  # type: ignore
+    def dump(self, obj, *args, allowed_null_keys=None, **kwargs):
         """Allow null keys on dump."""
         saved_null_keys = set()
         if allowed_null_keys:
@@ -95,7 +95,7 @@ class YamlSchema(BaseSchema):
             for key in allowed_null_keys:
                 if key in sub_data and sub_data.get(key) is None:
                     saved_null_keys.add(key)
-        serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore
+        serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
         if saved_null_keys:
             if ROOT_TAG not in serialized:
                 serialized[ROOT_TAG] = {}
@@ -105,5 +105,5 @@ class YamlSchema(BaseSchema):
 
     def dumps(self, obj, *args, dfs=False, allowed_null_keys=None, **kwargs):
         """Use dfs for render."""
-        serialized: dict = self.dump(obj, allowed_null_keys=allowed_null_keys, **kwargs)  # type: ignore
+        serialized: dict = self.dump(obj, allowed_null_keys=allowed_null_keys, **kwargs)  # type: ignore[reportAssignmentType]
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

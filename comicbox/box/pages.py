@@ -4,7 +4,7 @@ from logging import getLogger
 
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
-from comicbox.fields.enum import PageTypeEnum
+from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import PAGES_KEY
 
 LOG = getLogger(__name__)
@@ -24,7 +24,7 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
         if not metadata:
             return coverlist
 
-        # XXX A little hack to support zero and one index pages.
+        # Support zero and one index pages.
         has_zero_index = False
         for page in metadata.get(PAGES_KEY, []):
             index = page.get("index")
@@ -59,12 +59,12 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
     #############
 
     @archive_close
-    def get_page_by_filename(self, filename, to_pixmap=False):
+    def get_page_by_filename(self, filename, to_pixmap=False):  # noqa: FBT002
         """Return data for a single page by filename."""
         return self._archive_readfile(filename, to_pixmap)
 
     @archive_close
-    def get_pages(self, page_from=0, page_to=-1, to_pixmap=False):
+    def get_pages(self, page_from=0, page_to=-1, to_pixmap=False):  # noqa: FBT002
         """Generate all pages starting with page number."""
         pagenames = self.get_pagenames_from(page_from, page_to)
         if pagenames:
@@ -72,7 +72,7 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
                 yield self._archive_readfile(pagename, to_pixmap)
 
     @archive_close
-    def get_page_by_index(self, index, to_pixmap=False):
+    def get_page_by_index(self, index, to_pixmap=False):  # noqa: FBT002
         """Get the page data by index."""
         pages_generator = self.get_pages(
             page_from=index, page_to=index, to_pixmap=to_pixmap

@@ -1,5 +1,14 @@
 # 📰 News
 
+## v1.2.3
+
+- Fix story arc parsing.
+
+## v1.2.2
+
+- Fix Notes parsing for Comictagger beta Metron origin
+- Simplify Identifier URL construction for Metron pk ids.
+
 ## v1.2.1
 
 - Fix ignoring MacOS resource forks in archives.

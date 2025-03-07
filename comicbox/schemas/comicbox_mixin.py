@@ -5,14 +5,14 @@ from decimal import Decimal
 from marshmallow.fields import Nested
 from marshmallow_union import Union
 
-from comicbox.fields.collections import (
+from comicbox.fields.collection_fields import (
     DictStringField,
     IdentifiersField,
     ListField,
     StringListField,
     StringSetField,
 )
-from comicbox.fields.enum import (
+from comicbox.fields.enum_fields import (
     AgeRatingField,
     MangaField,
     OriginalFormatField,
@@ -20,9 +20,9 @@ from comicbox.fields.enum import (
     ReadingDirectionField,
 )
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import BooleanField, DecimalField, IntegerField
+from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time import DateField, DateTimeField
+from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
 
 ROOT_TAG = "comicbox"
@@ -68,7 +68,7 @@ PAGE_TYPE_KEY = "page_type"
 
 INDEX_KEY = "index"
 
-# CONTRIBUTORS
+# CONTRIBUTOR ROLES
 COLORIST_KEY = "colorist"
 COVER_ARTIST_KEY = "cover_artist"
 CREATOR_KEY = "creator"
@@ -190,7 +190,7 @@ class ComicboxSubSchemaMixin:
     series = Union([Nested(SeriesSchema), StringField()])
     series_groups = StringSetField()
     stories = StringSetField()
-    story_arcs = DictStringField(values=IntegerField())
+    story_arcs = DictStringField(values=IntegerField(allow_none=True))
     summary = StringField()
     tagger = StringField()
     tags = StringSetField()

@@ -30,7 +30,7 @@ from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransf
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.json import JsonTransform
+from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 
 
@@ -49,11 +49,11 @@ class ComictaggerTransform(
 
     TRANSFORM_MAP = bidict(
         {
-            # "tagOrigin": TAG_ORIGIN_KEY,
-            # "issueId": ISSUE_ID_KEY,
-            # "seriesId": SERIES_ID_KEY,
+            # "tagOrigin": TAG_ORIGIN_KEY, code
+            # "issueId": ISSUE_ID_KEY, code
+            # "seriesId": SERIES_ID_KEY, code
             "description": "summary",
-            # "web_link": WEB_KEY,
+            # "web_link": WEB_KEY, code
             "format": ORIGINAL_FORMAT_KEY,
             "black_and_white": "monochrome",
             "maturity_rating": "age_rating",

@@ -3,7 +3,7 @@
 from marshmallow.fields import Constant, Nested
 
 from comicbox.schemas.comicbox_mixin import ROOT_TAG, ComicboxSubSchemaMixin
-from comicbox.schemas.json import JsonSchema, JsonSubSchema
+from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.version import VERSION
 
 

@@ -29,8 +29,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             if isinstance(archive, TarFile):
                 namelist = archive.getnames()
             else:
-                namelist = archive.namelist()  # type: ignore
-
+                namelist = archive.namelist()
             # SORTED CASE INSENSITIVELY
             self._namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
         return self._namelist
@@ -54,7 +53,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             if isinstance(archive, TarFile):
                 infolist = archive.getmembers()
             else:
-                infolist = archive.infolist()  # type: ignore
+                infolist = archive.infolist()
 
             # SORTED CASE INSENSITIVELY
             self._infolist = tuple(
@@ -88,7 +87,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         except UnsupportedArchiveTypeError:
             return False
 
-    def _archive_readfile(self, filename, to_pixmap=False) -> bytes:
+    def _archive_readfile(self, filename, to_pixmap: bool) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
         if Path(filename).is_dir():
@@ -105,7 +104,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
                 if file_obj:
                     data = file_obj.read()
             elif to_pixmap and self._archive_is_pdf:
-                data = archive.read(filename, True)  # type: ignore
+                data = archive.read(filename, to_pixmap=to_pixmap)  # type: ignore[reportCallIssue]
             else:
                 data = archive.read(filename)
         except BadRarFile:
@@ -115,10 +114,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
 
     def _get_comment(self):
         """Get the comment from the archive."""
-        comment = b""
-        if self._archive_cls in self._COMMENT_ARCHIVE_TYPES:
-            archive = self._get_archive()
-            comment = archive.comment  # type: ignore
-            if isinstance(comment, str):
-                comment = comment.encode(errors="replace")
+        archive = self._get_archive()
+        comment = getattr(archive, "comment", b"")
+        if isinstance(comment, str):
+            comment = comment.encode(errors="replace")
         return comment

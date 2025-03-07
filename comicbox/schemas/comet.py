@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.xml import (
+from comicbox.fields.xml_fields import (
     XmlDateField,
     XmlDecimalField,
     XmlIntegerField,
@@ -15,7 +15,7 @@ from comicbox.fields.xml import (
     XmlStringField,
     XmlStringSetField,
 )
-from comicbox.schemas.xml import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
 
 IDENTIFIER_TAG = "identifier"
 IS_VERSION_OF_TAG = "isVersionOf"
@@ -46,7 +46,7 @@ class CoMetSubSchema(XmlSubSchema):
     lastMark = XmlIntegerField(minimum=0)  # noqa: N815
     pages = XmlIntegerField(minimum=0)
     publisher = XmlStringField()
-    price = XmlDecimalField(minimum=Decimal(0.0))
+    price = XmlDecimalField(minimum=Decimal("0.0"))
     rating = XmlStringField()
     readingDirection = XmlReadingDirectionField()  # noqa: N815
     rights = XmlStringField()

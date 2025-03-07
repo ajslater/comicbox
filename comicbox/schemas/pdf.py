@@ -4,11 +4,11 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collections import StringSetField
+from comicbox.fields.collection_fields import StringSetField
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.json import JsonSchema, JsonSubSchema
-from comicbox.schemas.xml import XmlSchema, XmlSubSchema
+from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
+from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
 
 
 class MuPDFSubSchema(JsonSubSchema):
