@@ -8,7 +8,6 @@ RUN apt-get clean \
   && apt-get update \
   && apt-get install --no-install-recommends -y \
     bash \
-    mupdf \
     ruamel.yaml.clib \
     unrar \
     zlib1g \
@@ -19,6 +18,6 @@ WORKDIR /app
 
 COPY bin ./bin
 COPY .gitignore .prettierignore .remarkignore eslint.config.js package.json package-lock.json pyproject.toml uv.lock Makefile ./
-RUN make install-all
+RUN PYMUPDF_SETUP_PY_LIMITED_API=0 make install-all
 
 COPY . .
