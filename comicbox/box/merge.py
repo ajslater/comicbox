@@ -79,7 +79,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 and key not in MERGE_MAP_KEYS
                 and isinstance(value, Mapping)
             ):
-                self.merge_metadata(merged_md[key], value)
+                self._merge_metadata(merged_md[key], value)
             else:
                 # TODO try TYPESAFE_ADDITIVE?
                 merge(merged_md, {key: value}, strategy=Strategy.ADDITIVE)
@@ -87,7 +87,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         except Exception as exc:
             LOG.warning(f"{self._path} error merging {key} tag: {exc}")
 
-    def merge_metadata(self, base_md, md):
+    def _merge_metadata(self, base_md, md):
         """Merge a dict into another."""
         for key, value in md.items():
             if key in self._config.delete_keys:
@@ -100,4 +100,4 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
     def merge_metadata_list(self, parsed_md_list, merged_md):
         """Pop off complex values before simple update."""
         for parsed_md in parsed_md_list:
-            self.merge_metadata(merged_md, parsed_md.metadata)
+            self._merge_metadata(merged_md, parsed_md.metadata)
