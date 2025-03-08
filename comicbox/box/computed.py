@@ -10,6 +10,7 @@ from sys import maxsize
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
+from mergedeep import Strategy, merge
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
@@ -136,9 +137,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         max_page_index = self._get_max_page_index()
         old_pages = md.get(PAGES_KEY, [])[:max_page_index]
         computed_pages_sub_md = {PAGES_KEY: deepcopy(old_pages)}
-        new_pages_sub_md = {PAGES_KEY: pages}
-        computed_md_list = (ComputedData("Truncated Merged Pages", new_pages_sub_md),)
-        self.merge_metadata_list(computed_md_list, computed_pages_sub_md)
+        self._merge_pages(computed_pages_sub_md, pages)
         self._ensure_pages_front_cover_metadata(computed_pages_sub_md)
         return computed_pages_sub_md
 
@@ -386,7 +385,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             if update:
                 deep_update(sub_data, sub_md)
             else:
-                self.merge_metadata(sub_data, sub_md)
+                merge(sub_data, sub_md, strategy=Strategy.ADDITIVE)
 
         # Remove none values.
         pop_keys = []

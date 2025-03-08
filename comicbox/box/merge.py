@@ -40,7 +40,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         return old_pages_map, md_pages_map, max_page_index
 
     @classmethod
-    def _merge_pages(cls, pages, merged_md):
+    def _merge_pages(cls, merged_md, pages):
         """Merge new pages map from two metadatas."""
         if not pages:
             return
@@ -73,7 +73,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
             if value in EMPTY_VALUES:
                 return
             if key in merged_md and key == PAGES_KEY:
-                self._merge_pages(value, merged_md)
+                self._merge_pages(merged_md, value)
             elif (
                 key in merged_md
                 and key not in MERGE_MAP_KEYS
@@ -81,6 +81,7 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
             ):
                 self.merge_metadata(merged_md[key], value)
             else:
+                # TODO try TYPESAFE_ADDITIVE?
                 merge(merged_md, {key: value}, strategy=Strategy.ADDITIVE)
 
         except Exception as exc:
