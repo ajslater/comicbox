@@ -9,7 +9,6 @@ from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.comicbox_mixin import (
     MAP_KEYS,
     NAME_KEY,
-    ORDERED_SET_KEYS,
     PAGES_KEY,
     ComicboxSchemaMixin,
 )
@@ -132,8 +131,6 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
                 self._merge_mapping(merged_md, key, value)
             elif key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif key in ORDERED_SET_KEYS:
-                self._merge_ordered_set(merged_md, key, value)
             elif isinstance(value, list | tuple):
                 self._merge_list(merged_md, key, value)
             elif isinstance(value, set | frozenset):

@@ -93,7 +93,6 @@ VOLUME_NUMBER_KEY = "number"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
-ORDERED_SET_KEYS = frozenset({"remainders"})
 # haxxxxxxxxxxxxxxx
 MAP_KEYS = frozenset(
     {
