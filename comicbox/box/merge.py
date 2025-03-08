@@ -3,12 +3,12 @@
 from collections.abc import Mapping
 from logging import getLogger
 
+from mergedeep import Strategy, merge
+
 from comicbox.box.sources import ComicboxSourcesMixin
-from comicbox.dict_funcs import deep_update
 from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.comicbox_mixin import (
-    MAP_KEYS,
-    NAME_KEY,
+    MERGE_MAP_KEYS,
     PAGES_KEY,
     ComicboxSchemaMixin,
 )
@@ -67,78 +67,21 @@ class ComicboxMergeMixin(ComicboxSourcesMixin):
         else:
             merged_md.pop(PAGES_KEY, None)
 
-    @classmethod
-    def _merge_mapping(cls, merged_md, key, md_credits):
-        """Merge mapping."""
-        try:
-            if not md_credits:
-                return
-
-            old_credits = merged_md.get(key)
-            if merged_credits := deep_update(
-                old_credits, md_credits, sort=False, case_insensitive=True
-            ):
-                merged_md[key] = merged_credits
-
-        except KeyError:
-            pass
-
-    @staticmethod
-    def _merge_ordered_set(merged_md, key, sequence):
-        """Merge ordered set of strings or named objects."""
-        ordered_set = {}
-        zipped = (*merged_md.get(key, ()), *sequence)
-        for value in zipped:
-            if (
-                key_value := value.get(NAME_KEY)
-                if isinstance(value, Mapping)
-                else value
-            ):
-                ordered_set[key_value] = value
-        merged_md[key] = list(ordered_set.values())
-
-    @staticmethod
-    def _item_hash(item):
-        if isinstance(item, Mapping):
-            item = frozenset(item.items())
-        elif isinstance(item, set):
-            item = frozenset(item)
-        elif isinstance(item, list | tuple):
-            item = tuple(sorted(item))
-        if isinstance(item, frozenset | tuple):
-            return hash(item)
-        return item
-
-    @classmethod
-    def _merge_list(cls, merged_md, key, sequence):
-        """Merge a list, but don't add dupes."""
-        old_hashes = {cls._item_hash(item) for item in merged_md[key]}
-        for new_item in sequence:
-            if (
-                new_item not in EMPTY_VALUES
-                and cls._item_hash(new_item) not in old_hashes
-            ):
-                merged_md[key].append(new_item)
-
     def _merge_key(self, merged_md, key, value):
         """Merge complex values."""
         try:
             if value in EMPTY_VALUES:
                 return
-            if key not in merged_md:
-                merged_md[key] = value
-            elif key in MAP_KEYS:
-                self._merge_mapping(merged_md, key, value)
-            elif key == PAGES_KEY:
+            if key in merged_md and key == PAGES_KEY:
                 self._merge_pages(value, merged_md)
-            elif isinstance(value, list | tuple):
-                self._merge_list(merged_md, key, value)
-            elif isinstance(value, set | frozenset):
-                merged_md[key].update(value)
-            elif isinstance(value, Mapping):
+            elif (
+                key in merged_md
+                and key not in MERGE_MAP_KEYS
+                and isinstance(value, Mapping)
+            ):
                 self.merge_metadata(merged_md[key], value)
             else:
-                merged_md[key] = value
+                merge(merged_md, {key: value}, strategy=Strategy.ADDITIVE)
 
         except Exception as exc:
             LOG.warning(f"{self._path} error merging {key} tag: {exc}")

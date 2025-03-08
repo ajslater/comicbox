@@ -93,8 +93,7 @@ VOLUME_NUMBER_KEY = "number"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
-# haxxxxxxxxxxxxxxx
-MAP_KEYS = frozenset(
+MERGE_MAP_KEYS = frozenset(
     {
         CHARACTERS_KEY,
         CREDITS_KEY,

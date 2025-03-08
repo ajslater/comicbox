@@ -18,6 +18,8 @@ def deep_update(
     """Deep Dict Update."""
     if base_dict is None:
         base_dict = {}
+        if case_insensitive_dict:
+            base_dict = case_insensitive_dict(base_dict)
     for key, value in update_dict.items():
         if isinstance(value, dict):
             updated_dict = deep_update(

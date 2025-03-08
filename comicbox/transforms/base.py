@@ -16,6 +16,7 @@ from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 
 LOG = getLogger(__name__)
 
+
 class BaseTransform:
     """Base Transform methods."""
 
