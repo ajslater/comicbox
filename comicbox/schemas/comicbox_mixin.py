@@ -93,21 +93,6 @@ VOLUME_NUMBER_KEY = "number"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
-MERGE_MAP_KEYS = frozenset(
-    {
-        CHARACTERS_KEY,
-        CREDITS_KEY,
-        GENRES_KEY,
-        LOCATIONS_KEY,
-        PRICES_KEY,
-        STORIES_KEY,
-        ARCS_KEY,
-        TAGS_KEY,
-        TEAMS_KEY,
-        UNIVERSES_KEY,
-    }
-)
-
 
 class IdentifiedSchema(BaseSubSchema):
     """Identified Schema."""

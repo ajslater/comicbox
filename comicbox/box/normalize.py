@@ -58,12 +58,14 @@ class ComicboxNormalizeMixin(ComicboxLoadMixin):
         """Overlay the metadatas in precedence order."""
         # order of the md list is very important, lowest to highest
         # precedence.
-        merged_md = {}
+        md_list = []
         for source in MetadataSources:
             if source.value.enabled and (
                 normalized_md_list := self.get_normalized_metadata(source)
             ):
-                self.merge_metadata_list(normalized_md_list, merged_md)
+                md_list.extend(lm.metadata for lm in normalized_md_list)
+
+        merged_md = self.merge_metadata_list(md_list, self._config)
         if merged_md:
             return MappingProxyType(merged_md)
         return None
