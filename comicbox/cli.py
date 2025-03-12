@@ -14,9 +14,9 @@ from rich.table import Table
 from rich_argparse import RichHelpFormatter
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.formats import PDF_ENABLED, MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
-from comicbox.sources import PDF_ENABLED, MetadataFormats
 
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
 PRINT_PHASES_DESC = MappingProxyType(

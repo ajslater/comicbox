@@ -20,6 +20,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.fields.fields import EMPTY_VALUES, StringField
 from comicbox.fields.number_fields import DecimalField
 from comicbox.fields.time_fields import DateTimeField
+from comicbox.formats import MetadataFormats
 from comicbox.identifiers import (
     COMICVINE_NID,
     create_identifier,
@@ -46,7 +47,6 @@ from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.merge import merge_pages
 from comicbox.schemas.yaml import ALL_NONE_KEYS
-from comicbox.sources import MetadataFormats
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
     parse_urn_identifier,

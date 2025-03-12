@@ -7,9 +7,9 @@ from types import MappingProxyType
 import xmltodict
 
 from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.sources import MetadataFormats
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,

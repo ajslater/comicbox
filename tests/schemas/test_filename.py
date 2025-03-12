@@ -6,9 +6,9 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
-from comicbox.sources import MetadataFormats
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"

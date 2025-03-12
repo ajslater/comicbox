@@ -7,7 +7,8 @@ from pathlib import Path
 from comicbox.box.archive_read import archive_close
 from comicbox.box.archive_write import ComicboxArchiveWriteMixin
 from comicbox.box.pages import ComicboxPagesMixin
-from comicbox.sources import MetadataFormats, MetadataSources
+from comicbox.formats import MetadataFormats
+from comicbox.sources import MetadataSources
 
 LOG = getLogger(__name__)
 

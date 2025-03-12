@@ -19,7 +19,8 @@ from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.sources import MetadataFormats, MetadataSources
+from comicbox.formats import MetadataFormats
+from comicbox.sources import MetadataSources
 
 try:
     from pdffile import PDFFile

@@ -15,6 +15,7 @@ from deepdiff.diff import DeepDiff
 from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox_mixin import (
     NOTES_KEY,
@@ -24,7 +25,6 @@ from comicbox.schemas.comicbox_mixin import (
     ComicboxSchemaMixin,
 )
 from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
-from comicbox.sources import MetadataFormats
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_DATETIME,

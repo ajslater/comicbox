@@ -7,9 +7,9 @@ from types import MappingProxyType
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
 from comicbox.dict_funcs import set_deep
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
-from comicbox.sources import MetadataFormats
 
 
 class ComicboxMetadataMixin(ComicboxComputedMixin):

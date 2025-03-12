@@ -9,9 +9,9 @@ from pathlib import Path
 from confuse import Configuration, Integer, OneOf, String
 from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
+from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
 from comicbox.print import PrintPhases
-from comicbox.sources import MetadataFormats
 from comicbox.version import DEFAULT_TAGGER, PACKAGE_NAME
 
 LOG = getLogger(__name__)

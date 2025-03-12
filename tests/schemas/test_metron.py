@@ -8,9 +8,9 @@ from types import MappingProxyType
 
 import xmltodict
 
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.sources import MetadataFormats
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (

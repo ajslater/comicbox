@@ -14,7 +14,8 @@ from comicbox.box.init import SourceData
 from comicbox.box.sources import ComicboxSourcesMixin
 from comicbox.dict_funcs import get_deep
 from comicbox.fields.collection_fields import EmbeddedStringSetField
-from comicbox.sources import MetadataFormats, MetadataSources
+from comicbox.formats import MetadataFormats
+from comicbox.sources import MetadataSources
 
 LOG = getLogger(__name__)
 

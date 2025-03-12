@@ -6,10 +6,10 @@ from pathlib import Path
 from types import MappingProxyType
 
 from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
-from comicbox.sources import MetadataFormats
 from tests.const import (
     TEST_DATETIME,
     TEST_DTTM_STR,
