@@ -9,7 +9,7 @@ import xmltodict
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.transforms.comicinfo import ComicInfoTransform
+from comicbox.sources import MetadataFormats
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -20,7 +20,7 @@ from tests.util import (
 WRITE_CONFIG = Namespace(
     comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=False)
 )
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"], compute_pages=False))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cix", "fn"], compute_pages=False))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -185,7 +185,7 @@ WRITE_CIX_STR = xmltodict.unparse(
 )
 
 CIX_TESTER = TestParser(
-    ComicInfoTransform,
+    MetadataFormats.CIX,
     CIX_CBZ_FN,
     READ_METADATA,
     READ_CIX_DICT,

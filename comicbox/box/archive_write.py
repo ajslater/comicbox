@@ -11,11 +11,11 @@ from comicbox.zipfile_remove import ZipFileWithRemove
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
-_ALL_METADATA_NAMES = frozenset(
+_ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
     {
-        source.value.transform_class.SCHEMA_CLASS.FILENAME.lower()
-        for source in MetadataSources
-        if source.value.enabled
+        fmt.value.transform_class.SCHEMA_CLASS.FILENAME.lower()
+        for fmt in MetadataSources.ARCHIVE_FILE.value.formats
+        if fmt.value.enabled
     }
 )
 LOG = getLogger(__name__)
@@ -51,7 +51,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
         """Remove metadata files from archive."""
         for path in self._get_archive_namelist():
             fn = Path(path).name.lower()
-            if fn in _ALL_METADATA_NAMES:
+            if fn in _ALL_ARCHIVE_METADATA_FILENAMES:
                 zf.remove(path)
 
     def _write_archive_metadata_files(self, zf, files):
@@ -86,7 +86,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
 
         # Don't copy old metadata files to new archive.
         lower_name = Path(filename).name.lower()
-        if lower_name in _ALL_METADATA_NAMES:
+        if lower_name in _ALL_ARCHIVE_METADATA_FILENAMES:
             return None
         return filename
 
@@ -155,11 +155,14 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
 
         # Clear Caches
         old_api_source_data_list = self._sources.get(MetadataSources.API)
-        if old_api_source_data_list and old_api_source_data_list[0]:
-            old_api_source_metadata = old_api_source_data_list[0].metadata
+        if old_api_source_data_list:
+            old_api_source_data = old_api_source_data_list[0]
+            old_api_source_metadata = old_api_source_data.data
+            old_api_source_format = old_api_source_data.fmt
         else:
             old_api_source_metadata = None
-        self._reset_archive(old_api_source_metadata)
+            old_api_source_format = None
+        self._reset_archive(old_api_source_format, old_api_source_metadata)
 
     #########################
     # SPECIAL ARCHIVE WRITE #

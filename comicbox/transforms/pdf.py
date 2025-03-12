@@ -1,14 +1,10 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
-from collections.abc import Mapping, Sequence
 from logging import getLogger
 from types import MappingProxyType
-from xml.sax.saxutils import unescape
 
 from bidict import frozenbidict
 
-from comicbox.dict_funcs import deep_update
-from comicbox.fields.collection_fields import StringSetField
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
@@ -23,36 +19,14 @@ from comicbox.schemas.comicbox_mixin import (
     TAGS_KEY,
     UPDATED_AT_KEY,
     VOLUME_KEY,
-    ComicboxSchemaMixin,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet import CoMetTransform
-from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
-from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
-from comicbox.transforms.comicinfo import ComicInfoTransform
-from comicbox.transforms.comictagger import ComictaggerTransform
-from comicbox.transforms.filename import FilenameTransform
-from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
-_KEYWORDS_TRANSFORM_CLASSES = (
-    # Different order than all sources
-    # Doesn't include PDF.
-    ComicInfoTransform,
-    MetronInfoTransform,
-    ComicboxJsonTransform,
-    ComicboxYamlTransform,
-    ComicBookInfoTransform,
-    CoMetTransform,
-    ComictaggerTransform,
-    FilenameTransform,
-)
 LOG = getLogger(__name__)
 
 
@@ -130,77 +104,17 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
             data[self.AUTHOR_TAG] = authors
         return data
 
-    def _parse_metadata_from_tags(self, data, transform_class):
-        """Parse comicinfo from keywords."""
-        tags = data.get(self.TAGS_TAG)
-        transform = transform_class(self._path)
-        schema_cls = transform.SCHEMA_CLASS
-        try:
-            if issubclass(transform_class, XmlTransform):
-                tags = unescape(tags)
-            if (
-                (cix_md := schema_cls().loads(tags))
-                and (md := transform.to_comicbox(cix_md))
-                and (sub_md := md.get(ComicboxSchemaMixin.ROOT_TAG))
-            ):
-                data.pop(TAGS_KEY, None)
-                deep_update(data, sub_md)
-                return True
-        except Exception as exc:
-            LOG.debug(
-                f"Failed to parse {schema_cls.__name__} from keywords in {self._path}: {exc}"
-            )
-        return False
-
-    def _parse_comma_delimited_tags(self, data):
-        if tags := data.get(self.TAGS_TAG):
-            tags = StringSetField()._deserialize(tags, self.TAGS_TAG, data)  # noqa: SLF001
-            data[self.TAGS_TAG] = tags
-
-    def parse_tags(self, data):
-        """Parse different possible keyword schemas."""
-        for transform_class in _KEYWORDS_TRANSFORM_CLASSES:
-            if self._parse_metadata_from_tags(data, transform_class):
-                return data
-        # Comma delimited string
-        self._parse_comma_delimited_tags(data)
-        self.string_list_to_dicts_one(data, self.TAGS_TAG, TAGS_KEY)
-        return data
-
-    def unparse_tags(self, data):
-        """Stuff comicinfo into keywords."""
-        transform = self._transform_class(self._path)
-        schema = transform.SCHEMA_CLASS()
-        if (md := transform.from_comicbox(data)) and (tags := schema.dumps(md)):
-            data[self.TAGS_TAG] = tags
-        return data
-
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        parse_tags,
         parse_credits,
         TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
-        unparse_tags,
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         unparse_credits,
         TitleStoriesMixin.unparse_stories,
     )
-
-    def from_comicbox(
-        self, data: Mapping, write_transforms: Sequence[BaseTransform] = (), **kwargs
-    ) -> MappingProxyType:
-        """Override for specifying transform class."""
-        if (
-            ComicboxJsonTransform in write_transforms
-            and ComicInfoTransform not in write_transforms
-        ):
-            self._transform_class = ComicboxJsonTransform
-        else:
-            self._transform_class = ComicInfoTransform
-        return super().from_comicbox(data, **kwargs)
 
 
 class MuPDFTransform(PDFXmlTransform):

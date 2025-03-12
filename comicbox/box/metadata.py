@@ -1,28 +1,48 @@
 """Get Metadata mixin."""
 
+from collections.abc import MutableMapping
+from copy import deepcopy
 from types import MappingProxyType
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
+from comicbox.dict_funcs import remove_none_values, set_deep
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
+from comicbox.schemas.merge import merge_metadata
+from comicbox.sources import MetadataFormats
 
 
 class ComicboxMetadataMixin(ComicboxComputedMixin):
     """Get Metadata mixin."""
 
-    def _set_metadata(self):
-        # collect metadata
-        computed_merged_metadata = self.get_computed_merged_metadata()
-        if not computed_merged_metadata:
-            computed_merged_metadata = {ComicboxSchemaMixin.ROOT_TAG: {}}
-        self._metadata = MappingProxyType(computed_merged_metadata)
+    def _set_computed_merged_metadata(self):
+        merged_md = self.get_merged_metadata()
+        computed_md = self.get_computed_metadata()
+        sub_data = deepcopy(dict(merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})))
+
+        from icecream import ic
+
+        ic(self._config.read_ignore)
+        for computed_data in computed_md:
+            computed_sub_data = computed_data.metadata.get(
+                ComicboxSchemaMixin.ROOT_TAG, {}
+            )
+            merge_metadata(
+                sub_data, computed_sub_data, self._config, computed_data.merge_strategy
+            )
+
+        # Remove none values.
+        # TODO better if we could do it in the merge
+        sub_data = remove_none_values(sub_data)
+
+        final_metadata = {ComicboxSchemaMixin.ROOT_TAG: sub_data}
+
+        self._metadata = MappingProxyType(final_metadata)
 
     def _get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""
         if not self._metadata:
-            self._set_metadata()
+            self._set_computed_merged_metadata()
         return self._metadata
 
     @archive_close
@@ -30,37 +50,60 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         """Return the metadata from the archive."""
         return self._get_metadata()
 
+    def _embed_metadata(
+        self, fmt: MetadataFormats, denormalized_metadata: MutableMapping, schema_class
+    ):
+        """Serialize metadata in the given format into a tag."""
+        if not schema_class.EMBED_TAG:
+            return
+
+        embedded_transform = fmt.value.transform_class(self._path)
+        embedded_schema = embedded_transform.SCHEMA_CLASS()
+        metadata = self._get_metadata()
+        if (md := embedded_transform.from_comicbox(metadata)) and (
+            embedded_value := embedded_schema.dumps(md)
+        ):
+            set_deep(denormalized_metadata, schema_class.EMBED_TAG, embedded_value)
+
     def _to_dict(
         self,
-        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+        fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
+        embed_fmt: MetadataFormats | None = None,
     ):
         # Get schema instance.
-        schema = transform_class.SCHEMA_CLASS(path=self._path)
+        schema_class = fmt.value.transform_class.SCHEMA_CLASS
+        schema = schema_class(path=self._path)
 
         # Get transformed md
-        transform = transform_class(self._path)
+        transform = fmt.value.transform_class(self._path)
         md = self._get_metadata()
         md = transform.from_comicbox(md)
 
-        return schema, md
+        if embed_fmt:
+            md = dict(md)
+            self._embed_metadata(embed_fmt, md, schema_class)
+
+        return schema, MappingProxyType(md)
 
     @archive_close
     def to_dict(
         self,
-        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+        fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
+        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ) -> dict:
         """Get merged metadata as a dict."""
-        schema, md = self._to_dict(transform_class)
+        schema, md = self._to_dict(fmt, embed_fmt)
         dump = schema.dump(md, **kwargs)
         return dict(dump)  # type:ignore[reportArgumentType]
 
     @archive_close
     def to_string(
         self,
-        transform_class: type[BaseTransform] = ComicboxYamlTransform,
+        fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
+        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ) -> str:
         """Get mergeesized metadata as a string."""
-        schema, md = self._to_dict(transform_class)
+        schema, md = self._to_dict(fmt, embed_fmt)
         return schema.dumps(md, **kwargs)

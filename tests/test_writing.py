@@ -8,7 +8,7 @@ from types import MappingProxyType
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
+from comicbox.sources import MetadataFormats
 from tests.const import (
     CBI_CBR_FN,
     CBI_CBR_SOURCE_PATH,
@@ -78,7 +78,7 @@ METADATA = MappingProxyType(
             ],
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
-            "stories": {"cbi": {}, "The Beginning": {}},
+            "stories": {"The Beginning": {}},
             "volume": {"number": 1950, "issue_count": 7},
             "year": 1950,
             "tagger": "comicbox dev",
@@ -102,7 +102,7 @@ def test_convert_to_cbz_and_cbi_to_cix():
     # read and write
     # inject tags.
     with Comicbox(OLD_TEST_CBR_PATH, config=WRITE_CONFIG) as car:
-        car.add_source(TAGS_SOURCE, ComicboxJsonTransform)
+        car.add_metadata(TAGS_SOURCE, MetadataFormats.COMICBOX_JSON)
         car.write()
 
     # test

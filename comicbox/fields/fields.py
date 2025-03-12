@@ -1,7 +1,6 @@
 """Custom Marshmallow fields."""
 
 from abc import ABCMeta
-from decimal import Decimal
 from enum import Enum
 from logging import getLogger
 
@@ -73,6 +72,7 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
 
 def half_replace(num_str):
     """Replace half notation with decimal notation."""
+    # TODO replace with re.sub
     num_str = num_str.replace("½", ".5", 1)
     return num_str.replace("1/2", ".5", 1)
 
@@ -81,19 +81,20 @@ class IssueField(StringField):
     """Issue Field."""
 
     @staticmethod
-    def parse_issue(num_obj):
+    def parse_issue(num):
         """Parse issues."""
-        num: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num:
             return None
         num = num.replace(" ", "")
         num = num.lstrip("#")
+        # TODO allow single zero
         num = num.lstrip("0")
         num = num.rstrip(".")
         return half_replace(num)
 
     def _deserialize(self, value, *args, **kwargs):
-        if isinstance(value, int | float | Decimal):
-            value = str(value)
+        if value is None:
+            return None
+        value = str(value)
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

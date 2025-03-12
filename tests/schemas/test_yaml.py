@@ -9,7 +9,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
-from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
+from comicbox.sources import MetadataFormats
 from tests.const import (
     TEST_DATETIME,
     TEST_DTTM_STR,
@@ -165,7 +165,7 @@ with StringIO() as buf:
 
 
 YAML_TESTER = TestParser(
-    ComicboxYamlTransform,
+    MetadataFormats.COMICBOX_YAML,
     FN,
     READ_METADATA,
     READ_YAML_DICT,

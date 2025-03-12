@@ -18,6 +18,9 @@
   - Comictagger schema supports series_aliases and title_aliases as reprints
   - CB7 archive read support. Comic archives in 7zip archives.
   - Syntax highlighting used on output. Change or remove with --theme option.
+  - --delete action becomes --delete-all-tags.
+  - config.metadata_format exists to hint what format the api metadata is.
+  - public box functions take formats instead of transform_classes
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
@@ -28,6 +31,7 @@
   - Corrected schemaLocation tags for xml formats to be valid.
   - ComicBookInfo.json `rating`, and `tags` tags fixed.
   - Support ComicBookInfo.json `primary` credit tag.
+  - More accurate merging of different metadata sources.
 
 ## v1.2.3
 

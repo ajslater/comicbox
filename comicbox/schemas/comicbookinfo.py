@@ -86,6 +86,7 @@ class ComicBookInfoSchema(JsonSchema):
     CONFIG_KEYS = frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"})
     FILENAME = "comic-book-info.json"
     TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")
+    HAS_PAGE_COUNT = True
 
     appID = StringField()  # noqa: N815
     lastModified = DateTimeField()  # noqa: N815

@@ -90,5 +90,6 @@ class CoMetSchema(XmlSchema):
     FILENAME = "CoMet.xml"
     ROOT_TAG = "comet"
     WRAP_TAGS = (ROOT_TAG,)
+    HAS_PAGE_COUNT = True
 
     comet = Nested(CoMetSubSchema)

@@ -6,9 +6,7 @@ from enum import Enum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
-from comicbox.transforms.comicbox_cli import (
-    ComicboxCLITransform,
-)
+from comicbox.transforms.comicbox_cli import ComicboxCLITransform
 from comicbox.transforms.comicbox_json import ComicboxJsonTransform
 from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
@@ -25,14 +23,80 @@ except ImportError:
     PDF_ENABLED = False
 
 
-class SourceFrom(Enum):
-    """How to get the source."""
+@dataclass
+class MetadataFormat:
+    """Metada format attributes."""
 
-    OTHER = 0
-    ARCHIVE_FILENAME = 1
-    ARCHIVE_CONTENTS = 2
-    ARCHIVE_COMMENT = 3
-    ARCHIVE_FILE = 4
+    label: str
+    transform_class: type[BaseTransform] = ComicboxJsonTransform
+    has_pages: bool = False
+    lexer: str = "yaml"
+    enabled: bool = True
+
+
+class MetadataFormats(Enum):
+    """Metadata formats."""
+
+    # The order these are listed is the order of masking. Very important.
+
+    FILENAME = MetadataFormat(
+        "Filename",
+        FilenameTransform,
+    )
+    COMICTAGGER = MetadataFormat(
+        "ComicTagger",
+        ComictaggerTransform,
+        has_pages=True,
+        lexer="json",
+    )
+    PDF = MetadataFormat(
+        "MuPDF",
+        MuPDFTransform,
+        lexer="json",
+        enabled=PDF_ENABLED,
+    )
+    PDF_XML = MetadataFormat(
+        "PDF XML",
+        PDFXmlTransform,
+        lexer="xml",
+        enabled=PDF_ENABLED,
+    )
+    COMET = MetadataFormat(
+        "CoMet",
+        CoMetTransform,
+        lexer="xml",
+    )
+    CBI = MetadataFormat(
+        "ComicBookInfo",
+        ComicBookInfoTransform,
+        lexer="json",
+    )
+    CIX = MetadataFormat(
+        "ComicInfo",
+        ComicInfoTransform,
+        has_pages=True,
+        lexer="xml",
+    )
+    METRON = MetadataFormat(
+        "MetronInfo",
+        MetronInfoTransform,
+        has_pages=True,
+        lexer="xml",
+    )
+    COMICBOX_YAML = MetadataFormat(
+        "Comicbox YAML",
+        ComicboxYamlTransform,
+        has_pages=True,
+    )
+    COMICBOX_JSON = MetadataFormat(
+        "Comicbox JSON",
+        ComicboxJsonTransform,
+        has_pages=True,
+        lexer="json",
+    )
+    COMICBOX_CLI_YAML = MetadataFormat(
+        "Comicbox CLI Yaml", ComicboxCLITransform, has_pages=True, lexer="yaml"
+    )
 
 
 @dataclass
@@ -40,124 +104,94 @@ class MetadataSource:
     """Metadata source attributes."""
 
     label: str
-    transform_class: type[BaseTransform] = ComicboxJsonTransform
-    configurable: bool = False
-    from_archive: SourceFrom = SourceFrom.OTHER
-    writable: bool = False
-    has_page_count: bool = False
-    has_pages: bool = False
-    enabled: bool = True
-    lexer: str = "yaml"
+    path: bool = False
+    formats: tuple[MetadataFormats, ...] = tuple(
+        fmt for fmt in MetadataFormats if fmt.value.enabled
+    )
+    from_archive: bool = False
 
 
 class MetadataSources(Enum):
     """Metadata sources."""
 
-    # If adding a file source be sure to update CLITransform.loads()
-    # The order these are listed is the order of masking. Very important.
+    # Source order declares masking precedence
+    # Format tuples declare masking precedence under each source
 
-    CONFIG = MetadataSource("Config")
-    FILENAME = MetadataSource(
-        "Filename",
-        FilenameTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILENAME,
+    CONFIG = MetadataSource(
+        "Config",
+        formats=(
+            MetadataFormats.COMICBOX_YAML,
+            MetadataFormats.METRON,
+            MetadataFormats.CIX,
+            MetadataFormats.CBI,
+            MetadataFormats.COMET,
+            MetadataFormats.PDF,
+            MetadataFormats.COMICTAGGER,
+            MetadataFormats.FILENAME,
+        ),
     )
-    COMICTAGGER = MetadataSource(
-        "ComicTagger",
-        ComictaggerTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        has_pages=True,
-        lexer="json",
+    ARCHIVE_FILENAME = MetadataSource(
+        "Filename", path=True, formats=(MetadataFormats.FILENAME,), from_archive=True
     )
-    PDF = MetadataSource(
-        "MuPDF",
-        MuPDFTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_CONTENTS,
-        writable=True,
-        has_page_count=True,
-        enabled=PDF_ENABLED,
-        lexer="json",
+    ARCHIVE_PDF = MetadataSource(
+        "Archive Header", path=True, formats=(MetadataFormats.PDF,), from_archive=True
     )
-    PDF_XML = MetadataSource(
-        "PDF XML",
-        PDFXmlTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        enabled=PDF_ENABLED,
-        lexer="xml",
+    ARCHIVE_COMMENT = MetadataSource(
+        "Archive Comment", path=True, formats=(MetadataFormats.CBI,), from_archive=True
     )
-    COMET = MetadataSource(
-        "CoMet",
-        CoMetTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        lexer="xml",
+    ARCHIVE_FILE = MetadataSource(
+        "Archive File",
+        path=True,
+        formats=(
+            MetadataFormats.COMICBOX_YAML,
+            MetadataFormats.COMICBOX_JSON,
+            MetadataFormats.COMICBOX_CLI_YAML,
+            MetadataFormats.METRON,
+            MetadataFormats.CIX,
+            MetadataFormats.COMET,
+            MetadataFormats.CBI,
+            MetadataFormats.COMICTAGGER,
+        ),
+        from_archive=True,
     )
-    METRON = MetadataSource(
-        "MetronInfo",
-        MetronInfoTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        has_pages=True,
-        lexer="xml",
+    ARCHIVE_EMBEDDED = MetadataSource(
+        "Embedded in Other Metadata",
+        path=True,
+        formats=(
+            MetadataFormats.COMICBOX_CLI_YAML,
+            MetadataFormats.COMICBOX_JSON,
+            MetadataFormats.METRON,
+            MetadataFormats.CIX,
+            MetadataFormats.FILENAME,
+        ),
+        from_archive=True,
     )
-    CBI = MetadataSource(
-        "ComicBookInfo",
-        ComicBookInfoTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_COMMENT,
-        writable=True,
-        has_page_count=True,
-        lexer="json",
-    )
-    CIX = MetadataSource(
-        "ComicInfo",
-        ComicInfoTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        has_pages=True,
-        lexer="xml",
-    )
-    COMICBOX_YAML = MetadataSource(
-        "Comicbox YAML",
-        ComicboxYamlTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        has_pages=True,
-    )
-    COMICBOX_JSON = MetadataSource(
-        "Comicbox JSON",
-        ComicboxJsonTransform,
-        configurable=True,
-        from_archive=SourceFrom.ARCHIVE_FILE,
-        writable=True,
-        has_page_count=True,
-        has_pages=True,
-        lexer="json",
-    )
-    IMPORT = MetadataSource("Imported File")
+    IMPORT_FILE = MetadataSource("Imported File", path=True)
     CLI = MetadataSource(
         "Comicbox CLI",
-        ComicboxCLITransform,
-        configurable=True,
-        writable=True,
+        formats=(
+            MetadataFormats.COMICBOX_CLI_YAML,
+            MetadataFormats.METRON,
+            MetadataFormats.CIX,
+            MetadataFormats.CBI,
+            MetadataFormats.PDF,
+            MetadataFormats.COMET,
+            MetadataFormats.COMICTAGGER,
+        ),
     )
-    API = MetadataSource("API")
-    ADDED = MetadataSource(
-        "API Added",
+    API = MetadataSource(
+        "API",
+        formats=(
+            MetadataFormats.COMICBOX_CLI_YAML,
+            MetadataFormats.COMICBOX_YAML,
+            MetadataFormats.COMICBOX_JSON,
+            MetadataFormats.METRON,
+            MetadataFormats.CIX,
+            MetadataFormats.CBI,
+            MetadataFormats.COMET,
+            MetadataFormats.PDF,
+            MetadataFormats.PDF_XML,
+            MetadataFormats.COMICTAGGER,
+            MetadataFormats.FILENAME,
+        ),
     )

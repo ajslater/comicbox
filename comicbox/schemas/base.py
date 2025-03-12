@@ -58,6 +58,8 @@ class BaseSubSchema(Schema, ABC):
     @classmethod
     def _remove_empty_values(cls, data, phase=""):
         """Remove fields with empty values."""
+        if not data:
+            return data
         data = dict(data)
         for key, value in tuple(data.items()):
             if value in EMPTY_VALUES:
@@ -130,6 +132,9 @@ class BaseSchema(BaseSubSchema, ABC):
     CONFIG_KEYS = frozenset()
     FILENAME = ""
     WRAP_TAGS = ()
+    EMBED_TAG = ""
+    HAS_PAGE_COUNT = False
+    HAS_PAGES = False
 
     def set_path(self, path):
         """Set the path after the instance is created."""

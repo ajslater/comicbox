@@ -15,6 +15,7 @@ from comicbox.schemas.filename import ISSUE_COUNT_TAG, ISSUE_TAG, SERIES_TAG, VO
 
 def reprint_to_filename(reprint):
     """Comicbox reprint to filename."""
+    # TODO use generic remapper
     filename_dict = {}
     if series := reprint.get(SERIES_KEY, {}).get(NAME_KEY):
         filename_dict[SERIES_TAG] = series

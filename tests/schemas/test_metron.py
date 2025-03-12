@@ -10,6 +10,7 @@ import xmltodict
 
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
+from comicbox.sources import MetadataFormats
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
@@ -18,10 +19,10 @@ from tests.util import (
     create_write_metadata,
 )
 
+READ_CONFIG = Namespace(comicbox=Namespace(read=["mi", "fn"], compute_pages=False))
 WRITE_CONFIG = Namespace(
     comicbox=Namespace(write=["mi"], read=["mi"], compute_pages=False)
 )
-READ_CONFIG = Namespace(comicbox=Namespace(read=["mi"], compute_pages=False))
 METRON_NOTES = (
     "Tagged with "
     "comicbox dev "
@@ -355,7 +356,7 @@ READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)
 WRITE_METRON_STR = unparse_strinfigy_decimals(WRITE_METRON_DICT)
 
 METRON_TESTER = TestParser(
-    MetronInfoTransform,
+    MetadataFormats.METRON,
     METRON_CBZ_FN,
     READ_METADATA,
     READ_METRON_DICT,
@@ -375,7 +376,7 @@ SIMPLE_WRITE_METRON_STR = unparse_strinfigy_decimals(SIMPLE_WRITE_METRON_DICT)
 
 
 SIMPLE_METRON_TESTER = TestParser(
-    MetronInfoTransform,
+    MetadataFormats.METRON,
     METRON_CBZ_FN,
     READ_METADATA,
     SIMPLE_READ_METRON_DICT,
@@ -440,7 +441,7 @@ def test_metron_to_file():
 
 
 def test_metron_read():
-    """Read RAR with METRON."""
+    """Read cbz with METRON."""
     METRON_TESTER.test_md_read()
     SIMPLE_METRON_TESTER.test_md_read()
 

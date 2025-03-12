@@ -55,7 +55,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             print(renderable)  # noqa: T201
 
     def print_section(self, title, renderable, subtitle=""):
-        """Pretty print a renderable in a panel."""
+        """Pretty print a titled rule over a renderable."""
         if subtitle:
             title += f": {subtitle}"
 
@@ -103,21 +103,35 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         rule = Rule(title, align="left", characters=self._FILE_RULE_CHAR)
         self._CONSOLE.print(rule)
 
+    def _add_source_to_title(self, title, source, source_data):
+        path = str(self._path) + ":" if source.value.from_archive else ""
+        if source_data.path:
+            path += str(source_data.path)
+        if path:
+            title += " " + path
+        if source_data.fmt:
+            title += " as " + source_data.fmt.value.label
+
+        return title
+
     def _print_sources(self, source):
         """Print source metadtata."""
         source_data_list = self.get_source_metadata(source)
         if not source_data_list:
             return
         for source_data in source_data_list:
-            if not source_data or not source_data.metadata:
+            if not source_data or not source_data.data:
                 continue
-            md = source_data.metadata
+            md = source_data.data
             if isinstance(md, Mapping):
                 renderable = Pretty(dict(md)) if self._is_themed() else md
             else:
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
-                renderable = self._syntax(print_md, source.value.lexer)
-            title = f"Source {source.value.label}"
+                lexer = source_data.fmt.value.lexer if source_data.fmt else ""
+                renderable = self._syntax(print_md, lexer)
+            title = self._add_source_to_title(
+                f"Source {source.value.label}", source, source_data
+            )
             self.print_section(title, renderable)
 
     def _print_loaded(self, source):
@@ -133,8 +147,11 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             str_data = YamlRenderModule.dumps(dict(loaded_md.metadata))
             str_data = str_data.removesuffix("\n")
             syntax = self._syntax(str_data, "yaml")
-            title = f"Loaded {source.value.label}"
-            self.print_section(title, syntax, loaded_md.path)
+            title = self._add_source_to_title(
+                f"Loaded {source.value.label}", source, loaded_md
+            )
+
+            self.print_section(title, syntax)
 
     def _print_normalized(self, source):
         """Print normalized metadata."""
@@ -150,16 +167,17 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             str_data = schema.dumps(normalized_md.metadata)
             str_data = str_data.removesuffix("\n")
             syntax = self._syntax(str_data, "yaml")
-            title = f"Normalized {source.value.label}"
-            self.print_section(title, syntax, subtitle=normalized_md.path)
+            title = self._add_source_to_title(
+                f"Normalized {source.value.label}", source, normalized_md
+            )
+
+            self.print_section(title, syntax)
 
     def _print_sources_loaded_normalized(self):
         """Print sources, loaded, and normalized metadata."""
         if not _SOURCES_LOADED_NORMALIZED & self._config.print:
             return
         for source in MetadataSources:
-            if not source.value.enabled:
-                continue
             if PrintPhases.SOURCE in self._config.print:
                 self._print_sources(source)
             if PrintPhases.LOADED in self._config.print:
@@ -173,8 +191,8 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         md = self.get_merged_metadata()
         str_data = schema.dumps(md)
         syntax = self._syntax(str_data, "yaml")
-        title = "Normalized Merged"
-        self.print_section(title, syntax, subtitle="Not Final")
+        title = "Merged for Compute"
+        self.print_section(title, syntax)
 
     def _print_computed(self, schema):
         """Print parsed metadata."""
@@ -185,7 +203,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             if not computed_md or not computed_md.metadata:
                 continue
             str_data = schema.dumps(
-                computed_md.metadata, allowed_null_keys=_ALLOWED_NULL_KEYS
+                computed_md.metadata, allowed_null_keys=computed_md.allowed_null_keys
             )
             syntax = self._syntax(str_data, "yaml")
             self.print_section("Computed", syntax, subtitle=computed_md.label)

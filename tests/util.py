@@ -24,7 +24,7 @@ from comicbox.schemas.comicbox_mixin import (
     ComicboxSchemaMixin,
 )
 from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
-from comicbox.transforms.base import BaseTransform
+from comicbox.sources import MetadataFormats
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_DATETIME,
@@ -79,7 +79,8 @@ def read_metadata(  # noqa: PLR0913
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
-    ignore_page_count=False,  # noqa: FBT002
+    ignore_page_count: bool = False,  # noqa: FBT002
+    ignore_pages: bool = False,  # noqa: FBT002
 ):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "slnmcd"
@@ -97,14 +98,17 @@ def read_metadata(  # noqa: PLR0913
             else:
                 disk_md.pop(PAGES_KEY, None)
     print(f"{ignore_updated_at=} {ignore_notes=}")
+    metadata = dict(metadata)
+    metadata[ComicboxSchemaMixin.ROOT_TAG]["ext"] = archive_path.suffix[1:]
     if ignore_updated_at:
-        metadata = dict(metadata)
         metadata[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
         disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
     if ignore_notes:
-        metadata = dict(metadata)
         metadata[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
         disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+    if ignore_pages:
+        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(PAGES_KEY, None)
+        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(PAGES_KEY, None)
     metadata = MappingProxyType(metadata)
     disk_md = MappingProxyType(disk_md)
     pprint(metadata)
@@ -263,7 +267,7 @@ class TestParser:
 
     def __init__(  # noqa: PLR0913
         self,
-        transform_class: type[BaseTransform],
+        fmt: MetadataFormats,
         test_fn: Path | str,
         read_reference_metadata: Mapping,
         read_native_dict: Mapping,
@@ -276,9 +280,9 @@ class TestParser:
         export_fn=None,
     ):
         """Initialize common variables."""
-        self.transform_class = transform_class
-        self.schema = transform_class.SCHEMA_CLASS(path=test_fn)
-        self.tmp_dir = TMP_ROOT_DIR / f"test_{transform_class.__name__}"
+        self.fmt = fmt
+        self.schema = self.fmt.value.transform_class.SCHEMA_CLASS(path=test_fn)
+        self.tmp_dir = TMP_ROOT_DIR / f"test_{fmt.value.label.replace(' ', '-')}"
         self.test_fn = Path(test_fn)
         self.read_reference_metadata = read_reference_metadata
         self.read_reference_native_dict = read_native_dict
@@ -328,22 +332,28 @@ class TestParser:
         """Test assign metadata."""
         pruned = self.read_reference_metadata
         config = Namespace(comicbox=Namespace(print="slmncd"))
-        with Comicbox(metadata=pruned, config=config) as car:
+        with Comicbox(
+            metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=config
+        ) as car:
             car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
     def test_from_dict(self):
         """Test load from native dict."""
-        with Comicbox() as car:
-            car.add_source(self.read_reference_native_dict, self.transform_class)
+        config = Namespace(comicbox=Namespace(print="slmncd"))
+        with Comicbox(config=config) as car:
+            car.add_metadata(self.read_reference_native_dict, self.fmt)
+            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
     def test_from_string(self):
         """Test load from string."""
-        with Comicbox() as car:
-            car.add_source(self.read_reference_string, self.transform_class)
+        config = Namespace(comicbox=Namespace(print="slmncd"))
+        with Comicbox(config=config) as car:
+            car.add_metadata(self.read_reference_string, self.fmt)
+            car.print_out()
             md = car.get_metadata()
         print(self.read_reference_string)
         self._test_from(md)
@@ -351,8 +361,10 @@ class TestParser:
     def test_from_file(self):
         """Test load from an export file."""
         print(f"{self.reference_export_path=}")
-        with Comicbox() as car:
-            car.add_file_source(self.reference_export_path, self.transform_class)
+        config = Namespace(comicbox=Namespace(print="slmncd"))
+        with Comicbox(config=config) as car:
+            car.add_metadata_file(self.reference_export_path, self.fmt)
+            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
@@ -370,8 +382,11 @@ class TestParser:
 
     def to_dict(self, **kwargs):
         """Export metadata to native dict."""
-        with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_dict(transform_class=self.transform_class, **kwargs)
+        with Comicbox(
+            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+        ) as car:
+            car.print_out()
+            return car.to_dict(fmt=self.fmt, **kwargs)
 
     def test_to_dict(self, **kwargs):
         """Test export metadata to native dict."""
@@ -380,8 +395,11 @@ class TestParser:
 
     def to_string(self, **kwargs):
         """Export metadata to string."""
-        with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_string(transform_class=self.transform_class, **kwargs)
+        with Comicbox(
+            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+        ) as car:
+            car.print_out()
+            return car.to_string(fmt=self.fmt, **kwargs)
 
     def compare_string(self, test_str):
         """Compare strings."""
@@ -406,10 +424,12 @@ class TestParser:
     def test_to_file(self, export_fn=None, **kwargs):
         """Test export to a metadata file."""
         self.setup_method()
-        with Comicbox(metadata=self.write_reference_metadata) as car:
+        with Comicbox(
+            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+        ) as car:
             car.to_file(
                 self.export_path.parent,
-                transform_class=self.transform_class,
+                fmt=self.fmt,
                 **kwargs,
             )
         assert self.export_path.exists()
@@ -461,12 +481,20 @@ class TestParser:
         config.comicbox.updated_at = TEST_DATETIME.isoformat()
         config.comicbox.print = "slmncd"
         with Comicbox(
-            new_test_cbz_path, config=config, metadata=self.write_reference_metadata
+            new_test_cbz_path,
+            config=config,
+            metadata=self.write_reference_metadata,
+            fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
             car.print_out()
             car.write()
 
-    def write_metadata(self, new_test_cbz_path, page_count=0):
+    def write_metadata(
+        self,
+        new_test_cbz_path,
+        page_count=0,
+        ignore_pages=False,  # noqa: FBT002
+    ):
         """Create a test metadata file, read it back and compare the original."""
         tmp_path = new_test_cbz_path.parent
         tmp_path.mkdir(parents=True, exist_ok=True)
@@ -478,16 +506,22 @@ class TestParser:
             ignore_updated_at=True,
             ignore_notes=True,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
         shutil.rmtree(tmp_path)
 
-    def test_md_write(self, page_count=0):
+    def test_md_write(
+        self,
+        page_count=0,
+        ignore_pages=False,  # noqa: FBT002
+    ):
         """Write metadtata to an archive."""
         new_fn = self.test_fn.with_suffix(".cbz")
         new_cbz_path = self.tmp_dir / new_fn
         self.write_metadata(
             new_cbz_path,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
 
     def _create_test_pdf(self, new_test_pdf_path):
@@ -504,6 +538,7 @@ class TestParser:
                 new_test_pdf_path,
                 config=config,
                 metadata=self.write_reference_metadata,
+                fmt=MetadataFormats.COMICBOX_YAML,
             ) as car:
                 car.write()
         except NameError as exc:

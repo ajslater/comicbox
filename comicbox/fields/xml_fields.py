@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from functools import wraps
 
 from comicbox.fields.collection_fields import (
+    EmbeddedStringSetField,
     IntegerListField,
     ListField,
     StringListField,
@@ -203,6 +204,16 @@ class XmlStringListField(XmlListFieldMixin, StringListField):
 
 
 class XmlStringSetField(XmlListFieldMixin, StringSetField):
+    """Check for cdata."""
+
+    FIELD = XmlStringField
+
+    @cdata
+    def _deserialize(self, *args, **kwargs):
+        return super()._deserialize(*args, **kwargs)
+
+
+class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
     """Check for cdata."""
 
     FIELD = XmlStringField

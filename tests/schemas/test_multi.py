@@ -7,10 +7,10 @@ from types import MappingProxyType
 
 import simplejson as json
 
-from comicbox.fields.enum_fields import ReadingDirectionEnum
+from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
 from comicbox.schemas.comicbox_json import ComicboxJsonSchema
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
+from comicbox.sources import MetadataFormats
 from tests.const import (
     CBZ_MULTI_FN,
     TEST_DATETIME,
@@ -83,14 +83,50 @@ READ_METADATA = MappingProxyType(
             "summary": "A long example description",
             "last_mark": 12,
             "original_format": "Comic",
+            "pages": [
+                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                {"index": 1, "size": 332936},
+                {"index": 2, "size": 458657},
+                {"index": 3, "size": 450456},
+                {"index": 4, "size": 436648},
+                {"index": 5, "size": 443725},
+                {"index": 6, "size": 469526},
+                {"index": 7, "size": 429811},
+                {"index": 8, "size": 445513},
+                {"index": 9, "size": 446292},
+                {"index": 10, "size": 458589},
+                {"index": 11, "size": 417623},
+                {"index": 12, "size": 445302},
+                {"index": 13, "size": 413271},
+                {"index": 14, "size": 434201},
+                {"index": 15, "size": 439049},
+                {"index": 16, "size": 485957},
+                {"index": 17, "size": 388379},
+                {"index": 18, "size": 368138},
+                {"index": 19, "size": 427874},
+                {"index": 20, "size": 422522},
+                {"index": 21, "size": 442529},
+                {"index": 22, "size": 423785},
+                {"index": 23, "size": 427980},
+                {"index": 24, "size": 445631},
+                {"index": 25, "size": 413615},
+                {"index": 26, "size": 417605},
+                {"index": 27, "size": 439120},
+                {"index": 28, "size": 451598},
+                {"index": 29, "size": 451550},
+                {"index": 30, "size": 438346},
+                {"index": 31, "size": 454914},
+                {"index": 32, "size": 428461},
+                {"index": 33, "size": 438091},
+                {"index": 34, "size": 353013},
+                {"index": 35, "size": 340840},
+            ],
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "stories": {
-                "The Beginning - multi": {},
                 "The Beginning COMET": {},
-                "The Beginning CBI": {},
             },
             "updated_at": TEST_DATETIME,
             "tagger": "comicbox dev",
@@ -125,6 +161,44 @@ READ_MULTI_DICT = MappingProxyType(
             "issue_number": Decimal(1),
             "language": "en",
             "page_count": 0,
+            "pages": [
+                {"index": 0, "page_type": "FrontCover", "size": 429985},
+                {"index": 1, "size": 332936},
+                {"index": 2, "size": 458657},
+                {"index": 3, "size": 450456},
+                {"index": 4, "size": 436648},
+                {"index": 5, "size": 443725},
+                {"index": 6, "size": 469526},
+                {"index": 7, "size": 429811},
+                {"index": 8, "size": 445513},
+                {"index": 9, "size": 446292},
+                {"index": 10, "size": 458589},
+                {"index": 11, "size": 417623},
+                {"index": 12, "size": 445302},
+                {"index": 13, "size": 413271},
+                {"index": 14, "size": 434201},
+                {"index": 15, "size": 439049},
+                {"index": 16, "size": 485957},
+                {"index": 17, "size": 388379},
+                {"index": 18, "size": 368138},
+                {"index": 19, "size": 427874},
+                {"index": 20, "size": 422522},
+                {"index": 21, "size": 442529},
+                {"index": 22, "size": 423785},
+                {"index": 23, "size": 427980},
+                {"index": 24, "size": 445631},
+                {"index": 25, "size": 413615},
+                {"index": 26, "size": 417605},
+                {"index": 27, "size": 439120},
+                {"index": 28, "size": 451598},
+                {"index": 29, "size": 451550},
+                {"index": 30, "size": 438346},
+                {"index": 31, "size": 454914},
+                {"index": 32, "size": 428461},
+                {"index": 33, "size": 438091},
+                {"index": 34, "size": 353013},
+                {"index": 35, "size": 340840},
+            ],
             "month": 11,
             "year": 591,
             "publisher": {"name": "Youthful Adventure Stories"},
@@ -160,9 +234,7 @@ READ_MULTI_DICT = MappingProxyType(
             },
             "summary": "A long example description",
             "stories": {
-                "The Beginning - multi": {},
                 "The Beginning COMET": {},
-                "The Beginning CBI": {},
             },
             "last_mark": 12,
             "original_format": "Comic",
@@ -180,7 +252,7 @@ READ_MULTI_STR = json.dumps(dict(READ_MULTI_DICT), sort_keys=True, indent=2)
 WRITE_MULTI_STR = json.dumps(dict(WRITE_MULTI_DICT), sort_keys=True, indent=2)
 
 MULTI_TESTER = TestParser(
-    ComicboxJsonTransform,
+    MetadataFormats.COMICBOX_JSON,
     CBZ_MULTI_FN,
     READ_METADATA,
     READ_MULTI_DICT,
@@ -210,4 +282,4 @@ def test_multi_read():
 
 def test_multi_write():
     """Test write to file."""
-    MULTI_TESTER.test_md_write()
+    MULTI_TESTER.test_md_write(ignore_pages=True)

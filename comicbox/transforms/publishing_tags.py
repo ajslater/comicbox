@@ -22,6 +22,30 @@ class NestedPublishingTagsMixin:
     VOLUME_TAG = ""
     ISSUE_COUNT_TAG = ""
 
+    def parse_publisher(self, data):
+        """Parse Publisher."""
+        if publisher_name := data.get(self.PUBLISHER_TAG):
+            data[PUBLISHER_KEY] = {NAME_KEY: publisher_name}
+        return data
+
+    def unparse_publisher(self, data):
+        """Unparse Publisher."""
+        if publisher_name := data.get(PUBLISHER_KEY, {}).get(NAME_KEY):
+            data[self.PUBLISHER_TAG] = publisher_name
+        return data
+
+    def parse_imprint(self, data):
+        """Parse Imprint."""
+        if imprint_name := data.get(self.IMPRINT_TAG):
+            data[IMPRINT_KEY] = {NAME_KEY: imprint_name}
+        return data
+
+    def unparse_imprint(self, data):
+        """Unparse imprint."""
+        if imprint_name := data.get(IMPRINT_KEY, {}).get(NAME_KEY):
+            data[self.IMPRINT_TAG] = imprint_name
+        return data
+
     def parse_series(self, data):
         """Parse Series."""
         series_name = data.get(self.SERIES_TAG)
@@ -66,28 +90,4 @@ class NestedPublishingTagsMixin:
             data[self.VOLUME_TAG] = volume_number
         if issue_count := volume.get(VOLUME_ISSUE_COUNT_KEY):
             data[self.ISSUE_COUNT_TAG] = issue_count
-        return data
-
-    def parse_publisher(self, data):
-        """Parse Publisher."""
-        if publisher_name := data.get(self.PUBLISHER_TAG):
-            data[PUBLISHER_KEY] = {NAME_KEY: publisher_name}
-        return data
-
-    def unparse_publisher(self, data):
-        """Unparse Publisher."""
-        if publisher_name := data.get(PUBLISHER_KEY, {}).get(NAME_KEY):
-            data[self.PUBLISHER_TAG] = publisher_name
-        return data
-
-    def parse_imprint(self, data):
-        """Parse Imprint."""
-        if imprint_name := data.get(self.IMPRINT_TAG):
-            data[IMPRINT_KEY] = {NAME_KEY: imprint_name}
-        return data
-
-    def unparse_imprint(self, data):
-        """Unparse imprint."""
-        if imprint_name := data.get(IMPRINT_KEY, {}).get(NAME_KEY):
-            data[self.IMPRINT_TAG] = imprint_name
         return data

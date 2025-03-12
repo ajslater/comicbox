@@ -335,3 +335,4 @@ class ComicboxSchemaMixin:
 
     ROOT_TAG = "comicbox"
     WRAP_TAGS = (ROOT_TAG,)
+    HAS_PAGE_COUNT = True

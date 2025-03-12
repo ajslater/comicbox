@@ -9,7 +9,9 @@ from ruamel.yaml import YAML, StringIO
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY
+from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 
+ALL_NONE_KEYS = "ALL"
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"
 _MAP_TAG = f"{_TAG_YAML}:map"
@@ -26,7 +28,7 @@ class YamlRenderModule:
     @staticmethod
     def _dict_flow_representer(dumper, data):
         """Represent page dict as a single line."""
-        if PAGE_INDEX_KEY in data:
+        if PAGE_INDEX_KEY in data or IMAGE_ATTRIBUTE in data:
             data = dict(sorted(data.items()))
             return dumper.represent_mapping(_MAP_TAG, data, flow_style=True)
 
@@ -103,7 +105,19 @@ class YamlSchema(BaseSchema):
                 serialized[self.ROOT_TAG][key] = None
         return serialized
 
-    def dumps(self, obj, *args, dfs=False, allowed_null_keys=None, **kwargs):
+    def dumps(
+        self,
+        obj,
+        *args,
+        dfs=False,
+        allowed_null_keys: frozenset[str] | None = None,
+        **kwargs,
+    ):
         """Use dfs for render."""
-        serialized: dict = self.dump(obj, allowed_null_keys=allowed_null_keys, **kwargs)  # type: ignore[reportAssignmentType]
+        if allowed_null_keys and ALL_NONE_KEYS in allowed_null_keys:
+            serialized = obj
+        else:
+            serialized: dict = self.dump(
+                obj, allowed_null_keys=allowed_null_keys, **kwargs
+            )  # type: ignore[reportAssignmentType]
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

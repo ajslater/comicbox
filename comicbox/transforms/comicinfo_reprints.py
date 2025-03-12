@@ -1,9 +1,8 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
 
-from copy import deepcopy
-
 from bidict import frozenbidict
 
+from comicbox.dict_funcs import move_key_to_dict
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
     REPRINTS_KEY,
@@ -28,30 +27,6 @@ REPRINT_KEY_MAP = frozenbidict(
 )
 
 
-def move_key_to_dict(key_map, source_dict):
-    """Move a value with one key to another dict and mapped key."""
-    target_dict = {}
-    for tag, key in key_map.items():
-        # Tags
-        tags = tag.split(".")
-        tag_value = deepcopy(source_dict)
-        for subtag in tags:
-            tag_value = tag_value.get(subtag)
-            if tag_value is None:
-                break
-
-        if tag_value is None:
-            continue
-
-        # Keys
-        keys = key.split(".")
-        target_value = tag_value
-        for subkey in reversed(keys[1:]):
-            target_value = {subkey: target_value}
-        target_dict[keys[0]] = target_value
-    return target_dict
-
-
 class ComicInfoReprintsTransformMixin:
     """ComicInfo Reprints (Alternates) Transform Mixin."""
 
@@ -70,9 +45,5 @@ class ComicInfoReprintsTransformMixin:
             return data
         reprint = reprints[0]
         update_dict = move_key_to_dict(REPRINT_KEY_MAP.inverse, reprint)
-
-        if update_dict:
-            for key, value in update_dict.items():
-                if data.get(key) in (None, ""):
-                    data[key] = value
+        data.update(update_dict)
         return data

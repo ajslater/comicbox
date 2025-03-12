@@ -10,6 +10,7 @@ zip -9 ../xml.cbz comicbox.xml
 zip -9 ../yaml.cbz comicbox.yaml
 zip -9 "../Captain Science #001-metron.cbz" metroninfo.xml
 zip -9 "../Captain Science #001.cbz" comicinfo.xml
+zip -9 "../Captain Science #001-cix.cbz" comicinfo.xml
 
 tar czf "../Captain Science #001-cix.cbt" "../Captain Science 001"/*0[1-5].jpg comicinfo.xml
 

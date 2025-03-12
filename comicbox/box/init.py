@@ -19,8 +19,7 @@ from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.sources import MetadataSources
-from comicbox.transforms.base import BaseTransform
+from comicbox.sources import MetadataFormats, MetadataSources
 
 try:
     from pdffile import PDFFile
@@ -35,9 +34,10 @@ if TYPE_CHECKING:
 class SourceData:
     """Pre parsed source metadata."""
 
-    metadata: str | bytes | Mapping
-    transform_class: type[BaseTransform] | None = None
-    path: str | None = None
+    data: str | bytes | Mapping
+    path: Path | str | None = None
+    fmt: MetadataFormats | None = None
+    from_archive: bool = False
 
 
 class ComicboxInitMixin:
@@ -50,6 +50,7 @@ class ComicboxInitMixin:
         path: Path | str | None = None,
         config: AttrDict | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
+        fmt: MetadataFormats | None = None,
     ):
         """
         Initialize the archive with a path to the archive.
@@ -70,7 +71,7 @@ class ComicboxInitMixin:
         self._archive_is_pdf = False
         self._pdf_suffix = ""
 
-        self._reset_archive(metadata)
+        self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):
         self._merged_metadata: MappingProxyType = MappingProxyType({})
@@ -78,7 +79,7 @@ class ComicboxInitMixin:
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})
         self._metadata: MappingProxyType = MappingProxyType({})
 
-    def _reset_archive(self, metadata):
+    def _reset_archive(self, fmt: MetadataFormats | None, metadata: Mapping | None):
         self._archive_cls: Callable | None = None
         self._file_type: str | None = None
         self._set_archive_cls()
@@ -104,12 +105,7 @@ class ComicboxInitMixin:
 
         self._sources: dict = {}
         if metadata:
-            self._sources[MetadataSources.API] = (
-                SourceData(
-                    metadata,
-                    MetadataSources.API.value.transform_class,
-                ),
-            )
+            self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
         self._parsed: dict = {}
         self._loaded: dict = {}
         self._normalized: dict = {}

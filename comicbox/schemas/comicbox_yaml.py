@@ -9,7 +9,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.yaml import YamlSchema, YamlSubSchema
 
 
-class ComicboxYamlSubSchema(YamlSubSchema, ComicboxSubSchemaMixin):
+class ComicboxYamlSubSchema(ComicboxSubSchemaMixin, YamlSubSchema):
     """YAML sub schema."""
 
 

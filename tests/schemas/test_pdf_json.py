@@ -8,13 +8,13 @@ import simplejson as json
 
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.pdf import MuPDFSchema
-from comicbox.transforms.pdf import MuPDFTransform
+from comicbox.sources import MetadataFormats
 from tests.const import PDF_FN
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf"], compute_pages=False))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf", "fn"], compute_pages=False))
 WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["pdf"], read=["pdf"], compute_pages=False)
+    comicbox=Namespace(write=["pdf", "cix"], read=["pdf"], compute_pages=False)
 )
 
 METADATA = MappingProxyType(
@@ -79,7 +79,7 @@ PDF_DICT = MappingProxyType(
 PDF_STR = json.dumps(dict(PDF_DICT), sort_keys=True, indent=2)
 
 PDF_TESTER = TestParser(
-    MuPDFTransform,
+    MetadataFormats.PDF,
     PDF_FN,
     METADATA,
     PDF_DICT,
@@ -111,17 +111,17 @@ def test_pdf_from_file():
 
 def test_pdf_to_dict():
     """Test metadata export to dict."""
-    PDF_TESTER.test_to_dict()
+    PDF_TESTER.test_to_dict(embed_fmt=MetadataFormats.CIX)
 
 
 def test_pdf_to_string():
     """Test metadata export to string."""
-    PDF_TESTER.test_to_string()
+    PDF_TESTER.test_to_string(embed_fmt=MetadataFormats.CIX)
 
 
 def test_pdf_to_file():
     """Test metadata export to file."""
-    PDF_TESTER.test_to_file()
+    PDF_TESTER.test_to_file(embed_fmt=MetadataFormats.CIX)
 
 
 def test_pdf_read():

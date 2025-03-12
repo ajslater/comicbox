@@ -3,51 +3,87 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from logging import DEBUG, WARNING, getLogger
+from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
 
+from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
-from comicbox.box.merge import ComicboxMergeMixin
-from comicbox.sources import MetadataSources, SourceFrom
-from comicbox.transforms.base import BaseTransform
+from comicbox.box.sources import ComicboxSourcesMixin
+from comicbox.dict_funcs import get_deep
+from comicbox.fields.collection_fields import EmbeddedStringSetField
+from comicbox.sources import MetadataFormats, MetadataSources
 
 LOG = getLogger(__name__)
 
 
 @dataclass
-class LoadedMetadata(SourceData):
-    """Loaded metadata."""
+class LoadedMetadata:
+    """Loaded Metadata."""
 
-    metadata: Mapping  # type: ignore[reportIncompatibleVariableOverride]
+    metadata: Mapping
+    path: Path | None = None
+    fmt: MetadataFormats | None = None
+    from_archive: bool = False
 
 
-class ComicboxLoadMixin(ComicboxMergeMixin):
+class ComicboxLoadMixin(ComicboxSourcesMixin):
     """Parsing methods."""
 
-    def _call_load(self, schema_class, source_md) -> Mapping | None:
+    def _load_cli_yaml(self, fmt, schema, source_md):
+        result = {}
+        try:
+            md = YAML().load(source_md) if isinstance(source_md, str) else source_md
+            result = schema.load(md)
+            if not result:
+                # try a wrapped version
+                wrapped_md = fmt.value.transform_class(self._path).wrap(md)
+                result = schema.load(wrapped_md)
+        except Exception as exc:
+            LOG.debug(
+                f'Attempt to load CLI Metadata as {fmt.value.label} "{source_md}": {exc}'
+            )
+        return result
+
+    def _call_load(
+        self, source: MetadataSources, fmt: MetadataFormats, source_md
+    ) -> Mapping | None:
         """Load string or dict."""
+        schema_class = fmt.value.transform_class.SCHEMA_CLASS
         schema = schema_class(path=self._path)
+        if source == MetadataSources.CLI:
+            return self._load_cli_yaml(fmt, schema, source_md)
+
         if isinstance(source_md, str | bytes):
-            return schema.loads(source_md)
-        return schema.load(source_md)
+            return schema.loads(source_md)  # type: ignore[reportReturnType]
+
+        return schema.load(source_md)  # type: ignore[reportReturnType]
 
     @staticmethod
-    def _is_cbi_not_json(source, exc):
-        """Is this CBI not JSON."""
+    def _is_comment_not_json(source, exc):
+        """Is this an archive comment and not JSON."""
         return (
-            source == MetadataSources.CBI
+            source == MetadataSources.ARCHIVE_COMMENT
             and isinstance(exc, JSONDecodeError)
             and exc.pos == 0
             and exc.lineno == 1
             and exc.colno == 1
         )
 
-    def _except_on_load(self, source, exc, level=WARNING):
+    def _except_on_load(
+        self,
+        source: MetadataSources,
+        fmt: MetadataFormats | None,
+        exc: Exception,
+        level=WARNING,
+    ):
         """When loading fails warn or give stack trace in debug."""
-        name = source.value.transform_class.SCHEMA_CLASS.__name__
-        if self._is_cbi_not_json(source, exc):
+        name = (
+            fmt.value.transform_class.SCHEMA_CLASS.__name__ if fmt else "Unknown Schema"
+        )
+        if self._is_comment_not_json(source, exc):
             # Demote not json as json to debug warning because there are so many
             # archive comments that are not intended to be CBI
             if LOG.getEffectiveLevel() == DEBUG:
@@ -62,47 +98,45 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
             LOG.debug(format_exc())
 
     def _load_unknown_metadata(
-        self, label, source_md
-    ) -> tuple[Mapping | None, type[BaseTransform] | None]:
+        self, source: MetadataSources, data
+    ) -> tuple[Mapping | None, MetadataFormats | None]:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
-        transform_class = None
-        for source in reversed(MetadataSources):
-            if (
-                not source.value.enabled
-                or source.value.from_archive == SourceFrom.OTHER
-            ):
+        fmt = None
+        for fmt in source.value.formats:
+            if not fmt.value.enabled:
                 continue
             try:
-                schema_class = source.value.transform_class.SCHEMA_CLASS
-                success_md = self._call_load(schema_class, source_md)
-                if success_md:
-                    LOG.debug(f"Parsed {label} with {schema_class.__name__}")
-                    transform_class = source.value.transform_class
+                if success_md := self._call_load(source, fmt, data):
+                    LOG.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
             except Exception as exc:
-                self._except_on_load(source, exc, level=DEBUG)
+                self._except_on_load(source, fmt, exc, level=DEBUG)
         if not success_md:
-            reason = f"Unable to load {label}."
+            reason = f"Unable to load {source.value.label}."
             raise ValueError(reason)
-        return success_md, transform_class
+        return success_md, fmt
 
-    def _load_metadata(self, source, source_data):
+    def _load_metadata(
+        self, source: MetadataSources, source_data: SourceData | None
+    ) -> tuple[MappingProxyType | None, MetadataFormats | None]:
+        if not source_data:
+            return None, None
+        fmt = source_data.fmt
         try:
-            if source_data.metadata:
-                if source_data.transform_class:
-                    transform_class = source_data.transform_class
-                    md = self._call_load(
-                        transform_class.SCHEMA_CLASS, source_data.metadata
-                    )
-                else:
-                    md, transform_class = self._load_unknown_metadata(
-                        source.value.label, source_data.metadata
-                    )
-                if md and transform_class:
-                    return MappingProxyType(md), transform_class
+            if fmt:
+                md = self._call_load(source, fmt, source_data.data)
+            else:
+                md, fmt = self._load_unknown_metadata(source, source_data.data)
+            if md and fmt:
+                schema_class = fmt.value.transform_class.SCHEMA_CLASS
+                if (
+                    embedded_source := get_deep(md, schema_class.EMBED_TAG)
+                ) and EmbeddedStringSetField.is_embedded_metadata(embedded_source):
+                    self.add_source(MetadataSources.ARCHIVE_EMBEDDED, embedded_source)
+                return MappingProxyType(md), fmt
         except Exception as exc:
-            self._except_on_load(source, exc)
+            self._except_on_load(source, fmt, exc)
         return None, None
 
     def _set_loaded_metadata(self, source):
@@ -112,9 +146,11 @@ class ComicboxLoadMixin(ComicboxMergeMixin):
         # Also populate the parsed_list
         loaded_list = []
         for source_data in source_metadata:
-            md, transform_class = self._load_metadata(source, source_data)
+            md, fmt = self._load_metadata(source, source_data)
             if md:
-                loaded_md = LoadedMetadata(md, transform_class, source_data.path)
+                loaded_md = LoadedMetadata(
+                    md, source_data.path, fmt, source_data.from_archive
+                )
                 loaded_list.append(loaded_md)
         if loaded_list:
             if source not in self._loaded:

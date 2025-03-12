@@ -235,3 +235,28 @@ class IdentifiersField(DictField):
     def __init__(self, *args, **kwargs):
         """Set up Identifier Values."""
         super().__init__(*args, values=fields.Nested(IdentifierSchema), **kwargs)
+
+
+class EmbeddedStringSetField(StringSetField):
+    """Copy data to and from the special embedded field."""
+
+    JSON_XML_START_CHARS = frozenset({"<", "{"})
+
+    @classmethod
+    def is_embedded_metadata(cls, value):
+        """Return if this looks like a json or xml string."""
+        return (
+            isinstance(value, str)
+            and (stripped_value := value.lstrip())
+            and (stripped_value[0] in cls.JSON_XML_START_CHARS)
+        )
+
+    def _deserialize(self, value, attr, data, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
+        if self.is_embedded_metadata(value):
+            return StringField().deserialize(value)
+        return super()._deserialize(value, attr, data, *args, **kwargs)
+
+    def _serialize(self, value, attr, obj, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
+        if self.is_embedded_metadata(value):
+            return StringField()._serialize(value, attr, obj, *args, **kwargs)  # noqa: SLF001
+        return super()._serialize(value, attr, obj, *args, **kwargs)

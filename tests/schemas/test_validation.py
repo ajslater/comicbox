@@ -9,7 +9,7 @@ import xmltodict
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.transforms.comicinfo import ComicInfoTransform
+from comicbox.sources import MetadataFormats
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -173,7 +173,7 @@ WRITE_CIX_STR = xmltodict.unparse(
 )
 
 CIX_TESTER = TestParser(
-    ComicInfoTransform,
+    MetadataFormats.CIX,
     "",
     READ_METADATA,
     READ_CIX_DICT,

@@ -14,7 +14,7 @@ import pytest
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
-from comicbox.box.computed import deep_update
+from comicbox.dict_funcs import deep_update
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
@@ -119,7 +119,6 @@ TEMPLATE_MD = MappingProxyType(
 CBZ_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "stories": {
-            "cix": {},
             "The Beginning": {},
             "The End": {},
         }
@@ -133,7 +132,6 @@ CBR_MD_PATCH = {
         "ext": "cbr",
         "series": {"volume_count": 1},
         "stories": {
-            "cix-cbi": {},
             "The Beginning": {},
             "The End": {},
         },
@@ -144,15 +142,7 @@ CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
         "page_count": 5,
-        "pages": [
-            {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
-            {"index": 1, "size": 332936},
-            {"index": 2, "size": 458657},
-            {"index": 3, "size": 450456},
-            {"index": 4, "size": 436648},
-        ],
         "stories": {
-            "cix": {},
             "The Beginning": {},
             "The End": {},
         },
@@ -200,11 +190,19 @@ CB7_MD_PATCH = MappingProxyType(
             },
             "page_count": 5,
             "stories": {"The Beginning": {}, "The End": {}},
+            "notes": "Tagged with "
+            "comicbox dev "
+            "on "
+            "1970-01-01T00:00:00 "
+            "[Issue ID "
+            "145269] "
+            "urn:comicvine:4000-145269 "
+            "urn:isbn:123-456789-0123 "
+            "urn:upc:12345",
         }
     }
 )
 CB7_MD = deep_update(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
-CB7_MD[ComicboxSchemaMixin.ROOT_TAG].pop("pages")
 CB7_MD = MappingProxyType(CB7_MD)
 
 

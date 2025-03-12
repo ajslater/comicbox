@@ -8,11 +8,11 @@ import simplejson as json
 
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
+from comicbox.sources import MetadataFormats
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi"], compute_pages=False))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi", "fn"], compute_pages=False))
 WRITE_CONFIG = Namespace(
     comicbox=Namespace(write=["cbi"], read=["cbi"], compute_pages=False)
 )
@@ -73,7 +73,7 @@ CBI_DICT = MappingProxyType(
 CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=False, indent=2)
 
 CBI_TESTER = TestParser(
-    ComicBookInfoTransform,
+    MetadataFormats.CBI,
     CBI_CBR_FN,
     METADATA,
     CBI_DICT,

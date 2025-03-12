@@ -9,12 +9,12 @@ import simplejson as json
 
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.comictagger import ComictaggerSchema
-from comicbox.transforms.comictagger import ComictaggerTransform
+from comicbox.sources import MetadataFormats
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comictagger.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["ct"], compute_pages=False))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["ct", "fn"], compute_pages=False))
 WRITE_CONFIG = Namespace(
     comicbox=Namespace(write=["ct"], read=["ct"], compute_pages=False)
 )
@@ -92,7 +92,7 @@ WRITE_CT_STR = json.dumps(dict(WRITE_CT_DICT.items()), sort_keys=True, indent=2)
 
 
 CT_TESTER = TestParser(
-    ComictaggerTransform,
+    MetadataFormats.COMICTAGGER,
     FN,
     READ_METADATA,
     READ_CT_DICT,

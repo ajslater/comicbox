@@ -5,16 +5,16 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from logging import getLogger
 from sys import maxsize
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
-from mergedeep import Strategy, merge
+from mergedeep import Strategy
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
-from comicbox.dict_funcs import deep_update
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.fields.fields import EMPTY_VALUES, StringField
 from comicbox.fields.number_fields import DecimalField
@@ -41,7 +41,9 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
-from comicbox.sources import SourceFrom
+from comicbox.schemas.merge import merge_pages
+from comicbox.schemas.yaml import ALL_NONE_KEYS
+from comicbox.sources import MetadataFormats
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
     parse_urn_identifier,
@@ -50,8 +52,20 @@ from comicbox.urns import (
 
 LOG = getLogger(__name__)
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
-_PAGE_COUNT_KEYS = frozenset({"PageCount", PAGE_COUNT_KEY, "pages"})
-_PAGES_KEYS = frozenset({"Pages", PAGES_KEY})
+_COMICBOX_FORMATS = frozenset(
+    {
+        MetadataFormats.COMICBOX_CLI_YAML,
+        MetadataFormats.COMICBOX_YAML,
+        MetadataFormats.COMICBOX_JSON,
+    }
+)
+
+
+class ComputeSchemaAttribute(Enum):
+    """Schema attributes that control weather or not to compute entries."""
+
+    HAS_PAGE_COUNT = "HAS_PAGE_COUNT"
+    HAS_PAGES = "HAS_PAGES"
 
 
 @dataclass
@@ -60,40 +74,35 @@ class ComputedData:
 
     label: str
     metadata: Mapping | None
+    allowed_null_keys: frozenset[str] = frozenset()
+    merge_strategy: Strategy = Strategy.ADDITIVE
 
 
 class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     """Computed metadata methods."""
 
-    def _get_all_sources(self):
-        read_sources = set()
-        for source, value in self._sources.items():
-            from_archive = source.value.from_archive.value
-            if value is not None and from_archive >= SourceFrom.ARCHIVE_CONTENTS.value:
-                read_sources.add(source)
-        return read_sources | self._config.all_write_sources
-
-    def _enable_page_compute_attribute(self, valid_keys, sub_md, attr):
+    def _enable_page_compute_attribute(self, attr: ComputeSchemaAttribute):
         """Determine if we should compute this attribute."""
         if not self._path or not self._config.compute_pages:
             # Cannot compute pages if there's no path.
             return False
 
-        if self._archive_is_pdf:
-            if attr == "has_page_count":
-                return True
-            if attr == "has_pages":
-                return False
+        formats = self._config.all_write_formats
+        if attr == ComputeSchemaAttribute.HAS_PAGES:
+            formats = formats - _COMICBOX_FORMATS
+        elif attr == ComputeSchemaAttribute.HAS_PAGE_COUNT:
+            read_formats = set()
 
-        if valid_keys | sub_md.keys():
-            # If there's page keys at all, then compute.
-            return True
+            for loaded_list in self._loaded.values():
+                for loaded in loaded_list:
+                    read_formats.add(loaded.fmt)
+            formats |= read_formats
 
-        # If the enabled source types have page keys then compute.
-        if self._all_sources is None:
-            # cache all sources
-            self._all_sources = self._get_all_sources()
-        return any(getattr(source.value, attr) for source in self._all_sources)
+        # If the enabled format types have page flags then compute.
+        return any(
+            getattr(fmt.value.transform_class.SCHEMA_CLASS, attr.value)
+            for fmt in formats
+        )
 
     def _get_computed_page_count_metadata(self, sub_md):
         """
@@ -101,11 +110,9 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         Allow for extra images in the archive that are not pages.
         """
-        if not self._enable_page_compute_attribute(
-            _PAGE_COUNT_KEYS, sub_md, "has_page_count"
+        if not sub_md or not self._enable_page_compute_attribute(
+            ComputeSchemaAttribute.HAS_PAGE_COUNT
         ):
-            return None
-        if not sub_md:
             return None
         md_page_count = sub_md.get(PAGE_COUNT_KEY)
         real_page_count = self.get_page_count()
@@ -137,13 +144,15 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         max_page_index = self._get_max_page_index()
         old_pages = md.get(PAGES_KEY, [])[:max_page_index]
         computed_pages_sub_md = {PAGES_KEY: deepcopy(old_pages)}
-        self._merge_pages(computed_pages_sub_md, pages)
+        merge_pages(computed_pages_sub_md, pages)
         self._ensure_pages_front_cover_metadata(computed_pages_sub_md)
         return computed_pages_sub_md
 
     def _get_computed_pages_metadata(self, sub_md):
         """Recompute the tag image sizes for the ComicRack PageInfo list."""
-        if not self._enable_page_compute_attribute(_PAGES_KEYS, sub_md, "has_pages"):
+        if not sub_md or not self._enable_page_compute_attribute(
+            ComputeSchemaAttribute.HAS_PAGES
+        ):
             return None
         pages = []
         try:
@@ -160,7 +169,6 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
                     pages.append(computed_page)
                 index += 1
         except Exception as exc:
-            LOG.exception("")
             LOG.warning(f"{self._path}: Compute pages metadata: {exc}")
         if pages:
             return self._get_computed_merged_pages_metadata(sub_md, pages)
@@ -337,7 +345,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_tagger_stamp(self, sub_data):
         """Stamp when writing."""
-        if not self._config.all_write_sources:
+        if not self._config.all_write_formats:
             # Only stamp on write.
             return None
 
@@ -354,51 +362,72 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         return md
 
-    _COMPUTED_ACTIONS = (
-        # Order is important here
-        ("Page Count", _get_computed_page_count_metadata, True),
-        ("Pages", _get_computed_pages_metadata, True),
-        ("from issue", _get_computed_from_issue, False),
-        ("from issue_number & issue_suffix", _get_computed_issue, False),
-        ("from notes", ComicboxComputedNotesMixin.get_computed_from_notes, False),
-        ("from tags", _get_computed_from_tags, False),
-        ("from identifiers", _get_computed_from_identifiers, False),
-        ("from scan_info", _get_computed_from_scan_info, False),
-        ("from tag_origin", _get_computed_from_tag_origin, False),
-        ("Tagger Stamp", _get_tagger_stamp, True),
+    def _set_delete_keys_sequence(self, value):
+        delete_list = []
+        for element in value:
+            if isinstance(element, Mapping):
+                delete_element = self._get_delete_keys(element)
+                if delete_element:
+                    delete_list.append(delete_element)
+        return type(value)(delete_list)
+
+    def _get_delete_keys(self, sub_data: Mapping):
+        delete_dict = {}
+        if not self._config.delete_keys:
+            return delete_dict
+        for key, value in sub_data.items():
+            if key in self._config.delete_keys:
+                delete_dict[key] = None
+            elif isinstance(value, Mapping):
+                if delete_tree := self._get_delete_keys(value):
+                    delete_dict[key] = delete_tree
+            elif isinstance(value, list | tuple | set | frozenset):  # noqa: SIM102
+                if delete_squence := self._set_delete_keys_sequence(value):
+                    delete_dict[key] = delete_squence
+        return delete_dict
+
+    _COMPUTED_ACTIONS = MappingProxyType(
+        {
+            # Order is important here
+            "Page Count": (_get_computed_page_count_metadata, True, ()),
+            "Pages": (_get_computed_pages_metadata, True, ("pages",)),
+            "from issue": (_get_computed_from_issue, False, ()),
+            "from issue_number & issue_suffix": (_get_computed_issue, False, ()),
+            "from notes": (
+                ComicboxComputedNotesMixin.get_computed_from_notes,
+                False,
+                (),
+            ),
+            "from tags": (_get_computed_from_tags, False, ()),
+            "from identifiers": (_get_computed_from_identifiers, False, ()),
+            "from scan_info": (_get_computed_from_scan_info, False, ()),
+            "from tag_origin": (_get_computed_from_tag_origin, False, ()),
+            "Tagger Stamp": (_get_tagger_stamp, True, ()),
+            "Delete Keys": (_get_delete_keys, True, (ALL_NONE_KEYS,)),
+        }
     )
 
     def _set_computed_metadata(self):
         computed_list = []
         merged_md = self.get_merged_metadata()
-        computed_merged_md = deepcopy(dict(merged_md))
-        sub_data = computed_merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
+        sub_data = deepcopy(dict(merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})))
 
         # Compute each
-        for label, method, update in self._COMPUTED_ACTIONS:
+        for label, actions in self._COMPUTED_ACTIONS.items():
+            method, update, allowed_null_keys = actions
             sub_md = method(self, sub_data)
             if not sub_md:
                 continue
 
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
-            computed_list.append(ComputedData(label, md))
-            if update:
-                deep_update(sub_data, sub_md)
-            else:
-                merge(sub_data, sub_md, strategy=Strategy.ADDITIVE)
-
-        # Remove none values.
-        pop_keys = []
-        for key, value in sub_data.items():
-            if value is None:
-                pop_keys.append(key)
-        for key in pop_keys:
-            sub_data.pop(key, None)
+            merge_strategy = Strategy.REPLACE if update else Strategy.ADDITIVE
+            computed_data = ComputedData(
+                label, md, frozenset(allowed_null_keys), merge_strategy
+            )
+            computed_list.append(computed_data)
 
         # Set values
         self._computed = tuple(computed_list)
-        if computed_merged_md:
-            self._computed_merged_metadata = MappingProxyType(computed_merged_md)
 
     @archive_close
     def get_computed_metadata(self):
@@ -406,9 +435,3 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         if not self._computed:
             self._set_computed_metadata()
         return self._computed
-
-    def get_computed_merged_metadata(self):
-        """Get the computed merged metadata."""
-        if not self._computed_merged_metadata:
-            self._set_computed_metadata()
-        return self._computed_merged_metadata

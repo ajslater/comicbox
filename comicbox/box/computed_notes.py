@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from logging import getLogger
 
-from comicbox.box.normalize import ComicboxNormalizeMixin
+from comicbox.box.merge import ComicboxMergeMixin
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers import (
     COMICVINE_NID,
@@ -70,7 +70,7 @@ class ComputedData:
     metadata: Mapping | None
 
 
-class ComicboxComputedNotesMixin(ComicboxNormalizeMixin):
+class ComicboxComputedNotesMixin(ComicboxMergeMixin):
     """Computed metadata methods for notes field."""
 
     def _set_compute_notes_key(self, data, key, match, md):

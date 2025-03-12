@@ -8,7 +8,7 @@ from typing import Any
 
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
-from comicbox.transforms.filename import FilenameTransform
+from comicbox.sources import MetadataFormats
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
@@ -49,7 +49,7 @@ FILENAME_STR_NO_REMAINDER = (
 
 
 FN_TESTER = TestParser(
-    FilenameTransform,
+    MetadataFormats.FILENAME,
     FN,
     METADATA,
     FILENAME_DICT,

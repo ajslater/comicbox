@@ -18,3 +18,7 @@ class PDFFile:
 
     def close(self):
         """Noop."""
+
+    def get_metadata(self):
+        """Empty."""
+        return {}

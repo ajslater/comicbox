@@ -35,6 +35,7 @@ from comicbox.schemas.metroninfo import MetronAgeRatingEnum
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
 GTIN_TAG = "GTIN"
+IMAGE_ATTRIBUTE = "@Image"
 
 
 TAG_ORDER = (
@@ -150,7 +151,7 @@ class XmlPageInfoSchema(BaseSubSchema):
                 "@Bookmark": StringField(),
                 "@DoublePage": XmlBooleanAttributeField(),
                 "@Key": StringField(),
-                "@Image": IntegerField(minimum=0),
+                IMAGE_ATTRIBUTE: IntegerField(minimum=0),
                 "@ImageWidth": IntegerField(minimum=0),
                 "@ImageHeight": IntegerField(minimum=0),
                 "@ImageSize": IntegerField(minimum=0),
@@ -239,5 +240,7 @@ class ComicInfoSchema(XmlSchema):
         {"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}
     )
     FILENAME = "ComicInfo.xml"  # Comictagger doesn't read without CapCase
+    HAS_PAGE_COUNT = True
+    HAS_PAGES = True
 
     ComicInfo = Nested(ComicInfoSubSchema)

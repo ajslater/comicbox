@@ -11,7 +11,7 @@ from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
 
 from comicbox.logger import init_logging
 from comicbox.print import PrintPhases
-from comicbox.sources import MetadataSources
+from comicbox.sources import MetadataFormats
 from comicbox.version import DEFAULT_TAGGER, PACKAGE_NAME
 
 LOG = getLogger(__name__)
@@ -23,13 +23,14 @@ _TEMPLATE = MappingTemplate(
                 # Options
                 "compute_pages": bool,
                 "config": Optional(str),
-                "delete": bool,
+                "delete_all_tags": bool,
                 "delete_keys": Optional(Sequence(str)),
                 "delete_orig": bool,
                 "dest_path": str,
                 "dry_run": bool,
                 "loglevel": OneOf((String(), Integer())),
                 "metadata": Optional(dict),
+                "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
                 "read": Optional(Sequence(str)),
                 "read_ignore": Optional(Sequence(str)),
@@ -56,7 +57,6 @@ _TEMPLATE = MappingTemplate(
         )
     }
 )
-_WRITABLE_SOURCE_KEYS = frozenset({"write", "export"})
 _SINGLE_NO_PATH = (None,)
 
 
@@ -98,25 +98,19 @@ def _ensure_cli_yaml(config):
     config.metadata_cli = wrapped_md_list
 
 
-def _get_sources_from_keys(key, keys, ignore_keys):
+def _get_formats_from_keys(keys, ignore_keys):
     """Get sources from keys."""
-    sources = []
-    writable = key in _WRITABLE_SOURCE_KEYS
-    for source in MetadataSources:
-        if not source.value.enabled:
-            continue
-        config_keys = source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
-        if (not writable or source.value.writable) and (
-            not source.value.configurable
-            or (bool(keys & config_keys) and not bool(config_keys & ignore_keys))
-        ):
-            sources.append(source)
-        if source.value.configurable:
-            keys -= source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
-    return sources, keys
+    fmts = []
+    for fmt in MetadataFormats:
+        format_keys = fmt.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
+        if fmt.value.enabled and (not ignore_keys & format_keys and keys & format_keys):
+            fmts.append(fmt)
+        keys -= format_keys
+        ignore_keys -= format_keys
+    return fmts, keys
 
 
-def _set_config_sources_from_keys(config, key):
+def _set_config_formats_from_keys(config, key):
     """Return a set of schemas from a sequence of config keys."""
     # Keys to set
     keys = config[key] or ()
@@ -126,8 +120,7 @@ def _set_config_sources_from_keys(config, key):
     attr = f"{key}_ignore"
     ignore_list = getattr(config, attr, ())
     ignore_keys = frozenset({str(key).strip() for key in ignore_list})
-
-    sources, keys = _get_sources_from_keys(key, keys, ignore_keys)
+    fmts, keys = _get_formats_from_keys(keys, ignore_keys)
 
     # Report on invalid formats.
     if keys:
@@ -135,18 +128,18 @@ def _set_config_sources_from_keys(config, key):
         keys_str = ", ".join(sorted(keys))
         LOG.warning(f"Action '{key}' received invalid format{plural}: {keys_str}")
 
-    return frozenset(sources)
+    return frozenset(fmts)
 
 
-def _transform_keys_to_sources(config):
-    """Transform schema config keys to sources."""
-    config.read = _set_config_sources_from_keys(config, "read")
-    if config.delete:
+def _transform_keys_to_formats(config):
+    """Transform schema config keys to format enums."""
+    config.read = _set_config_formats_from_keys(config, "read")
+    if config.delete_all_tags:
         config.write = config.export = frozenset()
     else:
-        config.write = _set_config_sources_from_keys(config, "write")
-    config.export = _set_config_sources_from_keys(config, "export")
-    config.all_write_sources = frozenset(config.write | config.export)
+        config.write = _set_config_formats_from_keys(config, "write")
+    config.export = _set_config_formats_from_keys(config, "export")
+    config.all_write_formats = frozenset(config.write | config.export)
 
 
 def _deduplicate_delete_keys(config):
@@ -224,7 +217,7 @@ def get_config(
     # Post Process Config
     _clean_paths(ad_config)
     _ensure_cli_yaml(ad_config)
-    _transform_keys_to_sources(ad_config)
+    _transform_keys_to_formats(ad_config)
     _deduplicate_delete_keys(ad_config)
     _parse_print(ad_config)
     _set_tagger(ad_config)

@@ -16,7 +16,7 @@ from rich_argparse import RichHelpFormatter
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
-from comicbox.sources import PDF_ENABLED, MetadataSources
+from comicbox.sources import PDF_ENABLED, MetadataFormats
 
 HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
 PRINT_PHASES_DESC = MappingProxyType(
@@ -124,13 +124,11 @@ def _get_help_format_table():
     table = Table(title=title, **TABLE_ARGS)  # type: ignore[reportArgumentType]
     table.add_column("Format")
     table.add_column("Keys", style="green")
-    for source in MetadataSources:
-        if not source.value.enabled or not source.value.configurable:
+    for fmt in MetadataFormats:
+        if not fmt.value.enabled:
             continue
-        label = source.value.label
-        keys = ", ".join(sorted(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
-        if not source.value.writable:
-            keys += " [bright_black](read only)[/bright_black]"
+        label = fmt.value.label
+        keys = ", ".join(sorted(fmt.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
         table.add_row(label, keys)
 
     return table
@@ -281,7 +279,7 @@ def _add_action_group(parser):
         help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
     action_group.add_argument(
-        "--delete",
+        "--delete-all-tags",
         action="store_true",
         help="Delete all tags from the archive. Overrides --write.",
     )

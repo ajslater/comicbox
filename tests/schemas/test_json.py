@@ -10,12 +10,12 @@ import simplejson as json
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_json import ComicboxJsonSchema
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
+from comicbox.sources import MetadataFormats
 from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comicbox.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cb"], compute_pages=False))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cb", "fn"], compute_pages=False))
 WRITE_CONFIG = Namespace(
     comicbox=Namespace(write=["cb"], read=["cb"], compute_pages=False)
 )
@@ -181,7 +181,7 @@ WRITE_COMICBOX_STR = json.dumps(
 )
 
 COMICBOX_TESTER = TestParser(
-    ComicboxJsonTransform,
+    MetadataFormats.COMICBOX_JSON,
     FN,
     READ_METADATA,
     READ_COMICBOX_DICT,

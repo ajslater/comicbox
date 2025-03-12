@@ -1,6 +1,8 @@
 """Test CLI metadata parsing."""
 
 from argparse import Namespace
+from datetime import datetime
+from decimal import Decimal
 from pprint import pprint
 from types import MappingProxyType
 
@@ -19,7 +21,7 @@ from tests.const import (
 from tests.util import get_tmp_dir, my_cleanup, my_setup
 
 READ_CONFIG = Namespace(comicbox=Namespace(read=["cli"]))
-READ_CONFIG_IGNORE_FN = Namespace(comicbox=Namespace(read_ignore=["fn"]))
+READ_CONFIG_IGNORE_FN = Namespace(comicbox=Namespace(read_ignore=["fn"], print="sp"))
 WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cli"], read=["cli"]))
 METADATA = MappingProxyType(
     {
@@ -57,7 +59,7 @@ CLI_DICT = MappingProxyType(
     }
 )
 MD_ARGS = ("-m", "publisher: 'Galactic Press'")
-DELETE_ARGS = ("--delete", "-w", "cix")
+DELETE_ALL_TAGS_ARGS = ("--delete-all-tags", "-w", "cix")
 ADDED_MD = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
@@ -81,6 +83,52 @@ METADATA_REPLACE = MappingProxyType(
         ComicboxCLISchema.ROOT_TAG: {
             **METADATA[ComicboxCLISchema.ROOT_TAG],
             "tags": {"d": {}, "e": {}, "f": {}},
+        }
+    }
+)
+DELETE_KEYS_MD = MappingProxyType(
+    {
+        "comicbox": {
+            "arcs": {
+                "Other Arc": {"number": 2},
+                "e": {"number": 1},
+                "f": {"number": 3},
+                "g": {"number": 5},
+                "h": {"number": 7},
+                "i": {"number": 11},
+                "j": {"number": 13},
+            },
+            "characters": {"COMET": {}, "Captain Science": {}, "Gordon Dane": {}},
+            "day": 1,
+            "genres": {
+                "Comic Info Genre": {},
+                "Science Fiction": {},
+                "comicbox Genre": {},
+            },
+            "identifiers": {
+                "comicvine": {
+                    "nss": "145269",
+                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                }
+            },
+            "imprint": {"name": "CLIImprint"},
+            "issue": "001",
+            "issue_number": Decimal("1"),
+            "language": "en",
+            "month": 11,
+            "notes": "Tagged with comicbox dev on "
+            "1970-01-01T00:00:00 [Issue ID 145269] "
+            "[CVDB145269]",
+            "original_format": "Comic",
+            "page_count": 0,
+            "publisher": {"name": "Galactic Press"},
+            "stories": {"The Beginning COMET": {}},
+            "summary": "A long example description",
+            "tagger": "comicbox dev",
+            "tags": {"a": {}, "b": {}, "c": {}},
+            "updated_at": datetime(1970, 1, 1, 0, 0),  # noqa: DTZ001
+            "volume": {"issue_count": 77, "number": 999},
+            "year": 591,
         }
     }
 )
@@ -138,6 +186,7 @@ def test_cli_action_write_replace():
         "tags: {d: {},e: {},f: {}}",
         "-R",
         str(TMP_PATH),
+        "-P nmcp",
     )
     print(" ".join(args))
     cli.main(args)
@@ -186,18 +235,19 @@ def test_cli_action_cbz():
     _cleanup()
 
 
-def test_cli_action_delete_tags():
+def test_cli_action_delete_all_tags():
     """Test delete_tags action."""
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
+        car.print_out()
         old_md = car.get_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     pprint(old_md)
     assert old_md
 
-    args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS)
+    args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS)
     print(args)
     cli.main(args)
 
@@ -222,7 +272,7 @@ def test_cli_action_delete_tags_add_metadata():
     pprint(old_md)
     assert old_md
 
-    cli.main((ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ARGS))
+    cli.main((ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS))
     cli.main(
         (
             ComicboxCLISchema.ROOT_TAG,
@@ -245,6 +295,44 @@ def test_cli_action_delete_tags_add_metadata():
     pprint(ADDED_MD)
     pprint(new_md)
     diff = DeepDiff(ADDED_MD, new_md)
+    print(diff)
+    assert not diff
+    _cleanup()
+
+
+def test_cli_action_delete_keys():
+    """Test delete_tags action."""
+    _setup(CBZ_MULTI_SOURCE_PATH)
+    config = get_config(READ_CONFIG_IGNORE_FN)
+    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+        old_md = car.get_metadata()
+    old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
+    old_md = MappingProxyType(old_md)
+    pprint(old_md)
+    assert old_md
+
+    cli.main(
+        (
+            ComicboxCLISchema.ROOT_TAG,
+            str(TMP_MULTI_PATH),
+            *MD_ARGS,
+            "--delete-keys",
+            "age_rating,Captain Arc,roles,pages,series",
+            "-w",
+            "cix",
+            "-GN",
+            "-pP",
+            "mcd",
+        )
+    )
+
+    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+        new_md = car.get_metadata()
+
+    new_md = MappingProxyType(new_md)
+    pprint(ADDED_MD)
+    pprint(new_md)
+    diff = DeepDiff(DELETE_KEYS_MD, new_md)
     print(diff)
     assert not diff
     _cleanup()

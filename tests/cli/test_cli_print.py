@@ -18,7 +18,7 @@ CLI_METADATA_ARGS = (
     "-m",
     "Tags: 'a, b, c',Publisher: TestPub,StoryArc: 'd,e,f', StoryArcNumber: '1,3,5'",
     "-m",
-    "imprint: {name: TestImprint}",
+    "imprint: TestImprint",
 )
 CLI_DICT = MappingProxyType(
     {
@@ -69,7 +69,7 @@ def test_cli_filetype():
 
 SOURCE_OUTPUT = """
  ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Source Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ ⎯ Source Filename tests/test_files/empty.cbz: as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 empty.cbz
 """
 
@@ -86,7 +86,7 @@ def test_cli_source():
 
 LOADED_OUTPUT = """
  ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Loaded Filename: tests/test_files/empty.cbz ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ ⎯ Loaded Filename tests/test_files/empty.cbz: as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 comicbox:
   ext: cbz
   series: empty
