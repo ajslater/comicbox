@@ -1,8 +1,8 @@
 """MetronInfo.xml Reprints Transform."""
 
 from comicfn2dict.parse import comicfn2dict
+from mergedeep import Strategy, merge
 
-from comicbox.dict_funcs import deep_update
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
@@ -60,7 +60,7 @@ class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
             if new_series_name == old_series_name and (
                 not new_lang or not old_lang or new_lang == old_lang
             ):
-                deep_update(old_reprint, new_reprint)
+                merge(old_reprint, new_reprint, strategy=Strategy.ADDITIVE)
                 break
         else:
             reprints.append(new_reprint)

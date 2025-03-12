@@ -12,9 +12,9 @@ from types import MappingProxyType
 import pymupdf
 import pytest
 from deepdiff.diff import DeepDiff
+from mergedeep import merge
 
 from comicbox.box import Comicbox
-from comicbox.dict_funcs import deep_update
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
@@ -124,7 +124,7 @@ CBZ_MD_PATCH = {
         }
     }
 }
-CBZ_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
+CBZ_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
 
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
@@ -137,7 +137,7 @@ CBR_MD_PATCH = {
         },
     },
 }
-CBR_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
+CBR_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
@@ -148,7 +148,7 @@ CBT_MD_PATCH = {
         },
     }
 }
-CBT_MD = MappingProxyType(deep_update(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
+CBT_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
 PDF_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -202,7 +202,7 @@ CB7_MD_PATCH = MappingProxyType(
         }
     }
 )
-CB7_MD = deep_update(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
+CB7_MD = merge(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
 CB7_MD = MappingProxyType(CB7_MD)
 
 

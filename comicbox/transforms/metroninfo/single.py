@@ -1,8 +1,8 @@
 """MetronInfo.xml Transformer for single tags."""
 
 from bidict import frozenbidict
+from mergedeep import Strategy, merge
 
-from comicbox.dict_funcs import deep_update
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comicbox_mixin import (
     IMPRINT_KEY,
@@ -179,7 +179,7 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
         data = self._parse_series_alternative_names(data, metron_series)
 
         if update_dict:
-            deep_update(data, update_dict)
+            merge(data, update_dict, strategy=Strategy.ADDITIVE)
 
         return data
 
@@ -246,6 +246,6 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
         if metron_series:
             if self.SERIES_TAG not in data:
                 data[self.SERIES_TAG] = {}
-            deep_update(data[self.SERIES_TAG], metron_series)
+            merge(data[self.SERIES_TAG], metron_series, strategy=Strategy.ADDITIVE)
 
         return data

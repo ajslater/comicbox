@@ -7,7 +7,6 @@ from typing import Any
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
-from comicbox.dict_funcs import case_insensitive_dict
 from comicbox.fields.fields import (
     EMPTY_VALUES,
     StringField,
@@ -15,6 +14,12 @@ from comicbox.fields.fields import (
 )
 from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.identifier import IdentifierSchema
+
+
+def case_insensitive_dict(d: dict) -> dict:
+    """Make a dict with string keys case insensitive."""
+    cid = {k.lower(): (k, v) for k, v in d.items()}
+    return {v[0]: v[1] for v in cid.values()}
 
 
 class ListField(fields.List, metaclass=TrapExceptionsMeta):
