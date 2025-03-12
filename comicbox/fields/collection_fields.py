@@ -7,6 +7,7 @@ from typing import Any
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
+from comicbox.dict_funcs import get_deep
 from comicbox.fields.fields import (
     EMPTY_VALUES,
     StringField,
@@ -62,19 +63,6 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Override in XmlListField."""
         return value
 
-    @classmethod
-    def _get_deep_key(cls, element, key_path):
-        value = ""
-        obj = element
-        for key in key_path:
-            if not obj:
-                value = ""
-                break
-            value = obj.get(key)
-            obj = value
-        value = cls.get_tag_value(value)
-        return "" if value is None else value
-
     def _sorted(self, values) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
@@ -88,7 +76,9 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
             key = []
             if self._sort_keys:
                 for key_path in self._sort_keys:
-                    sort_value = self._get_deep_key(value, key_path)
+                    sort_value = get_deep(value, key_path)
+                    sort_value = self.get_tag_value(sort_value)
+                    sort_value = "" if sort_value is None else sort_value
                     key.append(sort_value)
             else:
                 key = (self.get_tag_value(value),)

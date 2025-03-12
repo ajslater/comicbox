@@ -6,6 +6,7 @@ from copy import deepcopy
 
 def move_key_to_dict(key_map, source_dict):
     """Move a value with one key to another dict and mapped key."""
+    # TODO look at generic deep map libs
     target_dict = {}
     for tag, key in key_map.items():
         # Tags
