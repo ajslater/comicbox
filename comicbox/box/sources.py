@@ -186,6 +186,8 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
 
     def _set_source_metadata(self, source):
         """Set source metadata by source."""
+        if self._config.delete_all_tags:
+            return
         if source in self.SOURCES_SET_ELSEWHERE:
             # Set by init & add metadata below.
             return
