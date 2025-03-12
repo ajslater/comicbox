@@ -1,7 +1,6 @@
 """Get Metadata mixin."""
 
 from collections.abc import MutableMapping
-from copy import deepcopy
 from types import MappingProxyType
 
 from comicbox.box.archive import archive_close
@@ -18,7 +17,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
     def _set_computed_merged_metadata(self):
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
-        merged_md = deepcopy(dict(merged_md))
+        merged_md = dict(merged_md)
 
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)

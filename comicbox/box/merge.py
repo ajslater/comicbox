@@ -26,7 +26,7 @@ class ComicboxMergeMixin(ComicboxNormalizeMixin):
                 source_md_list.extend(format_normalized_md_list)
         return source_md_list
 
-    def _get_merged_metadata(self):
+    def _set_merged_metadata(self):
         """Overlay the metadatas in precedence order."""
         # Order the md list by source precedence
         md_list = []
@@ -36,11 +36,10 @@ class ComicboxMergeMixin(ComicboxNormalizeMixin):
 
         merged_md = merge_metadata_list(md_list, self._config)
         if merged_md:
-            return MappingProxyType(merged_md)
-        return None
+            self._merged_metadata = MappingProxyType(merged_md)
 
     def get_merged_metadata(self):
         """Get merged normalized metadata."""
-        if not self._merged_metadata and (md := self._get_merged_metadata()):
-            self._merged_metadata = md
+        if not self._merged_metadata:
+            self._set_merged_metadata()
         return self._merged_metadata

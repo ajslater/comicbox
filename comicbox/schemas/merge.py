@@ -1,7 +1,6 @@
 """Smartly Deep Merge a comicbox schema dict."""
 
 from collections.abc import Mapping, MutableMapping
-from copy import deepcopy
 
 from deepmerge.merger import Merger
 
@@ -89,9 +88,8 @@ def merge_metadata(
     new_sub_md = new_md.get(ComicboxSchemaMixin.ROOT_TAG)
     if not new_sub_md:
         return
-    # TODO passing in strategy and config blows.
-    new_sub_md = deepcopy(dict(new_sub_md))
 
+    # TODO passing in strategy and config blows.
     if not merger:
         merger = REPLACE_MERGER if config.replace_metadata else ADD_UNIQUE_MERGER
 

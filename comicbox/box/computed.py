@@ -2,7 +2,6 @@
 
 import re
 from collections.abc import Mapping
-from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -148,7 +147,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     def _get_computed_merged_pages_metadata(self, md, pages):
         max_page_index = self._get_max_page_index()
         old_pages = md.get(PAGES_KEY, [])[:max_page_index]
-        computed_pages_sub_md = {PAGES_KEY: deepcopy(old_pages)}
+        computed_pages_sub_md = {PAGES_KEY: old_pages}
         merge_pages(computed_pages_sub_md, pages)
         self._ensure_pages_front_cover_metadata(computed_pages_sub_md)
         return computed_pages_sub_md
@@ -376,16 +375,15 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         notes += " ".join(sorted(urn_strs))
         return notes
 
-    def _get_computed_notes_stamp(self, sub_data, md):
+    def _get_computed_notes_stamp(self, sub_data, stamp_md):
         """Write comicbox notes to notes field if present."""
         if not self._config.stamp_notes:
             return None
-        data_copy = deepcopy(md)
         if identifiers := sub_data.get(IDENTIFIERS_KEY):
-            data_copy[IDENTIFIERS_KEY] = identifiers
+            stamp_md[IDENTIFIERS_KEY] = identifiers
 
-        comictagger_style_notes = self._get_unparsed_comictagger_style_notes(data_copy)
-        urn_notes = self._get_unparsed_urns_for_notes(data_copy)
+        comictagger_style_notes = self._get_unparsed_comictagger_style_notes(stamp_md)
+        urn_notes = self._get_unparsed_urns_for_notes(stamp_md)
         notes = f"{comictagger_style_notes} {urn_notes}"
         return notes.strip()
 
@@ -398,17 +396,17 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             return None
 
         # tagger & updated_at
-        md = {
+        stamp_md = {
             TAGGER_KEY: self._config.tagger,
             # Deprecated method needed for python 3.10
             UPDATED_AT_KEY: datetime.utcnow(),  # noqa: DTZ003, type: ignore
         }
 
         # notes
-        if notes := self._get_computed_notes_stamp(sub_data, md):
-            md[NOTES_KEY] = notes
+        if notes := self._get_computed_notes_stamp(sub_data, stamp_md):
+            stamp_md[NOTES_KEY] = notes
 
-        return md
+        return stamp_md
 
     def _set_delete_keys_sequence(self, value):
         delete_list = []
@@ -463,7 +461,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     def _set_computed_metadata(self):
         computed_list = []
         merged_md = self.get_merged_metadata()
-        sub_data = deepcopy(dict(merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})))
+        sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
 
         # Compute each
         for label, actions in self._COMPUTED_ACTIONS.items():
