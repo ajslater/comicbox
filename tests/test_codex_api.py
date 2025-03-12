@@ -12,10 +12,10 @@ from types import MappingProxyType
 import pymupdf
 import pytest
 from deepdiff.diff import DeepDiff
-from mergedeep import merge
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
@@ -124,7 +124,9 @@ CBZ_MD_PATCH = {
         }
     }
 }
-CBZ_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH))
+CBZ_MD = MappingProxyType(
+    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH)
+)
 
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
@@ -137,7 +139,9 @@ CBR_MD_PATCH = {
         },
     },
 }
-CBR_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH))
+CBR_MD = MappingProxyType(
+    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH)
+)
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
@@ -148,7 +152,9 @@ CBT_MD_PATCH = {
         },
     }
 }
-CBT_MD = MappingProxyType(merge(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH))
+CBT_MD = MappingProxyType(
+    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH)
+)
 PDF_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -168,43 +174,32 @@ PDF_MD = MappingProxyType(
     }
 )
 
-CB7_MD_PATCH = MappingProxyType(
-    {
-        ComicboxSchemaMixin.ROOT_TAG: {
-            "ext": "cb7",
-            "date": date(1950, 11, 1),
-            "identifier_primary_source": {
-                "nid": "isbn",
-                "url": "https://isbndb.com/",
+CB7_MD_PATCH = {
+    ComicboxSchemaMixin.ROOT_TAG: {
+        "date": date(1950, 11, 1),
+        "ext": "cb7",
+        "page_count": 5,
+        "identifier_primary_source": {"nid": "isbn", "url": "https://isbndb.com/"},
+        "identifiers": {
+            "comicvine": {
+                "nss": "145269",
+                "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
-            "identifiers": {
-                "comicvine": {
-                    "nss": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
-                },
-                "isbn": {
-                    "nss": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
-                },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            "isbn": {
+                "nss": "123-456789-0123",
+                "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "page_count": 5,
-            "stories": {"The Beginning": {}, "The End": {}},
-            "notes": "Tagged with "
-            "comicbox dev "
-            "on "
-            "1970-01-01T00:00:00 "
-            "[Issue ID "
-            "145269] "
-            "urn:comicvine:4000-145269 "
-            "urn:isbn:123-456789-0123 "
-            "urn:upc:12345",
-        }
+            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+        },
+        "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 "
+        "[Issue ID 145269] urn:comicvine:4000-145269 "
+        "urn:isbn:123-456789-0123 urn:upc:12345",
+        "stories": {"The Beginning": {}, "The End": {}},
     }
+}
+CB7_MD = MappingProxyType(
+    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
 )
-CB7_MD = merge(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
-CB7_MD = MappingProxyType(CB7_MD)
-
 
 CS = "Captain Science 001"
 CS_COVER = CS + "/CaptainScience#1_01.jpg"

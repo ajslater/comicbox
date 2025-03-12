@@ -60,12 +60,12 @@ class NestedPublishingTagsMixin:
 
     def unparse_series(self, data):
         """Unparse series."""
-        series = data.get(SERIES_KEY, {})
-        series_name = series.get(NAME_KEY)
-        volume_count = series.get(VOLUME_COUNT_KEY)
-        if series_name:
+        series = data.get(SERIES_KEY)
+        if not series:
+            return data
+        if series_name := series.get(NAME_KEY):
             data[self.SERIES_TAG] = series_name
-        if volume_count:
+        if volume_count := series.get(VOLUME_COUNT_KEY):
             data[self.VOLUME_COUNT_TAG] = volume_count
         return data
 

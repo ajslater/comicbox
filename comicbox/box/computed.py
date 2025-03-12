@@ -11,7 +11,7 @@ from sys import maxsize
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
-from mergedeep import Strategy
+from deepmerge.merger import Merger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
@@ -23,6 +23,7 @@ from comicbox.identifiers import (
     COMICVINE_NID,
     create_identifier,
 )
+from comicbox.merge import ADD_UNIQUE_MERGER, POP_NONE_MERGER, REPLACE_MERGER
 from comicbox.schemas.comicbox_mixin import (
     IDENTIFIERS_KEY,
     ISSUE_KEY,
@@ -75,7 +76,7 @@ class ComputedData:
     label: str
     metadata: Mapping | None
     allowed_null_keys: frozenset[str] = frozenset()
-    merge_strategy: Strategy = Strategy.ADDITIVE
+    merger: Merger = ADD_UNIQUE_MERGER
 
 
 class ComicboxComputedMixin(ComicboxComputedNotesMixin):
@@ -192,9 +193,11 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_from_issue(self, sub_data, **_kwargs):
         """Break parsed issue up into parts."""
+        # TODO does this happen in fields now???
+        #  it probably should
         if not sub_data:
             return None
-        issue = sub_data.get("issue", "")
+        issue = sub_data.get(ISSUE_KEY, "")
         old_issue_number = sub_data.get(ISSUE_NUMBER_KEY)
         old_issue_suffix = sub_data.get(ISSUE_SUFFIX_KEY)
         sub_md = {}
@@ -389,21 +392,25 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     _COMPUTED_ACTIONS = MappingProxyType(
         {
             # Order is important here
-            "Page Count": (_get_computed_page_count_metadata, True, ()),
-            "Pages": (_get_computed_pages_metadata, True, ("pages",)),
-            "from issue": (_get_computed_from_issue, False, ()),
-            "from issue_number & issue_suffix": (_get_computed_issue, False, ()),
-            "from notes": (
-                ComicboxComputedNotesMixin.get_computed_from_notes,
-                False,
+            "Page Count": (_get_computed_page_count_metadata, REPLACE_MERGER, ()),
+            "Pages": (_get_computed_pages_metadata, REPLACE_MERGER, ("pages",)),
+            "from issue": (_get_computed_from_issue, ADD_UNIQUE_MERGER, ()),
+            "from issue_number & issue_suffix": (
+                _get_computed_issue,
+                ADD_UNIQUE_MERGER,
                 (),
             ),
-            "from tags": (_get_computed_from_tags, False, ()),
-            "from identifiers": (_get_computed_from_identifiers, False, ()),
-            "from scan_info": (_get_computed_from_scan_info, False, ()),
-            "from tag_origin": (_get_computed_from_tag_origin, False, ()),
-            "Tagger Stamp": (_get_tagger_stamp, True, ()),
-            "Delete Keys": (_get_delete_keys, True, (ALL_NONE_KEYS,)),
+            "from notes": (
+                ComicboxComputedNotesMixin.get_computed_from_notes,
+                ADD_UNIQUE_MERGER,
+                (),
+            ),
+            "from tags": (_get_computed_from_tags, ADD_UNIQUE_MERGER, ()),
+            "from identifiers": (_get_computed_from_identifiers, ADD_UNIQUE_MERGER, ()),
+            "from scan_info": (_get_computed_from_scan_info, ADD_UNIQUE_MERGER, ()),
+            "from tag_origin": (_get_computed_from_tag_origin, ADD_UNIQUE_MERGER, ()),
+            "Tagger Stamp": (_get_tagger_stamp, REPLACE_MERGER, ()),
+            "Delete Keys": (_get_delete_keys, POP_NONE_MERGER, (ALL_NONE_KEYS,)),
         }
     )
 
@@ -414,15 +421,14 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         # Compute each
         for label, actions in self._COMPUTED_ACTIONS.items():
-            method, update, allowed_null_keys = actions
+            method, merger, allowed_null_keys = actions
             sub_md = method(self, sub_data)
             if not sub_md:
                 continue
 
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
-            merge_strategy = Strategy.REPLACE if update else Strategy.ADDITIVE
             computed_data = ComputedData(
-                label, md, frozenset(allowed_null_keys), merge_strategy
+                label, md, frozenset(allowed_null_keys), merger
             )
             computed_list.append(computed_data)
 

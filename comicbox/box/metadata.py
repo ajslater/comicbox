@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
-from comicbox.dict_funcs import remove_none_values, set_deep
+from comicbox.dict_funcs import set_deep
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
 from comicbox.sources import MetadataFormats
@@ -18,26 +18,19 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
     def _set_computed_merged_metadata(self):
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
-        sub_data = deepcopy(dict(merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})))
+        merged_md = deepcopy(dict(merged_md))
 
-        from icecream import ic
-
-        ic(self._config.read_ignore)
         for computed_data in computed_md:
-            computed_sub_data = computed_data.metadata.get(
-                ComicboxSchemaMixin.ROOT_TAG, {}
-            )
-            merge_metadata(
-                sub_data, computed_sub_data, self._config, computed_data.merge_strategy
-            )
+            computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
+            if computed_sub_data:
+                merge_metadata(
+                    merged_md,
+                    computed_data.metadata,
+                    self._config,
+                    computed_data.merger,
+                )
 
-        # Remove none values.
-        # TODO better if we could do it in the merge
-        sub_data = remove_none_values(sub_data)
-
-        final_metadata = {ComicboxSchemaMixin.ROOT_TAG: sub_data}
-
-        self._metadata = MappingProxyType(final_metadata)
+        self._metadata = MappingProxyType(merged_md)
 
     def _get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""

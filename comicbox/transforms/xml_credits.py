@@ -27,7 +27,9 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
     @classmethod
     def _parse_credit_role(cls, data, xml_role_enum: Enum, comicbox_credits: dict):
         role_tag = xml_role_enum.value
-        persons = data.pop(role_tag, ())
+        persons = data.pop(role_tag, None)
+        if not persons:
+            return
         for person_name in persons:
             cls.add_credit_role_to_comicbox_credits(
                 person_name, role_tag, comicbox_credits
@@ -65,19 +67,24 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
         """Unparse one comicbox credit to an xml tag."""
         if not person_name:
             return
-        comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
+        comicbox_roles = comicbox_credit.get(ROLES_KEY)
+        if not comicbox_roles:
+            return
         for comicbox_role_name in comicbox_roles:
             cls._unparse_credit_role(person_name, comicbox_role_name, xml_role_tags)
 
     def unparse_credits(self, data):
         """Disaggregate credits from comicbox credits to individual role tags."""
         comicbox_credits = data.pop(CREDITS_KEY, {})
+        if not comicbox_credits:
+            return data
         xml_role_tags = {}
         for person_name, comicbox_credit in comicbox_credits.items():
             try:
                 self._unparse_credit(person_name, comicbox_credit, xml_role_tags)
             except Exception as exc:
                 LOG.warning(f"{self._path} unparse credit {comicbox_credit}: {exc}")
+                LOG.exception("debug")
 
         data.update(xml_role_tags)
         return data

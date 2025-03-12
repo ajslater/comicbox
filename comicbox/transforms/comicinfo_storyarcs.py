@@ -57,6 +57,8 @@ class ComicInfoStoryArcsTransformMixin(BaseTransform):
         for name, comicbox_arc in comicbox_arcs.items():
             if name:
                 ci_story_arcs.append(name)
+                if not comicbox_arc:
+                    continue
                 number = comicbox_arc.get(NUMBER_KEY)
                 num_str = "" if number is None else str(number)
                 ci_story_arc_numbers.append(num_str)

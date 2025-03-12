@@ -1,6 +1,5 @@
 """Dictionary functions."""
 
-from collections.abc import Mapping
 from copy import deepcopy
 
 
@@ -48,19 +47,3 @@ def set_deep(d, key_path, value):
     for subkey in key_path:
         level = level[subkey]
     level[final_key] = value
-
-
-def remove_none_values(data):
-    """Recursively removes keys with None values from a Python collection."""
-    if isinstance(data, Mapping):
-        data_type = type(data)
-        data = {
-            key: remove_none_values(value)
-            for key, value in data.items()
-            if value is not None
-        }
-    elif isinstance(data, list | set | frozenset | tuple):
-        data_type = type(data)
-        data = data_type(remove_none_values(item) for item in data if item is not None)
-    # Return non-iterable values as is
-    return data

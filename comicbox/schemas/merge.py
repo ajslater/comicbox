@@ -3,21 +3,26 @@
 from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 
-from mergedeep import Strategy, merge
+from deepmerge.merger import Merger
 
 from comicbox.fields.fields import EMPTY_VALUES
+from comicbox.merge import ADD_UNIQUE_MERGER, REPLACE_MERGER
 from comicbox.schemas.comicbox_mixin import PAGES_KEY, STORIES_KEY, ComicboxSchemaMixin
 
-ADDITIVE_STRATEGIES = frozenset({Strategy.ADDITIVE, Strategy.TYPESAFE_ADDITIVE})
+ADDITIVE_MERGERS = frozenset({ADD_UNIQUE_MERGER})
 # Stories are always replaced because filename titles are unreliably and overzealously parsed and the lists of stories in metadatas are either titles that should be replaced or ordered lists which are difficult to hueristicaly merge
 ALWAYS_REPLACE_KEYS = frozenset({STORIES_KEY})
 
 
-def _create_pages_map(pages: Mapping) -> tuple[Mapping, int]:
+def _create_pages_map(pages: Mapping | None) -> tuple[Mapping, int]:
     """Create page map from a page list."""
     pages_map = {}
     max_pages_index = -1
+    if pages is None:
+        return pages_map, max_pages_index
     for page in pages:
+        if page is None:
+            continue
         index = page.get("index", 0)
         pages_map[index] = page
         max_pages_index = max(max_pages_index, index)
@@ -35,7 +40,7 @@ def _create_both_pages_maps(
     return old_pages_map, md_pages_map, max_page_index
 
 
-def merge_pages(base_sub_md: MutableMapping, pages: Mapping) -> None:
+def merge_pages(base_sub_md: MutableMapping, pages: Mapping | None) -> None:
     """Merge new pages map from two metadatas."""
     if not pages:
         return
@@ -66,7 +71,7 @@ def merge_pages(base_sub_md: MutableMapping, pages: Mapping) -> None:
 def _get_always_replace_dict(strategy, md_sub_data):
     """Get values for top level keys that are always replaced."""
     replace_dict = {}
-    if strategy not in ADDITIVE_STRATEGIES:
+    if strategy not in ADDITIVE_MERGERS:
         return replace_dict
 
     for key in ALWAYS_REPLACE_KEYS:
@@ -77,37 +82,39 @@ def _get_always_replace_dict(strategy, md_sub_data):
 
 
 def merge_metadata(
-    base_md: MutableMapping, md: Mapping, config, strategy: Strategy | None = None
+    base_md: MutableMapping, new_md: Mapping, config, merger: Merger | None = None
 ):
     """Merge a dict into another."""
+    base_sub_md = base_md[ComicboxSchemaMixin.ROOT_TAG]
+    new_sub_md = new_md.get(ComicboxSchemaMixin.ROOT_TAG)
+    if not new_sub_md:
+        return
     # TODO passing in strategy and config blows.
-    new_md = deepcopy(dict(md))
-    base_sub_data = base_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
-    new_md_sub_data = new_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
+    new_sub_md = deepcopy(dict(new_sub_md))
 
-    # Save pages. Remove so it isn't merged normally.
-    pages = new_md_sub_data.pop(PAGES_KEY, None)
-
-    if not strategy:
-        strategy = Strategy.REPLACE if config.replace_metadata else Strategy.ADDITIVE
+    if not merger:
+        merger = REPLACE_MERGER if config.replace_metadata else ADD_UNIQUE_MERGER
 
     # Pop off the always replace dict.
-    replace_dict = _get_always_replace_dict(strategy, new_md_sub_data)
+    if merger in ADDITIVE_MERGERS:
+        replace_dict = _get_always_replace_dict(merger, new_sub_md)
+        # Save pages. Remove so it isn't merged normally.
+        pages = new_sub_md.pop(PAGES_KEY, None)
+    else:
+        replace_dict = pages = {}
 
-    # Main Merge
-    merge(base_md, new_md, strategy=strategy)
+    merger.merge(base_sub_md, new_sub_md)
 
-    # Merge pages specially
-    base_sub_data = base_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
-    merge_pages(base_sub_data, pages)
-
-    # Update with the replace dict.
-    base_sub_data.update(replace_dict)
+    if merger in ADDITIVE_MERGERS:
+        # Merge pages specially
+        merge_pages(base_sub_md, pages)
+        # Update with the replace dict.
+        base_sub_md.update(replace_dict)
 
 
 def merge_metadata_list(parsed_md_list: list[Mapping], config) -> dict:
     """Pop off complex values before simple update."""
-    merged_md = {}
+    merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
     for parsed_md in parsed_md_list:
         merge_metadata(merged_md, parsed_md, config)
     return merged_md

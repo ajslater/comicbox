@@ -122,6 +122,11 @@ DELETE_KEYS_MD = MappingProxyType(
             "original_format": "Comic",
             "page_count": 0,
             "publisher": {"name": "Galactic Press"},
+            "reprints": [
+                {
+                    "issue": "001",
+                }
+            ],
             "stories": {"The Beginning COMET": {}},
             "summary": "A long example description",
             "tagger": "comicbox dev",
@@ -186,7 +191,8 @@ def test_cli_action_write_replace():
         "tags: {d: {},e: {},f: {}}",
         "-R",
         str(TMP_PATH),
-        "-P nmcp",
+        "-P",
+        "nmcp",
     )
     print(" ".join(args))
     cli.main(args)
