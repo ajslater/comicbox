@@ -113,6 +113,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         Allow for extra images in the archive that are not pages.
         """
+        if PAGE_COUNT_KEY in self._config.delete_keys:
+            return None
         if not sub_md or not self._enable_page_compute_attribute(
             ComputeSchemaAttribute.HAS_PAGE_COUNT
         ):
@@ -153,6 +155,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_pages_metadata(self, sub_md):
         """Recompute the tag image sizes for the ComicRack PageInfo list."""
+        if PAGES_KEY in self._config.delete_keys:
+            return None
         if not sub_md or not self._enable_page_compute_attribute(
             ComputeSchemaAttribute.HAS_PAGES
         ):
@@ -218,6 +222,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_issue(self, sub_data, **_kwargs):
         """Build issue from parts before dump if issue doesn't already exist."""
+        if ISSUE_KEY in self._config.delete_keys:
+            return None
         if not sub_data:
             return None
         issue = sub_data.get("issue")
@@ -236,6 +242,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_from_scan_info(self, sub_data, **_kwargs):
         """Parse scan_info for original format info."""
+        if ORIGINAL_FORMAT_KEY in self._config.delete_keys:
+            return None
         if not sub_data:
             return None
         scan_info = sub_data.get(SCAN_INFO_KEY)
@@ -265,6 +273,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         return self.merge_identifiers_md(sub_data, identifiers)
 
     def _get_computed_from_identifiers(self, sub_data):
+        if IDENTIFIERS_KEY in self._config.delete_keys:
+            return None
         identifiers = sub_data.get(IDENTIFIERS_KEY, {})
         if not identifiers:
             return None
@@ -281,6 +291,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_from_reprints(self, sub_data):
         """Consolidate reprints."""
+        if REPRINTS_KEY in self._config.delete_keys:
+            return None
         old_reprints = sub_data.get(REPRINTS_KEY)
         if not old_reprints:
             return None
@@ -308,6 +320,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_computed_from_tag_origin(self, sub_data):
         # Should this pop or should it pop on ct post load?
+        if IDENTIFIERS_KEY in self._config.delete_keys:
+            return None
         if not sub_data:
             return None
         nid = sub_data.pop(TAG_ORIGIN_KEY, {}).get("id", COMICVINE_NID)
@@ -377,6 +391,8 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_tagger_stamp(self, sub_data):
         """Stamp when writing."""
+        if NOTES_KEY in self._config.delete_keys:
+            return None
         if not self._config.all_write_formats:
             # Only stamp on write.
             return None
