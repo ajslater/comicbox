@@ -10,7 +10,7 @@ def move_key_to_dict(key_map, source_dict):
     for tag, key in key_map.items():
         # Tags
         tags = tag.split(".")
-        tag_value = deepcopy(source_dict)
+        tag_value = source_dict
         for subtag in tags:
             tag_value = tag_value.get(subtag)
             if tag_value is None:
@@ -21,7 +21,7 @@ def move_key_to_dict(key_map, source_dict):
 
         # Keys
         keys = key.split(".")
-        target_value = tag_value
+        target_value = deepcopy(tag_value)
         for subkey in reversed(keys[1:]):
             target_value = {subkey: target_value}
         target_dict[keys[0]] = target_value
