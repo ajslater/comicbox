@@ -3,10 +3,8 @@
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
-    LANGUAGE_KEY,
     NAME_KEY,
     REPRINT_ISSUE_KEY,
     REPRINT_SERIES_KEY,
@@ -44,37 +42,6 @@ class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
         return self._parse_metron_tag(
             data, self.REPRINTS_TAG, self._parse_reprint, list_type=True
         )
-
-    @staticmethod
-    def _aggregate_reprints(reprints, new_reprint):
-        """Aggregate new reprint into similar old reprint."""
-        new_series = new_reprint.get(SERIES_KEY, {})
-        new_series_name = new_series.get(NAME_KEY)
-        new_lang = new_reprint.get(LANGUAGE_KEY)
-
-        for old_reprint in reprints:
-            old_series = old_reprint.get(SERIES_KEY, {})
-            old_series_name = old_series.get(NAME_KEY)
-            old_lang = old_reprint.get(LANGUAGE_KEY)
-
-            if new_series_name == old_series_name and (
-                not new_lang or not old_lang or new_lang == old_lang
-            ):
-                ADD_UNIQUE_MERGER.merge(old_reprint, new_reprint)
-                break
-        else:
-            reprints.append(new_reprint)
-
-    def consolidate_reprints(self, data):
-        """Consolidate reprints after parsing from both series & reprints."""
-        old_reprints = data.pop(REPRINTS_KEY, [])
-        series_reprints = data.pop(self.SERIES_REPRINTS_KEY, [])
-        consolidated_reprints = []
-        for reprint in old_reprints + series_reprints:
-            self._aggregate_reprints(consolidated_reprints, reprint)
-        if consolidated_reprints:
-            data[REPRINTS_KEY] = consolidated_reprints
-        return data
 
     @classmethod
     def _unparse_reprint(cls, data, _, comicbox_reprint) -> dict:

@@ -1,8 +1,9 @@
 """MetronInfo.xml Transformer for single tags."""
 
 from bidict import frozenbidict
-from comicbox.merge import ADD_UNIQUE_MERGER
+
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.comicbox_mixin import (
     IMPRINT_KEY,
     LANGUAGE_KEY,
@@ -51,7 +52,6 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
     SERIES_ALTERNATIVE_NAME_TAG = "AlternativeName"
     SERIES_FORMAT_TAG = "Format"
     SERIES_LANG_ATTRIBUTE = "@lang"
-    SERIES_REPRINTS_KEY = "series_reprints_tmp"
 
     # UTILITY
     ###########################################################################
@@ -158,8 +158,8 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
             reprints.append(reprint)
 
         if reprints:
-            # consolidated later.
-            data[cls.SERIES_REPRINTS_KEY] = reprints
+            old_reprints = data.get(REPRINTS_KEY, [])
+            data[REPRINTS_KEY] = old_reprints + reprints
         return data
 
     def parse_series(self, data):

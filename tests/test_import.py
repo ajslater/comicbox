@@ -647,9 +647,10 @@ FNS = MappingProxyType(
                             "url": "https://metron.cloud/reprint/65498",
                         }
                     },
-                    "issue": "002",
+                    "issue": "001",
                     "series": {"name": "Foo Bar"},
                 },
+                {"issue": "002", "series": {"name": "Foo Bar"}},
                 {"series": {"name": "Foo"}},
                 {"language": "de", "series": {"name": "Hüsker Dü"}},
             ],

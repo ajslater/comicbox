@@ -11,6 +11,7 @@ from sys import maxsize
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
+from deepdiff import DeepDiff
 from deepmerge.merger import Merger
 
 from comicbox.box.archive import archive_close
@@ -34,6 +35,7 @@ from comicbox.schemas.comicbox_mixin import (
     PAGE_COUNT_KEY,
     PAGE_TYPE_KEY,
     PAGES_KEY,
+    REPRINTS_KEY,
     SCAN_INFO_KEY,
     TAGGER_KEY,
     TAGS_KEY,
@@ -277,6 +279,33 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             return {IDENTIFIERS_KEY: new_identifiers}
         return None
 
+    def _get_computed_from_reprints(self, sub_data):
+        """Consolidate reprints."""
+        old_reprints = sub_data.get(REPRINTS_KEY)
+        if not old_reprints:
+            return None
+        new_reprints = []
+        merged_indexes = set()
+        for index, old_reprint in enumerate(old_reprints):
+            if index in merged_indexes:
+                continue
+            for sub_index, compare_old_reprint in enumerate(old_reprints[index:]):
+                diff = DeepDiff(
+                    old_reprint,
+                    compare_old_reprint,
+                    ignore_order=True,
+                    ignore_string_case=True,
+                    ignore_encoding_errors=True,
+                )
+                if "values_changed" not in diff:
+                    ADD_UNIQUE_MERGER.merge(old_reprint, compare_old_reprint)
+                    merged_indexes.add(index + sub_index)
+            new_reprints.append(old_reprint)
+
+        if len(old_reprints) != len(new_reprints):
+            return {REPRINTS_KEY: new_reprints}
+        return None
+
     def _get_computed_from_tag_origin(self, sub_data):
         # Should this pop or should it pop on ct post load?
         if not sub_data:
@@ -407,6 +436,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             ),
             "from tags": (_get_computed_from_tags, ADD_UNIQUE_MERGER, ()),
             "from identifiers": (_get_computed_from_identifiers, ADD_UNIQUE_MERGER, ()),
+            "from reprints": (_get_computed_from_reprints, REPLACE_MERGER, ()),
             "from scan_info": (_get_computed_from_scan_info, ADD_UNIQUE_MERGER, ()),
             "from tag_origin": (_get_computed_from_tag_origin, ADD_UNIQUE_MERGER, ()),
             "Tagger Stamp": (_get_tagger_stamp, REPLACE_MERGER, ()),

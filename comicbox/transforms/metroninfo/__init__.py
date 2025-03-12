@@ -21,8 +21,7 @@ class MetronInfoTransform(MetronInfoTransformCredits):
         MetronInfoTransformCredits.parse_prices,
         MetronInfoTransformCredits.parse_reprints,
         MetronInfoTransformCredits.parse_resources,
-        MetronInfoTransformCredits.parse_series,
-        MetronInfoTransformCredits.consolidate_reprints,  # must come after reprints & series
+        MetronInfoTransformCredits.parse_series,  # must come after reprints
         MetronInfoTransformCredits.parse_universes,
     )
 
