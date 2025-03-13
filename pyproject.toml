@@ -12,6 +12,7 @@ dependencies = [
   "comicfn2dict<1.0.0,>=0.2.4",
   "deepdiff<9.0.0,>=8.2.0",
   "deepmerge>=2.0,<3.0",
+  "glom>=24.11.0",
   "marshmallow<4.0.0,>=3.19.0",
   "marshmallow-union<1.0.0.0,>=0.1.15.post1",
   "pycountry<25.0.0,>=24.6.1",

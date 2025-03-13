@@ -7,12 +7,12 @@ from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
 
+from glom import glom
 from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
 from comicbox.box.sources import ComicboxSourcesMixin
-from comicbox.dict_funcs import get_deep
 from comicbox.fields.collection_fields import EmbeddedStringSetField
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
@@ -132,7 +132,9 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             if md and fmt:
                 schema_class = fmt.value.transform_class.SCHEMA_CLASS
                 if (
-                    embedded_source := get_deep(md, schema_class.EMBED_KEY_PATH)
+                    embedded_source := glom(
+                        md, schema_class.EMBED_KEY_PATH, default=None
+                    )
                 ) and EmbeddedStringSetField.is_embedded_metadata(embedded_source):
                     self.add_source(MetadataSources.ARCHIVE_EMBEDDED, embedded_source)
                 return MappingProxyType(md), fmt

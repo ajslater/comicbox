@@ -9,10 +9,10 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.transforms.transform_map import transform_map_in_place
 
 LOG = getLogger(__name__)
 
@@ -74,28 +74,15 @@ class BaseTransform:
     # TRANSFORMS #
     ##############
 
-    def copy_keys(
-        self,
-        data: dict,
-        transform_map: frozenbidict,
-        to_comicbox: bool = False,  # noqa: FBT002
-    ):
-        """Copy values between schemas with transformed keys."""
-        if to_comicbox:
-            transform_map = transform_map.inverse
-        for from_key, to_key in transform_map.items():
-            value = data.pop(from_key, None)
-            if value not in EMPTY_VALUES:
-                data[to_key] = value
+    def transform_keys_to(self, data: dict):
+        """Copy keys to comicbox keys."""
+        transform_map_in_place(self.TRANSFORM_MAP, data)
         return data
 
-    def copy_keys_to(self, data: dict):
-        """Copy keys to comicbox keys."""
-        return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=False)
-
-    def copy_keys_from(self, data: dict):
+    def transform_keys_from(self, data: dict):
         """Copy keys from comicbox keys."""
-        return self.copy_keys(data, self.TRANSFORM_MAP, to_comicbox=True)
+        transform_map_in_place(self.TRANSFORM_MAP.inverse, data)
+        return data
 
     def string_list_to_dicts_one(self, data, from_key, to_key):
         """Transform one sequence of strings to comicbox name objects."""
@@ -131,9 +118,9 @@ class BaseTransform:
         role_name = cls.ROLE_SPELLING.get(role_name.lower(), role_name)
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
-    TO_COMICBOX_PRE_TRANSFORM = (copy_keys_to, string_lists_to_dicts)
+    TO_COMICBOX_PRE_TRANSFORM = (transform_keys_to, string_lists_to_dicts)
     TO_COMICBOX_POST_TRANSFORM = ()
-    FROM_COMICBOX_PRE_TRANSFORM = (copy_keys_from, name_dicts_to_string_lists)
+    FROM_COMICBOX_PRE_TRANSFORM = (transform_keys_from, name_dicts_to_string_lists)
     FROM_COMICBOX_POST_TRANSFORM = ()
 
     ##################################

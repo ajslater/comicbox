@@ -2,13 +2,13 @@
 
 from bidict import frozenbidict
 
-from comicbox.dict_funcs import transform_map
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
 )
+from comicbox.transforms.transform_map import transform_map
 
 ALTERNATE_SERIES_KEY = "alternate_series"
 ALTERNATE_ISSUE_KEY = "alternate_issue"
@@ -20,9 +20,9 @@ ALTERNATE_SERIES_TAG = "AlternateSeries"
 
 REPRINT_KEY_MAP = frozenbidict(
     {
-        (ALTERNATE_SERIES_TAG,): (SERIES_KEY, "name"),
-        (ALTERNATE_NUMBER_TAG,): (ISSUE_KEY,),
-        (ALTERNATE_COUNT_TAG,): ("volume", VOLUME_ISSUE_COUNT_KEY),
+        ALTERNATE_SERIES_TAG: f"{SERIES_KEY}.name",
+        ALTERNATE_NUMBER_TAG: ISSUE_KEY,
+        ALTERNATE_COUNT_TAG: f"volume.{VOLUME_ISSUE_COUNT_KEY}",
     }
 )
 

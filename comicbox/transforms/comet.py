@@ -14,10 +14,14 @@ from comicbox.schemas.comet import (
 )
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
+    AGE_RATING_KEY,
     CHARACTERS_KEY,
+    COVER_IMAGE_KEY,
     GENRES_KEY,
+    LAST_MARK_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
+    READING_DIRECTION_KEY,
     SUMMARY_KEY,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
@@ -129,18 +133,18 @@ class CoMetTransform(
 
     TRANSFORM_MAP = frozenbidict(
         {
-            "coverImage": "cover_image",
+            "coverImage": COVER_IMAGE_KEY,
             # "date": "date", handled by code
             "description": SUMMARY_KEY,
             "format": ORIGINAL_FORMAT_KEY,
             # IDENTIFIER_TAG: "identifiers", handled by code
             # "language": LANGUAGE_KEY, handled by code
-            "lastMark": "last_mark",
+            "lastMark": LAST_MARK_KEY,
             "pages": PAGE_COUNT_KEY,
             # "publisher": "publisher", handled by code
             # "price": PRICES_KEY coded
-            "rating": "age_rating",
-            "readingDirection": "reading_direction",
+            "rating": AGE_RATING_KEY,
+            "readingDirection": READING_DIRECTION_KEY,
             # "rights": "rights", unused
             # "series": SERIES_KEY,  handled by code
             # "title": "title", handled by code

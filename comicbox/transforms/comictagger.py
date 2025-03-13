@@ -80,9 +80,9 @@ class ComictaggerTransform(
             "black_and_white": MONOCHROME_KEY,
             "maturity_rating": AGE_RATING_KEY,
             # "story_arcs": STORY_ARC_KEY,  (copy from comicinfo)
-            # "credits": "credits_list", (copy from cbi, with different tags)
+            # "credits": CREDITS_KEY, (copy from cbi, with different tags)
             # "pages": PAGES_KEY, (copy from comicinfo)
-            # "is_version_of": (copy from comet with different tags)
+            # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
         }
     )
     STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(

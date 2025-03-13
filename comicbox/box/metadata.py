@@ -3,9 +3,10 @@
 from collections.abc import MutableMapping
 from types import MappingProxyType
 
+from glom import assign
+
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
-from comicbox.dict_funcs import set_deep
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
@@ -55,7 +56,12 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         if (md := embedded_transform.from_comicbox(metadata)) and (
             embedded_value := embedded_schema.dumps(md)
         ):
-            set_deep(denormalized_metadata, schema_class.EMBED_KEY_PATH, embedded_value)
+            assign(
+                denormalized_metadata,
+                schema_class.EMBED_KEY_PATH,
+                embedded_value,
+                missing=dict,
+            )
 
     def _to_dict(
         self,

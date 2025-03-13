@@ -4,10 +4,10 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from glom import glom
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
-from comicbox.dict_funcs import get_deep
 from comicbox.fields.fields import (
     EMPTY_VALUES,
     StringField,
@@ -42,7 +42,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Add instance variables."""
         self._sort = sort
         # A tuple of dot delimited keys becomes a tuple of tuples.
-        self._sort_keys = tuple(tuple(sort_key.split(".")) for sort_key in sort_keys)
+        self._sort_keys = tuple(sort_keys)
         self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
@@ -76,7 +76,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
             key = []
             if self._sort_keys:
                 for key_path in self._sort_keys:
-                    sort_value = get_deep(value, key_path)
+                    sort_value = glom(value, key_path, default=None)
                     sort_value = self.get_tag_value(sort_value)
                     sort_value = "" if sort_value is None else sort_value
                     key.append(sort_value)

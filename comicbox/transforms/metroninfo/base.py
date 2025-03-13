@@ -10,11 +10,13 @@ from comicbox.identifiers import (
 )
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
+    COLLECTION_TITLE_KEY,
     DATE_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
+    STORE_DATE_KEY,
     SUMMARY_KEY,
     UPDATED_AT_KEY,
 )
@@ -35,9 +37,9 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
     TRANSFORM_MAP = frozenbidict(
         {
             "AgeRating": AGE_RATING_KEY,
-            "CollectionTitle": "collection_title",
+            "CollectionTitle": COLLECTION_TITLE_KEY,
             "CoverDate": DATE_KEY,
-            "StoreDate": "store_date",
+            "StoreDate": STORE_DATE_KEY,
             "Notes": NOTES_KEY,
             "Number": ISSUE_KEY,
             "PageCount": PAGE_COUNT_KEY,

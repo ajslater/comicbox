@@ -11,16 +11,19 @@ from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
+    COMMUNITY_RATING_KEY,
     COUNTRY_KEY,
     DAY_KEY,
     GENRES_KEY,
     ISSUE_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
+    MONOCHROME_KEY,
     MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
+    PROTAGONIST_KEY,
     SCAN_INFO_KEY,
     SERIES_GROUPS_KEY,
     SUMMARY_KEY,
@@ -147,8 +150,8 @@ class ComicInfoTransform(
             # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
             # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
             #
-            "BlackAndWhite": "monochrome",
-            "CommunityRating": "community_rating",
+            "BlackAndWhite": MONOCHROME_KEY,
+            "CommunityRating": COMMUNITY_RATING_KEY,
             "Country": COUNTRY_KEY,
             # "Count": ISSUE_COUNT_KEY, coded
             "Day": DAY_KEY,
@@ -156,7 +159,7 @@ class ComicInfoTransform(
             "Format": ORIGINAL_FORMAT_KEY,
             # "Imprint": IMPRINT_KEY, coded
             "LanguageISO": LANGUAGE_KEY,
-            "MainCharacterOrTeam": "protagonist",
+            "MainCharacterOrTeam": PROTAGONIST_KEY,
             "Manga": "manga",
             "Month": MONTH_KEY,
             "Notes": NOTES_KEY,

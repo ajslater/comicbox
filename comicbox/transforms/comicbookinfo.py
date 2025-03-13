@@ -11,14 +11,18 @@ from comicbox.schemas.comicbookinfo import (
     ComicBookInfoSchema,
 )
 from comicbox.schemas.comicbox_mixin import (
+    CRITICAL_RATING_KEY,
+    DAY_KEY,
     GENRES_KEY,
     ISSUE_KEY,
     ISSUE_NUMBER_KEY,
+    MONTH_KEY,
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
     TAGGER_KEY,
     TAGS_KEY,
     UPDATED_AT_KEY,
+    YEAR_KEY,
 )
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
@@ -45,11 +49,11 @@ class ComicBookInfoTransform(
             # "numberOfVolumes": "volume_count", coded
             # "numberOfIssues": ISSUE_COUNT_KEY, coded
             "pages": PAGE_COUNT_KEY,
-            "publicationDay": "day",
-            "publicationMonth": "month",
-            "publicationYear": "year",
+            "publicationDay": DAY_KEY,
+            "publicationMonth": MONTH_KEY,
+            "publicationYear": YEAR_KEY,
             # "publisher": "publisher", coded
-            "rating": "critical_rating",
+            "rating": CRITICAL_RATING_KEY,
             # "series": SERIES_KEY, coded
             # TAGS_KEY: TAGS_KEY, coded
             # "title": "title", coded
