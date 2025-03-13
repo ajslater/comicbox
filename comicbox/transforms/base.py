@@ -84,26 +84,34 @@ class BaseTransform:
         transform_map_in_place(self.TRANSFORM_MAP.inverse, data)
         return data
 
-    def string_list_to_dicts_one(self, data, from_key, to_key):
+    @staticmethod
+    def string_list_to_dicts_one(names):
         """Transform one sequence of strings to comicbox name objects."""
-        names = data.pop(from_key, None)
-        if names and (obj := {name: {} for name in names if name}):
-            data[to_key] = obj
+        return {name: {} for name in names if name}
 
     def string_lists_to_dicts(self, data: dict):
         """Copy string lists to named objects in comicbox."""
         for from_key, to_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            self.string_list_to_dicts_one(data, from_key, to_key)
+            names = data.pop(from_key, None)
+            if names:
+                obj = self.string_list_to_dicts_one(names)
+                if obj:
+                    data[to_key] = obj
         return data
+
+    @staticmethod
+    def name_dict_to_string_list_one(obj):
+        """Transform one comicbox name object to a string list."""
+        return [name for name in obj if name]
 
     def name_dicts_to_string_lists(self, data: dict):
         """Copy named objects in comicbox to string lists."""
         for to_key, from_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            obj = data.pop(from_key, {})
-            if string_list := [name for name in obj if name]:
-                if to_key not in self.LIST_KEYS:
-                    string_list = set(string_list)
-                data[to_key] = string_list
+            obj = data.pop(from_key, None)
+            if obj:
+                string_list= self.name_dict_to_string_list_one(obj)
+                if string_list:
+                    data[to_key] = string_list
         return data
 
     @classmethod
