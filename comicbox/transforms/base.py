@@ -8,6 +8,7 @@ from pprint import pformat
 from types import MappingProxyType
 
 from bidict import frozenbidict
+from glom import Assign, glom
 
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
@@ -71,40 +72,27 @@ class BaseTransform:
     # UNRAP and WRAP #
     ##################
 
-    def unwrap(self, data, wrap_tags=None) -> dict:
+    def unwrap(self, data, wrap_tags="") -> dict:
         """Unwrap the data from root tags."""
-        result = data
         if not wrap_tags:
             wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        try:
-            for tag in wrap_tags:
-                result = result[tag]
-        except KeyError:
-            pass
-        return result
+        return glom(data, wrap_tags, default=None)
 
-    def wrap(self, sub_data, wrap_tags=None, **_kwargs) -> dict:
+    def wrap(self, sub_data, wrap_tags="", **_kwargs) -> dict:
         """Wrap the data in root tags."""
         if not wrap_tags:
             wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        data = sub_data
-        for tag in reversed(wrap_tags):
-            data = {tag: data}
+        assign = Assign(wrap_tags, sub_data, missing=dict)
+        return glom({}, assign)
 
-        return data
-
-    def insert_sub_data(self, data, sub_data, wrap_tags=None):
+    def insert_sub_data(self, data, sub_data, wrap_tags=""):
         """Insert sub data into loaded data."""
         if not wrap_tags:
             wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
         if not wrap_tags:
             return data
-        sub_root = data
-        for tag in wrap_tags[:-1]:
-            sub_root = sub_root[tag]
-        sub_root = dict(sub_root)
-        sub_root[wrap_tags[-1]] = sub_data
-        return data
+        assign = Assign(wrap_tags, sub_data, missing=dict)
+        return glom(data, assign)
 
     ##############
     # TRANSFORMS #

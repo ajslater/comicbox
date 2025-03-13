@@ -343,5 +343,5 @@ class ComicboxSchemaMixin:
     """Mixin for comicbox schemas."""
 
     ROOT_TAG = "comicbox"
-    WRAP_TAGS = (ROOT_TAG,)
+    WRAP_TAGS = ROOT_TAG
     HAS_PAGE_COUNT = True

@@ -131,7 +131,7 @@ class BaseSchema(BaseSubSchema, ABC):
     ROOT_TAG = ""
     CONFIG_KEYS = frozenset()
     FILENAME = ""
-    WRAP_TAGS = ()
+    WRAP_TAGS = ""
     EMBED_KEY_PATH = ""
     HAS_PAGE_COUNT = False
     HAS_PAGES = False

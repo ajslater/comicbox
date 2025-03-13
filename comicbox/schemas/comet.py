@@ -89,7 +89,7 @@ class CoMetSchema(XmlSchema):
     CONFIG_KEYS = frozenset({"comet"})
     FILENAME = "CoMet.xml"
     ROOT_TAG = "comet"
-    WRAP_TAGS = (ROOT_TAG,)
+    WRAP_TAGS = ROOT_TAG
     HAS_PAGE_COUNT = True
 
     comet = Nested(CoMetSubSchema)

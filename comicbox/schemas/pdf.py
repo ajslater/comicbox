@@ -33,15 +33,13 @@ class MuPDFSubSchema(JsonSubSchema):
     producer = StringField()
     subject = StringSetField(as_string=True)
     title = StringField()
-    # not a mupdf field
-    embedded = StringField()
 
 
 class MuPDFSchema(JsonSchema):
     """muPDFSchema."""
 
     ROOT_TAG = "MuPDF"
-    WRAP_TAGS = (ROOT_TAG,)
+    WRAP_TAGS = ROOT_TAG
     CONFIG_KEYS = frozenset({"pdf", "mudpdf"})
     FILENAME = "mupdf.json"
     EMBED_KEY_PATH = f"{ROOT_TAG}.keywords"
@@ -51,8 +49,6 @@ class MuPDFSchema(JsonSchema):
 
 class PDFSubSchema(BaseSubSchema):
     """PDF Data Sub Schema."""
-
-    embedded = StringField()
 
     class Meta(BaseSubSchema.Meta):
         """Schema options."""
@@ -109,10 +105,10 @@ class PDFXmlSchema(XmlSchema):
     """PDF Schema."""
 
     ROOT_TAG = "x:xmpmeta"
-    WRAP_TAGS = (ROOT_TAG, "rdf:RDF", "rdf:Description")
+    WRAP_TAGS = f"{ROOT_TAG}.rdf:RDF.rdf:Description"
     CONFIG_KEYS = frozenset({"pdfxml"})
     FILENAME = "pdf.xml"
-    EMBED_KEY_PATH = f"{ROOT_TAG}.rdf:RDF.rdf:Description.pdf:Keywords"
+    EMBED_KEY_PATH = f"{WRAP_TAGS}.pdf:Keywords"
 
     class Meta(XmlSchema.Meta):
         """Schema options."""

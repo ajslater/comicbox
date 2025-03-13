@@ -5,6 +5,7 @@ from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
+from glom import Path as GlomPath
 from marshmallow import Schema
 from marshmallow.fields import Constant, Nested
 
@@ -82,7 +83,7 @@ class ComicBookInfoSchema(JsonSchema):
 
     ROOT_TAG = "ComicBookInfo/1.0"
     ROOT_KEY = "root"
-    WRAP_TAGS = (ROOT_TAG,)
+    WRAP_TAGS = GlomPath(ROOT_TAG)
     CONFIG_KEYS = frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"})
     FILENAME = "comic-book-info.json"
     TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")

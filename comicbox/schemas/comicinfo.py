@@ -234,7 +234,7 @@ class ComicInfoSchema(XmlSchema):
     """ComicInfo.xml Schema."""
 
     ROOT_TAG = "ComicInfo"
-    WRAP_TAGS = (ROOT_TAG,)
+    WRAP_TAGS = ROOT_TAG
     TAG_ORDER = (ROOT_TAG,)
     CONFIG_KEYS = frozenset(
         {"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}
