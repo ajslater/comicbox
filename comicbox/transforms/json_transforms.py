@@ -1,34 +1,27 @@
 """JSON Transformer."""
 
-from types import MappingProxyType
+from bidict import frozenbidict
 
-from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.transform_map import transform_map
 
 
 class JsonTransform(BaseTransform):
     """JSON Transformer."""
 
-    TOP_TAG_MAP = MappingProxyType({})
+    TOP_TAG_MAP = frozenbidict()
+    # TODO could wrap be just a case of top tag map?
 
-    def unwrap(self, data, wrap_tags=None) -> dict:
+    def unwrap(self, data, wrap_tags="") -> dict:
         """Move the top tags into the sub data."""
-        top_tags = {}
-        for key, tag in self.TOP_TAG_MAP.items():
-            value = data.get(tag)
-            if value not in EMPTY_VALUES:
-                top_tags[key] = value
+        top_tags = transform_map(self.TOP_TAG_MAP, data)
         sub_data = super().unwrap(data, wrap_tags=wrap_tags)
         sub_data.update(top_tags)
         return sub_data
 
-    def wrap(self, sub_data, wrap_tags=None, **_kwargs):
+    def wrap(self, sub_data, wrap_tags="", **_kwargs):
         """Add the last modified timestamp."""
-        top_tags = {}
-        for key, tag in self.TOP_TAG_MAP.items():
-            value = sub_data.get(key)
-            if value not in EMPTY_VALUES:
-                top_tags[tag] = value
+        top_tags = transform_map(self.TOP_TAG_MAP.inverse, sub_data)
         data = super().wrap(sub_data, wrap_tags=wrap_tags)
         data.update(top_tags)
         return data

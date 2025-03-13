@@ -4,6 +4,8 @@ from decimal import Decimal
 from math import ceil, floor
 from types import MappingProxyType
 
+from bidict import frozenbidict
+
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     ComicBookInfoSchema,
@@ -76,8 +78,11 @@ class ComicBookInfoTransform(
     ISSUE_TAG = "issue"
     TAGGER_TAG = "appID"
     UPDATED_AT_TAG = "lastModified"
-    TOP_TAG_MAP = MappingProxyType(
-        {TAGGER_KEY: TAGGER_TAG, UPDATED_AT_KEY: UPDATED_AT_TAG}
+    TOP_TAG_MAP = frozenbidict(
+        {
+            (TAGGER_TAG, None): (TAGGER_KEY, None),
+            (UPDATED_AT_TAG, None): (UPDATED_AT_KEY, None),
+        }
     )
 
     def parse_issue(self, data) -> dict:

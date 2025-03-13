@@ -1,6 +1,5 @@
 """Transform maps."""
 
-# TODO move into base
 from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 
