@@ -132,7 +132,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             if md and fmt:
                 schema_class = fmt.value.transform_class.SCHEMA_CLASS
                 if (
-                    embedded_source := get_deep(md, schema_class.EMBED_TAG)
+                    embedded_source := get_deep(md, schema_class.EMBED_KEY_PATH)
                 ) and EmbeddedStringSetField.is_embedded_metadata(embedded_source):
                     self.add_source(MetadataSources.ARCHIVE_EMBEDDED, embedded_source)
                 return MappingProxyType(md), fmt

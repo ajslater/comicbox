@@ -44,7 +44,7 @@ class MuPDFSchema(JsonSchema):
     WRAP_TAGS = (ROOT_TAG,)
     CONFIG_KEYS = frozenset({"pdf", "mudpdf"})
     FILENAME = "mupdf.json"
-    EMBED_TAG = (ROOT_TAG, "keywords")
+    EMBED_KEY_PATH = (ROOT_TAG, "keywords")
 
     MuPDF = Nested(MuPDFSubSchema)
 
@@ -112,7 +112,7 @@ class PDFXmlSchema(XmlSchema):
     WRAP_TAGS = (ROOT_TAG, "rdf:RDF", "rdf:Description")
     CONFIG_KEYS = frozenset({"pdfxml"})
     FILENAME = "pdf.xml"
-    EMBED_TAG = (ROOT_TAG, "rdf:RDF", "rdf:Description", "pdf:Keywords")
+    EMBED_KEY_PATH = (ROOT_TAG, "rdf:RDF", "rdf:Description", "pdf:Keywords")
 
     class Meta(XmlSchema.Meta):
         """Schema options."""

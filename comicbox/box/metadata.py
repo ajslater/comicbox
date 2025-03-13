@@ -46,7 +46,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         self, fmt: MetadataFormats, denormalized_metadata: MutableMapping, schema_class
     ):
         """Serialize metadata in the given format into a tag."""
-        if not schema_class.EMBED_TAG:
+        if not schema_class.EMBED_KEY_PATH:
             return
 
         embedded_transform = fmt.value.transform_class(self._path)
@@ -55,7 +55,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         if (md := embedded_transform.from_comicbox(metadata)) and (
             embedded_value := embedded_schema.dumps(md)
         ):
-            set_deep(denormalized_metadata, schema_class.EMBED_TAG, embedded_value)
+            set_deep(denormalized_metadata, schema_class.EMBED_KEY_PATH, embedded_value)
 
     def _to_dict(
         self,
