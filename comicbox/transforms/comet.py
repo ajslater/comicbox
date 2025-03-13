@@ -3,7 +3,6 @@
 from enum import Enum
 from types import MappingProxyType
 
-from bidict import frozenbidict
 from stringcase import camelcase
 
 from comicbox.schemas.comet import (
@@ -27,6 +26,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
@@ -131,7 +131,7 @@ class CoMetTransform(
 ):
     """CoMet transforms."""
 
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             "coverImage": COVER_IMAGE_KEY,
             # "date": "date", handled by code
@@ -151,11 +151,14 @@ class CoMetTransform(
             # "volume": VOLUME_KEY, handled by code
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
         {
             "character": CHARACTERS_KEY,
             "genre": GENRES_KEY,
         }
+    )
+    TRANSFORM_MAP = create_transform_map(
+        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)

@@ -3,8 +3,6 @@
 from enum import Enum
 from types import MappingProxyType
 
-from bidict import frozenbidict
-
 from comicbox.identifiers import GTIN_NID
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
@@ -24,6 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PROTAGONIST_KEY,
+    REVIEW_KEY,
     SCAN_INFO_KEY,
     SERIES_GROUPS_KEY,
     SUMMARY_KEY,
@@ -38,6 +37,7 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
@@ -142,7 +142,7 @@ class ComicInfoTransform(
 ):
     """ComicInfo.xml Schema."""
 
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             "AgeRating": AGE_RATING_KEY,
             # REPRINTS
@@ -167,7 +167,7 @@ class ComicInfoTransform(
             "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
             # "Pages": PAGES_KEY, coded
             # "Publisher": PUBLISHER_KEY coded
-            "Review": "review",
+            "Review": REVIEW_KEY,
             "ScanInformation": SCAN_INFO_KEY,
             # "Series": SERIES_KEY, coded
             # STORY_ARCS coded
@@ -181,7 +181,7 @@ class ComicInfoTransform(
             "Year": YEAR_KEY,
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
         {
             "Characters": CHARACTERS_KEY,
             "Genre": GENRES_KEY,
@@ -190,6 +190,9 @@ class ComicInfoTransform(
             "Tags": TAGS_KEY,
             "Teams": TEAMS_KEY,
         }
+    )
+    TRANSFORM_MAP = create_transform_map(
+        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
     )
     ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)

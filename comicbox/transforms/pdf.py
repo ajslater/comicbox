@@ -1,8 +1,7 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
 from logging import getLogger
-
-from bidict import frozenbidict
+from types import MappingProxyType
 
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -23,6 +22,7 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.title_mixin import TitleStoriesMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -34,7 +34,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
 
     SCHEMA_CLASS = PDFXmlSchema
     AUTHOR_TAG = "pdf:Author"
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             # "pdf:Author": coded
             "pdf:Creator": SCAN_INFO_KEY,  # original document creator
@@ -44,12 +44,13 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
         }
     )
     TAGS_TAG = "pdf:Keywords"
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
         {
             # TAGS_TAG: TAGS_KEY, specal code below
             "pdf:Subject": GENRES_KEY,
         }
     )
+    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     GROUP_KEYS = frozenset(
         {PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY, VOLUME_KEY, ISSUE_KEY}
     )
@@ -123,7 +124,7 @@ class MuPDFTransform(PDFXmlTransform):
     AUTHOR_TAG = "author"
     TITLE_TAG = "title"
     TAGS_TAG = "keywords"
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             # AUTHOR_TAG: CONTRIBUTORS_KEY,
             "creator": SCAN_INFO_KEY,  # original document creator
@@ -132,10 +133,13 @@ class MuPDFTransform(PDFXmlTransform):
             # "title": "title", coded
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
         {
             # "keywords": TAGS_KEY, code
             "subject": GENRES_KEY,
         }
+    )
+    TRANSFORM_MAP = create_transform_map(
+        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
     )
     LIST_KEYS = frozenset({TAGS_KEY})

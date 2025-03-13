@@ -4,8 +4,6 @@ from decimal import Decimal
 from math import ceil, floor
 from types import MappingProxyType
 
-from bidict import frozenbidict
-
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     ComicBookInfoSchema,
@@ -24,6 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
@@ -39,7 +38,7 @@ class ComicBookInfoTransform(
     """Comic Book Info transform."""
 
     SCHEMA_CLASS = ComicBookInfoSchema
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             "comments": SUMMARY_KEY,
             # "country": COUNTRY_KEY, same
@@ -60,12 +59,13 @@ class ComicBookInfoTransform(
             # "volume": VOLUME_KEY, coded
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
         {
             "genre": GENRES_KEY,
             "tags": TAGS_KEY,
         }
     )
+    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     CREDITS_TAG = CREDITS_TAG
     PUBLISHER_TAG = "publisher"
     SERIES_TAG = "series"

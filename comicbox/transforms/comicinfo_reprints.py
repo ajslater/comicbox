@@ -1,6 +1,6 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
 
-from bidict import frozenbidict
+from types import MappingProxyType
 
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
@@ -8,6 +8,7 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
 )
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.transform_map import transform_map
 
 ALTERNATE_SERIES_KEY = "alternate_series"
@@ -18,7 +19,7 @@ ALTERNATE_COUNT_TAG = "AlternateCount"
 ALTERNATE_NUMBER_TAG = "AlternateNumber"
 ALTERNATE_SERIES_TAG = "AlternateSeries"
 
-REPRINT_KEY_MAP = frozenbidict(
+_REPRINT_KEY_MAP = MappingProxyType(
     {
         ALTERNATE_SERIES_TAG: f"{SERIES_KEY}.name",
         ALTERNATE_NUMBER_TAG: ISSUE_KEY,
@@ -30,9 +31,11 @@ REPRINT_KEY_MAP = frozenbidict(
 class ComicInfoReprintsTransformMixin:
     """ComicInfo Reprints (Alternates) Transform Mixin."""
 
+    REPRINTS_TRANSFORM_MAP = create_transform_map(_REPRINT_KEY_MAP, {})
+
     def parse_reprints(self, data):
         """Parse reprints from alternate tags."""
-        if reprint := transform_map(REPRINT_KEY_MAP, data):
+        if reprint := transform_map(self.REPRINTS_TRANSFORM_MAP, data):
             old_reprints = data.get(REPRINTS_KEY, [])
             reprints = [*old_reprints, reprint]
             data[REPRINTS_KEY] = reprints
@@ -44,6 +47,6 @@ class ComicInfoReprintsTransformMixin:
         if not reprints:
             return data
         reprint = reprints[0]
-        update_dict = transform_map(REPRINT_KEY_MAP.inverse, reprint)
+        update_dict = transform_map(self.REPRINTS_TRANSFORM_MAP.inverse, reprint)
         data.update(update_dict)
         return data

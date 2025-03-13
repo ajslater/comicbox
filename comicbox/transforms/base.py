@@ -12,7 +12,7 @@ from bidict import frozenbidict
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
-from comicbox.transforms.transform_map import transform_map_in_place
+from comicbox.transforms.transform_map import transform_map
 
 LOG = getLogger(__name__)
 
@@ -27,12 +27,38 @@ def name_dict_to_string_list_one(obj):
     return [name for name in obj if name]
 
 
+def _create_transform_map(
+    key_map: Mapping, to_format_func=None, to_comicbox_func=None
+) -> MappingProxyType:
+    return MappingProxyType(
+        {
+            (format_key, to_format_func): (comicbox_key, to_comicbox_func)
+            for format_key, comicbox_key in key_map.items()
+        }
+    )
+
+
+def create_transform_map(
+    key_map: Mapping, strings_to_named_objs_key_map: Mapping
+) -> frozenbidict:
+    """Create the transform map."""
+    return frozenbidict(
+        {
+            **_create_transform_map(key_map),
+            **_create_transform_map(
+                strings_to_named_objs_key_map,
+                name_dict_to_string_list_one,
+                string_list_to_dicts_one,
+            ),
+        }
+    )
+
+
 class BaseTransform:
     """Base Transform methods."""
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict()
     LIST_KEYS = frozenset()
     ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
@@ -86,26 +112,11 @@ class BaseTransform:
 
     def transform_keys_to(self, data: dict):
         """Copy keys to comicbox keys."""
-        transform_map_in_place(self.TRANSFORM_MAP, data)
-        return data
+        return transform_map(self.TRANSFORM_MAP, data, in_place=True)
 
     def transform_keys_from(self, data: dict):
         """Copy keys from comicbox keys."""
-        transform_map_in_place(self.TRANSFORM_MAP.inverse, data)
-        return data
-
-    def string_lists_to_dicts(self, data: dict):
-        """Copy string lists to named objects in comicbox."""
-        transform_map_in_place(
-            self.STRINGS_TO_NAMED_OBJS_MAP, data, string_list_to_dicts_one
-        )
-        return data
-
-    def name_dicts_to_string_lists(self, data: dict):
-        """Copy named objects in comicbox to string lists."""
-        transform_map_in_place(
-            self.STRINGS_TO_NAMED_OBJS_MAP.inverse, data, name_dict_to_string_list_one
-        )
+        return transform_map(self.TRANSFORM_MAP.inverse, data, in_place=True)
 
     @classmethod
     def add_credit_role_to_comicbox_credits(
@@ -119,9 +130,9 @@ class BaseTransform:
         role_name = cls.ROLE_SPELLING.get(role_name.lower(), role_name)
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
-    TO_COMICBOX_PRE_TRANSFORM = (transform_keys_to, string_lists_to_dicts)
+    TO_COMICBOX_PRE_TRANSFORM = (transform_keys_to,)
     TO_COMICBOX_POST_TRANSFORM = ()
-    FROM_COMICBOX_PRE_TRANSFORM = (transform_keys_from, name_dicts_to_string_lists)
+    FROM_COMICBOX_PRE_TRANSFORM = (transform_keys_from,)
     FROM_COMICBOX_POST_TRANSFORM = ()
 
     ##################################

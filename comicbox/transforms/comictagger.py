@@ -1,5 +1,7 @@
 """Comictagger transform to and from Comicbox format."""
 
+from types import MappingProxyType
+
 from bidict import frozenbidict
 
 from comicbox.identifiers import (
@@ -37,6 +39,7 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.schemas.identifier import NSS_KEY
+from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
@@ -67,7 +70,7 @@ class ComictaggerTransform(
 
     SCHEMA_CLASS = ComictaggerSchema
 
-    TRANSFORM_MAP = frozenbidict(
+    _TRANSFORM_KEY_MAP = MappingProxyType(
         {
             # "tagOrigin": TAG_ORIGIN_KEY, code
             # "issueId": ISSUE_ID_KEY, code
@@ -83,7 +86,7 @@ class ComictaggerTransform(
             # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
+    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
         {
             "characters": CHARACTERS_KEY,
             "genres": GENRES_KEY,
@@ -93,6 +96,7 @@ class ComictaggerTransform(
             "teams": TEAMS_KEY,
         }
     )
+    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     PAGES_TAG = PAGES_TAG
     PAGES_SUB_TAG = ""
