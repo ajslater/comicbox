@@ -69,7 +69,7 @@ def test_cli_filetype():
 
 SOURCE_OUTPUT = """
  ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Source Filename tests/test_files/empty.cbz: as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ ⎯ Source Filename tests/test_files/empty.cbz as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 empty.cbz
 """
 
@@ -86,7 +86,7 @@ def test_cli_source():
 
 LOADED_OUTPUT = """
  ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Loaded Filename tests/test_files/empty.cbz: as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ ⎯ Loaded Filename tests/test_files/empty.cbz as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 comicbox:
   ext: cbz
   series: empty

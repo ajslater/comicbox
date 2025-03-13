@@ -105,9 +105,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             )
             if formats and (comment := self._get_comment()):
                 comment = comment.decode(errors="replace")
-                source_data_list = [
-                    SourceData(comment, path="(comment)", from_archive=True)
-                ]
+                source_data_list = [SourceData(comment, from_archive=True)]
         except Exception as exc:
             LOG.warning(f"Error reading archive comment from {self._path}: {exc}")
         return source_data_list

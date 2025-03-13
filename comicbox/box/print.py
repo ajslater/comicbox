@@ -12,7 +12,6 @@ from rich.table import Table
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.print import PrintPhases
-from comicbox.schemas.comicbox_mixin import PAGES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from comicbox.sources import MetadataSources
@@ -21,7 +20,6 @@ from comicbox.version import VERSION
 _SOURCES_LOADED_NORMALIZED = frozenset(
     {PrintPhases.SOURCE, PrintPhases.LOADED, PrintPhases.NORMALIZED}
 )
-_ALLOWED_NULL_KEYS = frozenset({PAGES_KEY})
 
 
 class ComicboxPrintMixin(ComicboxMetadataMixin):
@@ -70,6 +68,14 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             return
         self._print(VERSION)
 
+    def print_file_header(self):
+        """Print header for this Archive's path."""
+        if not self._path:
+            return
+        title = self._FILE_RULE_HEAD + str(self._path)
+        rule = Rule(title, align="left", characters=self._FILE_RULE_CHAR)
+        self._CONSOLE.print(rule)
+
     def _print_file_type(self):
         """Print the file type."""
         if PrintPhases.FILE_TYPE not in self._config.print:
@@ -95,24 +101,16 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             table.add_row(index, name)
         self._CONSOLE.print(table)
 
-    def print_file_header(self):
-        """Print header for this Archive's path."""
-        if not self._path:
-            return
-        title = self._FILE_RULE_HEAD + str(self._path)
-        rule = Rule(title, align="left", characters=self._FILE_RULE_CHAR)
-        self._CONSOLE.print(rule)
-
-    def _add_source_to_title(self, title, source, source_data):
-        path = str(self._path) + ":" if source.value.from_archive else ""
+    def _add_source_to_title(self, title, source, source_data, format_preposition="as"):
+        path = str(self._path) if source.value.from_archive else ""
         if source_data.path:
-            path += str(source_data.path)
+            path += f":{source_data.path}"
+        title_parts = [title]
         if path:
-            title += " " + path
+            title_parts.append(path)
         if source_data.fmt:
-            title += " as " + source_data.fmt.value.label
-
-        return title
+            title_parts.extend([format_preposition, source_data.fmt.value.label])
+        return " ".join(title_parts)
 
     def _print_sources(self, source):
         """Print source metadtata."""
@@ -168,7 +166,10 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             str_data = str_data.removesuffix("\n")
             syntax = self._syntax(str_data, "yaml")
             title = self._add_source_to_title(
-                f"Normalized {source.value.label}", source, normalized_md
+                f"Normalized {source.value.label}",
+                source,
+                normalized_md,
+                format_preposition="from",
             )
 
             self.print_section(title, syntax)
@@ -214,7 +215,6 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             PrintPhases.METADATA in self._config.print
             or PrintPhases.METADATA_OLD in self._config.print
         ):
-            # if len(self._config.print) > 1:
             md = self.to_string()
             syntax = self._syntax(md, "yaml")
             self.print_section("Merged Metadata", syntax)
