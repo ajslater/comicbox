@@ -181,7 +181,7 @@ class ComicInfoTransform(
             "Year": YEAR_KEY,
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             "Characters": CHARACTERS_KEY,
             "Genre": GENRES_KEY,

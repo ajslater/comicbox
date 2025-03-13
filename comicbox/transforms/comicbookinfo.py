@@ -60,7 +60,7 @@ class ComicBookInfoTransform(
             # "volume": VOLUME_KEY, coded
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             "genre": GENRES_KEY,
             "tags": TAGS_KEY,

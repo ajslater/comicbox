@@ -17,12 +17,22 @@ from comicbox.transforms.transform_map import transform_map_in_place
 LOG = getLogger(__name__)
 
 
+def string_list_to_dicts_one(names):
+    """Transform one sequence of strings to comicbox name objects."""
+    return {name: {} for name in names if name}
+
+
+def name_dict_to_string_list_one(obj):
+    """Transform one comicbox name object to a string list."""
+    return [name for name in obj if name]
+
+
 class BaseTransform:
     """Base Transform methods."""
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType({})
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict()
     LIST_KEYS = frozenset()
     ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
@@ -84,35 +94,18 @@ class BaseTransform:
         transform_map_in_place(self.TRANSFORM_MAP.inverse, data)
         return data
 
-    @staticmethod
-    def string_list_to_dicts_one(names):
-        """Transform one sequence of strings to comicbox name objects."""
-        return {name: {} for name in names if name}
-
     def string_lists_to_dicts(self, data: dict):
         """Copy string lists to named objects in comicbox."""
-        for from_key, to_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            names = data.pop(from_key, None)
-            if names:
-                obj = self.string_list_to_dicts_one(names)
-                if obj:
-                    data[to_key] = obj
+        transform_map_in_place(
+            self.STRINGS_TO_NAMED_OBJS_MAP, data, string_list_to_dicts_one
+        )
         return data
-
-    @staticmethod
-    def name_dict_to_string_list_one(obj):
-        """Transform one comicbox name object to a string list."""
-        return [name for name in obj if name]
 
     def name_dicts_to_string_lists(self, data: dict):
         """Copy named objects in comicbox to string lists."""
-        for to_key, from_key in self.STRINGS_TO_NAMED_OBJS_MAP.items():
-            obj = data.pop(from_key, None)
-            if obj:
-                string_list= self.name_dict_to_string_list_one(obj)
-                if string_list:
-                    data[to_key] = string_list
-        return data
+        transform_map_in_place(
+            self.STRINGS_TO_NAMED_OBJS_MAP.inverse, data, name_dict_to_string_list_one
+        )
 
     @classmethod
     def add_credit_role_to_comicbox_credits(

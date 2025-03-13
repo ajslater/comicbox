@@ -151,7 +151,7 @@ class CoMetTransform(
             # "volume": VOLUME_KEY, handled by code
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             "character": CHARACTERS_KEY,
             "genre": GENRES_KEY,

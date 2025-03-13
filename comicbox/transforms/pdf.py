@@ -1,7 +1,6 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
 from logging import getLogger
-from types import MappingProxyType
 
 from bidict import frozenbidict
 
@@ -45,7 +44,7 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
         }
     )
     TAGS_TAG = "pdf:Keywords"
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             # TAGS_TAG: TAGS_KEY, specal code below
             "pdf:Subject": GENRES_KEY,
@@ -133,7 +132,7 @@ class MuPDFTransform(PDFXmlTransform):
             # "title": "title", coded
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             # "keywords": TAGS_KEY, code
             "subject": GENRES_KEY,

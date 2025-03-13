@@ -1,7 +1,5 @@
 """Comictagger transform to and from Comicbox format."""
 
-from types import MappingProxyType
-
 from bidict import frozenbidict
 
 from comicbox.identifiers import (
@@ -85,7 +83,7 @@ class ComictaggerTransform(
             # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
         }
     )
-    STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
+    STRINGS_TO_NAMED_OBJS_MAP = frozenbidict(
         {
             "characters": CHARACTERS_KEY,
             "genres": GENRES_KEY,
