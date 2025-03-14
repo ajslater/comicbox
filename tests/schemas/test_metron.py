@@ -356,7 +356,7 @@ READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)
 WRITE_METRON_STR = unparse_strinfigy_decimals(WRITE_METRON_DICT)
 
 METRON_TESTER = TestParser(
-    MetadataFormats.METRON,
+    MetadataFormats.METRON_INFO,
     METRON_CBZ_FN,
     READ_METADATA,
     READ_METRON_DICT,
@@ -376,7 +376,7 @@ SIMPLE_WRITE_METRON_STR = unparse_strinfigy_decimals(SIMPLE_WRITE_METRON_DICT)
 
 
 SIMPLE_METRON_TESTER = TestParser(
-    MetadataFormats.METRON,
+    MetadataFormats.METRON_INFO,
     METRON_CBZ_FN,
     READ_METADATA,
     SIMPLE_READ_METRON_DICT,

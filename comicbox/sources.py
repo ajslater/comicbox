@@ -28,9 +28,9 @@ class MetadataSources(Enum):
         "Config",
         formats=(
             MetadataFormats.COMICBOX_YAML,
-            MetadataFormats.METRON,
-            MetadataFormats.CIX,
-            MetadataFormats.CBI,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.COMET,
             MetadataFormats.PDF,
             MetadataFormats.COMICTAGGER,
@@ -44,7 +44,10 @@ class MetadataSources(Enum):
         "Archive Header", path=True, formats=(MetadataFormats.PDF,), from_archive=True
     )
     ARCHIVE_COMMENT = MetadataSource(
-        "Archive Comment", path=True, formats=(MetadataFormats.CBI,), from_archive=True
+        "Archive Comment",
+        path=True,
+        formats=(MetadataFormats.COMIC_BOOK_INFO,),
+        from_archive=True,
     )
     ARCHIVE_FILE = MetadataSource(
         "Archive File",
@@ -53,10 +56,10 @@ class MetadataSources(Enum):
             MetadataFormats.COMICBOX_YAML,
             MetadataFormats.COMICBOX_JSON,
             MetadataFormats.COMICBOX_CLI_YAML,
-            MetadataFormats.METRON,
-            MetadataFormats.CIX,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
             MetadataFormats.COMET,
-            MetadataFormats.CBI,
+            MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.COMICTAGGER,
         ),
         from_archive=True,
@@ -67,8 +70,8 @@ class MetadataSources(Enum):
         formats=(
             MetadataFormats.COMICBOX_CLI_YAML,
             MetadataFormats.COMICBOX_JSON,
-            MetadataFormats.METRON,
-            MetadataFormats.CIX,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
             MetadataFormats.FILENAME,
         ),
         from_archive=True,
@@ -78,9 +81,9 @@ class MetadataSources(Enum):
         "Comicbox CLI",
         formats=(
             MetadataFormats.COMICBOX_CLI_YAML,
-            MetadataFormats.METRON,
-            MetadataFormats.CIX,
-            MetadataFormats.CBI,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.PDF,
             MetadataFormats.COMET,
             MetadataFormats.COMICTAGGER,
@@ -92,9 +95,9 @@ class MetadataSources(Enum):
             MetadataFormats.COMICBOX_CLI_YAML,
             MetadataFormats.COMICBOX_YAML,
             MetadataFormats.COMICBOX_JSON,
-            MetadataFormats.METRON,
-            MetadataFormats.CIX,
-            MetadataFormats.CBI,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.COMET,
             MetadataFormats.PDF,
             MetadataFormats.PDF_XML,

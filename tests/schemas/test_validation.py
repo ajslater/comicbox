@@ -173,7 +173,7 @@ WRITE_CIX_STR = xmltodict.unparse(
 )
 
 CIX_TESTER = TestParser(
-    MetadataFormats.CIX,
+    MetadataFormats.COMIC_INFO,
     "",
     READ_METADATA,
     READ_CIX_DICT,

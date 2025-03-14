@@ -78,14 +78,14 @@ class MetadataFormats(Enum):
         CoMetTransform,
         lexer="xml",
     )
-    CBI = MetadataFormat(
+    COMIC_BOOK_INFO = MetadataFormat(
         "ComicBookInfo",
         frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"}),
         "comic-book-info.json",
         ComicBookInfoTransform,
         lexer="json",
     )
-    CIX = MetadataFormat(
+    COMIC_INFO = MetadataFormat(
         "ComicInfo",
         frozenset({"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}),
         "ComicInfo.xml",  # Comictagger doesn't read without CapCase
@@ -93,7 +93,7 @@ class MetadataFormats(Enum):
         has_pages=True,
         lexer="xml",
     )
-    METRON = MetadataFormat(
+    METRON_INFO = MetadataFormat(
         "MetronInfo",
         frozenset({"metron", "metroninfo", "mi", "mix"}),
         "MetronInfo.xml",

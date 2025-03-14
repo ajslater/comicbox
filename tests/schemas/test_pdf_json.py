@@ -111,17 +111,17 @@ def test_pdf_from_file():
 
 def test_pdf_to_dict():
     """Test metadata export to dict."""
-    PDF_TESTER.test_to_dict(embed_fmt=MetadataFormats.CIX)
+    PDF_TESTER.test_to_dict(embed_fmt=MetadataFormats.COMIC_INFO)
 
 
 def test_pdf_to_string():
     """Test metadata export to string."""
-    PDF_TESTER.test_to_string(embed_fmt=MetadataFormats.CIX)
+    PDF_TESTER.test_to_string(embed_fmt=MetadataFormats.COMIC_INFO)
 
 
 def test_pdf_to_file():
     """Test metadata export to file."""
-    PDF_TESTER.test_to_file(embed_fmt=MetadataFormats.CIX)
+    PDF_TESTER.test_to_file(embed_fmt=MetadataFormats.COMIC_INFO)
 
 
 def test_pdf_read():

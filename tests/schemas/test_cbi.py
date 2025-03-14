@@ -73,7 +73,7 @@ CBI_DICT = MappingProxyType(
 CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=False, indent=2)
 
 CBI_TESTER = TestParser(
-    MetadataFormats.CBI,
+    MetadataFormats.COMIC_BOOK_INFO,
     CBI_CBR_FN,
     METADATA,
     CBI_DICT,
