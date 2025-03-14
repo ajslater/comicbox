@@ -144,7 +144,9 @@ def _transform_keys_to_formats(config):
 
 def _deduplicate_delete_keys(config):
     """Transform delete keys to a set."""
-    config.delete_keys = frozenset(config.delete_keys)
+    config.delete_keys = tuple(
+        sorted({kp.removeprefix("comicbox.") for kp in config.delete_keys})
+    )
 
 
 def _parse_print(config):

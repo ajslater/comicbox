@@ -24,7 +24,7 @@ from comicbox.identifiers import (
     COMICVINE_NID,
     create_identifier,
 )
-from comicbox.merge import ADD_UNIQUE_MERGER, POP_NONE_MERGER, REPLACE_MERGER
+from comicbox.merge import ADD_UNIQUE_MERGER, REPLACE_MERGER
 from comicbox.schemas.comicbox_mixin import (
     IDENTIFIERS_KEY,
     ISSUE_KEY,
@@ -61,6 +61,7 @@ _COMICBOX_FORMATS = frozenset(
         MetadataFormats.COMICBOX_JSON,
     }
 )
+_GLOM_LIST_RE = re.compile(r"\.[0-9]+[\.$]")
 
 
 class ComputeSchemaAttribute(Enum):
@@ -77,7 +78,7 @@ class ComputedData:
     label: str
     metadata: Mapping | None
     allowed_null_keys: frozenset[str] = frozenset()
-    merger: Merger = ADD_UNIQUE_MERGER
+    merger: Merger | None = ADD_UNIQUE_MERGER
 
 
 class ComicboxComputedMixin(ComicboxComputedNotesMixin):
@@ -408,29 +409,10 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         return stamp_md
 
-    def _set_delete_keys_sequence(self, value):
-        delete_list = []
-        for element in value:
-            if isinstance(element, Mapping):
-                delete_element = self._get_delete_keys(element)
-                if delete_element:
-                    delete_list.append(delete_element)
-        return type(value)(delete_list)
-
-    def _get_delete_keys(self, sub_data: Mapping):
-        delete_dict = {}
-        if not self._config.delete_keys:
-            return delete_dict
-        for key, value in sub_data.items():
-            if key in self._config.delete_keys:
-                delete_dict[key] = None
-            elif isinstance(value, Mapping):
-                if delete_tree := self._get_delete_keys(value):
-                    delete_dict[key] = delete_tree
-            elif isinstance(value, list | tuple | set | frozenset):  # noqa: SIM102
-                if delete_squence := self._set_delete_keys_sequence(value):
-                    delete_dict[key] = delete_squence
-        return delete_dict
+    def _get_delete_keys(self, _sub_data: Mapping):
+        if self._config.delete_keys:
+            return {ComicboxSchemaMixin.ROOT_TAG: self._config.delete_keys}
+        return None
 
     _COMPUTED_ACTIONS = MappingProxyType(
         {
@@ -454,7 +436,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             "from scan_info": (_get_computed_from_scan_info, ADD_UNIQUE_MERGER, ()),
             "from tag_origin": (_get_computed_from_tag_origin, ADD_UNIQUE_MERGER, ()),
             "Tagger Stamp": (_get_tagger_stamp, REPLACE_MERGER, ()),
-            "Delete Keys": (_get_delete_keys, POP_NONE_MERGER, (ALL_NONE_KEYS,)),
+            "Delete Keys": (_get_delete_keys, None, (ALL_NONE_KEYS,)),
         }
     )
 

@@ -323,7 +323,7 @@ def test_cli_action_delete_keys():
             str(TMP_MULTI_PATH),
             *MD_ARGS,
             "--delete-keys",
-            "age_rating,Captain Arc,roles,pages,series",
+            "age_rating,arcs.Captain Arc,credits.Joe Orlando CBI.roles,credits.Wally Wood CBI.roles,pages,series,reprints.0.series",
             "-w",
             "cix",
             "-GN",

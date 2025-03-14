@@ -1,9 +1,10 @@
 """Get Metadata mixin."""
 
 from collections.abc import MutableMapping
+from logging import getLogger
 from types import MappingProxyType
 
-from glom import assign
+from glom import Assign, Delete, glom
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
@@ -11,9 +12,21 @@ from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
 
+LOG = getLogger(__name__)
+
 
 class ComicboxMetadataMixin(ComicboxComputedMixin):
     """Get Metadata mixin."""
+
+    def _set_computed_merged_metadata_delete(self, merged_md):
+        """Delete keys with glom."""
+        sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
+        for key_path in self._config.delete_keys:
+            try:
+                delete = Delete(key_path, ignore_missing=True)
+                glom(sub_data, delete)
+            except Exception as exc:
+                LOG.warning(f"Could not delete key path {key_path}: {exc}")
 
     def _set_computed_merged_metadata(self):
         merged_md = self.get_merged_metadata()
@@ -22,14 +35,14 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
 
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
-            if computed_sub_data:
+            if computed_sub_data and computed_data.merger:
                 merge_metadata(
                     merged_md,
                     computed_data.metadata,
                     self._config,
                     computed_data.merger,
                 )
-
+        self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
 
     def _get_metadata(self) -> MappingProxyType:
@@ -56,12 +69,12 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         if (md := embedded_transform.from_comicbox(metadata)) and (
             embedded_value := embedded_schema.dumps(md)
         ):
-            assign(
-                denormalized_metadata,
+            assign = Assign(
                 schema_class.EMBED_KEY_PATH,
                 embedded_value,
                 missing=dict,
             )
+            glom(denormalized_metadata, assign)
 
     def _to_dict(
         self,

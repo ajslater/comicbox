@@ -44,6 +44,15 @@ Complex [cyan]--metadata[/cyan] Examples:
     style="argparse.text",
 )
 
+DELETE_KEYS_EXAMPLES = Styled(
+    """
+Glom key paths are dot delimited. Numbers are list indexes. This deletes three comma delimited nested key paths:
+
+  [cyan]-D[/cyan] [dark_cyan]series,arcs.Across the Multiverse.number,reprints.0.series[/dark_cyan]
+    """,
+    style="argparse.text",
+)
+
 
 class CSVAction(Action):
     """Parse comma deliminated sequences."""
@@ -168,7 +177,7 @@ def _add_option_group(parser):
         "-D",
         "--delete-keys",
         action=CSVAction,
-        help="Delete a comma delimited list of comicbox keys entirely from the final metadata.",
+        help="Delete a comma delimited list of comicbox glom key paths entirely from the final metadata. Example below.",
     )
     option_group.add_argument(
         "-d",
@@ -335,6 +344,7 @@ def get_args(params=None) -> Namespace:
     epilog = Group(
         _get_help_print_phases_table(),
         METADATA_EXAMPLES,
+        DELETE_KEYS_EXAMPLES,
         _get_help_format_table(),
     )
 
