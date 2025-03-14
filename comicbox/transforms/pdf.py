@@ -57,7 +57,6 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     GROUP_TAG_DELIMETER = ":"
     TITLE_TAG = "pdf:Title"
     TITLE_STORIES_DELIMITER = ";"
-    LIST_KEYS = frozenset({TAGS_KEY})
     AUTHOR_VALUES = frozenset(
         {
             enum.value

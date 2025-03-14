@@ -60,7 +60,6 @@ class BaseTransform:
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
-    LIST_KEYS = frozenset()
     ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
     def __init__(self, path=None):
