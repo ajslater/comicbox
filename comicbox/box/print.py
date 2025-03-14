@@ -196,7 +196,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         self.print_section(title, syntax)
 
     def _print_computed(self, schema):
-        """Print parsed metadata."""
+        """Print computed metadata."""
         if PrintPhases.COMPUTED not in self._config.print:
             return
         computed = self.get_computed_metadata()
