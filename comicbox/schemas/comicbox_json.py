@@ -17,8 +17,6 @@ class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSubSchemaMixin):
 class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     """Json Schema."""
 
-    CONFIG_KEYS = frozenset({"cb", "comicbox", "json"})
-    FILENAME = "comicbox.json"
     TAG_ORDER = ("appID", ComicboxSchemaMixin.ROOT_TAG, "schema")
 
     appID = StringField()  # noqa: N815

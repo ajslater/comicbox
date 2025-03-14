@@ -305,13 +305,13 @@ class TestParser:
         self.reference_path = TEST_FILES_DIR / self.test_fn
         if export_fn is None:
             self.reference_export_path = (
-                TEST_METADATA_DIR / self.schema.FILENAME.lower()
+                TEST_METADATA_DIR / self.fmt.value.filename.lower()
             )
         else:
             self.reference_export_path = TEST_METADATA_DIR / export_fn
         self.read_config = read_config
         self.write_config = write_config
-        self.export_path = self.tmp_dir / self.schema.FILENAME
+        self.export_path = self.tmp_dir / self.fmt.value.filename
 
     def setup_method(self):
         """Create the tmp dir."""

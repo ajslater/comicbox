@@ -80,9 +80,6 @@ class FilenameSubSchema(BaseSubSchema):
 class FilenameSchema(ComicboxSchemaMixin, BaseSchema):
     """File name schema."""
 
-    CONFIG_KEYS = frozenset({"fn", "filename"})
-    FILENAME = "comicbox-filename.txt"
-
     comicbox = Nested(FilenameSubSchema)
 
     class Meta(BaseSchema.Meta):

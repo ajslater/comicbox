@@ -84,8 +84,6 @@ class ComicBookInfoSchema(JsonSchema):
     ROOT_TAG = "ComicBookInfo/1.0"
     ROOT_KEY = "root"
     WRAP_TAGS = GlomPath(ROOT_TAG)
-    CONFIG_KEYS = frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"})
-    FILENAME = "comic-book-info.json"
     TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")
     HAS_PAGE_COUNT = True
 

@@ -21,8 +21,8 @@ from tests.util import TestParser, create_write_dict, create_write_metadata, get
 TEST_FILES_PATH = Path("tests/test_files")
 FN = "yaml.cbz"
 TMP_DIR = get_tmp_dir(__file__)
-TEST_EXPORT_PATH = TMP_DIR / ComicboxYamlSchema.FILENAME
-YAML_PATH = TEST_METADATA_DIR / ComicboxYamlSchema.FILENAME
+TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
+YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 
 READ_CONFIG = Namespace(comicbox=Namespace(read=["yaml"], compute_pages=False))
 WRITE_CONFIG = Namespace(

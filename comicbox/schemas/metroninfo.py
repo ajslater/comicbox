@@ -402,8 +402,6 @@ class MetronInfoSchema(XmlSchema):
 
     ROOT_TAG = "MetronInfo"
     WRAP_TAGS = ROOT_TAG
-    CONFIG_KEYS = frozenset({"metron", "metroninfo", "mi", "mix"})
-    FILENAME = "MetronInfo.xml"
     HAS_PAGE_COUNT = True
 
     MetronInfo = Nested(MetronInfoSubSchema)

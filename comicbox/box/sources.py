@@ -15,7 +15,7 @@ LOG = getLogger(__name__)
 
 FILENAME_FORMAT_MAP = MappingProxyType(
     {
-        fmt.value.transform_class.SCHEMA_CLASS.FILENAME.lower(): fmt
+        fmt.value.filename.lower(): fmt
         for fmt in MetadataSources.ARCHIVE_FILE.value.formats
     }
 )

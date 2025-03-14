@@ -6,9 +6,6 @@ from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 class ComicboxCLISchema(ComicboxYamlSchema):
     """Comicbox CLI YAML Schema."""
 
-    CONFIG_KEYS = frozenset({"cli"})
-    FILENAME = "comicbox-cli.yaml"
-
     class Meta(ComicboxYamlSchema.Meta):
         """Schema Options."""
 

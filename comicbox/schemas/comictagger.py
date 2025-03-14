@@ -127,8 +127,6 @@ class ComictaggerSchema(JsonSchema):
 
     ROOT_TAG = "comictagger"
     WRAP_TAGS = ROOT_TAG
-    CONFIG_KEYS = frozenset({"comictagger", "ct"})
-    FILENAME = "comictagger.json"
     HAS_PAGE_COUNT = True
     HAS_PAGES = True
 

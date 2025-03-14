@@ -13,7 +13,7 @@ _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
 _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
     {
-        fmt.value.transform_class.SCHEMA_CLASS.FILENAME.lower()
+        fmt.value.filename.lower()
         for fmt in MetadataSources.ARCHIVE_FILE.value.formats
         if fmt.value.enabled
     }

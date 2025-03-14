@@ -16,7 +16,4 @@ class ComicboxYamlSubSchema(ComicboxSubSchemaMixin, YamlSubSchema):
 class ComicboxYamlSchema(ComicboxSchemaMixin, YamlSchema):
     """YAML schema."""
 
-    FILENAME = "comicbox.yaml"
-    CONFIG_KEYS = frozenset({"yaml"})
-
     comicbox = Nested(ComicboxYamlSubSchema)

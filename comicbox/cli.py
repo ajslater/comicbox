@@ -137,7 +137,7 @@ def _get_help_format_table():
         if not fmt.value.enabled:
             continue
         label = fmt.value.label
-        keys = ", ".join(sorted(fmt.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS))
+        keys = ", ".join(sorted(fmt.value.config_keys))
         table.add_row(label, keys)
 
     return table

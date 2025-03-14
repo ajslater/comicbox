@@ -236,10 +236,6 @@ class ComicInfoSchema(XmlSchema):
     ROOT_TAG = "ComicInfo"
     WRAP_TAGS = ROOT_TAG
     TAG_ORDER = (ROOT_TAG,)
-    CONFIG_KEYS = frozenset(
-        {"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}
-    )
-    FILENAME = "ComicInfo.xml"  # Comictagger doesn't read without CapCase
     HAS_PAGE_COUNT = True
     HAS_PAGES = True
 

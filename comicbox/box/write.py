@@ -80,7 +80,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             if not denormalized_metadata:
                 continue
             if fmt in MetadataSources.ARCHIVE_FILE.value.formats:
-                files[schema.FILENAME] = schema.dumps(denormalized_metadata)
+                files[fmt.value.filename] = schema.dumps(denormalized_metadata)
             elif fmt in MetadataSources.ARCHIVE_COMMENT:
                 comment = schema.dumps(denormalized_metadata)
                 comment = comment.encode(errors="replace")
@@ -129,7 +129,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         dest_path = Path(dest_path)
         if metadata is None:
             metadata = self._get_metadata()
-        fn = fmt.value.transform_class.SCHEMA_CLASS.FILENAME
+        fn = fmt.value.filename
         path = dest_path / fn
         try:
             schema, denormalized_metadata = self._to_dict(fmt, embed_fmt)

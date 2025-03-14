@@ -28,7 +28,9 @@ class MetadataFormat:
     """Metada format attributes."""
 
     label: str
-    transform_class: type[BaseTransform] = ComicboxJsonTransform
+    config_keys: frozenset
+    filename: str
+    transform_class: type[BaseTransform]
     has_pages: bool = False
     lexer: str = "yaml"
     enabled: bool = True
@@ -41,59 +43,84 @@ class MetadataFormats(Enum):
 
     FILENAME = MetadataFormat(
         "Filename",
+        frozenset({"fn", "filename"}),
+        "comicbox-filename.txt",
         FilenameTransform,
     )
     COMICTAGGER = MetadataFormat(
         "ComicTagger",
+        frozenset({"comictagger", "ct"}),
+        "comictagger.json",
         ComictaggerTransform,
         has_pages=True,
         lexer="json",
     )
     PDF = MetadataFormat(
         "MuPDF",
+        frozenset({"pdf", "mudpdf"}),
+        "mupdf.json",
         MuPDFTransform,
         lexer="json",
         enabled=PDF_ENABLED,
     )
     PDF_XML = MetadataFormat(
         "PDF XML",
+        frozenset({"pdfxml"}),
+        "pdf.xml",
         PDFXmlTransform,
         lexer="xml",
         enabled=PDF_ENABLED,
     )
     COMET = MetadataFormat(
         "CoMet",
+        frozenset({"comet"}),
+        "CoMet.xml",
         CoMetTransform,
         lexer="xml",
     )
     CBI = MetadataFormat(
         "ComicBookInfo",
+        frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"}),
+        "comic-book-info.json",
         ComicBookInfoTransform,
         lexer="json",
     )
     CIX = MetadataFormat(
         "ComicInfo",
+        frozenset({"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}),
+        "ComicInfo.xml",  # Comictagger doesn't read without CapCase
         ComicInfoTransform,
         has_pages=True,
         lexer="xml",
     )
     METRON = MetadataFormat(
         "MetronInfo",
+        frozenset({"metron", "metroninfo", "mi", "mix"}),
+        "MetronInfo.xml",
         MetronInfoTransform,
         has_pages=True,
         lexer="xml",
     )
     COMICBOX_YAML = MetadataFormat(
         "Comicbox YAML",
+        frozenset({"cb", "comicbox", "comicbox-yaml", "yaml"}),
+        "comicbox.yaml",
         ComicboxYamlTransform,
         has_pages=True,
     )
     COMICBOX_JSON = MetadataFormat(
         "Comicbox JSON",
+        frozenset({"json", "comicbox-json"}),
+        "comicbox.json",
         ComicboxJsonTransform,
         has_pages=True,
         lexer="json",
     )
     COMICBOX_CLI_YAML = MetadataFormat(
-        "Comicbox CLI Yaml", ComicboxCLITransform, has_pages=True, lexer="yaml"
+        "Comicbox CLI Yaml",
+        frozenset({"cli", "comicbox-cli", "embedded"}),
+        "comicbox-cli.yaml",
+        ComicboxCLITransform,
+        has_pages=True,
+        lexer="yaml",
     )

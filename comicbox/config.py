@@ -102,7 +102,7 @@ def _get_formats_from_keys(keys, ignore_keys):
     """Get sources from keys."""
     fmts = []
     for fmt in MetadataFormats:
-        format_keys = fmt.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS
+        format_keys = fmt.value.config_keys
         if fmt.value.enabled and (not ignore_keys & format_keys and keys & format_keys):
             fmts.append(fmt)
         keys -= format_keys

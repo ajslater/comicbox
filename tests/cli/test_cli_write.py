@@ -11,6 +11,7 @@ from deepdiff.diff import DeepDiff
 from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_cli import ComicboxCLISchema
 from tests.const import (
     CBZ_MULTI_SOURCE_PATH,
@@ -76,8 +77,8 @@ TMP_CBR_PATH = TMP_DIR / CIX_CBI_CBR_SOURCE_PATH.name
 TMP_CBZ_PATH = TMP_CBR_PATH.with_suffix(".cbz")
 TMP_MULTI_PATH = TMP_DIR / CBZ_MULTI_SOURCE_PATH.name
 
-TEST_EXPORT_PATH = TMP_DIR / ComicboxCLISchema.FILENAME
-CLI_PATH = TEST_METADATA_DIR / ComicboxCLISchema.FILENAME
+TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
+CLI_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 METADATA_REPLACE = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
