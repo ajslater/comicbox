@@ -37,7 +37,7 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
+from comicbox.transforms.base import name_obj_to_string_list_key_transforms
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
@@ -50,7 +50,7 @@ from comicbox.transforms.credit_role_tag import (
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -139,7 +139,6 @@ class ComicInfoTransform(
     IdentifiersTransformMixin,
     NestedPublishingTagsMixin,
     XmlCreditsTransformMixin,
-    TitleStoriesMixin,
 ):
     """ComicInfo.xml Schema."""
 
@@ -183,18 +182,17 @@ class ComicInfoTransform(
                 "Year": YEAR_KEY,
             }
         ),
-        KeyTransforms(
-            key_map={
+        name_obj_to_string_list_key_transforms(
+            {
                 "Characters": CHARACTERS_KEY,
                 "Genre": GENRES_KEY,
                 "Locations": LOCATIONS_KEY,
                 "SeriesGroup": SERIES_GROUPS_KEY,
                 "Tags": TAGS_KEY,
                 "Teams": TEAMS_KEY,
-            },
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
+            }
         ),
+        stories_key_transform("Title"),
     )
     ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -207,7 +205,6 @@ class ComicInfoTransform(
     VOLUME_TAG = "Volume"
     ISSUE_COUNT_TAG = "Count"
     URLS_TAG = "Web"
-    TITLE_TAG = "Title"
     AGE_RATING_TAG = "AgeRating"
 
     TO_COMICBOX_PRE_TRANSFORM = (
@@ -222,7 +219,6 @@ class ComicInfoTransform(
         ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
-        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -236,5 +232,4 @@ class ComicInfoTransform(
         NestedPublishingTagsMixin.unparse_imprint,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
-        TitleStoriesMixin.unparse_stories,
     )

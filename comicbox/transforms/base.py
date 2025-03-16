@@ -13,7 +13,7 @@ from glom import Assign, glom
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
-from comicbox.transforms.transform_map import transform_map
+from comicbox.transforms.transform_map import KeyTransforms, transform_map
 
 LOG = getLogger(__name__)
 
@@ -26,6 +26,15 @@ def string_list_to_name_obj(names):
 def name_obj_to_string_list(obj):
     """Transform one comicbox name object to a string list."""
     return [name for name in obj if name]
+
+
+def name_obj_to_string_list_key_transforms(key_map):
+    """Create a name obj to string list key transform spec for a key map."""
+    return KeyTransforms(
+        key_map=key_map,
+        to_cb=string_list_to_name_obj,
+        from_cb=name_obj_to_string_list,
+    )
 
 
 class BaseTransform:

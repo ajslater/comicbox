@@ -26,16 +26,18 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
+from comicbox.transforms.base import (
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.price_mixin import PriceTransformMixin
+from comicbox.transforms.price import PRICE_KEY_TRANSFORM
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -126,8 +128,6 @@ class CoMetTransform(
     CoMetReprintsTransformMixin,
     NestedPublishingTagsMixin,
     IdentifiersTransformMixin,
-    TitleStoriesMixin,
-    PriceTransformMixin,
     CreditRoleTagTransformMixin,
 ):
     """CoMet transforms."""
@@ -153,12 +153,11 @@ class CoMetTransform(
                 # "volume": VOLUME_KEY, handled by code
             }
         ),
-        KeyTransforms(
-            key_map={"character": CHARACTERS_KEY, "genre": GENRES_KEY},
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
+        name_obj_to_string_list_key_transforms(
+            {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
-        PriceTransformMixin.PRICE_KEY_TRANSFORM,
+        PRICE_KEY_TRANSFORM,
+        stories_key_transform("title"),
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -171,8 +170,6 @@ class CoMetTransform(
     SERIES_TAG = "series"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = ""
-    TITLE_TAG = "title"
-    PRICE_TAG = "price"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -183,7 +180,6 @@ class CoMetTransform(
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
-        TitleStoriesMixin.parse_stories,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
@@ -193,7 +189,6 @@ class CoMetTransform(
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
-        TitleStoriesMixin.unparse_stories,
     )
 
     @staticmethod

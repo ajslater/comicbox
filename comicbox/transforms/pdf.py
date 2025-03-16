@@ -13,7 +13,6 @@ from comicbox.schemas.comicbox_mixin import (
     SCAN_INFO_KEY,
     SERIES_KEY,
     TAGGER_KEY,
-    TAGS_KEY,
     UPDATED_AT_KEY,
     VOLUME_KEY,
 )
@@ -21,15 +20,17 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.base import (
+    name_obj_to_string_list_key_transforms,
+)
+from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
 
-class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
+class PDFXmlTransform(XmlTransform):
     """PDF Schema."""
 
     SCHEMA_CLASS = PDFXmlSchema
@@ -44,21 +45,19 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
                 # "pdf:Title": coded
             }
         ),
-        KeyTransforms(
-            key_map={
+        name_obj_to_string_list_key_transforms(
+            {
                 # TAGS_TAG: TAGS_KEY, specal code below
                 "pdf:Subject": GENRES_KEY,
             },
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
         ),
+        stories_key_transform("pdf:Title"),
     )
     TAGS_TAG = "pdf:Keywords"
     GROUP_KEYS = frozenset(
         {PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY, VOLUME_KEY, ISSUE_KEY}
     )
     GROUP_TAG_DELIMETER = ":"
-    TITLE_TAG = "pdf:Title"
     TITLE_STORIES_DELIMITER = ";"
     AUTHOR_VALUES = frozenset(
         {
@@ -109,13 +108,11 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         parse_credits,
-        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         unparse_credits,
-        TitleStoriesMixin.unparse_stories,
     )
 
 
@@ -136,13 +133,11 @@ class MuPDFTransform(PDFXmlTransform):
                 # "title": "title", coded
             }
         ),
-        KeyTransforms(
-            key_map={
+        name_obj_to_string_list_key_transforms(
+            {
                 # "keywords": TAGS_KEY, code
                 "subject": GENRES_KEY,
             },
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
         ),
+        stories_key_transform("title"),
     )
-    LIST_KEYS = frozenset({TAGS_KEY})

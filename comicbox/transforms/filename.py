@@ -10,28 +10,27 @@ effective, simple and easy to read and to contribute to.
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.stories import stories_key_transform
+from comicbox.transforms.transform_map import create_transform_map
 
 
-class FilenameTransform(BaseTransform, NestedPublishingTagsMixin, TitleStoriesMixin):
+class FilenameTransform(BaseTransform, NestedPublishingTagsMixin):
     """File name schema."""
 
     SCHEMA_CLASS = FilenameSchema
     SERIES_TAG = "series"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "issue_count"
-    TITLE_TAG = "title"
+    TRANSFORM_MAP = create_transform_map(stories_key_transform("title"))
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *BaseTransform.TO_COMICBOX_PRE_TRANSFORM,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
-        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *BaseTransform.FROM_COMICBOX_PRE_TRANSFORM,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
-        TitleStoriesMixin.unparse_stories,
     )

@@ -21,11 +21,13 @@ from comicbox.schemas.comicbox_mixin import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
+from comicbox.transforms.base import (
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
 
@@ -33,7 +35,6 @@ class ComicBookInfoTransform(
     ComicBookInfoCreditsTransformMixin,
     JsonTransform,
     NestedPublishingTagsMixin,
-    TitleStoriesMixin,
 ):
     """Comic Book Info transform."""
 
@@ -60,14 +61,13 @@ class ComicBookInfoTransform(
                 # "volume": VOLUME_KEY, coded
             }
         ),
-        KeyTransforms(
-            key_map={
+        name_obj_to_string_list_key_transforms(
+            {
                 "genre": GENRES_KEY,
                 "tags": TAGS_KEY,
-            },
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
+            }
         ),
+        stories_key_transform("title"),
     )
     CREDITS_TAG = CREDITS_TAG
     PUBLISHER_TAG = "publisher"
@@ -75,7 +75,6 @@ class ComicBookInfoTransform(
     VOLUME_COUNT_TAG = "numberOfVolumes"
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "numberOfIssues"
-    TITLE_TAG = "title"
     ISSUE_TAG = "issue"
     TAGGER_TAG = "appID"
     UPDATED_AT_TAG = "lastModified"
@@ -113,7 +112,6 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
-        TitleStoriesMixin.parse_stories,
         parse_issue,
     )
 
@@ -123,6 +121,5 @@ class ComicBookInfoTransform(
         NestedPublishingTagsMixin.unparse_publisher,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
-        TitleStoriesMixin.unparse_stories,
         unparse_issue,
     )

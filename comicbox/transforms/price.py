@@ -16,10 +16,7 @@ def obj_to_price(comicbox_prices):
     return next(iter(comicbox_prices.values())) if comicbox_prices else None
 
 
-class PriceTransformMixin:
-    """Price transformer."""
-
-    PRICE_TAG = "price"
-    PRICE_KEY_TRANSFORM = KeyTransforms(
-        key_map={"price": PRICES_KEY}, to_cb=price_to_obj, from_cb=obj_to_price
-    )
+PRICE_TAG = "price"
+PRICE_KEY_TRANSFORM = KeyTransforms(
+    key_map={PRICE_TAG: PRICES_KEY}, to_cb=price_to_obj, from_cb=obj_to_price
+)

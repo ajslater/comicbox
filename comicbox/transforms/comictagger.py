@@ -35,16 +35,18 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.schemas.identifier import NSS_KEY
-from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
+from comicbox.transforms.base import (
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
-from comicbox.transforms.price_mixin import PriceTransformMixin
+from comicbox.transforms.price import PRICE_KEY_TRANSFORM
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
-from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS,
@@ -60,8 +62,6 @@ class ComictaggerTransform(
     IdentifiersTransformMixin,
     JsonTransform,
     NestedPublishingTagsMixin,
-    TitleStoriesMixin,
-    PriceTransformMixin,
 ):
     """Comictagger transform."""
 
@@ -84,19 +84,18 @@ class ComictaggerTransform(
                 # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
             }
         ),
-        KeyTransforms(
-            key_map={
+        name_obj_to_string_list_key_transforms(
+            {
                 "characters": CHARACTERS_KEY,
                 "genres": GENRES_KEY,
                 "locations": LOCATIONS_KEY,
                 "series_group": SERIES_GROUPS_KEY,
                 "tags": TAGS_KEY,
                 "teams": TEAMS_KEY,
-            },
-            to_cb=string_list_to_name_obj,
-            from_cb=name_obj_to_string_list,
+            }
         ),
-        PriceTransformMixin.PRICE_KEY_TRANSFORM,
+        PRICE_KEY_TRANSFORM,
+        stories_key_transform("title"),
     )
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     PAGES_TAG = PAGES_TAG
@@ -127,7 +126,6 @@ class ComictaggerTransform(
     VOLUME_TAG = "volume"
     ISSUE_COUNT_TAG = "issue_count"
     URLS_TAG = "web_link"
-    TITLE_TAG = "title"
     AGE_RATING_TAG = "maturity_rating"
 
     def parse_identifiers(self, data):
@@ -242,7 +240,6 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.parse_imprint,
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
-        TitleStoriesMixin.parse_stories,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -257,5 +254,4 @@ class ComictaggerTransform(
         NestedPublishingTagsMixin.unparse_imprint,
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
-        TitleStoriesMixin.unparse_stories,
     )
