@@ -4,6 +4,7 @@ from logging import getLogger
 
 from marshmallow.fields import List, Mapping, Tuple
 
+from comicbox.fields.fields import EMPTY_VALUES
 from comicbox.transforms.base import BaseTransform
 
 LOG = getLogger(__name__)
@@ -53,7 +54,7 @@ class XmlTransform(BaseTransform):
     @staticmethod
     def lower_tag(key, tag, data, value, single_tag=None):
         """Lower into a double tag."""
-        if not value:
+        if value in EMPTY_VALUES:
             return
         if not single_tag:
             single_tag = tag[:-1]
