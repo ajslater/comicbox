@@ -158,6 +158,7 @@ class CoMetTransform(
             to_cb=string_list_to_name_obj,
             from_cb=name_obj_to_string_list,
         ),
+        PriceTransformMixin.PRICE_KEY_TRANSFORM,
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -183,7 +184,6 @@ class CoMetTransform(
         NestedPublishingTagsMixin.parse_series,
         NestedPublishingTagsMixin.parse_volume,
         TitleStoriesMixin.parse_stories,
-        PriceTransformMixin.parse_price,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
@@ -194,7 +194,6 @@ class CoMetTransform(
         NestedPublishingTagsMixin.unparse_series,
         NestedPublishingTagsMixin.unparse_volume,
         TitleStoriesMixin.unparse_stories,
-        PriceTransformMixin.unparse_price,
     )
 
     @staticmethod
