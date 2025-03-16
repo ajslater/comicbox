@@ -1,7 +1,6 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
 
 from logging import getLogger
-from types import MappingProxyType
 
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -22,8 +21,9 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import create_transform_map
+from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
 from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
@@ -34,23 +34,26 @@ class PDFXmlTransform(XmlTransform, TitleStoriesMixin):
 
     SCHEMA_CLASS = PDFXmlSchema
     AUTHOR_TAG = "pdf:Author"
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            # "pdf:Author": coded
-            "pdf:Creator": SCAN_INFO_KEY,  # original document creator
-            "pdf:Producer": TAGGER_KEY,
-            "pdf:ModDate": UPDATED_AT_KEY,
-            # "pdf:Title": coded
-        }
+    TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                # "pdf:Author": coded
+                "pdf:Creator": SCAN_INFO_KEY,  # original document creator
+                "pdf:Producer": TAGGER_KEY,
+                "pdf:ModDate": UPDATED_AT_KEY,
+                # "pdf:Title": coded
+            }
+        ),
+        KeyTransforms(
+            key_map={
+                # TAGS_TAG: TAGS_KEY, specal code below
+                "pdf:Subject": GENRES_KEY,
+            },
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
     TAGS_TAG = "pdf:Keywords"
-    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
-        {
-            # TAGS_TAG: TAGS_KEY, specal code below
-            "pdf:Subject": GENRES_KEY,
-        }
-    )
-    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     GROUP_KEYS = frozenset(
         {PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY, VOLUME_KEY, ISSUE_KEY}
     )
@@ -123,22 +126,23 @@ class MuPDFTransform(PDFXmlTransform):
     AUTHOR_TAG = "author"
     TITLE_TAG = "title"
     TAGS_TAG = "keywords"
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            # AUTHOR_TAG: CONTRIBUTORS_KEY,
-            "creator": SCAN_INFO_KEY,  # original document creator
-            "modDate": UPDATED_AT_KEY,
-            "producer": TAGGER_KEY,
-            # "title": "title", coded
-        }
-    )
-    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
-        {
-            # "keywords": TAGS_KEY, code
-            "subject": GENRES_KEY,
-        }
-    )
     TRANSFORM_MAP = create_transform_map(
-        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
+        KeyTransforms(
+            key_map={
+                # AUTHOR_TAG: CONTRIBUTORS_KEY,
+                "creator": SCAN_INFO_KEY,  # original document creator
+                "modDate": UPDATED_AT_KEY,
+                "producer": TAGGER_KEY,
+                # "title": "title", coded
+            }
+        ),
+        KeyTransforms(
+            key_map={
+                # "keywords": TAGS_KEY, code
+                "subject": GENRES_KEY,
+            },
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
     LIST_KEYS = frozenset({TAGS_KEY})

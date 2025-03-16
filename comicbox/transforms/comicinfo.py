@@ -37,7 +37,7 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import create_transform_map
+from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
@@ -51,6 +51,7 @@ from comicbox.transforms.credit_role_tag import (
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -142,57 +143,58 @@ class ComicInfoTransform(
 ):
     """ComicInfo.xml Schema."""
 
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            "AgeRating": AGE_RATING_KEY,
-            # REPRINTS
-            # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
-            # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
-            # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
-            #
-            "BlackAndWhite": MONOCHROME_KEY,
-            "CommunityRating": COMMUNITY_RATING_KEY,
-            "Country": COUNTRY_KEY,
-            # "Count": ISSUE_COUNT_KEY, coded
-            "Day": DAY_KEY,
-            # "GTIN": IDENTIFIERS_KEY, coded
-            "Format": ORIGINAL_FORMAT_KEY,
-            # "Imprint": IMPRINT_KEY, coded
-            "LanguageISO": LANGUAGE_KEY,
-            "MainCharacterOrTeam": PROTAGONIST_KEY,
-            "Manga": "manga",
-            "Month": MONTH_KEY,
-            "Notes": NOTES_KEY,
-            "Number": ISSUE_KEY,
-            "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
-            # "Pages": PAGES_KEY, coded
-            # "Publisher": PUBLISHER_KEY coded
-            "Review": REVIEW_KEY,
-            "ScanInformation": SCAN_INFO_KEY,
-            # "Series": SERIES_KEY, coded
-            # STORY_ARCS coded
-            # "StoryArc":
-            # "StoryArcNumber":
-            ##
-            # "Title": "title", coded
-            "Summary": SUMMARY_KEY,
-            # "Volume": VOLUME_KEY, coded
-            # "Web": WEB_KEY, coded
-            "Year": YEAR_KEY,
-        }
-    )
-    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
-        {
-            "Characters": CHARACTERS_KEY,
-            "Genre": GENRES_KEY,
-            "Locations": LOCATIONS_KEY,
-            "SeriesGroup": SERIES_GROUPS_KEY,
-            "Tags": TAGS_KEY,
-            "Teams": TEAMS_KEY,
-        }
-    )
     TRANSFORM_MAP = create_transform_map(
-        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
+        KeyTransforms(
+            key_map={
+                "AgeRating": AGE_RATING_KEY,
+                # REPRINTS
+                # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
+                # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
+                # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
+                #
+                "BlackAndWhite": MONOCHROME_KEY,
+                "CommunityRating": COMMUNITY_RATING_KEY,
+                "Country": COUNTRY_KEY,
+                # "Count": ISSUE_COUNT_KEY, coded
+                "Day": DAY_KEY,
+                # "GTIN": IDENTIFIERS_KEY, coded
+                "Format": ORIGINAL_FORMAT_KEY,
+                # "Imprint": IMPRINT_KEY, coded
+                "LanguageISO": LANGUAGE_KEY,
+                "MainCharacterOrTeam": PROTAGONIST_KEY,
+                "Manga": "manga",
+                "Month": MONTH_KEY,
+                "Notes": NOTES_KEY,
+                "Number": ISSUE_KEY,
+                "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
+                # "Pages": PAGES_KEY, coded
+                # "Publisher": PUBLISHER_KEY coded
+                "Review": REVIEW_KEY,
+                "ScanInformation": SCAN_INFO_KEY,
+                # "Series": SERIES_KEY, coded
+                # STORY_ARCS coded
+                # "StoryArc":
+                # "StoryArcNumber":
+                ##
+                # "Title": "title", coded
+                "Summary": SUMMARY_KEY,
+                # "Volume": VOLUME_KEY, coded
+                # "Web": WEB_KEY, coded
+                "Year": YEAR_KEY,
+            }
+        ),
+        KeyTransforms(
+            key_map={
+                "Characters": CHARACTERS_KEY,
+                "Genre": GENRES_KEY,
+                "Locations": LOCATIONS_KEY,
+                "SeriesGroup": SERIES_GROUPS_KEY,
+                "Tags": TAGS_KEY,
+                "Teams": TEAMS_KEY,
+            },
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
     ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)

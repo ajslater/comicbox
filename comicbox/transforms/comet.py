@@ -26,7 +26,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import create_transform_map
+from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
@@ -36,6 +36,7 @@ from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.price_mixin import PriceTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -131,34 +132,32 @@ class CoMetTransform(
 ):
     """CoMet transforms."""
 
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            "coverImage": COVER_IMAGE_KEY,
-            # "date": "date", handled by code
-            "description": SUMMARY_KEY,
-            "format": ORIGINAL_FORMAT_KEY,
-            # IDENTIFIER_TAG: "identifiers", handled by code
-            # "language": LANGUAGE_KEY, handled by code
-            "lastMark": LAST_MARK_KEY,
-            "pages": PAGE_COUNT_KEY,
-            # "publisher": "publisher", handled by code
-            # "price": PRICES_KEY coded
-            "rating": AGE_RATING_KEY,
-            "readingDirection": READING_DIRECTION_KEY,
-            # "rights": "rights", unused
-            # "series": SERIES_KEY,  handled by code
-            # "title": "title", handled by code
-            # "volume": VOLUME_KEY, handled by code
-        }
-    )
-    _STRINGS_TO_NAMED_OBJS_KEY_MAP = MappingProxyType(
-        {
-            "character": CHARACTERS_KEY,
-            "genre": GENRES_KEY,
-        }
-    )
     TRANSFORM_MAP = create_transform_map(
-        _TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_KEY_MAP
+        KeyTransforms(
+            key_map={
+                "coverImage": COVER_IMAGE_KEY,
+                # "date": "date", handled by code
+                "description": SUMMARY_KEY,
+                "format": ORIGINAL_FORMAT_KEY,
+                # IDENTIFIER_TAG: "identifiers", handled by code
+                # "language": LANGUAGE_KEY, handled by code
+                "lastMark": LAST_MARK_KEY,
+                "pages": PAGE_COUNT_KEY,
+                # "publisher": "publisher", handled by code
+                # "price": PRICES_KEY coded
+                "rating": AGE_RATING_KEY,
+                "readingDirection": READING_DIRECTION_KEY,
+                # "rights": "rights", unused
+                # "series": SERIES_KEY,  handled by code
+                # "title": "title", handled by code
+                # "volume": VOLUME_KEY, handled by code
+            }
+        ),
+        KeyTransforms(
+            key_map={"character": CHARACTERS_KEY, "genre": GENRES_KEY},
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)

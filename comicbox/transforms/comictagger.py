@@ -1,9 +1,5 @@
 """Comictagger transform to and from Comicbox format."""
 
-from types import MappingProxyType
-
-from bidict import frozenbidict
-
 from comicbox.identifiers import (
     COMICVINE_NID,
     create_identifier,
@@ -39,7 +35,7 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.schemas.identifier import NSS_KEY
-from comicbox.transforms.base import create_transform_map
+from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
@@ -49,6 +45,7 @@ from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.price_mixin import PriceTransformMixin
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
@@ -70,48 +67,53 @@ class ComictaggerTransform(
 
     SCHEMA_CLASS = ComictaggerSchema
 
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            # "tagOrigin": TAG_ORIGIN_KEY, code
-            # "issueId": ISSUE_ID_KEY, code
-            # "seriesId": SERIES_ID_KEY, code
-            "description": SUMMARY_KEY,
-            # "web_link": WEB_KEY, code
-            "format": ORIGINAL_FORMAT_KEY,
-            "black_and_white": MONOCHROME_KEY,
-            "maturity_rating": AGE_RATING_KEY,
-            # "story_arcs": STORY_ARC_KEY,  (copy from comicinfo)
-            # "credits": CREDITS_KEY, (copy from cbi, with different tags)
-            # "pages": PAGES_KEY, (copy from comicinfo)
-            # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
-        }
+    TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                # "tagOrigin": TAG_ORIGIN_KEY, code
+                # "issueId": ISSUE_ID_KEY, code
+                # "seriesId": SERIES_ID_KEY, code
+                "description": SUMMARY_KEY,
+                # "web_link": WEB_KEY, code
+                "format": ORIGINAL_FORMAT_KEY,
+                "black_and_white": MONOCHROME_KEY,
+                "maturity_rating": AGE_RATING_KEY,
+                # "story_arcs": STORY_ARC_KEY,  (copy from comicinfo)
+                # "credits": CREDITS_KEY, (copy from cbi, with different tags)
+                # "pages": PAGES_KEY, (copy from comicinfo)
+                # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
+            }
+        ),
+        KeyTransforms(
+            key_map={
+                "characters": CHARACTERS_KEY,
+                "genres": GENRES_KEY,
+                "locations": LOCATIONS_KEY,
+                "series_group": SERIES_GROUPS_KEY,
+                "tags": TAGS_KEY,
+                "teams": TEAMS_KEY,
+            },
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
-    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
-        {
-            "characters": CHARACTERS_KEY,
-            "genres": GENRES_KEY,
-            "locations": LOCATIONS_KEY,
-            "series_group": SERIES_GROUPS_KEY,
-            "tags": TAGS_KEY,
-            "teams": TEAMS_KEY,
-        }
-    )
-    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     PAGES_TAG = PAGES_TAG
     PAGES_SUB_TAG = ""
     INDEX_TAG = INDEX_TAG
-    PAGE_TRANSFORM = frozenbidict(
-        {
-            "Image": "index",
-            "Type": "page_type",
-            "DoublePage": "double_page",
-            "ImageSize": "size",
-            "Key": "key",
-            "Bookmark": "bookmark",
-            "ImageWidth": "width",
-            "ImageHeight": "height",
-        }
+    PAGE_TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                "Image": "index",
+                "Type": "page_type",
+                "DoublePage": "double_page",
+                "ImageSize": "size",
+                "Key": "key",
+                "Bookmark": "bookmark",
+                "ImageWidth": "width",
+                "ImageHeight": "height",
+            }
+        )
     )
     STORY_ARC_TAG = STORY_ARC_TAG
     STORY_ARC_NUMBER_TAG = ""

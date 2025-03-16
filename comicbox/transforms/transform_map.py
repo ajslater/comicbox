@@ -1,9 +1,32 @@
 """Transform maps."""
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
+from dataclasses import dataclass
 
-from glom import Assign, Delete, glom
+from bidict import frozenbidict
+from glom import Assign, glom
+
+
+@dataclass
+class KeyTransforms:
+    """Define a key mapping and transform functions."""
+
+    key_map: Mapping
+    to_cb: Callable | None = None
+    from_cb: Callable | None = None
+
+
+def create_transform_map(*args) -> frozenbidict:
+    """Create the transform map."""
+    tm = {}
+    for kts in args:
+        for format_key, comicbox_key in kts.key_map.items():
+            tm[(format_key, kts.from_cb)] = (
+                comicbox_key,
+                kts.to_cb,
+            )
+    return frozenbidict(tm)
 
 
 def transform_map(
@@ -19,9 +42,6 @@ def transform_map(
     ) in spec_map.items():
         source_path, _ = source_spec
         value = glom(source_map, source_path, default=None)
-        if in_place:
-            delete = Delete(source_path, ignore_missing=True)
-            glom(target_dict, delete)
         if value is not None:
             dest_path, dest_func = dest_spec
             if not in_place:

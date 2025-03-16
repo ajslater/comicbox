@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 from math import ceil, floor
-from types import MappingProxyType
 
 from bidict import frozenbidict
 
@@ -24,11 +23,12 @@ from comicbox.schemas.comicbox_mixin import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.transforms.base import create_transform_map
+from comicbox.transforms.base import name_obj_to_string_list, string_list_to_name_obj
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.title_mixin import TitleStoriesMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
 
 class ComicBookInfoTransform(
@@ -40,34 +40,37 @@ class ComicBookInfoTransform(
     """Comic Book Info transform."""
 
     SCHEMA_CLASS = ComicBookInfoSchema
-    _TRANSFORM_KEY_MAP = MappingProxyType(
-        {
-            "comments": SUMMARY_KEY,
-            # "country": COUNTRY_KEY, same
-            # "credits": "credits_list", coded
-            # "issue": ISSUE_KEY, coded
-            # "language": LANGUAGE_KEY, coded
-            # "numberOfVolumes": "volume_count", coded
-            # "numberOfIssues": ISSUE_COUNT_KEY, coded
-            "pages": PAGE_COUNT_KEY,
-            "publicationDay": DAY_KEY,
-            "publicationMonth": MONTH_KEY,
-            "publicationYear": YEAR_KEY,
-            # "publisher": "publisher", coded
-            "rating": CRITICAL_RATING_KEY,
-            # "series": SERIES_KEY, coded
-            # TAGS_KEY: TAGS_KEY, coded
-            # "title": "title", coded
-            # "volume": VOLUME_KEY, coded
-        }
+    TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                "comments": SUMMARY_KEY,
+                # "country": COUNTRY_KEY, same
+                # "credits": "credits_list", coded
+                # "issue": ISSUE_KEY, coded
+                # "language": LANGUAGE_KEY, coded
+                # "numberOfVolumes": "volume_count", coded
+                # "numberOfIssues": ISSUE_COUNT_KEY, coded
+                "pages": PAGE_COUNT_KEY,
+                "publicationDay": DAY_KEY,
+                "publicationMonth": MONTH_KEY,
+                "publicationYear": YEAR_KEY,
+                # "publisher": "publisher", coded
+                "rating": CRITICAL_RATING_KEY,
+                # "series": SERIES_KEY, coded
+                # TAGS_KEY: TAGS_KEY, coded
+                # "title": "title", coded
+                # "volume": VOLUME_KEY, coded
+            }
+        ),
+        KeyTransforms(
+            key_map={
+                "genre": GENRES_KEY,
+                "tags": TAGS_KEY,
+            },
+            to_cb=string_list_to_name_obj,
+            from_cb=name_obj_to_string_list,
+        ),
     )
-    _STRINGS_TO_NAMED_OBJS_MAP = MappingProxyType(
-        {
-            "genre": GENRES_KEY,
-            "tags": TAGS_KEY,
-        }
-    )
-    TRANSFORM_MAP = create_transform_map(_TRANSFORM_KEY_MAP, _STRINGS_TO_NAMED_OBJS_MAP)
     CREDITS_TAG = CREDITS_TAG
     PUBLISHER_TAG = "publisher"
     SERIES_TAG = "series"

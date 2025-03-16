@@ -1,11 +1,13 @@
 """ComicInfo Pages Transform Mixin."""
 
 from collections.abc import Mapping
-from types import MappingProxyType
 
 from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY, PAGES_KEY
-from comicbox.transforms.base import create_transform_map
-from comicbox.transforms.transform_map import transform_map
+from comicbox.transforms.transform_map import (
+    KeyTransforms,
+    create_transform_map,
+    transform_map,
+)
 from comicbox.transforms.xml_transforms import XmlTransform
 
 
@@ -15,19 +17,20 @@ class ComicInfoPagesTransformMixin(XmlTransform):
     PAGES_TAG = "Pages"
     PAGES_SUB_TAG = "Page"
     INDEX_TAG = "@Image"
-    _PAGE_TRANSFORM_KEYS = MappingProxyType(
-        {
-            INDEX_TAG: PAGE_INDEX_KEY,
-            "@Type": "page_type",
-            "@DoublePage": "double_page",
-            "@ImageSize": "size",
-            "@Key": "key",
-            "@Bookmark": "bookmark",
-            "@ImageWidth": "width",
-            "@ImageHeight": "height",
-        }
+    PAGE_TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                INDEX_TAG: PAGE_INDEX_KEY,
+                "@Type": "page_type",
+                "@DoublePage": "double_page",
+                "@ImageSize": "size",
+                "@Key": "key",
+                "@Bookmark": "bookmark",
+                "@ImageWidth": "width",
+                "@ImageHeight": "height",
+            }
+        )
     )
-    PAGE_TRANSFORM_MAP = create_transform_map(_PAGE_TRANSFORM_KEYS, {})
     DOUBLE_RESOURCE_TAGS = (PAGES_TAG,)
 
     def _pages_copy(

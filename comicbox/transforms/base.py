@@ -18,41 +18,14 @@ from comicbox.transforms.transform_map import transform_map
 LOG = getLogger(__name__)
 
 
-def string_list_to_dicts_one(names):
+def string_list_to_name_obj(names):
     """Transform one sequence of strings to comicbox name objects."""
     return {name: {} for name in names if name}
 
 
-def name_dict_to_string_list_one(obj):
+def name_obj_to_string_list(obj):
     """Transform one comicbox name object to a string list."""
     return [name for name in obj if name]
-
-
-def _create_transform_map(
-    key_map: Mapping, to_format_func=None, to_comicbox_func=None
-) -> MappingProxyType:
-    return MappingProxyType(
-        {
-            (format_key, to_format_func): (comicbox_key, to_comicbox_func)
-            for format_key, comicbox_key in key_map.items()
-        }
-    )
-
-
-def create_transform_map(
-    key_map: Mapping, strings_to_named_objs_key_map: Mapping
-) -> frozenbidict:
-    """Create the transform map."""
-    return frozenbidict(
-        {
-            **_create_transform_map(key_map),
-            **_create_transform_map(
-                strings_to_named_objs_key_map,
-                name_dict_to_string_list_one,
-                string_list_to_dicts_one,
-            ),
-        }
-    )
 
 
 class BaseTransform:

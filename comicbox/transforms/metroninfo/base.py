@@ -2,7 +2,6 @@
 
 from collections.abc import Mapping
 from logging import getLogger
-from types import MappingProxyType
 
 from comicbox.identifiers import (
     create_identifier,
@@ -22,8 +21,8 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
-from comicbox.transforms.base import create_transform_map
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
+from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
@@ -34,20 +33,21 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
 
     # Tag Names
     ID_ATTRIBUTE = "@id"
-    _TRANSFORM_MAP = MappingProxyType(
-        {
-            "AgeRating": AGE_RATING_KEY,
-            "CollectionTitle": COLLECTION_TITLE_KEY,
-            "CoverDate": DATE_KEY,
-            "StoreDate": STORE_DATE_KEY,
-            "Notes": NOTES_KEY,
-            "Number": ISSUE_KEY,
-            "PageCount": PAGE_COUNT_KEY,
-            "Summary": SUMMARY_KEY,
-            "LastModified": UPDATED_AT_KEY,
-        }
+    TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                "AgeRating": AGE_RATING_KEY,
+                "CollectionTitle": COLLECTION_TITLE_KEY,
+                "CoverDate": DATE_KEY,
+                "StoreDate": STORE_DATE_KEY,
+                "Notes": NOTES_KEY,
+                "Number": ISSUE_KEY,
+                "PageCount": PAGE_COUNT_KEY,
+                "Summary": SUMMARY_KEY,
+                "LastModified": UPDATED_AT_KEY,
+            }
+        )
     )
-    TRANSFORM_MAP = create_transform_map(_TRANSFORM_MAP, {})
 
     SCHEMA_CLASS = MetronInfoSchema
 
