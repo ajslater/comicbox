@@ -11,20 +11,25 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_NUMBER_KEY,
 )
 from comicbox.schemas.filename import ISSUE_COUNT_TAG, ISSUE_TAG, SERIES_TAG, VOLUME_TAG
+from comicbox.transforms.transform_map import (
+    KeyTransforms,
+    create_transform_map,
+    transform_map,
+)
+
+REPRINTS_TO_FILENAME_TRANSFORM_MAP = create_transform_map(
+    KeyTransforms(
+        key_map={
+            f"{SERIES_KEY}.{NAME_KEY}": SERIES_TAG,
+            f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}": VOLUME_TAG,
+            f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}": ISSUE_COUNT_TAG,
+            f"{ISSUE_KEY}": ISSUE_TAG,
+        }
+    )
+)
 
 
 def reprint_to_filename(reprint):
     """Comicbox reprint to filename."""
-    # TODO use generic remapper
-    filename_dict = {}
-    if series := reprint.get(SERIES_KEY, {}).get(NAME_KEY):
-        filename_dict[SERIES_TAG] = series
-    if volume := reprint.get(VOLUME_KEY):
-        volume_number = volume.get(VOLUME_NUMBER_KEY)
-        if volume_number is not None:
-            filename_dict[VOLUME_TAG] = volume_number
-        if issue_count := volume.get(VOLUME_ISSUE_COUNT_KEY):
-            filename_dict[ISSUE_COUNT_TAG] = issue_count
-    if issue := reprint.get(ISSUE_KEY):
-        filename_dict[ISSUE_TAG] = issue
+    filename_dict = transform_map(REPRINTS_TO_FILENAME_TRANSFORM_MAP, reprint)
     return dict2comicfn(filename_dict, ext=False)
