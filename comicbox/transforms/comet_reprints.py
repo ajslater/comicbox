@@ -11,6 +11,11 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
+from comicbox.transforms.transform_map import (
+    KeyTransforms,
+    create_transform_map,
+    transform_map,
+)
 from comicbox.transforms.xml_reprints import reprint_to_filename
 
 
@@ -18,21 +23,21 @@ class CoMetReprintsTransformMixin:
     """CoMet Reprints Mixin."""
 
     IS_VERSION_OF_TAG = "isVersionOf"
+    COMET_REPRINTS_TRANSFORM_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                SERIES_KEY: f"{SERIES_KEY}.{NAME_KEY}",
+                VOLUME_KEY: f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
+                ISSUE_KEY: ISSUE_KEY,
+                VOLUME_ISSUE_COUNT_KEY: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
+            }
+        )
+    )
 
-    @staticmethod
-    def _parse_reprint_name(name, reprints):
-        reprint = {}
+    @classmethod
+    def _parse_reprint_name(cls, name, reprints):
         md = comicfn2dict(name)
-        if series := md.get(SERIES_KEY):
-            reprint[SERIES_KEY] = {NAME_KEY: series}
-        if volume := md.get(VOLUME_KEY):
-            reprint[VOLUME_KEY] = {VOLUME_NUMBER_KEY: volume}
-        if issue := md.get(ISSUE_KEY):
-            reprint[ISSUE_KEY] = issue
-        if issue_count := md.get(VOLUME_ISSUE_COUNT_KEY):
-            if VOLUME_KEY not in reprint:
-                reprint[VOLUME_KEY] = {}
-            reprint[VOLUME_KEY][VOLUME_ISSUE_COUNT_KEY] = issue_count
+        reprint = transform_map(cls.COMET_REPRINTS_TRANSFORM_MAP, md)
         if reprint:
             reprints.append(reprint)
 
