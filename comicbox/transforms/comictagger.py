@@ -44,7 +44,7 @@ from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
-from comicbox.transforms.price import PRICE_KEY_TRANSFORM
+from comicbox.transforms.price import price_key_transform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
@@ -94,7 +94,7 @@ class ComictaggerTransform(
                 "teams": TEAMS_KEY,
             }
         ),
-        PRICE_KEY_TRANSFORM,
+        price_key_transform("price"),
         stories_key_transform("title"),
     )
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG

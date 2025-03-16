@@ -35,7 +35,7 @@ from comicbox.transforms.credit_role_tag import (
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.price import PRICE_KEY_TRANSFORM
+from comicbox.transforms.price import price_key_transform
 from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
@@ -156,7 +156,7 @@ class CoMetTransform(
         name_obj_to_string_list_key_transforms(
             {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
-        PRICE_KEY_TRANSFORM,
+        price_key_transform("price"),
         stories_key_transform("title"),
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
