@@ -1,15 +1,13 @@
 """JSON Transformer."""
 
-from bidict import frozenbidict
-
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.transform_map import transform_map
+from comicbox.transforms.transform_map import create_transform_map, transform_map
 
 
 class JsonTransform(BaseTransform):
     """JSON Transformer."""
 
-    TOP_TAG_MAP = frozenbidict()
+    TOP_TAG_MAP = create_transform_map()
     # TODO could wrap be just a case of top tag map?
 
     def unwrap(self, data, wrap_tags="") -> dict:
