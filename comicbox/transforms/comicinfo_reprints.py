@@ -28,9 +28,10 @@ class ComicInfoReprintsTransformMixin:
 
     def parse_reprints(self, data):
         """Parse reprints from alternate tags."""
-        if reprint := transform_map(self.REPRINTS_TRANSFORM_MAP, data):
-            old_reprints = data.get(REPRINTS_KEY, [])
-            reprints = [*old_reprints, reprint]
+        # TODO Doing this with the main transform requires passing data to the transform to get reprints and merge
+        if alternative_reprint := transform_map(self.REPRINTS_TRANSFORM_MAP, data):
+            old_reprints = data.get(REPRINTS_KEY, ())
+            reprints = [*old_reprints, alternative_reprint]
             data[REPRINTS_KEY] = reprints
         return data
 
@@ -39,7 +40,7 @@ class ComicInfoReprintsTransformMixin:
         reprints = data.pop(REPRINTS_KEY, None)
         if not reprints:
             return data
-        reprint = reprints[0]
-        update_dict = transform_map(self.REPRINTS_TRANSFORM_MAP.inverse, reprint)
+        first_reprint = reprints[0]
+        update_dict = transform_map(self.REPRINTS_TRANSFORM_MAP.inverse, first_reprint)
         data.update(update_dict)
         return data
