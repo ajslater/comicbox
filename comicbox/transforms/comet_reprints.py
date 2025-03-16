@@ -3,43 +3,21 @@
 from comicfn2dict.parse import comicfn2dict
 
 from comicbox.schemas.comicbox_mixin import (
-    ISSUE_KEY,
-    NAME_KEY,
     REPRINTS_KEY,
-    SERIES_KEY,
-    VOLUME_ISSUE_COUNT_KEY,
-    VOLUME_KEY,
-    VOLUME_NUMBER_KEY,
 )
 from comicbox.transforms.transform_map import (
-    KeyTransforms,
-    create_transform_map,
     transform_map,
 )
-from comicbox.transforms.xml_reprints import reprint_to_filename
+from comicbox.transforms.xml_reprints import (
+    REPRINTS_TO_FILENAME_TRANSFORM_MAP,
+    reprint_to_filename,
+)
 
 
 class CoMetReprintsTransformMixin:
     """CoMet Reprints Mixin."""
 
     IS_VERSION_OF_TAG = "isVersionOf"
-    COMET_REPRINTS_TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                SERIES_KEY: f"{SERIES_KEY}.{NAME_KEY}",
-                VOLUME_KEY: f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
-                ISSUE_KEY: ISSUE_KEY,
-                VOLUME_ISSUE_COUNT_KEY: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
-            }
-        )
-    )
-
-    @classmethod
-    def _parse_reprint_name(cls, name, reprints):
-        md = comicfn2dict(name)
-        reprint = transform_map(cls.COMET_REPRINTS_TRANSFORM_MAP, md)
-        if reprint:
-            reprints.append(reprint)
 
     def parse_reprints(self, data):
         """Parse reprints from isVersionOf tag."""
@@ -52,7 +30,10 @@ class CoMetReprintsTransformMixin:
         else:
             names = is_version_of
         for name in names:
-            self._parse_reprint_name(name, reprints)
+            md = comicfn2dict(name)
+            reprint = transform_map(REPRINTS_TO_FILENAME_TRANSFORM_MAP.inverse, md)
+            if reprint:
+                reprints.append(reprint)
         if reprints:
             old_reprints = data.get(REPRINTS_KEY, [])
             reprints = old_reprints + reprints
