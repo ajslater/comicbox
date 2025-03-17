@@ -21,6 +21,7 @@ from comicbox.schemas.comicbox_mixin import (
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
+    PAGE_INDEX_KEY,
     PROTAGONIST_KEY,
     REVIEW_KEY,
     SCAN_INFO_KEY,
@@ -38,7 +39,7 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import name_obj_to_string_list_key_transforms
-from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
+from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
 )
@@ -132,8 +133,23 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 )
 
 
+_PAGE_TRANSFORM_MAP = create_transform_map(
+    KeyTransforms(
+        key_map={
+            "@Image": PAGE_INDEX_KEY,
+            "@Type": "page_type",
+            "@DoublePage": "double_page",
+            "@ImageSize": "size",
+            "@Key": "key",
+            "@Bookmark": "bookmark",
+            "@ImageWidth": "width",
+            "@ImageHeight": "height",
+        }
+    )
+)
+
+
 class ComicInfoTransform(
-    ComicInfoPagesTransformMixin,
     ComicInfoReprintsTransformMixin,
     ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
@@ -193,6 +209,7 @@ class ComicInfoTransform(
             }
         ),
         stories_key_transform("Title"),
+        comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
     )
     ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -210,7 +227,6 @@ class ComicInfoTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
-        ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.parse_arcs,
         NestedPublishingTagsMixin.parse_publisher,
         NestedPublishingTagsMixin.parse_imprint,
@@ -224,7 +240,6 @@ class ComicInfoTransform(
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.unparse_credits,
-        ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
         IdentifiersTransformMixin.unparse_identifiers,

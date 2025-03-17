@@ -13,6 +13,7 @@ from comicbox.schemas.comicbox_mixin import (
     MONOCHROME_KEY,
     NAME_KEY,
     ORIGINAL_FORMAT_KEY,
+    PAGE_INDEX_KEY,
     REPRINTS_KEY,
     SERIES_GROUPS_KEY,
     SERIES_KEY,
@@ -40,7 +41,7 @@ from comicbox.transforms.base import (
 )
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
-from comicbox.transforms.comicinfo_pages import ComicInfoPagesTransformMixin
+from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
@@ -53,10 +54,24 @@ from comicbox.urns import (
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
 )
 
+_PAGE_TRANSFORM_MAP = create_transform_map(
+    KeyTransforms(
+        key_map={
+            "Image": PAGE_INDEX_KEY,
+            "Type": "page_type",
+            "DoublePage": "double_page",
+            "ImageSize": "size",
+            "Key": "key",
+            "Bookmark": "bookmark",
+            "ImageWidth": "width",
+            "ImageHeight": "height",
+        }
+    )
+)
+
 
 class ComictaggerTransform(
     ComicBookInfoCreditsTransformMixin,
-    ComicInfoPagesTransformMixin,
     CoMetReprintsTransformMixin,
     ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
@@ -96,25 +111,12 @@ class ComictaggerTransform(
         ),
         price_key_transform("price"),
         stories_key_transform("title"),
+        comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
     )
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     PAGES_TAG = PAGES_TAG
     PAGES_SUB_TAG = ""
     INDEX_TAG = INDEX_TAG
-    PAGE_TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "Image": "index",
-                "Type": "page_type",
-                "DoublePage": "double_page",
-                "ImageSize": "size",
-                "Key": "key",
-                "Bookmark": "bookmark",
-                "ImageWidth": "width",
-                "ImageHeight": "height",
-            }
-        )
-    )
     STORY_ARC_TAG = STORY_ARC_TAG
     STORY_ARC_NUMBER_TAG = ""
     IDENTIFIERS_TAG = IDENTIFIER_TAG
@@ -232,7 +234,6 @@ class ComictaggerTransform(
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.parse_credits,
         parse_reprints,
-        ComicInfoPagesTransformMixin.parse_pages,
         ComicInfoStoryArcsTransformMixin.parse_arcs,
         parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
@@ -247,7 +248,6 @@ class ComictaggerTransform(
         ComicBookInfoCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
         unparse_reprints,
-        ComicInfoPagesTransformMixin.unparse_pages,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
         unparse_identifiers,
         NestedPublishingTagsMixin.unparse_publisher,
