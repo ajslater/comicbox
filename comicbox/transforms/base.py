@@ -2,9 +2,7 @@
 
 from collections.abc import Mapping
 from copy import deepcopy
-from logging import DEBUG, getLogger
-from os import environ
-from pprint import pformat
+from logging import getLogger
 from types import MappingProxyType
 
 from bidict import frozenbidict
@@ -42,6 +40,7 @@ class BaseTransform:
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
+    TOP_TAG_MAP = frozenbidict()
     ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
     def __init__(self, path=None):
@@ -57,14 +56,21 @@ class BaseTransform:
         """Unwrap the data from root tags."""
         if not wrap_tags:
             wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        return glom(data, wrap_tags, default=None)
+        top_tags = transform_map(self.TOP_TAG_MAP, data)
+        sub_data = glom(data, wrap_tags, default=None)
+        if top_tags and sub_data:
+            sub_data.update(top_tags)
+        return sub_data
 
     def wrap(self, sub_data, wrap_tags="", **_kwargs) -> dict:
         """Wrap the data in root tags."""
         if not wrap_tags:
             wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        assign = Assign(wrap_tags, sub_data, missing=dict)
-        return glom({}, assign)
+        top_tags = transform_map(self.TOP_TAG_MAP.inverse, sub_data)
+        data = glom({}, Assign(wrap_tags, sub_data, missing=dict))
+        if top_tags and data:
+            data.update(top_tags)
+        return data
 
     def insert_sub_data(self, data, sub_data, wrap_tags=""):
         """Insert sub data into loaded data."""
@@ -81,11 +87,15 @@ class BaseTransform:
 
     def transform_keys_to(self, data: dict):
         """Copy keys to comicbox keys."""
-        return transform_map(self.TRANSFORM_MAP, data, in_place=True)
+        if not self.TRANSFORM_MAP:
+            return data
+        return transform_map(self.TRANSFORM_MAP, data)
 
     def transform_keys_from(self, data: dict):
         """Copy keys from comicbox keys."""
-        return transform_map(self.TRANSFORM_MAP.inverse, data, in_place=True)
+        if not self.TRANSFORM_MAP:
+            return data
+        return transform_map(self.TRANSFORM_MAP.inverse, data)
 
     @classmethod
     def add_credit_role_to_comicbox_credits(
@@ -99,53 +109,45 @@ class BaseTransform:
         role_name = cls.ROLE_SPELLING.get(role_name.lower(), role_name)
         comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
-    TO_COMICBOX_PRE_TRANSFORM = (transform_keys_to,)
-    TO_COMICBOX_POST_TRANSFORM = ()
-    FROM_COMICBOX_PRE_TRANSFORM = (transform_keys_from,)
-    FROM_COMICBOX_POST_TRANSFORM = ()
+    TO_COMICBOX_PRE_TRANSFORM = ()
+    FROM_COMICBOX_PRE_TRANSFORM = ()
 
     ##################################
     # TRANSFORM TO AND FROM COMICBOX #
     ##################################
 
     def _run_transforms(  # noqa: PLR0913
-        self, data, methods, unwrap_wrap_tags, wrap_wrap_tags, insert: bool, stamp: bool
+        self,
+        data,
+        methods,
+        unwrap_wrap_tags,
+        wrap_wrap_tags,
+        insert: bool,
+        stamp: bool,
+        final_method=None,
     ):
         """
         Run transform methods.
 
         Transform methods operate on the sub schema, so this method unwraps and re-wraps them.
         """
-        if not methods:
+        if not methods and not final_method:
             return data
-        debug_transform = environ.get("DEBUG_TRANSFORM", False)
         sub_data = self.unwrap(data, wrap_tags=unwrap_wrap_tags)
-        if debug_transform and LOG.isEnabledFor(DEBUG):
-            LOG.debug(f"{type(self)} sub_data:")
-            LOG.debug(pformat(sub_data))
         for method in methods:
             # Get the overridden method from this isnstance, not the parents.
             sub_data = method(self, sub_data)
-            if debug_transform and LOG.isEnabledFor(DEBUG):
-                LOG.debug(f"{type(self)}.{method}:")
-                LOG.debug(pformat(sub_data))
+        if final_method:
+            sub_data = final_method(sub_data)
         if insert:
             data = self.insert_sub_data(data, sub_data, wrap_tags=wrap_wrap_tags)
         else:
             data = self.wrap(sub_data, wrap_tags=wrap_wrap_tags, stamp=stamp)
         return data
 
-    def _transform_load(self, schema, data):
-        """Load into new schema."""
-        loaded_data = schema.load(data)
-        if not isinstance(loaded_data, Mapping):
-            reason = f"Loaded schema data is not a Mapping: {type(loaded_data)}"
-            raise TypeError(reason)
-        return loaded_data
-
-    def to_comicbox(self, data) -> MappingProxyType:
+    def to_comicbox(self, in_data) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
-        data = deepcopy(dict(data))
+        data = deepcopy(dict(in_data))
         data = self._run_transforms(
             data,
             self.TO_COMICBOX_PRE_TRANSFORM,
@@ -153,21 +155,14 @@ class BaseTransform:
             ComicboxYamlSchema.WRAP_TAGS,
             insert=False,
             stamp=False,
+            final_method=self.transform_keys_to,
         )
-        data = self._transform_load(ComicboxYamlSchema(path=self._path), data)
-        data = self._run_transforms(
-            data,
-            self.TO_COMICBOX_POST_TRANSFORM,
-            ComicboxYamlSchema.WRAP_TAGS,
-            ComicboxYamlSchema.WRAP_TAGS,
-            insert=True,
-            stamp=False,
-        )
+        data: dict = ComicboxYamlSchema(path=self._path).load(data)  # type: ignore[reportAssignmentType]
         return MappingProxyType(data)
 
-    def from_comicbox(self, data: Mapping, **_kwargs) -> MappingProxyType:
+    def from_comicbox(self, in_data: Mapping, **_kwargs) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
-        data = deepcopy(dict(data))
+        data = deepcopy(dict(in_data))
         data = self._run_transforms(
             data,
             self.FROM_COMICBOX_PRE_TRANSFORM,
@@ -175,14 +170,7 @@ class BaseTransform:
             None,
             insert=False,
             stamp=True,
+            final_method=self.transform_keys_from,
         )
-        data = self._transform_load(self._schema, data)
-        data = self._run_transforms(
-            data,
-            self.FROM_COMICBOX_POST_TRANSFORM,
-            None,
-            None,
-            insert=True,
-            stamp=False,
-        )
+        data: dict = self._schema.load(data)  # type: ignore[reportAssignmentType]
         return MappingProxyType(data)
