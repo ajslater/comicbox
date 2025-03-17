@@ -32,10 +32,9 @@ def create_transform_map(*args) -> frozenbidict:
 def transform_map(
     spec_map: Mapping,
     source_map: Mapping,
-    in_place: bool = False,  # noqa: FBT002
 ) -> MutableMapping:
     """Move a value with one key to another dict and mapped key."""
-    target_dict: MutableMapping = source_map if in_place else {}  # type: ignore[reportAssignmentType]
+    target_dict = {}
     for (
         source_spec,
         dest_spec,
@@ -44,8 +43,7 @@ def transform_map(
         value = glom(source_map, source_path, default=None)
         if value is not None:
             dest_path, dest_func = dest_spec
-            if not in_place:
-                value = deepcopy(value)
+            value = deepcopy(value)
             if dest_func:
                 value = dest_func(value)
             assign = Assign(dest_path, value, missing=dict)
