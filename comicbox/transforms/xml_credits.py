@@ -3,8 +3,6 @@
 from enum import Enum
 from logging import getLogger
 
-from stringcase import capitalcase
-
 from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
     ROLES_KEY,
@@ -18,11 +16,6 @@ class XmlCreditsTransformMixin(CreditRoleTagTransformMixin):
     """XML Credits Mixin."""
 
     ROLE_TAGS_ENUM = Enum
-
-    @staticmethod
-    def tag_case(data):
-        """Transform tag case."""
-        return capitalcase(data)
 
     @classmethod
     def _parse_credit_role(cls, data, xml_role_enum: Enum, comicbox_credits: dict):
