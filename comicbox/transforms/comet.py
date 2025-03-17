@@ -16,11 +16,14 @@ from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COVER_IMAGE_KEY,
+    DATE_KEY,
     GENRES_KEY,
+    LANGUAGE_KEY,
     LAST_MARK_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     READING_DIRECTION_KEY,
+    RIGHTS_KEY,
     SUMMARY_KEY,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
@@ -36,7 +39,11 @@ from comicbox.transforms.credit_role_tag import (
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.price import price_key_transform
-from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.publishing_tags import (
+    PUBLISHER_NAME_KEY_PATH,
+    SERIES_NAME_KEY_PATH,
+    VOLUME_NUMBER_KEY_PATH,
+)
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
@@ -126,7 +133,6 @@ class CoMetTransform(
     XmlTransform,
     XmlCreditsTransformMixin,
     CoMetReprintsTransformMixin,
-    NestedPublishingTagsMixin,
     IdentifiersTransformMixin,
     CreditRoleTagTransformMixin,
 ):
@@ -136,21 +142,41 @@ class CoMetTransform(
         KeyTransforms(
             key_map={
                 "coverImage": COVER_IMAGE_KEY,
-                # "date": "date", handled by code
+                "date": DATE_KEY,
                 "description": SUMMARY_KEY,
                 "format": ORIGINAL_FORMAT_KEY,
-                # IDENTIFIER_TAG: "identifiers", handled by code
-                # "language": LANGUAGE_KEY, handled by code
+                "language": LANGUAGE_KEY,
                 "lastMark": LAST_MARK_KEY,
                 "pages": PAGE_COUNT_KEY,
-                # "publisher": "publisher", handled by code
-                # "price": PRICES_KEY coded
+                "publisher": PUBLISHER_NAME_KEY_PATH,
                 "rating": AGE_RATING_KEY,
                 "readingDirection": READING_DIRECTION_KEY,
-                # "rights": "rights", unused
-                # "series": SERIES_KEY,  handled by code
-                # "title": "title", handled by code
-                # "volume": VOLUME_KEY, handled by code
+                "rights": RIGHTS_KEY,
+                "series": SERIES_NAME_KEY_PATH,
+                "volume": VOLUME_NUMBER_KEY_PATH,
+                # COPY from old transform
+                **{
+                    key: key
+                    for key in {
+                        "credits",
+                        "identifiers",
+                        "issue",
+                        "issue_number",
+                        "reprints",
+                    }
+                    | {
+                        "identifier",
+                        "isVersionOf",
+                        "colorist",
+                        "coverDesigner",
+                        "creator",
+                        "editor",
+                        "inker",
+                        "letterer",
+                        "penciller",
+                        "writer",
+                    }
+                },
             }
         ),
         name_obj_to_string_list_key_transforms(
@@ -166,10 +192,6 @@ class CoMetTransform(
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
-    PUBLISHER_TAG = "publisher"
-    SERIES_TAG = "series"
-    VOLUME_TAG = "volume"
-    ISSUE_COUNT_TAG = ""
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
@@ -177,18 +199,12 @@ class CoMetTransform(
         CoMetReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
-        NestedPublishingTagsMixin.parse_publisher,
-        NestedPublishingTagsMixin.parse_series,
-        NestedPublishingTagsMixin.parse_volume,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
         IdentifiersTransformMixin.unparse_identifiers,
-        NestedPublishingTagsMixin.unparse_publisher,
-        NestedPublishingTagsMixin.unparse_series,
-        NestedPublishingTagsMixin.unparse_volume,
     )
 
     @staticmethod

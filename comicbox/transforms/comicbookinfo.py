@@ -8,11 +8,13 @@ from comicbox.schemas.comicbookinfo import (
     ComicBookInfoSchema,
 )
 from comicbox.schemas.comicbox_mixin import (
+    COUNTRY_KEY,
     CRITICAL_RATING_KEY,
     DAY_KEY,
     GENRES_KEY,
     ISSUE_KEY,
     ISSUE_NUMBER_KEY,
+    LANGUAGE_KEY,
     MONTH_KEY,
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
@@ -26,7 +28,13 @@ from comicbox.transforms.base import (
 )
 from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
-from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.publishing_tags import (
+    ISSUE_COUNT_KEY_PATH,
+    PUBLISHER_NAME_KEY_PATH,
+    SERIES_NAME_KEY_PATH,
+    VOLUME_COUNT_KEY_PATH,
+    VOLUME_NUMBER_KEY_PATH,
+)
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
@@ -34,7 +42,6 @@ from comicbox.transforms.transform_map import KeyTransforms, create_transform_ma
 class ComicBookInfoTransform(
     ComicBookInfoCreditsTransformMixin,
     JsonTransform,
-    NestedPublishingTagsMixin,
 ):
     """Comic Book Info transform."""
 
@@ -43,22 +50,30 @@ class ComicBookInfoTransform(
         KeyTransforms(
             key_map={
                 "comments": SUMMARY_KEY,
-                # "country": COUNTRY_KEY, same
-                # "credits": "credits_list", coded
-                # "issue": ISSUE_KEY, coded
-                # "language": LANGUAGE_KEY, coded
-                # "numberOfVolumes": "volume_count", coded
-                # "numberOfIssues": ISSUE_COUNT_KEY, coded
+                "country": COUNTRY_KEY,
+                "language": LANGUAGE_KEY,
+                "numberOfIssues": ISSUE_COUNT_KEY_PATH,
+                "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
                 "pages": PAGE_COUNT_KEY,
                 "publicationDay": DAY_KEY,
                 "publicationMonth": MONTH_KEY,
                 "publicationYear": YEAR_KEY,
-                # "publisher": "publisher", coded
+                "publisher": PUBLISHER_NAME_KEY_PATH,
                 "rating": CRITICAL_RATING_KEY,
-                # "series": SERIES_KEY, coded
-                # TAGS_KEY: TAGS_KEY, coded
-                # "title": "title", coded
-                # "volume": VOLUME_KEY, coded
+                "series": SERIES_NAME_KEY_PATH,
+                "volume": VOLUME_NUMBER_KEY_PATH,
+                **{
+                    key: key
+                    for key in {
+                        "credits",
+                        "genres",
+                        "issue",
+                        "issue_number",
+                        "tagger",
+                        "updated_at",
+                    }
+                    | {"genre"}
+                },
             }
         ),
         name_obj_to_string_list_key_transforms(
@@ -70,11 +85,6 @@ class ComicBookInfoTransform(
         stories_key_transform("title"),
     )
     CREDITS_TAG = CREDITS_TAG
-    PUBLISHER_TAG = "publisher"
-    SERIES_TAG = "series"
-    VOLUME_COUNT_TAG = "numberOfVolumes"
-    VOLUME_TAG = "volume"
-    ISSUE_COUNT_TAG = "numberOfIssues"
     ISSUE_TAG = "issue"
     TAGGER_TAG = "appID"
     UPDATED_AT_TAG = "lastModified"
@@ -84,9 +94,12 @@ class ComicBookInfoTransform(
                 TAGGER_TAG: TAGGER_KEY,
                 UPDATED_AT_TAG: UPDATED_AT_KEY,
             }
-        )
+        ),
     )
 
+    # TODO replace with "issue": ISSUE_NUMBER_KEY
+    # probably don't need a cast.
+    # TODO make sure compute handles issue_number with no issue.
     def parse_issue(self, data) -> dict:
         """Parse Issue integer."""
         issue_number = data.get(self.ISSUE_TAG)
@@ -109,17 +122,11 @@ class ComicBookInfoTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.parse_credits,
-        NestedPublishingTagsMixin.parse_publisher,
-        NestedPublishingTagsMixin.parse_series,
-        NestedPublishingTagsMixin.parse_volume,
         parse_issue,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.unparse_credits,
-        NestedPublishingTagsMixin.unparse_publisher,
-        NestedPublishingTagsMixin.unparse_series,
-        NestedPublishingTagsMixin.unparse_volume,
         unparse_issue,
     )

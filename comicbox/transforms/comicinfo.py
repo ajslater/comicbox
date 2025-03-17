@@ -50,7 +50,13 @@ from comicbox.transforms.credit_role_tag import (
     create_role_map,
 )
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
-from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.publishing_tags import (
+    IMPRINT_NAME_KEY_PATH,
+    ISSUE_COUNT_KEY_PATH,
+    PUBLISHER_NAME_KEY_PATH,
+    SERIES_NAME_KEY_PATH,
+    VOLUME_NUMBER_KEY_PATH,
+)
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
@@ -153,7 +159,6 @@ class ComicInfoTransform(
     ComicInfoReprintsTransformMixin,
     ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
-    NestedPublishingTagsMixin,
     XmlCreditsTransformMixin,
 ):
     """ComicInfo.xml Schema."""
@@ -162,19 +167,13 @@ class ComicInfoTransform(
         KeyTransforms(
             key_map={
                 "AgeRating": AGE_RATING_KEY,
-                # REPRINTS
-                # "AlternateCount": ALTERNATE_ISSUE_COUNT_KEY, coded
-                # "AlternateNumber": ALTERNATE_ISSUE_KEY, coded
-                # "AlternateSeries": ALTERNATE_SERIES_KEY, coded
-                #
                 "BlackAndWhite": MONOCHROME_KEY,
                 "CommunityRating": COMMUNITY_RATING_KEY,
                 "Country": COUNTRY_KEY,
-                # "Count": ISSUE_COUNT_KEY, coded
+                "Count": ISSUE_COUNT_KEY_PATH,
                 "Day": DAY_KEY,
-                # "GTIN": IDENTIFIERS_KEY, coded
                 "Format": ORIGINAL_FORMAT_KEY,
-                # "Imprint": IMPRINT_KEY, coded
+                "Imprint": IMPRINT_NAME_KEY_PATH,
                 "LanguageISO": LANGUAGE_KEY,
                 "MainCharacterOrTeam": PROTAGONIST_KEY,
                 "Manga": "manga",
@@ -182,20 +181,36 @@ class ComicInfoTransform(
                 "Notes": NOTES_KEY,
                 "Number": ISSUE_KEY,
                 "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
-                # "Pages": PAGES_KEY, coded
-                # "Publisher": PUBLISHER_KEY coded
+                "Publisher": PUBLISHER_NAME_KEY_PATH,
                 "Review": REVIEW_KEY,
                 "ScanInformation": SCAN_INFO_KEY,
-                # "Series": SERIES_KEY, coded
-                # STORY_ARCS coded
-                # "StoryArc":
-                # "StoryArcNumber":
-                ##
-                # "Title": "title", coded
+                "Series": SERIES_NAME_KEY_PATH,
                 "Summary": SUMMARY_KEY,
-                # "Volume": VOLUME_KEY, coded
-                # "Web": WEB_KEY, coded
+                "Volume": VOLUME_NUMBER_KEY_PATH,
                 "Year": YEAR_KEY,
+                # COPY from old transforms
+                **{
+                    key: key
+                    for key in {"arcs", "credits", "identifiers", "reprints"}
+                    | {
+                        "AlternateSeries",
+                        "AlternateNumber",
+                        "AlternateCount",
+                        "GTIN",
+                        "StoryArc",
+                        "StoryArcNumber",
+                        "Title",
+                        "Web",
+                        "Writer",
+                        "Penciller",
+                        "Inker",
+                        "Colorist",
+                        "Letterer",
+                        "CoverArtist",
+                        "Editor",
+                        "Translator",
+                    }
+                },
             }
         ),
         name_obj_to_string_list_key_transforms(
@@ -216,22 +231,12 @@ class ComicInfoTransform(
     SCHEMA_CLASS = ComicInfoSchema
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
-    PUBLISHER_TAG = "Publisher"
-    IMPRINT_TAG = "Imprint"
-    SERIES_TAG = "Series"
-    VOLUME_TAG = "Volume"
-    ISSUE_COUNT_TAG = "Count"
     URLS_TAG = "Web"
-    AGE_RATING_TAG = "AgeRating"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
         ComicInfoStoryArcsTransformMixin.parse_arcs,
-        NestedPublishingTagsMixin.parse_publisher,
-        NestedPublishingTagsMixin.parse_imprint,
-        NestedPublishingTagsMixin.parse_series,
-        NestedPublishingTagsMixin.parse_volume,
         ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
@@ -243,8 +248,4 @@ class ComicInfoTransform(
         ComicInfoReprintsTransformMixin.unparse_reprints,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
-        NestedPublishingTagsMixin.unparse_publisher,
-        NestedPublishingTagsMixin.unparse_imprint,
-        NestedPublishingTagsMixin.unparse_series,
-        NestedPublishingTagsMixin.unparse_volume,
     )

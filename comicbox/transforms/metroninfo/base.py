@@ -45,6 +45,49 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
                 "PageCount": PAGE_COUNT_KEY,
                 "Summary": SUMMARY_KEY,
                 "LastModified": UPDATED_AT_KEY,
+                **{
+                    key: key
+                    for key in {
+                        "arcs",
+                        "characters",
+                        "credits",
+                        "genres",
+                        "identifiers",
+                        "identifier_primary_source",
+                        "imprint",
+                        "language",
+                        "locations",
+                        "original_format",
+                        "prices",
+                        "publisher",
+                        "reprints",
+                        "series",
+                        "stories",
+                        "tags",
+                        "teams",
+                        "universes",
+                        "volume",
+                    }
+                    | {
+                        "Arcs",
+                        "Characters",
+                        "Credits",
+                        "Genres",
+                        "GTIN",
+                        "IDS",
+                        "Locations",
+                        "MangaVolume",
+                        "Prices",
+                        "Publisher",
+                        "Reprints",
+                        "Series",
+                        "Stories",
+                        "Tags",
+                        "teams",
+                        "Universes",
+                        "URLs",
+                    }
+                },
             }
         )
     )

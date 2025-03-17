@@ -38,16 +38,18 @@ class PDFXmlTransform(XmlTransform):
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
-                # "pdf:Author": coded
+                # "pdf:Author": CODED
                 "pdf:Creator": SCAN_INFO_KEY,  # original document creator
                 "pdf:Producer": TAGGER_KEY,
                 "pdf:ModDate": UPDATED_AT_KEY,
-                # "pdf:Title": coded
+                # "pdf:Title": CODED
+                **{key: key for key in ("credits", "tags")},
+                **{key: key for key in ("pdf:Author", "pdf:Keywords")},
             }
         ),
         name_obj_to_string_list_key_transforms(
             {
-                # TAGS_TAG: TAGS_KEY, specal code below
+                # TAGS_TAG: CODED EMBEDDED
                 "pdf:Subject": GENRES_KEY,
             },
         ),
@@ -126,16 +128,18 @@ class MuPDFTransform(PDFXmlTransform):
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
-                # AUTHOR_TAG: CONTRIBUTORS_KEY,
+                # "author": CODED
                 "creator": SCAN_INFO_KEY,  # original document creator
                 "modDate": UPDATED_AT_KEY,
                 "producer": TAGGER_KEY,
-                # "title": "title", coded
+                # "title": CODED
+                **{key: key for key in ("credits", "tags")},
+                **{key: key for key in ("author", "keywords")},
             }
         ),
         name_obj_to_string_list_key_transforms(
             {
-                # "keywords": TAGS_KEY, code
+                # "keywords": CODED, EMBEDDED
                 "subject": GENRES_KEY,
             },
         ),

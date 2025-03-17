@@ -46,7 +46,14 @@ from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformM
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.price import price_key_transform
-from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.publishing_tags import (
+    IMPRINT_NAME_KEY_PATH,
+    ISSUE_COUNT_KEY_PATH,
+    PUBLISHER_NAME_KEY_PATH,
+    SERIES_NAME_KEY_PATH,
+    VOLUME_COUNT_KEY_PATH,
+    VOLUME_NUMBER_KEY_PATH,
+)
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.urns import (
@@ -76,7 +83,6 @@ class ComictaggerTransform(
     ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
     JsonTransform,
-    NestedPublishingTagsMixin,
 ):
     """Comictagger transform."""
 
@@ -85,18 +91,54 @@ class ComictaggerTransform(
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
-                # "tagOrigin": TAG_ORIGIN_KEY, code
-                # "issueId": ISSUE_ID_KEY, code
-                # "seriesId": SERIES_ID_KEY, code
+                "publisher": PUBLISHER_NAME_KEY_PATH,
+                "imprint": IMPRINT_NAME_KEY_PATH,
+                "series": SERIES_NAME_KEY_PATH,
+                "volume_count": VOLUME_COUNT_KEY_PATH,
+                "volume": VOLUME_NUMBER_KEY_PATH,
+                "issue_count": ISSUE_COUNT_KEY_PATH,
+                # "tagOrigin": CODE
+                # "issueId": CODE
+                # "seriesId": CODE
                 "description": SUMMARY_KEY,
-                # "web_link": WEB_KEY, code
+                # "web_link": CODE
                 "format": ORIGINAL_FORMAT_KEY,
                 "black_and_white": MONOCHROME_KEY,
                 "maturity_rating": AGE_RATING_KEY,
-                # "story_arcs": STORY_ARC_KEY,  (copy from comicinfo)
-                # "credits": CREDITS_KEY, (copy from cbi, with different tags)
-                # "pages": PAGES_KEY, (copy from comicinfo)
-                # "is_version_of": REPRINTS_KEY (copy from comet with different tags)
+                # "story_arcs": CODE
+                # "credits": CODE
+                # "pages": CODE
+                # "is_version_of": CODE
+                **{
+                    key: key
+                    for key in {
+                        "arcs",
+                        "credits",
+                        "country",
+                        "day",
+                        "identifiers",
+                        "issue",
+                        "issue_number",
+                        "identifier_primary_source",
+                        "language",
+                        "reprints",
+                        "month",
+                        "notes",
+                        "page_count",
+                        "tagger",
+                        "updated_at",
+                        "year",
+                    }
+                    | {
+                        "identifier",
+                        "is_version_of",
+                        "issue_id",
+                        "seriesId",
+                        "web_link",
+                        "story_arcs",
+                        "tag_origin",
+                    }
+                },
             }
         ),
         name_obj_to_string_list_key_transforms(
@@ -121,14 +163,7 @@ class ComictaggerTransform(
     STORY_ARC_NUMBER_TAG = ""
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
-    PUBLISHER_TAG = "publisher"
-    IMPRINT_TAG = "imprint"
-    SERIES_TAG = "series"
-    VOLUME_COUNT_TAG = "volume_count"
-    VOLUME_TAG = "volume"
-    ISSUE_COUNT_TAG = "issue_count"
     URLS_TAG = "web_link"
-    AGE_RATING_TAG = "maturity_rating"
 
     def parse_identifiers(self, data):
         """Parse comictagger tag_origin and ids to identifiers."""
@@ -237,10 +272,6 @@ class ComictaggerTransform(
         ComicInfoStoryArcsTransformMixin.parse_arcs,
         parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
-        NestedPublishingTagsMixin.parse_publisher,
-        NestedPublishingTagsMixin.parse_imprint,
-        NestedPublishingTagsMixin.parse_series,
-        NestedPublishingTagsMixin.parse_volume,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
@@ -250,8 +281,4 @@ class ComictaggerTransform(
         unparse_reprints,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
         unparse_identifiers,
-        NestedPublishingTagsMixin.unparse_publisher,
-        NestedPublishingTagsMixin.unparse_imprint,
-        NestedPublishingTagsMixin.unparse_series,
-        NestedPublishingTagsMixin.unparse_volume,
     )
