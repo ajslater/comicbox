@@ -35,6 +35,21 @@ def name_obj_to_string_list_key_transforms(key_map):
     )
 
 
+def add_credit_role_to_comicbox_credits(
+    role_spelling: MappingProxyType,
+    person_name: str,
+    role_name: str,
+    comicbox_credits: dict,
+):
+    """Add a credit role to the comicbox credits."""
+    if not (person_name and role_name):
+        return
+    if person_name not in comicbox_credits:
+        comicbox_credits[person_name] = {ROLES_KEY: {}}
+    role_name = role_spelling.get(role_name.lower(), role_name)
+    comicbox_credits[person_name][ROLES_KEY][role_name] = {}
+
+
 class BaseTransform:
     """Base Transform methods."""
 

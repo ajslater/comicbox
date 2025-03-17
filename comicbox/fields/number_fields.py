@@ -56,6 +56,7 @@ class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
                 LOG.warning(f"Coerced {old_result} to {result}")
         return result
 
+
 class IntegerField(fields.Integer, RangedNumberMixin):
     """Durable integer field."""
 

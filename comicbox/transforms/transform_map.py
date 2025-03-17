@@ -3,6 +3,7 @@
 from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Any
 
 from bidict import frozenbidict
 from glom import Assign, glom
@@ -31,6 +32,28 @@ def create_transform_map(*args) -> frozenbidict:
     return frozenbidict(tm)
 
 
+@dataclass
+class MultiAssigns:
+    """Hack for multiple assignments."""
+
+    value: Any
+    extra_assigns: tuple[tuple[str, Any], ...]
+
+
+def _merge_with_old_value(target_dict, dest_path, value):
+    if old_value := glom(target_dict, dest_path, default=None):
+        ADD_UNIQUE_MERGER.merge(value, old_value)
+
+
+def _create_extra_assigns(target_dict, value, extra_assigns):
+    for extra_dest_path, extra_value in value.extra_assigns:
+        _merge_with_old_value(target_dict, extra_dest_path, extra_value)
+        if extra_value is not None:
+            extra_assign = Assign(extra_dest_path, extra_value, missing=dict)
+            extra_assigns.append(extra_assign)
+    return value.value
+
+
 def transform_map(
     spec_map: Mapping,
     source_map: Mapping,
@@ -48,8 +71,11 @@ def transform_map(
             value = deepcopy(value)
             if dest_func:
                 value = dest_func(value)
-            if old_value := glom(target_dict, dest_path, default=None):
-                ADD_UNIQUE_MERGER.merge(value, old_value)
+            extra_assigns = []
+            if isinstance(value, MultiAssigns):
+                value = _create_extra_assigns(target_dict, value, extra_assigns)
+            _merge_with_old_value(target_dict, dest_path, value)
             assign = Assign(dest_path, value, missing=dict)
-            glom(target_dict, assign)
+            assigns = (assign, *extra_assigns)
+            glom(target_dict, assigns)
     return target_dict

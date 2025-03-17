@@ -1,6 +1,5 @@
 """Comic Book Info transform to and from Comicbox format."""
 
-
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     ComicBookInfoSchema,
@@ -23,7 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.transforms.base import (
     name_obj_to_string_list_key_transforms,
 )
-from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
+from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
@@ -39,6 +38,7 @@ from comicbox.transforms.transform_map import KeyTransforms, create_transform_ma
 def _to_cb_issue_transform(issue_number):
     return str(issue_number)
 
+
 def issue_transform(issue_tag):
     """Transform cbi integer issues to comicbox issue str and copy the issue number."""
     return KeyTransforms(
@@ -46,8 +46,8 @@ def issue_transform(issue_tag):
         to_cb=_to_cb_issue_transform,
     )
 
+
 class ComicBookInfoTransform(
-    ComicBookInfoCreditsTransformMixin,
     JsonTransform,
 ):
     """Comic Book Info transform."""
@@ -81,13 +81,14 @@ class ComicBookInfoTransform(
                 **{
                     key: key
                     for key in (
-                        "credits",
+                        # "credits",
                         "tagger",
                         "updated_at",
                     )
                 },
             }
         ),
+        cbi_credits_transform("credits"),
         issue_transform("issue"),
         name_obj_to_string_list_key_transforms(
             {
@@ -98,12 +99,6 @@ class ComicBookInfoTransform(
         stories_key_transform("title"),
     )
     CREDITS_TAG = CREDITS_TAG
-    TO_COMICBOX_PRE_TRANSFORM = (
-        *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.parse_credits,
-    )
+    TO_COMICBOX_PRE_TRANSFORM = (*JsonTransform.TO_COMICBOX_PRE_TRANSFORM,)
 
-    FROM_COMICBOX_PRE_TRANSFORM = (
-        *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.unparse_credits,
-    )
+    FROM_COMICBOX_PRE_TRANSFORM = (*JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,)

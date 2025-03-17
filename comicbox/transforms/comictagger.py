@@ -40,7 +40,7 @@ from comicbox.transforms.base import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
-from comicbox.transforms.comicbookinfo_credits import ComicBookInfoCreditsTransformMixin
+from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
@@ -78,7 +78,6 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 
 class ComictaggerTransform(
-    ComicBookInfoCreditsTransformMixin,
     CoMetReprintsTransformMixin,
     ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
@@ -113,7 +112,6 @@ class ComictaggerTransform(
                     key: key
                     for key in {
                         "arcs",
-                        "credits",
                         "country",
                         "day",
                         "identifiers",
@@ -141,6 +139,7 @@ class ComictaggerTransform(
                 },
             }
         ),
+        cbi_credits_transform("credits"),
         name_obj_to_string_list_key_transforms(
             {
                 "characters": CHARACTERS_KEY,
@@ -267,7 +266,6 @@ class ComictaggerTransform(
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.parse_credits,
         parse_reprints,
         ComicInfoStoryArcsTransformMixin.parse_arcs,
         parse_identifiers,
@@ -276,7 +274,6 @@ class ComictaggerTransform(
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        ComicBookInfoCreditsTransformMixin.unparse_credits,
         CoMetReprintsTransformMixin.unparse_reprints,
         unparse_reprints,
         ComicInfoStoryArcsTransformMixin.unparse_arcs,
