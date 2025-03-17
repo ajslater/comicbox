@@ -1,7 +1,5 @@
 """Comic Book Info transform to and from Comicbox format."""
 
-from decimal import Decimal
-from math import ceil, floor
 
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
@@ -13,7 +11,6 @@ from comicbox.schemas.comicbox_mixin import (
     DAY_KEY,
     GENRES_KEY,
     ISSUE_KEY,
-    ISSUE_NUMBER_KEY,
     LANGUAGE_KEY,
     MONTH_KEY,
     PAGE_COUNT_KEY,
@@ -39,6 +36,16 @@ from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
 
+def _to_cb_issue_transform(issue_number):
+    return str(issue_number)
+
+def issue_transform(issue_tag):
+    """Transform cbi integer issues to comicbox issue str and copy the issue number."""
+    return KeyTransforms(
+        key_map={issue_tag: ISSUE_KEY},
+        to_cb=_to_cb_issue_transform,
+    )
+
 class ComicBookInfoTransform(
     ComicBookInfoCreditsTransformMixin,
     JsonTransform,
@@ -46,11 +53,20 @@ class ComicBookInfoTransform(
     """Comic Book Info transform."""
 
     SCHEMA_CLASS = ComicBookInfoSchema
+    TOP_TAG_MAP = create_transform_map(
+        KeyTransforms(
+            key_map={
+                "appID": TAGGER_KEY,
+                "lastModified": UPDATED_AT_KEY,
+            }
+        ),
+    )
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
                 "comments": SUMMARY_KEY,
                 "country": COUNTRY_KEY,
+                # "issue": ISSUE_KEY
                 "language": LANGUAGE_KEY,
                 "numberOfIssues": ISSUE_COUNT_KEY_PATH,
                 "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
@@ -64,18 +80,15 @@ class ComicBookInfoTransform(
                 "volume": VOLUME_NUMBER_KEY_PATH,
                 **{
                     key: key
-                    for key in {
+                    for key in (
                         "credits",
-                        "genres",
-                        "issue",
-                        "issue_number",
                         "tagger",
                         "updated_at",
-                    }
-                    | {"genre"}
+                    )
                 },
             }
         ),
+        issue_transform("issue"),
         name_obj_to_string_list_key_transforms(
             {
                 "genre": GENRES_KEY,
@@ -85,48 +98,12 @@ class ComicBookInfoTransform(
         stories_key_transform("title"),
     )
     CREDITS_TAG = CREDITS_TAG
-    ISSUE_TAG = "issue"
-    TAGGER_TAG = "appID"
-    UPDATED_AT_TAG = "lastModified"
-    TOP_TAG_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                TAGGER_TAG: TAGGER_KEY,
-                UPDATED_AT_TAG: UPDATED_AT_KEY,
-            }
-        ),
-    )
-
-    # TODO replace with "issue": ISSUE_NUMBER_KEY
-    # probably don't need a cast.
-    # TODO make sure compute handles issue_number with no issue.
-    def parse_issue(self, data) -> dict:
-        """Parse Issue integer."""
-        issue_number = data.get(self.ISSUE_TAG)
-        if issue_number is None:
-            return data
-        data[ISSUE_KEY] = str(issue_number)
-        data[ISSUE_NUMBER_KEY] = Decimal(issue_number)
-        return data
-
-    def unparse_issue(self, data: dict) -> dict:
-        """Parse Issue into an integer."""
-        issue_number = data.get(ISSUE_NUMBER_KEY)
-        if issue_number is None:
-            return data
-        # Discard decimal places
-        issue_number = floor(issue_number) if issue_number >= 0 else ceil(issue_number)
-        data[self.ISSUE_TAG] = issue_number
-        return data
-
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.parse_credits,
-        parse_issue,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         ComicBookInfoCreditsTransformMixin.unparse_credits,
-        unparse_issue,
     )
