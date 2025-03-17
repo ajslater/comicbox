@@ -35,6 +35,8 @@ from tests.const import (
 )
 from tests.validate import validate_path
 
+PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
+
 
 def get_tmp_dir(filename: str):
     """Get a tmp dir for a test file."""
@@ -331,9 +333,8 @@ class TestParser:
     def test_from_metadata(self):
         """Test assign metadata."""
         pruned = self.read_reference_metadata
-        config = Namespace(comicbox=Namespace(print="slmncd"))
         with Comicbox(
-            metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=config
+            metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=PRINT_CONFIG
         ) as car:
             car.print_out()
             md = car.get_metadata()
@@ -341,8 +342,7 @@ class TestParser:
 
     def test_from_dict(self):
         """Test load from native dict."""
-        config = Namespace(comicbox=Namespace(print="slmncd"))
-        with Comicbox(config=config) as car:
+        with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
             car.print_out()
             md = car.get_metadata()
@@ -350,8 +350,7 @@ class TestParser:
 
     def test_from_string(self):
         """Test load from string."""
-        config = Namespace(comicbox=Namespace(print="slmncd"))
-        with Comicbox(config=config) as car:
+        with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_string, self.fmt)
             car.print_out()
             md = car.get_metadata()
@@ -361,8 +360,7 @@ class TestParser:
     def test_from_file(self):
         """Test load from an export file."""
         print(f"{self.reference_export_path=}")
-        config = Namespace(comicbox=Namespace(print="slmncd"))
-        with Comicbox(config=config) as car:
+        with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
             car.print_out()
             md = car.get_metadata()
@@ -383,7 +381,8 @@ class TestParser:
     def to_dict(self, **kwargs):
         """Export metadata to native dict."""
         with Comicbox(
-            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+            metadata=self.write_reference_metadata,
+            fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
             car.print_out()
             return car.to_dict(fmt=self.fmt, **kwargs)
