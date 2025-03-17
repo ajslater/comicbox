@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from bidict import frozenbidict
 from glom import Assign, glom
 
+from comicbox.merge import ADD_UNIQUE_MERGER
+
 
 @dataclass
 class KeyTransforms:
@@ -46,6 +48,8 @@ def transform_map(
             value = deepcopy(value)
             if dest_func:
                 value = dest_func(value)
+            if old_value := glom(target_dict, dest_path, default=None):
+                ADD_UNIQUE_MERGER.merge(value, old_value)
             assign = Assign(dest_path, value, missing=dict)
             glom(target_dict, assign)
     return target_dict
