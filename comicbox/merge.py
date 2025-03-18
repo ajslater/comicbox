@@ -3,6 +3,7 @@
 # All this just because I want to remove empties during the merge and not after.
 # Otherwise I could do all of this with the simpler mergedeep package.
 from collections.abc import Mapping, MutableMapping
+from contextlib import suppress
 from typing import Any
 
 from deepmerge.extended_set import ExtendedSet
@@ -17,6 +18,32 @@ from deepmerge.strategy.type_conflict import TypeConflictStrategies
 # Ordered by expected frequency, excludes dict
 MERGE_EMPTY_VALUES = ("", [], set(), None, frozenset(), ())
 EMPTY_VALUES = (*MERGE_EMPTY_VALUES, {})
+
+
+class RecursiveExtendedSet(ExtendedSet):
+    """DeepDiff's extended set but recursive for collections."""
+
+    def _hash_element(self, element: Any) -> int:
+        with suppress(TypeError):
+            return hash(element)
+        if isinstance(element, dict):
+            sorted_keys = sorted(element.keys())
+            hash_str = ",".join(
+                [
+                    f"{self._hash_element(key)}:{self._hash_element(element[key])}"
+                    for key in sorted_keys
+                ]
+            )
+        elif isinstance(element, list | tuple | set | frozenset):
+            sorted_keys = sorted(element)
+            hash_str = ",".join([f"{self._hash_element(key)}" for key in sorted_keys])
+        else:
+            hash_str = str(element)
+        return hash(hash_str)
+
+    def __repr__(self):
+        """Represent as a string."""
+        return str(self._values_by_hash.values())
 
 
 class RemoveEmptyOverrideSimpleStrategiesMixin:
@@ -38,36 +65,40 @@ def coerce_mapping_to_dict(value):
     return dict(value) if isinstance(value, Mapping) else value
 
 
-class RemoveEmptyDictStrategies(DictStrategies):
+class RemoveEmptyMappingStrategies(DictStrategies):
     """Dict strategies that remove empties."""
 
     @staticmethod
     def strategy_merge_skip_empty(
-        config: Merger, path: list, base: MutableMapping, nxt: Mapping
+        config: Merger,
+        path: list,
+        base: MutableMapping,
+        nxt: Mapping,
+        override=False,  # noqa: FBT002
     ) -> MutableMapping:
         """Update keys or if they exist, merge them by type, but ignore empty values in nxt."""
         for k, v in nxt.items():
             if v in MERGE_EMPTY_VALUES:
                 continue
             new_v = (
-                v if k not in base else config.value_strategy([*path, k], base[k], v)
+                v
+                if override or k not in base
+                else config.value_strategy([*path, k], base[k], v)
             )
             base[k] = coerce_mapping_to_dict(new_v)
 
         return base
 
-    @staticmethod
+    @classmethod
     def strategy_override_skip_empty(
-        config: Merger,  # noqa: ARG004
-        path: list,  # noqa: ARG004
+        cls,
+        config: Merger,
+        path: list,
         base: MutableMapping,
         nxt: Mapping,
     ) -> Any:
         """Update keys, delete any None entries in nxt in base, and ignore other empty values in nxt."""
-        for k, v in nxt.items():
-            if v in MERGE_EMPTY_VALUES:
-                continue
-            base[k] = coerce_mapping_to_dict(v)
+        cls.strategy_merge_skip_empty(config, path, base, nxt, override=True)
 
 
 class RemoveEmptyListStrategies(
@@ -76,35 +107,43 @@ class RemoveEmptyListStrategies(
     """List strategies that remove empties."""
 
     @staticmethod
+    def unique_nxt(base, nxt, unique):
+        """Optionally make nxt only the values new to base."""
+        if not unique:
+            return nxt
+        base_as_set = RecursiveExtendedSet(base)
+        return tuple(e for e in nxt if e not in base_as_set)
+
+    @classmethod
     def strategy_append_skip_empty(
-        config: Merger,  # noqa: ARG004
-        path: list,  # noqa: ARG004
+        cls,
+        config: Merger,
+        path: list,
         base: list | tuple,
         nxt: list | tuple,
     ) -> list | tuple:
         """Append nxt to base, but ignore empty values in nxt."""
-        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)):
-            if isinstance(base, tuple):
-                base = base + tuple(nxt)
-            else:
-                base.extend(nxt)
-        return base
+        return cls.strategy_append_unique_skip_empty(
+            config, path, base, nxt, unique=False
+        )
 
-    @staticmethod
+    @classmethod
     def strategy_append_unique_skip_empty(
-        config: Merger,  # noqa: ARG004
-        path: list,  # noqa: ARG004
+        cls,
+        config: Merger,  # noqa: ARG003
+        path: list,  # noqa: ARG003
         base: list | tuple,
         nxt: list | tuple,
+        unique: bool = True,  # noqa: FBT002
     ) -> list | tuple:
         """Append items without duplicates in nxt to base, but ignore empty values in nxt."""
-        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)):
-            base_as_set = ExtendedSet(base)
-            if nxt := tuple(filter(lambda e: e not in base_as_set, nxt)):
-                if isinstance(base, tuple):
-                    base = base + nxt
-                else:
-                    base.extend(nxt)
+        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)) and (
+            nxt := cls.unique_nxt(base, nxt, unique)
+        ):
+            if isinstance(base, tuple):
+                base = base + nxt
+            else:
+                base.extend(nxt)
         return base
 
 
@@ -156,7 +195,7 @@ class RemoveEmptyTypeConflictStrategies(
 
 
 _ADDITIVE_MERGE_STRATEGIES: list[tuple[type, StrategyCallable]] = [
-    (Mapping, RemoveEmptyDictStrategies.strategy_merge_skip_empty),
+    (Mapping, RemoveEmptyMappingStrategies.strategy_merge_skip_empty),
     (list, RemoveEmptyListStrategies.strategy_append_unique_skip_empty),
     (tuple, RemoveEmptyListStrategies.strategy_append_unique_skip_empty),
     (set, RemoveEmptySetStrategies.strategy_union_skip_empty),
@@ -169,7 +208,7 @@ ADD_UNIQUE_MERGER: Merger = Merger(
 )
 
 _REPLACE_MERGE_STRATEGIES: list[tuple[type, StrategyCallable]] = [
-    (Mapping, RemoveEmptyDictStrategies.strategy_override_skip_empty),
+    (Mapping, RemoveEmptyMappingStrategies.strategy_override_skip_empty),
     (list, RemoveEmptyListStrategies.strategy_override_skip_empty),
     (tuple, RemoveEmptyListStrategies.strategy_override_skip_empty),
     (set, RemoveEmptySetStrategies.strategy_override_skip_empty),
