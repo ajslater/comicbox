@@ -40,13 +40,9 @@ from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import name_obj_to_string_list_key_transforms
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
-from comicbox.transforms.comicinfo_reprints import (
-    ComicInfoReprintsTransformMixin,
-)
+from comicbox.transforms.comicinfo_reprints import REPRINTS_KEY_TRANSFORM
 from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
-from comicbox.transforms.credit_role_tag import (
-    create_role_map,
-)
+from comicbox.transforms.credit_role_tag import create_role_map
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,
@@ -154,7 +150,6 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 
 class ComicInfoTransform(
-    ComicInfoReprintsTransformMixin,
     IdentifiersTransformMixin,
     XmlCreditsTransformMixin,
 ):
@@ -225,6 +220,7 @@ class ComicInfoTransform(
             }
         ),
         comicinfo_pages_transform("Pages.Page", _PAGE_TRANSFORM_MAP),
+        REPRINTS_KEY_TRANSFORM,
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
     )
@@ -238,7 +234,6 @@ class ComicInfoTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
-        ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
     )
@@ -246,6 +241,5 @@ class ComicInfoTransform(
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.unparse_credits,
-        ComicInfoReprintsTransformMixin.unparse_reprints,
         IdentifiersTransformMixin.unparse_identifiers,
     )

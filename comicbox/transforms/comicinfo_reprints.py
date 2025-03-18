@@ -1,46 +1,60 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
 
+from icecream import ic
+
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
+    NAME_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
+    VOLUME_KEY,
 )
 from comicbox.transforms.transform_map import (
     KeyTransforms,
+    MultiAssigns,
     create_transform_map,
     transform_map,
 )
 
+ALTERNATE_SERIES_TAG = "AlternateSeries"
+ALTERNATE_NUMBER_TAG = "AlternateNumber"
+ALTERNATE_COUNT_TAG = "AlternateCount"
+SERIES_NAME_KEY_PATH = f"{SERIES_KEY}.{NAME_KEY}"
+ISSUE_KEY_PATH = ISSUE_KEY
+VOLUME_COUNT_KEY_PATH = f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}"
 
-class ComicInfoReprintsTransformMixin:
-    """ComicInfo Reprints (Alternates) Transform Mixin."""
-
-    REPRINTS_TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "AlternateSeries": f"{SERIES_KEY}.name",
-                "AlternateNumber": ISSUE_KEY,
-                "AlternateCount": f"volume.{VOLUME_ISSUE_COUNT_KEY}",
-            }
-        )
+REPRINTS_TRANSFORM_MAP = create_transform_map(
+    KeyTransforms(
+        key_map={
+            ALTERNATE_SERIES_TAG: SERIES_NAME_KEY_PATH,
+            ALTERNATE_NUMBER_TAG: ISSUE_KEY,
+            ALTERNATE_COUNT_TAG: VOLUME_COUNT_KEY_PATH,
+        }
     )
+)
 
-    def parse_reprints(self, data):
-        """Parse reprints from alternate tags."""
-        # TODO Doing this with the main transform requires passing data to the transform to get reprints and merge
-        if alternative_reprint := transform_map(self.REPRINTS_TRANSFORM_MAP, data):
-            old_reprints = data.get(REPRINTS_KEY, ())
-            reprints = [*old_reprints, alternative_reprint]
-            data[REPRINTS_KEY] = reprints
-        return data
 
-    def unparse_reprints(self, data):
-        """Unparse a reprint to alternate tags."""
-        reprints = data.pop(REPRINTS_KEY, None)
-        if not reprints:
-            return data
-        first_reprint = reprints[0]
-        update_dict = transform_map(self.REPRINTS_TRANSFORM_MAP.inverse, first_reprint)
-        data.update(update_dict)
-        return data
+def _cix_reprints_to_cb(source_data, _alternative_series):
+    if alternative_reprint := transform_map(REPRINTS_TRANSFORM_MAP, source_data):
+        return [alternative_reprint]
+    return None
+
+
+def _cix_reprints_from_cb(_source_data, reprints):
+    first_reprint = reprints[0]
+    ic(first_reprint)
+    update_dict = transform_map(REPRINTS_TRANSFORM_MAP.inverse, first_reprint)
+    ic(update_dict)
+    value = update_dict.pop(ALTERNATE_SERIES_TAG, None)
+    if extra_assigns := tuple(update_dict.items()):
+        value = MultiAssigns(value, tuple(extra_assigns))
+    ic(value)
+    return value
+
+
+REPRINTS_KEY_TRANSFORM = KeyTransforms(
+    key_map={ALTERNATE_SERIES_TAG: REPRINTS_KEY},
+    to_cb=_cix_reprints_to_cb,
+    from_cb=_cix_reprints_from_cb,
+)
