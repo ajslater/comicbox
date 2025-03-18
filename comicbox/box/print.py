@@ -39,7 +39,13 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
     def _syntax(self, code: str, lexer: str):
         """Apply rich syntax highlighting to code."""
         return (
-            Syntax(code, lexer, theme=self._config.theme, background_color="black", word_wrap=True)
+            Syntax(
+                code,
+                lexer,
+                theme=self._config.theme,
+                background_color="black",
+                word_wrap=True,
+            )
             if self._is_themed()
             else code
         )
