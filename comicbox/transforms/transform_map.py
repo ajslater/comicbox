@@ -1,7 +1,6 @@
 """Transform maps."""
 
 from collections.abc import Callable, Mapping, MutableMapping
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -68,7 +67,6 @@ def transform_map(
         value = glom(source_map, source_path, default=None)
         if value is not None:
             dest_path, dest_func = dest_spec
-            value = deepcopy(value)
             if dest_func:
                 value = dest_func(source_map, value)
             extra_assigns = []
