@@ -42,7 +42,7 @@ from comicbox.transforms.base import (
 from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
 from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
-from comicbox.transforms.comicinfo_storyarcs import ComicInfoStoryArcsTransformMixin
+from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
 from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.price import price_key_transform
@@ -79,7 +79,6 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 class ComictaggerTransform(
     CoMetReprintsTransformMixin,
-    ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
     JsonTransform,
 ):
@@ -111,7 +110,7 @@ class ComictaggerTransform(
                 **{
                     key: key
                     for key in {
-                        "arcs",
+                        # "arcs",
                         "country",
                         "day",
                         "identifiers",
@@ -133,7 +132,7 @@ class ComictaggerTransform(
                         "issue_id",
                         "seriesId",
                         "web_link",
-                        "story_arcs",
+                        # "story_arcs",
                         "tag_origin",
                     }
                 },
@@ -150,16 +149,15 @@ class ComictaggerTransform(
                 "teams": TEAMS_KEY,
             }
         ),
+        comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
         price_key_transform("price"),
         stories_key_transform("title"),
-        comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
+        story_arcs_transform(STORY_ARC_TAG, ""),
     )
     IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     PAGES_TAG = PAGES_TAG
     PAGES_SUB_TAG = ""
     INDEX_TAG = INDEX_TAG
-    STORY_ARC_TAG = STORY_ARC_TAG
-    STORY_ARC_NUMBER_TAG = ""
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
     URLS_TAG = "web_link"
@@ -267,7 +265,6 @@ class ComictaggerTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *JsonTransform.TO_COMICBOX_PRE_TRANSFORM,
         parse_reprints,
-        ComicInfoStoryArcsTransformMixin.parse_arcs,
         parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
     )
@@ -276,6 +273,5 @@ class ComictaggerTransform(
         *JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,
         CoMetReprintsTransformMixin.unparse_reprints,
         unparse_reprints,
-        ComicInfoStoryArcsTransformMixin.unparse_arcs,
         unparse_identifiers,
     )

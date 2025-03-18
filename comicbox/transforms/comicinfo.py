@@ -43,9 +43,7 @@ from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_reprints import (
     ComicInfoReprintsTransformMixin,
 )
-from comicbox.transforms.comicinfo_storyarcs import (
-    ComicInfoStoryArcsTransformMixin,
-)
+from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
 from comicbox.transforms.credit_role_tag import (
     create_role_map,
 )
@@ -157,7 +155,6 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 class ComicInfoTransform(
     ComicInfoReprintsTransformMixin,
-    ComicInfoStoryArcsTransformMixin,
     IdentifiersTransformMixin,
     XmlCreditsTransformMixin,
 ):
@@ -191,14 +188,18 @@ class ComicInfoTransform(
                 # COPY from old transforms
                 **{
                     key: key
-                    for key in {"arcs", "credits", "identifiers", "reprints"}
+                    for key in {  # "arcs",
+                        "credits",
+                        "identifiers",
+                        "reprints",
+                    }
                     | {
                         "AlternateSeries",
                         "AlternateNumber",
                         "AlternateCount",
                         "GTIN",
-                        "StoryArc",
-                        "StoryArcNumber",
+                        # "StoryArc",
+                        # "StoryArcNumber",
                         "Title",
                         "Web",
                         "Writer",
@@ -223,8 +224,9 @@ class ComicInfoTransform(
                 "Teams": TEAMS_KEY,
             }
         ),
-        stories_key_transform("Title"),
         comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
+        stories_key_transform("Title"),
+        story_arcs_transform("StoryArc", "StoryArcNumber"),
     )
     ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
     ROLE_MAP = create_role_map(ROLE_ALIASES)
@@ -236,7 +238,6 @@ class ComicInfoTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
-        ComicInfoStoryArcsTransformMixin.parse_arcs,
         ComicInfoReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
@@ -246,6 +247,5 @@ class ComicInfoTransform(
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.unparse_credits,
         ComicInfoReprintsTransformMixin.unparse_reprints,
-        ComicInfoStoryArcsTransformMixin.unparse_arcs,
         IdentifiersTransformMixin.unparse_identifiers,
     )
