@@ -32,22 +32,6 @@ class RemoveEmptyOverrideSimpleStrategiesMixin:
         """Update keys, but ignore empty values in nxt."""
         return base if nxt else nxt
 
-    @staticmethod
-    def strategy_pop_none(
-        config: Merger,
-        path: list,
-        base: list | set,
-        nxt: Any,
-    ) -> Any:
-        """Pop nones from all dict members of sequences."""
-        new_base = []
-        for index, base_e in enumerate(base):
-            for nxt_e in nxt:
-                new_e = config.value_strategy([*path, index], base_e, nxt_e)
-                if new_e:
-                    new_base.append(new_e)
-        return type(base)(new_base)
-
 
 def coerce_mapping_to_dict(value):
     """Coerce mappings to dicts, because ruamel.yaml returns it's own commented mapping type."""
@@ -84,21 +68,6 @@ class RemoveEmptyDictStrategies(DictStrategies):
             if v in MERGE_EMPTY_VALUES:
                 continue
             base[k] = coerce_mapping_to_dict(v)
-
-    @staticmethod
-    def strategy_pop_none(
-        config: Merger,
-        path: list,
-        base: MutableMapping,
-        nxt: Mapping,
-    ):
-        """Pop none from dicts."""
-        for k, v in nxt.items():
-            if v is None:
-                base.pop(k, None)
-            else:
-                base[k] = config.value_strategy([*path, k], base[k], v)
-        return base
 
 
 class RemoveEmptyListStrategies(
@@ -173,16 +142,6 @@ class RemoveEmptyFallbackStrategiesMixin:
             return nxt
         return base
 
-    @staticmethod
-    def strategy_pop_none(
-        config: Merger,  # noqa: ARG004
-        path: list,  # noqa: ARG004
-        base: Any,  # noqa: ARG004
-        nxt: Any,  # noqa: ARG004
-    ) -> Any:
-        """Use nxt, ignore base, but strip of empty values."""
-        return None
-
 
 class RemoveEmptyFallbackStrategies(
     RemoveEmptyFallbackStrategiesMixin, FallbackStrategies
@@ -220,18 +179,4 @@ REPLACE_MERGER: Merger = Merger(
     _REPLACE_MERGE_STRATEGIES,
     [RemoveEmptyFallbackStrategies.strategy_override_skip_empty],
     [RemoveEmptyTypeConflictStrategies.strategy_override_skip_empty],
-)
-
-_POP_NONE_MERGE_STRATEGIES: list[tuple[type, StrategyCallable]] = [
-    (Mapping, RemoveEmptyDictStrategies.strategy_pop_none),
-    (list, RemoveEmptyListStrategies.strategy_pop_none),
-    (tuple, RemoveEmptyListStrategies.strategy_pop_none),
-    (set, RemoveEmptySetStrategies.strategy_pop_none),
-    (frozenset, RemoveEmptySetStrategies.strategy_pop_none),
-]
-
-POP_NONE_MERGER: Merger = Merger(
-    _POP_NONE_MERGE_STRATEGIES,
-    [RemoveEmptyFallbackStrategies.strategy_pop_none],
-    [RemoveEmptyTypeConflictStrategies.strategy_pop_none],
 )
