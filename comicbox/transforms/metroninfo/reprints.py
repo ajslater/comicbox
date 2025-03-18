@@ -1,18 +1,9 @@
 """MetronInfo.xml Reprints Transform."""
 
-from comicfn2dict.parse import comicfn2dict
-
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.schemas.comicbox_mixin import (
-    ISSUE_KEY,
-    NAME_KEY,
-    REPRINT_ISSUE_KEY,
-    REPRINT_SERIES_KEY,
-    REPRINTS_KEY,
-    SERIES_KEY,
-)
+from comicbox.schemas.comicbox_mixin import REPRINTS_KEY
 from comicbox.transforms.metroninfo.nested import MetronInfoTransformNestedTags
-from comicbox.transforms.xml_reprints import reprint_to_filename
+from comicbox.transforms.xml_reprints import filename_to_reprint, reprint_to_filename
 
 
 class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
@@ -25,13 +16,7 @@ class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
         name = get_cdata(metron_reprint)
         if not name:
             return "", comicbox_reprint
-        fn_dict = comicfn2dict(name)
-        series = fn_dict.get(SERIES_KEY)
-        if series:
-            comicbox_reprint[REPRINT_SERIES_KEY] = {NAME_KEY: series}
-        issue = fn_dict.get(ISSUE_KEY)
-        if issue is not None:
-            comicbox_reprint[REPRINT_ISSUE_KEY] = issue
+        comicbox_reprint = dict(filename_to_reprint(name))
         cls._parse_metron_id_attribute(
             data, "reprint", metron_reprint, comicbox_reprint
         )
@@ -46,10 +31,11 @@ class MetronInfoTransformReprints(MetronInfoTransformNestedTags):
     @classmethod
     def _unparse_reprint(cls, data, _, comicbox_reprint) -> dict:
         """Unparse a structured comicbox reprints into metron reprint."""
+        metron_reprint = {}
         name = reprint_to_filename(comicbox_reprint)
         if not name:
-            return {}
-        metron_reprint = {"#text": name}
+            return metron_reprint
+        metron_reprint["#text"] = name
         cls._unparse_metron_id_attribute(data, metron_reprint, comicbox_reprint)
         return metron_reprint
 

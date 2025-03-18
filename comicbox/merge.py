@@ -15,7 +15,8 @@ from deepmerge.strategy.set import SetStrategies
 from deepmerge.strategy.type_conflict import TypeConflictStrategies
 
 # Ordered by expected frequency, excludes dict
-_EMPTY_VALUES = ("", [], set(), None, frozenset(), ())
+MERGE_EMPTY_VALUES = ("", [], set(), None, frozenset(), ())
+EMPTY_VALUES = (*MERGE_EMPTY_VALUES, {})
 
 
 class RemoveEmptyOverrideSimpleStrategiesMixin:
@@ -62,7 +63,7 @@ class RemoveEmptyDictStrategies(DictStrategies):
     ) -> MutableMapping:
         """Update keys or if they exist, merge them by type, but ignore empty values in nxt."""
         for k, v in nxt.items():
-            if v in _EMPTY_VALUES:
+            if v in MERGE_EMPTY_VALUES:
                 continue
             new_v = (
                 v if k not in base else config.value_strategy([*path, k], base[k], v)
@@ -80,7 +81,7 @@ class RemoveEmptyDictStrategies(DictStrategies):
     ) -> Any:
         """Update keys, delete any None entries in nxt in base, and ignore other empty values in nxt."""
         for k, v in nxt.items():
-            if v in _EMPTY_VALUES:
+            if v in MERGE_EMPTY_VALUES:
                 continue
             base[k] = coerce_mapping_to_dict(v)
 
@@ -113,9 +114,9 @@ class RemoveEmptyListStrategies(
         nxt: list | tuple,
     ) -> list | tuple:
         """Append nxt to base, but ignore empty values in nxt."""
-        if nxt := tuple(filter(lambda e: e not in _EMPTY_VALUES, nxt)):
+        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)):
             if isinstance(base, tuple):
-                base = base + nxt
+                base = base + tuple(nxt)
             else:
                 base.extend(nxt)
         return base
@@ -128,7 +129,7 @@ class RemoveEmptyListStrategies(
         nxt: list | tuple,
     ) -> list | tuple:
         """Append items without duplicates in nxt to base, but ignore empty values in nxt."""
-        if nxt := tuple(filter(lambda e: e not in _EMPTY_VALUES, nxt)):
+        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)):
             base_as_set = ExtendedSet(base)
             if nxt := tuple(filter(lambda e: e not in base_as_set, nxt)):
                 if isinstance(base, tuple):
@@ -149,7 +150,7 @@ class RemoveEmptySetStrategies(RemoveEmptyOverrideSimpleStrategiesMixin, SetStra
         nxt: set | frozenset,
     ) -> set | frozenset:
         """Merge items without duplicates in nxt to base, but ignore empty values in nxt."""
-        nxt = frozenset(filter(lambda e: e not in _EMPTY_VALUES, nxt))
+        nxt = frozenset(filter(lambda e: e not in EMPTY_VALUES, nxt))
         return type(base)(base | nxt)
 
 
@@ -165,10 +166,10 @@ class RemoveEmptyFallbackStrategiesMixin:
     ) -> Any:
         """Use nxt, ignore base, but strip of empty values."""
         if isinstance(nxt, Mapping):
-            return {k: v for k, v in nxt.items() if v not in _EMPTY_VALUES}
+            return {k: v for k, v in nxt.items() if v not in MERGE_EMPTY_VALUES}
         if isinstance(nxt, list | tuple | set | frozenset):
-            return type(nxt)(filter(lambda e: e not in _EMPTY_VALUES, nxt))
-        if nxt not in _EMPTY_VALUES:
+            return type(nxt)(filter(lambda e: e not in EMPTY_VALUES, nxt))
+        if nxt not in MERGE_EMPTY_VALUES:
             return nxt
         return base
 

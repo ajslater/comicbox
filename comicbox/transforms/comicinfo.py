@@ -224,7 +224,7 @@ class ComicInfoTransform(
                 "Teams": TEAMS_KEY,
             }
         ),
-        comicinfo_pages_transform(_PAGE_TRANSFORM_MAP),
+        comicinfo_pages_transform("Pages.Page", _PAGE_TRANSFORM_MAP),
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
     )

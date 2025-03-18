@@ -32,7 +32,7 @@ from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import (
     name_obj_to_string_list_key_transforms,
 )
-from comicbox.transforms.comet_reprints import CoMetReprintsTransformMixin
+from comicbox.transforms.comet_reprints import comet_reprints_transform
 from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
     create_role_map,
@@ -132,7 +132,6 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 class CoMetTransform(
     XmlTransform,
     XmlCreditsTransformMixin,
-    CoMetReprintsTransformMixin,
     IdentifiersTransformMixin,
     CreditRoleTagTransformMixin,
 ):
@@ -162,11 +161,9 @@ class CoMetTransform(
                         "identifiers",
                         "issue",
                         "issue_number",
-                        "reprints",
                     }
                     | {
                         "identifier",
-                        "isVersionOf",
                         "colorist",
                         "coverDesigner",
                         "creator",
@@ -183,6 +180,7 @@ class CoMetTransform(
             {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
         price_key_transform("price"),
+        comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
     )
     ROLE_TAGS_ENUM = CoMetRoleTagEnum
@@ -196,14 +194,12 @@ class CoMetTransform(
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.parse_credits,
-        CoMetReprintsTransformMixin.parse_reprints,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         XmlCreditsTransformMixin.unparse_credits,
-        CoMetReprintsTransformMixin.unparse_reprints,
         IdentifiersTransformMixin.unparse_identifiers,
     )
 

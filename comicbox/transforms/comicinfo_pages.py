@@ -16,7 +16,7 @@ def _cix_pages_transform(page_transform_map: Mapping, pages: list):
     return [transform_map(page_transform_map, page) for page in pages]
 
 
-def comicinfo_pages_transform(page_transform_map: frozenbidict):
+def comicinfo_pages_transform(pages_key_path, page_transform_map: frozenbidict):
     """Create a pages transformer with a page transform map."""
 
     def cix_transform_to_pages(_source_data, pages: list):
@@ -28,7 +28,7 @@ def comicinfo_pages_transform(page_transform_map: frozenbidict):
         return _cix_pages_transform(page_transform_map.inverse, pages)
 
     return KeyTransforms(
-        key_map={"Pages.Page": PAGES_KEY},
+        key_map={pages_key_path: PAGES_KEY},
         to_cb=cix_transform_to_pages,
         from_cb=cix_transform_from_pages,
     )

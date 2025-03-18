@@ -7,7 +7,7 @@ from typing import Any
 from bidict import frozenbidict
 from glom import Assign, glom
 
-from comicbox.merge import ADD_UNIQUE_MERGER
+from comicbox.merge import ADD_UNIQUE_MERGER, MERGE_EMPTY_VALUES
 
 
 @dataclass
@@ -65,15 +65,18 @@ def transform_map(
     ) in spec_map.items():
         source_path, _ = source_spec
         value = glom(source_map, source_path, default=None)
-        if value is not None:
-            dest_path, dest_func = dest_spec
-            if dest_func:
-                value = dest_func(source_map, value)
-            extra_assigns = []
-            if isinstance(value, MultiAssigns):
-                value = _create_extra_assigns(target_dict, value, extra_assigns)
-            _merge_with_old_value(target_dict, dest_path, value)
-            assign = Assign(dest_path, value, missing=dict)
-            assigns = (assign, *extra_assigns)
-            glom(target_dict, assigns)
+        if value in MERGE_EMPTY_VALUES:
+            continue
+        dest_path, dest_func = dest_spec
+        if dest_func:
+            value = dest_func(source_map, value)
+            if value in MERGE_EMPTY_VALUES:
+                continue
+        extra_assigns = []
+        if isinstance(value, MultiAssigns):
+            value = _create_extra_assigns(target_dict, value, extra_assigns)
+        _merge_with_old_value(target_dict, dest_path, value)
+        assign = Assign(dest_path, value, missing=dict)
+        assigns = (assign, *extra_assigns)
+        glom(target_dict, assigns)
     return target_dict

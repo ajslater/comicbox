@@ -1,5 +1,6 @@
 """Reprint sorting."""
 
+from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.unparse import dict2comicfn
 
 from comicbox.schemas.comicbox_mixin import (
@@ -20,16 +21,22 @@ from comicbox.transforms.transform_map import (
 REPRINTS_TO_FILENAME_TRANSFORM_MAP = create_transform_map(
     KeyTransforms(
         key_map={
-            f"{SERIES_KEY}.{NAME_KEY}": SERIES_TAG,
-            f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}": VOLUME_TAG,
-            f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}": ISSUE_COUNT_TAG,
-            f"{ISSUE_KEY}": ISSUE_TAG,
+            SERIES_TAG: f"{SERIES_KEY}.{NAME_KEY}",
+            VOLUME_TAG: f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
+            ISSUE_COUNT_TAG: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
+            ISSUE_TAG: f"{ISSUE_KEY}",
         }
     )
 )
 
 
+def filename_to_reprint(filename):
+    """Filename to comicbox reprint."""
+    filename_dict = comicfn2dict(filename)
+    return transform_map(REPRINTS_TO_FILENAME_TRANSFORM_MAP, filename_dict)
+
+
 def reprint_to_filename(reprint):
     """Comicbox reprint to filename."""
-    filename_dict = transform_map(REPRINTS_TO_FILENAME_TRANSFORM_MAP, reprint)
+    filename_dict = transform_map(REPRINTS_TO_FILENAME_TRANSFORM_MAP.inverse, reprint)
     return dict2comicfn(filename_dict, ext=False)
