@@ -70,7 +70,7 @@ def transform_map(
             dest_path, dest_func = dest_spec
             value = deepcopy(value)
             if dest_func:
-                value = dest_func(value)
+                value = dest_func(source_map, value)
             extra_assigns = []
             if isinstance(value, MultiAssigns):
                 value = _create_extra_assigns(target_dict, value, extra_assigns)

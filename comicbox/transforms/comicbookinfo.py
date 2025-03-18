@@ -35,7 +35,7 @@ from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
 
-def _to_cb_issue_transform(issue_number):
+def _to_cb_issue_transform(_source_data, issue_number):
     return str(issue_number)
 
 

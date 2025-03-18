@@ -6,7 +6,7 @@ from comicbox.transforms.transform_map import KeyTransforms
 _TITLE_STORIES_DELIMITER = ";"
 
 
-def title_to_stories(title):
+def title_to_stories(_source_data, title):
     """Split titles into stories."""
     names = title.split(_TITLE_STORIES_DELIMITER)
     return {
@@ -14,7 +14,7 @@ def title_to_stories(title):
     }
 
 
-def stories_to_title(stories):
+def stories_to_title(_source_data, stories):
     """Join stories into a title."""
     names = [story for story in stories if story]
     return _TITLE_STORIES_DELIMITER.join(names)

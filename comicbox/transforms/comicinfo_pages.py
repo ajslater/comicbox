@@ -19,11 +19,11 @@ def _cix_pages_transform(page_transform_map: Mapping, pages: list):
 def comicinfo_pages_transform(page_transform_map: frozenbidict):
     """Create a pages transformer with a page transform map."""
 
-    def cix_transform_to_pages(pages: list):
+    def cix_transform_to_pages(_source_data, pages: list):
         """Transform pages from comicinfo to comicbox."""
         return _cix_pages_transform(page_transform_map, pages)
 
-    def cix_transform_from_pages(pages: list):
+    def cix_transform_from_pages(_source_data, pages: list):
         """Transform pages from comicbox to comicinfo."""
         return _cix_pages_transform(page_transform_map.inverse, pages)
 

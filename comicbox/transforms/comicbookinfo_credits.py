@@ -3,8 +3,6 @@
 from logging import getLogger
 from types import MappingProxyType
 
-from glom import T
-
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
     PERSON_TAG,
@@ -35,7 +33,7 @@ def _parse_credit(cbi_credit: dict, comicbox_credits: dict, credit_primaries: di
         credit_primaries[cbi_role] = cbi_person
 
 
-def _cbi_credits_to_cb(cbi_credits):
+def _cbi_credits_to_cb(_source_data, cbi_credits):
     comicbox_credits = {}
     credit_primaries = {}
     for cbi_credit in cbi_credits:
@@ -52,23 +50,23 @@ def _cbi_credits_to_cb(cbi_credits):
     return result
 
 
-def _unparse_credit(person_name, comicbox_credit, cbi_credits):
+def _unparse_credit(source_data, person_name, comicbox_credit, cbi_credits):
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
         return
     comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
     for role_name in comicbox_roles:
         cbi_credit = {PERSON_TAG: person_name, ROLE_TAG: role_name}
-        if T.get(CREDIT_PRIMARIES_KEY, {}).get(role_name) == person_name:
+        if source_data.get(CREDIT_PRIMARIES_KEY, {}).get(role_name) == person_name:
             cbi_credit[PRIMARY_TAG] = True
         cbi_credits.append(cbi_credit)
 
 
-def _cbi_credits_from_cb(comicbox_credits):
+def _cbi_credits_from_cb(source_data, comicbox_credits):
     cbi_credits = []
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
-            _unparse_credit(person_name, comicbox_credit, cbi_credits)
+            _unparse_credit(source_data, person_name, comicbox_credit, cbi_credits)
         except Exception as exc:
             LOG.warning(f"Unparsing credit {comicbox_credit} - {exc}")
     return cbi_credits

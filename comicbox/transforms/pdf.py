@@ -45,11 +45,11 @@ _AUTHOR_VALUES = frozenset(
 )
 
 
-def _authors_to_credits(authors):
+def _authors_to_credits(_source_data, authors):
     return {author: {ROLES_KEY: {"Writer": {}}} for author in authors if author}
 
 
-def _credits_to_authors(comicbox_credits):
+def _credits_to_authors(_source_data, comicbox_credits):
     authors = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         if not person_name:
