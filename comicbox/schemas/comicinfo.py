@@ -208,7 +208,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     SeriesGroup = XmlStringSetField(as_string=True)
     AgeRating = ComicInfoAgeRatingField()
     Pages = create_sub_tag_field(
-        "Page", ListField(Nested(XmlPageInfoSchema), sort_keys=("@Image",))
+        "Page", ListField(Nested(XmlPageInfoSchema), sort_keys=(IMAGE_ATTRIBUTE,))
     )
     CommunityRating = XmlDecimalField()
     MainCharacterOrTeam = XmlStringSetField(as_string=True)

@@ -9,7 +9,7 @@ from glom import Path as GlomPath
 from marshmallow import Schema
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collection_fields import StringSetField
+from comicbox.fields.collection_fields import ListField, StringSetField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
@@ -74,7 +74,12 @@ class ComicBookInfoSubSchema(JsonSubSchema):
         """Schema Options."""
 
         include = MappingProxyType(
-            {CREDITS_TAG: Nested(ComicBookInfoCreditSchema, many=True)}
+            {
+                CREDITS_TAG: ListField(
+                    Nested(ComicBookInfoCreditSchema),
+                    sort_keys=("person", "role", "primary"),
+                )
+            }
         )
 
 

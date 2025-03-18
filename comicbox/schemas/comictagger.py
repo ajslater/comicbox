@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.collection_fields import StringListField, StringSetField
+from comicbox.fields.collection_fields import ListField, StringListField, StringSetField
 from comicbox.fields.enum_fields import ComicInfoMangaField, YesNoField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
@@ -101,7 +101,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     alternate_images = StringListField(sort=False)
     # credits in include
     tags = StringSetField()
-    pages = Nested(ComictaggerPageInfoSchema, many=True)
+    pages = ListField(Nested(ComictaggerPageInfoSchema), sort_keys=(INDEX_TAG,))
 
     # comet unique
     price = DecimalField(minimum=Decimal("0.0"))
@@ -117,7 +117,10 @@ class ComictaggerSubSchema(JsonSubSchema):
         include = MappingProxyType(
             {
                 "format": StringField(),
-                "credits": Nested(ComicBookInfoCreditSchema, many=True),
+                "credits": ListField(
+                    Nested(ComicBookInfoCreditSchema),
+                    sort_keys=("person", "role", "primary"),
+                ),
             }
         )
 

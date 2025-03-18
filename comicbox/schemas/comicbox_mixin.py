@@ -300,7 +300,7 @@ class ComicboxSubSchemaMixin:
     monochrome = BooleanField()
     notes = StringField()
     page_count = IntegerField(minimum=0)
-    pages = Nested(PageInfoSchema, many=True)
+    pages = ListField(Nested(PageInfoSchema), sort_keys=(PAGE_INDEX_KEY,))
     publisher = SimpleNamedNestedField()
     prices = DictField(
         keys=CountryField(allow_empty=True),
