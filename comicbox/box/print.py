@@ -25,8 +25,6 @@ _SOURCES_LOADED_NORMALIZED = frozenset(
 class ComicboxPrintMixin(ComicboxMetadataMixin):
     """Print Methods."""
 
-    _HEADER_WIDTH = 5
-    _TERM_WIDTH = 80
     _CONSOLE = Console()
     _RULE_CHAR = "⎯"
     _RULE_COLOR = DEFAULT_STYLES["rule.line"].color.name  # type: ignore[reportOptionalMemberAccess]
@@ -41,7 +39,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
     def _syntax(self, code: str, lexer: str):
         """Apply rich syntax highlighting to code."""
         return (
-            Syntax(code, lexer, theme=self._config.theme, background_color="black")
+            Syntax(code, lexer, theme=self._config.theme, background_color="black", word_wrap=True)
             if self._is_themed()
             else code
         )
