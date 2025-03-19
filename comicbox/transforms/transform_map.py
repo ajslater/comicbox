@@ -9,6 +9,8 @@ from glom import Assign, glom
 
 from comicbox.merge import ADD_UNIQUE_MERGER, MERGE_EMPTY_VALUES
 
+DUMMY_PREFIX = "dummy_"
+
 
 @dataclass
 class KeyTransforms:
@@ -64,9 +66,12 @@ def transform_map(
         dest_spec,
     ) in spec_map.items():
         source_path, _ = source_spec
-        value = glom(source_map, source_path, default=None)
-        if value in MERGE_EMPTY_VALUES:
-            continue
+        if source_path.startswith(DUMMY_PREFIX):
+            value = None
+        else:
+            value = glom(source_map, source_path, default=None)
+            if value in MERGE_EMPTY_VALUES:
+                continue
         dest_path, dest_func = dest_spec
         if dest_func:
             value = dest_func(source_map, value)
