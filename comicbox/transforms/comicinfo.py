@@ -53,7 +53,7 @@ from comicbox.transforms.publishing_tags import (
 )
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
-from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
+from comicbox.transforms.xml_credits import xml_credits_transform
 from comicbox.transforms.xml_transforms import XmlTransform
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
@@ -150,11 +150,13 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 
 class ComicInfoTransform(
+    XmlTransform,
     IdentifiersTransformMixin,
-    XmlCreditsTransformMixin,
 ):
     """ComicInfo.xml Schema."""
 
+    SCHEMA_CLASS = ComicInfoSchema
+    ROLE_MAP = create_role_map(ROLE_ALIASES)
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
@@ -183,28 +185,12 @@ class ComicInfoTransform(
                 # COPY from old transforms
                 **{
                     key: key
-                    for key in {  # "arcs",
-                        "credits",
+                    for key in {
                         "identifiers",
-                        "reprints",
                     }
                     | {
-                        "AlternateSeries",
-                        "AlternateNumber",
-                        "AlternateCount",
                         "GTIN",
-                        # "StoryArc",
-                        # "StoryArcNumber",
-                        "Title",
                         "Web",
-                        "Writer",
-                        "Penciller",
-                        "Inker",
-                        "Colorist",
-                        "Letterer",
-                        "CoverArtist",
-                        "Editor",
-                        "Translator",
                     }
                 },
             }
@@ -219,27 +205,23 @@ class ComicInfoTransform(
                 "Teams": TEAMS_KEY,
             }
         ),
+        xml_credits_transform(ComicInfoRoleTagEnum, ROLE_MAP),
         comicinfo_pages_transform("Pages.Page", _PAGE_TRANSFORM_MAP),
         REPRINTS_KEY_TRANSFORM,
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
     )
-    ROLE_TAGS_ENUM = ComicInfoRoleTagEnum
-    ROLE_MAP = create_role_map(ROLE_ALIASES)
-    SCHEMA_CLASS = ComicInfoSchema
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
     URLS_TAG = "Web"
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.parse_credits,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.unparse_credits,
         IdentifiersTransformMixin.unparse_identifiers,
     )

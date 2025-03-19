@@ -1,7 +1,6 @@
 """Comic Book Info Credits Transform Mixin."""
 
 from logging import getLogger
-from types import MappingProxyType
 
 from comicbox.schemas.comicbookinfo import (
     CREDITS_TAG,
@@ -13,12 +12,10 @@ from comicbox.schemas.comicbox_mixin import (
     CREDIT_PRIMARIES_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.base import add_credit_role_to_comicbox_credits
+from comicbox.transforms.base import ROLE_SPELLING, add_credit_role_to_comicbox_credits
 from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
 
 LOG = getLogger(__name__)
-
-ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
 
 def _parse_credit(cbi_credit: dict, comicbox_credits: dict, credit_primaries: dict):

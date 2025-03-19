@@ -14,6 +14,7 @@ from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
 from comicbox.transforms.transform_map import KeyTransforms, transform_map
 
 LOG = getLogger(__name__)
+ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
 
 def string_list_to_name_obj(_source_data: Mapping, names):
@@ -56,7 +57,6 @@ class BaseTransform:
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
     TOP_TAG_MAP = frozenbidict()
-    ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 
     def __init__(self, path=None):
         """Initialize instances."""
@@ -111,18 +111,6 @@ class BaseTransform:
         if not self.TRANSFORM_MAP:
             return data
         return transform_map(self.TRANSFORM_MAP.inverse, data)
-
-    @classmethod
-    def add_credit_role_to_comicbox_credits(
-        cls, person_name: str, role_name: str, comicbox_credits: dict
-    ):
-        """Add a credit role to the comicbox credits."""
-        if not (person_name and role_name):
-            return
-        if person_name not in comicbox_credits:
-            comicbox_credits[person_name] = {ROLES_KEY: {}}
-        role_name = cls.ROLE_SPELLING.get(role_name.lower(), role_name)
-        comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
     TO_COMICBOX_PRE_TRANSFORM = ()
     FROM_COMICBOX_PRE_TRANSFORM = ()

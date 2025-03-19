@@ -7,7 +7,6 @@ from stringcase import camelcase
 
 from comicbox.schemas.comet import (
     IDENTIFIER_TAG,
-    IS_VERSION_OF_TAG,
     CoMetRoleTagEnum,
     CoMetSchema,
 )
@@ -46,7 +45,7 @@ from comicbox.transforms.publishing_tags import (
 )
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
-from comicbox.transforms.xml_credits import XmlCreditsTransformMixin
+from comicbox.transforms.xml_credits import xml_credits_transform
 from comicbox.transforms.xml_transforms import XmlTransform
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
@@ -131,12 +130,13 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 
 class CoMetTransform(
     XmlTransform,
-    XmlCreditsTransformMixin,
     IdentifiersTransformMixin,
     CreditRoleTagTransformMixin,
 ):
     """CoMet transforms."""
 
+    SCHEMA_CLASS = CoMetSchema
+    ROLE_MAP = create_role_map(ROLE_ALIASES)
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
@@ -157,21 +157,12 @@ class CoMetTransform(
                 **{
                     key: key
                     for key in {
-                        "credits",
                         "identifiers",
                         "issue",
                         "issue_number",
                     }
                     | {
                         "identifier",
-                        "colorist",
-                        "coverDesigner",
-                        "creator",
-                        "editor",
-                        "inker",
-                        "letterer",
-                        "penciller",
-                        "writer",
                     }
                 },
             }
@@ -179,27 +170,22 @@ class CoMetTransform(
         name_obj_to_string_list_key_transforms(
             {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
+        xml_credits_transform(CoMetRoleTagEnum, ROLE_MAP),
         price_key_transform("price"),
         comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
     )
-    ROLE_TAGS_ENUM = CoMetRoleTagEnum
-    ROLE_MAP = create_role_map(ROLE_ALIASES)
 
-    SCHEMA_CLASS = CoMetSchema
-    IS_VERSION_OF_TAG = IS_VERSION_OF_TAG
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.parse_credits,
         IdentifiersTransformMixin.parse_identifiers,
         IdentifiersTransformMixin.parse_urls,
     )
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        XmlCreditsTransformMixin.unparse_credits,
         IdentifiersTransformMixin.unparse_identifiers,
     )
 
