@@ -296,14 +296,6 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             self._config.delete_keys
         }:
             return ips
-
-        from icecream import ic
-
-        ic(self._config.write)
-        ic(
-            self._config.write
-            & {MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO}
-        )
         if not (
             self._config.write
             & {MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO}
