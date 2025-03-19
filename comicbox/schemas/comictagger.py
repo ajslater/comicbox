@@ -28,7 +28,7 @@ SERIES_ALIASES_TAG = "series_aliases"
 TITLE_ALIASES_TAG = "title_aliases"
 
 
-class TagOriginSchema(BaseSubSchema):
+class DataOriginSchema(BaseSubSchema):
     """Comictagger Tag Origin."""
 
     name = StringField()
@@ -55,7 +55,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     """Comictagger schema."""
 
     # comictagger unique
-    tag_origin = Nested(TagOriginSchema())
+    data_origin = Nested(DataOriginSchema())
     issue_id = StringField()
     series_id = StringField()
 

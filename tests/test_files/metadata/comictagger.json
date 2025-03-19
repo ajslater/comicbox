@@ -11,6 +11,10 @@
         "role": "Penciller"
       }
     ],
+    "data_origin": {
+      "id": "comicvine",
+      "name": "Comic Vine"
+    },
     "day": 1,
     "genres": [
       "Science Fiction"
@@ -24,9 +28,6 @@
     "page_count": 0,
     "publisher": "Youthful Adventure Stories",
     "series": "Captain Science",
-    "tag_origin": {
-      "name": "comicvine"
-    },
     "title": "The Beginning",
     "volume": 1950,
     "web_link": "https://comicvine.gamespot.com/c/4000-145269/",

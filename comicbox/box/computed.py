@@ -22,10 +22,12 @@ from comicbox.fields.time_fields import DateTimeField
 from comicbox.formats import MetadataFormats
 from comicbox.identifiers import (
     COMICVINE_NID,
+    NID_ORDER,
     create_identifier,
 )
 from comicbox.merge import ADD_UNIQUE_MERGER, REPLACE_MERGER
 from comicbox.schemas.comicbox_mixin import (
+    IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
     ISSUE_NUMBER_KEY,
@@ -46,6 +48,7 @@ from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.merge import merge_pages
 from comicbox.schemas.yaml import ALL_NONE_KEYS
+from comicbox.transforms.identifiers import create_identifier_primary_source
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
     parse_urn_identifier,
@@ -272,21 +275,59 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
                     identifiers[nid] = create_identifier(nid, nss)
         return self.merge_identifiers_md(sub_data, identifiers)
 
-    def _get_computed_from_identifiers(self, sub_data):
+    def _add_urls_to_identifiers(self, sub_data):
         if IDENTIFIERS_KEY in self._config.delete_keys:
             return None
         identifiers = sub_data.get(IDENTIFIERS_KEY, {})
         if not identifiers:
             return None
-        new_identifiers = {}
+        identifiers_with_urls = {}
         for nid, identifier in identifiers.items():
             if identifier.get(URL_KEY):
                 continue
             if nss := identifier.get(NSS_KEY):
                 new_identifier = create_identifier(nid, nss)
-                new_identifiers[nid] = new_identifier
-        if new_identifiers:
-            return {IDENTIFIERS_KEY: new_identifiers}
+                identifiers_with_urls[nid] = new_identifier
+        return identifiers_with_urls
+
+    def _add_identifier_primary_source_key(self, sub_data):
+        ips = {}
+        if {IDENTIFIERS_KEY, IDENTIFIER_PRIMARY_SOURCE_KEY} & {
+            self._config.delete_keys
+        }:
+            return ips
+
+        from icecream import ic
+
+        ic(self._config.write)
+        ic(
+            self._config.write
+            & {MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO}
+        )
+        if not (
+            self._config.write
+            & {MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO}
+        ):
+            return ips
+        identifiers = sub_data.get(IDENTIFIERS_KEY, {})
+        if sub_data.get(IDENTIFIER_PRIMARY_SOURCE_KEY) or not identifiers:
+            return ips
+        for nid in NID_ORDER:
+            if nid in identifiers:
+                ips = create_identifier_primary_source(nid)
+                break
+        return ips
+
+    def _get_computed_from_identifiers(self, sub_data):
+        if IDENTIFIERS_KEY in self._config.delete_keys:
+            return None
+        result = {}
+        if identifiers_with_urls := self._add_urls_to_identifiers(sub_data):
+            result[IDENTIFIERS_KEY] = identifiers_with_urls
+        if ips := self._add_identifier_primary_source_key(sub_data):
+            result[IDENTIFIER_PRIMARY_SOURCE_KEY] = ips
+        if result:
+            return result
         return None
 
     def _get_computed_from_reprints(self, sub_data):

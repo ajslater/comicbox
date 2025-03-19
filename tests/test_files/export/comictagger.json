@@ -18,6 +18,10 @@
         "role": "Penciller"
       }
     ],
+    "data_origin": {
+      "id": "comicvine",
+      "name": "Comic Vine"
+    },
     "day": 1,
     "genres": [
       "Science Fiction"
@@ -36,9 +40,6 @@
       "Captain Arc",
       "Other Arc"
     ],
-    "tag_origin": {
-      "name": "comicvine"
-    },
     "title": "The Beginning",
     "volume": 1950,
     "web_link": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",

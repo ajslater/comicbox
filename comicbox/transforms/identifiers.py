@@ -40,13 +40,13 @@ def parse_item_primary(native_identifier) -> bool:  # noqa: ARG001
     return False
 
 
-def assign_identifier_primary_source(nid):
-    """Assign identifier primary source."""
+def create_identifier_primary_source(nid):
+    """Create identifier primary source."""
     ips = {NID_KEY: nid}
     id_parts = IDENTIFIER_PARTS_MAP.get(nid)
     if id_parts and (url := id_parts.unparse_url("", "")):
         ips[URL_KEY] = url
-    return (IDENTIFIER_PRIMARY_SOURCE_KEY, ips)
+    return ips
 
 
 def parse_identifier_native(
@@ -70,7 +70,8 @@ def _identifier_to_cb(
         and (comicbox_identifier := create_identifier(nid, nss, nss_type=nss_type))
         and parse_item_primary(native_identifier)
     ):
-        assign = assign_identifier_primary_source(nid)
+        ips = create_identifier_primary_source(nid)
+        assign = (IDENTIFIER_PRIMARY_SOURCE_KEY, ips)
     return nid, comicbox_identifier, assign
 
 

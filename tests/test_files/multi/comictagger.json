@@ -3,6 +3,10 @@
   "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
   "comictagger": {
     "country": "US",
+    "data_origin": {
+      "id": "comicvine",
+      "name": "Comic Vine"
+    },
     "day": 1,
     "genre": "Science Fiction",
     "issue_count": 9,
