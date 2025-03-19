@@ -5,6 +5,7 @@ from types import MappingProxyType
 
 from stringcase import camelcase
 
+from comicbox.identifiers import COMICVINE_NID
 from comicbox.schemas.comet import (
     IDENTIFIER_TAG,
     CoMetRoleTagEnum,
@@ -29,15 +30,10 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import (
-    name_obj_to_string_list_key_transforms,
-)
+from comicbox.transforms.base import name_obj_to_string_list_key_transforms
 from comicbox.transforms.comet_reprints import comet_reprints_transform
-from comicbox.transforms.credit_role_tag import (
-    CreditRoleTagTransformMixin,
-    create_role_map,
-)
-from comicbox.transforms.identifiers import IdentifiersTransformMixin
+from comicbox.transforms.credit_role_tag import create_role_map
+from comicbox.transforms.identifiers import identifiers_transform
 from comicbox.transforms.price import price_key_transform
 from comicbox.transforms.publishing_tags import (
     PUBLISHER_NAME_KEY_PATH,
@@ -131,8 +127,6 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 
 class CoMetTransform(
     XmlTransform,
-    IdentifiersTransformMixin,
-    CreditRoleTagTransformMixin,
 ):
     """CoMet transforms."""
 
@@ -171,6 +165,7 @@ class CoMetTransform(
             {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
         xml_credits_transform(CoMetRoleTagEnum, ROLE_MAP),
+        identifiers_transform("identifier", COMICVINE_NID),
         price_key_transform("price"),
         comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
@@ -179,15 +174,8 @@ class CoMetTransform(
     IDENTIFIERS_TAG = IDENTIFIER_TAG
     NAKED_NID = None
 
-    TO_COMICBOX_PRE_TRANSFORM = (
-        *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        IdentifiersTransformMixin.parse_identifiers,
-        IdentifiersTransformMixin.parse_urls,
-    )
-    FROM_COMICBOX_PRE_TRANSFORM = (
-        *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        IdentifiersTransformMixin.unparse_identifiers,
-    )
+    TO_COMICBOX_PRE_TRANSFORM = (*XmlTransform.TO_COMICBOX_PRE_TRANSFORM,)
+    FROM_COMICBOX_PRE_TRANSFORM = (*XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,)
 
     @staticmethod
     def tag_case(data):
