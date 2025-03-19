@@ -123,6 +123,7 @@ DELETE_KEYS_MD = MappingProxyType(
             "original_format": "Comic",
             "page_count": 0,
             "publisher": {"name": "Galactic Press"},
+            "reprints": [{"issue": "001"}],
             "stories": {"The Beginning COMET": {}},
             "summary": "A long example description",
             "tagger": "comicbox dev",

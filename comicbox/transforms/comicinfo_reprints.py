@@ -1,7 +1,5 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
 
-from icecream import ic
-
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
     NAME_KEY,
@@ -11,6 +9,7 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
 )
 from comicbox.transforms.transform_map import (
+    DUMMY_PREFIX,
     KeyTransforms,
     MultiAssigns,
     create_transform_map,
@@ -43,18 +42,13 @@ def _cix_reprints_to_cb(source_data, _alternative_series):
 
 def _cix_reprints_from_cb(_source_data, reprints):
     first_reprint = reprints[0]
-    ic(first_reprint)
     update_dict = transform_map(REPRINTS_TRANSFORM_MAP.inverse, first_reprint)
-    ic(update_dict)
-    value = update_dict.pop(ALTERNATE_SERIES_TAG, None)
-    if extra_assigns := tuple(update_dict.items()):
-        value = MultiAssigns(value, tuple(extra_assigns))
-    ic(value)
-    return value
+    extra_assigns = tuple(update_dict.items())
+    return MultiAssigns(None, tuple(extra_assigns))
 
 
 REPRINTS_KEY_TRANSFORM = KeyTransforms(
-    key_map={ALTERNATE_SERIES_TAG: REPRINTS_KEY},
+    key_map={f"{DUMMY_PREFIX}alternate_xml_tags": REPRINTS_KEY},
     to_cb=_cix_reprints_to_cb,
     from_cb=_cix_reprints_from_cb,
 )
