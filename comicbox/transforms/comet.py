@@ -17,6 +17,7 @@ from comicbox.schemas.comicbox_mixin import (
     COVER_IMAGE_KEY,
     DATE_KEY,
     GENRES_KEY,
+    ISSUE_KEY,
     LANGUAGE_KEY,
     LAST_MARK_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -144,6 +145,7 @@ class CoMetTransform(
                 "date": DATE_KEY,
                 "description": SUMMARY_KEY,
                 "format": ORIGINAL_FORMAT_KEY,
+                "issue": ISSUE_KEY,
                 "language": LANGUAGE_KEY,
                 "lastMark": LAST_MARK_KEY,
                 "pages": PAGE_COUNT_KEY,
@@ -158,8 +160,6 @@ class CoMetTransform(
                     key: key
                     for key in {
                         "identifiers",
-                        "issue",
-                        "issue_number",
                     }
                     | {
                         "identifier",
