@@ -3,7 +3,7 @@
 from enum import Enum
 from types import MappingProxyType
 
-from comicbox.identifiers import GTIN_NID
+from comicbox.identifiers import COMICVINE_NID, GTIN_NID
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -43,7 +43,7 @@ from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_reprints import REPRINTS_KEY_TRANSFORM
 from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
 from comicbox.transforms.credit_role_tag import create_role_map
-from comicbox.transforms.identifiers import IdentifiersTransformMixin
+from comicbox.transforms.identifiers import identifiers_transform, urls_transform
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,
     ISSUE_COUNT_KEY_PATH,
@@ -151,7 +151,6 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 
 class ComicInfoTransform(
     XmlTransform,
-    IdentifiersTransformMixin,
 ):
     """ComicInfo.xml Schema."""
 
@@ -182,17 +181,6 @@ class ComicInfoTransform(
                 "Summary": SUMMARY_KEY,
                 "Volume": VOLUME_NUMBER_KEY_PATH,
                 "Year": YEAR_KEY,
-                # COPY from old transforms
-                **{
-                    key: key
-                    for key in {
-                        "identifiers",
-                    }
-                    | {
-                        "GTIN",
-                        "Web",
-                    }
-                },
             }
         ),
         name_obj_to_string_list_key_transforms(
@@ -206,22 +194,17 @@ class ComicInfoTransform(
             }
         ),
         xml_credits_transform(ComicInfoRoleTagEnum, ROLE_MAP),
+        identifiers_transform("GTIN", COMICVINE_NID),
         comicinfo_pages_transform("Pages.Page", _PAGE_TRANSFORM_MAP),
         REPRINTS_KEY_TRANSFORM,
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
+        urls_transform("Web"),
     )
     IDENTIFIERS_TAG = GTIN_TAG
     NAKED_NID = GTIN_NID
     URLS_TAG = "Web"
 
-    TO_COMICBOX_PRE_TRANSFORM = (
-        *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        IdentifiersTransformMixin.parse_identifiers,
-        IdentifiersTransformMixin.parse_urls,
-    )
+    TO_COMICBOX_PRE_TRANSFORM = (*XmlTransform.TO_COMICBOX_PRE_TRANSFORM,)
 
-    FROM_COMICBOX_PRE_TRANSFORM = (
-        *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        IdentifiersTransformMixin.unparse_identifiers,
-    )
+    FROM_COMICBOX_PRE_TRANSFORM = (*XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,)
