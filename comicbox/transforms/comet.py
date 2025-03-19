@@ -149,16 +149,6 @@ class CoMetTransform(
                 "rights": RIGHTS_KEY,
                 "series": SERIES_NAME_KEY_PATH,
                 "volume": VOLUME_NUMBER_KEY_PATH,
-                # COPY from old transform
-                **{
-                    key: key
-                    for key in {
-                        "identifiers",
-                    }
-                    | {
-                        "identifier",
-                    }
-                },
             }
         ),
         name_obj_to_string_list_key_transforms(
