@@ -29,6 +29,7 @@ from comicbox.transforms.metroninfo.identifiers import (
     METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
     METRON_URLS_TRANSFORM,
 )
+from comicbox.transforms.metroninfo.reprints import METRON_REPRINTS_TRANSFORM
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -94,6 +95,7 @@ class MetronInfoTransformBase(XmlTransform):
         METRON_GTIN_TRANSFORM,
         METRON_IDENTIFIERS_TRANSFORM,
         METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
+        METRON_REPRINTS_TRANSFORM,
         METRON_URLS_TRANSFORM,
     )
     ID_ATTRIBUTE = "@id"

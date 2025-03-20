@@ -14,7 +14,6 @@ class MetronInfoTransform(MetronInfoTransformCredits):
         MetronInfoTransformCredits.parse_manga_volume,
         MetronInfoTransformCredits.parse_publisher,
         MetronInfoTransformCredits.parse_prices,
-        MetronInfoTransformCredits.parse_reprints,
         MetronInfoTransformCredits.parse_resources,
         MetronInfoTransformCredits.parse_series,  # must come after reprints
         MetronInfoTransformCredits.parse_universes,
@@ -28,6 +27,5 @@ class MetronInfoTransform(MetronInfoTransformCredits):
         MetronInfoTransformCredits.unparse_publisher,
         MetronInfoTransformCredits.unparse_resources,
         MetronInfoTransformCredits.unparse_series,
-        MetronInfoTransformCredits.unparse_reprints,  # must come after series
         MetronInfoTransformCredits.unparse_universes,
     )
