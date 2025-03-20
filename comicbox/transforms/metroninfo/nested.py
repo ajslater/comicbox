@@ -29,14 +29,15 @@ from comicbox.schemas.comicbox_mixin import (
     UNIVERSES_KEY,
 )
 from comicbox.schemas.identifier import URL_KEY
-from comicbox.transforms.metroninfo.single import MetronInfoTransformSingleTags
+from comicbox.transforms.metroninfo.base import MetronInfoTransformBase
 
 LOG = getLogger(__name__)
 
 
-class MetronInfoTransformNestedTags(MetronInfoTransformSingleTags):
+class MetronInfoTransformNestedTags(MetronInfoTransformBase):
     """MetronInfo Transformer for nested tags."""
 
+    NAME_TAG = "Name"
     DESIGNATION_TAG = "Designation"
     UNIVERSE_TAG_MAP = frozenbidict({DESIGNATION_TAG: DESIGNATION_KEY})
     ARCS_TAG = "Arcs"

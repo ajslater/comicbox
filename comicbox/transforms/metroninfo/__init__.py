@@ -10,10 +10,8 @@ class MetronInfoTransform(MetronInfoTransformNestedTags):
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
         MetronInfoTransformNestedTags.parse_arcs,
-        MetronInfoTransformNestedTags.parse_manga_volume,
         MetronInfoTransformNestedTags.parse_prices,
         MetronInfoTransformNestedTags.parse_resources,
-        MetronInfoTransformNestedTags.parse_series,  # must come after reprints
         MetronInfoTransformNestedTags.parse_universes,
     )
 
@@ -22,6 +20,5 @@ class MetronInfoTransform(MetronInfoTransformNestedTags):
         MetronInfoTransformNestedTags.unparse_arcs,
         MetronInfoTransformNestedTags.unparse_prices,
         MetronInfoTransformNestedTags.unparse_resources,
-        MetronInfoTransformNestedTags.unparse_series,
         MetronInfoTransformNestedTags.unparse_universes,
     )

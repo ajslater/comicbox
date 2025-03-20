@@ -32,7 +32,11 @@ from comicbox.transforms.metroninfo.identifiers import (
 )
 from comicbox.transforms.metroninfo.publishing_tags import (
     METRON_IMPRINT_TRANSFORM,
+    METRON_MANGA_VOLUME_TRANSFORM,
     METRON_PUBLISHER_TRANSFORM,
+    METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM,
+    METRON_SERIES_IDENTIFIERS_TRANSFORM,
+    SERIES_KEY_MAP,
 )
 from comicbox.transforms.metroninfo.reprints import METRON_REPRINTS_TRANSFORM
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
@@ -57,22 +61,19 @@ class MetronInfoTransformBase(XmlTransform):
                 "PageCount": PAGE_COUNT_KEY,
                 "Summary": SUMMARY_KEY,
                 "LastModified": UPDATED_AT_KEY,
+                **SERIES_KEY_MAP,
                 **{
                     key: key
                     for key in {
                         "arcs",
                         "characters",
                         "genres",
-                        "language",
                         "locations",
-                        "original_format",
                         "prices",
-                        "series",
                         "stories",
                         "tags",
                         "teams",
                         "universes",
-                        "volume",
                     }
                     | {
                         "Arcs",
@@ -81,7 +82,6 @@ class MetronInfoTransformBase(XmlTransform):
                         "Locations",
                         "MangaVolume",
                         "Prices",
-                        "Series",
                         "Stories",
                         "Tags",
                         "Teams",
@@ -92,6 +92,9 @@ class MetronInfoTransformBase(XmlTransform):
         ),
         METRON_PUBLISHER_TRANSFORM,
         METRON_IMPRINT_TRANSFORM,
+        METRON_SERIES_IDENTIFIERS_TRANSFORM,
+        METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM,
+        METRON_MANGA_VOLUME_TRANSFORM,
         METRON_CREDITS_TRANSFORM,
         METRON_GTIN_TRANSFORM,
         METRON_IDENTIFIERS_TRANSFORM,
