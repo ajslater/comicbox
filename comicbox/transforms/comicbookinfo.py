@@ -63,7 +63,6 @@ class ComicBookInfoTransform(
             key_map={
                 "comments": SUMMARY_KEY,
                 "country": COUNTRY_KEY,
-                # "issue": ISSUE_KEY
                 "language": LANGUAGE_KEY,
                 "numberOfIssues": ISSUE_COUNT_KEY_PATH,
                 "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
@@ -78,7 +77,6 @@ class ComicBookInfoTransform(
                 **{
                     key: key
                     for key in (
-                        # "credits",
                         "tagger",
                         "updated_at",
                     )
@@ -95,5 +93,3 @@ class ComicBookInfoTransform(
         ),
         stories_key_transform("title"),
     )
-    TO_COMICBOX_PRE_TRANSFORM = (*JsonTransform.TO_COMICBOX_PRE_TRANSFORM,)
-    FROM_COMICBOX_PRE_TRANSFORM = (*JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,)

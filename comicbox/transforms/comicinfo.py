@@ -3,7 +3,7 @@
 from enum import Enum
 from types import MappingProxyType
 
-from comicbox.identifiers import COMICVINE_NID, GTIN_NID
+from comicbox.identifiers import COMICVINE_NID
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -32,7 +32,6 @@ from comicbox.schemas.comicbox_mixin import (
     YEAR_KEY,
 )
 from comicbox.schemas.comicinfo import (
-    GTIN_TAG,
     ComicInfoSchema,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
@@ -201,10 +200,3 @@ class ComicInfoTransform(
         story_arcs_transform("StoryArc", "StoryArcNumber"),
         urls_transform("Web"),
     )
-    IDENTIFIERS_TAG = GTIN_TAG
-    NAKED_NID = GTIN_NID
-    URLS_TAG = "Web"
-
-    TO_COMICBOX_PRE_TRANSFORM = (*XmlTransform.TO_COMICBOX_PRE_TRANSFORM,)
-
-    FROM_COMICBOX_PRE_TRANSFORM = (*XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,)

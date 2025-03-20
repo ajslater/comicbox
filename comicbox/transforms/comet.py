@@ -3,11 +3,8 @@
 from enum import Enum
 from types import MappingProxyType
 
-from stringcase import camelcase
-
 from comicbox.identifiers import COMICVINE_NID
 from comicbox.schemas.comet import (
-    IDENTIFIER_TAG,
     CoMetRoleTagEnum,
     CoMetSchema,
 )
@@ -160,14 +157,3 @@ class CoMetTransform(
         comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
     )
-
-    IDENTIFIERS_TAG = IDENTIFIER_TAG
-    NAKED_NID = None
-
-    TO_COMICBOX_PRE_TRANSFORM = (*XmlTransform.TO_COMICBOX_PRE_TRANSFORM,)
-    FROM_COMICBOX_PRE_TRANSFORM = (*XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,)
-
-    @staticmethod
-    def tag_case(data):
-        """Transform tag case."""
-        return camelcase(data)

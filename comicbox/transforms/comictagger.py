@@ -123,6 +123,3 @@ class ComictaggerTransform(JsonTransform):
         story_arcs_transform(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM,
     )
-
-    TO_COMICBOX_PRE_TRANSFORM = (*JsonTransform.TO_COMICBOX_PRE_TRANSFORM,)
-    FROM_COMICBOX_PRE_TRANSFORM = (*JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,)

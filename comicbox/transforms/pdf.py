@@ -95,10 +95,6 @@ class PDFXmlTransform(XmlTransform):
         stories_key_transform("pdf:Title"),
     )
 
-    TO_COMICBOX_PRE_TRANSFORM = (*XmlTransform.TO_COMICBOX_PRE_TRANSFORM,)
-
-    FROM_COMICBOX_PRE_TRANSFORM = (*XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,)
-
 
 class MuPDFTransform(PDFXmlTransform):
     """MuPDF Transformer."""
