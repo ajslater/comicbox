@@ -7,11 +7,11 @@ from decimal import Decimal
 from types import MappingProxyType
 
 import xmltodict
+from glom import Assign, glom
 
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.transforms.metroninfo import MetronInfoTransform
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
@@ -340,14 +340,13 @@ WRITE_METRON_DICT = create_write_dict(
 def unparse_strinfigy_decimals(data):
     """Stringify decimals for xmltodict."""
     stringified_data = deepcopy(dict(data))
-    prices = stringified_data[MetronInfoSchema.ROOT_TAG][
-        MetronInfoTransform.PRICES_TAG
-    ][MetronInfoTransform.PRICE_TAG]
+    prices = glom(stringified_data, f"{MetronInfoSchema.ROOT_TAG}.Prices.Price")
     for price in prices:
         price["#text"] = str(price["#text"])
-    stringified_data[MetronInfoSchema.ROOT_TAG][MetronInfoTransform.PRICES_TAG][
-        MetronInfoTransform.PRICE_TAG
-    ] = prices
+    glom(
+        stringified_data,
+        Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
+    )
     return xmltodict.unparse(stringified_data, pretty=True, short_empty_elements=True)
 
 
