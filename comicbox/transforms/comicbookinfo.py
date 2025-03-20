@@ -31,6 +31,14 @@ from comicbox.transforms.publishing_tags import (
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 
+_TOP_TAG_KEY_COPY_HACK = {
+    key: key
+    for key in (
+        TAGGER_KEY,
+        UPDATED_AT_KEY,
+    )
+}
+
 
 def _to_cb_issue_transform(_source_data, issue_number):
     return str(issue_number)
@@ -74,13 +82,7 @@ class ComicBookInfoTransform(
                 "rating": CRITICAL_RATING_KEY,
                 "series": SERIES_NAME_KEY_PATH,
                 "volume": VOLUME_NUMBER_KEY_PATH,
-                **{
-                    key: key
-                    for key in (
-                        "tagger",
-                        "updated_at",
-                    )
-                },
+                **_TOP_TAG_KEY_COPY_HACK,
             }
         ),
         cbi_credits_transform("credits"),
