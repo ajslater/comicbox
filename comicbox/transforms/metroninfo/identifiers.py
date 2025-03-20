@@ -132,8 +132,7 @@ def is_item_primary(native_identifier) -> bool:
     )
 
 
-def _identifier_primary_source_to_cb(source_data, _):
-    # IDS
+def _identifier_primary_source_to_cb_ids(source_data):
     metron_ids = glom(source_data, ID_KEY_PATH, default=())
     for metron_id in metron_ids:
         if (
@@ -143,8 +142,10 @@ def _identifier_primary_source_to_cb(source_data, _):
         ):
             id_parts = IDENTIFIER_PARTS_MAP[nid]
             return {NID_KEY: nid, URL_KEY: id_parts.url_prefix}
+    return None
 
-    # URLS
+
+def _identifier_primary_source_to_cb_urls(source_data):
     metron_urls = glom(source_data, URL_KEY_PATH, default=())
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
@@ -158,6 +159,14 @@ def _identifier_primary_source_to_cb(source_data, _):
         for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
             if netloc.endswith(id_parts.domain):
                 return {NID_KEY: nid, URL_KEY: id_parts.url_prefix}
+    return None
+
+
+def _identifier_primary_source_to_cb(source_data, _):
+    if ips := _identifier_primary_source_to_cb_ids(source_data):
+        return ips
+    if ips := _identifier_primary_source_to_cb_urls(source_data):
+        return ips
     return None
 
 
