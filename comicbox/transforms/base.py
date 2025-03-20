@@ -122,7 +122,7 @@ class BaseTransform:
 
     def to_comicbox(self, in_data) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
-        data = deepcopy(dict(in_data))
+        data = dict(in_data)
         data = self._run_transforms(
             data,
             None,
@@ -135,7 +135,7 @@ class BaseTransform:
 
     def from_comicbox(self, in_data: Mapping, **_kwargs) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
-        data = deepcopy(dict(in_data))
+        data = dict(in_data)
         data = self._run_transforms(
             data,
             ComicboxYamlSchema.WRAP_TAGS,
