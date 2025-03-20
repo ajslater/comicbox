@@ -9,7 +9,6 @@ from comicbox.schemas.comicbox_mixin import (
     ROLES_KEY,
     SCAN_INFO_KEY,
     TAGGER_KEY,
-    TAGS_KEY,
     UPDATED_AT_KEY,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
@@ -77,13 +76,9 @@ class PDFXmlTransform(XmlTransform):
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
-                # "pdf:Author": CODED
                 "pdf:Creator": SCAN_INFO_KEY,  # original document creator
                 "pdf:Producer": TAGGER_KEY,
                 "pdf:ModDate": UPDATED_AT_KEY,
-                # "pdf:Title": CODED
-                # TODO fix normally for regular keywords and embedded
-                **{key: key for key in ("pdf:Keywords", TAGS_KEY)},
             }
         ),
         authors_to_credits_transform("pdf:Author"),
@@ -103,13 +98,9 @@ class MuPDFTransform(PDFXmlTransform):
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
-                # "author": CODED
                 "creator": SCAN_INFO_KEY,  # original document creator
                 "modDate": UPDATED_AT_KEY,
                 "producer": TAGGER_KEY,
-                # "title": CODED
-                # TODO fix normally for regular keywords and embedded
-                **{key: key for key in ("keywords", TAGS_KEY)},
             }
         ),
         authors_to_credits_transform("author"),
