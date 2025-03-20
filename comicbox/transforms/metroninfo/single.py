@@ -5,13 +5,11 @@ from bidict import frozenbidict
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.comicbox_mixin import (
-    IMPRINT_KEY,
     LANGUAGE_KEY,
     NAME_KEY,
     NUMBER_KEY,
     NUMBER_TO_KEY,
     ORIGINAL_FORMAT_KEY,
-    PUBLISHER_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
     SERIES_SORT_NAME_KEY,
@@ -42,10 +40,8 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
             "IssueCount": VOLUME_ISSUE_COUNT_KEY,
         }
     )
-    IMPRINT_TAG = "Imprint"
     MANGA_VOLUME_TAG = "MangaVolume"
     NAME_TAG = "Name"
-    PUBLISHER_TAG = "Publisher"
     SERIES_TAG = "Series"
     SERIES_ALTERNATIVE_NAMES_TAG = "AlternativeNames"
     SERIES_ALTERNATIVE_NAME_TAG = "AlternativeName"
@@ -56,56 +52,10 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
     ###########################################################################
     @staticmethod
     def _copy_tags(from_dict, to_dict, tag_dict):
+        # This is a no empty merge
         for from_key, to_key in tag_dict.items():
             if value := from_dict.get(from_key):
                 to_dict[to_key] = value
-
-    # PUBLISHER
-    ###########################################################################
-    @classmethod
-    def _parse_imprint(cls, data, metron_publisher):
-        metron_imprint = metron_publisher.get(cls.IMPRINT_TAG)
-        if not metron_imprint:
-            return
-        imprint_name = get_cdata(metron_imprint)
-        if not imprint_name:
-            return
-        imprint = {NAME_KEY: imprint_name}
-        cls._parse_metron_id_attribute(data, "imprint", metron_imprint, imprint)
-        if imprint_name:
-            data[IMPRINT_KEY] = imprint
-
-    def parse_publisher(self, data):
-        """Parse Metron Publisher."""
-        metron_publisher = data.pop(self.PUBLISHER_TAG, None)
-        if not metron_publisher:
-            return data
-        publisher = {NAME_KEY: metron_publisher.get(self.NAME_TAG)}
-        self._parse_metron_id_attribute(data, "publisher", metron_publisher, publisher)
-        if publisher:
-            data[PUBLISHER_KEY] = publisher
-
-        self._parse_imprint(data, metron_publisher)
-        return data
-
-    def unparse_publisher(self, data):
-        """Unparse Metron publisher."""
-        publisher = data.pop(PUBLISHER_KEY, {})
-        publisher_name = publisher.get(NAME_KEY)
-        metron_publisher = {}
-        if publisher_name:
-            metron_publisher[self.NAME_TAG] = publisher_name
-        self._unparse_metron_id_attribute(data, metron_publisher, publisher)
-        imprint = data.pop(IMPRINT_KEY, {})
-        metron_imprint = {}
-        if imprint_name := imprint.get(NAME_KEY):
-            metron_imprint["#text"] = imprint_name
-        self._unparse_metron_id_attribute(data, metron_imprint, imprint)
-        if metron_imprint:
-            metron_publisher[self.IMPRINT_TAG] = metron_imprint
-        if metron_publisher:
-            data[self.PUBLISHER_TAG] = metron_publisher
-        return data
 
     # SERIES
     ###########################################################################

@@ -30,6 +30,10 @@ from comicbox.transforms.metroninfo.identifiers import (
     METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
     METRON_URLS_TRANSFORM,
 )
+from comicbox.transforms.metroninfo.publishing_tags import (
+    METRON_IMPRINT_TRANSFORM,
+    METRON_PUBLISHER_TRANSFORM,
+)
 from comicbox.transforms.metroninfo.reprints import METRON_REPRINTS_TRANSFORM
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -58,15 +62,11 @@ class MetronInfoTransformBase(XmlTransform):
                     for key in {
                         "arcs",
                         "characters",
-                        # "credits",
                         "genres",
-                        "imprint",
                         "language",
                         "locations",
                         "original_format",
                         "prices",
-                        "publisher",
-                        "reprints",
                         "series",
                         "stories",
                         "tags",
@@ -77,22 +77,21 @@ class MetronInfoTransformBase(XmlTransform):
                     | {
                         "Arcs",
                         "Characters",
-                        # "Credits",
                         "Genres",
                         "Locations",
                         "MangaVolume",
                         "Prices",
-                        "Publisher",
-                        "Reprints",
                         "Series",
                         "Stories",
                         "Tags",
-                        "teams",
+                        "Teams",
                         "Universes",
                     }
                 },
             }
         ),
+        METRON_PUBLISHER_TRANSFORM,
+        METRON_IMPRINT_TRANSFORM,
         METRON_CREDITS_TRANSFORM,
         METRON_GTIN_TRANSFORM,
         METRON_IDENTIFIERS_TRANSFORM,
