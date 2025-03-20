@@ -42,7 +42,6 @@ class MetronInfoTransformSingleTags(MetronInfoTransformBase):
             "IssueCount": VOLUME_ISSUE_COUNT_KEY,
         }
     )
-    GTIN_TAG = "GTIN"
     IMPRINT_TAG = "Imprint"
     MANGA_VOLUME_TAG = "MangaVolume"
     NAME_TAG = "Name"

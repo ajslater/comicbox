@@ -68,15 +68,15 @@ READ_METADATA = MappingProxyType(
                     "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
+                "isbn": {
+                    "nss": "123-456789-0123",
+                    "url": "https://isbndb.com/book/123-456789-0123",
+                },
                 "metron": {
                     "nss": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
                 "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
-                "isbn": {
-                    "nss": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
-                },
             },
             "issue": "1",
             "issue_number": Decimal("1"),
@@ -130,7 +130,6 @@ READ_METADATA = MappingProxyType(
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA, notes=METRON_NOTES)
-
 
 READ_METRON_DICT = MappingProxyType(
     {

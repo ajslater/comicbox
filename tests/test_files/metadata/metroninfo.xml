@@ -40,7 +40,7 @@
 		<Genre>Science Fiction</Genre>
 	</Genres>
 	<IDS>
-		<ID primary="True" source="Metron">999999</ID>
+		<ID primary="true" source="Metron">999999</ID>
 		<ID source="Comic Vine">145269</ID>
 	</IDS>
 	<MangaVolume>1950-1952</MangaVolume>
@@ -77,7 +77,7 @@
 		<Story>Science is Good</Story>
 	</Stories>
 	<URLs>
-		<URL primary="True">https://metron.cloud/issue/999999</URL>
+		<URL primary="true">https://metron.cloud/issue/999999</URL>
 		<URL>https://comicvine.gamespot.com/c/4000-145269/</URL>
 		<URL>https://isbndb.com/book/123-456789-0123</URL>
 		<URL>https://barcodelookup.com/12345</URL>

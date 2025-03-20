@@ -585,10 +585,12 @@ FNS = MappingProxyType(
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
+                "bar.foo": {"url": "https://bar.foo"},
                 "comicvine": {
                     "nss": "12345",
                     "url": "https://comicvine.gamespot.com/c/4000-12345/",
                 },
+                "foo.bar": {"url": "https://foo.bar"},
                 "grandcomicsdatabase": {
                     "nss": "543",
                     "url": "https://comics.org/issue/543/",

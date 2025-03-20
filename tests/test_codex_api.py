@@ -179,7 +179,10 @@ CB7_MD_PATCH = {
         "date": date(1950, 11, 1),
         "ext": "cb7",
         "page_count": 5,
-        "identifier_primary_source": {"nid": "isbn", "url": "https://isbndb.com/"},
+        "identifier_primary_source": {
+            "nid": "comicvine",
+            "url": "https://comicvine.gamespot.com/",
+        },
         "identifiers": {
             "comicvine": {
                 "nss": "145269",

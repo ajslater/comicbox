@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from logging import getLogger
 
 from comicbox.identifiers import (
+    METRON_NID,
     create_identifier,
 )
 from comicbox.schemas.comicbox_mixin import (
@@ -21,18 +22,23 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
-from comicbox.transforms.identifiers import IdentifiersTransformMixin
+from comicbox.transforms.identifiers import get_primary_source_nid
+from comicbox.transforms.metroninfo.identifiers import (
+    METRON_GTIN_TRANSFORM,
+    METRON_IDENTIFIERS_TRANSFORM,
+    METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
+    METRON_URLS_TRANSFORM,
+)
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
 
-class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
+class MetronInfoTransformBase(XmlTransform):
     """MetronInfo.xml Schema."""
 
-    # Tag Names
-    ID_ATTRIBUTE = "@id"
+    SCHEMA_CLASS = MetronInfoSchema
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
             key_map={
@@ -52,8 +58,8 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
                         "characters",
                         "credits",
                         "genres",
-                        "identifiers",
-                        "identifier_primary_source",
+                        # "identifiers",
+                        # "identifier_primary_source",
                         "imprint",
                         "language",
                         "locations",
@@ -73,8 +79,8 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
                         "Characters",
                         "Credits",
                         "Genres",
-                        "GTIN",
-                        "IDS",
+                        # "GTIN",
+                        # "IDS",
                         "Locations",
                         "MangaVolume",
                         "Prices",
@@ -85,14 +91,17 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
                         "Tags",
                         "teams",
                         "Universes",
-                        "URLs",
+                        # "URLs",
                     }
                 },
             }
-        )
+        ),
+        METRON_GTIN_TRANSFORM,
+        METRON_IDENTIFIERS_TRANSFORM,
+        METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
+        METRON_URLS_TRANSFORM,
     )
-
-    SCHEMA_CLASS = MetronInfoSchema
+    ID_ATTRIBUTE = "@id"
 
     # ID ATTRIBUTE
     ###########################################################################
@@ -107,7 +116,7 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
                 and (nss := metron_obj.get(cls.ID_ATTRIBUTE))
             ):
                 return
-            primary_nid = cls.get_primary_source_nid(data)
+            primary_nid = get_primary_source_nid(data, METRON_NID)
             comicbox_identifier = create_identifier(primary_nid, nss, nss_type=nss_type)
             comicbox_obj[IDENTIFIERS_KEY] = {primary_nid: comicbox_identifier}
         except Exception as exc:
@@ -123,7 +132,7 @@ class MetronInfoTransformBase(XmlTransform, IdentifiersTransformMixin):
         comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
         if not comicbox_identifiers:
             return
-        primary_nid = cls.get_primary_source_nid(data)
+        primary_nid = get_primary_source_nid(data, METRON_NID)
         for nid, identifier in comicbox_identifiers.items():
             if primary_nid and nid == primary_nid and (nss := identifier.get("nss")):
                 metron_obj[cls.ID_ATTRIBUTE] = nss

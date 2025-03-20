@@ -1,6 +1,5 @@
 """MetronInfo.xml Transformer."""
 
-from comicbox.transforms.identifiers import IdentifiersTransformMixin
 from comicbox.transforms.metroninfo.credits import MetronInfoTransformCredits
 from comicbox.transforms.xml_transforms import XmlTransform
 
@@ -10,10 +9,6 @@ class MetronInfoTransform(MetronInfoTransformCredits):
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        MetronInfoTransformCredits.parse_identifiers,
-        MetronInfoTransformCredits.parse_urls,
-        MetronInfoTransformCredits.parse_gtin,
-        IdentifiersTransformMixin.parse_default_primary_identifier,
         MetronInfoTransformCredits.parse_arcs,
         MetronInfoTransformCredits.parse_credits,
         MetronInfoTransformCredits.parse_manga_volume,
@@ -29,7 +24,6 @@ class MetronInfoTransform(MetronInfoTransformCredits):
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
         MetronInfoTransformCredits.unparse_arcs,
         MetronInfoTransformCredits.unparse_credits,
-        MetronInfoTransformCredits.unparse_identifiers,
         MetronInfoTransformCredits.unparse_prices,
         MetronInfoTransformCredits.unparse_publisher,
         MetronInfoTransformCredits.unparse_resources,

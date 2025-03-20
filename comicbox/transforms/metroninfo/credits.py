@@ -16,7 +16,7 @@ from comicbox.transforms.credit_role_tag import (
     CreditRoleTagTransformMixin,
     create_role_map,
 )
-from comicbox.transforms.metroninfo.identifiers import MetronInfoTransformIdentifiers
+from comicbox.transforms.metroninfo.reprints import MetronInfoTransformReprints
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -103,7 +103,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 
 
 class MetronInfoTransformCredits(
-    MetronInfoTransformIdentifiers, CreditRoleTagTransformMixin
+    MetronInfoTransformReprints, CreditRoleTagTransformMixin
 ):
     """MetronInfo.xml Transforms for credits."""
 

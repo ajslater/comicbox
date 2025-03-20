@@ -102,14 +102,10 @@ class BaseTransform:
 
     def transform_keys_to(self, data: dict):
         """Copy keys to comicbox keys."""
-        if not self.TRANSFORM_MAP:
-            return data
         return transform_map(self.TRANSFORM_MAP, data)
 
     def transform_keys_from(self, data: dict):
         """Copy keys from comicbox keys."""
-        if not self.TRANSFORM_MAP:
-            return data
         return transform_map(self.TRANSFORM_MAP.inverse, data)
 
     TO_COMICBOX_PRE_TRANSFORM = ()

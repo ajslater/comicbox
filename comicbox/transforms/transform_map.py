@@ -1,6 +1,6 @@
 """Transform maps."""
 
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -58,8 +58,10 @@ def _create_extra_assigns(target_dict, value, extra_assigns):
 def transform_map(
     spec_map: Mapping,
     source_map: Mapping,
-) -> MutableMapping:
+) -> dict:
     """Move a value with one key to another dict and mapped key."""
+    if not spec_map:
+        return dict(source_map)
     target_dict = {}
     for (
         source_spec,
@@ -81,7 +83,11 @@ def transform_map(
         if isinstance(value, MultiAssigns):
             value = _create_extra_assigns(target_dict, value, extra_assigns)
         _merge_with_old_value(target_dict, dest_path, value)
-        assign = Assign(dest_path, value, missing=dict)
-        assigns = (assign, *extra_assigns)
+        assigns = []
+        if not dest_path.startswith(DUMMY_PREFIX):
+            assign = Assign(dest_path, value, missing=dict)
+            assigns.append(assign)
+        assigns.extend(extra_assigns)
+        assigns = tuple(assigns)
         glom(target_dict, assigns)
     return target_dict
