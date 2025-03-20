@@ -1,31 +1,29 @@
 """MetronInfo.xml Transformer."""
 
-from comicbox.transforms.metroninfo.credits import MetronInfoTransformCredits
+from comicbox.transforms.metroninfo.nested import MetronInfoTransformNestedTags
 from comicbox.transforms.xml_transforms import XmlTransform
 
 
-class MetronInfoTransform(MetronInfoTransformCredits):
+class MetronInfoTransform(MetronInfoTransformNestedTags):
     """MetronInfo.xml Transformer."""
 
     TO_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.TO_COMICBOX_PRE_TRANSFORM,
-        MetronInfoTransformCredits.parse_arcs,
-        MetronInfoTransformCredits.parse_credits,
-        MetronInfoTransformCredits.parse_manga_volume,
-        MetronInfoTransformCredits.parse_publisher,
-        MetronInfoTransformCredits.parse_prices,
-        MetronInfoTransformCredits.parse_resources,
-        MetronInfoTransformCredits.parse_series,  # must come after reprints
-        MetronInfoTransformCredits.parse_universes,
+        MetronInfoTransformNestedTags.parse_arcs,
+        MetronInfoTransformNestedTags.parse_manga_volume,
+        MetronInfoTransformNestedTags.parse_publisher,
+        MetronInfoTransformNestedTags.parse_prices,
+        MetronInfoTransformNestedTags.parse_resources,
+        MetronInfoTransformNestedTags.parse_series,  # must come after reprints
+        MetronInfoTransformNestedTags.parse_universes,
     )
 
     FROM_COMICBOX_PRE_TRANSFORM = (
         *XmlTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        MetronInfoTransformCredits.unparse_arcs,
-        MetronInfoTransformCredits.unparse_credits,
-        MetronInfoTransformCredits.unparse_prices,
-        MetronInfoTransformCredits.unparse_publisher,
-        MetronInfoTransformCredits.unparse_resources,
-        MetronInfoTransformCredits.unparse_series,
-        MetronInfoTransformCredits.unparse_universes,
+        MetronInfoTransformNestedTags.unparse_arcs,
+        MetronInfoTransformNestedTags.unparse_prices,
+        MetronInfoTransformNestedTags.unparse_publisher,
+        MetronInfoTransformNestedTags.unparse_resources,
+        MetronInfoTransformNestedTags.unparse_series,
+        MetronInfoTransformNestedTags.unparse_universes,
     )

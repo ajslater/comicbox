@@ -3,6 +3,9 @@
 from enum import Enum
 from types import MappingProxyType
 
+from glom import Assign, glom
+
+from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -12,11 +15,12 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.credit_role_tag import (
-    CreditRoleTagTransformMixin,
-    create_role_map,
+from comicbox.transforms.credit_role_tag import create_role_map, get_role_enums
+from comicbox.transforms.metroninfo.identified_name import (
+    identified_name_from_cb,
+    identified_name_to_cb,
 )
-from comicbox.transforms.metroninfo.nested import MetronInfoTransformNestedTags
+from comicbox.transforms.transform_map import KeyTransforms
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -101,66 +105,77 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     }
 )
 
+ROLE_MAP = create_role_map(ROLE_ALIASES)
+CREATOR_TAG = "Creator"
+ROLE_KEY_PATH = "Roles.Role"
 
-class MetronInfoTransformCredits(
-    MetronInfoTransformNestedTags, CreditRoleTagTransformMixin
-):
-    """MetronInfo.xml Transforms for credits."""
 
-    ROLE_MAP = create_role_map(ROLE_ALIASES)
-    CREATOR_TAG = "Creator"
+def _credit_to_cb(source_data: dict, metron_credit) -> tuple[str, dict]:
+    """Copy a single metron style credit entry into comicbox credits."""
+    metron_creator = metron_credit.pop(CREATOR_TAG, {})
+    person_name = get_cdata(metron_creator)
+    person_name, comicbox_credit = identified_name_to_cb(
+        source_data, metron_creator, "creator"
+    )
+    if metron_roles := glom(metron_credit, "Roles.Role", default=None):
+        comicbox_roles = {}
+        for metron_role in metron_roles:
+            role_name, comicbox_role = identified_name_to_cb(
+                source_data, metron_role, "role"
+            )
+            comicbox_roles[role_name] = comicbox_role
+        if comicbox_roles:
+            comicbox_credit[ROLES_KEY] = comicbox_roles
+    return person_name, comicbox_credit
 
-    def _parse_credit(self, data: dict, metron_credit) -> tuple[str, dict]:
-        """Copy a single metron style credit entry into comicbox credits."""
-        metron_creator = metron_credit.pop(self.CREATOR_TAG, {})
-        person_name, comicbox_credit = self._parse_identified_name(
-            data, metron_creator, "creator"
-        )
-        comicbox_credit = self._parse_metron_tag(
-            metron_credit,
-            self.ROLES_TAG,
-            # TODO Don't know how to specify optional args to the Callable type
-            self._parse_identified_name,  # type: ignore[reportInvalidTypeForm]
-            "role",
-            data=data,
-        )
-        return person_name, comicbox_credit
 
-    def parse_credits(self, data: dict):
-        """Copy metron style credits dict into contributors."""
-        return self._parse_metron_tag(data, self.CREDITS_TAG, self._parse_credit)
+def _credits_to_cb(source_data, metron_credits):
+    return {
+        person_credit[0]: person_credit[1]
+        for metron_credit in metron_credits
+        if (person_credit := _credit_to_cb(source_data, metron_credit))
+    }
 
-    @classmethod
-    def _unparse_role(cls, data, role_name, comicbox_role):
-        """Unparse a metron role to an enum only value."""
-        metron_roles = []
-        if metron_role_enums := cls.get_role_enums(role_name):
-            # Handle expanding one role into many.
-            metron_role = []
-            for metron_role_enum in metron_role_enums:
-                metron_role = cls._unparse_identified_name(
-                    data, metron_role_enum, comicbox_role
-                )
-                metron_roles.append(metron_role)
-        return metron_roles
 
-    @classmethod
-    def _unparse_credit(
-        cls, data: dict, person_name: str, comicbox_credit: dict
-    ) -> dict:
-        """Aggregate comicbox credits into Metron credit dict."""
-        if not person_name:
-            return {}
-        metron_creator = cls._unparse_identified_name(
-            data, person_name, comicbox_credit
-        )
-        metron_credit = {cls.CREATOR_TAG: metron_creator}
-        metron_roles = cls._unparse_metron_tag(
-            comicbox_credit, ROLES_KEY, cls._unparse_role, data=data
-        )
-        metron_credit.update(metron_roles)
-        return metron_credit
+def _role_from_cb(source_data, role_name, comicbox_role):
+    """Unparse a metron role to an enum only value."""
+    metron_roles = []
+    if metron_role_enums := get_role_enums(ROLE_MAP, role_name):
+        # Handle expanding one role into many.
+        metron_role = []
+        for metron_role_enum in metron_role_enums:
+            metron_role = identified_name_from_cb(
+                source_data, metron_role_enum, comicbox_role
+            )
+            metron_roles.append(metron_role)
+    return metron_roles
 
-    def unparse_credits(self, data):
-        """Dump contributors into metron style credits dict."""
-        return self._unparse_metron_tag(data, CREDITS_KEY, self._unparse_credit)
+
+def _credit_from_cb(source_data: dict, person_name: str, comicbox_credit: dict) -> dict:
+    """Aggregate comicbox credits into Metron credit dict."""
+    if not person_name:
+        return {}
+    metron_creator = identified_name_from_cb(source_data, person_name, comicbox_credit)
+    metron_credit = {CREATOR_TAG: metron_creator}
+    if comicbox_roles := comicbox_credit.get(ROLES_KEY):
+        all_metron_roles = []
+        for role_name, comicbox_role in comicbox_roles.items():
+            metron_roles = _role_from_cb(source_data, role_name, comicbox_role)
+            all_metron_roles.extend(metron_roles)
+        glom(metron_credit, Assign(ROLE_KEY_PATH, all_metron_roles, missing=dict))
+    return metron_credit
+
+
+def _credits_from_cb(source_data, comicbox_credits):
+    return [
+        metron_credit
+        for person_name, comicbox_credit in comicbox_credits.items()
+        if (metron_credit := _credit_from_cb(source_data, person_name, comicbox_credit))
+    ]
+
+
+METRON_CREDITS_TRANSFORM = KeyTransforms(
+    key_map={"Credits.Credit": CREDITS_KEY},
+    to_cb=_credits_to_cb,
+    from_cb=_credits_from_cb,
+)

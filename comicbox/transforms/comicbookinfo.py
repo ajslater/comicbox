@@ -1,9 +1,6 @@
 """Comic Book Info transform to and from Comicbox format."""
 
-from comicbox.schemas.comicbookinfo import (
-    CREDITS_TAG,
-    ComicBookInfoSchema,
-)
+from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
 from comicbox.schemas.comicbox_mixin import (
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
@@ -98,7 +95,5 @@ class ComicBookInfoTransform(
         ),
         stories_key_transform("title"),
     )
-    CREDITS_TAG = CREDITS_TAG
     TO_COMICBOX_PRE_TRANSFORM = (*JsonTransform.TO_COMICBOX_PRE_TRANSFORM,)
-
     FROM_COMICBOX_PRE_TRANSFORM = (*JsonTransform.FROM_COMICBOX_PRE_TRANSFORM,)

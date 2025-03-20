@@ -23,6 +23,7 @@ from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
 from comicbox.transforms.identifiers import get_primary_source_nid
+from comicbox.transforms.metroninfo.credits import METRON_CREDITS_TRANSFORM
 from comicbox.transforms.metroninfo.identifiers import (
     METRON_GTIN_TRANSFORM,
     METRON_IDENTIFIERS_TRANSFORM,
@@ -57,7 +58,7 @@ class MetronInfoTransformBase(XmlTransform):
                     for key in {
                         "arcs",
                         "characters",
-                        "credits",
+                        # "credits",
                         "genres",
                         "imprint",
                         "language",
@@ -76,7 +77,7 @@ class MetronInfoTransformBase(XmlTransform):
                     | {
                         "Arcs",
                         "Characters",
-                        "Credits",
+                        # "Credits",
                         "Genres",
                         "Locations",
                         "MangaVolume",
@@ -92,6 +93,7 @@ class MetronInfoTransformBase(XmlTransform):
                 },
             }
         ),
+        METRON_CREDITS_TRANSFORM,
         METRON_GTIN_TRANSFORM,
         METRON_IDENTIFIERS_TRANSFORM,
         METRON_PRIMARY_SOURCE_KEY_TRANSFORM,

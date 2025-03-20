@@ -9,6 +9,7 @@ from comicbox.schemas.comicbox_mixin import (
     ROLES_KEY,
 )
 from comicbox.transforms.base import ROLE_SPELLING, add_credit_role_to_comicbox_credits
+from comicbox.transforms.credit_role_tag import get_role_enums
 from comicbox.transforms.transform_map import DUMMY_PREFIX, KeyTransforms, MultiAssigns
 
 LOG = getLogger(__name__)
@@ -33,14 +34,6 @@ def _xml_credits_to_cb(source_data, _xml_credits, role_tags_enum):
         except Exception:
             LOG.exception(f"Parsing credit tag {xml_role_enum}")
     return comicbox_credits
-
-
-def get_role_enums(role_map, comicbox_role_name: str) -> tuple[Enum, ...]:
-    """Get a this transform's role enums for a comicbox role name."""
-    if not comicbox_role_name:
-        return ()
-    lower_role_name = comicbox_role_name.lower()
-    return role_map.get(lower_role_name, ())
 
 
 def _unparse_credit_role(

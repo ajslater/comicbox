@@ -549,6 +549,12 @@ FNS = MappingProxyType(
                 "David Finch": {"roles": {"Cover": {}}},
                 "Eddie Berganza": {"roles": {"Editor": {}}},
                 "Geoff Johns": {
+                    "identifiers": {
+                        "metron": {
+                            "nss": "32165",
+                            "url": "https://metron.cloud/creator/32165",
+                        }
+                    },
                     "roles": {
                         "Writer": {
                             "identifiers": {
@@ -558,7 +564,7 @@ FNS = MappingProxyType(
                                 }
                             }
                         }
-                    }
+                    },
                 },
                 "Jim Lee": {"roles": {"Cover": {}, "Penciller": {}}},
                 "Pat Brosseau": {"roles": {"Letterer": {}}},
@@ -765,7 +771,7 @@ def test_import(fn):
     """Test importing metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     import_path = TEST_METADATA_DIR / fn
-    cns = Namespace(import_paths=[import_path], print="ncp")
+    cns = Namespace(import_paths=[import_path], print="lncp")
     config = Namespace(comicbox=cns)
     with Comicbox(EMPTY_CBZ_SOURCE_PATH, config=config) as car:
         car.print_out()

@@ -5,7 +5,6 @@ from enum import Enum
 from types import MappingProxyType
 
 from comicbox.fields.enum_fields import EnumField
-from comicbox.transforms.base import BaseTransform
 
 
 def create_role_map(
@@ -25,15 +24,8 @@ def create_role_map(
     return MappingProxyType({key: tuple(value) for key, value in role_map.items()})
 
 
-class CreditRoleTagTransformMixin(BaseTransform):
-    """Credit Roles defined as Tags."""
-
-    ROLE_MAP: MappingProxyType[str, tuple[Enum, ...]] = MappingProxyType({})
-
-    @classmethod
-    def get_role_enums(cls, comicbox_role_name: str) -> tuple[Enum, ...]:
-        """Get a this transform's role enums for a comicbox role name."""
-        if not comicbox_role_name:
-            return ()
-        lower_role_name = comicbox_role_name.lower()
-        return cls.ROLE_MAP.get(lower_role_name, ())
+def get_role_enums(role_map: Mapping, comicbox_role_name: str) -> tuple[Enum, ...]:
+    """Get a this transform's role enums for a comicbox role name."""
+    comicbox_role_name = comicbox_role_name if comicbox_role_name else ""
+    lower_role_name = comicbox_role_name.lower()
+    return role_map.get(lower_role_name, ())
