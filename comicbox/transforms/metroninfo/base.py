@@ -58,8 +58,6 @@ class MetronInfoTransformBase(XmlTransform):
                         "characters",
                         "credits",
                         "genres",
-                        # "identifiers",
-                        # "identifier_primary_source",
                         "imprint",
                         "language",
                         "locations",
@@ -79,8 +77,6 @@ class MetronInfoTransformBase(XmlTransform):
                         "Characters",
                         "Credits",
                         "Genres",
-                        # "GTIN",
-                        # "IDS",
                         "Locations",
                         "MangaVolume",
                         "Prices",
@@ -91,7 +87,6 @@ class MetronInfoTransformBase(XmlTransform):
                         "Tags",
                         "teams",
                         "Universes",
-                        # "URLs",
                     }
                 },
             }
