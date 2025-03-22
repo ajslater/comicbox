@@ -1,13 +1,12 @@
 """Metadata class for a comic archive."""
 
 from collections.abc import Mapping
-from copy import deepcopy
 from logging import getLogger
 from types import MappingProxyType
 
 from bidict import frozenbidict
-from glom import Assign, glom
 
+from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
@@ -37,7 +36,6 @@ def name_obj_to_string_list_key_transforms(key_map):
 
 
 def add_credit_role_to_comicbox_credits(
-    role_spelling: MappingProxyType,
     person_name: str,
     role_name: str,
     comicbox_credits: dict,
@@ -47,7 +45,7 @@ def add_credit_role_to_comicbox_credits(
         return
     if person_name not in comicbox_credits:
         comicbox_credits[person_name] = {ROLES_KEY: {}}
-    role_name = role_spelling.get(role_name.lower(), role_name)
+    role_name = ROLE_SPELLING.get(role_name.lower(), role_name)
     comicbox_credits[person_name][ROLES_KEY][role_name] = {}
 
 
@@ -63,85 +61,29 @@ class BaseTransform:
         self._path = path
         self._schema = self.SCHEMA_CLASS(path=path)
 
-    ##################
-    # UNRAP and WRAP #
-    ##################
-
-    def unwrap(self, data, wrap_tags="") -> dict:
-        """Unwrap the data from root tags."""
-        if not wrap_tags:
-            wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        top_tags = transform_map(self.TOP_TAG_MAP, data)
-        sub_data = glom(data, wrap_tags, default=None)
-        if top_tags and sub_data:
-            sub_data.update(top_tags)
-        return sub_data
-
-    def wrap(self, sub_data, wrap_tags="", **_kwargs) -> dict:
-        """Wrap the data in root tags."""
-        if not wrap_tags:
-            wrap_tags = self.SCHEMA_CLASS.WRAP_TAGS
-        top_tags = transform_map(self.TOP_TAG_MAP.inverse, sub_data)
-        data = glom({}, Assign(wrap_tags, sub_data, missing=dict))
-        if top_tags and data:
-            data.update(top_tags)
-        return data
-
-    ##############
-    # TRANSFORMS #
-    ##############
-
-    def transform_keys_to(self, data: dict):
-        """Copy keys to comicbox keys."""
-        return transform_map(self.TRANSFORM_MAP, data)
-
-    def transform_keys_from(self, data: dict):
-        """Copy keys from comicbox keys."""
-        return transform_map(self.TRANSFORM_MAP.inverse, data)
-
     ##################################
     # TRANSFORM TO AND FROM COMICBOX #
     ##################################
 
-    def _run_transforms(
-        self,
-        data,
-        unwrap_wrap_tags,
-        wrap_wrap_tags,
-        final_method,
-        stamp: bool,
-    ):
-        """
-        Run transform methods.
+    def _transform(
+        self, t_map: Mapping, top_tag_map: Mapping, schema: BaseSchema, data: Mapping
+    ) -> MappingProxyType:
+        """Transform formats to and from normalized Comicbox schema."""
+        transformed_data = transform_map(t_map, data)
+        # XXX transforming twice and merging so we do the null copy on comicbox
+        top_tags = transform_map(top_tag_map, data)
+        ADD_UNIQUE_MERGER.merge(transformed_data, top_tags)
+        loaded_data = schema.load(transformed_data)
+        return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]
 
-        Transform methods operate on the sub schema, so this method unwraps and re-wraps them.
-        """
-        sub_data = self.unwrap(data, wrap_tags=unwrap_wrap_tags)
-        sub_data = final_method(sub_data)
-        return self.wrap(sub_data, wrap_tags=wrap_wrap_tags, stamp=stamp)
-
-    def to_comicbox(self, in_data) -> MappingProxyType:
+    def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
-        data = dict(in_data)
-        data = self._run_transforms(
-            data,
-            None,
-            ComicboxYamlSchema.WRAP_TAGS,
-            self.transform_keys_to,
-            stamp=False,
-        )
-        data: dict = ComicboxYamlSchema(path=self._path).load(data)  # type: ignore[reportAssignmentType]
-        return MappingProxyType(data)
+        schema = ComicboxYamlSchema(path=self._path)
+        return self._transform(self.TRANSFORM_MAP, self.TOP_TAG_MAP, schema, data)
 
-    def from_comicbox(self, in_data: Mapping, **_kwargs) -> MappingProxyType:
+    def from_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
-        data = dict(in_data)
-        data = self._run_transforms(
-            data,
-            ComicboxYamlSchema.WRAP_TAGS,
-            None,
-            self.transform_keys_from,
-            stamp=True,
+        schema = self._schema
+        return self._transform(
+            self.TRANSFORM_MAP.inverse, self.TOP_TAG_MAP.inverse, schema, data
         )
-        data: dict = self._schema.load(data)  # type: ignore[reportAssignmentType]
-        return MappingProxyType(data)

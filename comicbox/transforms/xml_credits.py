@@ -4,33 +4,38 @@ from collections.abc import Mapping
 from enum import Enum
 from logging import getLogger
 
+from glom import Path, glom
+
 from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.base import ROLE_SPELLING, add_credit_role_to_comicbox_credits
+from comicbox.transforms.base import add_credit_role_to_comicbox_credits
 from comicbox.transforms.credit_role_tag import get_role_enums
 from comicbox.transforms.transform_map import DUMMY_PREFIX, KeyTransforms, MultiAssigns
 
 LOG = getLogger(__name__)
 
 
-def _parse_credit_role(data, xml_role_enum: Enum, comicbox_credits: dict):
+def _parse_credit_role(
+    source_data, xml_role_enum: Enum, comicbox_credits: dict, format_root_tag: str
+):
     role_tag = xml_role_enum.value
-    persons = data.pop(role_tag, None)
+    source_path = Path(format_root_tag, role_tag)
+    persons = glom(source_data, source_path, default=None)
     if not persons:
         return
     for person_name in persons:
-        add_credit_role_to_comicbox_credits(
-            ROLE_SPELLING, person_name, role_tag, comicbox_credits
-        )
+        add_credit_role_to_comicbox_credits(person_name, role_tag, comicbox_credits)
 
 
-def _xml_credits_to_cb(source_data, _xml_credits, role_tags_enum):
+def _xml_credits_to_cb(source_data, _xml_credits, role_tags_enum, format_root_tag):
     comicbox_credits = {}
     for xml_role_enum in role_tags_enum:
         try:
-            _parse_credit_role(source_data, xml_role_enum, comicbox_credits)
+            _parse_credit_role(
+                source_data, xml_role_enum, comicbox_credits, format_root_tag
+            )
         except Exception:
             LOG.exception(f"Parsing credit tag {xml_role_enum}")
     return comicbox_credits
@@ -74,11 +79,13 @@ def _xml_credits_from_cb(_source_data, comicbox_credits, role_map):
     return MultiAssigns(None, extra_assigns)
 
 
-def xml_credits_transform(role_tags_enum, role_map):
+def xml_credits_transform(role_tags_enum, role_map, format_root_tag):
     """Transform xml credit tags to comicbox credits."""
 
     def to_cb(source_data, xml_credits):
-        return _xml_credits_to_cb(source_data, xml_credits, role_tags_enum)
+        return _xml_credits_to_cb(
+            source_data, xml_credits, role_tags_enum, format_root_tag
+        )
 
     def from_cb(source_data, comicbox_credits):
         return _xml_credits_from_cb(source_data, comicbox_credits, role_map)

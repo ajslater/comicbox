@@ -144,7 +144,8 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
             "@ImageWidth": "width",
             "@ImageHeight": "height",
         }
-    )
+    ),
+    comicbox_root_key="",
 )
 
 
@@ -192,11 +193,12 @@ class ComicInfoTransform(
                 "Teams": TEAMS_KEY,
             }
         ),
-        xml_credits_transform(ComicInfoRoleTagEnum, ROLE_MAP),
+        xml_credits_transform(ComicInfoRoleTagEnum, ROLE_MAP, ComicInfoSchema.ROOT_TAG),
         identifiers_transform("GTIN", COMICVINE_NID),
         comicinfo_pages_transform("Pages.Page", _PAGE_TRANSFORM_MAP),
         REPRINTS_KEY_TRANSFORM,
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
         urls_transform("Web"),
+        format_root_key_path_path=ComicInfoSchema.ROOT_KEY_PATH,
     )

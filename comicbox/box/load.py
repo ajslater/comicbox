@@ -7,7 +7,7 @@ from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
 
-from glom import glom
+from glom import Assign, glom
 from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
@@ -40,7 +40,15 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             result = schema.load(md)
             if not result:
                 # try a wrapped version
-                wrapped_md = fmt.value.transform_class(self._path).wrap(md)
+                key_path = fmt.value.transform_class.SCHEMA_CLASS.ROOT_KEY_PATH
+                # XXX CBI Hack
+                key_path = (
+                    Path(key_path)
+                    if fmt == MetadataFormats.COMIC_BOOK_INFO
+                    else key_path
+                )
+                assign = Assign(key_path, md, missing=dict)
+                wrapped_md = glom({}, assign)
                 result = schema.load(wrapped_md)
         except Exception as exc:
             LOG.debug(

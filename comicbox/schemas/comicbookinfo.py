@@ -5,7 +5,6 @@ from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
-from glom import Path as GlomPath
 from marshmallow import Schema
 from marshmallow.fields import Constant, Nested
 
@@ -88,7 +87,7 @@ class ComicBookInfoSchema(JsonSchema):
 
     ROOT_TAG = "ComicBookInfo/1.0"
     ROOT_KEY = "root"
-    WRAP_TAGS = GlomPath(ROOT_TAG)
+    ROOT_KEY_PATH = ROOT_TAG
     TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")
     HAS_PAGE_COUNT = True
 

@@ -3,7 +3,10 @@
 from itertools import zip_longest
 from logging import getLogger
 
+from glom import Path, glom
+
 from comicbox.schemas.comicbox_mixin import ARCS_KEY, NUMBER_KEY
+from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
 
 LOG = getLogger(__name__)
@@ -13,7 +16,10 @@ def _story_arcs_to_arcs(
     source_data: dict, ci_story_arcs: list[str], story_arc_number_tag: str
 ):
     if story_arc_number_tag:
-        ci_story_arc_numbers: list | tuple = source_data.get(story_arc_number_tag, [])
+        story_arc_number_key_path = Path(ComicInfoSchema.ROOT_TAG, story_arc_number_tag)
+        ci_story_arc_numbers: list | tuple = glom(
+            source_data, story_arc_number_key_path, default=[]
+        )
         ci_story_arc_numbers = ci_story_arc_numbers[: len(ci_story_arcs)]
     else:
         ci_story_arc_numbers = []
@@ -45,10 +51,8 @@ def _arcs_to_story_arcs(
             num_str = "" if number is None else str(number)
             ci_story_arc_numbers.append(num_str)
     if story_arc_number_tag and ci_story_arc_numbers:
-        result = MultiAssigns(
-            value=ci_story_arcs,
-            extra_assigns=((story_arc_number_tag, ci_story_arc_numbers),),
-        )
+        assign = (story_arc_number_tag, ci_story_arc_numbers)
+        result = MultiAssigns(value=ci_story_arcs, extra_assigns=(assign,))
     else:
         result = ci_story_arcs
     return result

@@ -87,7 +87,7 @@ def test_cli_source():
 LOADED_OUTPUT = """
  ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
  ⎯ Loaded Filename tests/test_files/empty.cbz as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-comicbox:
+comicfn2dict:
   ext: cbz
   series: empty
 """

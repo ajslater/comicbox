@@ -45,5 +45,5 @@ class FilenameTransform(BaseTransform):
             }
         ),
         stories_key_transform("title"),
-        format_root_key=FilenameSchema.ROOT_TAG,
+        format_root_key_path_path=FilenameSchema.ROOT_KEY_PATH,
     )

@@ -10,4 +10,6 @@ class ComicboxJsonTransform(JsonTransform):
     """Comicbox JSON transform."""
 
     SCHEMA_CLASS = ComicboxJsonSchema
-    TOP_TAG_MAP = create_transform_map(KeyTransforms(key_map={APP_ID_KEY: TAGGER_KEY}))
+    TOP_TAG_MAP = create_transform_map(
+        KeyTransforms(key_map={APP_ID_KEY: TAGGER_KEY}), only_comicbox_root_tag=True
+    )

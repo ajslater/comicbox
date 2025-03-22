@@ -234,7 +234,7 @@ class ComicInfoSchema(XmlSchema):
     """ComicInfo.xml Schema."""
 
     ROOT_TAG = "ComicInfo"
-    WRAP_TAGS = ROOT_TAG
+    ROOT_KEY_PATH = ROOT_TAG
     TAG_ORDER = (ROOT_TAG,)
     HAS_PAGE_COUNT = True
     HAS_PAGES = True

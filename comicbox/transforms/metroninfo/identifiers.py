@@ -23,6 +23,7 @@ from comicbox.schemas.comicbox_mixin import (
     NID_KEY,
 )
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.identifiers import (
     get_primary_source_nid,
     url_from_cb,
@@ -62,6 +63,7 @@ def identifiers_to_cb(_source_data: dict, metron_ids: list) -> dict:
 def identifiers_from_cb(source_data: dict, comicbox_identifiers: dict) -> list:
     """Unparse one identifier to an xml metron GTIN or ID tag."""
     metron_identifiers = []
+    primary_set = False
     for nid, comicbox_identifier in comicbox_identifiers.items():
         if (
             (nid not in GTIN_SUBTAG_NID_MAP.values())
@@ -69,10 +71,14 @@ def identifiers_from_cb(source_data: dict, comicbox_identifiers: dict) -> list:
             and (nss := comicbox_identifier.get(NSS_KEY))
         ):
             metron_identifier = {SOURCE_ATTRIBUTE: nid_value, "#text": nss}
-            primary_nid = get_primary_source_nid(source_data)
+            primary_nid = get_primary_source_nid(source_data, METRON_NID)
             if nid == primary_nid:
                 metron_identifier[PRIMARY_ATTRIBUTE] = True
+                primary_set = True
             metron_identifiers.append(metron_identifier)
+    if metron_identifiers and not primary_set:
+        # XXX This ignores identifiers aggregated from series alternative names.
+        metron_identifiers[0][PRIMARY_ATTRIBUTE] = True
 
     return metron_identifiers
 
@@ -109,12 +115,17 @@ METRON_GTIN_TRANSFORM = KeyTransforms(
 def _urls_from_cb(source_data, comicbox_identifiers):
     metron_urls = []
     primary_nid = get_primary_source_nid(source_data, METRON_NID)
+    primary_set = False
     for nid, comicbox_identifier in comicbox_identifiers.items():
         if url := url_from_cb(nid, comicbox_identifier):
             metron_url: dict[str, Any] = {"#text": url}
             if primary_nid == nid:
                 metron_url[PRIMARY_ATTRIBUTE] = True
+                primary_set = True
             metron_urls.append(metron_url)
+    if metron_urls and not primary_set:
+        metron_urls[0][PRIMARY_ATTRIBUTE] = True
+
     return metron_urls
 
 
@@ -133,7 +144,8 @@ def is_item_primary(native_identifier) -> bool:
 
 
 def _identifier_primary_source_to_cb_ids(source_data):
-    metron_ids = glom(source_data, ID_KEY_PATH, default=())
+    id_key_path = f"{MetronInfoSchema.ROOT_KEY_PATH}.{ID_KEY_PATH}"
+    metron_ids = glom(source_data, id_key_path, default=())
     for metron_id in metron_ids:
         if (
             is_item_primary(metron_id)
@@ -146,7 +158,8 @@ def _identifier_primary_source_to_cb_ids(source_data):
 
 
 def _identifier_primary_source_to_cb_urls(source_data):
-    metron_urls = glom(source_data, URL_KEY_PATH, default=())
+    url_key_path = f"{MetronInfoSchema.ROOT_KEY_PATH}.{URL_KEY_PATH}"
+    metron_urls = glom(source_data, url_key_path, default=())
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue

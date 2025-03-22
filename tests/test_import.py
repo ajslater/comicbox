@@ -113,7 +113,6 @@ FNS = MappingProxyType(
             "year": 1950,
             "stories": {"The Beginning - nothing": {}},
             "ext": "cbz",
-            "page_count": 0,
         },
         "comicbox.json": {
             "credits": {

@@ -54,7 +54,7 @@ COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM = KeyTransforms(
 
 
 def _get_nid(source_data):
-    data_origin_name = glom(source_data, DATA_ORIGIN_NAME_KEY_PATH)
+    data_origin_name = glom(source_data, DATA_ORIGIN_NAME_KEY_PATH, default="")
     return IDENTIFIER_URN_NIDS_REVERSE_MAP.get(data_origin_name.lower(), DEFAULT_NID)
 
 
@@ -65,7 +65,7 @@ def _issue_id_to_cb(source_data, issue_id):
 
 
 def _issue_id_from_cb(source_data, identifiers):
-    primary_nid = glom(source_data, PRIMARY_NID_KEY_PATH)
+    primary_nid = glom(source_data, PRIMARY_NID_KEY_PATH, default="")
     for nid in (primary_nid, *IDENTIFIER_URN_NIDS):
         if nss := identifiers.get(nid, {}).get(NSS_KEY):
             return nss
@@ -86,7 +86,7 @@ def _series_id_to_cb(source_data, series_id):
 
 
 def _series_id_from_cb(source_data, series_identifiers):
-    primary_nid = glom(source_data, PRIMARY_NID_KEY_PATH)
+    primary_nid = glom(source_data, PRIMARY_NID_KEY_PATH, default="")
     for nid in (primary_nid, *IDENTIFIER_URN_NIDS):
         if nss := series_identifiers.get(nid, {}).get(NSS_KEY):
             return nss

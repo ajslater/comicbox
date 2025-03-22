@@ -15,9 +15,7 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import (
-    name_obj_to_string_list_key_transforms,
-)
+from comicbox.transforms.base import name_obj_to_string_list_key_transforms
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_transforms import XmlTransform
@@ -88,6 +86,7 @@ class PDFXmlTransform(XmlTransform):
             },
         ),
         stories_key_transform("pdf:Title"),
+        format_root_key_path_path=PDFXmlSchema.ROOT_KEY_PATH,
     )
 
 
@@ -110,4 +109,5 @@ class MuPDFTransform(PDFXmlTransform):
             },
         ),
         stories_key_transform("title"),
+        format_root_key_path_path=MuPDFSchema.ROOT_KEY_PATH,
     )

@@ -129,7 +129,7 @@ class BaseSchema(BaseSubSchema, ABC):
     """Top level base schema that traps errors and records path."""
 
     ROOT_TAG = ""
-    WRAP_TAGS = ""
+    ROOT_KEY_PATH = ""
     EMBED_KEY_PATH = ""
     HAS_PAGE_COUNT = False
     HAS_PAGES = False

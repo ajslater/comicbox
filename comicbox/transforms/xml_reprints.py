@@ -26,7 +26,8 @@ REPRINTS_TO_FILENAME_TRANSFORM_MAP = create_transform_map(
             ISSUE_COUNT_TAG: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
             ISSUE_TAG: f"{ISSUE_KEY}",
         }
-    )
+    ),
+    comicbox_root_key="",
 )
 
 

@@ -151,9 +151,10 @@ class CoMetTransform(
         name_obj_to_string_list_key_transforms(
             {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
         ),
-        xml_credits_transform(CoMetRoleTagEnum, ROLE_MAP),
+        xml_credits_transform(CoMetRoleTagEnum, ROLE_MAP, CoMetSchema.ROOT_TAG),
         identifiers_transform("identifier", COMICVINE_NID),
         price_key_transform("price"),
         comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
+        format_root_key_path_path=CoMetSchema.ROOT_KEY_PATH,
     )

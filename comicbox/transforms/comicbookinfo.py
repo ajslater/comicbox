@@ -65,6 +65,7 @@ class ComicBookInfoTransform(
                 "lastModified": UPDATED_AT_KEY,
             }
         ),
+        only_comicbox_root_tag=True,
     )
     TRANSFORM_MAP = create_transform_map(
         KeyTransforms(
@@ -94,4 +95,5 @@ class ComicBookInfoTransform(
             }
         ),
         stories_key_transform("title"),
+        format_root_key_path_path=ComicBookInfoSchema.ROOT_KEY_PATH,
     )

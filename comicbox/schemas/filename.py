@@ -19,7 +19,6 @@ from comicbox.schemas.comicbox_mixin import (
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
-    ComicboxSchemaMixin,
 )
 
 SERIES_TAG = SERIES_KEY
@@ -77,10 +76,11 @@ class FilenameSubSchema(BaseSubSchema):
     year = IntegerField()
 
 
-class FilenameSchema(ComicboxSchemaMixin, BaseSchema):
+class FilenameSchema(BaseSchema):
     """File name schema."""
 
     ROOT_TAG = "comicfn2dict"
+    ROOT_KEY_PATH = ROOT_TAG
 
     comicfn2dict = Nested(FilenameSubSchema)
 

@@ -39,8 +39,8 @@ class MuPDFSchema(JsonSchema):
     """muPDFSchema."""
 
     ROOT_TAG = "MuPDF"
-    WRAP_TAGS = ROOT_TAG
-    EMBED_KEY_PATH = f"{ROOT_TAG}.keywords"
+    ROOT_KEY_PATH = ROOT_TAG
+    EMBED_KEY_PATH = f"{ROOT_KEY_PATH}.keywords"
 
     MuPDF = Nested(MuPDFSubSchema)
 
@@ -103,8 +103,8 @@ class PDFXmlSchema(XmlSchema):
     """PDF Schema."""
 
     ROOT_TAG = "x:xmpmeta"
-    WRAP_TAGS = f"{ROOT_TAG}.rdf:RDF.rdf:Description"
-    EMBED_KEY_PATH = f"{WRAP_TAGS}.pdf:Keywords"
+    ROOT_KEY_PATH = f"{ROOT_TAG}.rdf:RDF.rdf:Description"
+    EMBED_KEY_PATH = f"{ROOT_KEY_PATH}.pdf:Keywords"
 
     class Meta(XmlSchema.Meta):
         """Schema options."""
