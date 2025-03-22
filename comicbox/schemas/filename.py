@@ -80,7 +80,9 @@ class FilenameSubSchema(BaseSubSchema):
 class FilenameSchema(ComicboxSchemaMixin, BaseSchema):
     """File name schema."""
 
-    comicbox = Nested(FilenameSubSchema)
+    ROOT_TAG = "comicfn2dict"
+
+    comicfn2dict = Nested(FilenameSubSchema)
 
     class Meta(BaseSchema.Meta):
         """Schema Options."""

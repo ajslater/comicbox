@@ -40,10 +40,10 @@ class FilenameTransform(BaseTransform):
                 "remainders": REMAINDERS_KEY,
                 "series": SERIES_NAME_KEY_PATH,
                 "scan_info": SCAN_INFO_KEY,
-                # "title": CODE
                 "volume": VOLUME_NUMBER_KEY_PATH,
                 "year": YEAR_KEY,
             }
         ),
         stories_key_transform("title"),
+        format_root_key=FilenameSchema.ROOT_TAG,
     )
