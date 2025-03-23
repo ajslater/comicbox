@@ -12,6 +12,7 @@ from comicbox.schemas.comicbox_mixin import (
     ROLES_KEY,
 )
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
+from comicbox.schemas.metroninfo import CREATOR_TAG
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.credit_role_tag import create_role_map, get_role_enums
@@ -105,7 +106,6 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 )
 
 ROLE_MAP = create_role_map(ROLE_ALIASES)
-CREATOR_TAG = "Creator"
 ROLE_KEY_PATH = "Roles.Role"
 
 

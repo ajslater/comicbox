@@ -3,6 +3,7 @@
 from enum import Enum
 
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.schemas.metroninfo import NAME_TAG
 from comicbox.transforms.metroninfo.identifier_attribute import (
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
@@ -27,5 +28,19 @@ def identified_name_from_cb(
 ) -> dict:
     """Transform comicbox identified object to a metron identified name."""
     metron_obj = {"#text": name}
+    metron_id_attribute_from_cb(source_data, metron_obj, comicbox_obj)
+    return metron_obj
+
+def identified_name_with_tag_to_cb(source_data, metron_obj, nss_type):
+    """Transform metron identified name to comicbox identified object."""
+    comicbox_obj = {}
+    if not (name := get_cdata(metron_obj.get(NAME_TAG, ""))):
+        return "", comicbox_obj
+    metron_id_attribute_to_cb(source_data, nss_type, metron_obj, comicbox_obj)
+    return name, comicbox_obj
+
+
+def identified_name_with_tag_from_cb(source_data, name, comicbox_obj):
+    metron_obj = {NAME_TAG: name}
     metron_id_attribute_from_cb(source_data, metron_obj, comicbox_obj)
     return metron_obj

@@ -42,7 +42,14 @@ from comicbox.schemas.xml_schemas import (
     xml_polyfield,
 )
 
+COUNTRY_ATTR = "@country"
+CREATOR_TAG = "Creator"
+DESIGNATION_TAG = "Designation"
+LANG_ATTR = "@lang"
 LAST_MODIFIED_TAG = "LastModified"
+NAME_TAG = "Name"
+NUMBER_TAG = "Number"
+
 
 
 class MetronIDAttrField(StringField):

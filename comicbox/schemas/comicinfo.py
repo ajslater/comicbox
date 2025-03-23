@@ -34,6 +34,9 @@ from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
 from comicbox.schemas.metroninfo import MetronAgeRatingEnum
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
+ALTERNATE_SERIES_TAG = "AlternateSeries"
+ALTERNATE_NUMBER_TAG = "AlternateNumber"
+ALTERNATE_COUNT_TAG = "AlternateCount"
 GTIN_TAG = "GTIN"
 IMAGE_ATTRIBUTE = "@Image"
 

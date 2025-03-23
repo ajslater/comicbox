@@ -20,29 +20,28 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
+from comicbox.schemas.metroninfo import LANG_ATTR, NAME_TAG
 from comicbox.transforms.metroninfo.identifier_attribute import (
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
 )
 from comicbox.transforms.transform_map import KeyTransforms
 
-NAME_TAG = "Name"
 VOLUME_KEY_PATH = "Series.Volume"
 ALTERNATIVE_NAMES_KEY_PATH = "Series.AlternativeNames.AlternativeName"
-LANG_ATTR = "@lang"
 LANGUAGE_KEY_PATH = f"Series.{LANG_ATTR}"
 FORMAT_KEY_PATH = "Series.Format"
 
 
 SERIES_KEY_MAP = MappingProxyType(
     {
-        f"Series.{LANG_ATTR}": LANGUAGE_KEY,
-        "Series.Format": ORIGINAL_FORMAT_KEY,
+        LANGUAGE_KEY_PATH: LANGUAGE_KEY,
+        FORMAT_KEY_PATH: ORIGINAL_FORMAT_KEY,
         "Series.IssueCount": f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
         "Series.Name": f"{SERIES_KEY}.{NAME_KEY}",
         "Series.SortName": f"{SERIES_KEY}.{SERIES_SORT_NAME_KEY}",
         "Series.StartYear": f"{SERIES_KEY}.{SERIES_START_YEAR_KEY}",
-        "Series.Volume": f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
+        VOLUME_KEY_PATH: f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
         "Series.VolumeCount": f"{SERIES_KEY}.{VOLUME_COUNT_KEY}",
     }
 )

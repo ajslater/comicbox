@@ -8,7 +8,12 @@ from comicbox.schemas.comicbox_mixin import (
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
-from comicbox.schemas.comicinfo import ComicInfoSchema
+from comicbox.schemas.comicinfo import (
+    ALTERNATE_COUNT_TAG,
+    ALTERNATE_NUMBER_TAG,
+    ALTERNATE_SERIES_TAG,
+    ComicInfoSchema,
+)
 from comicbox.transforms.transform_map import (
     DUMMY_PREFIX,
     KeyTransforms,
@@ -17,9 +22,6 @@ from comicbox.transforms.transform_map import (
     transform_map,
 )
 
-ALTERNATE_SERIES_TAG = "AlternateSeries"
-ALTERNATE_NUMBER_TAG = "AlternateNumber"
-ALTERNATE_COUNT_TAG = "AlternateCount"
 SERIES_NAME_KEY_PATH = f"{SERIES_KEY}.{NAME_KEY}"
 ISSUE_KEY_PATH = ISSUE_KEY
 VOLUME_COUNT_KEY_PATH = f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}"

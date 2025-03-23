@@ -17,21 +17,16 @@ from comicbox.schemas.comicbox_mixin import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
+from comicbox.schemas.metroninfo import COUNTRY_ATTR, DESIGNATION_TAG, NUMBER_TAG
 from comicbox.transforms.metroninfo.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
-)
-from comicbox.transforms.metroninfo.identifier_attribute import (
-    metron_id_attribute_from_cb,
-    metron_id_attribute_to_cb,
+    identified_name_with_tag_from_cb,
+    identified_name_with_tag_to_cb,
 )
 from comicbox.transforms.transform_map import KeyTransforms
 
 LOG = getLogger(__name__)
-NAME_TAG = "Name"
-NUMBER_TAG = "Number"
-COUNTRY_ATTR = "@country"
-DESIGNATION_TAG = "Designation"
 
 _RESOURCES_KEY_MAP = MappingProxyType(
     {
@@ -84,17 +79,15 @@ def _create_resorce_transforms():
 
 METRON_RESOURCES_TRANSFORMS = _create_resorce_transforms()
 
-
 def _arcs_to_cb(source_data, metron_arcs):
     comicbox_arcs = {}
     for metron_arc in metron_arcs:
-        if not (name := metron_arc.get(NAME_TAG)):
+        name, comicbox_arc = identified_name_with_tag_to_cb(source_data, metron_arc, "arc")
+        if not name:
             continue
-        comicbox_arc = {}
         number = metron_arc.get(NUMBER_TAG)
         if number is not None:
             comicbox_arc[NUMBER_KEY] = number
-        metron_id_attribute_to_cb(source_data, "arc", metron_arc, comicbox_arc)
         comicbox_arcs[name] = comicbox_arc
     return comicbox_arcs
 
@@ -102,10 +95,9 @@ def _arcs_to_cb(source_data, metron_arcs):
 def _arcs_from_cb(source_data, comicbox_arcs):
     metron_arcs = []
     for name, comicbox_arc in comicbox_arcs.items():
-        metron_arc = {NAME_TAG: name}
+        metron_arc = identified_name_with_tag_from_cb(source_data, name, comicbox_arc)
         if number := comicbox_arc.get(NUMBER_KEY):
             metron_arc[NUMBER_TAG] = number
-        metron_id_attribute_from_cb(source_data, metron_arc, comicbox_arc)
         metron_arcs.append(metron_arc)
     return metron_arcs
 
@@ -138,19 +130,16 @@ METRON_PRICES_TRANSFORM = KeyTransforms(
     key_map={"Prices.Price": PRICES_KEY}, to_cb=_prices_to_cb, from_cb=_prices_from_cb
 )
 
-
 def _universes_to_cb(source_data, metron_universes):
     comicbox_universes = {}
     for metron_universe in metron_universes:
-        name = metron_universe.get(NAME_TAG)
+        name, comicbox_universe = identified_name_with_tag_to_cb(
+            source_data, metron_universe, "universe"
+        )
         if not name:
             continue
-        comicbox_universe = {}
         if designation := metron_universe.get(DESIGNATION_TAG):
             comicbox_universe[DESIGNATION_KEY] = designation
-        metron_id_attribute_to_cb(
-            source_data, "universe", metron_universe, comicbox_universe
-        )
         comicbox_universes[name] = comicbox_universe
     return comicbox_universes
 
@@ -158,10 +147,11 @@ def _universes_to_cb(source_data, metron_universes):
 def _universes_from_cb(source_data, comicbox_universes):
     metron_universes = []
     for name, comicbox_universe in comicbox_universes.items():
-        metron_universe = {NAME_TAG: name}
+        metron_universe = identified_name_with_tag_from_cb(source_data, name, comicbox_universe)
+        if not metron_universe:
+            continue
         if designation := comicbox_universe.get(DESIGNATION_KEY):
             metron_universe[DESIGNATION_TAG] = designation
-        metron_id_attribute_from_cb(source_data, metron_universe, comicbox_universe)
         metron_universes.append(metron_universe)
     return metron_universes
 
