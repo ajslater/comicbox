@@ -1,5 +1,6 @@
 """Transform metron identified names to comicbox identified objects."""
 
+from collections.abc import Mapping
 from enum import Enum
 
 from comicbox.fields.xml_fields import get_cdata
@@ -11,7 +12,7 @@ from comicbox.transforms.metroninfo.identifier_attribute import (
 
 
 def identified_name_to_cb(
-    source_data: dict, metron_obj: dict | str, nss_type: str
+    source_data: Mapping, metron_obj: Mapping | str, nss_type: str
 ) -> tuple[str, dict]:
     """Transform metron identified name to comicbox identified object."""
     comicbox_obj = {}
@@ -24,14 +25,17 @@ def identified_name_to_cb(
 
 
 def identified_name_from_cb(
-    source_data: dict, name: str | Enum, comicbox_obj: dict
+    source_data: Mapping, name: str | Enum, comicbox_obj: Mapping
 ) -> dict:
     """Transform comicbox identified object to a metron identified name."""
     metron_obj = {"#text": name}
     metron_id_attribute_from_cb(source_data, metron_obj, comicbox_obj)
     return metron_obj
 
-def identified_name_with_tag_to_cb(source_data, metron_obj, nss_type):
+
+def identified_name_with_tag_to_cb(
+    source_data: Mapping, metron_obj: Mapping, nss_type: str
+) -> tuple[str | Enum, dict]:
     """Transform metron identified name to comicbox identified object."""
     comicbox_obj = {}
     if not (name := get_cdata(metron_obj.get(NAME_TAG, ""))):
@@ -40,7 +44,10 @@ def identified_name_with_tag_to_cb(source_data, metron_obj, nss_type):
     return name, comicbox_obj
 
 
-def identified_name_with_tag_from_cb(source_data, name, comicbox_obj):
+def identified_name_with_tag_from_cb(
+    source_data: Mapping, name: str | Enum, comicbox_obj: Mapping
+) -> dict:
+    """Transform comicbox ientified objects into metron identified objects with name tags."""
     metron_obj = {NAME_TAG: name}
     metron_id_attribute_from_cb(source_data, metron_obj, comicbox_obj)
     return metron_obj

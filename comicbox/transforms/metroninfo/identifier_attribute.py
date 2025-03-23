@@ -12,8 +12,8 @@ LOG = getLogger(__name__)
 
 
 def metron_id_attribute_to_cb(
-    source_data: dict, nss_type: str, metron_obj: Mapping | str, comicbox_obj: dict
-):
+    source_data: Mapping, nss_type: str, metron_obj: Mapping | str, comicbox_obj: dict
+) -> None:
     """Create a metron tag identifier from a metron identifier attribute."""
     try:
         if not (
@@ -28,8 +28,8 @@ def metron_id_attribute_to_cb(
 
 
 def metron_id_attribute_from_cb(
-    source_data: dict, metron_obj: dict, comicbox_obj: dict
-):
+    source_data: Mapping, metron_obj: dict, comicbox_obj: Mapping
+) -> None:
     """Crete a metron id attribute from comicbox identifier."""
     comicbox_identifiers = comicbox_obj.get(IDENTIFIERS_KEY)
     if not comicbox_identifiers:

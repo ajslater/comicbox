@@ -51,7 +51,6 @@ NAME_TAG = "Name"
 NUMBER_TAG = "Number"
 
 
-
 class MetronIDAttrField(StringField):
     """Metron ID Field."""
 

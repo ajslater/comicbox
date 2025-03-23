@@ -1,5 +1,7 @@
 """MetronInfo.xml Transformer for nested tags."""
 
+from collections.abc import Callable, Mapping
+from enum import Enum
 from logging import getLogger
 from types import MappingProxyType
 
@@ -40,22 +42,45 @@ _RESOURCES_KEY_MAP = MappingProxyType(
 )
 
 
+def metron_list_to_comicbox_dict(
+    source_data: Mapping,
+    metron_objs: list[Mapping],
+    nss_type: str,
+    func: Callable[[Mapping, Mapping | str, str], tuple[str | Enum, dict]],
+) -> dict[str | Enum, dict]:
+    """Transform metron lists into comicbox name dicts."""
+    comicbox_objs = {}
+    for metron_obj in metron_objs:
+        name, comicbox_obj = func(source_data, metron_obj, nss_type)
+        if name:
+            comicbox_objs[name] = comicbox_obj
+    return comicbox_objs
+
+
+def comicbox_dict_to_metron_list(
+    source_data: Mapping,
+    comicbox_objs: Mapping,
+    func: Callable[[Mapping, str | Enum, Mapping], dict],
+) -> list[dict]:
+    """Transform comicbox name dicts into metron lists."""
+    metron_list = []
+    for name, comicbox_obj in comicbox_objs.items():
+        metron_obj = func(source_data, name, comicbox_obj)
+        if metron_obj:
+            metron_list.append(metron_obj)
+    return metron_list
+
+
 def _resources_to_cb(source_data, metron_resources, nss_type):
-    comicbox_resources = {}
-    for metron_resource in metron_resources:
-        name, comicbox_resource = identified_name_to_cb(
-            source_data, metron_resource, nss_type
-        )
-        comicbox_resources[name] = comicbox_resource
-    return comicbox_resources
+    return metron_list_to_comicbox_dict(
+        source_data, metron_resources, nss_type, identified_name_to_cb
+    )
 
 
 def _resources_from_cb(source_data, comicbox_resources):
-    metron_resources = []
-    for name, comicbox_resource in comicbox_resources.items():
-        metron_resource = identified_name_from_cb(source_data, name, comicbox_resource)
-        metron_resources.append(metron_resource)
-    return metron_resources
+    return comicbox_dict_to_metron_list(
+        source_data, comicbox_resources, identified_name_from_cb
+    )
 
 
 def _create_resource_transform(metron_key_path, cb_key):
@@ -79,27 +104,31 @@ def _create_resorce_transforms():
 
 METRON_RESOURCES_TRANSFORMS = _create_resorce_transforms()
 
-def _arcs_to_cb(source_data, metron_arcs):
-    comicbox_arcs = {}
-    for metron_arc in metron_arcs:
-        name, comicbox_arc = identified_name_with_tag_to_cb(source_data, metron_arc, "arc")
-        if not name:
-            continue
+
+def _arc_to_cb(source_data, metron_arc, nss_type):
+    name, comicbox_arc = identified_name_with_tag_to_cb(
+        source_data, metron_arc, nss_type
+    )
+    if name:
         number = metron_arc.get(NUMBER_TAG)
         if number is not None:
             comicbox_arc[NUMBER_KEY] = number
-        comicbox_arcs[name] = comicbox_arc
-    return comicbox_arcs
+    return name, comicbox_arc
+
+
+def _arcs_to_cb(source_data, metron_arcs):
+    return metron_list_to_comicbox_dict(source_data, metron_arcs, "arc", _arc_to_cb)
+
+
+def _arc_from_cb(source_data, name, comicbox_arc):
+    metron_arc = identified_name_with_tag_from_cb(source_data, name, comicbox_arc)
+    if number := comicbox_arc.get(NUMBER_KEY):
+        metron_arc[NUMBER_TAG] = number
+    return metron_arc
 
 
 def _arcs_from_cb(source_data, comicbox_arcs):
-    metron_arcs = []
-    for name, comicbox_arc in comicbox_arcs.items():
-        metron_arc = identified_name_with_tag_from_cb(source_data, name, comicbox_arc)
-        if number := comicbox_arc.get(NUMBER_KEY):
-            metron_arc[NUMBER_TAG] = number
-        metron_arcs.append(metron_arc)
-    return metron_arcs
+    return comicbox_dict_to_metron_list(source_data, comicbox_arcs, _arc_from_cb)
 
 
 METRON_ARCS_TRANSFORM = KeyTransforms(
@@ -130,30 +159,35 @@ METRON_PRICES_TRANSFORM = KeyTransforms(
     key_map={"Prices.Price": PRICES_KEY}, to_cb=_prices_to_cb, from_cb=_prices_from_cb
 )
 
+
+def _universe_to_cb(source_data, metron_universe, nss_type):
+    name, comicbox_universe = identified_name_with_tag_to_cb(
+        source_data, metron_universe, nss_type
+    )
+    if name and (designation := metron_universe.get(DESIGNATION_TAG)):
+        comicbox_universe[DESIGNATION_KEY] = designation
+    return name, comicbox_universe
+
+
 def _universes_to_cb(source_data, metron_universes):
-    comicbox_universes = {}
-    for metron_universe in metron_universes:
-        name, comicbox_universe = identified_name_with_tag_to_cb(
-            source_data, metron_universe, "universe"
-        )
-        if not name:
-            continue
-        if designation := metron_universe.get(DESIGNATION_TAG):
-            comicbox_universe[DESIGNATION_KEY] = designation
-        comicbox_universes[name] = comicbox_universe
-    return comicbox_universes
+    return metron_list_to_comicbox_dict(
+        source_data, metron_universes, "universe", _universe_to_cb
+    )
+
+
+def _universe_from_cb(source_data, name, comicbox_universe):
+    metron_universe = identified_name_with_tag_from_cb(
+        source_data, name, comicbox_universe
+    )
+    if metron_universe and (designation := comicbox_universe.get(DESIGNATION_KEY)):
+        metron_universe[DESIGNATION_TAG] = designation
+    return metron_universe
 
 
 def _universes_from_cb(source_data, comicbox_universes):
-    metron_universes = []
-    for name, comicbox_universe in comicbox_universes.items():
-        metron_universe = identified_name_with_tag_from_cb(source_data, name, comicbox_universe)
-        if not metron_universe:
-            continue
-        if designation := comicbox_universe.get(DESIGNATION_KEY):
-            metron_universe[DESIGNATION_TAG] = designation
-        metron_universes.append(metron_universe)
-    return metron_universes
+    return comicbox_dict_to_metron_list(
+        source_data, comicbox_universes, _universe_from_cb
+    )
 
 
 METRON_UNIVERSES_TRANSFORM = KeyTransforms(
