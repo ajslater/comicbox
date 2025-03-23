@@ -26,21 +26,21 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet_reprints import comet_reprints_transform
-from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
+from comicbox.transforms.comet.reprints import comet_reprints_transform
+from comicbox.transforms.comicbookinfo.credits import cbi_credits_transform
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
-from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
-from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
-from comicbox.transforms.comictagger_identifiers import (
+from comicbox.transforms.comicinfo.pages import comicinfo_pages_transform
+from comicbox.transforms.comicinfo.storyarcs import story_arcs_transform
+from comicbox.transforms.comictagger.identifiers import (
     COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM,
     COMICTAGGER_IDENTIFIERS_TRANSFORM,
     COMICTAGGER_ISSUE_ID_TRANSFORM,
     COMICTAGGER_SERIES_ID_TRANSFORM,
     COMICTAGGER_URLS_TRANSFORM,
 )
-from comicbox.transforms.comictagger_reprints import (
+from comicbox.transforms.comictagger.reprints import (
     CT_SERIES_ALIASES_KEY_TRANSFORM,
     CT_TITLE_ALIASES_KEY_TRANSFORM,
 )

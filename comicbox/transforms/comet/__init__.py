@@ -28,7 +28,7 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet_reprints import comet_reprints_transform
+from comicbox.transforms.comet.reprints import comet_reprints_transform
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )

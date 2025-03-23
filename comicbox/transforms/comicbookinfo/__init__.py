@@ -18,7 +18,7 @@ from comicbox.schemas.comicbox_mixin import (
     ComicboxSchemaMixin,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
+from comicbox.transforms.comicbookinfo.credits import cbi_credits_transform
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
