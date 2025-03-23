@@ -28,7 +28,7 @@ from comicbox.schemas.comictagger import (
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet_reprints import comet_reprints_transform
 from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
-from comicbox.transforms.comicbox_name_dicts import (
+from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform

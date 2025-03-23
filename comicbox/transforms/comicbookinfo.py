@@ -19,7 +19,7 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
-from comicbox.transforms.comicbox_name_dicts import (
+from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.publishing_tags import (

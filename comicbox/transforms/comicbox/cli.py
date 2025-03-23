@@ -1,7 +1,7 @@
 """Comicbox CLI transform to and from Comicbox format."""
 
 from comicbox.schemas.comicbox_cli import ComicboxCLISchema
-from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
+from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 
 
 class ComicboxCLITransform(ComicboxYamlTransform):

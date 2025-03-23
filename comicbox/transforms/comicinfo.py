@@ -38,13 +38,13 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox_name_dicts import (
+from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_reprints import REPRINTS_KEY_TRANSFORM
 from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
-from comicbox.transforms.credit_role_tag import create_role_map
+from comicbox.transforms.credit_role import create_role_map
 from comicbox.transforms.identifiers import identifiers_transform, urls_transform
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,

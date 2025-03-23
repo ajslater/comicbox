@@ -29,10 +29,10 @@ from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet_reprints import comet_reprints_transform
-from comicbox.transforms.comicbox_name_dicts import (
+from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
-from comicbox.transforms.credit_role_tag import create_role_map
+from comicbox.transforms.credit_role import create_role_map
 from comicbox.transforms.identifiers import identifiers_transform
 from comicbox.transforms.price import price_key_transform
 from comicbox.transforms.publishing_tags import (

@@ -16,7 +16,7 @@ from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox_name_dicts import (
+from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.stories import stories_key_transform

@@ -6,9 +6,9 @@ from enum import Enum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
-from comicbox.transforms.comicbox_cli import ComicboxCLITransform
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
-from comicbox.transforms.comicbox_yaml import ComicboxYamlTransform
+from comicbox.transforms.comicbox.cli import ComicboxCLITransform
+from comicbox.transforms.comicbox.json import ComicboxJsonTransform
+from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.filename import FilenameTransform

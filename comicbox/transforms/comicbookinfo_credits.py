@@ -12,7 +12,7 @@ from comicbox.schemas.comicbox_mixin import (
     CREDIT_PRIMARIES_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.comicbox_credits import add_credit_role_to_comicbox_credits
+from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
 from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
 
 LOG = getLogger(__name__)
