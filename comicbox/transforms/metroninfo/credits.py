@@ -5,7 +5,6 @@ from types import MappingProxyType
 
 from glom import Assign, glom
 
-from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
