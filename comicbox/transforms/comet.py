@@ -156,5 +156,5 @@ class CoMetTransform(BaseTransform):
         price_key_transform("price"),
         comet_reprints_transform("isVersionOf"),
         stories_key_transform("title"),
-        format_root_key_path_path=CoMetSchema.ROOT_KEY_PATH,
+        format_root_key_path=CoMetSchema.ROOT_KEY_PATH,
     )

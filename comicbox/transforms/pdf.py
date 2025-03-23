@@ -88,7 +88,7 @@ class PDFXmlTransform(BaseTransform):
             },
         ),
         stories_key_transform("pdf:Title"),
-        format_root_key_path_path=PDFXmlSchema.ROOT_KEY_PATH,
+        format_root_key_path=PDFXmlSchema.ROOT_KEY_PATH,
     )
 
 
@@ -111,5 +111,5 @@ class MuPDFTransform(PDFXmlTransform):
             },
         ),
         stories_key_transform("title"),
-        format_root_key_path_path=MuPDFSchema.ROOT_KEY_PATH,
+        format_root_key_path=MuPDFSchema.ROOT_KEY_PATH,
     )

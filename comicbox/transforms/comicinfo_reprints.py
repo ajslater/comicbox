@@ -34,7 +34,7 @@ _REPRINTS_KEY_MAP = {
 
 _REPRINTS_TO_TRANSFORM_MAP = create_transform_map(
     KeyTransforms(key_map=_REPRINTS_KEY_MAP),
-    format_root_key_path_path=ComicInfoSchema.ROOT_KEY_PATH,
+    format_root_key_path=ComicInfoSchema.ROOT_KEY_PATH,
     comicbox_root_key="",
 )
 

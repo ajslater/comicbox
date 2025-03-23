@@ -122,5 +122,5 @@ class ComictaggerTransform(BaseTransform):
         stories_key_transform("title"),
         story_arcs_transform(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM,
-        format_root_key_path_path=ComictaggerSchema.ROOT_KEY_PATH,
+        format_root_key_path=ComictaggerSchema.ROOT_KEY_PATH,
     )

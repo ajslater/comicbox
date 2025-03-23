@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from bidict import frozenbidict
+from bidict import bidict, frozenbidict
 from glom import Assign, Path, glom
 
 from comicbox.merge import ADD_UNIQUE_MERGER, MERGE_EMPTY_VALUES
@@ -20,32 +20,30 @@ class KeyTransforms:
     key_map: Mapping
     to_cb: Callable | None = None
     from_cb: Callable | None = None
+    inherit_root_key_path: bool = True
 
 
 def create_transform_map(
     *args,
-    format_root_key_path_path="",
+    format_root_key_path="",
     comicbox_root_key=ComicboxSchemaMixin.ROOT_TAG,
-    # XXX only_comicbox_root_tag probably a hack.
-    only_comicbox_root_tag=True,
 ) -> frozenbidict[tuple[str, str, Callable | None], tuple[str, str, Callable | None]]:
     """Create the transform map."""
-    tm = {}
+    spec_map = bidict()
     for kts in args:
         for format_key, comicbox_key in kts.key_map.items():
-            if format_root_key_path_path:
-                full_format_key = (format_root_key_path_path, format_key)
-            else:
-                full_format_key = ("", format_key)
-            if format_root_key_path_path or only_comicbox_root_tag:
+            if kts.inherit_root_key_path and format_root_key_path:
+                full_format_key = (format_root_key_path, format_key)
                 full_comicbox_key = (comicbox_root_key, comicbox_key)
             else:
+                full_format_key = ("", format_key)
                 full_comicbox_key = ("", comicbox_key)
-            tm[(full_format_key, kts.from_cb)] = (
+            spec_map[(full_format_key, kts.from_cb)] = (
                 full_comicbox_key,
                 kts.to_cb,
             )
-    return frozenbidict(tm)
+
+    return frozenbidict(spec_map)
 
 
 @dataclass

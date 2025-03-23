@@ -74,5 +74,5 @@ class MetronInfoTransform(BaseTransform):
         METRON_URLS_TRANSFORM,
         *METRON_RESOURCES_TRANSFORMS,
         METRON_UNIVERSES_TRANSFORM,
-        format_root_key_path_path=MetronInfoSchema.ROOT_KEY_PATH,
+        format_root_key_path=MetronInfoSchema.ROOT_KEY_PATH,
     )

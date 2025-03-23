@@ -6,7 +6,6 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.merge import ADD_UNIQUE_MERGER
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
@@ -54,7 +53,6 @@ class BaseTransform:
 
     SCHEMA_CLASS = BaseSchema
     TRANSFORM_MAP = frozenbidict()
-    TOP_TAG_MAP = frozenbidict()
 
     def __init__(self, path=None):
         """Initialize instances."""
@@ -71,23 +69,19 @@ class BaseTransform:
         if (
             swap_data_key
             and schema.ROOT_DATA_KEY
-            and (root := transformed_data.get(schema.ROOT_TAG))
+            and (root := transformed_data.pop(schema.ROOT_TAG, None))
         ):
             transformed_data[schema.ROOT_DATA_KEY] = root
 
     def _transform(
         self,
-        t_map: Mapping,
-        top_tag_map: Mapping,
+        spec_map: Mapping,
         schema: BaseSchema,
         data: Mapping,
         swap_data_key: bool,
     ) -> MappingProxyType:
         """Transform formats to and from normalized Comicbox schema."""
-        transformed_data = transform_map(t_map, data)
-        # XXX transforming twice and merging so we do the null copy on comicbox
-        top_tags = transform_map(top_tag_map, data)
-        ADD_UNIQUE_MERGER.merge(transformed_data, top_tags)
+        transformed_data = transform_map(spec_map, data)
         self._swap_data_key(swap_data_key, schema, transformed_data)
         loaded_data = schema.load(transformed_data)
         return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]
@@ -95,16 +89,13 @@ class BaseTransform:
     def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
         schema = ComicboxYamlSchema(path=self._path)
-        return self._transform(
-            self.TRANSFORM_MAP, self.TOP_TAG_MAP, schema, data, swap_data_key=False
-        )
+        return self._transform(self.TRANSFORM_MAP, schema, data, swap_data_key=False)
 
     def from_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         schema = self._schema
         return self._transform(
             self.TRANSFORM_MAP.inverse,
-            self.TOP_TAG_MAP.inverse,
             schema,
             data,
             swap_data_key=True,

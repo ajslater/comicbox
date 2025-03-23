@@ -78,7 +78,8 @@ def identifiers_from_cb(source_data: dict, comicbox_identifiers: dict) -> list:
                 primary_set = True
             metron_identifiers.append(metron_identifier)
     if metron_identifiers and not primary_set:
-        # XXX This ignores identifiers aggregated from series alternative names.
+        # This can ignore identifiers aggregated from series alternative names.
+        # But I think that's usually fine.
         metron_identifiers[0][PRIMARY_ATTRIBUTE] = True
 
     return metron_identifiers

@@ -200,5 +200,5 @@ class ComicInfoTransform(BaseTransform):
         stories_key_transform("Title"),
         story_arcs_transform("StoryArc", "StoryArcNumber"),
         urls_transform("Web"),
-        format_root_key_path_path=ComicInfoSchema.ROOT_KEY_PATH,
+        format_root_key_path=ComicInfoSchema.ROOT_KEY_PATH,
     )
