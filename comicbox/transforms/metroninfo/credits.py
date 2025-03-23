@@ -116,14 +116,16 @@ def _credit_to_cb(source_data: dict, metron_credit) -> tuple[str, dict]:
         source_data, metron_creator, "creator"
     )
     if metron_roles := glom(metron_credit, "Roles.Role", default=None):
-        comicbox_roles = {}
         for metron_role in metron_roles:
             role_name, comicbox_role = identified_name_to_cb(
                 source_data, metron_role, "role"
             )
-            comicbox_roles[role_name] = comicbox_role
-        if comicbox_roles:
-            comicbox_credit[ROLES_KEY] = comicbox_roles
+            if role_name:
+                glom(
+                    comicbox_credit,
+                    Assign(f"{ROLES_KEY}.{role_name}", comicbox_role, missing=dict),
+                )
+
     return person_name, comicbox_credit
 
 

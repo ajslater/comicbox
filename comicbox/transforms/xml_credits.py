@@ -10,7 +10,7 @@ from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.base import add_credit_role_to_comicbox_credits
+from comicbox.transforms.comicbox_credits import add_credit_role_to_comicbox_credits
 from comicbox.transforms.credit_role_tag import get_role_enums
 from comicbox.transforms.transform_map import DUMMY_PREFIX, KeyTransforms, MultiAssigns
 
