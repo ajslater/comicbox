@@ -8,7 +8,6 @@ from bidict import frozenbidict
 from glom import Assign, Path, glom
 
 from comicbox.merge import ADD_UNIQUE_MERGER, MERGE_EMPTY_VALUES
-from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 
 DUMMY_PREFIX = "dummy_"
@@ -76,13 +75,7 @@ def _path_from_tuple(path_tuple):
     head, tail = path_tuple
     parts = []
     if head:
-        # XXX CBI Hack
-        head = (
-            Path(head)
-            if head == ComicBookInfoSchema.ROOT_KEY_PATH
-            else Path.from_text(head)
-        )
-        parts.append(head)
+        parts.append(Path.from_text(head))
     if tail:
         parts.append(Path.from_text(tail))
     return Path(*parts)

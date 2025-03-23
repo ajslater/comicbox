@@ -41,12 +41,6 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             if not result:
                 # try a wrapped version
                 key_path = fmt.value.transform_class.SCHEMA_CLASS.ROOT_KEY_PATH
-                # XXX CBI Hack
-                key_path = (
-                    Path(key_path)
-                    if fmt == MetadataFormats.COMIC_BOOK_INFO
-                    else key_path
-                )
                 assign = Assign(key_path, md, missing=dict)
                 wrapped_md = glom({}, assign)
                 result = schema.load(wrapped_md)

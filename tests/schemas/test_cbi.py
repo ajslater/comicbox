@@ -47,7 +47,8 @@ CBI_DICT = MappingProxyType(
     {
         "appID": "comicbox dev",
         "lastModified": TEST_DTTM_STR,
-        ComicBookInfoSchema.ROOT_TAG: {
+        # ComicBookInfoSchema.ROOT_TAG: {
+        ComicBookInfoSchema.ROOT_DATA_KEY: {
             "country": "United States",
             "credits": [
                 {"person": "Joe Orlando", "role": "Writer"},

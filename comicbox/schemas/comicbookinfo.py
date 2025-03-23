@@ -85,24 +85,15 @@ class ComicBookInfoSubSchema(JsonSubSchema):
 class ComicBookInfoSchema(JsonSchema):
     """ComicBookInfo JSON schema."""
 
-    ROOT_TAG = "ComicBookInfo/1.0"
-    ROOT_KEY = "root"
+    ROOT_DATA_KEY = "ComicBookInfo/1.0"
+    ROOT_TAG = "ComicBookInfo"
     ROOT_KEY_PATH = ROOT_TAG
-    TAG_ORDER = ("appID", "lastModified", ROOT_TAG, "schema")
+    TAG_ORDER = ("appID", "lastModified", ROOT_DATA_KEY, "schema")
     HAS_PAGE_COUNT = True
 
     appID = StringField()  # noqa: N815
     lastModified = DateTimeField()  # noqa: N815
-    root = Nested(ComicBookInfoSubSchema)
+    ComicBookInfo = Nested(ComicBookInfoSubSchema, data_key=ROOT_DATA_KEY)
     schema = Constant(
         "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
-    )
-
-    TAG_MOVE_MAP = MappingProxyType(
-        {
-            "pre_load": (ROOT_TAG, ROOT_KEY),
-            "post_load": (ROOT_KEY, ROOT_TAG),
-            "pre_dump": (ROOT_TAG, ROOT_KEY),
-            "post_dump": (ROOT_KEY, ROOT_TAG),
-        }
     )

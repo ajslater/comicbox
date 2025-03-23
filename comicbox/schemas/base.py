@@ -3,8 +3,8 @@
 from abc import ABC
 from logging import getLogger
 from pathlib import Path
-from types import MappingProxyType
 
+from icecream import ic
 from marshmallow import EXCLUDE, Schema, ValidationError
 from marshmallow.decorators import (
     post_dump,
@@ -25,7 +25,6 @@ class BaseSubSchema(Schema, ABC):
     """Base schema."""
 
     TAG_ORDER = ()
-    TAG_MOVE_MAP = MappingProxyType({})
 
     def __init__(self, **kwargs):
         """Initialize path and always use partial."""
@@ -39,24 +38,13 @@ class BaseSubSchema(Schema, ABC):
         # Meant to be overridden in BaseSchema
         return data
 
-    @classmethod
-    def _rename_tag(cls, data, from_tag, to_tag):
-        """Move one tag to another."""
-        if root := data.pop(from_tag, None):
-            data[to_tag] = root
-        return data
-
     @trap_error(pre_load)
     def pre_load(self, data, **_kwargs):
         """Singular pre_load hook."""
-        data = self.pre_load_validate(data)
-        if data and (args := self.TAG_MOVE_MAP.get("pre_load")):
-            data = dict(data)
-            data = self._rename_tag(data, *args)
-        return data
+        return self.pre_load_validate(data)
 
     @classmethod
-    def _remove_empty_values(cls, data, phase=""):
+    def _remove_empty_values(cls, data):
         """Remove fields with empty values."""
         if not data:
             return data
@@ -64,20 +52,18 @@ class BaseSubSchema(Schema, ABC):
         for key, value in tuple(data.items()):
             if value in EMPTY_VALUES:
                 del data[key]
-            elif args := cls.TAG_MOVE_MAP.get(phase):
-                cls._rename_tag(data, *args)
 
         return data
 
     @trap_error(post_load)
     def post_load(self, data, **_kwargs):
         """Singular post_load hook."""
-        return self._remove_empty_values(data, "post_load")
+        return self._remove_empty_values(data)
 
     @pre_dump
     def pre_dump(self, data, **_kwargs):
         """Singular pre_dump hook."""
-        return self._remove_empty_values(data, "pre_dump")
+        return self._remove_empty_values(data)
 
     @classmethod
     def _sort_tag_by_order(cls, data: dict, remove_empty: bool = True) -> dict:  # noqa: FBT002
@@ -91,21 +77,21 @@ class BaseSubSchema(Schema, ABC):
         return result
 
     @classmethod
-    def sort_dump(cls, data: dict, phase=""):
+    def sort_dump(cls, data: dict):
         """Sort dump by key."""
         if cls.TAG_ORDER:
-            if args := cls.TAG_MOVE_MAP.get(phase):
-                cls._rename_tag(data, *args)
             data = cls._sort_tag_by_order(data)
         elif isinstance(data, dict):
-            data = cls._remove_empty_values(data, phase=phase)
+            data = cls._remove_empty_values(data)
             data = dict(sorted(data.items()))
+        ic("AFTER_SORT", data)
         return data
 
     @post_dump
     def post_dump(self, data: dict, **_kwargs):
         """Singular post_dump hook."""
-        return self.sort_dump(data, "post_dump")
+        ic("POST_DUMP", data)
+        return self.sort_dump(data)
 
     def loadf(self, path):
         """Read the string from the designated file."""
@@ -129,6 +115,7 @@ class BaseSchema(BaseSubSchema, ABC):
     """Top level base schema that traps errors and records path."""
 
     ROOT_TAG = ""
+    ROOT_DATA_KEY = ""
     ROOT_KEY_PATH = ""
     EMBED_KEY_PATH = ""
     HAS_PAGE_COUNT = False
@@ -170,7 +157,7 @@ class BaseSchema(BaseSubSchema, ABC):
             reason = "No data."
             LOG.debug(reason)
             data = {}
-        elif cls.ROOT_TAG not in data:
+        elif cls.ROOT_TAG not in data and cls.ROOT_DATA_KEY not in data:
             reason = f"Root tag '{cls.ROOT_TAG}' not found in {tuple(data.keys())}."
             LOG.debug(reason)
             # Do not throw an exception so the trapper doesn't trap it and the
