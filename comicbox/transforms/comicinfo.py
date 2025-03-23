@@ -37,8 +37,8 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import (
-    BaseTransform,
+from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbox_name_dicts import (
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform

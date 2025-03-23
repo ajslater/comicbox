@@ -17,11 +17,11 @@ from comicbox.schemas.comicbox_mixin import (
     YEAR_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.transforms.base import (
-    BaseTransform,
+from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
+from comicbox.transforms.comicbox_name_dicts import (
     name_obj_to_string_list_key_transforms,
 )
-from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
     PUBLISHER_NAME_KEY_PATH,
