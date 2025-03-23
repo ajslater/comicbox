@@ -42,27 +42,15 @@ class BaseSubSchema(Schema, ABC):
         """Singular pre_load hook."""
         return self.pre_load_validate(data)
 
-    @classmethod
-    def _remove_empty_values(cls, data):
-        """Remove fields with empty values."""
-        if not data:
-            return data
-        data = dict(data)
-        for key, value in tuple(data.items()):
-            if value in EMPTY_VALUES:
-                del data[key]
-
-        return data
-
     @trap_error(post_load)
     def post_load(self, data, **_kwargs):
         """Singular post_load hook."""
-        return self._remove_empty_values(data)
+        return data
 
     @pre_dump
     def pre_dump(self, data, **_kwargs):
         """Singular pre_dump hook."""
-        return self._remove_empty_values(data)
+        return data
 
     @classmethod
     def _sort_tag_by_order(cls, data: dict, remove_empty: bool = True) -> dict:  # noqa: FBT002
@@ -81,7 +69,6 @@ class BaseSubSchema(Schema, ABC):
         if cls.TAG_ORDER:
             data = cls._sort_tag_by_order(data)
         elif isinstance(data, dict):
-            data = cls._remove_empty_values(data)
             data = dict(sorted(data.items()))
         return data
 

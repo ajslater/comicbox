@@ -38,6 +38,8 @@ def _xml_credits_to_cb(source_data, _xml_credits, role_tags_enum, format_root_ta
             )
         except Exception:
             LOG.exception(f"Parsing credit tag {xml_role_enum}")
+    if not comicbox_credits:
+        comicbox_credits = None
     return comicbox_credits
 
 

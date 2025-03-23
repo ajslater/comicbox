@@ -106,6 +106,7 @@ def _parse_url(nid: str, id_parts, url: str) -> dict | None:
 
 def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
     """Parse unknown urls."""
+    identifier = {}
     try:
         url = urlparse(url_str)
         nid = url.netloc
@@ -116,11 +117,13 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
             nss += "?" + url.query
         if url.fragment:
             nss += "#" + url.fragment
-        identifier = {NSS_KEY: nss, URL_KEY: url_str}
+        if nss:
+            identifier[NSS_KEY] = nss
+        if url:
+            identifier[URL_KEY] = url_str
     except Exception:
         LOG.debug(f"Unparsable url: {url_str}")
         nid = ""
-        identifier = {}
     return nid, identifier
 
 

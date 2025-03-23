@@ -110,7 +110,9 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             if not fmt.value.enabled:
                 continue
             try:
-                if success_md := self._call_load(source, fmt, data):
+                if (success_md := self._call_load(source, fmt, data)) and glom(
+                    success_md, fmt.value.transform_class.SCHEMA_CLASS.ROOT_KEY_PATH
+                ):
                     LOG.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
             except Exception as exc:

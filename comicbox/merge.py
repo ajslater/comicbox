@@ -17,7 +17,7 @@ from deepmerge.strategy.type_conflict import TypeConflictStrategies
 
 # Ordered by expected frequency, excludes dict
 MERGE_EMPTY_VALUES = ("", [], set(), None, frozenset(), ())
-EMPTY_VALUES = (*MERGE_EMPTY_VALUES, {})
+_LIST_EMPTY_VALUES = ({}, *MERGE_EMPTY_VALUES)
 
 
 class RecursiveExtendedSet(ExtendedSet):
@@ -137,7 +137,7 @@ class RemoveEmptyListStrategies(
         unique: bool = True,  # noqa: FBT002
     ) -> list | tuple:
         """Append items without duplicates in nxt to base, but ignore empty values in nxt."""
-        if nxt := tuple(filter(lambda e: e not in EMPTY_VALUES, nxt)) and (
+        if nxt := tuple(filter(lambda e: e not in _LIST_EMPTY_VALUES, nxt)) and (
             nxt := cls.unique_nxt(base, nxt, unique)
         ):
             if isinstance(base, tuple):
@@ -158,7 +158,7 @@ class RemoveEmptySetStrategies(RemoveEmptyOverrideSimpleStrategiesMixin, SetStra
         nxt: set | frozenset,
     ) -> set | frozenset:
         """Merge items without duplicates in nxt to base, but ignore empty values in nxt."""
-        nxt = frozenset(filter(lambda e: e not in EMPTY_VALUES, nxt))
+        nxt = frozenset(filter(lambda e: e not in _LIST_EMPTY_VALUES, nxt))
         return type(base)(base | nxt)
 
 
@@ -176,7 +176,7 @@ class RemoveEmptyFallbackStrategiesMixin:
         if isinstance(nxt, Mapping):
             return {k: v for k, v in nxt.items() if v not in MERGE_EMPTY_VALUES}
         if isinstance(nxt, list | tuple | set | frozenset):
-            return type(nxt)(filter(lambda e: e not in EMPTY_VALUES, nxt))
+            return type(nxt)(filter(lambda e: e not in _LIST_EMPTY_VALUES, nxt))
         if nxt not in MERGE_EMPTY_VALUES:
             return nxt
         return base

@@ -314,7 +314,8 @@ def create_identifier(nid, nss, url=None, nss_type="issue"):
     if nss:
         if nid == COMICVINE_NID:
             nss_type, nss = normalize_comicvine_nss(nss_type, nss)
-        identifier[NSS_KEY] = nss
+        if nss:
+            identifier[NSS_KEY] = nss
     if not url and nss and (id_parts := IDENTIFIER_PARTS_MAP.get(nid)):
         url = id_parts.unparse_url(nss_type, nss)
     if url:

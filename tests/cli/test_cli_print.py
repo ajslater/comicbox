@@ -6,6 +6,8 @@ from pprint import pprint
 from types import MappingProxyType
 
 from deepdiff.diff import DeepDiff
+from ruamel.yaml.comments import CommentedMap
+from ruamel.yaml.scalarint import ScalarInt
 
 from comicbox import cli
 from comicbox.schemas.comicbox_cli import ComicboxCLISchema
@@ -105,6 +107,26 @@ def test_cli_loaded():
     assert output == LOADED_OUTPUT
 
 
+def _ruamel_to_dict(yaml_dict):
+    """Not a airtight transform but works for these tests."""
+    result = {}
+    for key in yaml_dict:
+        value = yaml_dict[key]
+        if isinstance(value, CommentedMap):
+            value = _ruamel_to_dict(value)
+        elif isinstance(value, list):
+            new_value = []
+            for e in value:
+                new_e = _ruamel_to_dict(e) if isinstance(e, CommentedMap) else e
+                new_value.append(new_e)
+            value = new_value
+        elif isinstance(value, ScalarInt):
+            value = int(value)
+
+        result[key] = value
+    return result
+
+
 def test_cli_print():
     """Simple cli metadata print test."""
     args = (*CLI_METADATA_ARGS, "-p", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
@@ -113,13 +135,9 @@ def test_cli_print():
     output = output.split("\n", 2)[2]  # remove first two lines
 
     yaml = YamlRenderModule.get_write_yaml(dfs=False)
-    output_dict = yaml.load(output)
-    output_dict[ComicboxCLISchema.ROOT_TAG] = dict(
-        output_dict[ComicboxCLISchema.ROOT_TAG]
-    )
-    output_dict[ComicboxCLISchema.ROOT_TAG]["arcs"] = dict(
-        output_dict[ComicboxCLISchema.ROOT_TAG]["arcs"]
-    )
+    pprint(output)
+    loaded = yaml.load(output)
+    output_dict = _ruamel_to_dict(loaded)
     output_dict = MappingProxyType(output_dict)
     diff = DeepDiff(CLI_DICT, output_dict, ignore_order=True)
     pprint(CLI_DICT)

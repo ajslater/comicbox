@@ -10,7 +10,7 @@ from marshmallow.exceptions import ValidationError
 LOG = getLogger(__name__)
 _STRING_EMPTY_VALUES = (None, "")
 # Ordered by expected frequency
-EMPTY_VALUES = ("", [], {}, set(), None, frozenset(), ())
+EMPTY_VALUES = ("", {}, [], set(), None, frozenset(), ())
 
 
 class TrapExceptionsMeta(ABCMeta):

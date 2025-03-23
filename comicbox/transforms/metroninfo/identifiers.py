@@ -97,6 +97,8 @@ def _gtin_to_cb(_source_data, metron_gtin):
         if nss := metron_gtin.get(tag):
             identifier = create_identifier(nid, nss)
             comicbox_identifiers[nid] = identifier
+    if not comicbox_identifiers:
+        comicbox_identifiers = None
     return comicbox_identifiers
 
 
@@ -106,6 +108,8 @@ def _gtin_from_cb(_source_data, identifiers):
     for tag, nid in GTIN_SUBTAG_NID_MAP.items():
         if nss := identifiers.get(nid, {}).get(NSS_KEY):
             gtin[tag] = nss
+    if not gtin:
+        gtin = None
     return gtin
 
 

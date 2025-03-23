@@ -3,7 +3,6 @@
 from types import MappingProxyType
 
 from glom import Assign, glom
-from icecream import ic
 
 from comicbox.schemas.comicbox_mixin import ROLES_KEY
 
@@ -23,4 +22,3 @@ def add_credit_role_to_comicbox_credits(
         comicbox_credits,
         Assign(f"{person_name}.{ROLES_KEY}.{role_name}", {}, missing=dict),
     )
-    ic(comicbox_credits)
