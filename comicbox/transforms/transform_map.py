@@ -115,11 +115,10 @@ def transform_map(
             value = _create_extra_assigns(
                 target_dict, value, extra_assigns, dest_root_path_str
             )
-        dest_path = _path_from_tuple(dest_path_tuple)
-        # TODO move inside if
-        _merge_with_old_value(target_dict, dest_path, value)
         assigns = []
+        dest_path = _path_from_tuple(dest_path_tuple)
         if not dest_path.startswith(DUMMY_PREFIX):
+            _merge_with_old_value(target_dict, dest_path, value)
             assign = Assign(dest_path, value, missing=dict)
             assigns.append(assign)
         assigns.extend(extra_assigns)
