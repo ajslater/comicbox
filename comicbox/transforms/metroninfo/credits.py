@@ -113,7 +113,6 @@ ROLE_KEY_PATH = "Roles.Role"
 def _credit_to_cb(source_data: dict, metron_credit) -> tuple[str, dict]:
     """Copy a single metron style credit entry into comicbox credits."""
     metron_creator = metron_credit.pop(CREATOR_TAG, {})
-    person_name = get_cdata(metron_creator)
     person_name, comicbox_credit = identified_name_to_cb(
         source_data, metron_creator, "creator"
     )
