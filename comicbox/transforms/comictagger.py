@@ -26,6 +26,7 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.transforms.base import (
+    BaseTransform,
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comet_reprints import comet_reprints_transform
@@ -43,7 +44,6 @@ from comicbox.transforms.comictagger_reprints import (
     CT_SERIES_ALIASES_KEY_TRANSFORM,
     CT_TITLE_ALIASES_KEY_TRANSFORM,
 )
-from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.price import price_key_transform
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,
@@ -72,7 +72,7 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 )
 
 
-class ComictaggerTransform(JsonTransform):
+class ComictaggerTransform(BaseTransform):
     """Comictagger transform."""
 
     SCHEMA_CLASS = ComictaggerSchema

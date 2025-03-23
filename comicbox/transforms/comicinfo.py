@@ -37,7 +37,10 @@ from comicbox.schemas.comicinfo import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list_key_transforms
+from comicbox.transforms.base import (
+    BaseTransform,
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.comicinfo_pages import comicinfo_pages_transform
 from comicbox.transforms.comicinfo_reprints import REPRINTS_KEY_TRANSFORM
 from comicbox.transforms.comicinfo_storyarcs import story_arcs_transform
@@ -53,7 +56,6 @@ from comicbox.transforms.publishing_tags import (
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import xml_credits_transform
-from comicbox.transforms.xml_transforms import XmlTransform
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -149,9 +151,7 @@ _PAGE_TRANSFORM_MAP = create_transform_map(
 )
 
 
-class ComicInfoTransform(
-    XmlTransform,
-):
+class ComicInfoTransform(BaseTransform):
     """ComicInfo.xml Schema."""
 
     SCHEMA_CLASS = ComicInfoSchema

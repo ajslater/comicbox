@@ -14,6 +14,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
+from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.metroninfo.credits import METRON_CREDITS_TRANSFORM
 from comicbox.transforms.metroninfo.identifiers import (
     METRON_GTIN_TRANSFORM,
@@ -37,10 +38,9 @@ from comicbox.transforms.metroninfo.resources import (
     METRON_UNIVERSES_TRANSFORM,
 )
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
-from comicbox.transforms.xml_transforms import XmlTransform
 
 
-class MetronInfoTransform(XmlTransform):
+class MetronInfoTransform(BaseTransform):
     """MetronInfo.xml Transformer."""
 
     SCHEMA_CLASS = MetronInfoSchema

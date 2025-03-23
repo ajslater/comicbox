@@ -15,10 +15,12 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list_key_transforms
+from comicbox.transforms.base import (
+    BaseTransform,
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
-from comicbox.transforms.xml_transforms import XmlTransform
 
 LOG = getLogger(__name__)
 
@@ -67,7 +69,7 @@ def authors_to_credits_transform(author_tag):
     )
 
 
-class PDFXmlTransform(XmlTransform):
+class PDFXmlTransform(BaseTransform):
     """PDF Schema."""
 
     SCHEMA_CLASS = PDFXmlSchema

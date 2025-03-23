@@ -17,10 +17,10 @@ from comicbox.schemas.comicbox_mixin import (
     YEAR_KEY,
 )
 from comicbox.transforms.base import (
+    BaseTransform,
     name_obj_to_string_list_key_transforms,
 )
 from comicbox.transforms.comicbookinfo_credits import cbi_credits_transform
-from comicbox.transforms.json_transforms import JsonTransform
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
     PUBLISHER_NAME_KEY_PATH,
@@ -52,9 +52,7 @@ def issue_transform(issue_tag):
     )
 
 
-class ComicBookInfoTransform(
-    JsonTransform,
-):
+class ComicBookInfoTransform(BaseTransform):
     """Comic Book Info transform."""
 
     SCHEMA_CLASS = ComicBookInfoSchema

@@ -27,7 +27,10 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.base import name_obj_to_string_list_key_transforms
+from comicbox.transforms.base import (
+    BaseTransform,
+    name_obj_to_string_list_key_transforms,
+)
 from comicbox.transforms.comet_reprints import comet_reprints_transform
 from comicbox.transforms.credit_role_tag import create_role_map
 from comicbox.transforms.identifiers import identifiers_transform
@@ -40,7 +43,6 @@ from comicbox.transforms.publishing_tags import (
 from comicbox.transforms.stories import stories_key_transform
 from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
 from comicbox.transforms.xml_credits import xml_credits_transform
-from comicbox.transforms.xml_transforms import XmlTransform
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -122,9 +124,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 )
 
 
-class CoMetTransform(
-    XmlTransform,
-):
+class CoMetTransform(BaseTransform):
     """CoMet transforms."""
 
     SCHEMA_CLASS = CoMetSchema
