@@ -1,10 +1,7 @@
 """Identifier Fields."""
 
 from logging import getLogger
-from typing import Any
 from urllib.parse import urlparse
-
-from glom import T
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
@@ -33,13 +30,6 @@ def get_primary_source_nid(data, default_nid=DEFAULT_NID) -> str:
     return data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, default_nid)
 
 
-def parse_item_primary(native_identifier) -> bool:  # noqa: ARG001
-    """Parse the primary attribute from a native identifier."""
-    # TODO remove
-    # Overridden in metron
-    return False
-
-
 def create_identifier_primary_source(nid):
     """Create identifier primary source."""
     ips = {NID_KEY: nid}
@@ -49,31 +39,11 @@ def create_identifier_primary_source(nid):
     return ips
 
 
-def parse_identifier_native(
-    native_identifier: str | dict, naked_nid: str
-) -> tuple[str, str, str]:
-    """Parse the native identifier type into components. Defaults to string input."""
-    # TODO remove
-    return parse_string_identifier(native_identifier, naked_nid=naked_nid)  # type: ignore[reportArgumentType]
-
-
-def _identifier_to_cb(
-    native_identifier, naked_nid
-) -> tuple[str, dict, None | tuple[str, Any]]:
+def _identifier_to_cb(native_identifier, naked_nid) -> tuple[str, dict]:
     """Parse one identifier urn or string."""
-    nid, nss_type, nss = parse_identifier_native(native_identifier, naked_nid)
-    comicbox_identifier = {}
-    assign: tuple[str, Any] | None = None
-    if (
-        not assign
-        and (nid or nss)
-        and T.get(IDENTIFIER_PRIMARY_SOURCE_KEY)
-        and (comicbox_identifier := create_identifier(nid, nss, nss_type=nss_type))
-        and parse_item_primary(native_identifier)
-    ):
-        ips = create_identifier_primary_source(nid)
-        assign = (IDENTIFIER_PRIMARY_SOURCE_KEY, ips)
-    return nid, comicbox_identifier, assign
+    nid, nss_type, nss = parse_string_identifier(native_identifier, naked_nid)
+    comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+    return nid, comicbox_identifier
 
 
 def _identifiers_to_cb(
@@ -81,18 +51,13 @@ def _identifiers_to_cb(
 ) -> dict | MultiAssigns:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
-    assign: None | tuple[str, Any] = None
     for native_identifier in native_identifiers:
         try:
-            nid, identifier, assign = _identifier_to_cb(native_identifier, naked_nid)
+            nid, identifier = _identifier_to_cb(native_identifier, naked_nid)
             comicbox_identifiers[nid] = identifier
         except Exception as exc:
             LOG.warning(f"Parsing identifier {native_identifier}: {exc}")
-    if assign:
-        result = MultiAssigns(comicbox_identifiers, extra_assigns=(assign,))
-    else:
-        result = comicbox_identifiers
-    return result
+    return comicbox_identifiers
 
 
 def _identifier_from_cb(

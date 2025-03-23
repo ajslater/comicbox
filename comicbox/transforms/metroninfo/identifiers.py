@@ -25,6 +25,7 @@ from comicbox.schemas.comicbox_mixin import (
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.transforms.identifiers import (
+    create_identifier_primary_source,
     get_primary_source_nid,
     url_from_cb,
     urls_to_cb,
@@ -171,7 +172,7 @@ def _identifier_primary_source_to_cb_urls(source_data):
             continue
         for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
             if netloc.endswith(id_parts.domain):
-                return {NID_KEY: nid, URL_KEY: id_parts.url_prefix}
+                return create_identifier_primary_source(nid)
     return None
 
 
