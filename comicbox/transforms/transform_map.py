@@ -82,13 +82,10 @@ def _path_from_tuple(path_tuple):
 def transform_map(
     spec_map: Mapping,
     source_map: Mapping,
-    in_place: bool = False,  # noqa: FBT002
 ) -> dict:
     """Move a value with one key to another dict and mapped key."""
     source_map = dict(source_map)
-    if not spec_map:
-        return source_map
-    target_dict = source_map if in_place else {}
+    target_dict = {}
     for (
         source_spec,
         dest_spec,
