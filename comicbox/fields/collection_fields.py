@@ -158,32 +158,34 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     """A list of non empty strings."""
 
     FIELD = StringField
+    DEFAULT_SEPARATORS = ",;"
     DEFAULT_SEPARATOR_RE = re.compile(r"[,;]")
 
     def __init__(self, *args, as_string=False, sort=True, separators="", **kwargs):
         """Initialize as a string list."""
+        # The first character in separators is used to join on serialize
         super().__init__(self.FIELD, *args, **kwargs)
         self._as_string = as_string
         self._sort = sort
         if separators:
             re_exp = r"[" + separators + r"]"
             self._split_regex = re.compile(re_exp)
+            self._join_separator = separators[0]
         else:
             self._split_regex = self.DEFAULT_SEPARATOR_RE
+            self._join_separator = self.DEFAULT_SEPARATORS[0]
 
     @staticmethod
     def _seq_to_str_seq(seq) -> list[str]:
-        return ["" if item is None else str(item) for item in seq]
+        return [str(item) for item in seq if not is_empty(item)]
 
     def _deserialize(self, value, *args, **kwargs):
         """Deserialize CSV encodings of lists."""
         if not value:
             return []
-        if isinstance(value, str):
-            # CSV encoding.
-            value = StringField().deserialize(value)
-            if value:
-                value = self._split_regex.split(value)  # type: ignore[reportArgumentType]
+        # CSV encoding.
+        if isinstance(value, str) and (value := StringField().deserialize(value)):
+            value = self._split_regex.split(value)  # type: ignore[reportArgumentType]
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
@@ -199,7 +201,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
             value = sorted(value)
         if self._as_string:
             # For subclasses where items aren't always strings
-            return ",".join(value)
+            return self._join_separator.join(value)
         return super()._serialize(value, *args, **kwargs)
 
 
