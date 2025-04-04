@@ -11,7 +11,6 @@ from bidict import frozenbidict
 
 from comicbox.schemas.comicbox_mixin import (
     EXT_KEY,
-    ISSUE_KEY,
     ORIGINAL_FORMAT_KEY,
     REMAINDERS_KEY,
     SCAN_INFO_KEY,
@@ -19,6 +18,7 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
     SERIES_NAME_KEY_PATH,
@@ -37,7 +37,7 @@ from comicbox.transforms.stories import (
 SIMPLE_KEY_MAP = frozenbidict(
     {
         "ext": EXT_KEY,
-        "issue": ISSUE_KEY,
+        "issue": ISSUE_NAME_KEYPATH,
         "issue_count": ISSUE_COUNT_KEY_PATH,
         "original_format": ORIGINAL_FORMAT_KEY,
         "remainders": REMAINDERS_KEY,

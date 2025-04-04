@@ -31,8 +31,10 @@ READ_METADATA = MappingProxyType(
                 "Wally Wood CBI": {"roles": {"Penciller": {}}},
             },
             "series": {"name": "Captain Science COMET"},
-            "issue": "001",
-            "issue_number": Decimal(1),
+            "issue": {
+                "name": "001",
+                "number": Decimal(1),
+            },
             "imprint": {"name": "CLIImprint"},
             "publisher": {"name": "Youthful Adventure Stories"},
             "month": 11,
@@ -156,9 +158,11 @@ READ_MULTI_DICT = MappingProxyType(
                 "comicbox Genre": {},
             },
             "age_rating": "Teen",
-            "issue": "001",
+            "issue": {
+                "name": "001",
+                "number": Decimal(1),
+            },
             "notes": TEST_READ_NOTES,
-            "issue_number": Decimal(1),
             "language": "en",
             "page_count": 0,
             "pages": {

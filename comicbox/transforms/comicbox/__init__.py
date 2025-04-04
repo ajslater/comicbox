@@ -2,7 +2,13 @@
 
 from types import MappingProxyType
 
-from comicbox.schemas.comicbox_mixin import APP_ID_KEY, TAGGER_KEY, ComicboxSchemaMixin
+from comicbox.schemas.comicbox_mixin import (
+    APP_ID_KEY,
+    ISSUE_KEY,
+    NAME_KEY,
+    TAGGER_KEY,
+    ComicboxSchemaMixin,
+)
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -10,11 +16,12 @@ from comicbox.transforms.spec import (
     create_specs_to_comicbox,
 )
 
-TAGGER_KEY_PATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{TAGGER_KEY}"
+ISSUE_NAME_KEYPATH = f"{ISSUE_KEY}.{NAME_KEY}"
+_TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{TAGGER_KEY}"
 
 TOP_KEY_MAP = MappingProxyType(
     {
-        APP_ID_KEY: TAGGER_KEY_PATH,
+        APP_ID_KEY: _TAGGER_KEYPATH,
         ComicboxSchemaMixin.ROOT_KEY_PATH: ComicboxSchemaMixin.ROOT_KEY_PATH,
     }
 )

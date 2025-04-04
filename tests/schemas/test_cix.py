@@ -30,8 +30,10 @@ READ_METADATA = MappingProxyType(
                 "Other Arc": {"number": 2},
             },
             "series": {"name": "Captain Science"},
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "publisher": {"name": "Youthful Adventure Stories"},
             "year": 1950,
             "month": 11,

@@ -26,8 +26,9 @@ comicbox:
     comicvine:
       nss: '145269'
       url: https://comicvine.gamespot.com/captain-science-1/4000-145269/
-  issue: '1'
-  issue_number: 1.00
+  issue:
+    name: '1'
+    number: 1.00
   language: en
   month: 11
   notes: Tagged with comicbox dev on 2025-03-02T01:38:25 [Issue ID 145269] urn:comicvine:145269

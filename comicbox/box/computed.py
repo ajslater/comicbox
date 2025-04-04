@@ -11,6 +11,7 @@ from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
+from icecream import ic
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
@@ -30,9 +31,10 @@ from comicbox.schemas.comicbox_mixin import (
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
-    ISSUE_NUMBER_KEY,
     ISSUE_SUFFIX_KEY,
+    NAME_KEY,
     NOTES_KEY,
+    NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     PAGE_TYPE_KEY,
@@ -54,7 +56,8 @@ from comicbox.urns import (
     to_urn_string,
 )
 
-LOG = getLogger(__name__)
+NUMBER_KEYPATH = f"{ISSUE_KEY}.{NUMBER_KEY}"
+ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
 _COMICBOX_FORMATS = frozenset(
     {
@@ -64,6 +67,7 @@ _COMICBOX_FORMATS = frozenset(
     }
 )
 _GLOM_LIST_RE = re.compile(r"\.[0-9]+[\.$]")
+LOG = getLogger(__name__)
 
 
 class ComputeSchemaAttribute(Enum):
@@ -180,64 +184,65 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: pages}
 
-    def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, md):
+    def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, issue):
         """Use regex match to break the issue into parts."""
         issue_number, issue_suffix = match.groups()
-        if is_empty(old_issue_number) and not_is_empty(issue_number):
+        if is_empty(old_issue_number) and not is_empty(issue_number):
             try:
                 issue_number = DecimalField().deserialize(
-                    issue_number, ISSUE_NUMBER_KEY, md
+                    issue_number, NUMBER_KEY, issue
                 )
-                md[ISSUE_NUMBER_KEY] = issue_number
+                issue[NUMBER_KEY] = issue_number
             except Exception as exc:
                 LOG.warning(f"{self._path} Parsing issue_number from issue {exc}")
         if not old_issue_suffix and issue_suffix:
-            md[ISSUE_SUFFIX_KEY] = StringField().deserialize(
-                issue_suffix, ISSUE_SUFFIX_KEY, md
+            issue[ISSUE_SUFFIX_KEY] = StringField().deserialize(
+                issue_suffix, ISSUE_SUFFIX_KEY, issue
             )
 
     def _get_computed_from_issue(self, sub_data, **_kwargs):
         """Break parsed issue up into parts."""
-        # TODO does this happen in fields now???
-        #  it probably should
         if not sub_data:
             return None
-        issue = sub_data.get(ISSUE_KEY, "")
-        old_issue_number = sub_data.get(ISSUE_NUMBER_KEY)
-        old_issue_suffix = sub_data.get(ISSUE_SUFFIX_KEY)
-        sub_md = {}
+        issue = sub_data.get(ISSUE_KEY)
+        if not issue:
+            return None
+        issue_name = issue.get(NAME_KEY)
+        old_issue_number = issue.get(NUMBER_KEY)
+        old_issue_suffix = issue.get(ISSUE_SUFFIX_KEY)
+        ic(issue, issue_name, old_issue_suffix, old_issue_number)
         try:
-            if issue and (not is_empty(old_issue_number) or not old_issue_suffix):
-                match = _PARSE_ISSUE_MATCHER.match(issue)
-                if match:
-                    self._parse_issue_match(
-                        match, old_issue_number, old_issue_suffix, sub_md
-                    )
+            if (
+                issue_name
+                and (not is_empty(old_issue_number) or not old_issue_suffix)
+                and (match := _PARSE_ISSUE_MATCHER.match(issue_name))
+            ):
+                self._parse_issue_match(
+                    match, old_issue_number, old_issue_suffix, issue
+                )
         except Exception:
             LOG.debug(f"{self._path} Error parsing issue into components: {issue}")
             raise
 
-        return sub_md
+        return {ISSUE_KEY: issue}
 
     def _get_computed_issue(self, sub_data, **_kwargs):
         """Build issue from parts before dump if issue doesn't already exist."""
-        if ISSUE_KEY in self._config.delete_keys:
+        if not sub_data or ISSUE_KEY in self._config.delete_keys:
             return None
-        if not sub_data:
+        issue = sub_data.get(ISSUE_KEY)
+        if not issue:
             return None
-        issue = sub_data.get("issue")
-        if issue:
+        if issue_name := issue.get(NAME_KEY):
             return None
-        sub_md = {}
+        issue_number = issue.get(NUMBER_KEY, "")
+        issue_suffix = issue.get(ISSUE_SUFFIX_KEY, "")
         # Decimal removes unspecified decimal points
-        issue = str(sub_data.get(ISSUE_NUMBER_KEY, "")) + str(
-            sub_data.get(ISSUE_SUFFIX_KEY, "")
-        )
-        # This is pre-dump so issue gets serialized properly next.
-        issue = issue.strip()
-        if issue:
-            sub_md[ISSUE_KEY] = issue
-        return sub_md
+        ic(issue, issue_number, issue_suffix)
+        if issue_name := f"{issue_number}{issue_suffix}".strip():
+            issue[NAME_KEY] = issue_name
+            return {ISSUE_KEY: issue}
+        return None
 
     def _get_computed_from_scan_info(self, sub_data, **_kwargs):
         """Parse scan_info for original format info."""
@@ -429,6 +434,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         stamp_md = {
             TAGGER_KEY: self._config.tagger,
             # Deprecated method needed for python 3.10
+            # Update after 2026-11
             UPDATED_AT_KEY: datetime.utcnow(),  # noqa: DTZ003, type: ignore
         }
 
@@ -449,7 +455,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             "Page Count": (_get_computed_page_count_metadata, ReplaceMerger, ()),
             "Pages": (_get_computed_pages_metadata, ReplaceMerger, ("pages",)),
             "from issue": (_get_computed_from_issue, AdditiveMerger, ()),
-            "from issue_number & issue_suffix": (
+            "from issue.number & issue.suffix": (
                 _get_computed_issue,
                 AdditiveMerger,
                 (),

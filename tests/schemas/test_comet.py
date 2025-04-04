@@ -39,8 +39,7 @@ METADATA = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {"name": "1", "number": Decimal("1")},
             "language": "en",
             "last_mark": 12,
             "publisher": {"name": "Bell Features"},

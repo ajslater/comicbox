@@ -53,8 +53,7 @@ IDENTIFIERS_KEY = "identifiers"
 IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
-ISSUE_NUMBER_KEY = "issue_number"
-ISSUE_SUFFIX_KEY = "issue_suffix"
+ISSUE_SUFFIX_KEY = "suffix"
 LAST_MARK_KEY = "last_mark"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
@@ -216,12 +215,12 @@ class PageInfoSchema(BaseSubSchema):
     page_type = PageTypeField()
 
 
-# class IssueSchema(BaseSubSchema):
-#    """Issue Schema."""
-#
-#    name = StringField() noqa: ERA001
-#    number = DecimalField() noqa: ERA001
-#    suffix = StringField() noqa: ERA001
+class SeriesSchema(IdentifiedNameSchema):
+    """Series Schema."""
+
+    sort_name = StringField()
+    start_year = IntegerField()
+    volume_count = IntegerField(minimum=0)
 
 
 class VolumeSchema(BaseSubSchema):
@@ -234,12 +233,12 @@ class VolumeSchema(BaseSubSchema):
     number_to = IntegerField(minimum=0)
 
 
-class SeriesSchema(IdentifiedNameSchema):
-    """Series Schema."""
+class IssueSchema(BaseSubSchema):
+    """Issue Schema."""
 
-    sort_name = StringField()
-    start_year = IntegerField()
-    volume_count = IntegerField(minimum=0)
+    name = StringField()
+    number = DecimalField()
+    suffix = StringField()
 
 
 class ReprintSchema(BaseSubSchema):
@@ -295,9 +294,7 @@ class ComicboxSubSchemaMixin:
     genres = SimpleNamedDictField()
     identifiers = IdentifiersField()
     identifier_primary_source = Nested(IdentifierPrimarySource)
-    issue = StringField()
-    issue_number = DecimalField(minimum=Decimal(0))
-    issue_suffix = StringField()
+    issue = Nested(IssueSchema)
     imprint = SimpleNamedNestedField()
     language = LanguageField()
     last_mark = IntegerField(minimum=0)

@@ -17,7 +17,6 @@ from comicbox.schemas.comicbox_mixin import (
     COVER_IMAGE_KEY,
     DATE_KEY,
     GENRES_KEY,
-    ISSUE_KEY,
     LANGUAGE_KEY,
     LAST_MARK_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -34,6 +33,7 @@ from comicbox.transforms.comet.reprints import (
     comet_reprints_transform_from_cb,
     comet_reprints_transform_to_cb,
 )
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -43,8 +43,8 @@ from comicbox.transforms.identifiers import (
     identifiers_transform_to_cb,
 )
 from comicbox.transforms.price import (
-    price_key_transform_from_cb,
-    price_key_transform_to_cb,
+    price_transform_from_cb,
+    price_transform_to_cb,
 )
 from comicbox.transforms.publishing_tags import (
     PUBLISHER_NAME_KEY_PATH,
@@ -149,7 +149,7 @@ SIMPLE_KEYMAP = frozenbidict(
         "date": DATE_KEY,
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
-        "issue": ISSUE_KEY,
+        "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
         "lastMark": LAST_MARK_KEY,
         "pages": PAGE_COUNT_KEY,
@@ -175,7 +175,7 @@ class CoMetTransform(BaseTransform):
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(CoMetRoleTagEnum),
         identifiers_transform_to_cb("identifier", COMICVINE_NID),
-        price_key_transform_to_cb("price"),
+        price_transform_to_cb("price"),
         comet_reprints_transform_to_cb("isVersionOf"),
         stories_key_transform_to_cb("title"),
         format_root_keypath=CoMetSchema.ROOT_KEY_PATH,
@@ -185,7 +185,7 @@ class CoMetTransform(BaseTransform):
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
         *xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES),
         identifiers_transform_from_cb("identifier"),
-        price_key_transform_from_cb("price"),
+        price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),
         stories_key_transform_from_cb("title"),
         format_root_keypath=CoMetSchema.ROOT_KEY_PATH,

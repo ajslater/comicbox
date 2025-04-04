@@ -19,8 +19,10 @@ WRITE_CONFIG = Namespace(
 
 SUB_DATA: Mapping[str, Any] = {
     "ext": "cbz",
-    "issue": "001",
-    "issue_number": Decimal("1"),
+    "issue": {
+        "name": "001",
+        "number": Decimal("1"),
+    },
     "series": {"name": "Captain Science"},
     "stories": {"The Beginning - nothing": {}},
     "year": 1950,
@@ -39,11 +41,11 @@ FILENAME_DICT = MappingProxyType(
 )
 
 FILENAME_STR = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
+    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']['name']} ({SUB_DATA['year']})"
     f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 FILENAME_STR_NO_REMAINDER = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
+    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']['name']} ({SUB_DATA['year']})"
     f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 

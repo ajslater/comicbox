@@ -34,13 +34,13 @@ class BaseTransform:
     @classmethod
     def _transform(
         cls,
-        specs: Mapping,
+        spec: Mapping,
         schema: BaseSchema,
         data: Mapping,
         swap_data_key: bool,
     ) -> MappingProxyType:
         """Transform formats to and from normalized Comicbox schema."""
-        transformed_data = glom(dict(data), dict(specs))
+        transformed_data = glom(dict(data), dict(spec))
         cls._swap_data_key(swap_data_key, schema, transformed_data)
         loaded_data = schema.load(transformed_data)
         return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]

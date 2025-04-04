@@ -25,8 +25,10 @@ METADATA = MappingProxyType(
             },
             "country": "US",
             "genres": {"Science Fiction": {}},
-            "issue": "1",
-            "issue_number": Decimal(1),
+            "issue": {
+                "name": "1",
+                "number": Decimal(1),
+            },
             "language": "en",
             "month": 11,
             "page_count": 36,

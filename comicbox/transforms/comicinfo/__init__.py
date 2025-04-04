@@ -14,7 +14,6 @@ from comicbox.schemas.comicbox_mixin import (
     COUNTRY_KEY,
     DAY_KEY,
     GENRES_KEY,
-    ISSUE_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
     MONOCHROME_KEY,
@@ -36,6 +35,7 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -181,7 +181,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Manga": "manga",
         "Month": MONTH_KEY,
         "Notes": NOTES_KEY,
-        "Number": ISSUE_KEY,
+        "Number": ISSUE_NAME_KEYPATH,
         "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
         "Publisher": PUBLISHER_NAME_KEY_PATH,
         "Review": REVIEW_KEY,

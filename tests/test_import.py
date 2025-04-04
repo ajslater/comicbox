@@ -40,8 +40,10 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "last_mark": 12,
             "original_format": "Comic",
@@ -66,8 +68,10 @@ FNS = MappingProxyType(
             "country": "US",
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "page_count": 0,
@@ -90,8 +94,10 @@ FNS = MappingProxyType(
             },
             "ext": "cbz",
             "genres": {"Superhero": {}},
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 9,
             "page_count": 0,
@@ -108,8 +114,10 @@ FNS = MappingProxyType(
         },
         "comicbox-filename.txt": {
             "series": {"name": "Captain Science"},
-            "issue": "001",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "001",
+                "number": Decimal("1"),
+            },
             "year": 1950,
             "stories": {"The Beginning - nothing": {}},
             "ext": "cbz",
@@ -129,8 +137,10 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": "Tagged with comicbox dev on "
@@ -258,8 +268,10 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": "Tagged with comicbox dev on "
@@ -335,8 +347,10 @@ FNS = MappingProxyType(
                     "url": "https://metron.cloud/issue/99999",
                 },
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": "Tagged with Comictagger on "
@@ -411,8 +425,10 @@ FNS = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": "Tagged with comicbox dev on "
@@ -461,8 +477,10 @@ FNS = MappingProxyType(
                 },
                 "name": "Youthful Imprint",
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999",
             "original_format": "Single Issue",
@@ -619,8 +637,10 @@ FNS = MappingProxyType(
                 },
                 "name": "Vertigo",
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "locations": {
                 "Gotham City": {

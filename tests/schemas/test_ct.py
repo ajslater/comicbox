@@ -32,8 +32,10 @@ READ_METADATA = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "identifier_primary_source": {
                 "nid": "comicvine",
                 "url": "https://comicvine.gamespot.com/",

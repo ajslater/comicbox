@@ -24,10 +24,12 @@ from comicbox.transforms.comicbookinfo.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
-from comicbox.transforms.comicbookinfo.issue import (
-    issue_transform_from_cb,
-    issue_transform_to_cb,
-)
+
+# from comicbox.transforms.comicbookinfo.issue import (
+#    issue_transform_from_cb,
+#    issue_transform_to_cb,
+# ) TODO remove
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import name_obj_from_cb, name_obj_to_cb
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
@@ -60,6 +62,7 @@ SIMPLE_KEYPATHS = frozenbidict(
     {
         "comments": SUMMARY_KEY,
         "country": COUNTRY_KEY,
+        "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
         "numberOfIssues": ISSUE_COUNT_KEY_PATH,
         "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
@@ -95,7 +98,7 @@ class ComicBookInfoTransform(BaseTransform):
         ),
         cbi_credits_transform_to_cb("credits"),
         cbi_credits_primary_to_cb("credits"),
-        issue_transform_to_cb(),
+        # issue_transform_to_cb(), TODO remove
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
         stories_key_transform_to_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,
@@ -109,7 +112,7 @@ class ComicBookInfoTransform(BaseTransform):
             key_map=SIMPLE_KEYPATHS,
         ),
         cbi_credits_transform_from_cb("credits"),
-        issue_transform_from_cb(),
+        # issue_transform_from_cb(), TODO remove
         name_obj_from_cb(NAME_OBJ_KEYPATHS),
         stories_key_transform_from_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,

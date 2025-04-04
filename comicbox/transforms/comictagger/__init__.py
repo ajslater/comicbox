@@ -8,7 +8,6 @@ from comicbox.schemas.comicbox_mixin import (
     COUNTRY_KEY,
     DAY_KEY,
     GENRES_KEY,
-    ISSUE_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
     MONOCHROME_KEY,
@@ -33,6 +32,7 @@ from comicbox.transforms.comicbookinfo.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -63,8 +63,8 @@ from comicbox.transforms.comictagger.reprints import (
     CT_TITLE_ALIASES_TRANSFORM_FROM_CB,
 )
 from comicbox.transforms.price import (
-    price_key_transform_from_cb,
-    price_key_transform_to_cb,
+    price_transform_from_cb,
+    price_transform_to_cb,
 )
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,
@@ -105,7 +105,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
         "imprint": IMPRINT_NAME_KEY_PATH,
-        "issue": ISSUE_KEY,
+        "issue": ISSUE_NAME_KEYPATH,
         "issue_count": ISSUE_COUNT_KEY_PATH,
         "language": LANGUAGE_KEY,
         "maturity_rating": AGE_RATING_KEY,
@@ -144,7 +144,7 @@ class ComictaggerTransform(BaseTransform):
         COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB,
         COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB,
         comicinfo_pages_to_cb("pages", PAGE_KEY_MAP.inverse),
-        price_key_transform_to_cb("price"),
+        price_transform_to_cb("price"),
         CT_REPRINTS_TRANSFORM_TO_CB,
         stories_key_transform_to_cb("title"),
         story_arcs_to_cb(STORY_ARC_TAG, ""),
@@ -160,7 +160,7 @@ class ComictaggerTransform(BaseTransform):
         COMICTAGGER_ISSUE_ID_TRANSFORM_FROM_CB,
         COMICTAGGER_SERIES_ID_TRANSFORM_FROM_CB,
         comicinfo_pages_from_cb("pages", PAGE_KEY_MAP),
-        price_key_transform_from_cb("price"),
+        price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("is_version_of"),
         CT_SERIES_ALIASES_TRANSFORM_FROM_CB,
         CT_TITLE_ALIASES_TRANSFORM_FROM_CB,

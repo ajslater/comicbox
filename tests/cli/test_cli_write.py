@@ -113,8 +113,10 @@ DELETE_KEYS_MD = MappingProxyType(
                 }
             },
             "imprint": {"name": "CLIImprint"},
-            "issue": "001",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "001",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": "Tagged with comicbox dev on "

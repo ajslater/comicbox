@@ -32,8 +32,10 @@ METADATA = MappingProxyType(
             },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": f"Tagged with comicbox dev on {TEST_DTTM_STR}",

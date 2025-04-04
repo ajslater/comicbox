@@ -78,8 +78,10 @@ READ_METADATA = MappingProxyType(
                 },
                 "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "notes": METRON_NOTES,
             "original_format": "Single Issue",

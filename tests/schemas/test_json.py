@@ -30,8 +30,10 @@ READ_METADATA = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "publisher": {"name": "Youthful Adventure Stories"},
             "month": 11,
             "year": 1950,
@@ -110,8 +112,10 @@ READ_COMICBOX_DICT = MappingProxyType(
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
             "month": 11,
             "notes": TEST_READ_NOTES,

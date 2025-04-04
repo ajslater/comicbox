@@ -40,8 +40,10 @@
         "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/"
       }
     },
-    "issue": "1",
-    "issue_number": 1.0,
+    "issue": {
+      "name": "1",
+      "number": 1.0
+    },
     "language": "en",
     "month": 11,
     "page_count": 0,
