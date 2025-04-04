@@ -2,12 +2,15 @@
 
 from collections.abc import Mapping
 
+from pygments.styles.gruvbox import GruvboxDarkStyle
+from pygments.token import Name, String
 from rich.console import Console
-from rich.default_styles import DEFAULT_STYLES
 from rich.pretty import Pretty
 from rich.rule import Rule
+from rich.style import Style
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.text import Text
 
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
@@ -20,17 +23,27 @@ from comicbox.version import VERSION
 _SOURCES_LOADED_NORMALIZED = frozenset(
     {PrintPhases.SOURCE, PrintPhases.LOADED, PrintPhases.NORMALIZED}
 )
+_FILE_RULE_CHAR = "═"
+
+
+class Styles:
+    """Rich style definitions."""
+
+    # TODO adapt to other styles
+
+    section_header = Style(color=GruvboxDarkStyle.styles[Name.Builtin])
+    file_header = section_header
+    path = Style(color="cyan")
+    in_archive_path = Style(color="cyan", bold=True)
+    format = Style(color=GruvboxDarkStyle.styles[Name.Attribute])
+    subtitle = Style(color=GruvboxDarkStyle.styles[String])
+    section = Style(color="#888888")
 
 
 class ComicboxPrintMixin(ComicboxMetadataMixin):
     """Print Methods."""
 
     _CONSOLE = Console()
-    _RULE_CHAR = "⎯"
-    _RULE_COLOR = DEFAULT_STYLES["rule.line"].color.name  # type: ignore[reportOptionalMemberAccess]
-    _RULE_HEAD = f" [{_RULE_COLOR}]{_RULE_CHAR}[/{_RULE_COLOR}] "
-    _FILE_RULE_CHAR = "═"
-    _FILE_RULE_HEAD = f" [{_RULE_COLOR}]{_FILE_RULE_CHAR}[/{_RULE_COLOR}] "
 
     def _is_themed(self):
         """Use rich printing for code or not."""
@@ -59,11 +72,10 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
     def print_section(self, title, renderable, subtitle=""):
         """Pretty print a titled rule over a renderable."""
         if subtitle:
-            title += f": {subtitle}"
+            title += Text(": ") + Text(subtitle, style=Styles.subtitle)
 
-        title = self._RULE_HEAD + title
-        rule = Rule(title, align="left", characters=self._RULE_CHAR)
-        self._CONSOLE.print(rule)
+        self._CONSOLE.print(Rule(style=Styles.section_header))
+        self._CONSOLE.print(title)
         self._print(renderable)
 
     def _print_version(self):
@@ -76,9 +88,9 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         """Print header for this Archive's path."""
         if not self._path:
             return
-        title = self._FILE_RULE_HEAD + str(self._path)
-        rule = Rule(title, align="left", characters=self._FILE_RULE_CHAR)
-        self._CONSOLE.print(rule)
+        title = Text(str(self._path), style=Styles.path)
+        self._CONSOLE.print(Rule(style=Styles.file_header, characters=_FILE_RULE_CHAR))
+        self._CONSOLE.print(title)
 
     def _print_file_type(self):
         """Print the file type."""
@@ -107,18 +119,37 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
 
     def _add_source_to_title(self, title, source, source_data, format_preposition="as"):
         path = str(self._path) if source.value.from_archive else ""
-        if source_data.path:
-            path += f":{source_data.path}"
-        title_parts = [title]
+        path = Text(path, style=Styles.path)
+        if source_data.path or source == MetadataSources.ARCHIVE_COMMENT:
+            in_archive_path = (
+                "(comment)"
+                if source == MetadataSources.ARCHIVE_COMMENT
+                else source_data.path
+            )
+            path += Text(":") + Text(str(in_archive_path), style=Styles.in_archive_path)
+        title_parts = [Text(title, style=Styles.section)]
         if path:
             title_parts.append(path)
         if source_data.fmt:
-            title_parts.extend([format_preposition, source_data.fmt.value.label])
-        return " ".join(title_parts)
+            title_parts.extend(
+                [
+                    Text(format_preposition, style=Styles.section),
+                    Text(source_data.fmt.value.label, style=Styles.format),
+                ]
+            )
+        title = Text("")
+        first = True
+        for part in title_parts:
+            if not first:
+                title += Text(" ")
+            title += part
+            first = False
+        return title
 
     def _print_sources(self, source):
         """Print source metadtata."""
         source_data_list = self.get_source_metadata(source)
+
         if not source_data_list:
             return
         for source_data in source_data_list:
@@ -129,7 +160,14 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 renderable = Pretty(dict(md)) if self._is_themed() else md
             else:
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
-                lexer = source_data.fmt.value.lexer if source_data.fmt else ""
+                # TODO this is awkward. I should add the fmt in ingestion.
+                if source_data.fmt:
+                    fmt = source_data.fmt
+                elif source == MetadataSources.ARCHIVE_COMMENT:
+                    fmt = source.value.formats[0]
+                else:
+                    fmt = None
+                lexer = fmt.value.lexer if fmt else ""
                 renderable = self._syntax(print_md, lexer)
             title = self._add_source_to_title(
                 f"Source {source.value.label}", source, source_data
@@ -196,7 +234,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         md = self.get_merged_metadata()
         str_data = schema.dumps(md)
         syntax = self._syntax(str_data, "yaml")
-        title = "Merged for Compute"
+        title = Text("Merged for Compute")
         self.print_section(title, syntax)
 
     def _print_computed(self, schema):
@@ -211,7 +249,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 computed_md.metadata, allowed_null_keys=computed_md.allowed_null_keys
             )
             syntax = self._syntax(str_data, "yaml")
-            self.print_section("Computed", syntax, subtitle=computed_md.label)
+            self.print_section(Text("Computed"), syntax, subtitle=computed_md.label)
 
     def _print_metadata(self):
         """Pretty print the metadata."""

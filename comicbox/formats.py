@@ -46,6 +46,7 @@ class MetadataFormats(Enum):
         frozenset({"fn", "filename"}),
         "comicbox-filename.txt",
         FilenameTransform,
+        lexer=""
     )
     COMICTAGGER = MetadataFormat(
         "ComicTagger",
