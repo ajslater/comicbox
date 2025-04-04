@@ -1,7 +1,6 @@
 """Test the API surface that Codex uses."""
 
 from argparse import Namespace
-from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -15,7 +14,7 @@ from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.merge import ADD_UNIQUE_MERGER
+from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
@@ -66,44 +65,44 @@ TEMPLATE_MD = MappingProxyType(
             "month": 11,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
-            "pages": [
-                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
-                {"index": 1, "size": 332936},
-                {"index": 2, "size": 458657},
-                {"index": 3, "size": 450456},
-                {"index": 4, "size": 436648},
-                {"index": 5, "size": 443725},
-                {"index": 6, "size": 469526},
-                {"index": 7, "size": 429811},
-                {"index": 8, "size": 445513},
-                {"index": 9, "size": 446292},
-                {"index": 10, "size": 458589},
-                {"index": 11, "size": 417623},
-                {"index": 12, "size": 445302},
-                {"index": 13, "size": 413271},
-                {"index": 14, "size": 434201},
-                {"index": 15, "size": 439049},
-                {"index": 16, "size": 485957},
-                {"index": 17, "size": 388379},
-                {"index": 18, "size": 368138},
-                {"index": 19, "size": 427874},
-                {"index": 20, "size": 422522},
-                {"index": 21, "size": 442529},
-                {"index": 22, "size": 423785},
-                {"index": 23, "size": 427980},
-                {"index": 24, "size": 445631},
-                {"index": 25, "size": 413615},
-                {"index": 26, "size": 417605},
-                {"index": 27, "size": 439120},
-                {"index": 28, "size": 451598},
-                {"index": 29, "size": 451550},
-                {"index": 30, "size": 438346},
-                {"index": 31, "size": 454914},
-                {"index": 32, "size": 428461},
-                {"index": 33, "size": 438091},
-                {"index": 34, "size": 353013},
-                {"index": 35, "size": 340840},
-            ],
+            "pages": {
+                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                1: {"size": 332936},
+                2: {"size": 458657},
+                3: {"size": 450456},
+                4: {"size": 436648},
+                5: {"size": 443725},
+                6: {"size": 469526},
+                7: {"size": 429811},
+                8: {"size": 445513},
+                9: {"size": 446292},
+                10: {"size": 458589},
+                11: {"size": 417623},
+                12: {"size": 445302},
+                13: {"size": 413271},
+                14: {"size": 434201},
+                15: {"size": 439049},
+                16: {"size": 485957},
+                17: {"size": 388379},
+                18: {"size": 368138},
+                19: {"size": 427874},
+                20: {"size": 422522},
+                21: {"size": 442529},
+                22: {"size": 423785},
+                23: {"size": 427980},
+                24: {"size": 445631},
+                25: {"size": 413615},
+                26: {"size": 417605},
+                27: {"size": 439120},
+                28: {"size": 451598},
+                29: {"size": 451550},
+                30: {"size": 438346},
+                31: {"size": 454914},
+                32: {"size": 428461},
+                33: {"size": 438091},
+                34: {"size": 353013},
+                35: {"size": 340840},
+            },
             "publisher": {"name": "Youthful Adventure Stories"},
             "reprints": [
                 {"issue": "001", "series": {"name": "Captain Science Alternate"}}
@@ -116,6 +115,14 @@ TEMPLATE_MD = MappingProxyType(
         }
     }
 )
+
+
+def _patch_md(patch):
+    res = {}
+    AdditiveMerger.merge(res, TEMPLATE_MD, patch)
+    return MappingProxyType(res)
+
+
 CBZ_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "stories": {
@@ -124,9 +131,7 @@ CBZ_MD_PATCH = {
         }
     }
 }
-CBZ_MD = MappingProxyType(
-    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBZ_MD_PATCH)
-)
+CBZ_MD = _patch_md(CBZ_MD_PATCH)
 
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
@@ -139,9 +144,7 @@ CBR_MD_PATCH = {
         },
     },
 }
-CBR_MD = MappingProxyType(
-    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBR_MD_PATCH)
-)
+CBR_MD = _patch_md(CBR_MD_PATCH)
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
@@ -152,9 +155,7 @@ CBT_MD_PATCH = {
         },
     }
 }
-CBT_MD = MappingProxyType(
-    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CBT_MD_PATCH)
-)
+CBT_MD = _patch_md(CBT_MD_PATCH)
 PDF_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -200,9 +201,7 @@ CB7_MD_PATCH = {
         "stories": {"The Beginning": {}, "The End": {}},
     }
 }
-CB7_MD = MappingProxyType(
-    ADD_UNIQUE_MERGER.merge(deepcopy(dict(TEMPLATE_MD)), CB7_MD_PATCH)
-)
+CB7_MD = _patch_md(CB7_MD_PATCH)
 
 CS = "Captain Science 001"
 CS_COVER = CS + "/CaptainScience#1_01.jpg"

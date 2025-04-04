@@ -1,3 +1,4 @@
+__pycache__
 .circleci
 .git
 .mypy_cache
@@ -5,5 +6,4 @@
 .venv*
 /node_modules
 /test-results
-__pycache__
 cache

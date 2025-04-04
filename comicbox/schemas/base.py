@@ -1,6 +1,7 @@
 """Skip keys instead of throwing errors."""
 
 from abc import ABC
+from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from marshmallow.decorators import (
 )
 from marshmallow.error_store import ErrorStore
 
-from comicbox.fields.fields import EMPTY_VALUES
+from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.error_store import ClearingErrorStore
 
@@ -24,6 +25,7 @@ class BaseSubSchema(Schema, ABC):
     """Base schema."""
 
     TAG_ORDER = ()
+    SUPRESS_ERRORS = True
 
     def __init__(self, **kwargs):
         """Initialize path and always use partial."""
@@ -42,10 +44,17 @@ class BaseSubSchema(Schema, ABC):
         """Singular pre_load hook."""
         return self.pre_load_validate(data)
 
+    @classmethod
+    def clean_empties(cls, data: dict):
+        """Clean empties from loaded data."""
+        if isinstance(data, Mapping):
+            data = {k: v for k, v in data.items() if not is_empty(v)}
+        return data
+
     @trap_error(post_load)
     def post_load(self, data, **_kwargs):
         """Singular post_load hook."""
-        return data
+        return self.clean_empties(data)
 
     @pre_dump
     def pre_dump(self, data, **_kwargs):
@@ -53,12 +62,12 @@ class BaseSubSchema(Schema, ABC):
         return data
 
     @classmethod
-    def _sort_tag_by_order(cls, data: dict, remove_empty: bool = True) -> dict:  # noqa: FBT002
+    def _sort_tag_by_order(cls, data: dict) -> dict:
         """Sort tag by schema class order tuple."""
         result = {}
         for tag in cls.TAG_ORDER:
             value = data.get(tag)
-            if remove_empty and value in EMPTY_VALUES:
+            if is_empty(value):
                 continue
             result[tag] = value
         return result
@@ -68,8 +77,8 @@ class BaseSubSchema(Schema, ABC):
         """Sort dump by key."""
         if cls.TAG_ORDER:
             data = cls._sort_tag_by_order(data)
-        elif isinstance(data, dict):
-            data = dict(sorted(data.items()))
+        elif isinstance(data, Mapping):
+            data = {k: v for k, v in sorted(data.items()) if not is_empty(v)}
         return data
 
     @post_dump
@@ -89,6 +98,37 @@ class BaseSubSchema(Schema, ABC):
         with Path(path).open("w") as f:
             f.write(str_data)
 
+    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
+        """Skip keys and log warnings instead of throwing validation or type errors."""
+        if self.SUPRESS_ERRORS:
+            error_store = ClearingErrorStore(error_store, data, self._path)
+        return super()._deserialize(data, error_store=error_store, **kwargs)
+
+    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
+        """Skip keys and log warnings instead of throwing validation or type errors."""
+        if self.SUPRESS_ERRORS:
+            error_store = ClearingErrorStore(error_store, data, self._path)
+        super()._invoke_field_validators(error_store=error_store, data=data, **kwargs)
+
+    def _invoke_schema_validators(
+        self,
+        *,
+        error_store: ErrorStore,
+        data,
+        **kwargs,
+    ):
+        """Skip keys and log warnings instead of throwing validation or type errors."""
+        if self.SUPRESS_ERRORS:
+            error_store = ClearingErrorStore(error_store, data, self._path)
+        super()._invoke_schema_validators(error_store=error_store, **kwargs)
+
+    def handle_error(self, error, *_args, **_kwargs):
+        """Log errors as warnings."""
+        if isinstance(error, ValidationError):
+            LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
+        else:
+            LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
+
     class Meta(Schema.Meta):
         """Schema options."""
 
@@ -104,35 +144,6 @@ class BaseSchema(BaseSubSchema, ABC):
     EMBED_KEY_PATH = ""
     HAS_PAGE_COUNT = False
     HAS_PAGES = False
-
-    def set_path(self, path):
-        """Set the path after the instance is created."""
-        self._path = path
-
-    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_field_validators(
-            error_store=clearing_error_store, data=data, **kwargs
-        )
-
-    def _invoke_schema_validators(
-        self,
-        *,
-        error_store: ErrorStore,
-        data,
-        **kwargs,
-    ):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_schema_validators(error_store=clearing_error_store, **kwargs)
-
-    def handle_error(self, error, *_args, **_kwargs):
-        """Log errors as warnings."""
-        if isinstance(error, ValidationError):
-            LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
-        else:
-            LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
 
     @classmethod
     def pre_load_validate(cls, data):

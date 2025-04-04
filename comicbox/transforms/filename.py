@@ -7,6 +7,8 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
+from bidict import frozenbidict
+
 from comicbox.schemas.comicbox_mixin import (
     EXT_KEY,
     ISSUE_KEY,
@@ -22,28 +24,42 @@ from comicbox.transforms.publishing_tags import (
     SERIES_NAME_KEY_PATH,
     VOLUME_NUMBER_KEY_PATH,
 )
-from comicbox.transforms.stories import stories_key_transform
-from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.transforms.stories import (
+    stories_key_transform_from_cb,
+    stories_key_transform_to_cb,
+)
+
+SIMPLE_KEY_MAP = frozenbidict(
+    {
+        "ext": EXT_KEY,
+        "issue": ISSUE_KEY,
+        "issue_count": ISSUE_COUNT_KEY_PATH,
+        "original_format": ORIGINAL_FORMAT_KEY,
+        "remainders": REMAINDERS_KEY,
+        "series": SERIES_NAME_KEY_PATH,
+        "scan_info": SCAN_INFO_KEY,
+        "volume": VOLUME_NUMBER_KEY_PATH,
+        "year": YEAR_KEY,
+    }
+)
 
 
 class FilenameTransform(BaseTransform):
     """File name schema."""
 
     SCHEMA_CLASS = FilenameSchema
-    TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "ext": EXT_KEY,
-                "issue": ISSUE_KEY,
-                "issue_count": ISSUE_COUNT_KEY_PATH,
-                "original_format": ORIGINAL_FORMAT_KEY,
-                "remainders": REMAINDERS_KEY,
-                "series": SERIES_NAME_KEY_PATH,
-                "scan_info": SCAN_INFO_KEY,
-                "volume": VOLUME_NUMBER_KEY_PATH,
-                "year": YEAR_KEY,
-            }
-        ),
-        stories_key_transform("title"),
-        format_root_key_path=FilenameSchema.ROOT_KEY_PATH,
+    SPECS_TO = create_specs_to_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
+        stories_key_transform_to_cb("title"),
+        format_root_keypath=FilenameSchema.ROOT_KEY_PATH,
+    )
+    SPECS_FROM = create_specs_from_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP),
+        stories_key_transform_from_cb("title"),
+        format_root_keypath=FilenameSchema.ROOT_KEY_PATH,
     )

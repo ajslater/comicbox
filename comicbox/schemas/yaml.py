@@ -8,13 +8,14 @@ from ruamel.yaml import YAML, StringIO
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import PAGE_INDEX_KEY
+from comicbox.schemas.comicbox_mixin import PAGE_KEYS
 from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 
 ALL_NONE_KEYS = "ALL"
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"
 _MAP_TAG = f"{_TAG_YAML}:map"
+_FLOW_KEYS = frozenset({IMAGE_ATTRIBUTE, *PAGE_KEYS})
 
 
 class YamlRenderModule:
@@ -28,7 +29,7 @@ class YamlRenderModule:
     @staticmethod
     def _dict_flow_representer(dumper, data):
         """Represent page dict as a single line."""
-        if PAGE_INDEX_KEY in data or IMAGE_ATTRIBUTE in data:
+        if _FLOW_KEYS & data.keys():
             data = dict(sorted(data.items()))
             return dumper.represent_mapping(_MAP_TAG, data, flow_style=True)
 

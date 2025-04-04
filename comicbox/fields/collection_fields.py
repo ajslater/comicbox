@@ -8,8 +8,8 @@ from glom import glom
 from marshmallow import fields
 from marshmallow.utils import is_collection
 
+from comicbox.empty import filter_list_empty, is_empty
 from comicbox.fields.fields import (
-    EMPTY_VALUES,
     StringField,
     TrapExceptionsMeta,
 )
@@ -25,10 +25,6 @@ def case_insensitive_dict(d: dict) -> dict:
 
 class ListField(fields.List, metaclass=TrapExceptionsMeta):
     """List that guarauntees no empty values."""
-
-    @staticmethod
-    def _is_not_empty(value):
-        return value not in EMPTY_VALUES
 
     def __init__(
         self,
@@ -53,7 +49,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         values = value if isinstance(value, list) else [value]
         values = super()._deserialize(values, *args, **kwargs)
         if not self._allow_empty:
-            values = list(filter(self._is_not_empty, values))
+            values = list(filter_list_empty(values))
         if not values:
             return []
         return values
@@ -71,7 +67,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         # If dedupe ever needs to be decoupled, add an index to the key.
         sort_dict = {}
         for value in values:
-            if value in EMPTY_VALUES:
+            if is_empty(value):
                 continue
             key = []
             if self._sort_keys:
@@ -102,7 +98,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         if not values:
             return []
         if not self._allow_empty:
-            values = list(filter(self._is_not_empty, list(values)))
+            values = list(filter_list_empty(values))
         if not values:
             return []
         # Only sort on serialize
@@ -118,21 +114,25 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         keys: type[fields.Field] | fields.Field = StringField,
         case_insensitive=True,
         sort=True,
-        allow_empty=False,
+        allow_empty_keys=False,
+        allow_empty_values=False,
         **kwargs,
     ):
         """Set flags."""
         self._case_insensitive = case_insensitive
         self._sort = sort
-        self._allow_empty = allow_empty
+        self._allow_empty_keys = allow_empty_keys
+        self._allow_empty_values = allow_empty_values
         super().__init__(*args, keys=keys, **kwargs)
 
     def _deserialize(self, data, *args, **kwargs):
         """Apply flag conditions."""
         result_dict = super()._deserialize(data, *args, **kwargs)
         result_dict.pop(None, None)
-        if not self._allow_empty:
+        if not self._allow_empty_keys:
             result_dict.pop("", None)
+        if not self._allow_empty_values:
+            result_dict = {k: v for k, v in result_dict.items() if not is_empty(v)}
         if self._case_insensitive:
             result_dict = case_insensitive_dict(result_dict)
         return result_dict
@@ -142,8 +142,10 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         if result_dict is None:
             return None
         result_dict.pop(None, None)
-        if not self._allow_empty:
+        if not self._allow_empty_keys:
             result_dict.pop("", None)
+        if not self._allow_empty_values:
+            result_dict = {k: v for k, v in result_dict.items() if not is_empty(v)}
         if self._case_insensitive:
             result_dict = case_insensitive_dict(result_dict)
         if self._sort:
@@ -189,6 +191,8 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         return []
 
     def _serialize(self, value, *args, **kwargs) -> list[Any] | str | None:  # type:ignore[reportIncompatibleMethodOverride]
+        if not value:
+            return None
         value = self._seq_to_str_seq(value)
         if self._sort:
             # Only sort on serialize
@@ -210,6 +214,8 @@ class StringSetField(StringListField):
         return set(str_list)
 
     def _serialize(self, value, *args, **kwargs):
+        if not value:
+            return None
         value = set(value)
         return super()._serialize(value, *args, **kwargs)
 
@@ -252,6 +258,8 @@ class EmbeddedStringSetField(StringSetField):
         return super()._deserialize(value, attr, data, *args, **kwargs)
 
     def _serialize(self, value, attr, obj, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
+        if not value:
+            return None
         if self.is_embedded_metadata(value):
             return StringField()._serialize(value, attr, obj, *args, **kwargs)  # noqa: SLF001
         return super()._serialize(value, attr, obj, *args, **kwargs)

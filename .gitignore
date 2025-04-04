@@ -1,57 +1,11 @@
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-# Byte-compiled / optimized / DLL files
-# C extensions
-# Celery stuff
-# Distribution / packaging
-# Django stuff:
-# Environments
-# Flask stuff:
-# IPython
-# Installer logs
-# Jupyter Notebook
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow
-# PyBuilder
-# PyInstaller
-# Pyre type checker
-# Rope project settings
-# SageMath parsed files
-# Scrapy stuff:
-# Sphinx documentation
-# Spyder project settings
-# Translations
-# Unit test / coverage reports
-# comicbox
-# mkdocs documentation
-# mypy
-# pipenv
-# pyenv
-#Pipfile.lock
-*$py.class
-*.cover
-*.egg
-*.egg-info/
-*.log
-*.manifest
-*.mo
-*.pot
-*.py,cover
-*.py[cod]
-*.sage.py
-*.so
-*.spec
-*~
-.DS_Store
-.Python
+__pycache__/
+__pypackages__/
 .cache
 .coverage
-.coverage*
 .coverage.*
+.coverage*
 .dmypy.json
+.DS_Store
 .eggs/
 .env
 .eslintcache
@@ -65,6 +19,7 @@
 .pypirc
 .pyre/
 .pytest_cache/
+.Python
 .python-version
 .ropeproject
 .scrapy
@@ -73,11 +28,54 @@
 .tox/
 .venv
 .webassets-cache
+*.cover
+*.egg
+*.egg-info/
+*.log
+*.manifest
+*.mo
+*.pot
+*.py,cover
+*.py[cod]
+*.sage.py
+*.so
+*.spec
+*~
+*$py.class
 /site
-ENV/
-MANIFEST
-__pycache__/
-__pypackages__/
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   install all needed dependencies.
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+#  Usually these files are written by a python script from a template
+# Byte-compiled / optimized / DLL files
+# C extensions
+# Celery stuff
+# comicbox
+# Distribution / packaging
+# Django stuff:
+# Environments
+# Flask stuff:
+# Installer logs
+# IPython
+# Jupyter Notebook
+# mkdocs documentation
+# mypy
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+# pipenv
+# PyBuilder
+# pyenv
+# PyInstaller
+# Pyre type checker
+# Rope project settings
+# SageMath parsed files
+# Scrapy stuff:
+# Sphinx documentation
+# Spyder project settings
+# Translations
+# Unit test / coverage reports
+#Pipfile.lock
 build/
 celerybeat-schedule
 celerybeat.pid
@@ -92,12 +90,14 @@ downloads/
 eggs/
 env.bak/
 env/
+ENV/
 htmlcov/
 instance/
 ipython_config.py
 lib/
 lib64/
 local_settings.py
+MANIFEST
 monkeytype.sqlite3
 node_modules
 nosetests.xml

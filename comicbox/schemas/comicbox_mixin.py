@@ -68,8 +68,11 @@ NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
 PAGE_COUNT_KEY = "page_count"
-PAGE_INDEX_KEY = "index"
 PAGE_TYPE_KEY = "page_type"
+PAGE_INDEX_KEY = "index"  # only used in transform
+PAGE_KEYS = frozenset(
+    {PAGE_TYPE_KEY, "bookmark", "height", "width", "double_page", "key", "size"}
+)
 PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
 PRICES_KEY = "prices"
@@ -102,6 +105,7 @@ VOLUME_KEY = "volume"
 VOLUME_COUNT_KEY = "volume_count"
 VOLUME_ISSUE_COUNT_KEY = "issue_count"
 VOLUME_NUMBER_KEY = "number"
+VOLUME_NUMBER_TO_KEY = "number_to"
 WEB_KEY = "web"
 YEAR_KEY = "year"
 
@@ -126,12 +130,16 @@ class SimpleNamedDictField(Union):
         *args,
         keys: Field | type[Field] = StringField,
         values: Field | type[Field] | None = None,
+        allow_empty_values: bool = True,
         **kwargs,
     ):
         """Create the union."""
         if values is None:
             values = Nested(IdentifiedSchema)
-        fields = [DictField(keys=keys, values=values), StringSetField()]
+        fields = [
+            DictField(keys=keys, values=values, allow_empty_values=allow_empty_values),
+            StringSetField(),
+        ]
         super().__init__(fields, *args, **kwargs)
 
     def _deserialize(self, value, attr, *args, **kwargs):
@@ -193,7 +201,7 @@ class PersonSchema(BaseSubSchema):
     """Credit Person Schema."""
 
     identifiers = IdentifiersField()
-    roles = SimpleNamedDictField(keys=RoleField)
+    roles = SimpleNamedDictField(keys=RoleField, allow_empty_values=True)
 
 
 class PageInfoSchema(BaseSubSchema):
@@ -202,7 +210,6 @@ class PageInfoSchema(BaseSubSchema):
     bookmark = StringField()
     double_page = BooleanField()
     key = StringField()
-    index = IntegerField(minimum=0)
     width = IntegerField(minimum=0)
     height = IntegerField(minimum=0)
     size = IntegerField(minimum=0)
@@ -300,12 +307,16 @@ class ComicboxSubSchemaMixin:
     monochrome = BooleanField()
     notes = StringField()
     page_count = IntegerField(minimum=0)
-    pages = ListField(Nested(PageInfoSchema), sort_keys=(PAGE_INDEX_KEY,))
+    pages = DictField(
+        keys=IntegerField(minimum=0),
+        values=Nested(PageInfoSchema),
+        case_insensitive=False,
+    )
     publisher = SimpleNamedNestedField()
     prices = DictField(
         keys=CountryField(allow_empty=True),
         values=DecimalField(places=2, minimum=Decimal(0)),
-        allow_empty=True,
+        allow_empty_keys=True,
         sort=False,
     )
     protagonist = StringField()

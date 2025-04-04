@@ -3,6 +3,8 @@
 from enum import Enum
 from types import MappingProxyType
 
+from bidict import frozenbidict
+
 from comicbox.identifiers import COMICVINE_NID
 from comicbox.schemas.comet import (
     CoMetRoleTagEnum,
@@ -28,21 +30,40 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet.reprints import comet_reprints_transform
-from comicbox.transforms.comicbox.name_objs import (
-    name_obj_to_string_list_key_transforms,
+from comicbox.transforms.comet.reprints import (
+    comet_reprints_transform_from_cb,
+    comet_reprints_transform_to_cb,
 )
-from comicbox.transforms.credit_role import create_role_map
-from comicbox.transforms.identifiers import identifiers_transform
-from comicbox.transforms.price import price_key_transform
+from comicbox.transforms.comicbox.name_objs import (
+    name_obj_from_cb,
+    name_obj_to_cb,
+)
+from comicbox.transforms.identifiers import (
+    identifiers_transform_from_cb,
+    identifiers_transform_to_cb,
+)
+from comicbox.transforms.price import (
+    price_key_transform_from_cb,
+    price_key_transform_to_cb,
+)
 from comicbox.transforms.publishing_tags import (
     PUBLISHER_NAME_KEY_PATH,
     SERIES_NAME_KEY_PATH,
     VOLUME_NUMBER_KEY_PATH,
 )
-from comicbox.transforms.stories import stories_key_transform
-from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
-from comicbox.transforms.xml_credits import xml_credits_transform
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.transforms.stories import (
+    stories_key_transform_from_cb,
+    stories_key_transform_to_cb,
+)
+from comicbox.transforms.xml_credits import (
+    xml_credits_transform_from_cb,
+    xml_credits_transform_to_cb,
+)
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -122,39 +143,50 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
     }
 )
+SIMPLE_KEYMAP = frozenbidict(
+    {
+        "coverImage": COVER_IMAGE_KEY,
+        "date": DATE_KEY,
+        "description": SUMMARY_KEY,
+        "format": ORIGINAL_FORMAT_KEY,
+        "issue": ISSUE_KEY,
+        "language": LANGUAGE_KEY,
+        "lastMark": LAST_MARK_KEY,
+        "pages": PAGE_COUNT_KEY,
+        "publisher": PUBLISHER_NAME_KEY_PATH,
+        "rating": AGE_RATING_KEY,
+        "readingDirection": READING_DIRECTION_KEY,
+        "rights": RIGHTS_KEY,
+        "series": SERIES_NAME_KEY_PATH,
+        "volume": VOLUME_NUMBER_KEY_PATH,
+    }
+)
+NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KEY})
 
 
 class CoMetTransform(BaseTransform):
     """CoMet transforms."""
 
     SCHEMA_CLASS = CoMetSchema
-    ROLE_MAP = create_role_map(ROLE_ALIASES)
-    TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "coverImage": COVER_IMAGE_KEY,
-                "date": DATE_KEY,
-                "description": SUMMARY_KEY,
-                "format": ORIGINAL_FORMAT_KEY,
-                "issue": ISSUE_KEY,
-                "language": LANGUAGE_KEY,
-                "lastMark": LAST_MARK_KEY,
-                "pages": PAGE_COUNT_KEY,
-                "publisher": PUBLISHER_NAME_KEY_PATH,
-                "rating": AGE_RATING_KEY,
-                "readingDirection": READING_DIRECTION_KEY,
-                "rights": RIGHTS_KEY,
-                "series": SERIES_NAME_KEY_PATH,
-                "volume": VOLUME_NUMBER_KEY_PATH,
-            }
+    SPECS_TO = create_specs_to_comicbox(
+        MetaSpec(
+            key_map=SIMPLE_KEYMAP.inverse,
         ),
-        name_obj_to_string_list_key_transforms(
-            {"character": CHARACTERS_KEY, "genre": GENRES_KEY},
-        ),
-        xml_credits_transform(CoMetRoleTagEnum, ROLE_MAP, CoMetSchema.ROOT_TAG),
-        identifiers_transform("identifier", COMICVINE_NID),
-        price_key_transform("price"),
-        comet_reprints_transform("isVersionOf"),
-        stories_key_transform("title"),
-        format_root_key_path=CoMetSchema.ROOT_KEY_PATH,
+        name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
+        xml_credits_transform_to_cb(CoMetRoleTagEnum),
+        identifiers_transform_to_cb("identifier", COMICVINE_NID),
+        price_key_transform_to_cb("price"),
+        comet_reprints_transform_to_cb("isVersionOf"),
+        stories_key_transform_to_cb("title"),
+        format_root_keypath=CoMetSchema.ROOT_KEY_PATH,
+    )
+    SPECS_FROM = create_specs_from_comicbox(
+        MetaSpec(key_map=SIMPLE_KEYMAP),
+        name_obj_from_cb(NAME_OBJ_KEY_MAP),
+        *xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES),
+        identifiers_transform_from_cb("identifier"),
+        price_key_transform_from_cb("price"),
+        comet_reprints_transform_from_cb("isVersionOf"),
+        stories_key_transform_from_cb("title"),
+        format_root_keypath=CoMetSchema.ROOT_KEY_PATH,
     )

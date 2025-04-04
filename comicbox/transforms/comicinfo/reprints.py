@@ -1,5 +1,9 @@
 """ComicInfo Reprints (Alternates) Schema Mixin."""
 
+from types import MappingProxyType
+
+from glom import Fill, T
+
 from comicbox.schemas.comicbox_mixin import (
     ISSUE_KEY,
     NAME_KEY,
@@ -12,54 +16,32 @@ from comicbox.schemas.comicinfo import (
     ALTERNATE_COUNT_TAG,
     ALTERNATE_NUMBER_TAG,
     ALTERNATE_SERIES_TAG,
-    ComicInfoSchema,
 )
-from comicbox.transforms.transform_map import (
-    DUMMY_PREFIX,
-    KeyTransforms,
-    MultiAssigns,
-    create_transform_map,
-    transform_map,
-)
-
-SERIES_NAME_KEY_PATH = f"{SERIES_KEY}.{NAME_KEY}"
-ISSUE_KEY_PATH = ISSUE_KEY
-VOLUME_COUNT_KEY_PATH = f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}"
+from comicbox.transforms.spec import MetaSpec
 
 _REPRINTS_KEY_MAP = {
-    ALTERNATE_SERIES_TAG: SERIES_NAME_KEY_PATH,
-    ALTERNATE_NUMBER_TAG: ISSUE_KEY,
-    ALTERNATE_COUNT_TAG: VOLUME_COUNT_KEY_PATH,
+    ISSUE_KEY: ALTERNATE_NUMBER_TAG,
+    SERIES_KEY: {NAME_KEY: ALTERNATE_SERIES_TAG},
+    VOLUME_KEY: {VOLUME_ISSUE_COUNT_KEY: ALTERNATE_COUNT_TAG},
 }
-
-_REPRINTS_TO_TRANSFORM_MAP = create_transform_map(
-    KeyTransforms(key_map=_REPRINTS_KEY_MAP),
-    format_root_key_path=ComicInfoSchema.ROOT_KEY_PATH,
-    comicbox_root_key="",
+COMICINFO_REPRINTS_TO_CB = MetaSpec(
+    key_map={
+        REPRINTS_KEY: (ALTERNATE_SERIES_TAG, ALTERNATE_COUNT_TAG, ALTERNATE_NUMBER_TAG)
+    },
+    spec=(_REPRINTS_KEY_MAP, Fill([T])),
 )
 
-
-_REPRINTS_FROM_TRANSFORM_MAP = create_transform_map(
-    KeyTransforms(key_map=_REPRINTS_KEY_MAP),
-    comicbox_root_key="",
+_FIRST_REPRINT_KEYPATH = f"{REPRINTS_KEY}.0."
+_FIRST_REPRINT_SERIES_NAME_KEYPATH = _FIRST_REPRINT_KEYPATH + f"{SERIES_KEY}.{NAME_KEY}"
+_FIRST_REPRINT_ISSUE_KEYPATH = _FIRST_REPRINT_KEYPATH + ISSUE_KEY
+_FIRST_REPRINT_VOLUME_COUNT_KEYPATH = (
+    _FIRST_REPRINT_KEYPATH + f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}"
 )
-
-
-def _cix_reprints_to_cb(source_data, _alternative_series):
-    if alternative_reprint := transform_map(_REPRINTS_TO_TRANSFORM_MAP, source_data):
-        return [alternative_reprint]
-    return None
-
-
-def _cix_reprints_from_cb(_source_data, reprints):
-    first_reprint = reprints[0]
-    update_dict = transform_map(_REPRINTS_FROM_TRANSFORM_MAP.inverse, first_reprint)
-    extra_assigns = tuple(update_dict.items())
-    return MultiAssigns(None, tuple(extra_assigns))
-
-
-REPRINTS_KEY_TRANSFORM = KeyTransforms(
-    key_map={f"{DUMMY_PREFIX}alternate_xml_tags": REPRINTS_KEY},
-    to_cb=_cix_reprints_to_cb,
-    from_cb=_cix_reprints_from_cb,
+_ALTERNATES_KEY_MAP = MappingProxyType(
+    {
+        ALTERNATE_SERIES_TAG: _FIRST_REPRINT_SERIES_NAME_KEYPATH,
+        ALTERNATE_NUMBER_TAG: _FIRST_REPRINT_ISSUE_KEYPATH,
+        ALTERNATE_COUNT_TAG: _FIRST_REPRINT_VOLUME_COUNT_KEYPATH,
+    }
 )
+COMICINFO_REPRINTS_FROM_CB = MetaSpec(key_map=_ALTERNATES_KEY_MAP)

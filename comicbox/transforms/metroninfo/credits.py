@@ -5,6 +5,7 @@ from types import MappingProxyType
 
 from glom import Assign, glom
 
+from comicbox.fields.enum_fields import EnumField
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox_mixin import (
@@ -15,12 +16,16 @@ from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo import CREATOR_TAG
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
-from comicbox.transforms.credit_role import create_role_map, get_role_enums
 from comicbox.transforms.metroninfo.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
 )
-from comicbox.transforms.transform_map import KeyTransforms
+from comicbox.transforms.metroninfo.identifiers import (
+    DEFAULT_NID,
+    PRIMARY_NID_KEYPATH,
+    SCOPE_PRIMARY_SOURCE,
+)
+from comicbox.transforms.spec import MetaSpec
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -105,20 +110,36 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     }
 )
 
-ROLE_MAP = create_role_map(ROLE_ALIASES)
+CREDITS_KEYPATH = "Credits.Credit"
 ROLE_KEY_PATH = "Roles.Role"
 
 
-def _credit_to_cb(source_data: dict, metron_credit) -> tuple[str, dict]:
+def _create_role_variations_to_enum_map(role_aliases):
+    """Create role map for variations of a role name to to the native enum value."""
+    role_map = {}
+    for native_enum, aliases in role_aliases.items():
+        key_variations = set()
+        all_aliases = (*aliases, native_enum)
+        for alias in all_aliases:
+            key_variations |= EnumField.get_key_variations(alias)
+        for variation in key_variations:
+            lower_varation = variation.lower()
+            if lower_varation not in role_map:
+                role_map[lower_varation] = set()
+            role_map[lower_varation].add(native_enum)
+    return role_map
+
+
+def _credit_to_cb(metron_credit, primary_nid) -> tuple[str, dict]:
     """Copy a single metron style credit entry into comicbox credits."""
     metron_creator = metron_credit.pop(CREATOR_TAG, {})
     person_name, comicbox_credit = identified_name_to_cb(
-        source_data, metron_creator, "creator"
+        metron_creator, "creator", primary_nid
     )
     if metron_roles := glom(metron_credit, "Roles.Role", default=None):
         for metron_role in metron_roles:
             role_name, comicbox_role = identified_name_to_cb(
-                source_data, metron_role, "role"
+                metron_role, "role", primary_nid
             )
             if role_name:
                 glom(
@@ -129,53 +150,76 @@ def _credit_to_cb(source_data: dict, metron_credit) -> tuple[str, dict]:
     return person_name, comicbox_credit
 
 
-def _credits_to_cb(source_data, metron_credits):
+def _credits_to_cb(values):
+    metron_credits = values.get(CREDITS_KEYPATH)
+    if not metron_credits:
+        return {}
+    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
     return {
         person_credit[0]: person_credit[1]
         for metron_credit in metron_credits
-        if (person_credit := _credit_to_cb(source_data, metron_credit))
+        if (person_credit := _credit_to_cb(metron_credit, primary_nid))
     }
 
 
-def _role_from_cb(source_data, role_name, comicbox_role):
+def _role_from_cb(role_name, comicbox_role, nid, role_map):
     """Unparse a metron role to an enum only value."""
     metron_roles = []
-    if metron_role_enums := get_role_enums(ROLE_MAP, role_name):
+
+    if metron_role_enums := role_map.get(role_name.lower()):
         # Handle expanding one role into many.
         metron_role = []
         for metron_role_enum in metron_role_enums:
-            metron_role = identified_name_from_cb(
-                source_data, metron_role_enum, comicbox_role
-            )
+            metron_role = identified_name_from_cb(metron_role_enum, comicbox_role, nid)
             metron_roles.append(metron_role)
     return metron_roles
 
 
-def _credit_from_cb(source_data: dict, person_name: str, comicbox_credit: dict) -> dict:
+def _credit_from_cb(
+    person_name: str, comicbox_credit: dict, nid: str, role_map
+) -> dict:
     """Aggregate comicbox credits into Metron credit dict."""
     if not person_name:
         return {}
-    metron_creator = identified_name_from_cb(source_data, person_name, comicbox_credit)
+    metron_creator = identified_name_from_cb(person_name, comicbox_credit, nid)
     metron_credit = {CREATOR_TAG: metron_creator}
     if comicbox_roles := comicbox_credit.get(ROLES_KEY):
         all_metron_roles = []
         for role_name, comicbox_role in comicbox_roles.items():
-            metron_roles = _role_from_cb(source_data, role_name, comicbox_role)
+            metron_roles = _role_from_cb(role_name, comicbox_role, nid, role_map)
             all_metron_roles.extend(metron_roles)
         glom(metron_credit, Assign(ROLE_KEY_PATH, all_metron_roles, missing=dict))
     return metron_credit
 
 
-def _credits_from_cb(source_data, comicbox_credits):
+def _credits_from_cb(values, role_map):
+    comicbox_credits = values.get(CREDITS_KEY)
+    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
     return [
         metron_credit
         for person_name, comicbox_credit in comicbox_credits.items()
-        if (metron_credit := _credit_from_cb(source_data, person_name, comicbox_credit))
+        if (
+            metron_credit := _credit_from_cb(
+                person_name, comicbox_credit, primary_nid, role_map
+            )
+        )
     ]
 
 
-METRON_CREDITS_TRANSFORM = KeyTransforms(
-    key_map={"Credits.Credit": CREDITS_KEY},
-    to_cb=_credits_to_cb,
-    from_cb=_credits_from_cb,
+METRON_CREDITS_TRANSFORM_TO_CB = MetaSpec(
+    key_map={CREDITS_KEY: (CREDITS_KEYPATH, SCOPE_PRIMARY_SOURCE)},
+    spec=_credits_to_cb,
 )
+
+
+def metron_credits_from_cb():
+    """Create credits from cb transform."""
+    role_map = _create_role_variations_to_enum_map(ROLE_ALIASES)
+
+    def from_cb(values):
+        return _credits_from_cb(values, role_map)
+
+    return MetaSpec(
+        key_map={CREDITS_KEYPATH: (CREDITS_KEY, PRIMARY_NID_KEYPATH)},
+        spec=from_cb,
+    )

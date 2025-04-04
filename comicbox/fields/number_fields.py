@@ -6,8 +6,8 @@ from logging import getLogger
 
 from marshmallow import fields
 
+from comicbox.empty import is_empty
 from comicbox.fields.fields import (
-    EMPTY_VALUES,
     StringField,
     TrapExceptionsMeta,
     half_replace,
@@ -43,7 +43,7 @@ class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
     def _deserialize(self, value, *args, **kwargs) -> NumberType | None:
         if isinstance(value, str):
             value = self.parse_str(value)
-        if value in EMPTY_VALUES:
+        if is_empty(value):
             return None
         result = super()._deserialize(value, *args, **kwargs)
         if result is not None:

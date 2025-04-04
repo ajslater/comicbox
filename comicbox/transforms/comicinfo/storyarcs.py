@@ -1,76 +1,61 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
 
+from collections.abc import Mapping
 from itertools import zip_longest
-from logging import getLogger
 
-from glom import Path, glom
+from glom import Coalesce, Iter, T
 
 from comicbox.schemas.comicbox_mixin import ARCS_KEY, NUMBER_KEY
-from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
-
-LOG = getLogger(__name__)
+from comicbox.transforms.spec import MetaSpec
 
 
-def _story_arcs_to_arcs(
-    source_data: dict, ci_story_arcs: list[str], story_arc_number_tag: str
-):
-    if story_arc_number_tag:
-        story_arc_number_key_path = Path(ComicInfoSchema.ROOT_TAG, story_arc_number_tag)
-        ci_story_arc_numbers: list | tuple = glom(
-            source_data, story_arc_number_key_path, default=[]
-        )
-        ci_story_arc_numbers = ci_story_arc_numbers[: len(ci_story_arcs)]
-    else:
-        ci_story_arc_numbers = []
-
+def _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values: Mapping):
     comicbox_arcs = {}
+    ci_story_arcs = values.get(story_arc_tag)
+    if not ci_story_arcs:
+        return comicbox_arcs
+    ci_story_arc_numbers = values.get(story_arc_number_tag, [])
+    ci_story_arc_numbers = ci_story_arc_numbers[: len(ci_story_arcs)]
     zipped_itr = zip_longest(ci_story_arcs, ci_story_arc_numbers, fillvalue=None)
-    for name, number in zipped_itr:
+    for zipped_tuple in zipped_itr:
+        name, number = zipped_tuple
         arc = {}
-        try:
-            if number is not None:
-                arc[NUMBER_KEY] = number
-        except Exception:
-            LOG.exception(f"Deserialize story_arc_number{name}:{number}")
+        if number is not None:
+            arc[NUMBER_KEY] = number
         comicbox_arcs[name] = arc
     return comicbox_arcs
 
 
-def _arcs_to_story_arcs(
-    comicbox_arcs: dict[str, dict[str, int]], story_arc_number_tag: str
-):
-    ci_story_arcs = []
-    ci_story_arc_numbers = []
-    for name, comicbox_arc in comicbox_arcs.items():
-        if name:
-            ci_story_arcs.append(name)
-            if not comicbox_arc:
-                continue
-            number = comicbox_arc.get(NUMBER_KEY)
-            num_str = "" if number is None else str(number)
-            ci_story_arc_numbers.append(num_str)
-    if story_arc_number_tag and ci_story_arc_numbers:
-        assign = (story_arc_number_tag, ci_story_arc_numbers)
-        result = MultiAssigns(value=ci_story_arcs, extra_assigns=(assign,))
-    else:
-        result = ci_story_arcs
-    return result
-
-
-def story_arcs_transform(story_arc_tag, story_arc_number_tag):
+def story_arcs_to_cb(story_arc_tag, story_arc_number_tag):
     """Aggregate and dissagregate ComicInfo StoryArcs & StoryArcNumbers to arcs."""
 
-    def to_cb(source_data, ci_story_arcs):
-        return _story_arcs_to_arcs(source_data, ci_story_arcs, story_arc_number_tag)
+    def to_cb(values):
+        return _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values)
 
-    def from_cb(_source_data, comicbox_arcs):
-        return _arcs_to_story_arcs(comicbox_arcs, story_arc_number_tag)
+    source_tags = tuple(tag for tag in (story_arc_tag, story_arc_number_tag) if tag)
+    return MetaSpec(key_map={ARCS_KEY: source_tags}, spec=to_cb)
 
-    return KeyTransforms(
-        key_map={
-            story_arc_tag: ARCS_KEY,
-        },
-        to_cb=to_cb,
-        from_cb=from_cb,
-    )
+
+def story_arcs_from_cb(story_arc_tag, story_arc_number_tag):
+    """Transform comicbox arcs to comicinfo story arc and story arc number."""
+    metaspecs = []
+    if story_arc_tag:
+        ms = MetaSpec(
+            key_map={
+                story_arc_tag: ARCS_KEY,
+            },
+            spec=(Iter().all(),),
+        )
+        metaspecs.append(ms)
+    if story_arc_number_tag:
+        ms = MetaSpec(
+            key_map={
+                story_arc_number_tag: ARCS_KEY,
+            },
+            spec=(
+                Coalesce(T.values()),
+                Iter().map(NUMBER_KEY).all(),
+            ),
+        )
+        metaspecs.append(ms)
+    return tuple(metaspecs)

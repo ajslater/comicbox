@@ -1,21 +1,19 @@
 """Title to Stories Transform Mixin."""
 
+from glom import Coalesce, Fill, Iter, T
+
 from comicbox.schemas.comicbox_mixin import PRICES_KEY
-from comicbox.transforms.transform_map import KeyTransforms
+from comicbox.transforms.spec import MetaSpec
 
 
-def price_to_obj(_source_data, price):
-    """Price to a language keyed price object."""
-    return {"": price} if price is not None else None
+def price_key_transform_to_cb(price_tag: str):
+    """Create a price transform from native to comicbox."""
+    return MetaSpec(key_map={PRICES_KEY: price_tag}, spec=(Fill({"": T}),))
 
 
-def obj_to_price(_source_data, comicbox_prices):
-    """Return first price."""
-    return next(iter(comicbox_prices.values())) if comicbox_prices else None
-
-
-def price_key_transform(price_tag):
-    """Create a price transform for the price tag."""
-    return KeyTransforms(
-        key_map={price_tag: PRICES_KEY}, to_cb=price_to_obj, from_cb=obj_to_price
+def price_key_transform_from_cb(price_tag: str):
+    """Create a price transform from comicbox to native."""
+    return MetaSpec(
+        key_map={price_tag: PRICES_KEY},
+        spec=(Coalesce(T.values()), Iter().first()),
     )

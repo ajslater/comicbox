@@ -1,5 +1,7 @@
 """Comictagger transform to and from Comicbox format."""
 
+from bidict import frozenbidict
+
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
@@ -26,25 +28,44 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet.reprints import comet_reprints_transform
-from comicbox.transforms.comicbookinfo.credits import cbi_credits_transform
-from comicbox.transforms.comicbox.name_objs import (
-    name_obj_to_string_list_key_transforms,
+from comicbox.transforms.comet.reprints import comet_reprints_transform_from_cb
+from comicbox.transforms.comicbookinfo.credits import (
+    cbi_credits_transform_from_cb,
+    cbi_credits_transform_to_cb,
 )
-from comicbox.transforms.comicinfo.pages import comicinfo_pages_transform
-from comicbox.transforms.comicinfo.storyarcs import story_arcs_transform
+from comicbox.transforms.comicbox.name_objs import (
+    name_obj_from_cb,
+    name_obj_to_cb,
+)
+from comicbox.transforms.comicinfo.pages import (
+    comicinfo_pages_from_cb,
+    comicinfo_pages_to_cb,
+)
+from comicbox.transforms.comicinfo.storyarcs import (
+    story_arcs_from_cb,
+    story_arcs_to_cb,
+)
 from comicbox.transforms.comictagger.identifiers import (
-    COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM,
-    COMICTAGGER_IDENTIFIERS_TRANSFORM,
-    COMICTAGGER_ISSUE_ID_TRANSFORM,
-    COMICTAGGER_SERIES_ID_TRANSFORM,
-    COMICTAGGER_URLS_TRANSFORM,
+    COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_FROM_CB,
+    COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
+    COMICTAGGER_IDENTIFIERS_TRANSFORM_FROM_CB,
+    COMICTAGGER_IDENTIFIERS_TRANSFORM_TO_CB,
+    COMICTAGGER_ISSUE_ID_TRANSFORM_FROM_CB,
+    COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB,
+    COMICTAGGER_SERIES_ID_TRANSFORM_FROM_CB,
+    COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB,
+    COMICTAGGER_URLS_TRANSFORM_FROM_CB,
+    COMICTAGGER_URLS_TRANSFORM_TO_CB,
 )
 from comicbox.transforms.comictagger.reprints import (
-    CT_SERIES_ALIASES_KEY_TRANSFORM,
-    CT_TITLE_ALIASES_KEY_TRANSFORM,
+    CT_REPRINTS_TRANSFORM_TO_CB,
+    CT_SERIES_ALIASES_TRANSFORM_FROM_CB,
+    CT_TITLE_ALIASES_TRANSFORM_FROM_CB,
 )
-from comicbox.transforms.price import price_key_transform
+from comicbox.transforms.price import (
+    price_key_transform_from_cb,
+    price_key_transform_to_cb,
+)
 from comicbox.transforms.publishing_tags import (
     IMPRINT_NAME_KEY_PATH,
     ISSUE_COUNT_KEY_PATH,
@@ -53,22 +74,60 @@ from comicbox.transforms.publishing_tags import (
     VOLUME_COUNT_KEY_PATH,
     VOLUME_NUMBER_KEY_PATH,
 )
-from comicbox.transforms.stories import stories_key_transform
-from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.transforms.stories import (
+    stories_key_transform_from_cb,
+    stories_key_transform_to_cb,
+)
 
-_PAGE_TRANSFORM_MAP = create_transform_map(
-    KeyTransforms(
-        key_map={
-            "Image": PAGE_INDEX_KEY,
-            "Type": "page_type",
-            "DoublePage": "double_page",
-            "ImageSize": "size",
-            "Key": "key",
-            "Bookmark": "bookmark",
-            "ImageWidth": "width",
-            "ImageHeight": "height",
-        }
-    )
+PAGE_KEY_MAP = frozenbidict(
+    {
+        "Image": PAGE_INDEX_KEY,
+        "Type": "page_type",
+        "DoublePage": "double_page",
+        "ImageSize": "size",
+        "Key": "key",
+        "Bookmark": "bookmark",
+        "ImageWidth": "width",
+        "ImageHeight": "height",
+    }
+)
+
+SIMPLE_KEY_MAP = frozenbidict(
+    {
+        "black_and_white": MONOCHROME_KEY,
+        "country": COUNTRY_KEY,
+        "day": DAY_KEY,
+        "description": SUMMARY_KEY,
+        "format": ORIGINAL_FORMAT_KEY,
+        "imprint": IMPRINT_NAME_KEY_PATH,
+        "issue": ISSUE_KEY,
+        "issue_count": ISSUE_COUNT_KEY_PATH,
+        "language": LANGUAGE_KEY,
+        "maturity_rating": AGE_RATING_KEY,
+        "month": MONTH_KEY,
+        "notes": NOTES_KEY,
+        "page_count": PAGE_COUNT_KEY,
+        "publisher": PUBLISHER_NAME_KEY_PATH,
+        "series": SERIES_NAME_KEY_PATH,
+        "volume_count": VOLUME_COUNT_KEY_PATH,
+        "volume": VOLUME_NUMBER_KEY_PATH,
+        "year": YEAR_KEY,
+    }
+)
+NAME_OBJ_KEY_MAP = frozenbidict(
+    {
+        "characters": CHARACTERS_KEY,
+        "genres": GENRES_KEY,
+        "locations": LOCATIONS_KEY,
+        "series_group": SERIES_GROUPS_KEY,
+        "tags": TAGS_KEY,
+        "teams": TEAMS_KEY,
+    }
 )
 
 
@@ -76,51 +135,37 @@ class ComictaggerTransform(BaseTransform):
     """Comictagger transform."""
 
     SCHEMA_CLASS = ComictaggerSchema
-    TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "black_and_white": MONOCHROME_KEY,
-                "country": COUNTRY_KEY,
-                "day": DAY_KEY,
-                "description": SUMMARY_KEY,
-                "format": ORIGINAL_FORMAT_KEY,
-                "imprint": IMPRINT_NAME_KEY_PATH,
-                "issue": ISSUE_KEY,
-                "issue_count": ISSUE_COUNT_KEY_PATH,
-                "language": LANGUAGE_KEY,
-                "maturity_rating": AGE_RATING_KEY,
-                "month": MONTH_KEY,
-                "notes": NOTES_KEY,
-                "page_count": PAGE_COUNT_KEY,
-                "publisher": PUBLISHER_NAME_KEY_PATH,
-                "series": SERIES_NAME_KEY_PATH,
-                "volume_count": VOLUME_COUNT_KEY_PATH,
-                "volume": VOLUME_NUMBER_KEY_PATH,
-                "year": YEAR_KEY,
-            }
-        ),
-        cbi_credits_transform("credits"),
-        name_obj_to_string_list_key_transforms(
-            {
-                "characters": CHARACTERS_KEY,
-                "genres": GENRES_KEY,
-                "locations": LOCATIONS_KEY,
-                "series_group": SERIES_GROUPS_KEY,
-                "tags": TAGS_KEY,
-                "teams": TEAMS_KEY,
-            }
-        ),
-        COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM,
-        COMICTAGGER_IDENTIFIERS_TRANSFORM,
-        COMICTAGGER_ISSUE_ID_TRANSFORM,
-        COMICTAGGER_SERIES_ID_TRANSFORM,
-        comicinfo_pages_transform("pages", _PAGE_TRANSFORM_MAP),
-        price_key_transform("price"),
-        comet_reprints_transform("is_version_of"),
-        CT_SERIES_ALIASES_KEY_TRANSFORM,
-        CT_TITLE_ALIASES_KEY_TRANSFORM,
-        stories_key_transform("title"),
-        story_arcs_transform(STORY_ARC_TAG, ""),
-        COMICTAGGER_URLS_TRANSFORM,
-        format_root_key_path=ComictaggerSchema.ROOT_KEY_PATH,
+    SPECS_TO = create_specs_to_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
+        name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
+        cbi_credits_transform_to_cb("credits"),
+        COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
+        COMICTAGGER_IDENTIFIERS_TRANSFORM_TO_CB,
+        COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB,
+        COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB,
+        comicinfo_pages_to_cb("pages", PAGE_KEY_MAP.inverse),
+        price_key_transform_to_cb("price"),
+        CT_REPRINTS_TRANSFORM_TO_CB,
+        stories_key_transform_to_cb("title"),
+        story_arcs_to_cb(STORY_ARC_TAG, ""),
+        COMICTAGGER_URLS_TRANSFORM_TO_CB,
+        format_root_keypath=ComictaggerSchema.ROOT_KEY_PATH,
+    )
+    SPECS_FROM = create_specs_from_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP),
+        name_obj_from_cb(NAME_OBJ_KEY_MAP),
+        cbi_credits_transform_from_cb("credits"),
+        COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_FROM_CB,
+        COMICTAGGER_IDENTIFIERS_TRANSFORM_FROM_CB,
+        COMICTAGGER_ISSUE_ID_TRANSFORM_FROM_CB,
+        COMICTAGGER_SERIES_ID_TRANSFORM_FROM_CB,
+        comicinfo_pages_from_cb("pages", PAGE_KEY_MAP),
+        price_key_transform_from_cb("price"),
+        comet_reprints_transform_from_cb("is_version_of"),
+        CT_SERIES_ALIASES_TRANSFORM_FROM_CB,
+        CT_TITLE_ALIASES_TRANSFORM_FROM_CB,
+        stories_key_transform_from_cb("title"),
+        *story_arcs_from_cb(STORY_ARC_TAG, ""),
+        COMICTAGGER_URLS_TRANSFORM_FROM_CB,
+        format_root_keypath=ComictaggerSchema.ROOT_KEY_PATH,
     )

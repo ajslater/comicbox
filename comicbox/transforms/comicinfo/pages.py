@@ -2,33 +2,58 @@
 
 from collections.abc import Mapping
 
-from bidict import frozenbidict
+from glom import SKIP, Coalesce, Fill, Merge, T
+from glom.grouping import Group
 
+from comicbox.empty import is_empty
 from comicbox.schemas.comicbox_mixin import PAGES_KEY
-from comicbox.transforms.transform_map import (
-    KeyTransforms,
-    transform_map,
+from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
 )
 
-
-def _cix_pages_transform(page_transform_map: Mapping, pages: list):
-    """Transform a list of pages with the supplied transform map."""
-    return [transform_map(page_transform_map, page) for page in pages]
+_KEY_SPEC = Coalesce(T[IMAGE_ATTRIBUTE], skip=is_empty, default=SKIP)
 
 
-def comicinfo_pages_transform(pages_key_path, page_transform_map: frozenbidict):
-    """Create a pages transformer with a page transform map."""
+def comicinfo_pages_to_cb(pages_key_path: str, page_key_map: Mapping):
+    """Transform comicinfo pages into comicbox."""
+    page_spec = create_specs_to_comicbox(
+        MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
+    )
+    value_spec = Coalesce(dict(page_spec), skip=is_empty, default=SKIP)
+    value_spec = Fill(value_spec)
 
-    def cix_transform_to_pages(_source_data, pages: list):
-        """Transform pages from comicinfo to comicbox."""
-        return _cix_pages_transform(page_transform_map, pages)
+    return MetaSpec(
+        key_map={PAGES_KEY: pages_key_path},
+        spec=(Group({_KEY_SPEC: value_spec}),),
+    )
 
-    def cix_transform_from_pages(_source_data, pages: list):
-        """Transform pages from comicbox to comicinfo."""
-        return _cix_pages_transform(page_transform_map.inverse, pages)
 
-    return KeyTransforms(
+def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping):
+    """Transform comicbox pages into comicinfo."""
+    page_spec = create_specs_from_comicbox(
+        MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
+    )
+
+    return MetaSpec(
         key_map={pages_key_path: PAGES_KEY},
-        to_cb=cix_transform_to_pages,
-        from_cb=cix_transform_from_pages,
+        spec=(
+            T.items(),
+            [
+                Coalesce(
+                    (
+                        {
+                            "index": {IMAGE_ATTRIBUTE: T[0]},
+                            "page": (T[1], dict(page_spec)),
+                        },
+                        T.values(),
+                        Merge(),
+                    ),
+                    skip=is_empty,
+                    default=SKIP,
+                )
+            ],
+        ),
     )

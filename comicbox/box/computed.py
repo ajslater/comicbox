@@ -11,12 +11,12 @@ from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
-from deepmerge.merger import Merger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
+from comicbox.empty import is_empty, not_is_empty
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.fields.fields import EMPTY_VALUES, StringField
+from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import DecimalField
 from comicbox.fields.time_fields import DateTimeField
 from comicbox.formats import MetadataFormats
@@ -25,7 +25,7 @@ from comicbox.identifiers import (
     NID_ORDER,
     create_identifier,
 )
-from comicbox.merge import ADD_UNIQUE_MERGER, REPLACE_MERGER
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox_mixin import (
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
@@ -46,7 +46,6 @@ from comicbox.schemas.comicbox_mixin import (
 )
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
-from comicbox.schemas.merge import merge_pages
 from comicbox.schemas.yaml import ALL_NONE_KEYS
 from comicbox.transforms.identifiers import create_identifier_primary_source
 from comicbox.urns import (
@@ -81,7 +80,7 @@ class ComputedData:
     label: str
     metadata: Mapping | None
     allowed_null_keys: frozenset[str] = frozenset()
-    merger: Merger | None = ADD_UNIQUE_MERGER
+    merger: type[Merger] | None = AdditiveMerger
 
 
 class ComicboxComputedMixin(ComicboxComputedNotesMixin):
@@ -128,12 +127,9 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             return {PAGE_COUNT_KEY: real_page_count}
         return None
 
-    def _ensure_pages_front_cover_metadata(self, sub_md):
+    def _ensure_pages_front_cover_metadata(self, pages):
         """Ensure there is a FrontCover page type in pages."""
-        pages = sub_md.get(PAGES_KEY)
-        if not pages:
-            return
-        for page in pages:
+        for page in pages.values():
             if page.get(PAGE_TYPE_KEY) == PageTypeEnum.FRONT_COVER:
                 return
 
@@ -149,12 +145,12 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         return max_page_index
 
     def _get_computed_merged_pages_metadata(self, md, pages):
+        old_pages = md.get(PAGES_KEY, {})
         max_page_index = self._get_max_page_index()
-        old_pages = md.get(PAGES_KEY, [])[:max_page_index]
-        computed_pages_sub_md = {PAGES_KEY: old_pages}
-        merge_pages(computed_pages_sub_md, pages)
-        self._ensure_pages_front_cover_metadata(computed_pages_sub_md)
-        return computed_pages_sub_md
+        trimmed_old_pages = {k: v for k, v in old_pages.items() if k <= max_page_index}
+        computed_pages = AdditiveMerger.merge(trimmed_old_pages, pages)
+        self._ensure_pages_front_cover_metadata(computed_pages)
+        return computed_pages
 
     def _get_computed_pages_metadata(self, sub_md):
         """Recompute the tag image sizes for the ComicRack PageInfo list."""
@@ -164,7 +160,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             ComputeSchemaAttribute.HAS_PAGES
         ):
             return None
-        pages = []
+        pages = {}
         try:
             index = 0
             infolist = self._get_archive_infolist()
@@ -175,19 +171,19 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
                 size = self._get_info_size(info)
                 # height & width could go here.
                 if size is not None:
-                    computed_page = {"index": index, "size": size}
-                    pages.append(computed_page)
+                    computed_page = {"size": size}
+                    pages[index] = computed_page
                 index += 1
         except Exception as exc:
             LOG.warning(f"{self._path}: Compute pages metadata: {exc}")
         if pages:
-            return self._get_computed_merged_pages_metadata(sub_md, pages)
-        return {PAGES_KEY: None}
+            pages = self._get_computed_merged_pages_metadata(sub_md, pages)
+        return {PAGES_KEY: pages}
 
     def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, md):
         """Use regex match to break the issue into parts."""
         issue_number, issue_suffix = match.groups()
-        if old_issue_number in EMPTY_VALUES and issue_number not in EMPTY_VALUES:
+        if is_empty(old_issue_number) and not_is_empty(issue_number):
             try:
                 issue_number = DecimalField().deserialize(
                     issue_number, ISSUE_NUMBER_KEY, md
@@ -211,7 +207,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         old_issue_suffix = sub_data.get(ISSUE_SUFFIX_KEY)
         sub_md = {}
         try:
-            if issue and (old_issue_number not in EMPTY_VALUES or not old_issue_suffix):
+            if issue and (not is_empty(old_issue_number) or not old_issue_suffix):
                 match = _PARSE_ISSUE_MATCHER.match(issue)
                 if match:
                     self._parse_issue_match(
@@ -343,7 +339,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
                     ignore_encoding_errors=True,
                 )
                 if "values_changed" not in diff:
-                    ADD_UNIQUE_MERGER.merge(old_reprint, compare_old_reprint)
+                    AdditiveMerger.merge(old_reprint, compare_old_reprint)
                     merged_indexes.add(index + sub_index)
             new_reprints.append(old_reprint)
 
@@ -450,25 +446,25 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
     _COMPUTED_ACTIONS = MappingProxyType(
         {
             # Order is important here
-            "Page Count": (_get_computed_page_count_metadata, REPLACE_MERGER, ()),
-            "Pages": (_get_computed_pages_metadata, REPLACE_MERGER, ("pages",)),
-            "from issue": (_get_computed_from_issue, ADD_UNIQUE_MERGER, ()),
+            "Page Count": (_get_computed_page_count_metadata, ReplaceMerger, ()),
+            "Pages": (_get_computed_pages_metadata, ReplaceMerger, ("pages",)),
+            "from issue": (_get_computed_from_issue, AdditiveMerger, ()),
             "from issue_number & issue_suffix": (
                 _get_computed_issue,
-                ADD_UNIQUE_MERGER,
+                AdditiveMerger,
                 (),
             ),
             "from notes": (
                 ComicboxComputedNotesMixin.get_computed_from_notes,
-                ADD_UNIQUE_MERGER,
+                AdditiveMerger,
                 (),
             ),
-            "from tags": (_get_computed_from_tags, ADD_UNIQUE_MERGER, ()),
-            "from identifiers": (_get_computed_from_identifiers, ADD_UNIQUE_MERGER, ()),
-            "from reprints": (_get_computed_from_reprints, REPLACE_MERGER, ()),
-            "from scan_info": (_get_computed_from_scan_info, ADD_UNIQUE_MERGER, ()),
-            "from tag_origin": (_get_computed_from_tag_origin, ADD_UNIQUE_MERGER, ()),
-            "Tagger Stamp": (_get_tagger_stamp, REPLACE_MERGER, ()),
+            "from tags": (_get_computed_from_tags, AdditiveMerger, ()),
+            "from identifiers": (_get_computed_from_identifiers, AdditiveMerger, ()),
+            "from reprints": (_get_computed_from_reprints, ReplaceMerger, ()),
+            "from scan_info": (_get_computed_from_scan_info, AdditiveMerger, ()),
+            "from tag_origin": (_get_computed_from_tag_origin, AdditiveMerger, ()),
+            "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger, ()),
             "Delete Keys": (_get_delete_keys, None, (ALL_NONE_KEYS,)),
         }
     )

@@ -49,6 +49,12 @@ LANG_ATTR = "@lang"
 LAST_MODIFIED_TAG = "LastModified"
 NAME_TAG = "Name"
 NUMBER_TAG = "Number"
+PUBLISHER_TAG = "Publisher"
+IMPRINT_TAG = "Imprint"
+SERIES_TAG = "Series"
+VOLUME_TAG = "Volume"
+MANGA_VOLUME_TAG = "MangaVolume"
+ALTERNATIVE_NAMES_TAGPATH = f"{SERIES_TAG}.AlternativeNames.AlternativeName"
 
 
 class MetronIDAttrField(StringField):
@@ -57,6 +63,8 @@ class MetronIDAttrField(StringField):
 
 class MetronResourceSchema(BaseSubSchema):
     """Metron Resource Schema."""
+
+    SUPRESS_ERRORS = False  # So the union fails over
 
     class Meta(BaseSubSchema.Meta):
         """XML Attributes."""
@@ -200,6 +208,8 @@ class MetronIDSchema(BaseSubSchema):
 class MetronURLSchema(BaseSubSchema):
     """Metron URL Schema."""
 
+    SUPRESS_ERRORS = False  # So the union fails over
+
     class Meta(BaseSubSchema.Meta):
         """Attributes."""
 
@@ -322,6 +332,8 @@ class MetronArcSchema(BaseSubSchema):
 
 class MetronRoleSchema(BaseSubSchema):
     """Metron Role Schema."""
+
+    SUPRESS_ERRORS = False  # So the union fails over
 
     class Meta(BaseSubSchema.Meta):
         """XML Attributes."""

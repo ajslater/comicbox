@@ -1,5 +1,7 @@
 """MetronInfo.xml Transformer."""
 
+from bidict import frozenbidict
+
 from comicbox.schemas.comicbox_mixin import (
     AGE_RATING_KEY,
     COLLECTION_TITLE_KEY,
@@ -15,64 +17,100 @@ from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.metroninfo.credits import METRON_CREDITS_TRANSFORM
+from comicbox.transforms.metroninfo.credits import (
+    METRON_CREDITS_TRANSFORM_TO_CB,
+    metron_credits_from_cb,
+)
 from comicbox.transforms.metroninfo.identifiers import (
-    METRON_GTIN_TRANSFORM,
-    METRON_IDENTIFIERS_TRANSFORM,
-    METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
-    METRON_URLS_TRANSFORM,
+    METRON_GTIN_TRANSFORM_FROM_CB,
+    METRON_IDENTIFIERS_TRANSFORM_FROM_CB,
+    METRON_IDENTIFIERS_TRANSFORM_TO_CB,
+    METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
+    METRON_URLS_TRANSFORM_FROM_CB,
 )
 from comicbox.transforms.metroninfo.publishing_tags import (
-    METRON_IMPRINT_TRANSFORM,
-    METRON_MANGA_VOLUME_TRANSFORM,
-    METRON_PUBLISHER_TRANSFORM,
-    METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM,
-    METRON_SERIES_IDENTIFIERS_TRANSFORM,
-    SERIES_KEY_MAP,
+    METRON_IMPRINT_TRANSFORM_TO_CB,
+    METRON_MANGA_VOLUME_TRANSFORM_FROM_CB,
+    METRON_PUBLISHER_TRANSFORM_FROM_CB,
+    METRON_PUBLISHER_TRANSFORM_TO_CB,
+    METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB,
+    METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB,
+    METRON_SERIES_IDENTIFIER_TRANSFORM_TO_CB,
+    METRON_SERIES_TRANSFORM_FROM_CB,
+    METRON_SERIES_TRANSFORM_TO_CB,
+    METRON_VOLUME_TRANSFORM_TO_CB,
 )
-from comicbox.transforms.metroninfo.reprints import METRON_REPRINTS_TRANSFORM
+from comicbox.transforms.metroninfo.reprints import (
+    METRON_REPRINTS_TRANSFORM_FROM_CB,
+    METRON_REPRINTS_TRANSFORM_TO_CB,
+)
 from comicbox.transforms.metroninfo.resources import (
-    METRON_ARCS_TRANSFORM,
-    METRON_PRICES_TRANSFORM,
-    METRON_RESOURCES_TRANSFORMS,
-    METRON_UNIVERSES_TRANSFORM,
+    METRON_ARCS_TRANSFORM_FROM_CB,
+    METRON_ARCS_TRANSFORM_TO_CB,
+    METRON_PRICES_TRANSFORM_FROM_CB,
+    METRON_PRICES_TRANSFORM_TO_CB,
+    METRON_RESOURCES_TRANSFORMS_FROM_CB,
+    METRON_RESOURCES_TRANSFORMS_TO_CB,
+    METRON_UNIVERSES_TRANSFORM_FROM_CB,
+    METRON_UNIVERSES_TRANSFORM_TO_CB,
 )
-from comicbox.transforms.transform_map import KeyTransforms, create_transform_map
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+
+SIMPLE_KEY_MAP = frozenbidict(
+    {
+        "AgeRating": AGE_RATING_KEY,
+        "CollectionTitle": COLLECTION_TITLE_KEY,
+        "CoverDate": DATE_KEY,
+        "StoreDate": STORE_DATE_KEY,
+        "Notes": NOTES_KEY,
+        "Number": ISSUE_KEY,
+        "PageCount": PAGE_COUNT_KEY,
+        "Summary": SUMMARY_KEY,
+        "LastModified": UPDATED_AT_KEY,
+    }
+)
 
 
 class MetronInfoTransform(BaseTransform):
     """MetronInfo.xml Transformer."""
 
     SCHEMA_CLASS = MetronInfoSchema
-    TRANSFORM_MAP = create_transform_map(
-        KeyTransforms(
-            key_map={
-                "AgeRating": AGE_RATING_KEY,
-                "CollectionTitle": COLLECTION_TITLE_KEY,
-                "CoverDate": DATE_KEY,
-                "StoreDate": STORE_DATE_KEY,
-                "Notes": NOTES_KEY,
-                "Number": ISSUE_KEY,
-                "PageCount": PAGE_COUNT_KEY,
-                "Summary": SUMMARY_KEY,
-                "LastModified": UPDATED_AT_KEY,
-                **SERIES_KEY_MAP,
-            }
-        ),
-        METRON_ARCS_TRANSFORM,
-        METRON_CREDITS_TRANSFORM,
-        METRON_PUBLISHER_TRANSFORM,
-        METRON_IMPRINT_TRANSFORM,
-        METRON_SERIES_IDENTIFIERS_TRANSFORM,
-        METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM,
-        METRON_MANGA_VOLUME_TRANSFORM,
-        METRON_PRICES_TRANSFORM,
-        METRON_GTIN_TRANSFORM,
-        METRON_IDENTIFIERS_TRANSFORM,
-        METRON_PRIMARY_SOURCE_KEY_TRANSFORM,
-        METRON_REPRINTS_TRANSFORM,
-        METRON_URLS_TRANSFORM,
-        *METRON_RESOURCES_TRANSFORMS,
-        METRON_UNIVERSES_TRANSFORM,
-        format_root_key_path=MetronInfoSchema.ROOT_KEY_PATH,
+    SPECS_TO = create_specs_to_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
+        METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,  # must come before most other resources
+        METRON_ARCS_TRANSFORM_TO_CB,
+        METRON_CREDITS_TRANSFORM_TO_CB,
+        METRON_PUBLISHER_TRANSFORM_TO_CB,
+        METRON_IMPRINT_TRANSFORM_TO_CB,
+        METRON_SERIES_TRANSFORM_TO_CB,
+        METRON_SERIES_IDENTIFIER_TRANSFORM_TO_CB,  # best if after series.
+        METRON_VOLUME_TRANSFORM_TO_CB,
+        METRON_PRICES_TRANSFORM_TO_CB,
+        METRON_IDENTIFIERS_TRANSFORM_TO_CB,
+        METRON_REPRINTS_TRANSFORM_TO_CB,
+        *METRON_RESOURCES_TRANSFORMS_TO_CB,
+        METRON_UNIVERSES_TRANSFORM_TO_CB,
+        format_root_keypath=MetronInfoSchema.ROOT_KEY_PATH,
+    )
+    SPECS_FROM = create_specs_from_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP),
+        METRON_ARCS_TRANSFORM_FROM_CB,
+        metron_credits_from_cb(),
+        METRON_PUBLISHER_TRANSFORM_FROM_CB,
+        METRON_SERIES_TRANSFORM_FROM_CB,
+        METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB,
+        METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB,
+        METRON_MANGA_VOLUME_TRANSFORM_FROM_CB,
+        METRON_PRICES_TRANSFORM_FROM_CB,
+        METRON_GTIN_TRANSFORM_FROM_CB,
+        METRON_IDENTIFIERS_TRANSFORM_FROM_CB,
+        METRON_REPRINTS_TRANSFORM_FROM_CB,
+        METRON_URLS_TRANSFORM_FROM_CB,
+        *METRON_RESOURCES_TRANSFORMS_FROM_CB,
+        METRON_UNIVERSES_TRANSFORM_FROM_CB,
+        format_root_keypath=MetronInfoSchema.ROOT_KEY_PATH,
     )

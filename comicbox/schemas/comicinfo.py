@@ -39,6 +39,7 @@ ALTERNATE_NUMBER_TAG = "AlternateNumber"
 ALTERNATE_COUNT_TAG = "AlternateCount"
 GTIN_TAG = "GTIN"
 IMAGE_ATTRIBUTE = "@Image"
+WEB_TAG = "Web"
 
 
 TAG_ORDER = (

@@ -18,7 +18,5 @@ def add_credit_role_to_comicbox_credits(
     if not (person_name and role_name):
         return
     role_name = ROLE_SPELLING.get(role_name.lower(), role_name)
-    glom(
-        comicbox_credits,
-        Assign(f"{person_name}.{ROLES_KEY}.{role_name}", {}, missing=dict),
-    )
+    dest_path = f"{person_name}.{ROLES_KEY}.{role_name}"
+    glom(comicbox_credits, Assign(dest_path, {}, missing=dict))

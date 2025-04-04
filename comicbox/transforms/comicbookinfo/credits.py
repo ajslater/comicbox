@@ -3,74 +3,92 @@
 from logging import getLogger
 
 from comicbox.schemas.comicbookinfo import (
-    CREDITS_TAG,
     PERSON_TAG,
     PRIMARY_TAG,
     ROLE_TAG,
 )
 from comicbox.schemas.comicbox_mixin import (
     CREDIT_PRIMARIES_KEY,
+    CREDITS_KEY,
     ROLES_KEY,
 )
 from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
-from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
+from comicbox.transforms.spec import MetaSpec
 
 LOG = getLogger(__name__)
 
 
-def _parse_credit(cbi_credit: dict, comicbox_credits: dict, credit_primaries: dict):
-    """Parse one CBI credit into a comicbox credit."""
+def _get_cbi_credit_parts(cbi_credit):
     cbi_person = cbi_credit.get(PERSON_TAG, "")
     cbi_role = cbi_credit.get(ROLE_TAG, "")
-    primary = cbi_credit.get(PRIMARY_TAG)
-    add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
-    if primary:
-        credit_primaries[cbi_role] = cbi_person
+    return cbi_person, cbi_role
 
 
-def _cbi_credits_to_cb(_source_data, cbi_credits):
+def _cbi_credits_to_cb(cbi_credits):
     comicbox_credits = {}
-    credit_primaries = {}
     for cbi_credit in cbi_credits:
         try:
-            _parse_credit(cbi_credit, comicbox_credits, credit_primaries)
+            cbi_person, cbi_role = _get_cbi_credit_parts(cbi_credit)
+            add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
         except Exception as exc:
             LOG.warning(f"Parsing credit {cbi_credit}: {exc}")
-    if credit_primaries:
-        result = MultiAssigns(
-            comicbox_credits, ((CREDIT_PRIMARIES_KEY, credit_primaries),)
-        )
-    else:
-        result = comicbox_credits
-    return result
+    return comicbox_credits
 
 
-def _unparse_credit(source_data, person_name, comicbox_credit, cbi_credits):
+def cbi_credits_transform_to_cb(credits_tag):
+    """Transform for CBI credits."""
+    return MetaSpec(
+        key_map={CREDITS_KEY: credits_tag},
+        spec=_cbi_credits_to_cb,
+    )
+
+
+def _cbi_credits_primary_to_cb(cbi_credits):
+    credit_primaries = {}
+    for cbi_credit in cbi_credits:
+        if cbi_credit.get(PRIMARY_TAG):
+            cbi_person, cbi_role = _get_cbi_credit_parts(cbi_credit)
+            credit_primaries[cbi_role] = cbi_person
+    return credit_primaries
+
+
+def cbi_credits_primary_to_cb(credits_tag):
+    """Transform the credit primaries key from cbi credits."""
+    return MetaSpec(
+        key_map={CREDIT_PRIMARIES_KEY: credits_tag}, spec=_cbi_credits_primary_to_cb
+    )
+
+
+def _cbi_credit_from_cb(person_name, comicbox_credit, cbi_credits, credit_primaries):
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
         return
     comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
     for role_name in comicbox_roles:
         cbi_credit = {PERSON_TAG: person_name, ROLE_TAG: role_name}
-        if source_data.get(CREDIT_PRIMARIES_KEY, {}).get(role_name) == person_name:
+        if credit_primaries and credit_primaries.get(role_name) == person_name:
             cbi_credit[PRIMARY_TAG] = True
         cbi_credits.append(cbi_credit)
 
 
-def _cbi_credits_from_cb(source_data, comicbox_credits):
+def _cbi_credits_from_cb(values):
+    comicbox_credits = values.get(CREDITS_KEY)
+    credit_primaries = values.get(CREDIT_PRIMARIES_KEY)
     cbi_credits = []
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
-            _unparse_credit(source_data, person_name, comicbox_credit, cbi_credits)
+            _cbi_credit_from_cb(
+                person_name, comicbox_credit, cbi_credits, credit_primaries
+            )
         except Exception as exc:
             LOG.warning(f"Unparsing credit {comicbox_credit} - {exc}")
+            LOG.exception("debug")
     return cbi_credits
 
 
-def cbi_credits_transform(credits_tag):
+def cbi_credits_transform_from_cb(credits_tag):
     """Transform for CBI credits."""
-    return KeyTransforms(
-        key_map={credits_tag: CREDITS_TAG},
-        to_cb=_cbi_credits_to_cb,
-        from_cb=_cbi_credits_from_cb,
+    return MetaSpec(
+        key_map={credits_tag: (CREDITS_KEY, CREDIT_PRIMARIES_KEY)},
+        spec=_cbi_credits_from_cb,
     )

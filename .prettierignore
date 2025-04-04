@@ -1,3 +1,4 @@
+__pycache__
 .circleci
 .git
 .mypy_cache
@@ -10,7 +11,6 @@
 /tests/**/*.json
 /tests/**/*.xml
 /tests/**/*.yaml
-__pycache__
 dist
 package-lock.json
 uv.lock

@@ -1,99 +1,89 @@
 """XML Credits Mixin."""
 
-from collections.abc import Mapping
-from enum import Enum
 from logging import getLogger
 
-from glom import Path, glom
-
+from comicbox.fields.enum_fields import EnumField
 from comicbox.schemas.comicbox_mixin import (
     CREDITS_KEY,
     ROLES_KEY,
 )
 from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
-from comicbox.transforms.credit_role import get_role_enums
-from comicbox.transforms.transform_map import DUMMY_PREFIX, KeyTransforms, MultiAssigns
+from comicbox.transforms.spec import MetaSpec
 
 LOG = getLogger(__name__)
 
 
-def _parse_credit_role(
-    source_data, xml_role_enum: Enum, comicbox_credits: dict, format_root_tag: str
-):
-    role_tag = xml_role_enum.value
-    source_path = Path(format_root_tag, role_tag)
-    persons = glom(source_data, source_path, default=None)
-    if not persons:
-        return
-    for person_name in persons:
-        add_credit_role_to_comicbox_credits(person_name, role_tag, comicbox_credits)
+def _create_role_enum_to_alias_map(role_aliases):
+    """Create role map for native enum value to a list of aliases."""
+    role_map = {}
+    for native_enum, aliases in role_aliases.items():
+        key_variations = set()
+        all_aliases = (*aliases, native_enum)
+        for alias in all_aliases:
+            key_variations |= EnumField.get_key_variations(alias)
+        role_map[native_enum.value] = frozenset(key_variations)
+    return role_map
 
 
-def _xml_credits_to_cb(source_data, _xml_credits, role_tags_enum, format_root_tag):
+def _xml_credits_to_cb(role_name_persons_map):
     comicbox_credits = {}
-    for xml_role_enum in role_tags_enum:
+    for role_name, persons in role_name_persons_map.items():
         try:
-            _parse_credit_role(
-                source_data, xml_role_enum, comicbox_credits, format_root_tag
-            )
+            if not role_name or not persons:
+                continue
+            for person_name in persons:
+                add_credit_role_to_comicbox_credits(
+                    person_name, role_name, comicbox_credits
+                )
         except Exception:
-            LOG.exception(f"Parsing credit tag {xml_role_enum}")
-    if not comicbox_credits:
-        comicbox_credits = None
+            LOG.exception(f"Parsing credit tag {role_name} {persons}")
     return comicbox_credits
 
 
-def _unparse_credit_role(
-    role_map: Mapping,
-    person_name: str,
-    comicbox_role_name: str,
-    xml_role_tags: dict,
-):
-    xml_role_enums = get_role_enums(role_map, comicbox_role_name)
-    for xml_role_enum in xml_role_enums:
-        xml_role_tag = xml_role_enum.value
-        persons = xml_role_tags.get(xml_role_tag, set())
-        persons.add(person_name)
-        xml_role_tags[xml_role_tag] = persons
+def xml_credits_transform_to_cb(role_tags_enum):
+    """Transform xml credit tags to comicbox credits."""
+    return MetaSpec(
+        key_map={CREDITS_KEY: tuple(r.value for r in role_tags_enum)},
+        spec=_xml_credits_to_cb,
+    )
 
 
-def _unparse_credit(
-    role_map: Mapping, person_name: str, comicbox_credit: dict, xml_role_tags: dict
-):
-    """Unparse one comicbox credit to an xml tag."""
-    if not person_name:
-        return
-    comicbox_roles = comicbox_credit.get(ROLES_KEY)
-    if not comicbox_roles:
-        return
-    for comicbox_role_name in comicbox_roles:
-        _unparse_credit_role(role_map, person_name, comicbox_role_name, xml_role_tags)
-
-
-def _xml_credits_from_cb(_source_data, comicbox_credits, role_map):
-    xml_role_tags = {}
+def _xml_credits_from_cb(role_aliases: frozenset, comicbox_credits: dict):
+    person_names = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
-            _unparse_credit(role_map, person_name, comicbox_credit, xml_role_tags)
+            if not person_name:
+                continue
+            comicbox_roles = comicbox_credit.get(ROLES_KEY)
+            if not comicbox_roles:
+                continue
+            lower_roles = frozenset({role.lower() for role in comicbox_roles})
+            if lower_roles & role_aliases:
+                person_names.add(person_name)
         except Exception as exc:
-            LOG.warning(f"Unparse credit {comicbox_credit}: {exc}")
-    extra_assigns = tuple(xml_role_tags.items())
-    return MultiAssigns(None, extra_assigns)
+            LOG.warning(
+                f"Transforming comicbox credit {comicbox_credit} to xml tag: {exc}"
+            )
+    return person_names
 
 
-def xml_credits_transform(role_tags_enum, role_map, format_root_tag):
-    """Transform xml credit tags to comicbox credits."""
+def get_from_cb_func(role_aliases):
+    """Create a function that gets person names from comicbox_credits for one xml credit tag."""
 
-    def to_cb(source_data, xml_credits):
-        return _xml_credits_to_cb(
-            source_data, xml_credits, role_tags_enum, format_root_tag
-        )
+    def from_cb(comicbox_credits):
+        return _xml_credits_from_cb(role_aliases, comicbox_credits)
 
-    def from_cb(source_data, comicbox_credits):
-        return _xml_credits_from_cb(source_data, comicbox_credits, role_map)
+    return from_cb
 
-    return KeyTransforms(
-        key_map={f"{DUMMY_PREFIX}xml_credits": CREDITS_KEY},
-        to_cb=to_cb,
-        from_cb=from_cb,
-    )
+
+def xml_credits_transform_from_cb(role_tags_enum, role_aliases):
+    """Transform comicbox credits into several xml tag credits."""
+    role_map = _create_role_enum_to_alias_map(role_aliases)
+    metaspecs = []
+    for role_tag_enum in role_tags_enum:
+        role_tag = role_tag_enum.value
+        role_aliases = role_map.get(role_tag)
+        func = get_from_cb_func(role_aliases)
+        metaspec = MetaSpec(key_map={role_tag: CREDITS_KEY}, spec=func)
+        metaspecs.append(metaspec)
+    return tuple(metaspecs)

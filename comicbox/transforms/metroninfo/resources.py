@@ -2,8 +2,9 @@
 
 from collections.abc import Callable, Mapping
 from enum import Enum
-from logging import getLogger
 from types import MappingProxyType
+
+from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.schemas.comicbox_mixin import (
@@ -26,12 +27,19 @@ from comicbox.transforms.metroninfo.identified_name import (
     identified_name_with_tag_from_cb,
     identified_name_with_tag_to_cb,
 )
-from comicbox.transforms.transform_map import KeyTransforms
+from comicbox.transforms.metroninfo.identifiers import (
+    DEFAULT_NID,
+    PRIMARY_NID_KEYPATH,
+    SCOPE_PRIMARY_SOURCE,
+)
+from comicbox.transforms.spec import MetaSpec
 
-LOG = getLogger(__name__)
-
+ARC_KEYPATH = "Arcs.Arc"
+UNIVERSES_KEYPATH = "Universes.Universe"
+_PRICE_KEY_MAP = frozenbidict({"Prices.Price": PRICES_KEY})
 _RESOURCES_KEY_MAP = MappingProxyType(
     {
+        # Could be tuple, keys never used.
         "Characters.Character": CHARACTERS_KEY,
         "Genres.Genre": GENRES_KEY,
         "Locations.Location": LOCATIONS_KEY,
@@ -43,71 +51,93 @@ _RESOURCES_KEY_MAP = MappingProxyType(
 
 
 def metron_list_to_comicbox_dict(
-    source_data: Mapping,
     metron_objs: list[Mapping],
     nss_type: str,
-    func: Callable[[Mapping, Mapping | str, str], tuple[str | Enum, dict]],
+    primary_nid: str,
+    func: Callable[[Mapping | str, str, str], tuple[str | Enum, dict]],
 ) -> dict[str | Enum, dict]:
     """Transform metron lists into comicbox name dicts."""
     comicbox_objs = {}
-    for metron_obj in metron_objs:
-        name, comicbox_obj = func(source_data, metron_obj, nss_type)
-        if name:
-            comicbox_objs[name] = comicbox_obj
+    if metron_objs:
+        for metron_obj in metron_objs:
+            name, comicbox_obj = func(metron_obj, nss_type, primary_nid)
+            if name:
+                comicbox_objs[name] = comicbox_obj
     return comicbox_objs
 
 
 def comicbox_dict_to_metron_list(
-    source_data: Mapping,
     comicbox_objs: Mapping,
-    func: Callable[[Mapping, str | Enum, Mapping], dict],
+    primary_nid: str,
+    func: Callable[[str | Enum, Mapping, str], dict],
 ) -> list[dict]:
     """Transform comicbox name dicts into metron lists."""
     metron_list = []
-    for name, comicbox_obj in comicbox_objs.items():
-        metron_obj = func(source_data, name, comicbox_obj)
-        if metron_obj:
-            metron_list.append(metron_obj)
+    if comicbox_objs:
+        for name, comicbox_obj in comicbox_objs.items():
+            if metron_obj := func(name, comicbox_obj, primary_nid):
+                metron_list.append(metron_obj)
     return metron_list
 
 
-def _resources_to_cb(source_data, metron_resources, nss_type):
+def _resources_to_cb(metron_resources, nss_type, nid):
     return metron_list_to_comicbox_dict(
-        source_data, metron_resources, nss_type, identified_name_to_cb
+        metron_resources, nss_type, nid, identified_name_to_cb
     )
 
 
-def _resources_from_cb(source_data, comicbox_resources):
+def _resources_from_cb(cb_key, values):
+    comicbox_resources = values.get(cb_key)
+    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
     return comicbox_dict_to_metron_list(
-        source_data, comicbox_resources, identified_name_from_cb
+        comicbox_resources, primary_nid, identified_name_from_cb
     )
 
 
-def _create_resource_transform(metron_key_path, cb_key):
-    nss_type = metron_key_path.split(".")[1].lower()
+def _create_resource_transform(metron_key_path, cb_key, to: bool):
+    if to:
+        nss_type = metron_key_path.split(".")[1].lower()
 
-    def to_cb(source_data, metron_resources):
-        return _resources_to_cb(source_data, metron_resources, nss_type)
+        def to_cb(values):
+            metron_resources = values.get(metron_key_path)
+            nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+            return _resources_to_cb(metron_resources, nss_type, nid)
 
-    return KeyTransforms(
-        key_map={metron_key_path: cb_key}, to_cb=to_cb, from_cb=_resources_from_cb
-    )
+        metaspec = MetaSpec(
+            key_map={cb_key: (metron_key_path, SCOPE_PRIMARY_SOURCE)}, spec=to_cb
+        )
+    else:
+
+        def from_cb(values):
+            return _resources_from_cb(cb_key, values)
+
+        metaspec = MetaSpec(
+            key_map={metron_key_path: (cb_key, PRIMARY_NID_KEYPATH)},
+            spec=from_cb,
+        )
+    return metaspec
 
 
-def _create_resorce_transforms():
-    kts = []
+def _create_resource_transforms(to: bool):
+    metaspecs = []
     for metron_key_path, cb_key in _RESOURCES_KEY_MAP.items():
-        kt = _create_resource_transform(metron_key_path, cb_key)
-        kts.append(kt)
-    return tuple(kts)
+        metaspec = _create_resource_transform(metron_key_path, cb_key, to)
+        metaspecs.append(metaspec)
+    return tuple(metaspecs)
 
 
-METRON_RESOURCES_TRANSFORMS = _create_resorce_transforms()
+METRON_RESOURCES_TRANSFORMS_TO_CB = _create_resource_transforms(to=True)
+METRON_RESOURCES_TRANSFORMS_FROM_CB = _create_resource_transforms(to=False)
 
 
-def _arc_to_cb(source_data, metron_arc, nss_type):
+def _arc_to_cb(
+    metron_arc: Mapping | str, nss_type: str, primary_nid: str
+) -> tuple[str | Enum, dict]:
+    if not isinstance(metron_arc, Mapping):
+        return "", {}
+
     name, comicbox_arc = identified_name_with_tag_to_cb(
-        source_data, metron_arc, nss_type
+        metron_arc, nss_type, primary_nid
     )
     if name:
         number = metron_arc.get(NUMBER_TAG)
@@ -116,27 +146,36 @@ def _arc_to_cb(source_data, metron_arc, nss_type):
     return name, comicbox_arc
 
 
-def _arcs_to_cb(source_data, metron_arcs):
-    return metron_list_to_comicbox_dict(source_data, metron_arcs, "arc", _arc_to_cb)
+def _arcs_to_cb(values):
+    metron_arcs = values.get(ARC_KEYPATH, [])
+    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    return metron_list_to_comicbox_dict(metron_arcs, "arc", primary_nid, _arc_to_cb)
 
 
-def _arc_from_cb(source_data, name, comicbox_arc):
-    metron_arc = identified_name_with_tag_from_cb(source_data, name, comicbox_arc)
+def _arc_from_cb(name, comicbox_arc, primary_nid):
+    metron_arc = identified_name_with_tag_from_cb(name, comicbox_arc, primary_nid)
     if number := comicbox_arc.get(NUMBER_KEY):
         metron_arc[NUMBER_TAG] = number
     return metron_arc
 
 
-def _arcs_from_cb(source_data, comicbox_arcs):
-    return comicbox_dict_to_metron_list(source_data, comicbox_arcs, _arc_from_cb)
+def _arcs_from_cb(values):
+    comicbox_arcs = values.get(ARCS_KEY)
+    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    return comicbox_dict_to_metron_list(comicbox_arcs, primary_nid, _arc_from_cb)
 
 
-METRON_ARCS_TRANSFORM = KeyTransforms(
-    key_map={"Arcs.Arc": ARCS_KEY}, to_cb=_arcs_to_cb, from_cb=_arcs_from_cb
+METRON_ARCS_TRANSFORM_TO_CB = MetaSpec(
+    key_map={ARCS_KEY: (ARC_KEYPATH, SCOPE_PRIMARY_SOURCE)},
+    spec=_arcs_to_cb,
+)
+
+METRON_ARCS_TRANSFORM_FROM_CB = MetaSpec(
+    key_map={"Arcs.Arc": (ARCS_KEY, PRIMARY_NID_KEYPATH)}, spec=_arcs_from_cb
 )
 
 
-def _prices_to_cb(_source_data, metron_prices):
+def _prices_to_cb(metron_prices):
     comicbox_prices = {}
     for metron_price in metron_prices:
         price = get_cdata(metron_price)
@@ -145,7 +184,7 @@ def _prices_to_cb(_source_data, metron_prices):
     return comicbox_prices
 
 
-def _prices_from_cb(_source_data, comicbox_prices):
+def _prices_from_cb(comicbox_prices):
     metron_prices = []
     for country, price in comicbox_prices.items():
         metron_price = {"#text": price}
@@ -155,43 +194,54 @@ def _prices_from_cb(_source_data, comicbox_prices):
     return metron_prices
 
 
-METRON_PRICES_TRANSFORM = KeyTransforms(
-    key_map={"Prices.Price": PRICES_KEY}, to_cb=_prices_to_cb, from_cb=_prices_from_cb
+METRON_PRICES_TRANSFORM_TO_CB = MetaSpec(
+    key_map=_PRICE_KEY_MAP.inverse,
+    spec=_prices_to_cb,
 )
+METRON_PRICES_TRANSFORM_FROM_CB = MetaSpec(key_map=_PRICE_KEY_MAP, spec=_prices_from_cb)
 
 
-def _universe_to_cb(source_data, metron_universe, nss_type):
+def _universe_to_cb(metron_universe, nss_type, primary_nid):
+    if not isinstance(metron_universe, Mapping):
+        return "", {}
     name, comicbox_universe = identified_name_with_tag_to_cb(
-        source_data, metron_universe, nss_type
+        metron_universe, nss_type, primary_nid
     )
     if name and (designation := metron_universe.get(DESIGNATION_TAG)):
         comicbox_universe[DESIGNATION_KEY] = designation
     return name, comicbox_universe
 
 
-def _universes_to_cb(source_data, metron_universes):
+def _universes_to_cb(values):
+    metron_universes = values.get(UNIVERSES_KEYPATH)
+    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
     return metron_list_to_comicbox_dict(
-        source_data, metron_universes, "universe", _universe_to_cb
+        metron_universes, "universe", primary_nid, _universe_to_cb
     )
 
 
-def _universe_from_cb(source_data, name, comicbox_universe):
+def _universe_from_cb(name, comicbox_universe, primary_nid):
     metron_universe = identified_name_with_tag_from_cb(
-        source_data, name, comicbox_universe
+        name, comicbox_universe, primary_nid
     )
     if metron_universe and (designation := comicbox_universe.get(DESIGNATION_KEY)):
         metron_universe[DESIGNATION_TAG] = designation
     return metron_universe
 
 
-def _universes_from_cb(source_data, comicbox_universes):
+def _universes_from_cb(values):
+    comicbox_universes = values.get(UNIVERSES_KEY)
+    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
     return comicbox_dict_to_metron_list(
-        source_data, comicbox_universes, _universe_from_cb
+        comicbox_universes, primary_nid, _universe_from_cb
     )
 
 
-METRON_UNIVERSES_TRANSFORM = KeyTransforms(
-    key_map={"Universes.Universe": UNIVERSES_KEY},
-    to_cb=_universes_to_cb,
-    from_cb=_universes_from_cb,
+METRON_UNIVERSES_TRANSFORM_TO_CB = MetaSpec(
+    key_map={UNIVERSES_KEY: (UNIVERSES_KEYPATH, SCOPE_PRIMARY_SOURCE)},
+    spec=_universes_to_cb,
+)
+METRON_UNIVERSES_TRANSFORM_FROM_CB = MetaSpec(
+    key_map={"Universes.Universe": (UNIVERSES_KEY, PRIMARY_NID_KEYPATH)},
+    spec=_universes_from_cb,
 )

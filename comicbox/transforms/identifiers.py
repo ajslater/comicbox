@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
-    DEFAULT_NID,
     IDENTIFIER_PARTS_MAP,
     NID_ORDER,
     create_identifier,
@@ -16,7 +15,7 @@ from comicbox.schemas.comicbox_mixin import (
     NID_KEY,
 )
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
-from comicbox.transforms.transform_map import KeyTransforms, MultiAssigns
+from comicbox.transforms.spec import MetaSpec
 from comicbox.urns import (
     parse_string_identifier,
     to_urn_string,
@@ -24,10 +23,7 @@ from comicbox.urns import (
 
 LOG = getLogger(__name__)
 
-
-def get_primary_source_nid(data, default_nid=DEFAULT_NID) -> str:
-    """Get the primary source nid."""
-    return data.get(IDENTIFIER_PRIMARY_SOURCE_KEY, {}).get(NID_KEY, default_nid)
+PRIMARY_NID_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{NID_KEY}"
 
 
 def create_identifier_primary_source(nid):
@@ -46,53 +42,49 @@ def _identifier_to_cb(native_identifier, naked_nid) -> tuple[str, dict]:
     return nid, comicbox_identifier
 
 
-def _identifiers_to_cb(
-    _source_data, native_identifiers, naked_nid: str
-) -> dict | MultiAssigns:
+def identifiers_to_cb(native_identifiers, naked_nid: str) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
-    for native_identifier in native_identifiers:
-        try:
-            nid, identifier = _identifier_to_cb(native_identifier, naked_nid)
-            comicbox_identifiers[nid] = identifier
-        except Exception as exc:
-            LOG.warning(f"Parsing identifier {native_identifier}: {exc}")
+    if native_identifiers:
+        for native_identifier in native_identifiers:
+            try:
+                nid, identifier = _identifier_to_cb(native_identifier, naked_nid)
+                comicbox_identifiers[nid] = identifier
+            except Exception as exc:
+                LOG.warning(f"Parsing identifier {native_identifier}: {exc}")
     return comicbox_identifiers
 
 
-def _identifier_from_cb(
-    nid: str,
-    comicbox_identifier: dict,
-) -> str:
-    """Usually add to comma delineated urn strings. Overridable."""
-    # These are issues which is the default type.
-    if nss := comicbox_identifier.get(NSS_KEY):
-        return to_urn_string(nid, "", nss)
-    return ""
+def identifiers_transform_to_cb(identifiers_tag, naked_nid):
+    """Transform identifier tags to comicbox identifiers."""
+
+    def to_cb(native_identifiers):
+        return identifiers_to_cb(native_identifiers, naked_nid)
+
+    return MetaSpec(
+        key_map={IDENTIFIERS_KEY: identifiers_tag},
+        spec=to_cb,
+    )
 
 
-def _identifiers_from_cb(_source_data: dict, comicbox_identifiers) -> set:
+def _identifiers_from_cb(comicbox_identifiers) -> set:
     """Unparse identifier struct to set of strings."""
     urn_strings = set()
     for nid in NID_ORDER:
-        comicbox_identifier = comicbox_identifiers.get(nid)
-        if not comicbox_identifier:
-            continue
-        if urn_dict := _identifier_from_cb(nid, comicbox_identifier):
-            urn_strings.add(urn_dict)
+        if (
+            (comicbox_identifier := comicbox_identifiers.get(nid))
+            and (nss := comicbox_identifier.get(NSS_KEY))
+            and (urn_str := to_urn_string(nid, "", nss))
+        ):
+            urn_strings.add(urn_str)
     return urn_strings
 
 
-def identifiers_transform(identifiers_tag, naked_nid):
-    """Transform identifier tags to comicbox identifiers."""
-
-    def to_cb(source_data, identifiers):
-        return _identifiers_to_cb(source_data, identifiers, naked_nid)
-
-    return KeyTransforms(
+def identifiers_transform_from_cb(identifiers_tag):
+    """Transform comicbox identifiers identifier tag."""
+    return MetaSpec(
         key_map={identifiers_tag: IDENTIFIERS_KEY},
-        to_cb=to_cb,
-        from_cb=_identifiers_from_cb,
+        spec=_identifiers_from_cb,
     )
 
 
@@ -142,14 +134,23 @@ def url_to_cb(
     return nid, identifier
 
 
-def urls_to_cb(_source_data, urls):
+def urls_to_cb(urls):
     """Parse url tags into identifiers."""
     comicbox_identifiers = {}
-    for url in urls:
-        nid, identifier = url_to_cb(url)
-        if nid or identifier:
-            comicbox_identifiers[nid] = identifier
+    if urls:
+        for url in urls:
+            nid, identifier = url_to_cb(url)
+            if nid or identifier:
+                comicbox_identifiers[nid] = identifier
     return comicbox_identifiers
+
+
+def urls_transform_to_cb(urls_tag):
+    """Transform urls tags to comicbox identifiers."""
+    return MetaSpec(
+        key_map={IDENTIFIERS_KEY: urls_tag},
+        spec=urls_to_cb,
+    )
 
 
 def url_from_cb(
@@ -164,7 +165,7 @@ def url_from_cb(
     return url
 
 
-def _urls_from_cb(_source_data: dict, comicbox_identifiers) -> set:
+def _urls_from_cb(comicbox_identifiers) -> set:
     """Unparse urls struct to set of strings."""
     url_strings = set()
     for nid, comicbox_identifier in comicbox_identifiers.items():
@@ -173,8 +174,6 @@ def _urls_from_cb(_source_data: dict, comicbox_identifiers) -> set:
     return url_strings
 
 
-def urls_transform(urls_tag):
-    """Transform urls tags to comicbox identifiers."""
-    return KeyTransforms(
-        key_map={urls_tag: IDENTIFIERS_KEY}, to_cb=urls_to_cb, from_cb=_urls_from_cb
-    )
+def urls_transform_from_cb(urls_tag):
+    """Transform comicbox identifiers to urls tags."""
+    return MetaSpec(key_map={urls_tag: IDENTIFIERS_KEY}, spec=_urls_from_cb)
