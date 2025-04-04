@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 
 # Should be an enum?
 ANILIST_NID = "anilist"

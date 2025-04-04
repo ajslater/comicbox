@@ -22,8 +22,8 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
+from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
-from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.urns import (
     IDENTIFIER_EXP,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,

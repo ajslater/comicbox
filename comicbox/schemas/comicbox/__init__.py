@@ -10,7 +10,6 @@ from marshmallow_union import Union
 
 from comicbox.fields.collection_fields import (
     DictField,
-    IdentifiersField,
     ListField,
     StringListField,
     StringSetField,
@@ -107,6 +106,21 @@ VOLUME_NUMBER_KEY = "number"
 VOLUME_NUMBER_TO_KEY = "number_to"
 WEB_KEY = "web"
 YEAR_KEY = "year"
+
+
+class IdentifierSchema(BaseSubSchema):
+    """Identifier schema."""
+
+    nss = StringField()
+    url = StringField()
+
+
+class IdentifiersField(DictField):
+    """Dict of identifiers keyed by namespaces."""
+
+    def __init__(self, *args, **kwargs):
+        """Set up Identifier Values."""
+        super().__init__(*args, values=Nested(IdentifierSchema), **kwargs)
 
 
 class IdentifiedSchema(BaseSubSchema):
@@ -273,7 +287,7 @@ class ArcSchema(BaseSubSchema):
     number = IntegerField()
 
 
-class ComicboxSubSchemaMixin:
+class ComicboxSubSchemaMixin(IdentifiedSchema):
     """Mixin for Comicbox Sub Schemas."""
 
     age_rating = AgeRatingField()
@@ -292,7 +306,7 @@ class ComicboxSubSchemaMixin:
     ext = StringField()
     original_format = OriginalFormatField()
     genres = SimpleNamedDictField()
-    identifiers = IdentifiersField()
+    # identifiers from parent
     identifier_primary_source = Nested(IdentifierPrimarySource)
     issue = Nested(IssueSchema)
     imprint = SimpleNamedNestedField()

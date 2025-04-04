@@ -46,8 +46,11 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
+from comicbox.schemas.comicbox.identifier import (
+    NSS_KEY,
+    URL_KEY,
+)
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
-from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.yaml import ALL_NONE_KEYS
 from comicbox.transforms.identifiers import create_identifier_primary_source
 from comicbox.urns import (

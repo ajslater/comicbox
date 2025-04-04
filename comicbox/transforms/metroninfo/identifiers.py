@@ -20,7 +20,7 @@ from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     NID_KEY,
 )
-from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.transforms.identifiers import (
     PRIMARY_NID_KEYPATH,
     create_identifier_primary_source,

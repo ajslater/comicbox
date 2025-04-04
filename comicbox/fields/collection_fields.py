@@ -14,7 +14,6 @@ from comicbox.fields.fields import (
     TrapExceptionsMeta,
 )
 from comicbox.fields.number_fields import IntegerField
-from comicbox.schemas.identifier import IdentifierSchema
 
 
 def case_insensitive_dict(d: dict) -> dict:
@@ -230,14 +229,6 @@ class IntegerListField(StringListField):
     def __init__(self, *args, sort: bool = False, **kwargs):
         """Use not sorting as the default."""
         super().__init__(*args, sort=sort, **kwargs)
-
-
-class IdentifiersField(DictField):
-    """Dict of identifiers keyed by namespaces."""
-
-    def __init__(self, *args, **kwargs):
-        """Set up Identifier Values."""
-        super().__init__(*args, values=fields.Nested(IdentifierSchema), **kwargs)
 
 
 class EmbeddedStringSetField(StringSetField):

@@ -14,7 +14,7 @@ from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     NID_KEY,
 )
-from comicbox.schemas.identifier import NSS_KEY, URL_KEY
+from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.transforms.spec import MetaSpec
 from comicbox.urns import (
     parse_string_identifier,
