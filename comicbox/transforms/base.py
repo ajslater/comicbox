@@ -6,7 +6,7 @@ from types import MappingProxyType
 from glom import glom
 
 from comicbox.schemas.base import BaseSchema
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
 class BaseTransform:

@@ -2,7 +2,7 @@
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COUNTRY_KEY,

@@ -8,7 +8,7 @@ from glom import Assign, glom
 from comicbox.fields.enum_fields import EnumField
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )

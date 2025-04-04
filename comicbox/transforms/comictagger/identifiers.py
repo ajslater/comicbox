@@ -8,7 +8,7 @@ from comicbox.identifiers import (
     NSS_KEY,
     create_identifier,
 )
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     NID_KEY,

@@ -5,7 +5,7 @@ from itertools import zip_longest
 
 from glom import Coalesce, Iter, T
 
-from comicbox.schemas.comicbox_mixin import ARCS_KEY, NUMBER_KEY
+from comicbox.schemas.comicbox import ARCS_KEY, NUMBER_KEY
 from comicbox.transforms.spec import MetaSpec
 
 

@@ -17,7 +17,7 @@ from ruamel.yaml import YAML
 from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     NOTES_KEY,
     PAGE_COUNT_KEY,
     PAGES_KEY,

@@ -4,7 +4,7 @@ from logging import getLogger
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     GENRES_KEY,
     SCAN_INFO_KEY,
     TAGGER_KEY,

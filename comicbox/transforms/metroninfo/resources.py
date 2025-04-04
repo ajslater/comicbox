@@ -7,7 +7,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     ARCS_KEY,
     CHARACTERS_KEY,
     DESIGNATION_KEY,

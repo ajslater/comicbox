@@ -12,7 +12,7 @@ from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_cli import ComicboxCLISchema
+from comicbox.schemas.comicbox.cli import ComicboxCLISchema
 from tests.const import (
     CBZ_MULTI_SOURCE_PATH,
     CIX_CBI_CBR_SOURCE_PATH,

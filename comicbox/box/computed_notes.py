@@ -12,7 +12,7 @@ from comicbox.identifiers import (
     NID_ORIGIN_MAP,
     create_identifier,
 )
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     DATE_KEY,
     DAY_KEY,
     IDENTIFIERS_KEY,
@@ -22,7 +22,7 @@ from comicbox.schemas.comicbox_mixin import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.identifier import NSS_KEY, URL_KEY
 from comicbox.urns import (
     IDENTIFIER_EXP,

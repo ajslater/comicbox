@@ -2,7 +2,7 @@
 
 from comicbox.identifiers import ISBN_NID
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox_mixin import IDENTIFIERS_KEY
+from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 from comicbox.schemas.comicinfo import GTIN_TAG, WEB_TAG
 from comicbox.transforms.identifiers import (
     identifiers_to_cb,

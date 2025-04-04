@@ -8,7 +8,7 @@ from ruamel.yaml import YAML, StringIO
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import PAGE_KEYS
+from comicbox.schemas.comicbox import PAGE_KEYS
 from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 
 ALL_NONE_KEYS = "ALL"

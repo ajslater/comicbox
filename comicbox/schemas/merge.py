@@ -4,7 +4,7 @@ from collections.abc import Mapping, MutableMapping
 
 from comicbox.empty import is_empty
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
-from comicbox.schemas.comicbox_mixin import STORIES_KEY, ComicboxSchemaMixin
+from comicbox.schemas.comicbox import STORIES_KEY, ComicboxSchemaMixin
 
 ADDITIVE_MERGERS = frozenset({AdditiveMerger})
 # Stories are always replaced because filename titles are unreliably and

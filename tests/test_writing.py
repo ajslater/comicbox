@@ -8,7 +8,7 @@ from types import MappingProxyType
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import (
     CBI_CBR_FN,
     CBI_CBR_SOURCE_PATH,

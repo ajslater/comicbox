@@ -15,7 +15,7 @@ from comicbox.identifiers import (
     create_identifier,
 )
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
     NID_KEY,

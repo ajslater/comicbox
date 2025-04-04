@@ -1,9 +1,9 @@
 """Custom Marshmallow fields."""
 
 from abc import ABCMeta
+from decimal import Decimal
 from enum import Enum
 from logging import getLogger
-from decimal import Decimal
 
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError

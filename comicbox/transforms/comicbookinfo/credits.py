@@ -7,7 +7,7 @@ from comicbox.schemas.comicbookinfo import (
     PRIMARY_TAG,
     ROLE_TAG,
 )
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     CREDIT_PRIMARIES_KEY,
     CREDITS_KEY,
     ROLES_KEY,

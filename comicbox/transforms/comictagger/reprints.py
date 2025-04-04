@@ -4,7 +4,7 @@ from comicfn2dict.parse import comicfn2dict
 from glom import SKIP, Coalesce, Flatten, Invoke, T
 
 from comicbox.empty import is_empty
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     NAME_KEY,
     REPRINTS_KEY,
     SERIES_KEY,

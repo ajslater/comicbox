@@ -5,7 +5,7 @@ from comicfn2dict.unparse import dict2comicfn
 from glom import glom
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     LANGUAGE_KEY,
     NAME_KEY,
     REPRINTS_KEY,

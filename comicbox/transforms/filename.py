@@ -9,7 +9,7 @@ effective, simple and easy to read and to contribute to.
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     EXT_KEY,
     ORIGINAL_FORMAT_KEY,
     REMAINDERS_KEY,

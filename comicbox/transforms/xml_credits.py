@@ -3,7 +3,7 @@
 from logging import getLogger
 
 from comicbox.fields.enum_fields import EnumField
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )

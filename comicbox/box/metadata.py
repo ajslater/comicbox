@@ -9,7 +9,7 @@ from glom import Assign, Delete, glom
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputedMixin
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
 
 LOG = getLogger(__name__)

@@ -9,8 +9,8 @@ import simplejson as json
 
 from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_json import ComicboxJsonSchema
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
 from tests.const import (
     CBZ_MULTI_FN,
     TEST_DATETIME,

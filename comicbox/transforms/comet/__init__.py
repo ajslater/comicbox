@@ -11,7 +11,7 @@ from comicbox.schemas.comet import (
     CoMetSchema,
 )
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COVER_IMAGE_KEY,

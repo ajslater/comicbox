@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from logging import getLogger
 
 from comicbox.identifiers import create_identifier
-from comicbox.schemas.comicbox_mixin import IDENTIFIERS_KEY
+from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 
 ID_ATTRIBUTE = "@id"
 LOG = getLogger(__name__)

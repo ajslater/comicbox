@@ -1,6 +1,6 @@
 """Metadata cli format."""
 
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
 class ComicboxCLISchema(ComicboxYamlSchema):

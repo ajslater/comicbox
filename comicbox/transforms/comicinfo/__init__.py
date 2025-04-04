@@ -7,7 +7,7 @@ from bidict import frozenbidict
 
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COMMUNITY_RATING_KEY,

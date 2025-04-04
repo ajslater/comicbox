@@ -6,7 +6,7 @@ from glom import SKIP, Coalesce, Fill, Merge, T
 from glom.grouping import Group
 
 from comicbox.empty import is_empty
-from comicbox.schemas.comicbox_mixin import PAGES_KEY
+from comicbox.schemas.comicbox import PAGES_KEY
 from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 from comicbox.transforms.spec import (
     MetaSpec,

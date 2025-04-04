@@ -7,7 +7,7 @@ from types import MappingProxyType
 import xmltodict
 
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.pdf import PDFXmlSchema
 from tests.const import PDF_FN
 from tests.util import TestParser

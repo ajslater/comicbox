@@ -3,7 +3,7 @@
 from glom import SKIP, Check, Coalesce, Invoke, T, Val
 from glom.grouping import Group
 
-from comicbox.schemas.comicbox_mixin import STORIES_KEY
+from comicbox.schemas.comicbox import STORIES_KEY
 from comicbox.transforms.spec import MetaSpec
 
 TITLE_STORIES_DELIMITER = ";"

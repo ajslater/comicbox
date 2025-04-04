@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from glom import Fill, T
 
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     NAME_KEY,
     REPRINTS_KEY,

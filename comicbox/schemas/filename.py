@@ -14,7 +14,7 @@ from comicbox.fields.collection_fields import StringListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,

@@ -4,7 +4,7 @@ from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.unparse import dict2comicfn
 from glom import SKIP, Coalesce, Invoke, T
 
-from comicbox.schemas.comicbox_mixin import REPRINTS_KEY
+from comicbox.schemas.comicbox import REPRINTS_KEY
 from comicbox.transforms.spec import MetaSpec
 from comicbox.transforms.xml_reprints import (
     FILENAME_TO_REPRINT_SPECS,

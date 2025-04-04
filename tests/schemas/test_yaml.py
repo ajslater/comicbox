@@ -7,8 +7,8 @@ from types import MappingProxyType
 
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import (
     TEST_DATETIME,

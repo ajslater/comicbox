@@ -7,7 +7,7 @@ from types import MappingProxyType
 from typing import Any
 
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
 from tests.util import TestParser
 

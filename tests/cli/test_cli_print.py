@@ -10,7 +10,7 @@ from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarint import ScalarInt
 
 from comicbox import cli
-from comicbox.schemas.comicbox_cli import ComicboxCLISchema
+from comicbox.schemas.comicbox.cli import ComicboxCLISchema
 from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH
 from tests.util import diff_strings

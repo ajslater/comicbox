@@ -8,7 +8,7 @@ import simplejson as json
 
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 

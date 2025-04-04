@@ -1,6 +1,6 @@
 """Coimcbox integer issue transforms."""
 
-from comicbox.schemas.comicbox_mixin import ISSUE_KEY
+from comicbox.schemas.comicbox import ISSUE_KEY
 from comicbox.transforms.spec import MetaSpec
 
 ISSUE_TAG = "issue"

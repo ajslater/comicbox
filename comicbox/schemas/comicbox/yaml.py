@@ -2,7 +2,7 @@
 
 from marshmallow.fields import Nested
 
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
 )

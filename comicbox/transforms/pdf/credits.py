@@ -1,7 +1,7 @@
 """Author to Credits transforms."""
 
 from comicbox.schemas.comet import CoMetRoleTagEnum
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )

@@ -3,7 +3,7 @@
 from bidict import frozenbidict
 
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
     DAY_KEY,

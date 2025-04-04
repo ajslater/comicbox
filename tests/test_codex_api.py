@@ -15,7 +15,7 @@ from deepdiff.diff import DeepDiff
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox_mixin import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
     CB7_SOURCE_PATH,

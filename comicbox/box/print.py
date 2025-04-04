@@ -15,7 +15,7 @@ from rich.text import Text
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.print import PrintPhases
-from comicbox.schemas.comicbox_yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from comicbox.sources import MetadataSources
 from comicbox.version import VERSION

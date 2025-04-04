@@ -5,7 +5,7 @@ from marshmallow.fields import Constant, Nested
 from comicbox.fields.collection_fields import DictField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
     PageInfoSchema,
