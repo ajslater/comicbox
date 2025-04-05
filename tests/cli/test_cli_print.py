@@ -57,7 +57,8 @@ def _get_output(args):
 
 
 FILETYPE_OUTPUT = """
- ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
+════════════════════════════════════════════════════════════════════════════════
+tests/test_files/empty.cbz
 CBZ
 """
 
@@ -70,8 +71,10 @@ def test_cli_filetype():
 
 
 SOURCE_OUTPUT = """
- ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Source Filename tests/test_files/empty.cbz as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+════════════════════════════════════════════════════════════════════════════════
+tests/test_files/empty.cbz
+────────────────────────────────────────────────────────────────────────────────
+Source Filename tests/test_files/empty.cbz as Filename
 empty.cbz
 """
 
@@ -87,8 +90,10 @@ def test_cli_source():
 
 
 LOADED_OUTPUT = """
- ═ tests/test_files/empty.cbz ══════════════════════════════════════════════════
- ⎯ Loaded Filename tests/test_files/empty.cbz as Filename ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+════════════════════════════════════════════════════════════════════════════════
+tests/test_files/empty.cbz
+────────────────────────────────────────────────────────────────────────────────
+Loaded Filename tests/test_files/empty.cbz as Filename
 comicfn2dict:
   ext: cbz
   series: empty
@@ -132,10 +137,10 @@ def test_cli_print():
     args = (*CLI_METADATA_ARGS, "-p", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
     output = _get_output(args)
-    output = output.split("\n", 2)[2]  # remove first two lines
+    output = output.split("\n", 4)[4]  # remove first four lines
+    pprint(output)
 
     yaml = YamlRenderModule.get_write_yaml(dfs=False)
-    pprint(output)
     loaded = yaml.load(output)
     output_dict = _ruamel_to_dict(loaded)
     output_dict = MappingProxyType(output_dict)
@@ -148,7 +153,8 @@ def test_cli_print():
 
 
 LIST_OUTPUT = """
- ═ tests/test_files/Captain Science #001-cix-cbi.cbr ═══════════════════════════
+════════════════════════════════════════════════════════════════════════════════
+tests/test_files/Captain Science #001-cix-cbi.cbr
 ┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Page ┃ Archive Path                                ┃
 ┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
