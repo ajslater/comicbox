@@ -36,9 +36,9 @@ from comicbox.schemas.comicinfo import (
     IMAGE_ATTRIBUTE,
     ComicInfoSchema,
 )
-from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
-from comicbox.schemas.metroninfo_enum import MetronRoleEnum
-from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
+from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.schemas.enums.metroninfo import MetronRoleEnum
+from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox import (
     DAY_KEYPATH,

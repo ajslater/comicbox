@@ -5,9 +5,9 @@ from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
-from comicbox.schemas.metroninfo_enum import MetronRoleEnum
-from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
+from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.schemas.enums.metroninfo import MetronRoleEnum
+from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.spec import MetaSpec
 
 _AUTHOR_VALUES = frozenset(

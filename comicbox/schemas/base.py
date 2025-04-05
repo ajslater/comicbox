@@ -5,33 +5,25 @@ from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
 
-from marshmallow import EXCLUDE, Schema, ValidationError
+from marshmallow import EXCLUDE, Schema
 from marshmallow.decorators import (
     post_dump,
     post_load,
     pre_dump,
     pre_load,
 )
-from marshmallow.error_store import ErrorStore
 
 from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
-from comicbox.schemas.error_store import ClearingErrorStore
+from comicbox.schemas.error_store import ClearingErrorStoreSchema
 
 LOG = getLogger(__name__)
 
 
-class BaseSubSchema(Schema, ABC):
+class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     """Base schema."""
 
     TAG_ORDER = ()
-    SUPRESS_ERRORS = True
-
-    def __init__(self, **kwargs):
-        """Initialize path and always use partial."""
-        kwargs["partial"] = True
-        self._path = kwargs.pop("path", None)
-        super().__init__(**kwargs)
 
     @classmethod
     def pre_load_validate(cls, data):
@@ -97,37 +89,6 @@ class BaseSubSchema(Schema, ABC):
         str_data = self.dumps(data, **kwargs) + "\n"
         with Path(path).open("w") as f:
             f.write(str_data)
-
-    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
-            error_store = ClearingErrorStore(error_store, data, self._path)
-        return super()._deserialize(data, error_store=error_store, **kwargs)
-
-    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
-            error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_field_validators(error_store=error_store, data=data, **kwargs)
-
-    def _invoke_schema_validators(
-        self,
-        *,
-        error_store: ErrorStore,
-        data,
-        **kwargs,
-    ):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
-            error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_schema_validators(error_store=error_store, **kwargs)
-
-    def handle_error(self, error, *_args, **_kwargs):
-        """Log errors as warnings."""
-        if isinstance(error, ValidationError):
-            LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
-        else:
-            LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
 
     class Meta(Schema.Meta):
         """Schema options."""

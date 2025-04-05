@@ -29,9 +29,9 @@ from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
-from comicbox.schemas.metroninfo_enum import MetronRoleEnum
-from comicbox.schemas.role_enum import GenericRoleEnum
+from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.schemas.enums.metroninfo import MetronRoleEnum
+from comicbox.schemas.enums.role import GenericRoleEnum
 
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"

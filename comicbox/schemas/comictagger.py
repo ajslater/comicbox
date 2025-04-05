@@ -57,7 +57,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     """Comictagger schema."""
 
     # comictagger unique
-    data_origin = Nested(DataOriginSchema())
+    data_origin = Nested(DataOriginSchema)
     issue_id = StringField()
     series_id = StringField()
 

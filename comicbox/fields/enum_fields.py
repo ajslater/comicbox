@@ -8,13 +8,13 @@ from marshmallow import fields
 from stringcase import snakecase, titlecase
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.schemas.age_rating_enum import (
+from comicbox.schemas.enums.age_rating import (
     DCAgeRatingEnum,
     GenericAgeRatingEnum,
     MarvelAgeRatingEnum,
 )
-from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
-from comicbox.schemas.metroninfo_enum import (
+from comicbox.schemas.enums.comicinfo import ComicInfoAgeRatingEnum
+from comicbox.schemas.enums.metroninfo import (
     GenericFormatEnum,
     MetronAgeRatingEnum,
     MetronFormatEnum,

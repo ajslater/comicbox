@@ -24,14 +24,14 @@ from comicbox.fields.xml_fields import (
     XmlStringSetField,
     XmlYesNoField,
 )
-from comicbox.schemas.age_rating_enum import (
+from comicbox.schemas.base import BaseSubSchema
+from comicbox.schemas.enums.comicinfo import ComicInfoAgeRatingEnum
+from comicbox.schemas.enums.age_rating import (
     DCAgeRatingEnum,
     GenericAgeRatingEnum,
     MarvelAgeRatingEnum,
 )
-from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.comicinfo_enum import ComicInfoAgeRatingEnum
-from comicbox.schemas.metroninfo import MetronAgeRatingEnum
+from comicbox.schemas.enums.metroninfo import MetronAgeRatingEnum
 from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
 
 ALTERNATE_SERIES_TAG = "AlternateSeries"
