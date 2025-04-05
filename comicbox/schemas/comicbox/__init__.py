@@ -117,18 +117,10 @@ class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron
     url = StringField()
 
 
-class IdentifiersField(DictField):
-    """Dict of identifiers keyed by namespaces."""
-
-    def __init__(self, *args, **kwargs):
-        """Set up Identifier Values."""
-        super().__init__(*args, values=Nested(IdentifierSchema), **kwargs)
-
-
 class IdentifiedSchema(BaseSubSchema):  # Metron ONLY
     """Identified Schema."""
 
-    identifiers = IdentifiersField()
+    identifiers = DictField(values=Nested(IdentifierSchema))
 
 
 class IdentifiedNameSchema(IdentifiedSchema):  # Comicbox
