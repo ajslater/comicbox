@@ -95,7 +95,7 @@ TAG_ORDER = (
 )
 
 
-class AgeRatingField(XmlEnumField):
+class ComicInfoAgeRatingField(XmlEnumField):
     """Age Rating Field."""
 
     ENUM = ComicInfoAgeRatingEnum
@@ -168,7 +168,7 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
     StoryArc = XmlStringListField(as_string=True, sort=False)
     StoryArcNumber = XmlIntegerListField(as_string=True)
     SeriesGroup = XmlStringSetField(as_string=True)
-    AgeRating = AgeRatingField()
+    AgeRating = ComicInfoAgeRatingField()
     Pages = create_sub_tag_field(
         "Page", ListField(Nested(XmlPageInfoSchema), sort_keys=(IMAGE_ATTRIBUTE,))
     )
