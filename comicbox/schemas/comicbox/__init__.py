@@ -35,6 +35,7 @@ from comicbox.schemas.role_enum import GenericRoleEnum
 
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
+BOOKMARK_KEY = "bookmark"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
 CREDIT_PRIMARIES_KEY = "credit_primaries"
@@ -54,7 +55,6 @@ IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_SUFFIX_KEY = "suffix"
-LAST_MARK_KEY = "last_mark"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MANGA_KEY = "manga"
@@ -70,8 +70,9 @@ PAGES_KEY = "pages"
 PAGE_COUNT_KEY = "page_count"
 PAGE_TYPE_KEY = "page_type"
 PAGE_INDEX_KEY = "index"  # only used in transform
+PAGE_BOOKMARK_KEY = "bookmark"
 PAGE_KEYS = frozenset(
-    {PAGE_TYPE_KEY, "bookmark", "height", "width", "double_page", "key", "size"}
+    {PAGE_TYPE_KEY, PAGE_BOOKMARK_KEY, "height", "width", "double_page", "key", "size"}
 )
 PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
@@ -306,6 +307,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     age_rating = AgeRatingField()  # CIX, Metron
     alternate_images = StringSetField()  # CT ONLY
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
+    bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
     characters = SimpleNamedDictField()  # Comet, CIX, CT, Metron
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
@@ -324,7 +326,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     issue = Nested(IssueSchema)  # ALL
     imprint = SimpleNamedNestedField()  # CIX, CT, Metron
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
-    last_mark = IntegerField(minimum=0)  # Comet ONLY, CT
     locations = SimpleNamedDictField()  # CIX, CT, Metron
     manga = ComicInfoMangaField()  # CIX ONLY
     monochrome = BooleanField()  # CIX ONLY, CT

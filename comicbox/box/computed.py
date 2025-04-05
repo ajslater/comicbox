@@ -11,7 +11,6 @@ from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
-from icecream import ic
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed_notes import ComicboxComputedNotesMixin
@@ -67,7 +66,6 @@ _COMICBOX_FORMATS = frozenset(
         MetadataFormats.COMICBOX_JSON,
     }
 )
-_GLOM_LIST_RE = re.compile(r"\.[0-9]+[\.$]")
 LOG = getLogger(__name__)
 
 
@@ -211,7 +209,6 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         issue_name = issue.get(NAME_KEY)
         old_issue_number = issue.get(NUMBER_KEY)
         old_issue_suffix = issue.get(ISSUE_SUFFIX_KEY)
-        ic(issue, issue_name, old_issue_suffix, old_issue_number)
         try:
             if (
                 issue_name
@@ -239,7 +236,6 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         issue_number = issue.get(NUMBER_KEY, "")
         issue_suffix = issue.get(ISSUE_SUFFIX_KEY, "")
         # Decimal removes unspecified decimal points
-        ic(issue, issue_number, issue_suffix)
         if issue_name := f"{issue_number}{issue_suffix}".strip():
             issue[NAME_KEY] = issue_name
             return {ISSUE_KEY: issue}

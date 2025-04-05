@@ -4,6 +4,7 @@ from bidict import frozenbidict
 
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
+    BOOKMARK_KEY,
     CHARACTERS_KEY,
     COUNTRY_KEY,
     GENRES_KEY,
@@ -12,6 +13,7 @@ from comicbox.schemas.comicbox import (
     MONOCHROME_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
+    PAGE_BOOKMARK_KEY,
     PAGE_COUNT_KEY,
     PAGE_INDEX_KEY,
     SERIES_GROUPS_KEY,
@@ -40,6 +42,7 @@ from comicbox.transforms.comicbox.name_objs import (
     name_obj_to_cb,
 )
 from comicbox.transforms.comicinfo.pages import (
+    comicinfo_bookmark_to_cb,
     comicinfo_pages_from_cb,
     comicinfo_pages_to_cb,
 )
@@ -86,14 +89,16 @@ from comicbox.transforms.stories import (
     stories_key_transform_to_cb,
 )
 
+IMAGE_TAG = "Image"
+BOOKMARK_TAG = "Bookmark"
 PAGE_KEY_MAP = frozenbidict(
     {
-        "Image": PAGE_INDEX_KEY,
+        IMAGE_TAG: PAGE_INDEX_KEY,
         "Type": "page_type",
         "DoublePage": "double_page",
         "ImageSize": "size",
         "Key": "key",
-        "Bookmark": "bookmark",
+        BOOKMARK_TAG: PAGE_BOOKMARK_KEY,
         "ImageWidth": "width",
         "ImageHeight": "height",
     }
@@ -110,6 +115,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "issue": ISSUE_NAME_KEYPATH,
         "issue_count": ISSUE_COUNT_KEY_PATH,
         "language": LANGUAGE_KEY,
+        "last_mark": BOOKMARK_KEY,
         "maturity_rating": AGE_RATING_KEY,
         "month": MONTH_KEYPATH,
         "notes": NOTES_KEY,
@@ -146,6 +152,7 @@ class ComictaggerTransform(BaseTransform):
         COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB,
         COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB,
         comicinfo_pages_to_cb("pages", PAGE_KEY_MAP.inverse),
+        comicinfo_bookmark_to_cb("pages", BOOKMARK_TAG, IMAGE_TAG),
         price_transform_to_cb("price"),
         CT_REPRINTS_TRANSFORM_TO_CB,
         stories_key_transform_to_cb("title"),

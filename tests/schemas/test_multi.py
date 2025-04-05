@@ -85,7 +85,7 @@ READ_METADATA = MappingProxyType(
                 }
             },
             "summary": "A long example description",
-            "last_mark": 12,
+            "bookmark": 12,
             "original_format": "Comic",
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -244,7 +244,7 @@ READ_MULTI_DICT = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
-            "last_mark": 12,
+            "bookmark": 12,
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}

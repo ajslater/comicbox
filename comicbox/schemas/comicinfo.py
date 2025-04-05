@@ -39,6 +39,7 @@ ALTERNATE_NUMBER_TAG = "AlternateNumber"
 ALTERNATE_COUNT_TAG = "AlternateCount"
 GTIN_TAG = "GTIN"
 IMAGE_ATTRIBUTE = "@Image"
+BOOKMARK_ATTRIBUTE = "@Bookmark"
 WEB_TAG = "Web"
 
 
@@ -152,7 +153,7 @@ class XmlPageInfoSchema(BaseSubSchema):
 
         include = MappingProxyType(
             {
-                "@Bookmark": StringField(),
+                BOOKMARK_ATTRIBUTE: StringField(),
                 "@DoublePage": XmlBooleanAttributeField(),
                 "@Key": StringField(),
                 IMAGE_ATTRIBUTE: IntegerField(minimum=0),

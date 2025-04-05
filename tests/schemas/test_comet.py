@@ -41,7 +41,7 @@ METADATA = MappingProxyType(
             },
             "issue": {"name": "1", "number": Decimal("1")},
             "language": "en",
-            "last_mark": 12,
+            "bookmark": 12,
             "publisher": {"name": "Bell Features"},
             "original_format": "Comic",
             "page_count": 36,

@@ -1,12 +1,13 @@
 """ComicInfo Pages Transformer creator."""
 
 from collections.abc import Mapping
+from logging import getLogger
 
-from glom import SKIP, Coalesce, Fill, Merge, T
+from glom import SKIP, Coalesce, Fill, T, glom
 from glom.grouping import Group
 
 from comicbox.empty import is_empty
-from comicbox.schemas.comicbox import PAGES_KEY
+from comicbox.schemas.comicbox import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
 from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -14,6 +15,7 @@ from comicbox.transforms.spec import (
     create_specs_to_comicbox,
 )
 
+LOG = getLogger(__name__)
 _KEY_SPEC = Coalesce(T[IMAGE_ATTRIBUTE], skip=is_empty, default=SKIP)
 
 
@@ -31,29 +33,47 @@ def comicinfo_pages_to_cb(pages_key_path: str, page_key_map: Mapping):
     )
 
 
+def _pages_from_cb(values: Mapping, page_spec: dict):
+    cix_pages = []
+    comicbox_pages = values.get(PAGES_KEY)
+    if not comicbox_pages:
+        return cix_pages
+    comicbox_bookmark = values.get(BOOKMARK_KEY)
+    for index, comicbox_page in comicbox_pages.items():
+        try:
+            comicbox_page[PAGE_INDEX_KEY] = index
+            if index == comicbox_bookmark:
+                comicbox_page[BOOKMARK_KEY] = "true"
+            if cix_page := glom(comicbox_page, page_spec):
+                cix_pages.append(cix_page)
+        except Exception as ex:
+            reason = f"Error transforming comicbox page to ComicInfo style page: {ex}"
+            LOG.debug(reason)
+    return cix_pages
+
+
 def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping):
     """Transform comicbox pages into comicinfo."""
     page_spec = create_specs_from_comicbox(
         MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
     )
 
+    def from_cb(values):
+        return _pages_from_cb(values, dict(page_spec))
+
     return MetaSpec(
-        key_map={pages_key_path: PAGES_KEY},
-        spec=(
-            T.items(),
-            [
-                Coalesce(
-                    (
-                        {
-                            "index": {IMAGE_ATTRIBUTE: T[0]},
-                            "page": (T[1], dict(page_spec)),
-                        },
-                        T.values(),
-                        Merge(),
-                    ),
-                    skip=is_empty,
-                    default=SKIP,
-                )
-            ],
-        ),
+        key_map={pages_key_path: (PAGES_KEY, BOOKMARK_KEY)},
+        spec=(from_cb,),
     )
+
+
+def comicinfo_bookmark_to_cb(pages_key_path: str, bookmark_attr: str, image_attr: str):
+    """Get the bookmark from pages."""
+
+    def get_bookmark(pages):
+        for page in pages:
+            if page.get(bookmark_attr):
+                return page.get(image_attr)
+        return None
+
+    return MetaSpec(key_map={BOOKMARK_KEY: pages_key_path}, spec=(get_bookmark,))

@@ -45,7 +45,7 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "last_mark": 12,
+            "bookmark": 12,
             "original_format": "Comic",
             "page_count": 0,
             "prices": {"": Decimal("0.10")},

@@ -19,7 +19,10 @@ from comicbox.schemas.comicbox import (
     MONOCHROME_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
+    PAGE_BOOKMARK_KEY,
     PAGE_COUNT_KEY,
+    PAGE_INDEX_KEY,
+    PAGE_TYPE_KEY,
     PROTAGONIST_KEY,
     REVIEW_KEY,
     SCAN_INFO_KEY,
@@ -28,7 +31,11 @@ from comicbox.schemas.comicbox import (
     TAGS_KEY,
     TEAMS_KEY,
 )
-from comicbox.schemas.comicinfo import ComicInfoSchema
+from comicbox.schemas.comicinfo import (
+    BOOKMARK_ATTRIBUTE,
+    IMAGE_ATTRIBUTE,
+    ComicInfoSchema,
+)
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
@@ -45,6 +52,7 @@ from comicbox.transforms.comicbox.name_objs import (
 )
 from comicbox.transforms.comicinfo.identifiers import COMICINFO_IDENTIFIERS_TO_CB
 from comicbox.transforms.comicinfo.pages import (
+    comicinfo_bookmark_to_cb,
     comicinfo_pages_from_cb,
     comicinfo_pages_to_cb,
 )
@@ -159,12 +167,12 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 
 PAGE_KEY_MAP = frozenbidict(
     {
-        # IMAGE_ATTRIBUTE: PAGE_INDEX_KEY,
-        "@Type": "page_type",
+        IMAGE_ATTRIBUTE: PAGE_INDEX_KEY,
+        "@Type": PAGE_TYPE_KEY,
         "@DoublePage": "double_page",
         "@ImageSize": "size",
         "@Key": "key",
-        "@Bookmark": "bookmark",
+        BOOKMARK_ATTRIBUTE: PAGE_BOOKMARK_KEY,
         "@ImageWidth": "width",
         "@ImageHeight": "height",
     }
@@ -217,6 +225,7 @@ class ComicInfoTransform(BaseTransform):
         xml_credits_transform_to_cb(ComicInfoRoleTagEnum),
         COMICINFO_IDENTIFIERS_TO_CB,
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
+        comicinfo_bookmark_to_cb("Pages.Page", BOOKMARK_ATTRIBUTE, IMAGE_ATTRIBUTE),
         COMICINFO_REPRINTS_TO_CB,
         stories_key_transform_to_cb("Title"),
         story_arcs_to_cb("StoryArc", "StoryArcNumber"),

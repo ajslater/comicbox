@@ -13,11 +13,11 @@ from comicbox.schemas.comet import (
 from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
+    BOOKMARK_KEY,
     CHARACTERS_KEY,
     COVER_IMAGE_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
-    LAST_MARK_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
     READING_DIRECTION_KEY,
@@ -150,7 +150,7 @@ SIMPLE_KEYMAP = frozenbidict(
         "format": ORIGINAL_FORMAT_KEY,
         "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
-        "lastMark": LAST_MARK_KEY,
+        "lastMark": BOOKMARK_KEY,
         "pages": PAGE_COUNT_KEY,
         "publisher": PUBLISHER_NAME_KEY_PATH,
         "rating": AGE_RATING_KEY,
