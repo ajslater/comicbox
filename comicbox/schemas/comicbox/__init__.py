@@ -110,7 +110,7 @@ WEB_KEY = "web"
 YEAR_KEY = "year"
 
 
-class IdentifierSchema(BaseSubSchema):
+class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron
     """Identifier schema."""
 
     nss = StringField()
@@ -125,13 +125,13 @@ class IdentifiersField(DictField):
         super().__init__(*args, values=Nested(IdentifierSchema), **kwargs)
 
 
-class IdentifiedSchema(BaseSubSchema):
+class IdentifiedSchema(BaseSubSchema):  # Metron ONLY
     """Identified Schema."""
 
     identifiers = IdentifiersField()
 
 
-class IdentifiedNameSchema(IdentifiedSchema):
+class IdentifiedNameSchema(IdentifiedSchema):  # Comicbox
     """Named Element with an identifier."""
 
     name = StringField()
@@ -212,14 +212,15 @@ class RoleField(PrettifiedStringField):
     ENUM_ALIAS_MAP = COMICBOX_ROLE_ALIAS_MAP
 
 
-class PersonSchema(BaseSubSchema):
+class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
-    identifiers = IdentifiersField()
-    roles = SimpleNamedDictField(keys=RoleField, allow_empty_values=True)
+    roles = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
+        keys=RoleField, allow_empty_values=True
+    )
 
 
-class PageInfoSchema(BaseSubSchema):
+class PageInfoSchema(BaseSubSchema):  # CIX, CT - ONLY
     """Comicbox page info schema."""
 
     bookmark = StringField()
@@ -234,88 +235,96 @@ class PageInfoSchema(BaseSubSchema):
 class SeriesSchema(IdentifiedNameSchema):
     """Series Schema."""
 
-    sort_name = StringField()
-    start_year = IntegerField()
-    volume_count = IntegerField(minimum=0)
+    sort_name = StringField()  # Metron ONLY
+    start_year = IntegerField()  # Metron ONLY
+    volume_count = IntegerField(minimum=0)  # CBI, CT, Metron
 
 
-class VolumeSchema(BaseSubSchema):
+class VolumeSchema(IdentifiedSchema):
     """Volume Schema."""
 
-    # No identifiers in metron
-
-    issue_count = IntegerField(minimum=0)
-    number = IntegerField(minimum=0)
-    number_to = IntegerField(minimum=0)
+    issue_count = IntegerField(minimum=0)  # CBI, CT, CIX, Filename, Metron
+    number = IntegerField(minimum=0)  # All
+    number_to = IntegerField(minimum=0)  # Metron ONLY
 
 
 class IssueSchema(BaseSubSchema):
     """Issue Schema."""
 
-    name = StringField()
-    number = DecimalField()
-    suffix = StringField()
+    name = StringField()  # All
+    number = DecimalField()  # Comicbox
+    suffix = StringField()  # Comicbox
 
 
-class ReprintSchema(BaseSubSchema):
+class ReprintSchema(IdentifiedSchema):
     """Schema for Reprints of this issue."""
 
-    identifiers = IdentifiersField()
-    language = LanguageField()
-    publisher = StringField()
-    imprint = StringField()
-    series = Nested(SeriesSchema)
-    volume = Nested(VolumeSchema)
-    issue = StringField()
+    language = LanguageField()  # Metron ONLY
+    series = Nested(SeriesSchema)  # Comet, CIX, CT
+    volume = Nested(VolumeSchema)  # Comet, CIX, CT, Metron
+    issue = StringField()  # Comet, CIX, CT, Metron
 
 
 class IdentifierPrimarySource(BaseSubSchema):
     """Identifiers Primary Source."""
 
-    nid = StringField(required=True)
-    url = StringField()
+    nid = StringField(required=True)  # Metron ONLY
+    url = StringField()  # Comicbox
 
 
 class UniverseSchema(IdentifiedSchema):
     """Universe Schema."""
 
-    designation = StringField()
+    designation = StringField()  # Metron ONLY
 
 
-class ArcSchema(BaseSubSchema):
+class ArcSchema(IdentifiedSchema):
     """Story Arc Schema."""
 
-    identifiers = IdentifiersField()
-    number = IntegerField()
+    number = IntegerField()  # CIX, Metron
 
 
 class DateSchema(BaseSubSchema):
     """Date Schema."""
 
     cover_date = DateField()  # Comet, PDF, Metron
-    store_date = DateField()  # Metron
+    store_date = DateField()  # Metron ONLY
     year = IntegerField()  # CIX, CBI, CT, Filename, Metron
     month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
+
+
+class PagesField(DictField):  # CIX ONLY, CT
+    """ComicInfo Pages."""
+
+    def __init__(self, *args, keys_as_string=False, **kwargs):
+        """ComicInfo Pages with keys_as_string option."""
+        super().__init__(
+            *args,
+            keys=IntegerField(minimum=0, as_string=keys_as_string),
+            values=Nested(PageInfoSchema),
+            case_insensitive=False,
+            **kwargs,
+        )
 
 
 class ComicboxSubSchemaMixin(IdentifiedSchema):
     """Mixin for Comicbox Sub Schemas."""
 
     age_rating = AgeRatingField()  # CIX, Metron
-    alternate_images = StringSetField()  # CT
+    alternate_images = StringSetField()  # CT ONLY
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
     characters = SimpleNamedDictField()  # Comet, CIX, CT, Metron
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
-    credit_primaries = DictField(values=DictField)  # CBI
+    credit_primaries = DictField(values=DictField)  # CBI ONLY
     country = CountryField()  # CBI, CIX, CT, Metron
-    collection_title = StringField()  # Metron
-    cover_image = StringField()  # Comet, CT
+    collection_title = StringField()  # Metron ONLY
+    cover_image = StringField()  # Comet ONLY, CT
     critical_rating = DecimalField(places=2)  # CBI, CIX
     date = Nested(DateSchema)
-    ext = StringField()  # Filename
+    ext = StringField()  # Filename ONLY
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron
     genres = SimpleNamedDictField()  # Comet, CBI, CIX, CT, Metron, PDF
     # identifiers from parent # Comet, CBI, CIX, CT, Metron,
@@ -323,17 +332,13 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     issue = Nested(IssueSchema)  # ALL
     imprint = SimpleNamedNestedField()  # CIX, CT, Metron
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
-    last_mark = IntegerField(minimum=0)  # Comet, CT
+    last_mark = IntegerField(minimum=0)  # Comet ONLY, CT
     locations = SimpleNamedDictField()  # CIX, CT, Metron
-    manga = ComicInfoMangaField()  # CIX
-    monochrome = BooleanField()  # CIX, CT
+    manga = ComicInfoMangaField()  # CIX ONLY
+    monochrome = BooleanField()  # CIX ONLY, CT
     notes = StringField()  # CT, Metron, CIX
     page_count = IntegerField(minimum=0)  # CIX, Comet, Metron, CBI
-    pages = DictField(  # CIX, CT
-        keys=IntegerField(minimum=0),
-        values=Nested(PageInfoSchema),
-        case_insensitive=False,
-    )
+    pages = PagesField()  # CIX ONLY, CT
     publisher = SimpleNamedNestedField()  # Comet, CIX, CT, Metron
     prices = DictField(  # Comet, CT, Metron
         keys=CountryField(allow_empty=True),
@@ -341,9 +346,9 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         allow_empty_keys=True,
         sort=False,
     )
-    protagonist = StringField()  # CIX
-    reading_direction = ReadingDirectionField()  # Comet
-    remainders = StringListField()  # Filename
+    protagonist = StringField()  # CIX ONLY
+    reading_direction = ReadingDirectionField()  # Comet ONLY
+    remainders = StringListField()  # Filename ONLY
     reprints = ListField(  # Comet, CIX, CT, Metron
         Nested(ReprintSchema),
         sort_keys=(
@@ -356,19 +361,19 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
             "issue",
         ),
     )
-    review = StringField()  # CIX
-    rights = StringField()  # Comet
+    review = StringField()  # CIX ONLY
+    rights = StringField()  # Comet ONLY
     scan_info = StringField()  # CIX, Filename, PDF
     series = SimpleNamedNestedField(
         schema=SeriesSchema
     )  # Comet, CBI, CIX, Filename, Metron
-    series_groups = StringSetField()  # CIX, CT
+    series_groups = StringSetField()  # CIX ONLY, CT
     stories = SimpleNamedDictField(sort=False)  # CBI, CT, Metron, PDF
     summary = StringField()  # Comet, CIX, CT, CBI, Metron
     tagger = StringField()  # CBI, PDF
     tags = SimpleNamedDictField()  # CBI, CT, Metron
     teams = SimpleNamedDictField()  # CIX, Metron, CT
-    universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron
+    universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
     updated_at = DateTimeField()  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
         schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int
