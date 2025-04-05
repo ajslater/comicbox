@@ -37,9 +37,11 @@ READ_METADATA = MappingProxyType(
                 "number": Decimal("1"),
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "year": 1950,
-            "month": 11,
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",

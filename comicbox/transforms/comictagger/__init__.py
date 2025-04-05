@@ -6,12 +6,10 @@ from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COUNTRY_KEY,
-    DAY_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
     MONOCHROME_KEY,
-    MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
@@ -20,7 +18,6 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
-    YEAR_KEY,
 )
 from comicbox.schemas.comictagger import (
     STORY_ARC_TAG,
@@ -32,7 +29,12 @@ from comicbox.transforms.comicbookinfo.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import (
+    DAY_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    MONTH_KEYPATH,
+    YEAR_KEYPATH,
+)
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -101,7 +103,7 @@ SIMPLE_KEY_MAP = frozenbidict(
     {
         "black_and_white": MONOCHROME_KEY,
         "country": COUNTRY_KEY,
-        "day": DAY_KEY,
+        "day": DAY_KEYPATH,
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
         "imprint": IMPRINT_NAME_KEY_PATH,
@@ -109,14 +111,14 @@ SIMPLE_KEY_MAP = frozenbidict(
         "issue_count": ISSUE_COUNT_KEY_PATH,
         "language": LANGUAGE_KEY,
         "maturity_rating": AGE_RATING_KEY,
-        "month": MONTH_KEY,
+        "month": MONTH_KEYPATH,
         "notes": NOTES_KEY,
         "page_count": PAGE_COUNT_KEY,
         "publisher": PUBLISHER_NAME_KEY_PATH,
         "series": SERIES_NAME_KEY_PATH,
         "volume_count": VOLUME_COUNT_KEY_PATH,
         "volume": VOLUME_NUMBER_KEY_PATH,
-        "year": YEAR_KEY,
+        "year": YEAR_KEYPATH,
     }
 )
 NAME_OBJ_KEY_MAP = frozenbidict(

@@ -11,9 +11,7 @@ from comicbox.fields.enum_fields import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from tests.util import (
-    TestParser,
-)
+from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
 READ_CONFIG = Namespace(comicbox=Namespace(read=["comet", "fn"], compute_pages=False))
@@ -31,7 +29,9 @@ METADATA = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
+            "date": {
+                "cover_date": datetime.strptime("1950-12-01", "%Y-%m-%d").date()  # noqa: DTZ007
+            },
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {

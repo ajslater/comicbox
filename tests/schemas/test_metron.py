@@ -42,7 +42,9 @@ READ_METADATA = MappingProxyType(
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},
             },
-            "date": date(year=1950, month=11, day=1),
+            "date": {
+                "cover_date": date(year=1950, month=11, day=1),
+            },
             "characters": {
                 "Captain Science": {},
                 "Gordon Dane": {},

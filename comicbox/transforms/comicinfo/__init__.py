@@ -12,13 +12,11 @@ from comicbox.schemas.comicbox import (
     CHARACTERS_KEY,
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
-    DAY_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
     MANGA_KEY,
     MONOCHROME_KEY,
-    MONTH_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
     PAGE_COUNT_KEY,
@@ -29,14 +27,18 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
-    YEAR_KEY,
 )
 from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.schemas.comicinfo_enum import ComicInfoRoleTagEnum
 from comicbox.schemas.metroninfo_enum import MetronRoleEnum
 from comicbox.schemas.role_enum import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import (
+    DAY_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    MONTH_KEYPATH,
+    YEAR_KEYPATH,
+)
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -174,13 +176,13 @@ SIMPLE_KEY_MAP = frozenbidict(
         "CommunityRating": CRITICAL_RATING_KEY,
         "Country": COUNTRY_KEY,
         "Count": ISSUE_COUNT_KEY_PATH,
-        "Day": DAY_KEY,
+        "Day": DAY_KEYPATH,
         "Format": ORIGINAL_FORMAT_KEY,
         "Imprint": IMPRINT_NAME_KEY_PATH,
         "LanguageISO": LANGUAGE_KEY,
         "MainCharacterOrTeam": PROTAGONIST_KEY,
         "Manga": MANGA_KEY,
-        "Month": MONTH_KEY,
+        "Month": MONTH_KEYPATH,
         "Notes": NOTES_KEY,
         "Number": ISSUE_NAME_KEYPATH,
         "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
@@ -190,7 +192,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Series": SERIES_NAME_KEY_PATH,
         "Summary": SUMMARY_KEY,
         "Volume": VOLUME_NUMBER_KEY_PATH,
-        "Year": YEAR_KEY,
+        "Year": YEAR_KEYPATH,
     }
 )
 NAME_OBJ_KEY_MAP = frozenbidict(

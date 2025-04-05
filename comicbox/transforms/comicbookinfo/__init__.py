@@ -6,16 +6,13 @@ from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
 from comicbox.schemas.comicbox import (
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
-    DAY_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
-    MONTH_KEY,
     PAGE_COUNT_KEY,
     SUMMARY_KEY,
     TAGGER_KEY,
     TAGS_KEY,
     UPDATED_AT_KEY,
-    YEAR_KEY,
     ComicboxSchemaMixin,
 )
 from comicbox.transforms.base import BaseTransform
@@ -29,7 +26,12 @@ from comicbox.transforms.comicbookinfo.credits import (
 #    issue_transform_from_cb,
 #    issue_transform_to_cb,
 # ) TODO remove
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import (
+    DAY_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    MONTH_KEYPATH,
+    YEAR_KEYPATH,
+)
 from comicbox.transforms.comicbox.name_objs import name_obj_from_cb, name_obj_to_cb
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
@@ -67,9 +69,9 @@ SIMPLE_KEYPATHS = frozenbidict(
         "numberOfIssues": ISSUE_COUNT_KEY_PATH,
         "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
         "pages": PAGE_COUNT_KEY,
-        "publicationDay": DAY_KEY,
-        "publicationMonth": MONTH_KEY,
-        "publicationYear": YEAR_KEY,
+        "publicationDay": DAY_KEYPATH,
+        "publicationMonth": MONTH_KEYPATH,
+        "publicationYear": YEAR_KEYPATH,
         "publisher": PUBLISHER_NAME_KEY_PATH,
         "rating": CRITICAL_RATING_KEY,
         "series": SERIES_NAME_KEY_PATH,

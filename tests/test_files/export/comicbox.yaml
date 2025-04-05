@@ -15,7 +15,10 @@ comicbox:
       roles:
         Inker: {}
         Penciller: {}
-  day: 1
+  date:
+    day: 1
+    month: 11
+    year: 1950
   ext: cbz
   genres:
     Science Fiction: {}
@@ -30,7 +33,6 @@ comicbox:
     name: '1'
     number: 1.00
   language: en
-  month: 11
   notes: Tagged with comicbox dev on 2025-03-02T01:38:25 [Issue ID 145269] urn:comicvine:145269
   page_count: 0
   publisher:
@@ -44,5 +46,3 @@ comicbox:
   volume:
     issue_count: 7
     number: 1950
-  year: 1950
-

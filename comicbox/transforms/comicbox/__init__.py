@@ -4,9 +4,15 @@ from types import MappingProxyType
 
 from comicbox.schemas.comicbox import (
     APP_ID_KEY,
+    COVER_DATE_KEY,
+    DATE_KEY,
+    DAY_KEY,
     ISSUE_KEY,
+    MONTH_KEY,
     NAME_KEY,
+    STORE_DATE_KEY,
     TAGGER_KEY,
+    YEAR_KEY,
     ComicboxSchemaMixin,
 )
 from comicbox.transforms.base import BaseTransform
@@ -17,6 +23,11 @@ from comicbox.transforms.spec import (
 )
 
 ISSUE_NAME_KEYPATH = f"{ISSUE_KEY}.{NAME_KEY}"
+COVER_DATE_KEYPATH = f"{DATE_KEY}.{COVER_DATE_KEY}"
+STORE_DATE_KEYPATH = f"{DATE_KEY}.{STORE_DATE_KEY}"
+YEAR_KEYPATH = f"{DATE_KEY}.{YEAR_KEY}"
+MONTH_KEYPATH = f"{DATE_KEY}.{MONTH_KEY}"
+DAY_KEYPATH = f"{DATE_KEY}.{DAY_KEY}"
 _TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{TAGGER_KEY}"
 
 TOP_KEY_MAP = MappingProxyType(

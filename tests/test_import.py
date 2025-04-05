@@ -31,7 +31,7 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "cover_image": "CaptainScience#1_01.jpg",
-            "date": date(1950, 12, 1),
+            "date": {"cover_date": date(1950, 12, 1)},
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
@@ -73,7 +73,10 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
+            "date": {
+                "year": 1950,
+                "month": 11,
+            },
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
@@ -81,7 +84,6 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
-            "year": 1950,
         },
         "comic-book-info-example.json": {
             "country": "US",
@@ -99,7 +101,10 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 9,
+            "date": {
+                "month": 9,
+                "year": 1986,
+            },
             "page_count": 0,
             "publisher": {"name": "DC Comics"},
             "critical_rating": Decimal(5),
@@ -110,7 +115,6 @@ FNS = MappingProxyType(
             "tagger": "ComicBookLover/888",
             "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=tzutc()),
             "volume": {"issue_count": 12, "number": 1},
-            "year": 1986,
         },
         "comicbox-filename.txt": {
             "series": {"name": "Captain Science"},
@@ -118,7 +122,9 @@ FNS = MappingProxyType(
                 "name": "001",
                 "number": Decimal("1"),
             },
-            "year": 1950,
+            "date": {
+                "year": 1950,
+            },
             "stories": {"The Beginning - nothing": {}},
             "ext": "cbz",
         },
@@ -128,7 +134,11 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
@@ -142,7 +152,6 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": "Tagged with comicbox dev on "
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
@@ -191,7 +200,6 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
-            "year": 1950,
         },
         "comicbox.yaml": {
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
@@ -259,7 +267,11 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
@@ -273,7 +285,6 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": "Tagged with comicbox dev on "
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
@@ -325,7 +336,6 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
-            "year": 1950,
         },
         "comicinfo-metron-origin.xml": {
             "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
@@ -334,7 +344,11 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
@@ -352,7 +366,6 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": "Tagged with Comictagger on "
             "1970-01-01T00:00:00 using info from Metron [Issue ID 145269] "
             "[CVDB145269]",
@@ -404,7 +417,6 @@ FNS = MappingProxyType(
             "tagger": "Comictagger",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
-            "year": 1950,
         },
         "comictagger.json": {
             "credits": {
@@ -412,7 +424,11 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
@@ -430,7 +446,6 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": "Tagged with comicbox dev on "
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
@@ -441,7 +456,6 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0),
             "volume": {"issue_count": 7, "number": 1950},
-            "year": 1950,
         },
         "metroninfo.xml": {
             "age_rating": "Teen Plus",
@@ -452,7 +466,7 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "date": date(1950, 11, 1),
+            "date": {"cover_date": date(1950, 11, 1)},
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
@@ -589,7 +603,10 @@ FNS = MappingProxyType(
                 "Richard Friend": {"roles": {"Cover": {}}},
                 "Scott Williams": {"roles": {"Cover": {}, "Inker": {}}},
             },
-            "date": date(2011, 10, 1),
+            "date": {
+                "cover_date": date(2011, 10, 1),
+                "store_date": date(2011, 8, 31),
+            },
             "ext": "cbz",
             "genres": {
                 "Crime": {},
@@ -693,7 +710,6 @@ FNS = MappingProxyType(
                 "start_year": 1970,
                 "volume_count": 3,
             },
-            "store_date": date(2011, 8, 31),
             "stories": {
                 "Justice League, Part One": {
                     "identifiers": {

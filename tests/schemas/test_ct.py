@@ -25,6 +25,11 @@ READ_METADATA = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "series": {"name": "Captain Science"},
             "identifiers": {
                 "comicvine": {
@@ -41,10 +46,7 @@ READ_METADATA = MappingProxyType(
                 "url": "https://comicvine.gamespot.com/",
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "month": 11,
             "notes": TEST_READ_NOTES,
-            "year": 1950,
-            "day": 1,
             "genres": {"Science Fiction": {}},
             "volume": {"number": 1950, "issue_count": 7},
             "language": "en",

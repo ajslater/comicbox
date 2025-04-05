@@ -5,10 +5,8 @@ from bidict import frozenbidict
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     COLLECTION_TITLE_KEY,
-    DATE_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
-    STORE_DATE_KEY,
     SUMMARY_KEY,
     UPDATED_AT_KEY,
 )
@@ -16,7 +14,11 @@ from comicbox.schemas.metroninfo import (
     MetronInfoSchema,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import (
+    COVER_DATE_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    STORE_DATE_KEYPATH,
+)
 from comicbox.transforms.metroninfo.credits import (
     METRON_CREDITS_TRANSFORM_TO_CB,
     metron_credits_from_cb,
@@ -64,8 +66,8 @@ SIMPLE_KEY_MAP = frozenbidict(
     {
         "AgeRating": AGE_RATING_KEY,
         "CollectionTitle": COLLECTION_TITLE_KEY,
-        "CoverDate": DATE_KEY,
-        "StoreDate": STORE_DATE_KEY,
+        "CoverDate": COVER_DATE_KEYPATH,
+        "StoreDate": STORE_DATE_KEYPATH,
         "Notes": NOTES_KEY,
         "Number": ISSUE_NAME_KEYPATH,
         "PageCount": PAGE_COUNT_KEY,

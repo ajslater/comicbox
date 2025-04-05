@@ -15,7 +15,6 @@ from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COVER_IMAGE_KEY,
-    DATE_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
     LAST_MARK_KEY,
@@ -33,7 +32,7 @@ from comicbox.transforms.comet.reprints import (
     comet_reprints_transform_from_cb,
     comet_reprints_transform_to_cb,
 )
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import COVER_DATE_KEYPATH, ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
@@ -146,7 +145,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 SIMPLE_KEYMAP = frozenbidict(
     {
         "coverImage": COVER_IMAGE_KEY,
-        "date": DATE_KEY,
+        "date": COVER_DATE_KEYPATH,
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
         "issue": ISSUE_NAME_KEYPATH,

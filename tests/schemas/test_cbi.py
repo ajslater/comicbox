@@ -30,7 +30,10 @@ METADATA = MappingProxyType(
                 "number": Decimal(1),
             },
             "language": "en",
-            "month": 11,
+            "date": {
+                "year": 1950,
+                "month": 11,
+            },
             "page_count": 36,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
@@ -41,7 +44,6 @@ METADATA = MappingProxyType(
                 "issue_count": 7,
                 "number": 1950,
             },
-            "year": 1950,
         }
     }
 )

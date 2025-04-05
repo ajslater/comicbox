@@ -43,6 +43,7 @@ COMMUNITY_RATING_KEY = "community_rating"
 CRITICAL_RATING_KEY = "critical_rating"
 COUNTRY_KEY = "country"
 COVER_IMAGE_KEY = "cover_image"
+COVER_DATE_KEY = "cover_date"
 DATE_KEY = "date"
 DAY_KEY = "day"
 DESIGNATION_KEY = "designation"
@@ -288,6 +289,16 @@ class ArcSchema(BaseSubSchema):
     number = IntegerField()
 
 
+class DateSchema(BaseSubSchema):
+    """Date Schema."""
+
+    cover_date = DateField()  # Comet, PDF, Metron
+    store_date = DateField()  # Metron
+    year = IntegerField()  # CIX, CBI, CT, Filename, Metron
+    month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
+    day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
+
+
 class ComicboxSubSchemaMixin(IdentifiedSchema):
     """Mixin for Comicbox Sub Schemas."""
 
@@ -303,8 +314,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     collection_title = StringField()  # Metron
     cover_image = StringField()  # Comet, CT
     critical_rating = DecimalField(places=2)  # CBI, CIX
-    date = DateField()  # PDF, Metron
-    day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
+    date = Nested(DateSchema)
     ext = StringField()  # Filename
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron
     genres = SimpleNamedDictField()  # Comet, CBI, CIX, CT, Metron, PDF
@@ -316,7 +326,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     last_mark = IntegerField(minimum=0)  # Comet, CT
     locations = SimpleNamedDictField()  # CIX, CT, Metron
     manga = ComicInfoMangaField()  # CIX
-    month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     monochrome = BooleanField()  # CIX, CT
     notes = StringField()  # CT, Metron, CIX
     page_count = IntegerField(minimum=0)  # CIX, Comet, Metron, CBI
@@ -354,7 +363,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         schema=SeriesSchema
     )  # Comet, CBI, CIX, Filename, Metron
     series_groups = StringSetField()  # CIX, CT
-    store_date = DateField()  # Metron
     stories = SimpleNamedDictField(sort=False)  # CBI, CT, Metron, PDF
     summary = StringField()  # Comet, CIX, CT, CBI, Metron
     tagger = StringField()  # CBI, PDF
@@ -365,7 +373,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
         schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int
     )
-    year = IntegerField()  # CIX, CBI, CT, Filename, Metron
 
 
 class ComicboxSchemaMixin:

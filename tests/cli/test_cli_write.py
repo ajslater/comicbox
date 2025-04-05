@@ -100,7 +100,11 @@ DELETE_KEYS_MD = MappingProxyType(
                 "j": {"number": 13},
             },
             "characters": {"COMET": {}, "Captain Science": {}, "Gordon Dane": {}},
-            "day": 1,
+            "date": {
+                "month": 11,
+                "year": 591,
+                "day": 1,
+            },
             "genres": {
                 "Comic Info Genre": {},
                 "Science Fiction": {},
@@ -118,7 +122,6 @@ DELETE_KEYS_MD = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": "Tagged with comicbox dev on "
             "1970-01-01T00:00:00 [Issue ID 145269] "
             "[CVDB145269]",
@@ -132,7 +135,6 @@ DELETE_KEYS_MD = MappingProxyType(
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": datetime(1970, 1, 1, 0, 0),  # noqa: DTZ001
             "volume": {"issue_count": 77, "number": 999},
-            "year": 591,
         }
     }
 )

@@ -7,6 +7,8 @@ from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     IDENTIFIER_PARTS_MAP,
     NID_ORDER,
+    NSS_KEY,
+    URL_KEY,
     create_identifier,
 )
 from comicbox.schemas.comicbox import (
@@ -14,7 +16,6 @@ from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     NID_KEY,
 )
-from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.transforms.spec import MetaSpec
 from comicbox.urns import (
     parse_string_identifier,

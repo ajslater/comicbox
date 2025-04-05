@@ -10,6 +10,8 @@ from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers import (
     COMICVINE_NID,
     NID_ORIGIN_MAP,
+    NSS_KEY,
+    URL_KEY,
     create_identifier,
 )
 from comicbox.schemas.comicbox import (
@@ -22,7 +24,6 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.urns import (
     IDENTIFIER_EXP,

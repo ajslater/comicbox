@@ -11,7 +11,9 @@ from comicbox.identifiers import (
     IDENTIFIER_PARTS_MAP,
     ISBN_NID,
     NID_ORIGIN_MAP,
+    NSS_KEY,
     UPC_NID,
+    URL_KEY,
     create_identifier,
 )
 from comicbox.merge import AdditiveMerger
@@ -20,7 +22,6 @@ from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     NID_KEY,
 )
-from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
 from comicbox.transforms.identifiers import (
     PRIMARY_NID_KEYPATH,
     create_identifier_primary_source,

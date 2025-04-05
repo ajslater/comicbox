@@ -37,7 +37,10 @@ METADATA = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
+            "date": {
+                "month": 11,
+                "year": 1950,
+            },
             "notes": f"Tagged with comicbox dev on {TEST_DTTM_STR}",
             "page_count": 36,
             "pages": {
@@ -82,7 +85,6 @@ METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "volume": {"number": 1950, "issue_count": 7},
-            "year": 1950,
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DATETIME,

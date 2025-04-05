@@ -24,6 +24,8 @@ from comicbox.formats import MetadataFormats
 from comicbox.identifiers import (
     COMICVINE_NID,
     NID_ORDER,
+    NSS_KEY,
+    URL_KEY,
     create_identifier,
 )
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
@@ -45,10 +47,6 @@ from comicbox.schemas.comicbox import (
     TAGS_KEY,
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
-)
-from comicbox.schemas.comicbox.identifier import (
-    NSS_KEY,
-    URL_KEY,
 )
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
 from comicbox.schemas.yaml import ALL_NONE_KEYS

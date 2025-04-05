@@ -14,11 +14,10 @@ from comicbox.schemas.comicbox import (
     ORIGINAL_FORMAT_KEY,
     REMAINDERS_KEY,
     SCAN_INFO_KEY,
-    YEAR_KEY,
 )
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH, YEAR_KEYPATH
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEY_PATH,
     SERIES_NAME_KEY_PATH,
@@ -44,7 +43,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "series": SERIES_NAME_KEY_PATH,
         "scan_info": SCAN_INFO_KEY,
         "volume": VOLUME_NUMBER_KEY_PATH,
-        "year": YEAR_KEY,
+        "year": YEAR_KEYPATH,
     }
 )
 

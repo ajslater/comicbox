@@ -6,6 +6,8 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
+from glom import glom
+
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
@@ -25,7 +27,9 @@ SUB_DATA: Mapping[str, Any] = {
     },
     "series": {"name": "Captain Science"},
     "stories": {"The Beginning - nothing": {}},
-    "year": 1950,
+    "date": {
+        "year": 1950,
+    },
 }
 METADATA = MappingProxyType({ComicboxSchemaMixin.ROOT_TAG: SUB_DATA})
 FILENAME_DICT = MappingProxyType(
@@ -41,11 +45,11 @@ FILENAME_DICT = MappingProxyType(
 )
 
 FILENAME_STR = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']['name']} ({SUB_DATA['year']})"
+    f"{glom(SUB_DATA, 'series.name')} #{glom(SUB_DATA, 'issue.name')} ({glom(SUB_DATA, 'date.year')})"
     f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 FILENAME_STR_NO_REMAINDER = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']['name']} ({SUB_DATA['year']})"
+    f"{glom(SUB_DATA, 'series.name')} #{glom(SUB_DATA, 'issue.name')} ({glom(SUB_DATA, 'date.year')})"
     f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 

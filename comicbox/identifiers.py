@@ -7,8 +7,6 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox.identifier import NSS_KEY, URL_KEY
-
 # Should be an enum?
 ANILIST_NID = "anilist"
 ASIN_NID = "asin"
@@ -25,6 +23,8 @@ MARVEL_NID = "marvel"
 METRON_NID = "metron"
 MYANIMELIST_NID = "myanimelist"
 UPC_NID = "upc"
+NSS_KEY = "nss"
+URL_KEY = "url"
 
 SLUG_REXP = r"(?:/\S*)?"
 COMICVINE_LONG_NSS_EXP = r"(?P<nsstype>\d{4})-(?P<nss>\d+)"

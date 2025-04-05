@@ -50,7 +50,11 @@ TEMPLATE_MD = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
@@ -64,7 +68,6 @@ TEMPLATE_MD = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
             "pages": {
@@ -113,7 +116,6 @@ TEMPLATE_MD = MappingProxyType(
             "tagger": f"comicbox {VERSION}",
             "updated_at": TEST_DATETIME,
             "volume": {"number": 1950, "issue_count": 7},
-            "year": 1950,
         }
     }
 )
@@ -179,7 +181,9 @@ PDF_MD = MappingProxyType(
 
 CB7_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
-        "date": date(1950, 11, 1),
+        "date": {
+            "cover_date": date(1950, 11, 1),
+        },
         "ext": "cb7",
         "page_count": 5,
         "identifier_primary_source": {

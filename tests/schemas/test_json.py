@@ -35,9 +35,11 @@ READ_METADATA = MappingProxyType(
                 "number": Decimal("1"),
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "month": 11,
-            "year": 1950,
-            "day": 1,
+            "date": {
+                "month": 11,
+                "year": 1950,
+                "day": 1,
+            },
             "genres": {"Science Fiction": {}},
             "volume": {
                 "number": 1950,
@@ -104,7 +106,11 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "day": 1,
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -117,7 +123,6 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "month": 11,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
             "publisher": {"name": "Youthful Adventure Stories"},
@@ -129,7 +134,6 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "number": 1950,
                 "issue_count": 7,
             },
-            "year": 1950,
             "pages": {
                 "0": {
                     "page_type": PageTypeEnum.FRONT_COVER.value,
