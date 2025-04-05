@@ -8,12 +8,11 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.pycountry import LanguageField
 from comicbox.fields.xml_fields import XmlEnumField, XmlListField, XmlStringField
-from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.enums.maps import METRON_FORMAT_MAP
 from comicbox.schemas.enums.metroninfo import MetronFormatEnum
 from comicbox.schemas.metroninfo.identifiers import MetronIdentifiedNameSchema
 from comicbox.schemas.metroninfo.resource import metron_resource_field
-from comicbox.schemas.xml_schemas import create_sub_tag_field
+from comicbox.schemas.xml_schemas import XmlSubSchema, create_sub_tag_field
 
 
 class MetronPublisherSchema(MetronIdentifiedNameSchema):
@@ -29,10 +28,10 @@ class MetronFormatField(XmlEnumField):
     ENUM_ALIAS_MAP = METRON_FORMAT_MAP
 
 
-class MetronNameSchema(BaseSubSchema):
+class MetronNameSchema(XmlSubSchema):
     """Metron Alternative Name Schema."""
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """XML Attributes."""
 
         include = MappingProxyType(

@@ -23,12 +23,17 @@ from comicbox.fields.xml_fields import (
     XmlStringSetField,
     XmlYesNoField,
 )
-from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.enums.comicinfo import (
     ComicInfoAgeRatingEnum,
 )
 from comicbox.schemas.enums.maps import COMICINFO_AGE_RATING_MAP
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema, create_sub_tag_field
+from comicbox.schemas.xml_schemas import (
+    XSI_SCHEMA_LOCATION_KEY,
+    XmlSchema,
+    XmlSubHeadSchema,
+    XmlSubSchema,
+    create_sub_tag_field,
+)
 
 ALTERNATE_SERIES_TAG = "AlternateSeries"
 ALTERNATE_NUMBER_TAG = "AlternateNumber"
@@ -97,10 +102,10 @@ class AgeRatingField(XmlEnumField):
     ENUM_ALIAS_MAP = COMICINFO_AGE_RATING_MAP
 
 
-class XmlPageInfoSchema(BaseSubSchema):
+class XmlPageInfoSchema(XmlSubSchema):
     """ComicPageInfo Structure for ComicInfo.xml."""
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """Illegal Field Names."""
 
         include = MappingProxyType(
@@ -117,7 +122,7 @@ class XmlPageInfoSchema(BaseSubSchema):
         )
 
 
-class ComicInfoSubSchema(XmlSubSchema):
+class ComicInfoSubSchema(XmlSubHeadSchema):
     """ComicInfo.xml Sub Schema."""
 
     # ComicInfo.xsd specifies this tag order
@@ -172,7 +177,7 @@ class ComicInfoSubSchema(XmlSubSchema):
     Review = XmlStringField()
     GTIN = XmlStringSetField(as_string=True)
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""
 
         include = MappingProxyType(
@@ -180,7 +185,7 @@ class ComicInfoSubSchema(XmlSubSchema):
                 "@xmlns:comicinfo": Constant(
                     "https://anansi-project.github.io/docs/comicinfo/"
                 ),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
+                XSI_SCHEMA_LOCATION_KEY: Constant(
                     "https://anansi-project.github.io/docs/comicinfo/ https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
                 ),
             }

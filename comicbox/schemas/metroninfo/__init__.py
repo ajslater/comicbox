@@ -36,8 +36,9 @@ from comicbox.schemas.metroninfo.publishing import (
 )
 from comicbox.schemas.metroninfo.resource import metron_resource_list_field
 from comicbox.schemas.xml_schemas import (
+    XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
-    XmlSubSchema,
+    XmlSubHeadSchema,
     create_sub_tag_field,
     xml_list_polyfield,
 )
@@ -76,7 +77,7 @@ class MetronUniverseSchema(MetronIdentifiedNameSchema):
     Designation = XmlStringField()
 
 
-class MetronInfoSubSchema(XmlSubSchema):
+class MetronInfoSubSchema(XmlSubHeadSchema):
     """MetronInfo.xml Sub Schema."""
 
     IDS = create_sub_tag_field(
@@ -124,7 +125,7 @@ class MetronInfoSubSchema(XmlSubSchema):
     )
     LastModified = XmlDateTimeField()
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema Options."""
 
         include = MappingProxyType(
@@ -132,7 +133,7 @@ class MetronInfoSubSchema(XmlSubSchema):
                 "@xmlns:metroninfo": Constant(
                     "https://metron-project.github.io/docs/metroninfo/schemas/v1.0"
                 ),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
+                XSI_SCHEMA_LOCATION_KEY: Constant(
                     "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd"
                 ),
             }

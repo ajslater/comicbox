@@ -18,7 +18,12 @@ from comicbox.fields.xml_fields import (
 )
 from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import (
+    XSI_SCHEMA_LOCATION_KEY,
+    XmlSchema,
+    XmlSubHeadSchema,
+    XmlSubSchema,
+)
 
 
 class MuPDFSubSchema(JsonSubSchema):
@@ -65,10 +70,10 @@ class PDFSubSchema(BaseSubSchema):
         )
 
 
-class PDFRDFDescriptionSchema(BaseSubSchema):
+class PDFRDFDescriptionSchema(XmlSubSchema):
     """PDF RDF Description Schema."""
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """Schema options."""
 
         include = MappingProxyType(
@@ -79,10 +84,10 @@ class PDFRDFDescriptionSchema(BaseSubSchema):
         )
 
 
-class PDFXMPMetaSchema(XmlSubSchema):
+class PDFXMPMetaSchema(XmlSubHeadSchema):
     """PDF XMP Meta Schema."""
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""
 
         include = MappingProxyType(
@@ -91,9 +96,7 @@ class PDFXMPMetaSchema(XmlSubSchema):
                     "Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21"
                 ),
                 "@xmlns:x": Constant("adobe:ns:meta/"),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "http://ns.adobe.com/pdf/1.3/"
-                ),
+                XSI_SCHEMA_LOCATION_KEY: Constant("http://ns.adobe.com/pdf/1.3/"),
                 "rdf:RDF": Nested(PDFRDFDescriptionSchema),
             }
         )

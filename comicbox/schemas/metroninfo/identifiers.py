@@ -8,20 +8,20 @@ from comicbox.fields.xml_fields import (
     XmlEnumField,
     XmlStringField,
 )
-from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.enums.metroninfo import MetronSourceEnum
+from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronIDAttrField(StringField):
     """Metron ID Field."""
 
 
-class MetronIdentifiedNameSchema(BaseSubSchema):
+class MetronIdentifiedNameSchema(XmlSubSchema):
     """Metron Schema with a Name and @id."""
 
     Name = XmlStringField(required=True)
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """XML Attributes."""
 
         include = MappingProxyType({"@id": MetronIDAttrField()})
@@ -33,10 +33,10 @@ class MetronSourceField(XmlEnumField):
     ENUM = MetronSourceEnum
 
 
-class MetronPrimaryAttrSchema(BaseSubSchema):
+class MetronPrimaryAttrSchema(XmlSubSchema):
     """Metron URL Schema."""
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """Attributes."""
 
         include = MappingProxyType(
@@ -66,7 +66,7 @@ class MetronURLSchema(MetronPrimaryAttrSchema):
     SUPRESS_ERRORS = False  # So the union fails over
 
 
-class MetronGTINSchema(BaseSubSchema):
+class MetronGTINSchema(XmlSubSchema):
     """Metron GTIN Schema."""
 
     ISBN = XmlStringField()

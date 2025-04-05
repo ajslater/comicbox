@@ -16,13 +16,17 @@ from comicbox.fields.xml_fields import (
     XmlStringField,
     XmlStringSetField,
 )
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import (
+    XSI_SCHEMA_LOCATION_KEY,
+    XmlSchema,
+    XmlSubHeadSchema,
+)
 
 IDENTIFIER_TAG = "identifier"
 IS_VERSION_OF_TAG = "isVersionOf"
 
 
-class CoMetSubSchema(XmlSubSchema):
+class CoMetSubSchema(XmlSubHeadSchema):
     """CoMet Sub Schema."""
 
     character = XmlStringSetField()
@@ -55,13 +59,13 @@ class CoMetSubSchema(XmlSubSchema):
     penciller = XmlStringSetField()
     writer = XmlStringSetField()
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema Options."""
 
         include = MappingProxyType(
             {
                 "@xmlns:comet": Constant("http://www.denvog.com/comet/"),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
+                XSI_SCHEMA_LOCATION_KEY: Constant(
                     "http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd"
                 ),
                 "format": XmlStringField(),

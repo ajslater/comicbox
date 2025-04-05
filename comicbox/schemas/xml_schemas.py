@@ -12,6 +12,8 @@ from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 
+XSI_SCHEMA_LOCATION_KEY = "@xsi:schemaLocation"
+
 
 class XmlRenderModule:
     """Marshmallow Render Module imitates json module."""
@@ -33,12 +35,19 @@ class XmlRenderModule:
 
 
 class XmlSubSchema(BaseSubSchema, ABC):
-    """XML Sub Schema customizations."""
+    """XML Rendered Sub Schema."""
 
     class Meta(BaseSubSchema.Meta):
         """Schema Options."""
 
-        XSI_SCHEMA_LOCATION_KEY = "@xsi:schemaLocation"
+        render_module = XmlRenderModule
+
+
+class XmlSubHeadSchema(XmlSubSchema, ABC):
+    """XML Head Sub Schema customizations."""
+
+    class Meta(XmlSubSchema.Meta):
+        """Schema Options."""
 
         include = MappingProxyType(
             {
@@ -49,11 +58,10 @@ class XmlSubSchema(BaseSubSchema, ABC):
                 ),
             }
         )
-        render_module = XmlRenderModule
 
 
 class XmlSchema(BaseSchema, ABC):
-    """Xml Schema."""
+    """Xml Rendered Schema."""
 
     class Meta(BaseSchema.Meta):
         """Schema Options."""
