@@ -1,8 +1,6 @@
 """A class to encapsulate the ComicBookInfo data."""
 
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
-from enum import Enum
-from logging import getLogger
 from types import MappingProxyType
 
 from marshmallow import Schema
@@ -15,8 +13,6 @@ from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateTimeField
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
-LOG = getLogger(__name__)
-
 LAST_MODIFIED_TAG = "lastModified"
 ROLE_TAG = "role"
 PERSON_TAG = "person"
@@ -24,24 +20,8 @@ CREDITS_TAG = "credits"
 PRIMARY_TAG = "primary"
 
 
-class ComicBookInfoRoleEnum(Enum):
-    """ComicBookInfo Roles."""
-
-    # Common but not restricted to
-    ARTIST = "Artist"
-    COLORER = "Colorer"
-    COVER_ARTIST = "Cover Artist"
-    EDITOR = "Editor"
-    INKER = "Inker"
-    LETTERER = "Letterer"
-    OTHER = "Other"
-    PENCILLER = "Penciller"
-    TRANSLATOR = "Translator"
-    WRITER = "Writer"
-
-
 class ComicBookInfoCreditSchema(Schema):
-    """ComicBookInfo Credit Dict Schema."""
+    """ComicBookInfo Credit Schema."""
 
     person = StringField()
     primary = BooleanField()

@@ -2,7 +2,6 @@
 # http://www.denvog.com/comet/comet-specification/
 
 from decimal import Decimal
-from enum import Enum
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
@@ -21,19 +20,6 @@ from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
 
 IDENTIFIER_TAG = "identifier"
 IS_VERSION_OF_TAG = "isVersionOf"
-
-
-class CoMetRoleTagEnum(Enum):
-    """Comet Role tags."""
-
-    COLORIST = "colorist"
-    COVER_DESIGNER = "colorDesigner"
-    CREATOR = "creator"
-    EDITOR = "editor"
-    INKER = "inker"
-    LETTERER = "letterer"
-    PENCILLER = "penciller"
-    WRITER = "writer"
 
 
 class CoMetSubSchema(XmlSubSchema):

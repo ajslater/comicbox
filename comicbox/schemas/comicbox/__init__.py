@@ -27,8 +27,8 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.comet import CoMetRoleTagEnum
-from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.schemas.enums.comet import CoMetRoleTagEnum
+from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleEnum

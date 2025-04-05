@@ -1,10 +1,10 @@
 """Author to Credits transforms."""
 
-from comicbox.schemas.comet import CoMetRoleTagEnum
 from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )
+from comicbox.schemas.enums.comet import CoMetRoleTagEnum
 from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum

@@ -6,12 +6,12 @@ from types import MappingProxyType
 from glom import Assign, glom
 
 from comicbox.fields.enum_fields import EnumField
-from comicbox.schemas.comet import CoMetRoleTagEnum
-from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )
+from comicbox.schemas.enums.comet import CoMetRoleTagEnum
+from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum

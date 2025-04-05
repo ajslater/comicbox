@@ -49,6 +49,7 @@ class XmlSubSchema(BaseSubSchema, ABC):
                 ),
             }
         )
+        render_module = XmlRenderModule
 
 
 class XmlSchema(BaseSchema, ABC):

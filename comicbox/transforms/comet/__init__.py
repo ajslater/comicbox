@@ -6,11 +6,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.identifiers import COMICVINE_NID
-from comicbox.schemas.comet import (
-    CoMetRoleTagEnum,
-    CoMetSchema,
-)
-from comicbox.schemas.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     BOOKMARK_KEY,
@@ -24,6 +20,8 @@ from comicbox.schemas.comicbox import (
     RIGHTS_KEY,
     SUMMARY_KEY,
 )
+from comicbox.schemas.enums.comet import CoMetRoleTagEnum
+from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
