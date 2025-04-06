@@ -39,7 +39,6 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
                 merge_metadata(
                     merged_md,
                     computed_data.metadata,
-                    self._config,
                     computed_data.merger,
                 )
         self._set_computed_merged_metadata_delete(merged_md)

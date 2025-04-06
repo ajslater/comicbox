@@ -27,21 +27,12 @@ def _get_always_replace_dict(merger, md_sub_data):
     return replace_dict
 
 
-def merge_metadata(
-    base_md: MutableMapping,
-    new_md: Mapping,
-    config,
-    merger: type[Merger] | None = None,
-):
+def merge_metadata(base_md: MutableMapping, new_md: Mapping, merger: type[Merger]):
     """Merge a dict into another."""
     base_sub_md = base_md[ComicboxSchemaMixin.ROOT_TAG]
     new_sub_md = new_md.get(ComicboxSchemaMixin.ROOT_TAG)
     if not new_sub_md:
         return
-
-    # TODO passing in strategy and config blows.
-    if not merger:
-        merger = ReplaceMerger if config.replace_metadata else AdditiveMerger
 
     # Pop off the always replace dict.
     replace_dict = _get_always_replace_dict(merger, new_sub_md)
