@@ -1,12 +1,8 @@
 """Mixin for Comicbox Schemas."""
 
 from decimal import Decimal
-from inspect import isclass
-from types import MappingProxyType
 
-from marshmallow import Schema
-from marshmallow.fields import Field, Nested
-from marshmallow_union import Union
+from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import (
     DictField,
@@ -14,12 +10,17 @@ from comicbox.fields.collection_fields import (
     StringListField,
     StringSetField,
 )
+from comicbox.fields.comicbox import (
+    NAME_KEY,  # noqa: F401
+    PagesField,
+    RoleField,
+    SimpleNamedDictField,
+    SimpleNamedNestedField,
+)
 from comicbox.fields.enum_fields import (
     AgeRatingField,
     ComicInfoMangaField,
     OriginalFormatField,
-    PageTypeField,
-    PrettifiedStringField,
     ReadingDirectionField,
 )
 from comicbox.fields.fields import StringField
@@ -27,11 +28,16 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
-from comicbox.schemas.enums.metroninfo import MetronRoleEnum
-from comicbox.schemas.enums.role import GenericRoleEnum
+from comicbox.schemas.comicbox.identifiers import (
+    IdentifiedSchema,
+    IdentifierPrimarySource,
+)
+from comicbox.schemas.comicbox.publishing import (
+    IssueSchema,
+    ReprintSchema,
+    SeriesSchema,
+    VolumeSchema,
+)
 
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
@@ -60,7 +66,6 @@ LOCATIONS_KEY = "locations"
 MANGA_KEY = "manga"
 MONTH_KEY = "month"
 MONOCHROME_KEY = "monochrome"
-NAME_KEY = "name"
 NUMBER_KEY = "number"
 NUMBER_TO_KEY = "number_to"
 NID_KEY = "nid"
@@ -111,158 +116,12 @@ WEB_KEY = "web"
 YEAR_KEY = "year"
 
 
-class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron
-    """Identifier schema."""
-
-    nss = StringField()
-    url = StringField()
-
-
-class IdentifiedSchema(BaseSubSchema):  # Metron ONLY
-    """Identified Schema."""
-
-    identifiers = DictField(values=Nested(IdentifierSchema))
-
-
-class IdentifiedNameSchema(IdentifiedSchema):  # Comicbox
-    """Named Element with an identifier."""
-
-    name = StringField()
-
-
-class SimpleNamedDictField(Union):
-    """A dict that also accepts a simple string set and builds a dict from that."""
-
-    def __init__(
-        self,
-        *args,
-        keys: Field | type[Field] = StringField,
-        values: Field | type[Field] | None = None,
-        allow_empty_values: bool = True,
-        **kwargs,
-    ):
-        """Create the union."""
-        if values is None:
-            values = Nested(IdentifiedSchema)
-        fields = [
-            DictField(keys=keys, values=values, allow_empty_values=allow_empty_values),
-            StringSetField(),
-        ]
-        super().__init__(fields, *args, **kwargs)
-
-    def _deserialize(self, value, attr, *args, **kwargs):
-        result = super()._deserialize(value, attr, *args, **kwargs)
-        if isinstance(result, set | frozenset):
-            dict_value = {}
-            for key in result:
-                dict_value[key] = {}
-                result = super()._deserialize(dict_value, attr, *args, **kwargs)
-        return result
-
-
-class SimpleNamedNestedField(Union):
-    """Return a union of a nested schema and an alternate field."""
-
-    def __init__(
-        self,
-        *args,
-        schema: type[Schema] = IdentifiedNameSchema,
-        field: Field | type[Field] = StringField,
-        name_key: str = NAME_KEY,
-        primitive_type: type = str,
-        **kwargs,
-    ):
-        """Create the union."""
-        self._name_key = name_key
-        self._primitive_type = primitive_type
-        if isclass(field):
-            field = field()
-        fields = [Nested(schema), field]
-        super().__init__(fields, *args, **kwargs)
-
-    def _deserialize(self, value, attr, *args, **kwargs):
-        result = super()._deserialize(value, attr, *args, **kwargs)
-        if isinstance(result, self._primitive_type):
-            complex_value = {self._name_key: result}
-            result = super()._deserialize(complex_value, attr, *args, **kwargs)
-        return result
-
-
-COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
-    {
-        **{enum: enum for enum in CoMetRoleTagEnum},
-        **{enum: enum for enum in ComicBookInfoRoleEnum},
-        **{enum: enum for enum in ComicInfoRoleTagEnum},
-        **{enum: enum for enum in MetronRoleEnum},
-        **{enum: enum for enum in GenericRoleEnum},
-    }
-)
-
-
-class RoleField(PrettifiedStringField):
-    """Prettified Role Field."""
-
-    ENUM_ALIAS_MAP = COMICBOX_ROLE_ALIAS_MAP
-
-
 class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
     roles = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         keys=RoleField, allow_empty_values=True
     )
-
-
-class PageInfoSchema(BaseSubSchema):  # CIX, CT - ONLY
-    """Comicbox page info schema."""
-
-    bookmark = StringField()
-    double_page = BooleanField()
-    key = StringField()
-    width = IntegerField(minimum=0)
-    height = IntegerField(minimum=0)
-    size = IntegerField(minimum=0)
-    page_type = PageTypeField()
-
-
-class SeriesSchema(IdentifiedNameSchema):
-    """Series Schema."""
-
-    sort_name = StringField()  # Metron ONLY
-    start_year = IntegerField()  # Metron ONLY
-    volume_count = IntegerField(minimum=0)  # CBI, CT, Metron
-
-
-class VolumeSchema(IdentifiedSchema):
-    """Volume Schema."""
-
-    issue_count = IntegerField(minimum=0)  # CBI, CT, CIX, Filename, Metron
-    number = IntegerField(minimum=0)  # All
-    number_to = IntegerField(minimum=0)  # Metron ONLY
-
-
-class IssueSchema(BaseSubSchema):
-    """Issue Schema."""
-
-    name = StringField()  # All
-    number = DecimalField()  # Comicbox
-    suffix = StringField()  # Comicbox
-
-
-class ReprintSchema(IdentifiedSchema):
-    """Schema for Reprints of this issue."""
-
-    language = LanguageField()  # Metron ONLY
-    series = Nested(SeriesSchema)  # Comet, CIX, CT
-    volume = Nested(VolumeSchema)  # Comet, CIX, CT, Metron
-    issue = StringField()  # Comet, CIX, CT, Metron
-
-
-class IdentifierPrimarySource(BaseSubSchema):
-    """Identifiers Primary Source."""
-
-    nid = StringField(required=True)  # Metron ONLY
-    url = StringField()  # Comicbox
 
 
 class UniverseSchema(IdentifiedSchema):
@@ -285,20 +144,6 @@ class DateSchema(BaseSubSchema):
     year = IntegerField()  # CIX, CBI, CT, Filename, Metron
     month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
-
-
-class PagesField(DictField):  # CIX ONLY, CT
-    """ComicInfo Pages."""
-
-    def __init__(self, *args, keys_as_string=False, **kwargs):
-        """ComicInfo Pages with keys_as_string option."""
-        super().__init__(
-            *args,
-            keys=IntegerField(minimum=0, as_string=keys_as_string),
-            values=Nested(PageInfoSchema),
-            case_insensitive=False,
-            **kwargs,
-        )
 
 
 class ComicboxSubSchemaMixin(IdentifiedSchema):

@@ -8,17 +8,17 @@ from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
+from comicbox.fields.metroninfo import MetronAgeRatingField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
     XmlDateField,
     XmlDateTimeField,
-    XmlEnumField,
     XmlIntegerField,
     XmlListField,
     XmlStringField,
+    create_sub_tag_field,
+    xml_list_polyfield,
 )
-from comicbox.schemas.enums.maps import METRON_AGE_RATING_MAP
-from comicbox.schemas.enums.metroninfo import MetronAgeRatingEnum
 from comicbox.schemas.metroninfo.credits import MetronCreditSchema
 from comicbox.schemas.metroninfo.identifiers import (
     MetronGTINSchema,
@@ -39,8 +39,6 @@ from comicbox.schemas.xml_schemas import (
     XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
-    create_sub_tag_field,
-    xml_list_polyfield,
 )
 
 COUNTRY_ATTR = "@country"
@@ -56,13 +54,6 @@ SERIES_TAG = "Series"
 VOLUME_TAG = "Volume"
 MANGA_VOLUME_TAG = "MangaVolume"
 ALTERNATIVE_NAMES_TAGPATH = f"{SERIES_TAG}.AlternativeNames.AlternativeName"
-
-
-class MetronAgeRatingField(XmlEnumField):
-    """Metron Age Rating Field."""
-
-    ENUM = MetronAgeRatingEnum
-    ENUM_ALIAS_MAP = METRON_AGE_RATING_MAP
 
 
 class MetronArcSchema(MetronIdentifiedNameSchema):

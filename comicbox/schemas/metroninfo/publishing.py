@@ -5,27 +5,23 @@ from types import MappingProxyType
 from marshmallow.fields import Nested
 
 from comicbox.fields.fields import StringField
+from comicbox.fields.metroninfo import MetronFormatField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.pycountry import LanguageField
-from comicbox.fields.xml_fields import XmlEnumField, XmlListField, XmlStringField
-from comicbox.schemas.enums.maps import METRON_FORMAT_MAP
-from comicbox.schemas.enums.metroninfo import MetronFormatEnum
+from comicbox.fields.xml_fields import (
+    XmlListField,
+    XmlStringField,
+    create_sub_tag_field,
+)
 from comicbox.schemas.metroninfo.identifiers import MetronIdentifiedNameSchema
 from comicbox.schemas.metroninfo.resource import metron_resource_field
-from comicbox.schemas.xml_schemas import XmlSubSchema, create_sub_tag_field
+from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronPublisherSchema(MetronIdentifiedNameSchema):
     """Metron Publisher Schema."""
 
     Imprint = metron_resource_field()
-
-
-class MetronFormatField(XmlEnumField):
-    """Metron Series Format Field."""
-
-    ENUM = MetronFormatEnum
-    ENUM_ALIAS_MAP = METRON_FORMAT_MAP
 
 
 class MetronNameSchema(XmlSubSchema):

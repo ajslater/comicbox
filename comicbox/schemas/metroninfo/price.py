@@ -3,19 +3,9 @@
 from decimal import Decimal
 from types import MappingProxyType
 
-from comicbox.fields.number_fields import DecimalField
 from comicbox.fields.pycountry import CountryField
+from comicbox.fields.xml_fields import BugfixComplexDecimalField
 from comicbox.schemas.xml_schemas import XmlSubSchema
-
-
-class BugfixComplexDecimalField(DecimalField):
-    """Fix bug in xmltodict."""
-
-    def _serialize(self, value, attr, obj, **kwargs):
-        """Fix bug in xmltodict."""
-        # https://github.com/martinblech/xmltodict/issues/366
-        result = super()._serialize(value, attr, obj, **kwargs)
-        return str(result)
 
 
 class MetronPriceSchema(XmlSubSchema):

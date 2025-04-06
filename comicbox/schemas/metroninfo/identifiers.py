@@ -3,17 +3,12 @@
 from types import MappingProxyType
 
 from comicbox.fields.fields import StringField
+from comicbox.fields.metroninfo import MetronIDAttrField, MetronSourceField
 from comicbox.fields.xml_fields import (
     XmlBooleanAttributeField,
-    XmlEnumField,
     XmlStringField,
 )
-from comicbox.schemas.enums.metroninfo import MetronSourceEnum
 from comicbox.schemas.xml_schemas import XmlSubSchema
-
-
-class MetronIDAttrField(StringField):
-    """Metron ID Field."""
 
 
 class MetronIdentifiedNameSchema(XmlSubSchema):
@@ -25,12 +20,6 @@ class MetronIdentifiedNameSchema(XmlSubSchema):
         """XML Attributes."""
 
         include = MappingProxyType({"@id": MetronIDAttrField()})
-
-
-class MetronSourceField(XmlEnumField):
-    """Metron Source Field."""
-
-    ENUM = MetronSourceEnum
 
 
 class MetronPrimaryAttrSchema(XmlSubSchema):

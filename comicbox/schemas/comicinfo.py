@@ -6,6 +6,7 @@ from types import MappingProxyType
 from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.collection_fields import ListField
+from comicbox.fields.comicinfo import ComicInfoAgeRatingField
 from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
@@ -13,7 +14,6 @@ from comicbox.fields.xml_fields import (
     XmlBooleanAttributeField,
     XmlComicInfoMangaField,
     XmlDecimalField,
-    XmlEnumField,
     XmlIntegerField,
     XmlIntegerListField,
     XmlLanguageField,
@@ -22,17 +22,13 @@ from comicbox.fields.xml_fields import (
     XmlStringListField,
     XmlStringSetField,
     XmlYesNoField,
+    create_sub_tag_field,
 )
-from comicbox.schemas.enums.comicinfo import (
-    ComicInfoAgeRatingEnum,
-)
-from comicbox.schemas.enums.maps import COMICINFO_AGE_RATING_MAP
 from comicbox.schemas.xml_schemas import (
     XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
     XmlSubSchema,
-    create_sub_tag_field,
 )
 
 ALTERNATE_SERIES_TAG = "AlternateSeries"
@@ -93,13 +89,6 @@ TAG_ORDER = (
     "Review",
     "GTIN",
 )
-
-
-class ComicInfoAgeRatingField(XmlEnumField):
-    """Age Rating Field."""
-
-    ENUM = ComicInfoAgeRatingEnum
-    ENUM_ALIAS_MAP = COMICINFO_AGE_RATING_MAP
 
 
 class XmlPageInfoSchema(XmlSubSchema):

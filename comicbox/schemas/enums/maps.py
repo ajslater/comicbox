@@ -8,12 +8,30 @@ from comicbox.schemas.enums.age_rating import (
     GenericAgeRatingEnum,
     MarvelAgeRatingEnum,
 )
-from comicbox.schemas.enums.comicinfo import ComicInfoAgeRatingEnum
+from comicbox.schemas.enums.comet import CoMetRoleTagEnum
+from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.schemas.enums.comicinfo import (
+    ComicInfoAgeRatingEnum,
+    ComicInfoRoleTagEnum,
+)
 from comicbox.schemas.enums.metroninfo import (
     GenericFormatEnum,
     MetronAgeRatingEnum,
     MetronFormatEnum,
+    MetronRoleEnum,
 )
+from comicbox.schemas.enums.role import GenericRoleEnum
+
+COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
+    {
+        **{enum: enum for enum in CoMetRoleTagEnum},
+        **{enum: enum for enum in ComicBookInfoRoleEnum},
+        **{enum: enum for enum in ComicInfoRoleTagEnum},
+        **{enum: enum for enum in MetronRoleEnum},
+        **{enum: enum for enum in GenericRoleEnum},
+    }
+)
+
 
 COMICINFO_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     {

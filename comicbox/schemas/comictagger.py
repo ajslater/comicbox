@@ -13,7 +13,7 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbookinfo import ComicBookInfoCreditSchema
-from comicbox.schemas.comicinfo import ComicInfoAgeRatingEnum, ComicInfoAgeRatingField
+from comicbox.schemas.comicinfo import ComicInfoAgeRatingField
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 TAG_ORIGIN_KEY = "tag_origin"

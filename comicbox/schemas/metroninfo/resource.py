@@ -6,8 +6,9 @@ from marshmallow.fields import Field
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
+from comicbox.fields.xml_fields import xml_list_polyfield, xml_polyfield
 from comicbox.schemas.metroninfo.identifiers import MetronIDAttrField
-from comicbox.schemas.xml_schemas import XmlSubSchema, xml_list_polyfield, xml_polyfield
+from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronResourceSchema(XmlSubSchema):
