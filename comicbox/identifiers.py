@@ -267,6 +267,7 @@ NID_ORIGIN_MAP = frozenbidict(
     }
 )
 DEFAULT_NID = COMICVINE_NID
+DEFAULT_NSS_TYPE = "issue"
 NID_ORDER = (
     # Comic DBs
     METRON_NID,
@@ -289,7 +290,7 @@ NID_ORDER = (
 )
 
 
-def normalize_comicvine_nss(nss_type, nss):
+def _normalize_comicvine_nss(nss_type, nss):
     """I expect its quite common to list the full comicvine code in situations where only the id is necessary."""
     match = PARSE_COMICVINE_RE.match(nss)
     if not match:
@@ -306,14 +307,16 @@ def normalize_comicvine_nss(nss_type, nss):
     return nss_type, nss
 
 
-def create_identifier(nid, nss, url=None, nss_type="issue"):
+def create_identifier(
+    nid, nss, url="", nss_type=DEFAULT_NSS_TYPE, default_nid=DEFAULT_NID
+):
     """Create identifier dict from parts."""
     identifier = {}
     if not nid:
-        nid = DEFAULT_NID
+        nid = default_nid
     if nss:
         if nid == COMICVINE_NID:
-            nss_type, nss = normalize_comicvine_nss(nss_type, nss)
+            nss_type, nss = _normalize_comicvine_nss(nss_type, nss)
         if nss:
             identifier[NSS_KEY] = nss
     if not url and nss and (id_parts := IDENTIFIER_PARTS_MAP.get(nid)):

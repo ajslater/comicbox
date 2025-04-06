@@ -3,7 +3,8 @@
 from bidict import frozenbidict
 
 from comicbox.identifiers import (
-    COMICVINE_NID,
+    DEFAULT_NID,
+    NID_ORDER,
     NID_ORIGIN_MAP,
     NSS_KEY,
     create_identifier,
@@ -23,9 +24,8 @@ from comicbox.transforms.identifiers import (
     urls_transform_to_cb,
 )
 from comicbox.transforms.spec import MetaSpec
-from comicbox.urns import IDENTIFIER_URN_NIDS, IDENTIFIER_URN_NIDS_REVERSE_MAP
+from comicbox.urns import IDENTIFIER_URN_NIDS_REVERSE_MAP
 
-DEFAULT_NID = COMICVINE_NID
 DATA_ORIGIN_NAME_KEYPATH = "data_origin.name"
 ISSUE_ID_TAG = "issue_id"
 
@@ -82,7 +82,7 @@ COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB = MetaSpec(
 def _issue_id_from_cb(values):
     identifiers = values.get(IDENTIFIERS_KEY)
     primary_nid = values.get(PRIMARY_NID_KEYPATH)
-    for nid in (primary_nid, *IDENTIFIER_URN_NIDS):
+    for nid in (primary_nid, *NID_ORDER):
         if nss := identifiers.get(nid, {}).get(NSS_KEY):
             return nss
     return None
@@ -103,7 +103,7 @@ def _series_id_to_cb(values):
         return None
     data_origin_name = values.get(DATA_ORIGIN_NAME_KEYPATH)
     nid = _get_nid(data_origin_name)
-    identifier = create_identifier(nid, series_id)
+    identifier = create_identifier(nid, series_id, nss_type="series")
     return {IDENTIFIERS_KEY: {nid: identifier}}
 
 
@@ -118,7 +118,7 @@ def _series_id_from_cb(values):
     if not series_identifiers:
         return None
     primary_nid = values.get(PRIMARY_NID_KEYPATH)
-    for nid in (primary_nid, *IDENTIFIER_URN_NIDS):
+    for nid in (primary_nid, *NID_ORDER):
         if nid and (nss := series_identifiers.get(nid, {}).get(NSS_KEY)):
             return nss
     return None

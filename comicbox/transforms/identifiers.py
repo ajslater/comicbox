@@ -9,6 +9,7 @@ from comicbox.identifiers import (
     NID_ORDER,
     NSS_KEY,
     URL_KEY,
+    IdentifierParts,
     create_identifier,
 )
 from comicbox.schemas.comicbox import (
@@ -39,7 +40,9 @@ def create_identifier_primary_source(nid):
 def _identifier_to_cb(native_identifier, naked_nid) -> tuple[str, dict]:
     """Parse one identifier urn or string."""
     nid, nss_type, nss = parse_string_identifier(native_identifier, naked_nid)
-    comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+    comicbox_identifier = create_identifier(
+        nid, nss, nss_type=nss_type, default_nid=naked_nid
+    )
     return nid, comicbox_identifier
 
 
@@ -89,10 +92,11 @@ def identifiers_transform_from_cb(identifiers_tag):
     )
 
 
-def _parse_url(nid: str, id_parts, url: str) -> dict | None:
+def _parse_url(nid: str, id_parts: IdentifierParts, url: str) -> dict | None:
     """Try to parse a single nid from a url."""
     nss_type, nss = id_parts.parse_url(url)
     if not nss_type or not nss:
+        # iterating over all nids so fail if not perfect.
         return {}
     return create_identifier(nid, nss, url=url, nss_type=nss_type)
 

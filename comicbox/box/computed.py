@@ -22,6 +22,7 @@ from comicbox.fields.time_fields import DateTimeField
 from comicbox.formats import MetadataFormats
 from comicbox.identifiers import (
     COMICVINE_NID,
+    DEFAULT_NID,
     NID_ORDER,
     NSS_KEY,
     URL_KEY,
@@ -265,10 +266,10 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             # Silently fail because most tags are not urns
             nid, nss_type, nss = parse_urn_identifier(tag, warn=False)
             if nid:
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
+                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:
                     identifiers[nid] = create_identifier(nid, nss)
-        return self.merge_identifiers_md(sub_data, identifiers)
+        return identifiers
 
     def _add_urls_to_identifiers(self, sub_data):
         if IDENTIFIERS_KEY in self._config.delete_keys:
@@ -352,18 +353,16 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             return None
         if not sub_data:
             return None
-        nid = sub_data.pop(TAG_ORIGIN_KEY, {}).get("id", COMICVINE_NID)
+        nid = sub_data.pop(TAG_ORIGIN_KEY, {}).get("id", "")
+        nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+        if not nid:
+            return None
         nss = sub_data.pop(ISSUE_ID_KEY, None)
-
-        identifiers = {}
-        if nss:
-            identifiers[nid] = nss
-
-        series_nss = sub_data.pop(SERIES_ID_KEY, None)
-        if series_nss:
-            identifiers[nid] = series_nss
-
-        return self.merge_identifiers_md(sub_data, identifiers)
+        if not nss:
+            nss = sub_data.pop(SERIES_ID_KEY, None)
+            if not nss:
+                return None
+        return {nid: nss}
 
     # Tagger Stamp
     def _get_unparsed_comictagger_style_notes(self, sub_data):

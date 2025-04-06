@@ -8,12 +8,11 @@ from logging import getLogger
 from comicbox.box.merge import ComicboxMergeMixin
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers import (
-    COMICVINE_NID,
+    DEFAULT_NID,
     NID_ORIGIN_MAP,
-    NSS_KEY,
-    URL_KEY,
     create_identifier,
 )
+from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import (
     DATE_KEY,
     DAY_KEY,
@@ -74,91 +73,81 @@ class ComputedData:
 class ComicboxComputedNotesMixin(ComicboxMergeMixin):
     """Computed metadata methods for notes field."""
 
-    def _set_compute_notes_key(self, data, key, match, md):
+    def _set_computed_notes_key(self, sub_data, key, match, md):
         schema = ComicboxYamlSchema(path=self._path)
-        if not data.get(key) and (new_value := match.group(key)):
+        if not sub_data.get(key) and (new_value := match.group(key)):
             field = schema.fields.get(key)
             if not field:
                 return
             new_value = field.deserialize(new_value)
             md[key] = new_value
 
-    @staticmethod
-    def merge_identifiers_md(sub_data, identifiers):
-        """Return only new identifiers."""
-        if not identifiers:
-            return None
-        old_identifiers = frozenset(sub_data.get(IDENTIFIERS_KEY, {}).keys())
-        pruned_identifiers = {}
-        for nid, identifier in identifiers.items():
-            canon_nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
-            if canon_nid in old_identifiers:
-                # Do NOT replace identifiers.
-                continue
-            if nid not in pruned_identifiers:
-                pruned_identifiers[canon_nid] = {}
-            nss = identifier.get(NSS_KEY)
-            url = identifier.get(URL_KEY)
-            new_identifier = create_identifier(canon_nid, nss, url)
-            pruned_identifiers[canon_nid] = new_identifier
-            pruned_identifiers[canon_nid][URL_KEY] = url
-        if not pruned_identifiers:
-            return None
-        return {IDENTIFIERS_KEY: pruned_identifiers}
-
-    def _get_compute_notes_keys_comictagger(self, notes, data, md):
+    def _get_computed_notes_keys_comictagger(self, notes, sub_data, md):
         identifiers = {}
         match = _NOTES_RE.search(notes)
         if not match:
             return identifiers
         for key in _NOTES_KEYS:
-            self._set_compute_notes_key(data, key, match, md)
-        nss = match.group("nss")
-        if nss:
-            origin = match.group("origin")
-            nid = NID_ORIGIN_MAP.inverse.get(origin, COMICVINE_NID)
-            identifier = create_identifier(nid, nss)
-            if identifier:
+            self._set_computed_notes_key(sub_data, key, match, md)
+        if (origin := match.group("origin")) and (
+            nid := NID_ORIGIN_MAP.inverse.get(origin, origin)
+        ):
+            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+            if (nss := match.group("nss")) and (
+                identifier := create_identifier(nid, nss)
+            ):
                 identifiers[nid] = identifier
         return identifiers
 
     @staticmethod
-    def _get_compute_notes_urn_identifiers(notes):
+    def _get_computed_notes_urn_identifiers(notes):
         identifiers = {}
         match = _URN_RE.search(notes)
         if not match:
             return identifiers
         for urn in match.groups():
-            nid, nss_type, nss = parse_urn_identifier(urn, warn=True)
+            nid, _, nss = parse_urn_identifier(urn, warn=True)
             if nid:
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
+                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:
                     identifier = create_identifier(nid, nss)
                     identifiers[nid] = identifier
         return identifiers
 
     @staticmethod
-    def _get_compute_notes_extra_identifiers(notes):
+    def _get_computed_notes_extra_identifiers(notes):
         identifiers = {}
         matches = _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes)
         if not matches:
             return identifiers
         for match in matches:
-            if (nss := match.group("nss")) and (nid := match.group("nid")):
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), COMICVINE_NID)
-                identifier = create_identifier(nid, nss)
-                identifiers[nid] = identifier
+            if nid := match.group("nid"):
+                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+                if (nss := match.group("nss")) and (
+                    identifier := create_identifier(nid, nss)
+                ):
+                    identifiers[nid] = identifier
         return identifiers
 
     def _set_computed_notes_identifiers(self, sub_data, notes, sub_md):
-        identifiers = self._get_compute_notes_keys_comictagger(notes, sub_data, sub_md)
-        extra_identifiers = self._get_compute_notes_extra_identifiers(notes)
-        identifiers.update(extra_identifiers)
-        urn_identifiers = self._get_compute_notes_urn_identifiers(notes)
-        identifiers.update(urn_identifiers)
-        identifiers_md = self.merge_identifiers_md(sub_data, identifiers)
-        if identifiers_md:
-            sub_md.update(identifiers_md)
+        extra_identifiers = self._get_computed_notes_extra_identifiers(notes)
+        comictagger_identifiers = self._get_computed_notes_keys_comictagger(
+            notes, sub_data, sub_md
+        )
+        urn_identifiers = self._get_computed_notes_urn_identifiers(notes)
+        explicit_identifiers = sub_data.get(IDENTIFIERS_KEY)
+        pruned_notes_identifiers = {}
+        for notes_identifiers in (
+            extra_identifiers,
+            comictagger_identifiers,
+            urn_identifiers,
+        ):
+            # Ordered in replacement order.
+            for nid, identifier in notes_identifiers.items():
+                if nid not in explicit_identifiers:
+                    AdditiveMerger.merge(pruned_notes_identifiers, {nid: identifier})
+        if pruned_notes_identifiers:
+            sub_md[IDENTIFIERS_KEY] = pruned_notes_identifiers
 
     @staticmethod
     def _get_computed_notes_date(notes):
