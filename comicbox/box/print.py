@@ -209,14 +209,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 renderable = Pretty(dict(md)) if self._pygments_style_name else md
             else:
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
-                # TODO this is awkward. I should add the fmt in ingestion.
-                if source_data.fmt:
-                    fmt = source_data.fmt
-                elif source == MetadataSources.ARCHIVE_COMMENT:
-                    fmt = source.value.formats[0]
-                else:
-                    fmt = None
-                lexer = fmt.value.lexer if fmt else ""
+                lexer = fmt.value.lexer if (fmt := source_data.fmt) else ""
                 renderable = self._syntax(print_md, lexer)
             title = self._add_source_to_title(
                 f"Source {source.value.label}", source, source_data

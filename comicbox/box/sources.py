@@ -99,13 +99,14 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
         if not self._path:
             return source_data_list
         try:
-            formats = (
-                frozenset(MetadataSources.ARCHIVE_COMMENT.value.formats)
-                & self._config.read
-            )
+            # Only one archive comment format exists, so assume it.
+            only_comment_format = MetadataSources.ARCHIVE_COMMENT.value.formats[0]
+            formats = only_comment_format in self._config.read
             if formats and (comment := self._get_comment()):
                 comment = comment.decode(errors="replace")
-                source_data_list = [SourceData(comment, from_archive=True)]
+                source_data_list = [
+                    SourceData(comment, from_archive=True, fmt=only_comment_format)
+                ]
         except Exception as exc:
             LOG.warning(f"Error reading archive comment from {self._path}: {exc}")
         return source_data_list
