@@ -21,11 +21,6 @@ from comicbox.transforms.comicbookinfo.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
-
-# from comicbox.transforms.comicbookinfo.issue import (
-#    issue_transform_from_cb,
-#    issue_transform_to_cb,
-# ) TODO remove
 from comicbox.transforms.comicbox import (
     DAY_KEYPATH,
     ISSUE_NAME_KEYPATH,
@@ -100,7 +95,6 @@ class ComicBookInfoTransform(BaseTransform):
         ),
         cbi_credits_transform_to_cb("credits"),
         cbi_credits_primary_to_cb("credits"),
-        # issue_transform_to_cb(), TODO remove
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
         stories_key_transform_to_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,
@@ -114,7 +108,6 @@ class ComicBookInfoTransform(BaseTransform):
             key_map=SIMPLE_KEYPATHS,
         ),
         cbi_credits_transform_from_cb("credits"),
-        # issue_transform_from_cb(), TODO remove
         name_obj_from_cb(NAME_OBJ_KEYPATHS),
         stories_key_transform_from_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,
