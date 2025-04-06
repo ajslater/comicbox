@@ -40,7 +40,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             result = schema.load(md)
             if not result:
                 # try a wrapped version
-                key_path = fmt.value.transform_class.SCHEMA_CLASS.ROOT_KEY_PATH
+                key_path = fmt.value.schema_class.ROOT_KEY_PATH
                 assign = Assign(key_path, md, missing=dict)
                 wrapped_md = glom({}, assign)
                 result = schema.load(wrapped_md)
@@ -54,7 +54,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
         self, source: MetadataSources, fmt: MetadataFormats, source_md
     ) -> Mapping | None:
         """Load string or dict."""
-        schema_class = fmt.value.transform_class.SCHEMA_CLASS
+        schema_class = fmt.value.schema_class
         schema = schema_class(path=self._path)
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
@@ -83,9 +83,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
         level=WARNING,
     ):
         """When loading fails warn or give stack trace in debug."""
-        name = (
-            fmt.value.transform_class.SCHEMA_CLASS.__name__ if fmt else "Unknown Schema"
-        )
+        name = fmt.value.schema_class.__name__ if fmt else "Unknown Schema"
         if self._is_comment_not_json(source, exc):
             # Demote not json as json to debug warning because there are so many
             # archive comments that are not intended to be CBI
@@ -111,7 +109,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 continue
             try:
                 if (success_md := self._call_load(source, fmt, data)) and glom(
-                    success_md, fmt.value.transform_class.SCHEMA_CLASS.ROOT_KEY_PATH
+                    success_md, fmt.value.schema_class.ROOT_KEY_PATH
                 ):
                     LOG.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
@@ -134,7 +132,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             else:
                 md, fmt = self._load_unknown_metadata(source, source_data.data)
             if md and fmt:
-                schema_class = fmt.value.transform_class.SCHEMA_CLASS
+                schema_class = fmt.value.schema_class
                 if (
                     embedded_source := glom(
                         md, schema_class.EMBED_KEY_PATH, default=None

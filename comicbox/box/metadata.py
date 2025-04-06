@@ -81,7 +81,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         embed_fmt: MetadataFormats | None = None,
     ):
         # Get schema instance.
-        schema_class = fmt.value.transform_class.SCHEMA_CLASS
+        schema_class = fmt.value.schema_class
         schema = schema_class(path=self._path)
 
         # Get transformed md

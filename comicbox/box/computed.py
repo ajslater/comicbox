@@ -107,10 +107,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             formats |= read_formats
 
         # If the enabled format types have page flags then compute.
-        return any(
-            getattr(fmt.value.transform_class.SCHEMA_CLASS, attr.value)
-            for fmt in formats
-        )
+        return any(getattr(fmt.value.schema_class, attr.value) for fmt in formats)
 
     def _get_computed_page_count_metadata(self, sub_md):
         """

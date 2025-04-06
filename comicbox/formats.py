@@ -35,6 +35,10 @@ class MetadataFormat:
     lexer: str = "yaml"
     enabled: bool = True
 
+    def __post_init__(self):
+        """Hoist the schema class."""
+        self.schema_class = self.transform_class.SCHEMA_CLASS
+
 
 class MetadataFormats(Enum):
     """Metadata formats."""
