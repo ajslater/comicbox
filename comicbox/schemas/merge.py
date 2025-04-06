@@ -50,11 +50,3 @@ def merge_metadata(
 
     # Update with the replace dict.
     ReplaceMerger.merge(base_sub_md, replace_dict)
-
-
-def merge_metadata_list(parsed_md_list: list[Mapping], config) -> dict:
-    """Pop off complex values before simple update."""
-    merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
-    for parsed_md in parsed_md_list:
-        merge_metadata(merged_md, parsed_md, config)
-    return merged_md

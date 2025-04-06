@@ -3,16 +3,16 @@
 from types import MappingProxyType
 
 from comicbox.box.normalize import ComicboxNormalizeMixin
-from comicbox.schemas.merge import merge_metadata_list
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.merge import merge_metadata
 from comicbox.sources import MetadataSources
 
 
 class ComicboxMergeMixin(ComicboxNormalizeMixin):
     """Merge Metadata Methods."""
 
-    def _get_merged_metadata_by_source(self, source: MetadataSources):
+    def _merge_metadata_by_source(self, source: MetadataSources, merged_md: dict):
         """Order the source md list by format precedence."""
-        source_md_list = []
         format_dict = {}
         # Set the format dict order to be the one declared in source.formats
         for fmt in reversed(source.value.formats):
@@ -23,20 +23,16 @@ class ComicboxMergeMixin(ComicboxNormalizeMixin):
                 format_dict[loaded.fmt] += [loaded.metadata]
             # load the mds into the source list in format order.
             for format_normalized_md_list in format_dict.values():
-                source_md_list.extend(format_normalized_md_list)
-        return source_md_list
+                for normalized_md in format_normalized_md_list:
+                    merge_metadata(merged_md, normalized_md, self._config)
 
     def _set_merged_metadata(self):
         """Overlay the metadatas in precedence order."""
         # Order the md list by source precedence
-        md_list = []
+        merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
         for source in MetadataSources:
-            source_md_list = self._get_merged_metadata_by_source(source)
-            md_list.extend(source_md_list)
-
-        merged_md = merge_metadata_list(md_list, self._config)
-        if merged_md:
-            self._merged_metadata = MappingProxyType(merged_md)
+            self._merge_metadata_by_source(source, merged_md)
+        self._merged_metadata = MappingProxyType(merged_md)
 
     def get_merged_metadata(self):
         """Get merged normalized metadata."""
