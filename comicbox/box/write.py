@@ -30,11 +30,16 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         if self._config.write:
             formats = self._config.write
         elif self._config.cbz:
-            self.get_metadata()  # TODO just make this populate loaded not everying after
+            loaded_data_lists = (
+                self.get_loaded_metadata(source) for source in MetadataSources
+            )
+            self.get_metadata()
             formats = frozenset(
                 loaded_data.fmt
-                for loaded_data_list in self._loaded.values()
+                for loaded_data_list in loaded_data_lists
+                if loaded_data_list
                 for loaded_data in loaded_data_list
+                if loaded_data
             )
         elif self._config.delete_all_tags:
             reason = "Deleting all tags."
