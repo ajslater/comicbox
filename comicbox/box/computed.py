@@ -82,7 +82,6 @@ class ComputedData:
 
     label: str
     metadata: Mapping | None
-    allowed_null_keys: frozenset[str] = frozenset()
     merger: type[Merger] | None = AdditiveMerger
 
 
@@ -438,32 +437,30 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
     def _get_delete_keys(self, _sub_data: Mapping):
         if self._config.delete_keys:
-            return {ComicboxSchemaMixin.ROOT_TAG: self._config.delete_keys}
+            return self._config.delete_keys
         return None
 
     _COMPUTED_ACTIONS = MappingProxyType(
         {
             # Order is important here
-            "Page Count": (_get_computed_page_count_metadata, ReplaceMerger, ()),
-            "Pages": (_get_computed_pages_metadata, ReplaceMerger, ("pages",)),
-            "from issue": (_get_computed_from_issue, AdditiveMerger, ()),
+            "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
+            "Pages": (_get_computed_pages_metadata, ReplaceMerger),
+            "from issue": (_get_computed_from_issue, AdditiveMerger),
             "from issue.number & issue.suffix": (
                 _get_computed_issue,
                 AdditiveMerger,
-                (),
             ),
             "from notes": (
                 ComicboxComputedNotesMixin.get_computed_from_notes,
                 AdditiveMerger,
-                (),
             ),
-            "from tags": (_get_computed_from_tags, AdditiveMerger, ()),
-            "from identifiers": (_get_computed_from_identifiers, AdditiveMerger, ()),
-            "from reprints": (_get_computed_from_reprints, ReplaceMerger, ()),
-            "from scan_info": (_get_computed_from_scan_info, AdditiveMerger, ()),
-            "from tag_origin": (_get_computed_from_tag_origin, AdditiveMerger, ()),
-            "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger, ()),
-            "Delete Keys": (_get_delete_keys, None, ()),
+            "from tags": (_get_computed_from_tags, AdditiveMerger),
+            "from identifiers": (_get_computed_from_identifiers, AdditiveMerger),
+            "from reprints": (_get_computed_from_reprints, ReplaceMerger),
+            "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
+            "from tag_origin": (_get_computed_from_tag_origin, AdditiveMerger),
+            "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger),
+            "Delete Keys": (_get_delete_keys, None),
         }
     )
 
@@ -474,15 +471,13 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
 
         # Compute each
         for label, actions in self._COMPUTED_ACTIONS.items():
-            method, merger, allowed_null_keys = actions
+            method, merger = actions
             sub_md = method(self, sub_data)
             if not sub_md:
                 continue
 
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
-            computed_data = ComputedData(
-                label, md, frozenset(allowed_null_keys), merger
-            )
+            computed_data = ComputedData(label, md, merger)
             computed_list.append(computed_data)
 
         # Set values

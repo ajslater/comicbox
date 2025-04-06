@@ -88,30 +88,17 @@ class YamlSchema(BaseSchema):
 
         render_module = YamlRenderModule
 
-    def dump(self, obj, *args, allowed_null_keys=None, **kwargs):
-        """Allow null keys on dump."""
-        saved_null_keys = set()
-        if allowed_null_keys:
-            sub_data = obj.get(self.ROOT_TAG, {})
-            for key in allowed_null_keys:
-                if key in sub_data and sub_data.get(key) is None:
-                    saved_null_keys.add(key)
-        serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
-        if saved_null_keys:
-            if self.ROOT_TAG not in serialized:
-                serialized[self.ROOT_TAG] = {}
-            for key in saved_null_keys:
-                serialized[self.ROOT_TAG][key] = None
-        return serialized
-
     def dumps(
         self,
         obj,
         *args,
         dfs=False,
-        allowed_null_keys: frozenset[str] | None = None,
+        dump=True,
         **kwargs,
     ):
         """Use dfs for render."""
-        serialized = self.dump(obj, allowed_null_keys=allowed_null_keys, **kwargs)
+        if dump:
+            serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
+        else:
+            serialized = obj
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

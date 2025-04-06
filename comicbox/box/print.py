@@ -294,8 +294,11 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         for computed_md in computed:
             if not computed_md or not computed_md.metadata:
                 continue
+            # For delete keys
+            dump = bool(computed_md.merger)
             str_data = schema.dumps(
-                computed_md.metadata, allowed_null_keys=computed_md.allowed_null_keys
+                computed_md.metadata,
+                dump=dump,
             )
             syntax = self._syntax(str_data, "yaml")
             self.print_section(Text("Computed"), syntax, subtitle=computed_md.label)
