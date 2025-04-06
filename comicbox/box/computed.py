@@ -49,7 +49,6 @@ from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
 )
 from comicbox.schemas.comictagger import ISSUE_ID_KEY, SERIES_ID_KEY, TAG_ORIGIN_KEY
-from comicbox.schemas.yaml import ALL_NONE_KEYS
 from comicbox.transforms.identifiers import create_identifier_primary_source
 from comicbox.urns import (
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
@@ -464,7 +463,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
             "from scan_info": (_get_computed_from_scan_info, AdditiveMerger, ()),
             "from tag_origin": (_get_computed_from_tag_origin, AdditiveMerger, ()),
             "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger, ()),
-            "Delete Keys": (_get_delete_keys, None, (ALL_NONE_KEYS,)),
+            "Delete Keys": (_get_delete_keys, None, ()),
         }
     )
 
