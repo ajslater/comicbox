@@ -1,5 +1,6 @@
 """Custom Marshmallow fields."""
 
+import re
 from abc import ABCMeta
 from decimal import Decimal
 from enum import Enum
@@ -10,6 +11,8 @@ from marshmallow.exceptions import ValidationError
 
 LOG = getLogger(__name__)
 _STRING_EMPTY_VALUES = (None, "")
+_LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
+_HALF_RE = re.compile(r"(½|1/2)")
 
 
 class TrapExceptionsMeta(ABCMeta):
@@ -72,11 +75,9 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         return value
 
 
-def half_replace(num_str):
+def half_replace(num):
     """Replace half notation with decimal notation."""
-    # TODO replace with re.sub
-    num_str = num_str.replace("½", ".5", 1)
-    return num_str.replace("1/2", ".5", 1)
+    return _HALF_RE.sub(".5", num)
 
 
 class IssueField(StringField):
@@ -89,8 +90,7 @@ class IssueField(StringField):
             return None
         num = num.replace(" ", "")
         num = num.lstrip("#")
-        # TODO allow single zero
-        num = num.lstrip("0")
+        num = _LEADING_ZERO_RE.sub(r"\2", num)
         num = num.rstrip(".")
         return half_replace(num)
 
