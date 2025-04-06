@@ -33,7 +33,6 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             loaded_data_lists = (
                 self.get_loaded_metadata(source) for source in MetadataSources
             )
-            self.get_metadata()
             formats = frozenset(
                 loaded_data.fmt
                 for loaded_data_list in loaded_data_lists
