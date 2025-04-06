@@ -10,6 +10,7 @@ from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
     IDENTIFIER_PARTS_MAP,
     ISBN_NID,
+    METRON_NID,
     NID_ORIGIN_MAP,
     NSS_KEY,
     UPC_NID,
@@ -104,7 +105,7 @@ def _identifier_to_cb(native_identifier):
     nid = NID_ORIGIN_MAP.inverse.get(source, "")
     nss_type = "issue"
     nss = get_cdata(native_identifier) or "" if nid else ""
-    identifier = create_identifier(nid, nss, nss_type=nss_type)
+    identifier = create_identifier(nid, nss, nss_type=nss_type, default_nid=METRON_NID)
     return nid, identifier
 
 
@@ -122,7 +123,7 @@ def _identifers_to_cb_gtin(values):
     gtin_identifiers = {}
     for tag, nid in GTIN_SUBTAG_NID_MAP.items():
         if nss := metron_gtin.get(tag):
-            identifier = create_identifier(nid, nss)
+            identifier = create_identifier(nid, nss, default_nid=METRON_NID)
             gtin_identifiers[nid] = identifier
     return gtin_identifiers
 

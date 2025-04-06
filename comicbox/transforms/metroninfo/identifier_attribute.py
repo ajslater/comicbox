@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from logging import getLogger
 
-from comicbox.identifiers import create_identifier
+from comicbox.identifiers import METRON_NID, create_identifier
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 
 ID_ATTRIBUTE = "@id"
@@ -19,7 +19,9 @@ def metron_id_attribute_to_cb(
             isinstance(metron_obj, Mapping) and (nss := metron_obj.get(ID_ATTRIBUTE))
         ):
             return
-        comicbox_identifier = create_identifier(nid, nss, nss_type=nss_type)
+        comicbox_identifier = create_identifier(
+            nid, nss, nss_type=nss_type, default_nid=METRON_NID
+        )
         comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
     except Exception as exc:
         LOG.warning(f"Parsing metron tag identifier {nss_type}:{metron_obj} - {exc}")
