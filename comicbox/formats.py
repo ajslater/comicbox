@@ -108,14 +108,14 @@ class MetadataFormats(Enum):
     )
     COMICBOX_YAML = MetadataFormat(
         "Comicbox YAML",
-        frozenset({"cb", "comicbox", "comicbox-yaml", "yaml"}),
+        frozenset({"comicbox-yaml", "yaml"}),
         "comicbox.yaml",
         ComicboxYamlTransform,
         has_pages=True,
     )
     COMICBOX_JSON = MetadataFormat(
         "Comicbox JSON",
-        frozenset({"json", "comicbox-json"}),
+        frozenset({"cb", "comicbox", "json", "comicbox-json"}),
         "comicbox.json",
         ComicboxJsonTransform,
         has_pages=True,
