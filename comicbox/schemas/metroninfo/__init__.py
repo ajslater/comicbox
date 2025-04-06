@@ -16,6 +16,7 @@ from comicbox.fields.xml_fields import (
     XmlIntegerField,
     XmlListField,
     XmlStringField,
+    XmlTextDecimalField,
     create_sub_tag_field,
     xml_list_polyfield,
 )
@@ -27,7 +28,6 @@ from comicbox.schemas.metroninfo.identifiers import (
     MetronURLSchema,
 )
 from comicbox.schemas.metroninfo.price import (
-    BugfixComplexDecimalField,
     MetronPriceSchema,
 )
 from comicbox.schemas.metroninfo.publishing import (
@@ -85,7 +85,7 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
         "Price",
         xml_list_polyfield(
             MetronPriceSchema,
-            BugfixComplexDecimalField(places=2, minimum=Decimal(0)),
+            XmlTextDecimalField(places=2, minimum=Decimal(0)),
             sort_keys=("@country",),
         ),
     )

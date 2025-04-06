@@ -4,7 +4,7 @@ from decimal import Decimal
 from types import MappingProxyType
 
 from comicbox.fields.pycountry import CountryField
-from comicbox.fields.xml_fields import BugfixComplexDecimalField
+from comicbox.fields.xml_fields import XmlTextDecimalField
 from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
@@ -16,7 +16,7 @@ class MetronPriceSchema(XmlSubSchema):
 
         include = MappingProxyType(
             {
-                "#text": BugfixComplexDecimalField(
+                "#text": XmlTextDecimalField(
                     required=True, places=2, minimum=Decimal(0)
                 ),
                 "@country": CountryField(),

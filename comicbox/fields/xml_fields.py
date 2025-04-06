@@ -165,10 +165,8 @@ class XmlDecimalField(DecimalField):
         return super()._deserialize(*args, **kwargs)
 
 
-class BugfixComplexDecimalField(XmlDecimalField):
+class XmlTextDecimalField(XmlDecimalField):
     """Fix bug in xmltodict."""
-
-    # TODO should this replace XMlDecimal?
 
     def _serialize(self, value, attr, obj, **kwargs):
         """Fix bug in xmltodict."""
