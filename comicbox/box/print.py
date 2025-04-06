@@ -1,14 +1,21 @@
 """Print Methods."""
 
 from collections.abc import Mapping
+from logging import getLogger
 
-from pygments.styles.gruvbox import GruvboxDarkStyle
-from pygments.token import Name, String
+from pygments.styles import get_style_by_name
+from pygments.token import (
+    Comment,
+    Generic,
+    Name,
+    String,
+)
+from pygments.util import ClassNotFound
 from rich.console import Console
 from rich.pretty import Pretty
 from rich.rule import Rule
 from rich.style import Style
-from rich.syntax import Syntax
+from rich.syntax import PygmentsSyntaxTheme, Syntax
 from rich.table import Table
 from rich.text import Text
 
@@ -24,20 +31,42 @@ _SOURCES_LOADED_NORMALIZED = frozenset(
     {PrintPhases.SOURCE, PrintPhases.LOADED, PrintPhases.NORMALIZED}
 )
 _FILE_RULE_CHAR = "═"
+DEFAULT_STYLE_NAME = "gruvbox-dark"
+MASK_STYLE = Style(bgcolor="default")
+LOG = getLogger(__name__)
 
 
-class Styles:
+def _make_style(theme, token):
+    return theme.get_style_for_token(token) + MASK_STYLE
+
+
+class ComicboxStyle:
     """Rich style definitions."""
 
-    # TODO adapt to other styles
+    def __init__(self, style_name: str):
+        """Initialize styles by theme."""
+        if not style_name:
+            self.section_header = Style()
+            self.file_header = Style()
+            self.path = Style()
+            self.in_archive_path = Style()
+            self.format = Style()
+            self.subtitle = Style()
+            self.section = Style()
+        else:
+            theme = PygmentsSyntaxTheme(style_name)
 
-    section_header = Style(color=GruvboxDarkStyle.styles[Name.Builtin])
-    file_header = section_header
-    path = Style(color="cyan")
-    in_archive_path = Style(color="cyan", bold=True)
-    format = Style(color=GruvboxDarkStyle.styles[Name.Attribute])
-    subtitle = Style(color=GruvboxDarkStyle.styles[String])
-    section = Style(color="#888888")
+            self.section_header = _make_style(theme, Name.Builtin)
+            self.file_header = self.section_header
+            if style_name == DEFAULT_STYLE_NAME:
+                self.path = Style(color="cyan")
+                self.in_archive_path = Style(color="cyan", bold=True)
+            else:
+                self.path = _make_style(theme, Generic.Output)
+                self.in_archive_path = _make_style(theme, Generic.Heading)
+            self.format = _make_style(theme, Name.Attribute)
+            self.subtitle = _make_style(theme, String)
+            self.section = _make_style(theme, Comment)
 
 
 class ComicboxPrintMixin(ComicboxMetadataMixin):
@@ -45,9 +74,25 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
 
     _CONSOLE = Console()
 
-    def _is_themed(self):
-        """Use rich printing for code or not."""
-        return self._config.theme and self._config.theme.lower() != "none"
+    def _set_pygments_style(self):
+        style_name = self._config.theme
+        if not style_name:
+            style_name = DEFAULT_STYLE_NAME
+        elif style_name.lower() == "none":
+            self._pygments_style_name = ""
+            return
+        try:
+            get_style_by_name(style_name)
+        except ClassNotFound as exc:
+            LOG.warning(exc)
+            style_name = DEFAULT_STYLE_NAME
+        self._pygments_style_name = style_name
+
+    def __init__(self, *args, **kwargs):
+        """Set print variables."""
+        super().__init__(*args, **kwargs)
+        self._set_pygments_style()
+        self._style = ComicboxStyle(self._pygments_style_name)
 
     def _syntax(self, code: str, lexer: str):
         """Apply rich syntax highlighting to code."""
@@ -55,16 +100,16 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
             Syntax(
                 code,
                 lexer,
-                theme=self._config.theme,
-                background_color="black",
+                theme=self._pygments_style_name,
+                background_color="default",
                 word_wrap=True,
             )
-            if self._is_themed()
+            if self._pygments_style_name
             else code
         )
 
     def _print(self, renderable):
-        if self._is_themed():
+        if self._pygments_style_name:
             self._CONSOLE.print(renderable)
         else:
             print(renderable)  # noqa: T201
@@ -72,9 +117,9 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
     def print_section(self, title, renderable, subtitle=""):
         """Pretty print a titled rule over a renderable."""
         if subtitle:
-            title += Text(": ") + Text(subtitle, style=Styles.subtitle)
+            title += Text(": ") + Text(subtitle, style=self._style.subtitle)
 
-        self._CONSOLE.print(Rule(style=Styles.section_header))
+        self._CONSOLE.print(Rule(style=self._style.section_header))
         self._CONSOLE.print(title)
         self._print(renderable)
 
@@ -88,8 +133,10 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         """Print header for this Archive's path."""
         if not self._path:
             return
-        title = Text(str(self._path), style=Styles.path)
-        self._CONSOLE.print(Rule(style=Styles.file_header, characters=_FILE_RULE_CHAR))
+        title = Text(str(self._path), style=self._style.path)
+        self._CONSOLE.print(
+            Rule(style=self._style.file_header, characters=_FILE_RULE_CHAR)
+        )
         self._CONSOLE.print(title)
 
     def _print_file_type(self):
@@ -119,22 +166,24 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
 
     def _add_source_to_title(self, title, source, source_data, format_preposition="as"):
         path = str(self._path) if source.value.from_archive else ""
-        path = Text(path, style=Styles.path)
+        path = Text(path, style=self._style.path)
         if source_data.path or source == MetadataSources.ARCHIVE_COMMENT:
             in_archive_path = (
                 "(comment)"
                 if source == MetadataSources.ARCHIVE_COMMENT
                 else source_data.path
             )
-            path += Text(":") + Text(str(in_archive_path), style=Styles.in_archive_path)
-        title_parts = [Text(title, style=Styles.section)]
+            path += Text(":") + Text(
+                str(in_archive_path), style=self._style.in_archive_path
+            )
+        title_parts = [Text(title, style=self._style.section)]
         if path:
             title_parts.append(path)
         if source_data.fmt:
             title_parts.extend(
                 [
-                    Text(format_preposition, style=Styles.section),
-                    Text(source_data.fmt.value.label, style=Styles.format),
+                    Text(format_preposition, style=self._style.section),
+                    Text(source_data.fmt.value.label, style=self._style.format),
                 ]
             )
         title = Text("")
@@ -157,7 +206,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
                 continue
             md = source_data.data
             if isinstance(md, Mapping):
-                renderable = Pretty(dict(md)) if self._is_themed() else md
+                renderable = Pretty(dict(md)) if self._pygments_style_name else md
             else:
                 print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
                 # TODO this is awkward. I should add the fmt in ingestion.
