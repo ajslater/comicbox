@@ -599,9 +599,10 @@ def load_cli_and_compare_dicts(path_a, path_b):
     return diff
 
 
-def compare_export(test_dir, fn, fmt=None, test_fn=None):
+def compare_export(test_dir, fn, fmt=None, test_fn=None, validate=True):
     """Compare exported files."""
-    validate_path(fn, fmt=fmt)
+    if validate:
+        validate_path(fn, fmt=fmt)
     if test_fn is None:
         test_fn = fn.name.lower()
     test_path = test_dir / test_fn
