@@ -143,7 +143,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                 files_dict[fmt] = (fn, path_level)
 
     def _add_top_source_archive_file(self, fmt, fn, source_data_list):
-        source_string = self._archive_readfile(fn, to_pixmap=False)
+        source_string = self._archive_readfile(fn)
         sd = SourceData(source_string, Path(fn), fmt, from_archive=True)
         source_data_list.append(sd)
 

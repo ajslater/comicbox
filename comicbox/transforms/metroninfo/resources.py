@@ -94,40 +94,45 @@ def _resources_from_cb(cb_key, values):
     )
 
 
-def _create_resource_transform(metron_key_path, cb_key, to: bool):
-    if to:
-        nss_type = metron_key_path.split(".")[1].lower()
+def _create_resource_transform_to(metron_key_path, cb_key):
+    nss_type = metron_key_path.split(".")[1].lower()
 
-        def to_cb(values):
-            metron_resources = values.get(metron_key_path)
-            nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
-            return _resources_to_cb(metron_resources, nss_type, nid)
+    def to_cb(values):
+        metron_resources = values.get(metron_key_path)
+        nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+        return _resources_to_cb(metron_resources, nss_type, nid)
 
-        metaspec = MetaSpec(
-            key_map={cb_key: (metron_key_path, SCOPE_PRIMARY_SOURCE)}, spec=to_cb
-        )
-    else:
-
-        def from_cb(values):
-            return _resources_from_cb(cb_key, values)
-
-        metaspec = MetaSpec(
-            key_map={metron_key_path: (cb_key, PRIMARY_NID_KEYPATH)},
-            spec=from_cb,
-        )
-    return metaspec
+    return MetaSpec(
+        key_map={cb_key: (metron_key_path, SCOPE_PRIMARY_SOURCE)}, spec=to_cb
+    )
 
 
-def _create_resource_transforms(to: bool):
-    metaspecs = []
-    for metron_key_path, cb_key in _RESOURCES_KEY_MAP.items():
-        metaspec = _create_resource_transform(metron_key_path, cb_key, to)
-        metaspecs.append(metaspec)
-    return tuple(metaspecs)
+def _create_resource_transform_from(metron_key_path, cb_key):
+    def from_cb(values):
+        return _resources_from_cb(cb_key, values)
+
+    return MetaSpec(
+        key_map={metron_key_path: (cb_key, PRIMARY_NID_KEYPATH)},
+        spec=from_cb,
+    )
 
 
-METRON_RESOURCES_TRANSFORMS_TO_CB = _create_resource_transforms(to=True)
-METRON_RESOURCES_TRANSFORMS_FROM_CB = _create_resource_transforms(to=False)
+def _create_resource_transforms_to():
+    return (
+        _create_resource_transform_to(metron_key_path, cb_key)
+        for metron_key_path, cb_key in _RESOURCES_KEY_MAP.items()
+    )
+
+
+def _create_resource_transforms_from():
+    return (
+        _create_resource_transform_from(metron_key_path, cb_key)
+        for metron_key_path, cb_key in _RESOURCES_KEY_MAP.items()
+    )
+
+
+METRON_RESOURCES_TRANSFORMS_TO_CB = _create_resource_transforms_to()
+METRON_RESOURCES_TRANSFORMS_FROM_CB = _create_resource_transforms_from()
 
 
 def _arc_to_cb(

@@ -157,19 +157,19 @@ target-version = "py310"
 
 [tool.ruff.lint]
 extend-ignore = [
-  "BLE001",  # catch bare exception
-  "COM812",  # missing trailing comma
-  "COM819",  # prohibit trailing comma
-  "D203",    # blank line before class docstring
-  "D206",    # formatted
-  "D212",    # first line multi line docstring.
-  "E111",    # formatted
-  "E114",    # formatted
-  "E117",    # over-indented
-  "E501",    # 88 char line
-  "FIX002",  # TODO
-  "FIX003",  # XXX
-  "FBT001",  # boolean params
+  "BLE001", # catch bare exception
+  "COM812", # missing trailing comma
+  "COM819", # prohibit trailing comma
+  "D203",   # blank line before class docstring
+  "D206",   # formatted
+  "D212",   # first line multi line docstring.
+  "E111",   # formatted
+  "E114",   # formatted
+  "E117",   # over-indented
+  "E501",   # 88 char line
+  # "FIX002",  # TODO
+  # "FIX003",  # XXX
+  # "FBT001",  # boolean params
   "ISC001",  # formatted
   "PERF203", # try block in loop
   "S101",    # assert
@@ -244,7 +244,7 @@ task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.lint.per-file-ignores]
 "comicbox/run.py" = ["T201", "T203"]
-"tests/*" = ["T201", "T203"]
+"tests/*" = ["T201", "T203", "FBT001", "FBT002", "FBT003"]
 "tests/test_import.py" = ["DTZ001"]
 
 [tool.ruff.lint.pycodestyle]

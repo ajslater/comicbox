@@ -140,7 +140,7 @@ def test_cli_print():
     output = output.split("\n", 4)[4]  # remove first four lines
     pprint(output)
 
-    yaml = YamlRenderModule.get_write_yaml(dfs=False)
+    yaml = YamlRenderModule._get_write_yaml()  # noqa: SLF001
     loaded = yaml.load(output)
     output_dict = _ruamel_to_dict(loaded)
     output_dict = MappingProxyType(output_dict)

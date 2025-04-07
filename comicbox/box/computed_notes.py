@@ -27,7 +27,7 @@ from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.urns import (
     IDENTIFIER_EXP,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    parse_urn_identifier,
+    parse_urn_identifier_and_warn,
 )
 
 LOG = getLogger(__name__)
@@ -106,7 +106,7 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         if not match:
             return identifiers
         for urn in match.groups():
-            nid, _, nss = parse_urn_identifier(urn, warn=True)
+            nid, _, nss = parse_urn_identifier_and_warn(urn)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:

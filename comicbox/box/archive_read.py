@@ -106,29 +106,38 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         archive.reset()
         return data
 
-    def _archive_readfile(self, filename, to_pixmap: bool) -> bytes:
-        """Read an archive file to memory."""
-        # Consider chunking files by 4096 bytes and streaming them.
-        if Path(filename).is_dir():
-            return b""
+    def _archive_readfile_get_archive(self):
         self._ensure_read_archive()
         archive = self._get_archive()
         if archive is None:
             reason = "problem getting archive."
             raise ValueError(reason)
+        return archive
+
+    def _archive_readfile_pdf_to_pixmap(self, filename) -> bytes:
+        """Read an archive file to pixmap in memory."""
+        if Path(filename).is_dir():
+            return b""
+        archive = self._archive_readfile_get_archive()
+        return archive.read(filename, to_pixmap=True)  # type: ignore[reportCallIssue]
+
+    def _archive_readfile(self, filename) -> bytes:
+        """Read an archive file to memory."""
+        # Consider chunking files by 4096 bytes and streaming them.
         data = b""
-        try:
-            if isinstance(archive, TarFile):
-                data = self._read_tarfile(archive, filename)
-            elif isinstance(archive, SevenZipFile):
-                data = self._read_7zipfile(archive, filename)
-            elif to_pixmap and self._archive_is_pdf:
-                data = archive.read(filename, to_pixmap=to_pixmap)  # type: ignore[reportCallIssue]
-            else:
+        if Path(filename).is_dir():
+            return data
+        archive = self._archive_readfile_get_archive()
+        if isinstance(archive, TarFile):
+            data = self._read_tarfile(archive, filename)
+        elif isinstance(archive, SevenZipFile):
+            data = self._read_7zipfile(archive, filename)
+        else:
+            try:
                 data = archive.read(filename)  # type: ignore[reportCallIssue]
-        except BadRarFile:
-            self.check_unrar_executable()
-            raise
+            except BadRarFile:
+                self.check_unrar_executable()
+                raise
         return data
 
     def _get_comment(self):

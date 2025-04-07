@@ -81,8 +81,8 @@ def read_metadata(  # noqa: PLR0913
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
-    ignore_page_count: bool = False,  # noqa: FBT002
-    ignore_pages: bool = False,  # noqa: FBT002
+    ignore_page_count: bool = False,
+    ignore_pages: bool = False,
 ):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "slnmcd"
@@ -492,7 +492,7 @@ class TestParser:
         self,
         new_test_cbz_path,
         page_count=0,
-        ignore_pages=False,  # noqa: FBT002
+        ignore_pages=False,
     ):
         """Create a test metadata file, read it back and compare the original."""
         tmp_path = new_test_cbz_path.parent
@@ -512,7 +512,7 @@ class TestParser:
     def test_md_write(
         self,
         page_count=0,
-        ignore_pages=False,  # noqa: FBT002
+        ignore_pages=False,
     ):
         """Write metadtata to an archive."""
         new_fn = self.test_fn.with_suffix(".cbz")

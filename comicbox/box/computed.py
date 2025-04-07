@@ -262,7 +262,7 @@ class ComicboxComputedMixin(ComicboxComputedNotesMixin):
         identifiers = {}
         for tag in tags:
             # Silently fail because most tags are not urns
-            nid, nss_type, nss = parse_urn_identifier(tag, warn=False)
+            nid, _, nss = parse_urn_identifier(tag)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:

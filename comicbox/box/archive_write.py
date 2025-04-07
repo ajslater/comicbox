@@ -107,9 +107,13 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
                 if self.IMAGE_EXT_RE.search(filename) is None
                 else ZIP_STORED
             )
+            if self._archive_is_pdf:
+                data = self._archive_readfile_pdf_to_pixmap(filename)
+            else:
+                data = self._archive_readfile(filename)
             zf.writestr(
                 filename,
-                self._archive_readfile(filename, to_pixmap=True),
+                data,
                 compress_type=compress,
                 compresslevel=9,
             )

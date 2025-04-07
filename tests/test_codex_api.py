@@ -254,16 +254,17 @@ def test_codex_import(ft):
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
-def test_cover_image(ft):
+def test_cover_page(ft):
     """Test codex cover extraction methods."""
     fixture = FIXTURES[ft]
-    with Comicbox(fixture.path) as car:
-        cover = car.get_cover_image()
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
+    is_pdf = cover_path.suffix == ".pdf"
+    with Comicbox(fixture.path) as car:
+        cover = car.get_cover_page_pdf_to_pixmap() if is_pdf else car.get_cover_page()
     print(f"{cover_path=}")
     with cover_path.open("rb") as f:
         disk_cover = f.read()
-    if cover_path.suffix == ".pdf":
+    if is_pdf:
         # transform file to image.
         try:
             doc = pymupdf.Document(stream=disk_cover)

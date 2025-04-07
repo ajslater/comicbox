@@ -92,23 +92,37 @@ IDENTIFIER_URN_NIDS_REVERSE_MAP = _create_identifier_urn_ids_maps()
 _PARSE_EXTRA_RE = re.compile(IDENTIFIER_EXP, flags=re.IGNORECASE)
 
 
-def parse_urn_identifier(tag: str, warn: bool) -> tuple[str, str, str]:
+def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
+    urn = URN8141.from_string(tag)
+    nid = str(urn.namespace_id)
+    if nid:
+        nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), "")
+    parts = urn.specific_string.parts
+    try:
+        nss_type = str(parts[-2])
+    except IndexError:
+        nss_type = DEFAULT_NSS_TYPE
+    nss = str(parts[-1])
+    return nid, nss_type, nss
+
+
+def parse_urn_identifier_and_warn(tag: str) -> tuple[str, str, str]:
+    """Parse an identifier from a tag and log a debug warning."""
+    try:
+        nid, nss_type, nss = _parse_urn_identifier(tag)
+    except Exception as exc:
+        LOG.debug(f"Unable to decode urn: {tag} {exc}")
+        nid = nss_type = nss = ""
+    return nid, nss_type, nss
+
+
+def parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     """Parse an identifier from a tag."""
     nid = nss_type = nss = ""
     try:
-        urn = URN8141.from_string(tag)
-        nid = str(urn.namespace_id)
-        if nid:
-            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), "")
-        parts = urn.specific_string.parts
-        try:
-            nss_type = str(parts[-2])
-        except IndexError:
-            nss_type = DEFAULT_NSS_TYPE
-        nss = str(parts[-1])
-    except Exception as exc:
-        if warn:
-            LOG.debug(f"Unable to decode urn: {tag} {exc}")
+        nid, nss_type, nss = _parse_urn_identifier(tag)
+    except Exception:
+        nid = nss_type = nss = ""
     return nid, nss_type, nss
 
 
@@ -149,7 +163,7 @@ def _parse_identifier_str(full_identifier: str) -> tuple[str, str, str]:
 
 def parse_string_identifier(item: str, default_nid="") -> tuple[str, str, str]:
     """Parse identifiers from strings or xml dicts."""
-    nid, nss_type, nss = parse_urn_identifier(item, warn=True)
+    nid, nss_type, nss = parse_urn_identifier_and_warn(item)
     if not nss:
         nid, nss_type, nss = _parse_identifier_str(item)
     if default_nid and not nid:

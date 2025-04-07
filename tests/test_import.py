@@ -820,7 +820,6 @@ def test_import(fn):
     assert not diff
 
 
-# TODO Activate
 @pytest.mark.parametrize("fn", FNS)
 def deactivated_test_export(fn):
     """Test exporting metadata files."""

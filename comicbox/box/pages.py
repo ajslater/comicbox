@@ -57,38 +57,72 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
     #############
     # PAGE DATA #
     #############
+    @archive_close
+    def get_page_by_filename_pdf_to_pixmap(self, filename: str):
+        """Return data for a single pdf page by filename to a pixmap."""
+        return self._archive_readfile_pdf_to_pixmap(filename)
 
     @archive_close
-    def get_page_by_filename(self, filename, to_pixmap=False):  # noqa: FBT002
+    def get_page_by_filename(self, filename: str):
         """Return data for a single page by filename."""
-        return self._archive_readfile(filename, to_pixmap)
+        return self._archive_readfile(filename)
 
     @archive_close
-    def get_pages(self, page_from=0, page_to=-1, to_pixmap=False):  # noqa: FBT002
+    def get_pages_pdf_to_pixmap(
+        self,
+        page_from=0,
+        page_to=-1,
+    ):
         """Generate all pages starting with page number."""
-        pagenames = self.get_pagenames_from(page_from, page_to)
-        if pagenames:
+        if pagenames := self.get_pagenames_from(page_from, page_to):
             for pagename in pagenames:
-                yield self._archive_readfile(pagename, to_pixmap)
+                yield self._archive_readfile_pdf_to_pixmap(pagename)
 
     @archive_close
-    def get_page_by_index(self, index, to_pixmap=False):  # noqa: FBT002
+    def get_pages(self, page_from=0, page_to=-1):
+        """Generate all pages starting with page number."""
+        if pagenames := self.get_pagenames_from(page_from, page_to):
+            for pagename in pagenames:
+                yield self._archive_readfile(pagename)
+
+    @archive_close
+    def get_page_by_index_pdf_to_pixmap(self, index: int):
         """Get the page data by index."""
-        pages_generator = self.get_pages(
-            page_from=index, page_to=index, to_pixmap=to_pixmap
-        )
-        if pages_generator:
+        if pages_generator := self.get_pages_pdf_to_pixmap(
+            page_from=index,
+            page_to=index,
+        ):
             return next(pages_generator)
         return None
 
     @archive_close
-    def get_cover_image(self):
-        """Return cover image data."""
-        cover_path_list = self.get_cover_path_list()
+    def get_page_by_index(self, index: int):
+        """Get the page data by index."""
+        if pages_generator := self.get_pages(page_from=index, page_to=index):
+            return next(pages_generator)
+        return None
+
+    @archive_close
+    def get_cover_page_pdf_to_pixmap(self):
+        """Return cover image from a pdf to a pixmap."""
         data = None
+        cover_path_list = self.get_cover_path_list()
         for cover_fn in cover_path_list:
             try:
-                data = self._archive_readfile(cover_fn, to_pixmap=True)
+                data = self._archive_readfile_pdf_to_pixmap(cover_fn)
+                break
+            except Exception as exc:
+                LOG.warning(f"{self._path} reading cover: {cover_fn}: {exc}")
+        return data
+
+    @archive_close
+    def get_cover_page(self):
+        """Return cover image data."""
+        data = None
+        cover_path_list = self.get_cover_path_list()
+        for cover_fn in cover_path_list:
+            try:
+                data = self._archive_readfile(cover_fn)
                 break
             except Exception as exc:
                 LOG.warning(f"{self._path} reading cover: {cover_fn}: {exc}")
