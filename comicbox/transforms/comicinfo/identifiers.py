@@ -12,6 +12,7 @@ from comicbox.transforms.spec import MetaSpec
 
 
 def _to_cb(values):
+    # ComicInfo GTINs are abused as identifiers pending a real identifier tag.
     cix_gtin = values.get(GTIN_TAG)
     comicbox_identifiers = identifiers_to_cb(cix_gtin, ISBN_NID)
 
