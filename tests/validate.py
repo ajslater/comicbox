@@ -22,7 +22,7 @@ def get_json_schema(path):
 
 
 CBI_SCHEMA = get_json_schema("schemas/comic-book-info-v1.0.schema.json")
-CB_SCHEMA = get_json_schema("schemas/comicbox-v2.0.schema.json")
+CB_SCHEMA = get_json_schema("schemas/v2.0/comicbox-v2.0.schema.json")
 MIX_SCHEMA = get_xml_schema("schemas/MetronInfo-v1.0.xsd")
 CIX_SCHEMA = get_xml_schema("schemas/ComicInfo-v2.1-Draft.xsd")
 COMET_SCHEMA = get_xml_schema("schemas/CoMet-v1.1.xsd")
