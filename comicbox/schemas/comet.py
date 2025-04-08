@@ -4,7 +4,7 @@
 from decimal import Decimal
 from types import MappingProxyType
 
-from marshmallow.fields import Constant, Nested
+from marshmallow.fields import Nested
 
 from comicbox.fields.xml_fields import (
     XmlDateField,
@@ -17,9 +17,9 @@ from comicbox.fields.xml_fields import (
     XmlStringSetField,
 )
 from comicbox.schemas.xml_schemas import (
-    XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
+    create_xml_headers,
 )
 
 IDENTIFIER_TAG = "identifier"
@@ -62,12 +62,15 @@ class CoMetSubSchema(XmlSubHeadSchema):
     class Meta(XmlSubHeadSchema.Meta):
         """Schema Options."""
 
+        NS = "comet"
+        NS_URI = "http://www.denvog.com/comet/"
+        XSD_URI = (
+            "https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd"
+        )
+
         include = MappingProxyType(
             {
-                "@xmlns:comet": Constant("http://www.denvog.com/comet/"),
-                XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd"
-                ),
+                **create_xml_headers(NS, NS_URI, XSD_URI),
                 "format": XmlStringField(),
             }
         )

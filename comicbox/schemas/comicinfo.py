@@ -3,7 +3,7 @@
 
 from types import MappingProxyType
 
-from marshmallow.fields import Constant, Nested
+from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.comicinfo import ComicInfoAgeRatingField
@@ -25,10 +25,10 @@ from comicbox.fields.xml_fields import (
     create_sub_tag_field,
 )
 from comicbox.schemas.xml_schemas import (
-    XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
     XmlSubSchema,
+    create_xml_headers,
 )
 
 ALTERNATE_SERIES_TAG = "AlternateSeries"
@@ -169,16 +169,11 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
     class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""
 
-        include = MappingProxyType(
-            {
-                "@xmlns:comicinfo": Constant(
-                    "https://anansi-project.github.io/docs/comicinfo/"
-                ),
-                XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "https://anansi-project.github.io/docs/comicinfo/ https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
-                ),
-            }
-        )
+        NS = "comicinfo"
+        NS_URI = "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1"
+        XSD_URI = "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
+
+        include = create_xml_headers(NS, NS_URI, XSD_URI)
 
 
 class ComicInfoSchema(XmlSchema):

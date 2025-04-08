@@ -19,10 +19,10 @@ from comicbox.fields.xml_fields import (
 from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.schemas.xml_schemas import (
-    XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
     XmlSubSchema,
+    create_xml_headers,
 )
 
 
@@ -90,13 +90,16 @@ class PDFXMPMetaSchema(XmlSubHeadSchema):
     class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""
 
+        NS = "x"
+        NS_URI = "adobe:ns:meta/"
+        XSD_URI = "http://ns.adobe.com/pdf/1.3/"
+
         include = MappingProxyType(
             {
+                **create_xml_headers(NS, NS_URI, XSD_URI),
                 "@x:xmptk": Constant(
                     "Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21"
                 ),
-                "@xmlns:x": Constant("adobe:ns:meta/"),
-                XSI_SCHEMA_LOCATION_KEY: Constant("http://ns.adobe.com/pdf/1.3/"),
                 "rdf:RDF": Nested(PDFRDFDescriptionSchema),
             }
         )

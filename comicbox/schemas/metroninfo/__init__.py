@@ -2,9 +2,8 @@
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from decimal import Decimal
-from types import MappingProxyType
 
-from marshmallow.fields import Constant, Nested
+from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
@@ -36,9 +35,9 @@ from comicbox.schemas.metroninfo.publishing import (
 )
 from comicbox.schemas.metroninfo.resource import metron_resource_list_field
 from comicbox.schemas.xml_schemas import (
-    XSI_SCHEMA_LOCATION_KEY,
     XmlSchema,
     XmlSubHeadSchema,
+    create_xml_headers,
 )
 
 COUNTRY_ATTR = "@country"
@@ -119,16 +118,11 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
     class Meta(XmlSubHeadSchema.Meta):
         """Schema Options."""
 
-        include = MappingProxyType(
-            {
-                "@xmlns:metroninfo": Constant(
-                    "https://metron-project.github.io/docs/metroninfo/schemas/v1.0"
-                ),
-                XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd"
-                ),
-            }
-        )
+        NS = "metroninfo"
+        NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.0"
+        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd"
+
+        include = create_xml_headers(NS, NS_URI, XSD_URI)
 
 
 class MetronInfoSchema(XmlSchema):
