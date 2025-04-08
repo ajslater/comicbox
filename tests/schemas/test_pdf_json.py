@@ -12,10 +12,8 @@ from comicbox.schemas.pdf import MuPDFSchema
 from tests.const import PDF_FN
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["pdf", "cix"], read=["pdf"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["pdf", "cix"], read=["pdf"]))
 
 METADATA = MappingProxyType(
     {
@@ -40,33 +38,18 @@ PDF_DICT = MappingProxyType(
             "creator": "Pages",
             "keywords": "<?xml "
             'version="1.0" '
-            'encoding="utf-8"?>\n'
+            'encoding="UTF-8"?>\n'
             "<ComicInfo "
             'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
             'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-            'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/ '
-            'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
-            "\t<Title>the "
-            "tangle of "
-            "their "
-            "lives</Title>\n"
-            "\t<Series>test "
-            "pdf</Series>\n"
-            "\t"
-            "<Notes>Tagged "
-            "with comicbox "
-            "dev on "
-            "1970-01-01T00:00:00</Notes>\n"
-            "\t<Writer>Jon "
-            "Osterman</Writer>\n"
-            "\t"
-            "<Publisher>SmallPub</Publisher>\n"
-            "\t"
-            "<Genre>Science "
-            "Fiction</Genre>\n"
-            "\t"
-            "<Tags>d,e,f</Tags>\n"
-            "\t"
+            'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n\t'
+            "<Title>the tangle of their lives</Title>\n\t"
+            "<Series>test pdf</Series>\n\t"
+            "<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00</Notes>\n\t"
+            "<Writer>Jon Osterman</Writer>\n\t"
+            "<Publisher>SmallPub</Publisher>\n\t"
+            "<Genre>Science Fiction</Genre>\n\t"
+            "<Tags>d,e,f</Tags>\n\t"
             "<ScanInformation>Pages</ScanInformation>\n"
             "</ComicInfo>",
             "modDate": "D:19700101000000+00'00'",
@@ -131,4 +114,4 @@ def test_pdf_read():
 
 def test_pdf_write():
     """Write PDF metadata."""
-    PDF_TESTER.test_pdf_write()
+    PDF_TESTER.test_pdf_write(page_count=1)

@@ -10,6 +10,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -171,10 +172,8 @@ READ_CIX_DICT = MappingProxyType(
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, pretty=True, short_empty_elements=True)
-WRITE_CIX_STR = xmltodict.unparse(
-    WRITE_CIX_DICT, pretty=True, short_empty_elements=True
-)
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
 
 CIX_TESTER = TestParser(
     MetadataFormats.COMIC_INFO,

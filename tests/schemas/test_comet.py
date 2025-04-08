@@ -11,13 +11,12 @@ from comicbox.fields.enum_fields import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["comet", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["comet"], read=["comet"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["comet", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
 
 METADATA = MappingProxyType(
     {
@@ -90,7 +89,7 @@ COMET_DICT = MappingProxyType(
         }
     }
 )
-COMET_STR = xmltodict.unparse(COMET_DICT, pretty=True, short_empty_elements=True)
+COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
 
 COMET_TESTER = TestParser(
     MetadataFormats.COMET,
@@ -145,4 +144,4 @@ def test_comet_read():
 
 def test_comet_write():
     """Write comet metadata."""
-    COMET_TESTER.test_md_write(page_count=36)
+    COMET_TESTER.test_md_write(page_count=0)

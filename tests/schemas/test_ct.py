@@ -14,10 +14,8 @@ from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comictagger.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["ct", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["ct"], read=["ct"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["ct", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["ct"], read=["ct"]))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

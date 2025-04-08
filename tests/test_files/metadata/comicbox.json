@@ -5,12 +5,12 @@
     "credits": {
       "Joe Orlando": {
         "roles": {
-          "writer": {}
+          "Writer": {}
         }
       },
       "Wally Wood": {
         "roles": {
-          "penciller": {}
+          "Penciller": {}
         }
       }
     },
@@ -36,35 +36,35 @@
     "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] [CVDB145269]",
     "page_count": 36,
     "pages": {
-      "0": {
+      "00": {
         "page_type": "FrontCover",
         "size": 429985
       },
-      "1": {
+      "01": {
         "size": 332936
       },
-      "2": {
+      "02": {
         "size": 458657
       },
-      "3": {
+      "03": {
         "size": 450456
       },
-      "4": {
+      "04": {
         "size": 436648
       },
-      "5": {
+      "05": {
         "size": 443725
       },
-      "6": {
+      "06": {
         "size": 469526
       },
-      "7": {
+      "07": {
         "size": 429811
       },
-      "8": {
+      "08": {
         "size": 445513
       },
-      "9": {
+      "09": {
         "size": 446292
       },
       "10": {

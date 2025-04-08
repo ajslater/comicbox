@@ -9,13 +9,12 @@ import xmltodict
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.pdf import PDFXmlSchema
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import PDF_FN
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["pdf", "cix"], read=["pdf"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=("pdf", "fn")))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=("pdf", "cix"), read=["pdf"]))
 
 METADATA = MappingProxyType(
     {
@@ -41,7 +40,7 @@ PDF_DICT = MappingProxyType(
             "@xmlns:x": "adobe:ns:meta/",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "http://ns.adobe.com/pdf/1.3/",
+            "@xsi:schemaLocation": "adobe:ns:meta/ http://ns.adobe.com/pdf/1.3/",
             _ROOT_KEY_PATH[1]: {
                 "@xmlns:rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns",
                 _ROOT_KEY_PATH[2]: {
@@ -50,11 +49,11 @@ PDF_DICT = MappingProxyType(
                     "pdf:Creator": "Pages",
                     "pdf:Keywords": "<?xml "
                     'version="1.0" '
-                    'encoding="utf-8"?>\n'
+                    'encoding="UTF-8"?>\n'
                     "<ComicInfo "
                     'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
                     'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-                    'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/ '
+                    'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 '
                     'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
                     "\t"
                     "<Title>the "
@@ -94,7 +93,7 @@ PDF_DICT = MappingProxyType(
         }
     }
 )
-PDF_STR = xmltodict.unparse(PDF_DICT, pretty=True, short_empty_elements=True)
+PDF_STR = xmltodict.unparse(PDF_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
 
 PDF_TESTER = TestParser(
     MetadataFormats.PDF_XML,
@@ -149,4 +148,4 @@ def test_pdf_read():
 
 def test_pdf_write():
     """Write PDF metadata."""
-    PDF_TESTER.test_pdf_write()
+    PDF_TESTER.test_pdf_write(page_count=1)

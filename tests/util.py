@@ -12,12 +12,14 @@ from types import MappingProxyType
 
 import pymupdf
 from deepdiff.diff import DeepDiff
+from glom import Assign, Delete, glom
 from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox import (
+    EXT_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
     PAGES_KEY,
@@ -25,6 +27,7 @@ from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
 )
 from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
+from comicbox.transforms.comicbookinfo import UPDATED_AT_KEY_PATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_DATETIME,
@@ -36,6 +39,10 @@ from tests.const import (
 from tests.validate import validate_path
 
 PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
+PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGE_COUNT_KEY}"
+PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
+NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{NOTES_KEY}"
+EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{EXT_KEY}"
 
 
 def get_tmp_dir(filename: str):
@@ -86,31 +93,26 @@ def read_metadata(  # noqa: PLR0913
 ):
     """Read metadata and compare to dict fixture."""
     read_config.comicbox.print = "slnmcd"
-    print(archive_path)
+
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
         disk_md = dict(car.get_metadata())
-    if ignore_page_count:
-        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(PAGE_COUNT_KEY, None)
-    if page_count is not None:
-        disk_md[ComicboxSchemaMixin.ROOT_TAG][PAGE_COUNT_KEY] = page_count
-        if pages := disk_md.get(PAGES_KEY):
-            if page_count:
-                disk_md[PAGES_KEY] = pages[:page_count]
-            else:
-                disk_md.pop(PAGES_KEY, None)
-    print(f"{ignore_updated_at=} {ignore_notes=}")
     metadata = dict(metadata)
-    metadata[ComicboxSchemaMixin.ROOT_TAG]["ext"] = archive_path.suffix[1:]
+    if ignore_page_count:
+        glom(metadata, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
+    elif page_count is not None:
+        glom(metadata, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
+    glom(metadata, Assign(EXT_KEYPATH, archive_path.suffix[1:], missing=dict))
     if ignore_updated_at:
-        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
-        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        glom(metadata, Delete(UPDATED_AT_KEY_PATH, ignore_missing=True))
+        glom(disk_md, Delete(UPDATED_AT_KEY_PATH, ignore_missing=True))
     if ignore_notes:
-        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
-        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+        glom(metadata, Delete(NOTES_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(NOTES_KEYPATH, ignore_missing=True))
     if ignore_pages:
-        metadata[ComicboxSchemaMixin.ROOT_TAG].pop(PAGES_KEY, None)
-        disk_md[ComicboxSchemaMixin.ROOT_TAG].pop(PAGES_KEY, None)
+        glom(metadata, Delete(PAGES_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(PAGES_KEYPATH, ignore_missing=True))
     metadata = MappingProxyType(metadata)
     disk_md = MappingProxyType(disk_md)
     pprint(metadata)
@@ -120,7 +122,7 @@ def read_metadata(  # noqa: PLR0913
     assert not diff
 
 
-_NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
+_NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>", "&lt;Notes&gt;")
 _LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
 _TMP_IGNORE_SUBSTRINGS = ("<identifier>", "pages:", '"pages":')
 _MOD_DATE_TAGS = ('"modDate":', "<pdf:ModDate>")
@@ -323,10 +325,19 @@ class TestParser:
         """Remove the tmp dir."""
         my_cleanup(self.tmp_dir)
 
-    def _test_from(self, md):
-        pprint(self.read_reference_metadata)
+    def _test_from(self, md, page_count=None):
+        if page_count is None:
+            read_reference_metadata = self.read_reference_metadata
+        else:
+            read_reference_metadata = deepcopy(dict(self.read_reference_metadata))
+            glom(
+                read_reference_metadata,
+                Assign("comicbox.page_count", page_count, missing=dict),
+            )
+            read_reference_metadata = MappingProxyType(read_reference_metadata)
+        pprint(read_reference_metadata)
         pprint(md)
-        diff = DeepDiff(self.read_reference_metadata, md)
+        diff = DeepDiff(read_reference_metadata, md)
         pprint(diff)
         assert not diff
 
@@ -336,7 +347,7 @@ class TestParser:
         with Comicbox(
             metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=PRINT_CONFIG
         ) as car:
-            car.print_out()
+            # car.print_out() debug
             md = car.get_metadata()
         self._test_from(md)
 
@@ -344,7 +355,6 @@ class TestParser:
         """Test load from native dict."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
-            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
@@ -352,19 +362,19 @@ class TestParser:
         """Test load from string."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_string, self.fmt)
-            car.print_out()
+            # car.print_out() debug
             md = car.get_metadata()
         print(self.read_reference_string)
         self._test_from(md)
 
-    def test_from_file(self):
+    def test_from_file(self, page_count=None):
         """Test load from an export file."""
         print(f"{self.reference_export_path=}")
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
-            car.print_out()
+            # car.print_out() debug
             md = car.get_metadata()
-        self._test_from(md)
+        self._test_from(md, page_count=page_count)
 
     def compare_dict(self, test_dict):
         """Compare native dicts."""
@@ -384,7 +394,7 @@ class TestParser:
             metadata=self.write_reference_metadata,
             fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
-            car.print_out()
+            # car.print_out() debug
             return car.to_dict(fmt=self.fmt, **kwargs)
 
     def test_to_dict(self, **kwargs):
@@ -397,7 +407,7 @@ class TestParser:
         with Comicbox(
             metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
         ) as car:
-            car.print_out()
+            # car.print_out() debug
             return car.to_string(fmt=self.fmt, **kwargs)
 
     def compare_string(self, test_str):
@@ -449,7 +459,7 @@ class TestParser:
         )
         self.teardown_method()
 
-    def test_md_read(self, archive_path=None, page_count=None):
+    def test_md_read(self, archive_path=None, page_count=None, ignore_pages=False):
         """Read metadtata from an archive."""
         if archive_path is None:
             archive_path = self.reference_path
@@ -460,6 +470,7 @@ class TestParser:
             ignore_updated_at=False,
             ignore_notes=False,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
 
     def test_pdf_read(self):
@@ -485,13 +496,13 @@ class TestParser:
             metadata=self.write_reference_metadata,
             fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
-            car.print_out()
+            # car.print_out() debug
             car.write()
 
     def write_metadata(
         self,
         new_test_cbz_path,
-        page_count=0,
+        page_count=None,
         ignore_pages=False,
     ):
         """Create a test metadata file, read it back and compare the original."""
@@ -511,7 +522,7 @@ class TestParser:
 
     def test_md_write(
         self,
-        page_count=0,
+        page_count=None,
         ignore_pages=False,
     ):
         """Write metadtata to an archive."""
@@ -544,10 +555,7 @@ class TestParser:
             reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc
 
-    def write_metadata_pdf(
-        self,
-        new_test_pdf_path,
-    ):
+    def write_metadata_pdf(self, new_test_pdf_path, page_count=None):
         """Copy the test metadata pdf and write to it."""
         tmp_path = new_test_pdf_path.parent
         tmp_path.mkdir(parents=True, exist_ok=True)
@@ -558,13 +566,14 @@ class TestParser:
             self.read_config,
             ignore_updated_at=True,
             ignore_notes=True,
+            page_count=page_count,
         )
         shutil.rmtree(tmp_path)
 
-    def test_pdf_write(self):
+    def test_pdf_write(self, page_count=None):
         """Special pdf write test."""
         test_pdf_path = self.tmp_dir / self.test_fn
-        self.write_metadata_pdf(test_pdf_path)
+        self.write_metadata_pdf(test_pdf_path, page_count=page_count)
 
 
 def create_write_metadata(read_metadata, notes=TEST_WRITE_NOTES):

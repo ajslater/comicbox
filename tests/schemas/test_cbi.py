@@ -12,10 +12,8 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cbi"], read=["cbi"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cbi"], read=["cbi"]))
 METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -130,4 +128,4 @@ def test_cbi_read():
 
 def test_cbi_write():
     """Test write to file."""
-    CBI_TESTER.test_md_write(page_count=36)
+    CBI_TESTER.test_md_write(page_count=0)

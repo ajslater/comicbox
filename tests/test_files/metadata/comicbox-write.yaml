@@ -6,7 +6,6 @@ comicbox:
       number: 3
     f:
       number: 5
-  ext: cbz
   identifiers:
     comicvine:
       nss: '145269'

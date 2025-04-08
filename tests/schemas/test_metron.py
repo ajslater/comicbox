@@ -12,6 +12,7 @@ from glom import Assign, glom
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
@@ -19,10 +20,8 @@ from tests.util import (
     create_write_metadata,
 )
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["mi", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["mi"], read=["mi"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["mi", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["mi"], read=["mi"]))
 METRON_NOTES = (
     "Tagged with "
     "comicbox dev "
@@ -351,7 +350,7 @@ def unparse_strinfigy_decimals(data):
         stringified_data,
         Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
     )
-    return xmltodict.unparse(stringified_data, pretty=True, short_empty_elements=True)
+    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
 
 
 READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)

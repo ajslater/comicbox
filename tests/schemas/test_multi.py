@@ -100,7 +100,7 @@ READ_METADATA = MappingProxyType(
                 9: {"size": 446292},
                 10: {"size": 458589},
                 11: {"size": 417623},
-                12: {"size": 445302},
+                12: {"bookmark": "true", "size": 445302},
                 13: {"size": 413271},
                 14: {"size": 434201},
                 15: {"size": 439049},
@@ -173,20 +173,21 @@ READ_MULTI_DICT = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "language": "en",
             "page_count": 0,
+            "bookmark": 12,
             "pages": {
-                "0": {"page_type": "FrontCover", "size": 429985},
-                "1": {"size": 332936},
-                "2": {"size": 458657},
-                "3": {"size": 450456},
-                "4": {"size": 436648},
-                "5": {"size": 443725},
-                "6": {"size": 469526},
-                "7": {"size": 429811},
-                "8": {"size": 445513},
-                "9": {"size": 446292},
+                "00": {"page_type": "FrontCover", "size": 429985},
+                "01": {"size": 332936},
+                "02": {"size": 458657},
+                "03": {"size": 450456},
+                "04": {"size": 436648},
+                "05": {"size": 443725},
+                "06": {"size": 469526},
+                "07": {"size": 429811},
+                "08": {"size": 445513},
+                "09": {"size": 446292},
                 "10": {"size": 458589},
                 "11": {"size": 417623},
-                "12": {"size": 445302},
+                "12": {"bookmark": "true", "size": 445302},
                 "13": {"size": 413271},
                 "14": {"size": 434201},
                 "15": {"size": 439049},
@@ -244,7 +245,6 @@ READ_MULTI_DICT = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
-            "bookmark": 12,
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
@@ -285,7 +285,7 @@ def test_multi_to_dict():
 
 def test_multi_read():
     """Test read from file."""
-    MULTI_TESTER.test_md_read()
+    MULTI_TESTER.test_md_read(ignore_pages=True)
 
 
 def test_multi_write():

@@ -7,15 +7,13 @@ from pprint import pprint
 from types import MappingProxyType
 
 import pytest
-from dateutil.tz.tz import tzoffset, tzutc
+from dateutil.tz.tz import tzoffset
 from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
-from tests.const import (
-    EMPTY_CBZ_SOURCE_PATH,
-    TEST_METADATA_DIR,
-)
+from comicbox.formats import MetadataFormats
+from tests.const import TEST_METADATA_DIR
 from tests.util import compare_export, get_tmp_dir
 
 _TMP_DIR = get_tmp_dir(__file__)
@@ -32,7 +30,6 @@ FNS = MappingProxyType(
             },
             "cover_image": "CaptainScience#1_01.jpg",
             "date": {"cover_date": date(1950, 12, 1)},
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -47,7 +44,7 @@ FNS = MappingProxyType(
             "language": "en",
             "bookmark": 12,
             "original_format": "Comic",
-            "page_count": 0,
+            "page_count": 36,
             "prices": {"": Decimal("0.10")},
             "publisher": {"name": "Bell Features"},
             "reading_direction": ReadingDirectionEnum.LTR,
@@ -66,7 +63,6 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "country": "US",
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "issue": {
                 "name": "1",
@@ -77,12 +73,12 @@ FNS = MappingProxyType(
                 "year": 1950,
                 "month": 11,
             },
-            "page_count": 0,
+            "page_count": 36,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comic-book-info-example.json": {
@@ -94,7 +90,7 @@ FNS = MappingProxyType(
                 "Moore, Alan": {"roles": {"Writer": {}}},
                 "Wein, Len": {"roles": {"Editor": {}}},
             },
-            "ext": "cbz",
+            "credit_primaries": {"Writer": "Moore, Alan"},
             "genres": {"Superhero": {}},
             "issue": {
                 "name": "1",
@@ -105,7 +101,6 @@ FNS = MappingProxyType(
                 "month": 9,
                 "year": 1986,
             },
-            "page_count": 0,
             "publisher": {"name": "DC Comics"},
             "critical_rating": Decimal(5),
             "series": {"name": "Watchmen", "volume_count": 1},
@@ -113,10 +108,11 @@ FNS = MappingProxyType(
             "summary": "Tales of the Black Freighter...",
             "tags": {"Rorschach": {}, "Ozymandias": {}, "Nite Owl": {}},
             "tagger": "ComicBookLover/888",
-            "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=tzutc()),
+            "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=timezone.utc),
             "volume": {"issue_count": 12, "number": 1},
         },
         "comicbox-filename.txt": {
+            "ext": "cbz",
             "series": {"name": "Captain Science"},
             "issue": {
                 "name": "001",
@@ -126,7 +122,6 @@ FNS = MappingProxyType(
                 "year": 1950,
             },
             "stories": {"The Beginning - nothing": {}},
-            "ext": "cbz",
         },
         "comicbox.json": {
             "credits": {
@@ -139,7 +134,6 @@ FNS = MappingProxyType(
                 "month": 11,
                 "year": 1950,
             },
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -193,17 +187,16 @@ FNS = MappingProxyType(
                 34: {"size": 353013},
                 35: {"size": 340840},
             },
-            "page_count": 0,
+            "page_count": 36,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicbox.yaml": {
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
-            "ext": "cbz",
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -257,7 +250,7 @@ FNS = MappingProxyType(
             "series": {"name": "empty"},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
@@ -272,7 +265,6 @@ FNS = MappingProxyType(
                 "month": 11,
                 "year": 1950,
             },
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -334,7 +326,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicinfo-metron-origin.xml": {
@@ -349,7 +341,6 @@ FNS = MappingProxyType(
                 "month": 11,
                 "year": 1950,
             },
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -415,7 +406,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "Comictagger",
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comictagger.json": {
@@ -429,7 +420,6 @@ FNS = MappingProxyType(
                 "month": 11,
                 "year": 1950,
             },
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
                 "nid": "comicvine",
@@ -454,7 +444,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "metroninfo.xml": {
@@ -467,7 +457,6 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {"cover_date": date(1950, 11, 1)},
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
                 "nid": "metron",
@@ -535,7 +524,7 @@ FNS = MappingProxyType(
             },
             "tagger": "comicbox dev",
             "universes": {"Mirror": {"designation": "4242"}},
-            "updated_at": datetime(1970, 1, 1, 0, 0),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
@@ -607,7 +596,6 @@ FNS = MappingProxyType(
                 "cover_date": date(2011, 10, 1),
                 "store_date": date(2011, 8, 31),
             },
-            "ext": "cbz",
             "genres": {
                 "Crime": {},
                 "Foo Bar": {},
@@ -684,6 +672,7 @@ FNS = MappingProxyType(
                 "name": "DC Comics",
             },
             "reprints": [
+                {"series": {"name": "Foo"}},
                 {
                     "identifiers": {
                         "metron": {
@@ -695,7 +684,6 @@ FNS = MappingProxyType(
                     "series": {"name": "Foo Bar"},
                 },
                 {"issue": "002", "series": {"name": "Foo Bar"}},
-                {"series": {"name": "Foo"}},
                 {"language": "de", "series": {"name": "Hüsker Dü"}},
             ],
             "series": {
@@ -760,10 +748,8 @@ FNS = MappingProxyType(
         },
         "pdf.xml": {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
-            "ext": "cbz",
             "genres": {"Science Fiction": {}},
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
-            "page_count": 0,
             "publisher": {"name": "SmallPub"},
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
@@ -788,6 +774,7 @@ _FORMAT_MAP = MappingProxyType(
         "comictagger.json": "ct",
         "metroninfo.xml": "metron",
         "metroninfo-v1.0-valid.xml": "metron",
+        "pdf.xml": "pdfxml",
     }
 )
 
@@ -806,10 +793,10 @@ def test_import(fn):
     """Test importing metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     import_path = TEST_METADATA_DIR / fn
-    cns = Namespace(import_paths=[import_path], print="lncp")
+    cns = Namespace(import_paths=[import_path], print="ncp")
     config = Namespace(comicbox=cns)
-    with Comicbox(EMPTY_CBZ_SOURCE_PATH, config=config) as car:
-        car.print_out()
+    with Comicbox(config=config) as car:
+        # car.print_out() debug
         md = car.get_metadata()
 
     diff = DeepDiff(test_md, md)
@@ -821,21 +808,21 @@ def test_import(fn):
 
 
 @pytest.mark.parametrize("fn", FNS)
-def deactivated_test_export(fn):
+def test_export(fn):
     """Test exporting metadata files."""
     fmt = _FORMAT_MAP[fn]
-    if fmt == "fn":
-        # no export file possible
-        return
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     formats = (fmt,)
+    embed_fmt = MetadataFormats.COMIC_INFO if fmt == "pdfxml" else None
     cns = Namespace(metadata=test_md, dest_path=str(_TMP_DIR), export=formats)
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)
     with Comicbox("", config=config) as car:
-        car.export_files()
+        # car.print_out() debug
+        car.export_files(embed_fmt=embed_fmt)
 
     tmp_fn = _REGULAR_FN.get(fmt, fn)
     tmp_path = _TMP_DIR / tmp_fn
-    compare_export(TEST_METADATA_DIR, tmp_path, fmt, test_fn=fn)
+    validate = fmt not in frozenset({"fn", "pdfxml", "ct"})
+    compare_export(TEST_METADATA_DIR, tmp_path, fmt, test_fn=fn, validate=validate)
     tmp_path.unlink()

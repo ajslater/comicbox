@@ -15,10 +15,8 @@ from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comicbox.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["json", "fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["json"], read=["json"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["json", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["json"], read=["json"]))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -135,19 +133,19 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "issue_count": 7,
             },
             "pages": {
-                "0": {
+                "00": {
                     "page_type": PageTypeEnum.FRONT_COVER.value,
                     "size": 429985,
                 },
-                "1": {"size": 332936},
-                "2": {"size": 458657},
-                "3": {"size": 450456},
-                "4": {"size": 436648},
-                "5": {"size": 443725},
-                "6": {"size": 469526},
-                "7": {"size": 429811},
-                "8": {"size": 445513},
-                "9": {"size": 446292},
+                "01": {"size": 332936},
+                "02": {"size": 458657},
+                "03": {"size": 450456},
+                "04": {"size": 436648},
+                "05": {"size": 443725},
+                "06": {"size": 469526},
+                "07": {"size": 429811},
+                "08": {"size": 445513},
+                "09": {"size": 446292},
                 "10": {"size": 458589},
                 "11": {"size": 417623},
                 "12": {"size": 445302},
@@ -238,9 +236,9 @@ def test_comicbox_to_file():
 
 def test_comicbox_read():
     """Test read from file."""
-    COMICBOX_TESTER.test_md_read(page_count=36)
+    COMICBOX_TESTER.test_md_read(page_count=0)
 
 
 def test_comicbox_write():
     """Test write to file."""
-    COMICBOX_TESTER.test_md_write(page_count=36)
+    COMICBOX_TESTER.test_md_write(page_count=0)

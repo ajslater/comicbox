@@ -247,7 +247,7 @@ def test_cli_action_delete_all_tags():
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
-        car.print_out()
+        # car.print_out() debug
         old_md = car.get_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)

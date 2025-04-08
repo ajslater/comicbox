@@ -10,6 +10,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -17,10 +18,8 @@ from tests.util import (
     create_write_metadata,
 )
 
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=False)
-)
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix", "fn"], compute_pages=False))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cix", "fn"]))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -113,7 +112,7 @@ READ_CIX_DICT = MappingProxyType(
         ComicInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/ "
+            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 "
             "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd",
             "Title": "The Beginning;The End",
             "Series": "Captain Science",
@@ -183,10 +182,8 @@ READ_CIX_DICT = MappingProxyType(
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, pretty=True, short_empty_elements=True)
-WRITE_CIX_STR = xmltodict.unparse(
-    WRITE_CIX_DICT, pretty=True, short_empty_elements=True
-)
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reprotCallIssue]
 
 CIX_TESTER = TestParser(
     MetadataFormats.COMIC_INFO,
@@ -219,7 +216,7 @@ def test_cix_from_string():
 
 def test_cix_from_file():
     """Test metadata import from file."""
-    CIX_TESTER.test_from_file()
+    CIX_TESTER.test_from_file(page_count=0)
 
 
 def test_cix_to_dict():
@@ -245,4 +242,4 @@ def test_cix_read():
 
 def test_cix_write():
     """Write cbz with CIX."""
-    CIX_TESTER.test_md_write(page_count=36)
+    CIX_TESTER.test_md_write(ignore_pages=True, page_count=0)

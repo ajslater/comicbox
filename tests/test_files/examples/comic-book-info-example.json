@@ -23,7 +23,7 @@
       },
       {
         "person": "Moore, Alan",
-        "primary": "TRUE",
+        "primary": true,
         "role": "Writer"
       },
       {
@@ -41,7 +41,11 @@
     "publisher": "DC Comics",
     "rating": 5,
     "series": "Watchmen",
-    "tags": ["Rorschach", "Ozymandias", "Nite Owl"],
+    "tags": [
+      "Nite Owl",
+      "Ozymandias",
+      "Rorschach"
+    ],
     "title": "At Midnight, All the Agents",
     "volume": 1
   },

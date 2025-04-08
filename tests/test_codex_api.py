@@ -132,7 +132,8 @@ CBZ_MD_PATCH = {
         "stories": {
             "The Beginning": {},
             "The End": {},
-        }
+        },
+        "page_count": 36,
     }
 }
 CBZ_MD = _patch_md(CBZ_MD_PATCH)
@@ -238,12 +239,12 @@ def test_check_unrar():
 def test_codex_import(ft):
     """Test codex import methods."""
     fixture = FIXTURES[ft]
-    ns = Namespace(comicbox=Namespace(print="s"))
+    ns = Namespace(comicbox=Namespace(print="sc"))
     with Comicbox(fixture.path, config=ns) as car:
         car_ft = car.get_file_type()
         car_md = MappingProxyType(car.get_metadata())
         car_count = car.get_page_count()
-        car.print_out()
+        # car.print_out() debug
     assert car_ft == ft
     assert car_count == fixture.page_count
     pprint(fixture.metadata)

@@ -24,15 +24,12 @@ TMP_DIR = get_tmp_dir(__file__)
 TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["yaml"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["yaml"], read=["yaml"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=("fn", "yaml")))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["yaml"], read=("fn", "yaml")))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
-            "ext": "cbz",
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -93,7 +90,6 @@ READ_YAML_DICT = MappingProxyType(
     {
         ComicboxYamlSchema.ROOT_TAG: {
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
-            "ext": "cbz",
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -194,7 +190,7 @@ def test_yaml_from_string():
 
 def test_yaml_from_file():
     """Test metadata import from file."""
-    YAML_TESTER.test_from_file()
+    YAML_TESTER.test_from_file(page_count=0)
 
 
 def test_yaml_to_dict():
@@ -214,9 +210,9 @@ def test_yaml_to_file():
 
 def test_yaml_read():
     """Test read from file."""
-    YAML_TESTER.test_md_read(page_count=36)
+    YAML_TESTER.test_md_read(page_count=0)
 
 
 def test_yaml_write():
     """Test write to file."""
-    YAML_TESTER.test_md_write(page_count=36)
+    YAML_TESTER.test_md_write(page_count=0)
