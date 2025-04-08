@@ -15,10 +15,13 @@ from comicbox.fields.fields import (
 
 LOG = getLogger(__name__)
 NumberType = int | float | Decimal
+PAGE_COUNT_KEY = "page_count"
 
 
 class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
     """Number range methods."""
+
+    ZERO_FILL = 0
 
     def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
         self._min = minimum
@@ -55,6 +58,13 @@ class RangedNumberMixin(fields.Number, metaclass=TrapExceptionsMeta):
             if old_result != result:
                 LOG.warning(f"Coerced {old_result} to {result}")
         return result
+
+    def _serialize(self, *args, **kwargs):
+        """Zero pad as_string numbers for sorting."""
+        res = super()._serialize(*args, **kwargs)
+        if self.as_string and self.ZERO_FILL and res is not None:
+            res = res.zfill(self.ZERO_FILL)
+        return res
 
 
 class IntegerField(fields.Integer, RangedNumberMixin):

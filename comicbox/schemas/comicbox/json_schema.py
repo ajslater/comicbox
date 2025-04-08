@@ -1,9 +1,12 @@
 """Json Schema."""
 
+from math import ceil, log10
+
 from marshmallow.fields import Constant, Nested
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.comicbox import (
+    PAGES_KEY,
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
     PagesField,
@@ -28,3 +31,13 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     schema = Constant(
         "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"
     )
+
+    def dump(self, obj: dict, *args, **kwargs):
+        """Inject zero fill for page string numbers."""
+        if obj and (pages := obj.get("comicbox", {}).get(PAGES_KEY)):
+            comicbox_field = self.fields["comicbox"].schema  # type: ignore[reportAttributeAccessIssue]
+            pages_field = comicbox_field.fields["pages"]
+            max_page = max(*pages.keys(), 0)
+            zero_fill = ceil(log10(max_page))
+            pages_field.key_field.ZERO_FILL = zero_fill
+        return super().dump(obj, *args, **kwargs)
