@@ -17,9 +17,14 @@
           "type": "string"
         },
         "characters": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "properties": {
+            "type": "object",
+            "additionalProperties": {
+              "identifiers": {
+                "$ref": "comicbox.identifier.schema.json"
+              }
+            }
           }
         },
         "community_rating": {
@@ -64,7 +69,7 @@
         }
       },
       "identifiers": {
-        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+        "$ref": "comicbox.identifier.schema.json"
       },
       "identifier_primary_source": {
         "type": "object",
@@ -94,7 +99,7 @@
           }
         },
         "additionalProperties": {
-          "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+          "$ref": "comicbox.identifier.schema.json"
         }
       },
       "language": {
@@ -171,7 +176,9 @@
           }
         },
         "additionalProperties": {
-          "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+          "identifiers": {
+            "$ref": "comicbox.identifier.schema.json"
+          }
         }
       },
       "price": {
@@ -200,10 +207,10 @@
               "type": "string"
             },
             "series": {
-              "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.series.schema.json"
+              "$ref": "comicbox.series.schema.json"
             },
             "volume": {
-              "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.volume.schema.json"
+              "$ref": "comicbox.volume.schema.json"
             }
           }
         }
@@ -218,7 +225,7 @@
         "type": "string"
       },
       "series": {
-        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.series.schema.json"
+        "$ref": "comicbox.series.schema.json"
       },
       "series_groups": {
         "type": "array",
@@ -236,7 +243,9 @@
             }
           },
           "additionalProperties": {
-            "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
+            "identifiers": {
+              "$ref": "comicbox.identifier.schema.json"
+            }
           }
         }
       },
@@ -266,7 +275,7 @@
         "format": "uri"
       },
       "volume": {
-        "$ref": "/ajslater/comicbox/blob/main/schemas/comicbox.volume.schema.json"
+        "$ref": "comicbox.volume.schema.json"
       },
       "year": {
         "type": "integer",
