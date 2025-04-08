@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
   "title": "Comicbox",
   "type": "object",
   "properties": {
@@ -89,7 +89,9 @@
       "imprint": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" }
+          "name": {
+            "type": "string"
+          }
         },
         "additionalProperties": {
           "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
@@ -164,7 +166,9 @@
       "publisher": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" }
+          "name": {
+            "type": "string"
+          }
         },
         "additionalProperties": {
           "identifiers": "/ajslater/comicbox/blob/main/schemas/comicbox.identifier.schema.json"
