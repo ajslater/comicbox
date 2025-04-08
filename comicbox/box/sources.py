@@ -180,9 +180,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             MetadataSources.ARCHIVE_FILE: _get_source_archive_files_metadata,
         }
     )
-    SOURCES_SET_ELSEWHERE = frozenset(
-        {MetadataSources.API, MetadataSources.ARCHIVE_EMBEDDED}
-    )
+    SOURCES_SET_ELSEWHERE = frozenset({MetadataSources.API, MetadataSources.EMBEDDED})
 
     def _set_source_metadata(self, source):
         """Set source metadata by source."""

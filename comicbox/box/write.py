@@ -56,7 +56,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             LOG.warning(reason)
             return None
 
-        for embed_fmt in MetadataSources.ARCHIVE_EMBEDDED.value.formats:
+        for embed_fmt in MetadataSources.EMBEDDED.value.formats:
             if embed_fmt in formats:
                 break
         else:
@@ -143,7 +143,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             LOG.exception(f"Could not export {fn}")
 
     @archive_close
-    def export_files(self, formats=None):
+    def export_files(self, formats=None, embed_fmt=None):
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             LOG.info("Not exporting files.")
@@ -152,7 +152,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             formats = self._config.export
 
         for fmt in formats:
-            self.to_file(fmt=fmt)
+            self.to_file(fmt=fmt, embed_fmt=embed_fmt)
 
     @archive_close
     def rename_file(self):

@@ -64,18 +64,6 @@ class MetadataSources(Enum):
         ),
         from_archive=True,
     )
-    ARCHIVE_EMBEDDED = MetadataSource(
-        "Embedded in Other Metadata",
-        path=True,
-        formats=(
-            MetadataFormats.COMICBOX_CLI_YAML,
-            MetadataFormats.COMICBOX_JSON,
-            MetadataFormats.METRON_INFO,
-            MetadataFormats.COMIC_INFO,
-            MetadataFormats.FILENAME,
-        ),
-        from_archive=True,
-    )
     IMPORT_FILE = MetadataSource("Imported File", path=True)
     CLI = MetadataSource(
         "Comicbox CLI",
@@ -104,4 +92,16 @@ class MetadataSources(Enum):
             MetadataFormats.COMICTAGGER,
             MetadataFormats.FILENAME,
         ),
+    )
+    EMBEDDED = MetadataSource(
+        "Embedded in Other Metadata",
+        path=True,
+        formats=(
+            MetadataFormats.COMICBOX_CLI_YAML,
+            MetadataFormats.COMICBOX_JSON,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.FILENAME,
+        ),
+        from_archive=True,
     )
