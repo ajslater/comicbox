@@ -72,12 +72,21 @@ NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
-PAGE_COUNT_KEY = "page_count"
-PAGE_TYPE_KEY = "page_type"
-PAGE_INDEX_KEY = "index"  # only used in transform
 PAGE_BOOKMARK_KEY = "bookmark"
+PAGE_COUNT_KEY = "page_count"
+PAGE_INDEX_KEY = "index"  # only used in transform
+PAGE_TYPE_KEY = "page_type"
+PAGE_SIZE_KEY = "size"
 PAGE_KEYS = frozenset(
-    {PAGE_TYPE_KEY, PAGE_BOOKMARK_KEY, "height", "width", "double_page", "key", "size"}
+    {
+        PAGE_TYPE_KEY,
+        PAGE_BOOKMARK_KEY,
+        "height",
+        "width",
+        "double_page",
+        "key",
+        PAGE_SIZE_KEY,
+    }
 )
 PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
@@ -157,7 +166,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
-    credit_primaries = DictField(values=DictField)  # CBI ONLY
+    credit_primaries = DictField(values=RoleField)  # CBI ONLY
     country = CountryField()  # CBI, CIX, CT, Metron
     collection_title = StringField()  # Metron ONLY
     cover_image = StringField()  # Comet ONLY, CT
