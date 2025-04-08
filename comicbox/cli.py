@@ -224,6 +224,13 @@ def _add_option_group(parser):
         "warnings and errors with more Qs.",
     )
     option_group.add_argument(
+        "-s",
+        "--stamp",
+        dest="stamp",
+        action="store_true",
+        help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
+    )
+    option_group.add_argument(
         "-N",
         "--no-stamp-notes",
         dest="stamp_notes",

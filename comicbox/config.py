@@ -36,6 +36,7 @@ _TEMPLATE = MappingTemplate(
                 "read_ignore": Optional(Sequence(str)),
                 "recurse": bool,
                 "replace_metadata": bool,
+                "stamp": bool,
                 "stamp_notes": bool,
                 "tagger": Optional(str),
                 "theme": Optional(str),

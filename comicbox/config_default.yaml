@@ -27,6 +27,7 @@ comicbox:
 
   read_ignore: []
   recurse: False
+  stamp: False
   stamp_notes: True
   tagger: null
   # API Options
