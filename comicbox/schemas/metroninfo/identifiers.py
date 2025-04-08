@@ -4,10 +4,7 @@ from types import MappingProxyType
 
 from comicbox.fields.fields import StringField
 from comicbox.fields.metroninfo import MetronIDAttrField, MetronSourceField
-from comicbox.fields.xml_fields import (
-    XmlBooleanAttributeField,
-    XmlStringField,
-)
+from comicbox.fields.xml_fields import XmlBooleanAttributeField, XmlStringField
 from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
