@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from functools import wraps
 
 from marshmallow.fields import Field, Nested
-from marshmallow.schema import Schema
 from marshmallow_union import Union
 
 from comicbox.fields.collection_fields import (
@@ -26,6 +25,7 @@ from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerFie
 from comicbox.fields.pdf import PdfDateTimeField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
+from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
 from comicbox.schemas.base import BaseSubSchema
 
 
@@ -258,19 +258,19 @@ def create_sub_tag_field(
     return Nested(sub_tag_schema_class)
 
 
-def xml_polyfield(schema_class: type[Schema], field: Field) -> Union:
+def xml_polyfield(schema_class: type[BaseSubSchema], field: Field) -> Union:
     """Get a Union of nested schemas and fields."""
     return Union(
         [
-            # First field is the unparse type
-            Nested(schema_class),
+            # First field is the serialize type
+            Nested(schema_class(ignore_errors=UNION_SCHEMA_IGNORE_ERRORS)),
             field,
         ]
     )
 
 
 def xml_list_polyfield(
-    schema_class: type[Schema],
+    schema_class: type[BaseSubSchema],
     field: Field,
     sort_keys: tuple[str, ...] = ("#text",),
     **kwargs,

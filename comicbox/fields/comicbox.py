@@ -2,7 +2,6 @@
 
 from inspect import isclass
 
-from marshmallow import Schema
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 
@@ -15,6 +14,8 @@ from comicbox.fields.enum_fields import (
 )
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
+from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
+from comicbox.schemas.base import BaseSubSchema
 from comicbox.schemas.comicbox.identifiers import (
     IdentifiedNameSchema,
     IdentifiedSchema,
@@ -61,7 +62,7 @@ class SimpleNamedNestedField(Union):
     def __init__(
         self,
         *args,
-        schema: type[Schema] = IdentifiedNameSchema,
+        schema: type[BaseSubSchema] = IdentifiedNameSchema,
         field: Field | type[Field] = StringField,
         name_key: str = NAME_KEY,
         primitive_type: type = str,
@@ -72,7 +73,7 @@ class SimpleNamedNestedField(Union):
         self._primitive_type = primitive_type
         if isclass(field):
             field = field()
-        fields = [Nested(schema), field]
+        fields = [Nested(schema(ignore_errors=UNION_SCHEMA_IGNORE_ERRORS)), field]
         super().__init__(fields, *args, **kwargs)
 
     def _deserialize(self, value, attr, *args, **kwargs):
