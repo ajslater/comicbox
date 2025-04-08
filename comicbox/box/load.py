@@ -133,12 +133,9 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 md, fmt = self._load_unknown_metadata(source, source_data.data)
             if md and fmt:
                 schema_class = fmt.value.schema_class
-                if (
-                    embedded_source := glom(
-                        md, schema_class.EMBED_KEY_PATH, default=None
-                    )
-                ) and EmbeddedStringSetField.is_embedded_metadata(embedded_source):
-                    self.add_source(MetadataSources.ARCHIVE_EMBEDDED, embedded_source)
+                embedded_source = glom(md, schema_class.EMBED_KEY_PATH, default=None)
+                if EmbeddedStringSetField.is_embedded_metadata(embedded_source):
+                    self.add_source(MetadataSources.EMBEDDED, embedded_source)
                 return MappingProxyType(md), fmt
         except Exception as exc:
             self._except_on_load(source, fmt, exc)
@@ -157,6 +154,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                     md, source_data.path, fmt, source_data.from_archive
                 )
                 loaded_list.append(loaded_md)
+
         if loaded_list:
             if source not in self._loaded:
                 self._loaded[source] = ()
