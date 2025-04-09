@@ -22,7 +22,6 @@ from comicbox.schemas.comicbox import (
     EXT_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
-    PAGES_KEY,
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
@@ -36,11 +35,10 @@ from tests.const import (
     TEST_WRITE_NOTES,
     TMP_ROOT_DIR,
 )
-from tests.validate import validate_path
+from tests.validate import PAGES_KEYPATH, validate_path
 
 PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
 PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGE_COUNT_KEY}"
-PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
 NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{NOTES_KEY}"
 EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{EXT_KEY}"
 

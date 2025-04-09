@@ -4,11 +4,15 @@ from pathlib import Path
 from types import MappingProxyType
 
 import simplejson
+from glom import glom
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from ruamel.yaml import YAML
 from xmlschema import XMLSchema11
 
+from comicbox.schemas.comicbox import PAGES_KEY, ComicboxSchemaMixin
+
+PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
 _SCHEMAS_PATH = Path("schemas")
 _SCHEMA_FS_ROOT = Path(__file__).parent.parent / _SCHEMAS_PATH / "v2.0"
 _SCHEMA_ID_ROOT = "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/"
@@ -67,6 +71,18 @@ _FMT_SCHEMA_MAP = MappingProxyType(
 )
 
 
+def _stringify_keys(data):
+    """JSON requires string keys."""
+    # Not a general solution. only pages.
+    pages = glom(data, PAGES_KEYPATH, default=None)
+    if not pages:
+        return data
+    pages = {str(key): value for key, value in pages.items()}
+    # Glom can't assign to RumaelCommentMaps
+    data[ComicboxSchemaMixin.ROOT_KEY_PATH][PAGES_KEY] = pages
+    return data
+
+
 def validate_path(path, fmt=None):
     """Validate a metadata file from disk."""
     path = Path(path)
@@ -85,6 +101,7 @@ def validate_path(path, fmt=None):
         md_dict = simplejson.loads(md_string)
     elif suffix == ".yaml":
         md_dict = YAML().load(md_string)
+        md_dict = _stringify_keys(md_dict)
     else:
         reason = f"Bad suffix for validation: {suffix} : {path}"
         raise ValueError(reason)
