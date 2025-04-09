@@ -69,6 +69,7 @@ _FMT_SCHEMA_MAP = MappingProxyType(
 
 def validate_path(path, fmt=None):
     """Validate a metadata file from disk."""
+    path = Path(path)
     if fmt is None:
         fmt = _DEFAULT_FORMAT_MAP.get(path.name.lower())
     if not fmt or fmt == "temp-autopass":
@@ -88,3 +89,10 @@ def validate_path(path, fmt=None):
         reason = f"Bad suffix for validation: {suffix} : {path}"
         raise ValueError(reason)
     validator.is_valid(md_dict)
+
+
+if __name__ == "__main__":
+    import sys
+
+    validate_path(sys.argv[1], sys.argv[2])
+    print("Valid.")
