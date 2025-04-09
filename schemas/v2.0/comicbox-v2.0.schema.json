@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
   "title": "Comicbox",
   "type": "object",
   "properties": {
