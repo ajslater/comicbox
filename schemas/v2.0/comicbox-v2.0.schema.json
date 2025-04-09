@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0",
   "title": "Comicbox",
   "type": "object",
   "properties": {
@@ -16,270 +16,207 @@
         "age_rating": {
           "type": "string"
         },
-        "characters": {
-          "type": "object",
-          "properties": {
-            "type": "object",
-            "additionalProperties": {
-              "identifiers": {
-                "$ref": "comicbox.identifier.schema.json"
-              }
-            }
+        "alternate_images": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         },
-        "community_rating": {
-          "type": "number"
-        },
-        "contributors": {
+        "arcs": {
           "type": "object",
           "patternProperties": {
-            "^colorist|cover_artist|creator|editor|inker|letterer|penicller|writer$": {
-              "type": "array",
-              "items": {
-                "type": "string"
+            ".+": {
+              "type": "object",
+              "properties": {
+                "identifiers": {
+                  "$ref": "identifiers.schema.json"
+                },
+                "number": {
+                  "type": "integer"
+                }
               }
             }
           }
-        }
-      },
-      "country": {
-        "type": "string"
-      },
-      "cover_image": {
-        "type": "string"
-      },
-      "critical_rating": {
-        "type": "number"
-      },
-      "day": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 31
-      },
-      "ext": {
-        "type": "string"
-      },
-      "original_format": {
-        "type": "string"
-      },
-      "genres": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "identifiers": {
-        "$ref": "comicbox.identifier.schema.json"
-      },
-      "identifier_primary_source": {
-        "type": "object",
-        "properties": {
-          "nid": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          }
-        }
-      },
-      "issue": {
-        "type": "string"
-      },
-      "issue_number": {
-        "type": "integer"
-      },
-      "issue_suffix": {
-        "type": "string"
-      },
-      "imprint": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
         },
-        "additionalProperties": {
-          "$ref": "comicbox.identifier.schema.json"
-        }
-      },
-      "language": {
-        "type": "string"
-      },
-      "last_mark": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "manga": {
-        "type": "string",
-        "enum": ["Yes", "YesAndRightToLeft", "No"]
-      },
-      "month": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 12
-      },
-      "monochrome": {
-        "type": "boolean"
-      },
-      "page_count": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "pages": {
-        "type": "array",
-        "items": {
+        "bookmark": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "characters": {
+          "$ref": "identified-objects.schema.json"
+        },
+        "credits": {
+          "$ref": "credits.schema.json"
+        },
+        "country": {
+          "type": "string"
+        },
+        "credit_primaries": {
           "type": "object",
-          "properties": {
-            "index": {
-              "type": "integer"
-            },
-            "page_type": {
-              "type": "string",
-              "enum": [
-                "FrontCover",
-                "InnerCover",
-                "Roundup",
-                "Story",
-                "Advertisement",
-                "Editorial",
-                "Letters",
-                "Preview",
-                "BackCover",
-                "Other",
-                "Deleted"
-              ]
-            },
-            "double_page": {
-              "type": "boolean"
-            },
-            "size": {
-              "type": "integer"
-            },
-            "key": {
-              "type": "integer"
-            },
-            "bookmark": {
-              "type": "string"
-            },
-            "width": {},
-            "height": {
-              "type": "integer"
+          "patternProperties": {
+            ".+": {
+              "properties": {
+                "role": {
+                  "$ref": "identifed-object.schema.json"
+                }
+              }
             }
           }
-        }
-      },
-      "publisher": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
         },
-        "additionalProperties": {
-          "identifiers": {
-            "$ref": "comicbox.identifier.schema.json"
-          }
-        }
-      },
-      "price": {
-        "type": "number",
-        "minimum": 0
-      },
-      "protagonist": {
-        "type": "string"
-      },
-      "reading_direction": {
-        "type": "string",
-        "enum": ["rtl", "ltr", "ttb", "btt"]
-      },
-      "remainder": {
-        "type": "string"
-      },
-      "reprints": {
-        "type": "array",
-        "items": {
+        "collection_title": {
+          "type": "string"
+        },
+        "cover_image": {
+          "type": "string"
+        },
+        "critical_rating": {
+          "type": "number"
+        },
+        "date": {
+          "$ref": "date.schema.json"
+        },
+        "ext": {
+          "type": "string"
+        },
+        "original_format": {
+          "type": "string"
+        },
+        "genres": {
+          "$ref": "identified-objects.schema.json"
+        },
+        "identifiers": {
+          "$ref": "identifiers.schema.json"
+        },
+        "identifier_primary_source": {
           "type": "object",
           "properties": {
-            "publisher": {
+            "nid": {
               "type": "string"
             },
-            "imprint": {
+            "url": {
               "type": "string"
-            },
-            "series": {
-              "$ref": "comicbox.series.schema.json"
-            },
-            "volume": {
-              "$ref": "comicbox.volume.schema.json"
             }
           }
-        }
-      },
-      "review": {
-        "type": "string"
-      },
-      "rights": {
-        "type": "string"
-      },
-      "scan_info": {
-        "type": "string"
-      },
-      "series": {
-        "$ref": "comicbox.series.schema.json"
-      },
-      "series_groups": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "stories": {
-        "type": "array",
-        "items": {
+        },
+        "imprint": {
+          "$ref": "named-identified-object.schema.json"
+        },
+        "issue": {
           "type": "object",
           "properties": {
             "name": {
               "type": "string"
-            }
-          },
-          "additionalProperties": {
-            "identifiers": {
-              "$ref": "comicbox.identifier.schema.json"
+            },
+            "number": {
+              "type": "number"
+            },
+            "suffix": {
+              "type": "string"
             }
           }
-        }
-      },
-      "story_arcs": {
-        "type": "object",
-        "additionalProperties": {
-          "type": "integer"
-        }
-      },
-      "summary": {
-        "type": "string"
-      },
-      "tags": {
-        "type": "array",
-        "items": {
+        },
+        "language": {
           "type": "string"
-        }
-      },
-      "teams": {
-        "type": "array",
-        "items": {
+        },
+        "manga": {
+          "type": "string",
+          "enum": ["Yes", "YesAndRightToLeft", "No"]
+        },
+        "monochrome": {
+          "type": "boolean"
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pages": {
+          "type": "object",
+          "patternProperties": {
+            "[0-9]+": {
+              "$ref": "pages.schema.json"
+            }
+          }
+        },
+        "publisher": {
+          "$ref": "named-identified-object.schema.json"
+        },
+        "prices": {
+          "type": "object",
+          "values": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "protagonist": {
           "type": "string"
+        },
+        "reading_direction": {
+          "type": "string",
+          "enum": ["rtl", "ltr", "ttb", "btt"]
+        },
+        "remainder": {
+          "type": "string"
+        },
+        "reprints": {
+          "type": "array",
+          "items": {
+            "$ref": "reprint.schema.json"
+          }
+        },
+        "review": {
+          "type": "string"
+        },
+        "rights": {
+          "type": "string"
+        },
+        "scan_info": {
+          "type": "string"
+        },
+        "series": {
+          "$ref": "series.schema.json"
+        },
+        "series_groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stories": {
+          "type": "object",
+          "values": {
+            "$ref": "identified-object.schema.json"
+          }
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tagger": {
+          "type": "string"
+        },
+        "tags": {
+          "$ref": "identified-objects.schema.json"
+        },
+        "teams": {
+          "$ref": "identified-objects.schema.json"
+        },
+        "universes": {
+          "type": "object",
+          "properties": {
+            "designation": {
+              "type": "string"
+            },
+            "identifiers": {
+              "$ref": "identifiers.schema.json"
+            }
+          }
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "volume": {
+          "$ref": "volume.schema.json"
         }
-      },
-      "web": {
-        "type": "string",
-        "format": "uri"
-      },
-      "volume": {
-        "$ref": "comicbox.volume.schema.json"
-      },
-      "year": {
-        "type": "integer",
-        "minimum": 0
       }
     }
   }

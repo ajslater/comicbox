@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/series.schema.json",
+  "title": "Comicbox Series",
+  "type": "object",
+  "properties": {
+    "identifiers": {
+      "$ref": "identifiers.schema.json"
+    },
+    "name": {
+      "type": "string"
+    },
+    "sort_name": {
+      "type": "string"
+    },
+    "start_year": {
+      "type": "integer"
+    },
+    "volume_count": {
+      "type": "integer"
+    }
+  }
+}
