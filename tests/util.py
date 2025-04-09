@@ -29,13 +29,14 @@ from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIE
 from comicbox.transforms.comicbookinfo import UPDATED_AT_KEY_PATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
+    PAGES_KEYPATH,
     TEST_DATETIME,
     TEST_FILES_DIR,
     TEST_METADATA_DIR,
     TEST_WRITE_NOTES,
     TMP_ROOT_DIR,
 )
-from tests.validate import PAGES_KEYPATH, validate_path
+from tests.validate.validate import validate_path
 
 PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
 PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGE_COUNT_KEY}"

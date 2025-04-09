@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from tests.const import TEST_EXPORT_DIR, TEST_METADATA_DIR
-from tests.validate import format_guesser, validate_path
+from tests.validate.validate import guess_format, validate_path
 
 _NUM_TEST_FILES = 16
 
@@ -18,7 +18,7 @@ def _test_dir(root_dir, substring=""):
                 continue
             path = root_path / fn
             try:
-                fmt = format_guesser(path)
+                fmt = guess_format(path)
             except ValueError:
                 continue
             validate_path(path, fmt)

@@ -15,7 +15,7 @@ from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from tests.const import TEST_METADATA_DIR
 from tests.util import compare_export, get_tmp_dir
-from tests.validate import format_guesser
+from tests.validate.validate import guess_format
 
 _TMP_DIR = get_tmp_dir(__file__)
 
@@ -794,7 +794,7 @@ def test_import(fn):
 def test_export(fn):
     """Test exporting metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
-    fmt = format_guesser(fn)
+    fmt = guess_format(fn)
     formats = (fmt,)
     embed_fmt = MetadataFormats.COMIC_INFO if fmt == "pdfxml" else None
     cns = Namespace(metadata=test_md, dest_path=str(_TMP_DIR), export=formats)
