@@ -54,7 +54,7 @@ _FMT_SCHEMA_MAP = MappingProxyType(
     {
         "comicinfo": get_xml_schema("ComicInfo-v2.1-Draft.xsd"),
         "comicbookinfo": get_json_schema("comic-book-info-v1.0.schema.json"),
-        "metron": get_xml_schema("MetronInfo-v1.0.xsd"),
+        "metroninfo": get_xml_schema("MetronInfo-v1.0.xsd"),
         "comet": get_xml_schema("CoMet-v1.1.xsd"),
         "json": _CB_SCHEMA,
         "yaml": _CB_SCHEMA,
@@ -74,7 +74,8 @@ def _stringify_keys(data):
     return data
 
 
-def _format_guesser(path: Path):
+def format_guesser(path: Path | str) -> str:
+    path = Path(path)
     stem = path.stem.lower()
     suffix = path.suffix[1:].lower()
     fmt = ""
@@ -106,7 +107,7 @@ def validate_path(path, fmt=""):
     """Validate a metadata file from disk."""
     path = Path(path)
     if not fmt:
-        fmt = _format_guesser(path)
+        fmt = format_guesser(path)
     path = Path(path)
     validator = _FMT_SCHEMA_MAP[fmt]
     if isinstance(validator, XMLSchema11):
@@ -136,7 +137,7 @@ if __name__ == "__main__":
         raise ValueError(reason)
     fmt = argv[2] if len(argv) > 2 else ""  # noqa: PLR2004
     if not fmt:
-        fmt = _format_guesser(path)
+        fmt = format_guesser(path)
     print(f"Format {fmt}")
     validate_path(path, fmt)
     print("Valid.")
