@@ -16,19 +16,10 @@ PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
 _SCHEMAS_PATH = Path("schemas")
 _SCHEMA_FS_ROOT = Path(__file__).parent.parent / _SCHEMAS_PATH / "v2.0"
 _SCHEMA_ID_ROOT = "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/"
-_DEFAULT_FORMAT_MAP = MappingProxyType(
-    {
-        "comicbox.json": "json",
-        "comicbox.yaml": "yaml",
-        "comicbox-cli.yaml": "yaml",
-        "comicinfo.xml": "cix",
-        "comic-book-info.json": "cbi",
-        "metroninfo.xml": "metron",
-        "comet.xml": "comet",
-        # "comictagger.json": "no-validation",
-        # "mupdf.json": "no-validation",
-        # "pdf-metadata.xml": "no-validation",
-    }
+_CBI_STEMS = (
+    variation
+    for substring in ("comic-book-info", "comic-book-lover")
+    for variation in (substring, substring.replace("-", ""))
 )
 
 
@@ -61,8 +52,8 @@ def get_json_schema(path):
 _CB_SCHEMA = get_json_schema("v2.0/comicbox-v2.0.schema.json")
 _FMT_SCHEMA_MAP = MappingProxyType(
     {
-        "cix": get_xml_schema("ComicInfo-v2.1-Draft.xsd"),
-        "cbi": get_json_schema("comic-book-info-v1.0.schema.json"),
+        "comicinfo": get_xml_schema("ComicInfo-v2.1-Draft.xsd"),
+        "comicbookinfo": get_json_schema("comic-book-info-v1.0.schema.json"),
         "metron": get_xml_schema("MetronInfo-v1.0.xsd"),
         "comet": get_xml_schema("CoMet-v1.1.xsd"),
         "json": _CB_SCHEMA,
@@ -83,13 +74,39 @@ def _stringify_keys(data):
     return data
 
 
-def validate_path(path, fmt=None):
+def _format_guesser(path: Path):
+    stem = path.stem.lower()
+    suffix = path.suffix[1:].lower()
+    fmt = ""
+    if suffix == "xml":
+        if "comicinfo" in stem:
+            fmt = "comicinfo"
+        elif "metron" in stem:
+            fmt = "metroninfo"
+        elif "comet" in stem:
+            fmt = "comet"
+    elif suffix == "json":
+        if "comicbox" in stem:
+            fmt = "json"
+        elif any(substring in stem for substring in _CBI_STEMS):
+            fmt = "comicbookinfo"
+    elif suffix == ("yaml", "yml"):
+        fmt = "yaml"
+    else:
+        reason = f"Can't guess format for {path} suffix {suffix}"
+        raise ValueError(reason)
+
+    if not fmt:
+        reason = f"Could not guess format for {path}"
+        raise ValueError(reason)
+    return fmt
+
+
+def validate_path(path, fmt=""):
     """Validate a metadata file from disk."""
     path = Path(path)
-    if fmt is None:
-        fmt = _DEFAULT_FORMAT_MAP.get(path.name.lower())
-    if not fmt or fmt == "temp-autopass":
-        return
+    if not fmt:
+        fmt = _format_guesser(path)
     path = Path(path)
     validator = _FMT_SCHEMA_MAP[fmt]
     if isinstance(validator, XMLSchema11):
@@ -111,5 +128,15 @@ def validate_path(path, fmt=None):
 if __name__ == "__main__":
     import sys
 
-    validate_path(sys.argv[1], sys.argv[2])
+    argv = sys.argv
+    if len(argv) > 1:
+        path = Path(argv[1])
+    else:
+        reason = "no path given"
+        raise ValueError(reason)
+    fmt = argv[2] if len(argv) > 2 else ""  # noqa: PLR2004
+    if not fmt:
+        fmt = _format_guesser(path)
+    print(f"Format {fmt}")
+    validate_path(path, fmt)
     print("Valid.")

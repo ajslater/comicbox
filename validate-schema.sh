@@ -1,5 +1,5 @@
 #!/bin/bash
 # Validate comic metadata schemas
-# args: <filename> <comicbox format code>
+# args: <filename> [comicbox format code]
 set -euo pipefail
-PYTHONPATH=. uv run python "$@"
+PYTHONPATH=. uv run python tests/validate.py "$@"
