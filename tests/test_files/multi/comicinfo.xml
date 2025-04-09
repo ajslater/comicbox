@@ -5,7 +5,7 @@
 	<Genre>Comic Info Genre</Genre>
 	<LanguageISO>en</LanguageISO>
 	<Month>11</Month>
-	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] [CVDB145269]</Notes>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]</Notes>
 	<PageCount>36</PageCount>
 	<Pages>
 		<Page Image="0" ImageSize="429985" Type="FrontCover"/>

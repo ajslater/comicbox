@@ -22,7 +22,7 @@
 	<StoryArc>Captain Arc,Other Arc</StoryArc>
 	<StoryArcNumber>4,2</StoryArcNumber>
 	<AgeRating>Teen</AgeRating>
-	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] [CVDB145269]</Notes>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]</Notes>
 	<Pages>
 		<Page Image="0" ImageSize="429985" Type="FrontCover"/>
 		<Page Image="1" ImageSize="332936"/>

@@ -28,11 +28,12 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if sub_data and (tagger := sub_data.get(TAGGER_KEY)):
             notes += f"Tagged with {tagger}"
 
-        if sub_data and (updated_at := sub_data.get(UPDATED_AT_KEY)):
-            field = DateTimeField()
-            ts = field._serialize(updated_at)  # noqa: SLF001
-            if ts:
-                notes += f" on {ts}"
+        if (
+            sub_data
+            and (updated_at := sub_data.get(UPDATED_AT_KEY))
+            and (ts := DateTimeField()._serialize(updated_at))  # noqa: SLF001
+        ):
+            notes += f" on {ts}"
 
         if sub_data and (
             comicvine_id := sub_data.get(IDENTIFIERS_KEY, {})

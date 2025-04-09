@@ -34,7 +34,9 @@ class JsonValidator(BaseValidator):
         schema_str = self.schema_path.read_text()
         schema = simplejson.loads(schema_str)
         self._validator = Draft202012Validator(
-            schema, registry=_FILESYSTEM_RESOLVING_REGISTRY
+            schema,
+            registry=_FILESYSTEM_RESOLVING_REGISTRY,
+            format_checker=Draft202012Validator.FORMAT_CHECKER,
         )
 
     def validate(self, source_path: Path):

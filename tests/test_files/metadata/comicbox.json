@@ -33,7 +33,7 @@
       "number": 1
     },
     "language": "en",
-    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] [CVDB145269]",
+    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]",
     "page_count": 36,
     "pages": {
       "00": {
@@ -156,7 +156,7 @@
       "The Beginning": {}
     },
     "tagger": "comicbox dev",
-    "updated_at": "1970-01-01T00:00:00",
+    "updated_at": "1970-01-01T00:00:00Z",
     "volume": {
       "issue_count": 7,
       "number": 1950

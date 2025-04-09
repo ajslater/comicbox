@@ -21,7 +21,7 @@ METADATA = MappingProxyType(
         ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "genres": {"Science Fiction": {}},
-            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z",
             "publisher": {"name": "SmallPub"},
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
@@ -70,7 +70,7 @@ PDF_DICT = MappingProxyType(
                     "comicbox "
                     "dev "
                     "on "
-                    "1970-01-01T00:00:00</Notes>\n"
+                    "1970-01-01T00:00:00Z</Notes>\n"
                     "\t"
                     "<Writer>Jon "
                     "Osterman</Writer>\n"

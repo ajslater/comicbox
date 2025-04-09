@@ -148,7 +148,7 @@ FNS = MappingProxyType(
             },
             "language": "en",
             "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00 [Issue ID 145269] "
+            "1970-01-01T00:00:00Z [Issue ID 145269] "
             "[CVDB145269]",
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -206,7 +206,7 @@ FNS = MappingProxyType(
             },
             "imprint": {"name": "TestImprint"},
             "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00 [Issue ID 145269] "
+            "1970-01-01T00:00:00Z [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
             "pages": {
@@ -279,7 +279,7 @@ FNS = MappingProxyType(
             },
             "language": "en",
             "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00 [Issue ID 145269] "
+            "1970-01-01T00:00:00Z [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
             "pages": {
@@ -359,7 +359,7 @@ FNS = MappingProxyType(
             },
             "language": "en",
             "notes": "Tagged with Comictagger on "
-            "1970-01-01T00:00:00 using info from Metron [Issue ID 145269] "
+            "1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
             "pages": {
@@ -438,7 +438,7 @@ FNS = MappingProxyType(
             },
             "language": "en",
             "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00 [Issue ID 145269] "
+            "1970-01-01T00:00:00Z [Issue ID 145269] "
             "[CVDB145269]",
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
@@ -486,7 +486,7 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999",
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999",
             "original_format": "Single Issue",
             "page_count": 0,
             "prices": {
@@ -750,7 +750,7 @@ FNS = MappingProxyType(
         "pdf.xml": {
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "genres": {"Science Fiction": {}},
-            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00",
+            "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z",
             "publisher": {"name": "SmallPub"},
             "scan_info": "Pages",
             "series": {"name": "test pdf"},

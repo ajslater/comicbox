@@ -13,12 +13,12 @@ class JsonRenderModule:
 
     COMPACT_SEPARATORS = (",", ":")
 
-    @staticmethod
-    def dumps(obj: dict, *args, compact=False, **kwargs):
+    @classmethod
+    def dumps(cls, obj: dict, *args, compact=False, **kwargs):
         """Dump dict to JSON string with formatting."""
         if compact:
             indent = None
-            separators = JsonRenderModule.COMPACT_SEPARATORS
+            separators = cls.COMPACT_SEPARATORS
         else:
             indent = 2
             separators = None
