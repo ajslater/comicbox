@@ -163,11 +163,11 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
     bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
     characters = SimpleNamedDictField()  # Comet, CIX, CT, Metron
+    country = CountryField()  # CBI, CIX, CT, Metron
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
     credit_primaries = DictField(values=RoleField)  # CBI ONLY
-    country = CountryField()  # CBI, CIX, CT, Metron
     collection_title = StringField()  # Metron ONLY
     cover_image = StringField()  # Comet ONLY, CT
     critical_rating = DecimalField(places=2)  # CBI, CIX
@@ -200,9 +200,8 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         Nested(ReprintSchema),
         sort_keys=(
             "language",
-            "publisher",
-            "imprint",
             "series.sort_name",
+            "series.name",
             "volume.number",
             "volume.number_to",
             "issue",
