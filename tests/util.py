@@ -606,7 +606,7 @@ def load_cli_and_compare_dicts(path_a, path_b):
     return diff
 
 
-def compare_export(test_dir, fn, fmt=None, test_fn=None, validate=True):
+def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
     """Compare exported files."""
     if validate:
         validate_path(fn, fmt=fmt)

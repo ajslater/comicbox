@@ -6,7 +6,7 @@ from pathlib import Path
 from tests.const import TEST_EXPORT_DIR, TEST_METADATA_DIR
 from tests.validate import format_guesser, validate_path
 
-_NUM_TEST_FILES = 8
+_NUM_TEST_FILES = 16
 
 
 def _test_dir(root_dir, substring=""):

@@ -15,6 +15,7 @@ from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from tests.const import TEST_METADATA_DIR
 from tests.util import compare_export, get_tmp_dir
+from tests.validate import format_guesser
 
 _TMP_DIR = get_tmp_dir(__file__)
 
@@ -760,30 +761,12 @@ FNS = MappingProxyType(
         },
     }
 )
-
-_FORMAT_MAP = MappingProxyType(
-    {
-        "comet.xml": "comet",
-        "comic-book-info.json": "cbi",
-        "comic-book-info-example.json": "cbi",
-        "comicbox-filename.txt": "fn",
-        "comicbox.json": "json",
-        "comicbox.yaml": "yaml",
-        "comicinfo.xml": "cix",
-        "comicinfo-metron-origin.xml": "cix",
-        "comictagger.json": "ct",
-        "metroninfo.xml": "metron",
-        "metroninfo-v1.0-valid.xml": "metron",
-        "pdf.xml": "pdfxml",
-    }
-)
-
 _REGULAR_FN = MappingProxyType(
     {
-        "cix": "ComicInfo.xml",
-        "metron": "MetronInfo.xml",
-        "fn": "comicbox-filename.txt",
-        "cbi": "comic-book-info.json",
+        "comicinfo": "ComicInfo.xml",
+        "metroninfo": "MetronInfo.xml",
+        "filename": "comicbox-filename.txt",
+        "comicbookinfo": "comic-book-info.json",
     }
 )
 
@@ -810,8 +793,8 @@ def test_import(fn):
 @pytest.mark.parametrize("fn", FNS)
 def test_export(fn):
     """Test exporting metadata files."""
-    fmt = _FORMAT_MAP[fn]
     test_md = MappingProxyType({"comicbox": FNS[fn]})
+    fmt = format_guesser(fn)
     formats = (fmt,)
     embed_fmt = MetadataFormats.COMIC_INFO if fmt == "pdfxml" else None
     cns = Namespace(metadata=test_md, dest_path=str(_TMP_DIR), export=formats)
@@ -823,6 +806,5 @@ def test_export(fn):
 
     tmp_fn = _REGULAR_FN.get(fmt, fn)
     tmp_path = _TMP_DIR / tmp_fn
-    validate = fmt not in frozenset({"fn", "pdfxml", "ct"})
-    compare_export(TEST_METADATA_DIR, tmp_path, fmt, test_fn=fn, validate=validate)
+    compare_export(TEST_METADATA_DIR, tmp_path, test_fn=fn, validate=True)
     tmp_path.unlink()

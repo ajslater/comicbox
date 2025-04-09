@@ -16,7 +16,7 @@ PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
 _SCHEMAS_PATH = Path("schemas")
 _SCHEMA_FS_ROOT = Path(__file__).parent.parent / _SCHEMAS_PATH / "v2.0"
 _SCHEMA_ID_ROOT = "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/"
-_CBI_STEMS = (
+_CBI_STEMS = tuple(
     variation
     for substring in ("comic-book-info", "comic-book-lover")
     for variation in (substring, substring.replace("-", ""))
@@ -50,7 +50,8 @@ def get_json_schema(path):
 
 
 _CB_SCHEMA = get_json_schema("v2.0/comicbox-v2.0.schema.json")
-_FMT_SCHEMA_MAP = MappingProxyType(
+_NO_VALIDATOR = "no-validator"
+_FMT_VALIDATOR_MAP = MappingProxyType(
     {
         "comicinfo": get_xml_schema("ComicInfo-v2.1-Draft.xsd"),
         "comicbookinfo": get_json_schema("comic-book-info-v1.0.schema.json"),
@@ -58,6 +59,10 @@ _FMT_SCHEMA_MAP = MappingProxyType(
         "comet": get_xml_schema("CoMet-v1.1.xsd"),
         "json": _CB_SCHEMA,
         "yaml": _CB_SCHEMA,
+        "comictagger": _NO_VALIDATOR,
+        "pdf": _NO_VALIDATOR,
+        "pdfxml": _NO_VALIDATOR,
+        "filename": _NO_VALIDATOR,
     }
 )
 
@@ -74,25 +79,41 @@ def _stringify_keys(data):
     return data
 
 
+_SUFFIX_SUBSTRINGS = MappingProxyType(
+    {
+        "json": {
+            "comicbox": "json",
+            "pdf": "pdf",
+            "comictagger": "comictagger",
+            **dict.fromkeys(_CBI_STEMS, "comicbookinfo"),
+        },
+        "xml": {
+            "comicinfo": "comicinfo",
+            "metron": "metroninfo",
+            "comet": "comet",
+            "pdf": "pdfxml",
+        },
+    }
+)
+
+
 def format_guesser(path: Path | str) -> str:
+    """Guess format by filename."""
     path = Path(path)
     stem = path.stem.lower()
     suffix = path.suffix[1:].lower()
+
     fmt = ""
-    if suffix == "xml":
-        if "comicinfo" in stem:
-            fmt = "comicinfo"
-        elif "metron" in stem:
-            fmt = "metroninfo"
-        elif "comet" in stem:
-            fmt = "comet"
-    elif suffix == "json":
-        if "comicbox" in stem:
-            fmt = "json"
-        elif any(substring in stem for substring in _CBI_STEMS):
-            fmt = "comicbookinfo"
-    elif suffix == ("yaml", "yml"):
+    if suffix in ("xml", "json"):
+        fmt_map = _SUFFIX_SUBSTRINGS[suffix]
+        for substring, value in fmt_map.items():
+            if substring in stem:
+                fmt = value
+                break
+    elif suffix in ("yaml", "yml"):
         fmt = "yaml"
+    elif suffix == "txt":
+        fmt = "filename"
     else:
         reason = f"Can't guess format for {path} suffix {suffix}"
         raise ValueError(reason)
@@ -108,8 +129,14 @@ def validate_path(path, fmt=""):
     path = Path(path)
     if not fmt:
         fmt = format_guesser(path)
+    validator = _FMT_VALIDATOR_MAP[fmt]
+    if validator == _NO_VALIDATOR:
+        # Just pass formats without validators
+        return
+    if isinstance(validator, str):
+        reason = f"validator is {validator}"
+        raise TypeError(reason)
     path = Path(path)
-    validator = _FMT_SCHEMA_MAP[fmt]
     if isinstance(validator, XMLSchema11):
         validator.validate(path)
         return
