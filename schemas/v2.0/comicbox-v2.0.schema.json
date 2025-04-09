@@ -3,6 +3,7 @@
   "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
   "title": "Comicbox",
   "type": "object",
+  "version": "2.0",
   "properties": {
     "schema": {
       "const": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
@@ -145,7 +146,7 @@
         "prices": {
           "type": "object",
           "patternProperties": {
-            "[A-Za-Z]*": {
+            "[A-Za-z]*": {
               "type": "number",
               "minimum": 0
             }
