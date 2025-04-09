@@ -29,7 +29,7 @@ _SUFFIX_SUBSTRINGS = MappingProxyType(
     }
 )
 _NO_VALIDATOR = "no-validator"
-_FMT_VALIDATOR_MAP = MappingProxyType(
+FMT_VALIDATOR_MAP = MappingProxyType(
     {
         "comicinfo": XmlValidator("ComicInfo-v2.1-Draft.xsd"),
         "comicbookinfo": JsonValidator("comic-book-info-v1.0.schema.json"),
@@ -77,7 +77,7 @@ def validate_path(path, fmt=""):
     path = Path(path)
     if not fmt:
         fmt = guess_format(path)
-    validator = _FMT_VALIDATOR_MAP[fmt]
+    validator = FMT_VALIDATOR_MAP[fmt]
     if validator == _NO_VALIDATOR:
         # Just pass formats without validators
         return

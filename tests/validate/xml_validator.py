@@ -4,16 +4,16 @@ from pathlib import Path
 
 from xmlschema import XMLSchema11
 
-from tests.const import SCHEMAS_DIR
+from tests.validate.base import BaseValidator
 
 
-class XmlValidator:
+class XmlValidator(BaseValidator):
     """Use is_valid on XMLSchema validator."""
 
-    def __init__(self, schema_path: Path | str):
+    def __init__(self, *args, **kwargs):
         """Set the validator."""
-        full_schema_path = SCHEMAS_DIR / schema_path
-        self._validator = XMLSchema11(full_schema_path)
+        super().__init__(*args, **kwargs)
+        self._validator = XMLSchema11(self.schema_path)
 
     def is_valid(self, data_path: Path | str):
         """Use is_valid on XMLSchema validator."""
