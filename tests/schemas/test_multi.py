@@ -141,7 +141,7 @@ WRITE_METADATA = create_write_metadata(READ_METADATA)
 TEST_LAST_MODIFIED = "1970-1-1"
 READ_MULTI_DICT = MappingProxyType(
     {
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
         "appID": "comicbox dev",
         ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",

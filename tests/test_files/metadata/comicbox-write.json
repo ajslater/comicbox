@@ -162,5 +162,5 @@
       "number": 1950
     }
   },
-  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
 }

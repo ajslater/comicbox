@@ -174,7 +174,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "35": {"size": 340840},
             },
         },
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
     }
 )
 WRITE_COMICBOX_DICT = create_write_dict(READ_COMICBOX_DICT, ComicboxJsonSchema, "notes")

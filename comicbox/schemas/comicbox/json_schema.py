@@ -29,14 +29,14 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     appID = StringField()  # noqa: N815
     comicbox = Nested(ComicboxJsonSubSchema)
     schema = Constant(
-        "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"
+        "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
     )
 
     def dump(self, obj: dict, *args, **kwargs):
         """Inject zero fill for page string numbers."""
-        if obj and (pages := obj.get("comicbox", {}).get(PAGES_KEY)):
-            comicbox_field = self.fields["comicbox"].schema  # type: ignore[reportAttributeAccessIssue]
-            pages_field = comicbox_field.fields["pages"]
+        if obj and (pages := obj.get(self.ROOT_TAG, {}).get(PAGES_KEY)):
+            comicbox_field = self.fields[self.ROOT_TAG].schema  # type: ignore[reportAttributeAccessIssue]
+            pages_field = comicbox_field.fields[PAGES_KEY]
             max_page = max(*pages.keys(), 0)
             zero_fill = ceil(log10(max_page))
             pages_field.key_field.ZERO_FILL = zero_fill
