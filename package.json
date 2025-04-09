@@ -44,7 +44,7 @@
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-array-func": "^5.0.1",
     "eslint-plugin-compat": "^6.0.0",
-    "eslint-plugin-depend": "^0.12.0",
+    "eslint-plugin-depend": "^1.0.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-mdx": "^3.1.5",
     "eslint-plugin-no-secrets": "^2.1.1",
