@@ -54,15 +54,15 @@ def get_json_schema(path):
     return Draft202012Validator(json_schema, registry=_REGISTRY)
 
 
-CB_SCHEMA = get_json_schema("v2.0/comicbox-v2.0.schema.json")
-FMT_SCHEMA_MAP = MappingProxyType(
+_CB_SCHEMA = get_json_schema("v2.0/comicbox-v2.0.schema.json")
+_FMT_SCHEMA_MAP = MappingProxyType(
     {
         "cix": get_xml_schema("ComicInfo-v2.1-Draft.xsd"),
         "cbi": get_json_schema("comic-book-info-v1.0.schema.json"),
         "metron": get_xml_schema("MetronInfo-v1.0.xsd"),
         "comet": get_xml_schema("CoMet-v1.1.xsd"),
-        "json": CB_SCHEMA,
-        "yaml": CB_SCHEMA,
+        "json": _CB_SCHEMA,
+        "yaml": _CB_SCHEMA,
     }
 )
 
@@ -74,7 +74,7 @@ def validate_path(path, fmt=None):
     if not fmt or fmt == "temp-autopass":
         return
     path = Path(path)
-    validator = FMT_SCHEMA_MAP[fmt]
+    validator = _FMT_SCHEMA_MAP[fmt]
     if isinstance(validator, XMLSchema11):
         validator.validate(path)
         return
