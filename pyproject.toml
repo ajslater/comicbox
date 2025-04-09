@@ -65,6 +65,7 @@ dev = [
   "codespell<3.0.0,>=2.1.0",
   "coverage[toml]<8.0,>=7.0",
   "check-jsonschema<1.0.0,>=0.31.0",
+  "jsonschema[format]<5.0.0,>=4.20.1",
   "hatchling<2.0.0,>=1.27.0",
   "pyright<2.0.0,>=1.1.354",
   "pytest-cov<7.0,>=6.0",
