@@ -2,11 +2,14 @@
 
 from logging import getLogger
 
+from glom import glom
+
 from comicbox.box.archive_read import archive_close
 from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.fields.enum_fields import PageTypeEnum
-from comicbox.schemas.comicbox import PAGES_KEY
+from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
 
+PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
 LOG = getLogger(__name__)
 
 
@@ -23,27 +26,27 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
         metadata = self._get_metadata()
         if not metadata:
             return coverlist
+        pages = glom(metadata, PAGES_KEYPATH, default=None)
+        if not pages:
+            return coverlist
 
         # Support zero and one index pages.
-        has_zero_index = False
-        for page in metadata.get(PAGES_KEY, []):
-            index = page.get("index")
-            if index == 0:
-                has_zero_index = True
-            if page.get("page_type") == PageTypeEnum.FRONT_COVER:
-                if not has_zero_index:
-                    index = max(index - 1, 0)
-                if pagename := self.get_pagename(index):
-                    coverlist.append(pagename)
+        has_zero_index = 0 in pages
+        for index, page in metadata.get(PAGES_KEY, {}).items():
+            if page.get("page_type") != PageTypeEnum.FRONT_COVER:
+                continue
+            pagename_index = index if has_zero_index else max(index - 1, 0)
+            if pagename := self.get_pagename(pagename_index):
+                coverlist.append(pagename)
         return coverlist
 
     def get_cover_path_list(self):
         """Get filename of most likely coverpage."""
+        # This could be a generator?
         if not self._cover_path_list:
-            cover_path_list = []
-            cover_path_list += self._get_cover_page_filenames_tagged()
+            cover_path_list = self._get_cover_page_filenames_tagged()
             metadata = self._get_metadata()
-            if md_cover_image := metadata.get("cover_image"):
+            if md_cover_image := metadata.get(COVER_IMAGE_KEY):
                 pagenames = self.get_page_filenames()
                 if md_cover_image in pagenames:
                     cover_path_list.append(md_cover_image)

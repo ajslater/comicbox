@@ -16,6 +16,7 @@ from glom import Assign, Delete, glom
 from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
+from comicbox.box.pages import PAGES_KEYPATH
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox import (
@@ -29,7 +30,6 @@ from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIE
 from comicbox.transforms.comicbookinfo import UPDATED_AT_KEY_PATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
-    PAGES_KEYPATH,
     TEST_DATETIME,
     TEST_FILES_DIR,
     TEST_METADATA_DIR,

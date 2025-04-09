@@ -6,7 +6,6 @@ from pathlib import Path
 
 from ruamel.yaml.timestamp import TimeStamp
 
-from comicbox.schemas.comicbox import PAGES_KEY, ComicboxSchemaMixin
 from comicbox.version import PACKAGE_NAME, VERSION
 
 # DIRS
@@ -56,5 +55,3 @@ TEST_WRITE_NOTES = (
 )
 
 TEST_TIMESTAMP = TimeStamp(*_D_TUPLE)
-
-PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
