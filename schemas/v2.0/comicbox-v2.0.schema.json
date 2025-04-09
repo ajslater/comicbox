@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "schema": {
-      "type": "string"
+      "const": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
     },
     "appID": {
       "type": "string"
