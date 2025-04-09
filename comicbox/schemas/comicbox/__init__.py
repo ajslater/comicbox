@@ -177,8 +177,8 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     genres = SimpleNamedDictField()  # Comet, CBI, CIX, CT, Metron, PDF
     # identifiers from parent # Comet, CBI, CIX, CT, Metron,
     identifier_primary_source = Nested(IdentifierPrimarySource)  # Metron
-    issue = Nested(IssueSchema)  # ALL
     imprint = SimpleNamedNestedField()  # CIX, CT, Metron
+    issue = Nested(IssueSchema)  # ALL
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
     locations = SimpleNamedDictField()  # CIX, CT, Metron
     manga = ComicInfoMangaField()  # CIX ONLY
