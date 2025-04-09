@@ -133,7 +133,7 @@
           "type": "object",
           "patternProperties": {
             "[0-9]+": {
-              "$ref": "pages.schema.json"
+              "$ref": "page.schema.json"
             }
           }
         },
