@@ -23,9 +23,9 @@ def _stringify_keys(data):
 class YamlValidator(JsonValidator):
     """Yaml Validator."""
 
-    def is_valid(self, source_path):
+    def validate(self, source_path):
         """Validate source."""
         source_str = source_path.read_text()
         data = YAML().load(source_str)
         json_data = _stringify_keys(data)
-        return self._validator.is_valid(json_data)
+        self._validator.validate(json_data)

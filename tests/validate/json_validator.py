@@ -37,8 +37,8 @@ class JsonValidator(BaseValidator):
             schema, registry=_FILESYSTEM_RESOLVING_REGISTRY
         )
 
-    def is_valid(self, source_path: Path):
+    def validate(self, source_path: Path):
         """Validate source."""
         source_str = source_path.read_text()
         data = simplejson.loads(source_str)
-        return self._validator.is_valid(data)
+        self._validator.validate(data)

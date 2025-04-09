@@ -84,4 +84,4 @@ def validate_path(path, fmt=""):
     if isinstance(validator, str):
         reason = f"validator is {validator}"
         raise TypeError(reason)
-    validator.is_valid(path)
+    validator.validate(path)

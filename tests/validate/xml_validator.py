@@ -15,6 +15,6 @@ class XmlValidator(BaseValidator):
         super().__init__(*args, **kwargs)
         self._validator = XMLSchema11(self.schema_path)
 
-    def is_valid(self, data_path: Path | str):
+    def validate(self, data_path: Path | str):
         """Use is_valid on XMLSchema validator."""
-        return self._validator.validate(data_path)
+        self._validator.validate(data_path)
