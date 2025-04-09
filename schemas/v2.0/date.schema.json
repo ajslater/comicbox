@@ -6,11 +6,11 @@
   "properties": {
     "cover_date": {
       "type": "string",
-      "format": "datetime"
+      "format": "date"
     },
     "store_date": {
       "type": "string",
-      "format": "datetime"
+      "format": "date"
     },
     "day": {
       "type": "integer",

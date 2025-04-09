@@ -94,7 +94,8 @@
               "type": "string"
             },
             "url": {
-              "type": "string"
+              "type": "string",
+              "format": "uri"
             }
           },
           "required": ["nid"]
@@ -217,13 +218,13 @@
         },
         "updated_at": {
           "type": "string",
-          "format": "datetime"
+          "format": "date-time"
         },
         "volume": {
           "$ref": "volume.schema.json"
         }
       }
-    },
-    "required": ["comicbox"]
-  }
+    }
+  },
+  "required": ["comicbox"]
 }
