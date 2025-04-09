@@ -5,11 +5,11 @@
   "type": "object",
   "properties": {
     "name": {
-      "required": true,
       "type": "string"
     },
     "identifiers": {
       "$ref": "identifiers.schema.json"
     }
-  }
+  },
+  "required": ["name"]
 }

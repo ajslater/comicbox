@@ -4,7 +4,7 @@
   "title": "Comicbox Identified Object Collection",
   "type": "object",
   "properties": {
-    ".*": {
+    ".+": {
       "$ref": "identified-object.schema.json"
     }
   }

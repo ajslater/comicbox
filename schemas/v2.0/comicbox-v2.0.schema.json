@@ -96,7 +96,8 @@
             "url": {
               "type": "string"
             }
-          }
+          },
+          "required": ["nid"]
         },
         "imprint": {
           "$ref": "named-identified-object.schema.json"
@@ -142,9 +143,11 @@
         },
         "prices": {
           "type": "object",
-          "values": {
-            "type": "number",
-            "minimum": 0
+          "patternProperties": {
+            "[A-Za-Z]*": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         },
         "protagonist": {
@@ -201,12 +204,14 @@
         },
         "universes": {
           "type": "object",
-          "properties": {
-            "designation": {
-              "type": "string"
-            },
-            "identifiers": {
-              "$ref": "identifiers.schema.json"
+          "patternProperties": {
+            ".+": {
+              "designation": {
+                "type": "string"
+              },
+              "identifiers": {
+                "$ref": "identifiers.schema.json"
+              }
             }
           }
         },
@@ -218,6 +223,7 @@
           "$ref": "volume.schema.json"
         }
       }
-    }
+    },
+    "required": ["comicbox"]
   }
 }

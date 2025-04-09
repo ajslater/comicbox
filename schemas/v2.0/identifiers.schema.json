@@ -4,17 +4,17 @@
   "title": "Comicbox Identifier",
   "type": "object",
   "patternProperties": {
-    ".*": {
+    ".+": {
       "type": "object",
       "properties": {
         "nss": {
-          "required": true,
           "type": "string"
         },
         "url": {
           "type": "string"
         }
-      }
+      },
+      "required": ["nss"]
     }
   }
 }

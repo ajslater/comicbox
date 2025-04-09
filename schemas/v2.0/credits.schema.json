@@ -4,13 +4,13 @@
   "title": "Comicbox Credits",
   "type": "object",
   "patternProperties": {
-    ".*": {
+    ".+": {
       "$ref": "identified-object.schema.json",
       "properties": {
         "roles": {
           "type": "object",
           "patternProperties": {
-            ".*": {
+            ".+": {
               "$ref": "identified-object.schema.json"
             }
           }
