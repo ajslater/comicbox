@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v1.0/reprint.schema.json",
+  "title": "Comicbox Reprint",
+  "type": "object",
+  "properties": {
+    "publisher": {
+      "type": "string"
+    },
+    "imprint": {
+      "type": "string"
+    },
+    "series": {
+      "$ref": "series.schema.json"
+    },
+    "volume": {
+      "$ref": "volume.schema.json"
+    }
+  }
+}
