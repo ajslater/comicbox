@@ -9,7 +9,7 @@ comicbox:
   dry_run: False
   loglevel: INFO
   metadata: {}
-  metadta_format: null
+  metadata_format: null
   metadata_cli: null
   read:
     - cli
