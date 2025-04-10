@@ -12,6 +12,7 @@ from comicbox.version import PACKAGE_NAME, VERSION
 TEST_FILES_DIR = Path("tests/test_files")
 TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
+TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"
 TMP_ROOT_DIR = Path("/tmp")  # noqa: S108
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
