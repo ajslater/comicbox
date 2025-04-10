@@ -630,6 +630,7 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
             ignore_tagger=True,
         )
 
+
 def assert_diff(old_map, new_map):
     """Assert no diff and print if there is."""
     if diff := DeepDiff(old_map, new_map):

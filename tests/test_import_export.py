@@ -442,7 +442,15 @@ FNS = MappingProxyType(
             "[CVDB145269]",
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
-            "series": {"name": "Captain Science"},
+            "series": {
+                "identifiers": {
+                    "comicvine": {
+                        "nss": "45678",
+                        "url": "https://comicvine.gamespot.com/c/4050-45678/",
+                    }
+                },
+                "name": "Captain Science",
+            },
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),

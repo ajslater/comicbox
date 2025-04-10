@@ -28,7 +28,15 @@ READ_METADATA = MappingProxyType(
                 "month": 11,
                 "year": 1950,
             },
-            "series": {"name": "Captain Science"},
+            "series": {
+                "identifiers": {
+                    "comicvine": {
+                        "nss": "45678",
+                        "url": "https://comicvine.gamespot.com/c/4050-45678/",
+                    }
+                },
+                "name": "Captain Science",
+            },
             "identifiers": {
                 "comicvine": {
                     "nss": "145269",
@@ -81,6 +89,7 @@ READ_CT_DICT = MappingProxyType(
             "page_count": 0,
             "publisher": "Youthful Adventure Stories",
             "series": "Captain Science",
+            "series_id": "45678",
             "title": "The Beginning",
             "volume": 1950,
             "year": 1950,
