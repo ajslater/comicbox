@@ -7,8 +7,6 @@ from comicbox.formats import MetadataFormats
 from comicbox.identifiers.const import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
-    NSS_KEY,
-    URL_KEY,
     NIDs,
 )
 from comicbox.identifiers.identifiers import (
@@ -40,6 +38,7 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
         MetadataFormats.PDF_XML,
     }
 )
+_IDPS_KEYS = frozenset({IDENTIFIERS_KEY, IDENTIFIER_PRIMARY_SOURCE_KEY})
 
 
 class ComicboxComputedIdentifers(ComicboxComputedIssue):
@@ -69,45 +68,24 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             return None
         return {IDENTIFIERS_KEY: identifiers}
 
-    def _add_urls_to_identifiers(self, identifiers):
-        if IDENTIFIERS_KEY in self._config.delete_keys:
-            return None
-        identifiers_with_urls = {}
-        for nid, identifier in identifiers.items():
-            if identifier.get(URL_KEY):
-                continue
-            if nss := identifier.get(NSS_KEY):
-                new_identifier = create_identifier(nid, nss)
-                identifiers_with_urls[nid] = new_identifier
-        return identifiers_with_urls
-
-    def _add_identifier_primary_source_key(self, sub_data, identifiers):
+    def _get_computed_from_identifiers(self, sub_data):
         if (
-            IDENTIFIER_PRIMARY_SOURCE_KEY in self._config.delete_keys
+            frozenset(self._config.delete_keys) & _IDPS_KEYS
             or not (self._config.write & _FORMATS_WITH_IPS)
+            or not sub_data
             or sub_data.get(IDENTIFIER_PRIMARY_SOURCE_KEY)
         ):
-            return None
-        for nid in NIDs:
-            if nid.value in identifiers and (
-                ips := create_identifier_primary_source(nid)
-            ):
-                return ips
-        return None
-
-    def _get_computed_from_identifiers(self, sub_data):
-        if IDENTIFIERS_KEY in self._config.delete_keys:
             return None
         identifiers = sub_data.get(IDENTIFIERS_KEY)
         if not identifiers:
             return None
-        result = {}
-        if identifiers_with_added_urls := self._add_urls_to_identifiers(identifiers):
-            result[IDENTIFIERS_KEY] = identifiers_with_added_urls
-        if ips := self._add_identifier_primary_source_key(sub_data, identifiers):
-            result[IDENTIFIER_PRIMARY_SOURCE_KEY] = ips
-        if not result:
-            return None
+        result = None
+        for nid in NIDs:
+            if nid.value in identifiers and (
+                ips := create_identifier_primary_source(nid)
+            ):
+                result = {IDENTIFIER_PRIMARY_SOURCE_KEY: ips}
+                break
         return result
 
     COMPUTED_ACTIONS = MappingProxyType(
