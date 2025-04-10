@@ -13,6 +13,7 @@ from comicbox.identifiers import (
 )
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import (
+    COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,
     IDENTIFIERS_KEY,
@@ -22,7 +23,7 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSubSchema
 from comicbox.urns import (
     IDENTIFIER_EXP,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
@@ -30,7 +31,7 @@ from comicbox.urns import (
 )
 
 LOG = getLogger(__name__)
-_DATE_KEYS = frozenset({DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
+_DATE_KEYS = frozenset({COVER_DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
 _NOTES_TAGGER_VERSION_EXP = r"(?:\s(?:dev|test|[\d\.]+\S+))?"
 _NOTES_TAGGER_RE_EXP = (
     r"(?:Tagged\s(?:with|by)\s(?P<tagger>\w+" + _NOTES_TAGGER_VERSION_EXP + "))"
@@ -57,14 +58,14 @@ _NOTES_IDENTIFIER_EXTRA_RE = re.compile(
     _NOTES_IDENTIFIER_EXTRA_EXP, flags=re.IGNORECASE
 )
 _NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
-_NOTES_RELDATE_RE = re.compile(r"[RELDATE:(.\S)]")
+_NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 
 
 class ComicboxComputedNotesMixin(ComicboxMergeMixin):
     """Computed metadata methods for notes field."""
 
     def _set_computed_notes_key(self, sub_data, key, match, md):
-        schema = ComicboxYamlSchema(path=self._path)
+        schema = ComicboxYamlSubSchema(path=self._path)
         if not sub_data.get(key) and (new_value := match.group(key)):
             field = schema.fields.get(key)
             if not field:
@@ -125,7 +126,7 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
             notes, sub_data, sub_md
         )
         urn_identifiers = self._get_computed_notes_urn_identifiers(notes)
-        explicit_identifiers = sub_data.get(IDENTIFIERS_KEY)
+        explicit_identifiers = sub_data.get(IDENTIFIERS_KEY, {})
         pruned_notes_identifiers = {}
         for notes_identifiers in (
             extra_identifiers,
@@ -143,29 +144,30 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
     def _get_computed_notes_date(notes):
         """Parse the date from the notes."""
         match = _NOTES_RELDATE_RE.search(notes)
-        if not match or "reldate" not in match.groups():
+        if not match:
             return None
         date_str = match.group("reldate")
         try:
             return DateField()._deserialize(date_str)  # noqa: SLF001
         except Exception:
             LOG.debug(f"Unparsable RELDATE {date_str}")
-            return None
+        return None
 
     def _set_computed_notes_date(self, sub_data, notes, sub_md):
-        if _DATE_KEYS & frozenset(sub_data.keys()):
+        if (old_date := sub_data.get(DATE_KEY, {})) and _DATE_KEYS & frozenset(
+            old_date.keys()
+        ):
             # do not overwrite explicit date keys
             return
-        date = self._get_computed_notes_date(notes)
-        if date:
-            if DATE_KEY not in sub_data:
-                sub_md[DATE_KEY] = date
-            if YEAR_KEY not in sub_data:
-                sub_md[YEAR_KEY] = date.year
-            if MONTH_KEY not in sub_data:
-                sub_md[MONTH_KEY] = date.month
-            if DAY_KEY not in sub_data:
-                sub_md[DAY_KEY] = date.day
+        if date := self._get_computed_notes_date(notes):
+            new_date = {
+                COVER_DATE_KEY: date,
+                YEAR_KEY: date.year,
+                MONTH_KEY: date.month,
+                DAY_KEY: date.day,
+            }
+            new_date.update(old_date)
+            sub_md[DATE_KEY] = new_date
 
     def _set_computed_notes_tagger(self, sub_data, notes, sub_md):
         if sub_data.get(TAGGER_KEY):
