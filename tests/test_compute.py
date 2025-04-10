@@ -2,18 +2,22 @@
 
 from argparse import Namespace
 from datetime import date, datetime
+from decimal import Decimal
 from types import MappingProxyType
 
 from dateutil.tz import tzutc
 
 from comicbox.box import Comicbox
+from comicbox.formats import MetadataFormats
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comictagger import ComictaggerSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
 DATE_FROM_NOTES_IMPORT = TEST_METADATA_DIR / "comicinfo-notes-date.xml"
 DATE_FROM_NOTES_MD = MappingProxyType(
     {
-        "comicbox": {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "date": {
                 "cover_date": date(2025, 4, 11),
                 "year": 2025,
@@ -43,10 +47,9 @@ def test_compute_date_from_notes():
 
 
 IDS_FROM_TAGS_IMPORT = TEST_METADATA_DIR / "comicinfo-ids-from-tags.xml"
-
 IDS_FROM_TAGS_MD = MappingProxyType(
     {
-        "comicbox": {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "identifiers": {
                 "comicvine": {
                     "nss": "1234",
@@ -72,3 +75,30 @@ def test_compute_ids_from_tags():
         md = car.get_metadata()
 
     assert_diff(IDS_FROM_TAGS_MD, md)
+
+
+ISSUE_NAME_ONLY_MD = MappingProxyType(
+    {ComictaggerSchema.ROOT_TAG: {"issue": "1234SUFFIX"}}
+)
+ISSUE_WITH_PARTS = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "issue": {"name": "1234SUFFIX", "number": Decimal(1234), "suffix": "SUFFIX"}
+        }
+    }
+)
+
+
+def test_compute_issue_suffix():
+    """Test computing identifiers from tags."""
+    config = Namespace(
+        comicbox=Namespace(
+            print="snmcp",
+        )
+    )
+    with Comicbox(
+        metadata=ISSUE_NAME_ONLY_MD, fmt=MetadataFormats.COMICTAGGER, config=config
+    ) as car:
+        md = car.get_metadata()
+
+    assert_diff(ISSUE_WITH_PARTS, md)
