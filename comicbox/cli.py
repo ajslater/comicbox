@@ -92,19 +92,6 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-def map_keys(config, prefix, list_key, maps, value):
-    """Map keyed values to config booleans."""
-    key_list = getattr(config, list_key)
-    if key_list:
-        for key in key_list:
-            lower_key = key.lower()
-            for attr_suffix, parser_class in maps.items():
-                if lower_key in parser_class.CONFIG_KEYS:
-                    attr = f"{prefix}_{attr_suffix}"
-                    setattr(config, attr, value)
-    delattr(config, list_key)
-
-
 TABLE_ARGS = MappingProxyType(
     {
         "box": box.HEAVY,
