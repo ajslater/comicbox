@@ -54,11 +54,11 @@ def test_extract_pages_config():
     _compare_extract_pages()
 
 
-def test_extract_cover_as():
+def test_extract_covers():
     """Test extract cover."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(CIX_CBZ_SOURCE_PATH) as car:
-        car.extract_cover_as(TMP_DIR)
+        car.extract_covers(TMP_DIR)
 
     assert cmp(COVER_PATH_SOURCE, COVER_PATH_DEST)
 
@@ -67,6 +67,6 @@ def test_extract_cover_pdf():
     """Test extract cover from pdf."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(PDF_SOURCE_PATH) as car:
-        car.extract_cover_as(TMP_DIR)
+        car.extract_covers(TMP_DIR)
 
     assert cmp(PDF_COVER_PATH_SOURCE, PDF_COVER_PATH_DEST)
