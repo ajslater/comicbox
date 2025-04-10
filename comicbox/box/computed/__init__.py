@@ -76,9 +76,9 @@ class ComicboxComputedMixin(ComicboxComputedIdentifers):
         return None
 
     def _get_delete_keys(self, _sub_data: Mapping):
-        if self._config.delete_keys:
-            return self._config.delete_keys
-        return None
+        if not self._config.delete_keys:
+            return None
+        return tuple(sorted(self._config.delete_keys))
 
     _COMPUTED_ACTIONS = MappingProxyType(
         {
