@@ -21,10 +21,9 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
     # COVER PATH FILENAMES #
     ########################
 
-    def _get_cover_page_filenames_tagged(self):
+    def _get_cover_page_filenames_tagged(self, metadata: dict) -> list[str]:
         """Overridden by CIX."""
-        coverlist = set()
-        metadata = self._get_metadata()
+        coverlist = []
         if not metadata:
             return coverlist
         metadata = dict(metadata)
@@ -39,23 +38,22 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
                 continue
             pagename_index = index if has_zero_index else max(index - 1, 0)
             if pagename := self.get_pagename(pagename_index):
-                coverlist.add(pagename)
+                coverlist.append(pagename)
         return coverlist
 
     def _set_cover_path_list(self):
-        cover_path_list = self._get_cover_page_filenames_tagged()
         metadata = self._get_metadata()
         metadata = dict(metadata)
-        md_cover_image = glom(metadata, COVER_IMAGE_KEYPATH)
-        if md_cover_image := glom(metadata, COVER_IMAGE_KEYPATH, default=None):
+        cover_path_list = self._get_cover_page_filenames_tagged(metadata)
+        if cover_image := glom(metadata, COVER_IMAGE_KEYPATH, default=None):
             pagenames = self.get_page_filenames()
-            if md_cover_image in pagenames:
-                cover_path_list.add(md_cover_image)
+            if cover_image in pagenames:
+                cover_path_list.append(cover_image)
         if first_pagename := self.get_pagename(0):
-            cover_path_list.add(first_pagename)
+            cover_path_list.append(first_pagename)
         if not cover_path_list:
             LOG.warning(f"{self._path} could not find cover filename")
-        self._cover_path_list = tuple(cover_path_list)
+        self._cover_path_list = tuple(frozenset(cover_path_list))
 
     def get_cover_path_list(self):
         """Get filename of most likely coverpage."""

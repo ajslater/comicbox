@@ -281,10 +281,11 @@ def test_codex_import(ft):
         # car.print_out() debug
     assert car_ft == ft
     assert car_count == fixture.page_count
-    pprint(fixture.metadata)
-    pprint(car_md)
     diff = DeepDiff(fixture.metadata, car_md)
-    pprint(diff)
+    if not diff:
+        pprint(car_md)
+        pprint(fixture.metadata)
+        pprint(diff)
     assert not diff
 
 
@@ -296,7 +297,6 @@ def test_cover_page(ft):
     is_pdf = cover_path.suffix == ".pdf"
     with Comicbox(fixture.path) as car:
         cover = car.get_cover_page_pdf_to_pixmap() if is_pdf else car.get_cover_page()
-    print(f"{cover_path=}")
     with cover_path.open("rb") as f:
         disk_cover = f.read()
     if is_pdf:
@@ -309,6 +309,8 @@ def test_cover_page(ft):
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"
             raise AssertionError(reason) from exc
 
+    if cover != disk_cover:
+        print(f"{cover_path=}")
     assert cover == disk_cover
 
 
@@ -341,16 +343,14 @@ def test_random_access_page(ft):
     """Test codex get page image methods."""
     fixture = FIXTURES[ft]
     files = sorted(Path(TEST_FILES_DIR / fixture.files_path).iterdir())
-    print("path", fixture.path)
     with Comicbox(fixture.path) as car:
-        print("page count:", car.get_page_count())
         for index in INDEXES:
-            print(f"{index=}")
             page = car.get_page_by_index(index)
             page_path = files[index]
             with page_path.open("rb") as f:
                 disk_page = f.read()
-            print(f"{page_path=}")
             # with Path( "/tmp/" / Path(page_path.name) ).open("wb") as f:
             #   f.write(page) # noqa: ERA001
+            if disk_page != page:
+                print(f"{fixture.path=} {car.get_page_count()} {index=} {page_path=}")
             assert disk_page == page
