@@ -126,4 +126,3 @@ def test_compute_issue_name():
         md = car.get_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
-

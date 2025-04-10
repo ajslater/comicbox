@@ -307,7 +307,7 @@ def _add_action_group(parser):
         " to --dest-path.",
     )
     action_group.add_argument(
-        "-o", "--cover", action="store_true", help="Extract cover page(s)."
+        "-o", "--covers", action="store_true", help="Extract cover pages."
     )
     action_group.add_argument(
         "-z",

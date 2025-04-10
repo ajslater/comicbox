@@ -21,7 +21,7 @@ _NO_PATH_ATTRS = MappingProxyType(
         "index_from": None,
         "index_to": None,
         "write": None,
-        "cover": False,
+        "covers": False,
         "cbz": False,
         "delete_all_tags": False,
         "rename": False,
@@ -45,7 +45,7 @@ class Comicbox(
         {
             "print": ComicboxPrintMixin.print_out,
             "export": ComicboxWriteMixin.export_files,
-            "cover": ComicboxExtractMixin.extract_cover_as,
+            "covers": ComicboxExtractMixin.extract_covers,
         }
     )
 

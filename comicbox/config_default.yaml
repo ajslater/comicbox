@@ -34,7 +34,7 @@ comicbox:
   close_fd: True
   # Actions
   cbz: False
-  cover: False
+  covers: False
   export: []
   import_paths: []
   index_from: null

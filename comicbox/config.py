@@ -44,7 +44,7 @@ _TEMPLATE = MappingTemplate(
                 "close_fd": bool,
                 # Actions
                 "cbz": Optional(bool),
-                "cover": Optional(bool),
+                "covers": Optional(bool),
                 "export": Optional(Sequence(str)),
                 "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
