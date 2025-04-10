@@ -15,7 +15,7 @@ from comicbox.identifiers.identifiers import (
     create_identifier,
 )
 from comicbox.identifiers.other import (
-    parse_identifier_str,
+    parse_identifier_other_str,
 )
 from comicbox.identifiers.urns import (
     parse_urn_identifier,
@@ -60,7 +60,7 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             # Silently fail because most tags are not identifiers
             nid, _, nss = parse_urn_identifier(tag)
             if not (nid and nss):
-                nid, _, nss = parse_identifier_str(tag)
+                nid, _, nss = parse_identifier_other_str(tag)
             if nid:
                 nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:

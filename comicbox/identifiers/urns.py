@@ -8,7 +8,7 @@ from comicbox.identifiers.const import (
     DEFAULT_NSS_TYPE,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
 )
-from comicbox.identifiers.other import parse_identifier_str
+from comicbox.identifiers.other import parse_identifier_other_str
 
 LOG = getLogger(__name__)
 
@@ -51,7 +51,7 @@ def parse_string_identifier(item: str, default_nid="") -> tuple[str, str, str]:
     """Parse identifiers from strings or xml dicts."""
     nid, nss_type, nss = parse_urn_identifier_and_warn(item)
     if not nss:
-        nid, nss_type, nss = parse_identifier_str(item)
+        nid, nss_type, nss = parse_identifier_other_str(item)
     if default_nid and not nid:
         nid = default_nid
     if not nss_type:

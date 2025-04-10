@@ -15,8 +15,8 @@ from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
 )
 
-# I haven't identified which program adds these "extra" notes encodings. Could be mylar.
-_PARSE_EXTRA_RE = re.compile(IDENTIFIER_RE_EXP, flags=re.IGNORECASE)
+# I haven't identified which program adds these other notes encodings. Could be mylar.
+_PARSE_OTHER_RE = re.compile(IDENTIFIER_RE_EXP, flags=re.IGNORECASE)
 
 
 def _parse_identifier_str_comicvine(full_identifier) -> tuple[str, str, str]:
@@ -31,9 +31,9 @@ def _parse_identifier_str_comicvine(full_identifier) -> tuple[str, str, str]:
     return nid, nss_type, nss
 
 
-def _parse_identifier_str_extra(full_identifier) -> tuple[str, str, str]:
+def _parse_identifier_other_str(full_identifier) -> tuple[str, str, str]:
     nid = nss_type = nss = ""
-    match = _PARSE_EXTRA_RE.search(full_identifier)
+    match = _PARSE_OTHER_RE.search(full_identifier)
     if not match:
         return nid, nss_type, nss
     with suppress(IndexError):
@@ -44,12 +44,11 @@ def _parse_identifier_str_extra(full_identifier) -> tuple[str, str, str]:
     return nid, nss_type, nss
 
 
-# TODO rename parse other
-def parse_identifier_str(full_identifier: str) -> tuple[str, str, str]:
+def parse_identifier_other_str(full_identifier: str) -> tuple[str, str, str]:
     """Parse an identifier string with optional prefix."""
     nid, nss_type, nss = _parse_identifier_str_comicvine(full_identifier)
     if not nss:
-        nid, nss_type, nss = _parse_identifier_str_extra(full_identifier)
+        nid, nss_type, nss = _parse_identifier_other_str(full_identifier)
     if not nss:
         nss = full_identifier
     return nid, nss_type, nss
