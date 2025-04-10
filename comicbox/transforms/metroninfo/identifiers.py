@@ -7,14 +7,16 @@ from typing import Any
 from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import (
-    IDENTIFIER_PARTS_MAP,
+from comicbox.identifiers.const import (
     ISBN_NID,
     METRON_NID,
     NID_ORIGIN_MAP,
     NSS_KEY,
     UPC_NID,
     URL_KEY,
+)
+from comicbox.identifiers.identifiers import (
+    IDENTIFIER_PARTS_MAP,
     create_identifier,
 )
 from comicbox.merge import AdditiveMerger

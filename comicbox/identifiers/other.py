@@ -1,0 +1,55 @@
+"""Non urn identifier substring parsers."""
+
+import re
+from contextlib import suppress
+
+from comicbox.identifiers.const import (
+    COMICVINE_NID,
+    DEFAULT_NID,
+    DEFAULT_NSS_TYPE,
+    IDENTIFIER_RE_EXP,
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
+    PARSE_COMICVINE_RE,
+)
+from comicbox.identifiers.identifiers import (
+    IDENTIFIER_PARTS_MAP,
+)
+
+# I haven't identified which program adds these "extra" notes encodings. Could be mylar.
+_PARSE_EXTRA_RE = re.compile(IDENTIFIER_RE_EXP, flags=re.IGNORECASE)
+
+
+def _parse_identifier_str_comicvine(full_identifier) -> tuple[str, str, str]:
+    nid = nss_type = nss = ""
+    match = PARSE_COMICVINE_RE.search(full_identifier)
+    if not match:
+        return nid, nss_type, nss
+    nid = COMICVINE_NID
+    nss_type_code = match.group("nsstype") or ""
+    nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].get_type_by_code(nss_type_code)
+    nss = match.group("nss")
+    return nid, nss_type, nss
+
+
+def _parse_identifier_str_extra(full_identifier) -> tuple[str, str, str]:
+    nid = nss_type = nss = ""
+    match = _PARSE_EXTRA_RE.search(full_identifier)
+    if not match:
+        return nid, nss_type, nss
+    with suppress(IndexError):
+        nid = match.group("nid") or ""
+        nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+        nss_type = DEFAULT_NSS_TYPE
+        nss = match.group("nss")
+    return nid, nss_type, nss
+
+
+# TODO rename parse other
+def parse_identifier_str(full_identifier: str) -> tuple[str, str, str]:
+    """Parse an identifier string with optional prefix."""
+    nid, nss_type, nss = _parse_identifier_str_comicvine(full_identifier)
+    if not nss:
+        nid, nss_type, nss = _parse_identifier_str_extra(full_identifier)
+    if not nss:
+        nss = full_identifier
+    return nid, nss_type, nss

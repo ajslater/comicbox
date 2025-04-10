@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from comicbox.identifiers import (
+from comicbox.identifiers.const import (
     ANILIST_NID,
     COMICVINE_NID,
     GCD_NID,

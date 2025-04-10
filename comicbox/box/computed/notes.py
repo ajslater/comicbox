@@ -6,10 +6,17 @@ from types import MappingProxyType
 
 from comicbox.box.merge import ComicboxMergeMixin
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.identifiers import (
+from comicbox.identifiers.const import (
     DEFAULT_NID,
+    IDENTIFIER_RE_EXP,
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     NID_ORIGIN_MAP,
+)
+from comicbox.identifiers.identifiers import (
     create_identifier,
+)
+from comicbox.identifiers.urns import (
+    parse_urn_identifier_and_warn,
 )
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import (
@@ -24,11 +31,6 @@ from comicbox.schemas.comicbox import (
     YEAR_KEY,
 )
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSubSchema
-from comicbox.urns import (
-    IDENTIFIER_EXP,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    parse_urn_identifier_and_warn,
-)
 
 LOG = getLogger(__name__)
 _DATE_KEYS = frozenset({COVER_DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
@@ -53,7 +55,7 @@ _NOTES_RE_EXP = (
 _NOTES_RE = re.compile(_NOTES_RE_EXP, flags=re.IGNORECASE)
 _URN_RE_EXP = r"(?P<urn>urn:\S{2,}:\S{2,})"
 _URN_RE = re.compile(_URN_RE_EXP)
-_NOTES_IDENTIFIER_EXTRA_EXP = r"\[" + IDENTIFIER_EXP + r"\]"
+_NOTES_IDENTIFIER_EXTRA_EXP = r"\[" + IDENTIFIER_RE_EXP + r"\]"
 _NOTES_IDENTIFIER_EXTRA_RE = re.compile(
     _NOTES_IDENTIFIER_EXTRA_EXP, flags=re.IGNORECASE
 )

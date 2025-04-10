@@ -16,9 +16,8 @@ from comicbox.schemas.comicbookinfo import ComicBookInfoCreditSchema
 from comicbox.schemas.comicinfo import ComicInfoAgeRatingField
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
-TAG_ORIGIN_KEY = "tag_origin"
-ISSUE_ID_KEY = "issue_id"
-SERIES_ID_KEY = "series_id"
+ISSUE_ID_TAG = "issue_id"
+SERIES_ID_TAG = "series_id"
 IS_VERSION_OF_TAG = "is_version_of"
 IDENTIFIER_TAG = "identifier"
 STORY_ARC_TAG = "story_arcs"
@@ -28,6 +27,7 @@ SERIES_ALIASES_TAG = "series_aliases"
 TITLE_ALIASES_TAG = "title_aliases"
 BOOKMARK_ATTRIBUTE = "Bookmark"
 IMAGE_ATTRIBUTE = "Image"
+DATA_ORIGIN_TAG = "data_origin"
 
 
 class DataOriginSchema(BaseSubSchema):

@@ -5,10 +5,11 @@ from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers import (
+from comicbox.identifiers.const import (
     COMICVINE_NID,
     NSS_KEY,
 )
+from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
@@ -16,7 +17,6 @@ from comicbox.schemas.comicbox import (
     TAGGER_KEY,
     UPDATED_AT_KEY,
 )
-from comicbox.urns import to_urn_string
 
 
 class ComicboxComputedStamp(ComicboxComputedPages):

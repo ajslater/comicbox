@@ -1,0 +1,1 @@
+"""Common identifier functions."""

@@ -4,13 +4,19 @@ from logging import getLogger
 from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import (
-    IDENTIFIER_PARTS_MAP,
+from comicbox.identifiers.const import (
     NID_ORDER,
     NSS_KEY,
     URL_KEY,
+)
+from comicbox.identifiers.identifiers import (
+    IDENTIFIER_PARTS_MAP,
     IdentifierParts,
     create_identifier,
+)
+from comicbox.identifiers.urns import (
+    parse_string_identifier,
+    to_urn_string,
 )
 from comicbox.schemas.comicbox import (
     IDENTIFIER_PRIMARY_SOURCE_KEY,
@@ -18,10 +24,6 @@ from comicbox.schemas.comicbox import (
     NID_KEY,
 )
 from comicbox.transforms.spec import MetaSpec
-from comicbox.urns import (
-    parse_string_identifier,
-    to_urn_string,
-)
 
 LOG = getLogger(__name__)
 

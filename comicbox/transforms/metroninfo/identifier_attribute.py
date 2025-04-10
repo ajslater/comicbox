@@ -3,7 +3,8 @@
 from collections.abc import Mapping
 from logging import getLogger
 
-from comicbox.identifiers import METRON_NID, create_identifier
+from comicbox.identifiers.const import METRON_NID
+from comicbox.identifiers.identifiers import create_identifier
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 
 ID_ATTRIBUTE = "@id"

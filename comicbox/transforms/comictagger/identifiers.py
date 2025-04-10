@@ -2,11 +2,14 @@
 
 from bidict import frozenbidict
 
-from comicbox.identifiers import (
+from comicbox.identifiers.const import (
     DEFAULT_NID,
+    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     NID_ORDER,
     NID_ORIGIN_MAP,
     NSS_KEY,
+)
+from comicbox.identifiers.identifiers import (
     create_identifier,
 )
 from comicbox.schemas.comicbox import (
@@ -15,6 +18,7 @@ from comicbox.schemas.comicbox import (
     NID_KEY,
     SERIES_KEY,
 )
+from comicbox.schemas.comictagger import DATA_ORIGIN_TAG, ISSUE_ID_TAG
 from comicbox.transforms.identifiers import (
     PRIMARY_NID_KEYPATH,
     create_identifier_primary_source,
@@ -24,10 +28,8 @@ from comicbox.transforms.identifiers import (
     urls_transform_to_cb,
 )
 from comicbox.transforms.spec import MetaSpec
-from comicbox.urns import IDENTIFIER_URN_NIDS_REVERSE_MAP
 
-DATA_ORIGIN_NAME_KEYPATH = "data_origin.name"
-ISSUE_ID_TAG = "issue_id"
+DATA_ORIGIN_NAME_KEYPATH = f"{DATA_ORIGIN_TAG}.name"
 
 
 def _identifiers_primary_source_key_to_cb(data_origin):
