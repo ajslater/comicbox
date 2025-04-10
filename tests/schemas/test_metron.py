@@ -14,7 +14,7 @@ from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
-from tests.const import EMPTY_FN, METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
+from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
     assert_diff,
@@ -450,14 +450,11 @@ def test_metron_from_dict():
 
 def test_metron_from_dict_url_primary():
     """Test getting ips from urls."""
-    from deepdiff import DeepDiff
-    from pprint import pprint
-    pprint(DeepDiff(READ_METRON_DICT, URL_PRIMARY_READ_METRON_DICT))
     config = Namespace(
         comicbox=Namespace(
             metadata=URL_PRIMARY_READ_METRON_DICT,
             metadat_format=MetadataFormats.METRON_INFO,
-            print="sncmp"
+            print="sncmp",
         )
     )
     with Comicbox(config=config) as car:
