@@ -12,11 +12,9 @@ zip -9 "../Captain Science #001-metron.cbz" metroninfo.xml
 zip -9 "../Captain Science #001.cbz" comicinfo.xml
 zip -9 "../Captain Science #001-cix.cbz" comicinfo.xml
 
-tar czf "../Captain Science #001-cix.cbt" "../Captain Science 001"/*0[1-5].jpg comicinfo.xml
-
 rar a "../Captain Science #001-cix-cbi.cbr" comicinfo.xml
-rar c -z./comic-book-info.json "../Captain Science #001-cix-cbi.cbr"
-rar c -z./comic-book-info.json "../Captain Science #001-cbi.cbr"
+rar c -m5 -z./comic-book-info.json "../Captain Science #001-cix-cbi.cbr"
+rar c -m5 -z./comic-book-info.json "../Captain Science #001-cbi.cbr"
 
 cd ..
 zip -9 "Captain Science #001-cix.cbz" "Captain Science 001/comicinfo.xml"

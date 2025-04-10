@@ -38,6 +38,7 @@ class Fixture:
     metadata: MappingProxyType
     files_path: str
     cover_path: str
+    cover_path_list: tuple[str, ...]
 
 
 TEMPLATE_MD = MappingProxyType(
@@ -153,6 +154,31 @@ CBR_MD = _patch_md(CBR_MD_PATCH)
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
+        "identifier_primary_source": {
+            "nid": "comicvine",
+            "url": "https://comicvine.gamespot.com/",
+        },
+        "identifiers": {
+            "comicvine": {
+                "nss": "145269",
+                "url": "https://comicvine.gamespot.com/c/4000-145269/",
+            },
+            "isbn": {
+                "nss": "123-456789-0123",
+                "url": "https://isbndb.com/book/123-456789-0123",
+            },
+            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+        },
+        "date": {"cover_date": date(1950, 11, 1)},
+        "notes": "Tagged with "
+        "comicbox dev "
+        "on "
+        "1970-01-01T00:00:00Z "
+        "[Issue ID "
+        "145269] "
+        "urn:comicvine:4000-145269 "
+        "urn:isbn:123-456789-0123 "
+        "urn:upc:12345",
         "page_count": 5,
         "stories": {
             "The Beginning": {},
@@ -202,7 +228,7 @@ CB7_MD_PATCH = {
             },
             "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
         },
-        "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 "
+        "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
         "[Issue ID 145269] urn:comicvine:4000-145269 "
         "urn:isbn:123-456789-0123 urn:upc:12345",
         "stories": {"The Beginning": {}, "The End": {}},
@@ -212,13 +238,20 @@ CB7_MD = _patch_md(CB7_MD_PATCH)
 
 CS = "Captain Science 001"
 CS_COVER = CS + "/CaptainScience#1_01.jpg"
+CS_COVER_PATH_LIST = (CS_COVER,)
 FIXTURES = MappingProxyType(
     {
-        "CBZ": Fixture(CIX_CBZ_SOURCE_PATH, 36, CBZ_MD, CS, CS_COVER),
-        "CBR": Fixture(CIX_CBI_CBR_SOURCE_PATH, 36, CBR_MD, CS, CS_COVER),
-        "CBT": Fixture(CIX_CBT_SOURCE_PATH, 5, CBT_MD, CS, CS_COVER),
-        "PDF": Fixture(PDF_SOURCE_PATH, 4, PDF_MD, "pdf", "pdf/0.pdf"),
-        "CB7": Fixture(CB7_SOURCE_PATH, 5, CB7_MD, CS, CS_COVER),
+        "CBZ": Fixture(
+            CIX_CBZ_SOURCE_PATH, 36, CBZ_MD, CS, CS_COVER, CS_COVER_PATH_LIST
+        ),
+        "CBR": Fixture(
+            CIX_CBI_CBR_SOURCE_PATH, 36, CBR_MD, CS, CS_COVER, CS_COVER_PATH_LIST
+        ),
+        "CBT": Fixture(
+            CIX_CBT_SOURCE_PATH, 5, CBT_MD, CS, CS_COVER, CS_COVER_PATH_LIST
+        ),
+        "PDF": Fixture(PDF_SOURCE_PATH, 4, PDF_MD, "pdf", "pdf/0.pdf", ("0",)),
+        "CB7": Fixture(CB7_SOURCE_PATH, 5, CB7_MD, CS, CS_COVER, CS_COVER_PATH_LIST),
     }
 )
 INDEXES = (2, 0, 1, 3)
@@ -276,6 +309,17 @@ def test_cover_page(ft):
             raise AssertionError(reason) from exc
 
     assert cover == disk_cover
+
+
+@pytest.mark.parametrize("ft", FIXTURES)
+def test_cover_path_list(ft):
+    """Test codex cover path lists."""
+    fixture = FIXTURES[ft]
+    with Comicbox(fixture.path) as car:
+        cover_path_list = car.get_cover_path_list()
+    print(cover_path_list)
+    diff = DeepDiff(fixture.cover_path_list, cover_path_list)
+    assert not diff
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
