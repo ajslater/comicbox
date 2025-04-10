@@ -31,12 +31,11 @@ def _test_cli_action_export_util(path, args):
     )
 
     list_dir = sorted(_TMP_DIR.iterdir())
-    print("LIST DIR:")
-    for fn in list_dir:
-        print(fn)
     formats = args[1].split(",")
+    if len(list_dir) != len(formats):
+        for fn in list_dir:
+            print(fn)  # noqa: T201
     assert len(list_dir) == len(formats)
-    print("TEST FILES:")
     for fn in list_dir:
         compare_export(TEST_EXPORT_DIR, fn)
     my_cleanup(_TMP_DIR)

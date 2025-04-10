@@ -5,8 +5,6 @@ from datetime import datetime
 from decimal import Decimal
 from types import MappingProxyType
 
-from deepdiff.diff import DeepDiff
-
 from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -157,7 +155,6 @@ def test_cli_action_write():
     md = MappingProxyType(md)
 
     args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "-P", "sld")
-    print(" ".join(args))
     cli.main(args)
 
     with Comicbox(TMP_PATH) as car:
@@ -187,7 +184,6 @@ def test_cli_action_write_replace():
         "-P",
         "nmcp",
     )
-    print(" ".join(args))
     cli.main(args)
 
     with Comicbox(TMP_PATH) as car:
@@ -235,15 +231,12 @@ def test_cli_action_delete_all_tags():
     assert old_md
 
     args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS)
-    print(args)
     cli.main(args)
 
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
         new_md = car.get_metadata()
     new_md = MappingProxyType(new_md)
-    diff = DeepDiff(EMPTY_MD, new_md)
-    print(diff)
-    assert not diff
+    assert_diff(EMPTY_MD, new_md)
     _cleanup()
 
 

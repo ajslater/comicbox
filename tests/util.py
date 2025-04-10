@@ -67,17 +67,22 @@ def my_setup(tmp_dir: Path, source_path: Path | None = None):
         assert new_path.exists()
 
 
-def diff_strings(a, b):
+def assert_diff_strings(a, b):
     """Debug string diffs."""
-    diff = ndiff(a.splitlines(keepends=True), b.splitlines(keepends=True))
-    print("".join(diff), end="")
-    for i, s in enumerate(diff):
-        if s[0] == " ":
-            continue
-        if s[0] == "-":
-            print(f'Delete "{s[-1]}" from position {i}')
-        elif s[0] == "+":
-            print(f'Add "{s[-1]}" to position {i}')
+    if a != b:
+        diff = ndiff(a.splitlines(keepends=True), b.splitlines(keepends=True))
+        if diff:
+            print("".join(diff), end="")  # noqa: T201
+        for i, s in enumerate(diff):
+            if s[0] == " ":
+                continue
+            if s[0] == "-":
+                print(f'Delete "{s[-1]}" from position {i}')  # noqa: T201
+            elif s[0] == "+":
+                print(f'Add "{s[-1]}" to position {i}')  # noqa: T201
+        assert not diff
+    else:
+        assert a == b
 
 
 def read_metadata(  # noqa: PLR0913
@@ -252,9 +257,9 @@ def compare_files(  # noqa: PLR0913
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
         if line_a != line_b:
-            print(f"{path_a}: {line_a}")
-            print(f"{path_b}: {line_b}")
-            print("".join(b_lines))
+            print(f"{path_a}: {line_a}")  # noqa: T201
+            print(f"{path_b}: {line_b}")  # noqa: T201
+            print("".join(b_lines))  # noqa: T201
             return False
     return True
 
@@ -355,12 +360,10 @@ class TestParser:
             car.add_metadata(self.read_reference_string, self.fmt)
             # car.print_out() debug
             md = car.get_metadata()
-        print(self.read_reference_string)
         self._test_from(md)
 
     def test_from_file(self, page_count=None):
         """Test load from an export file."""
-        print(f"{self.reference_export_path=}")
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
             # car.print_out() debug
@@ -399,8 +402,6 @@ class TestParser:
 
     def compare_string(self, test_str):
         """Compare strings."""
-        print(self.write_reference_string)
-        print(test_str)
         from_str, to_str = _prune_strings(
             self.write_reference_string,
             test_str,
@@ -409,8 +410,7 @@ class TestParser:
             ignore_updated_at=True,
             ignore_mod_date=True,
         )
-        diff_strings(from_str, to_str)
-        assert from_str == to_str
+        assert_diff_strings(from_str, to_str)
 
     def test_to_string(self, **kwargs):
         """Test export to string."""
@@ -528,7 +528,6 @@ class TestParser:
             doc.new_page()  # type: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
-            pprint(self.write_reference_metadata)
             config = deepcopy(self.write_config)
             config.comicbox.updated_at = TEST_DATETIME.isoformat()
             with Comicbox(
@@ -598,7 +597,6 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
     if test_fn is None:
         test_fn = fn.name.lower()
     test_path = test_dir / test_fn
-    print(fn.name)
     if fn.name == "comicbox-cli.yaml":
         load_cli_and_compare_dicts(test_path, fn)
     else:
@@ -618,7 +616,7 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
 def assert_diff(old_map, new_map):
     """Assert no diff and print if there is."""
     if diff := DeepDiff(old_map, new_map, ignore_order=True):
-        pprint(old_map)
-        pprint(new_map)
-        pprint(diff)
+        pprint(old_map)  # noqa: T203
+        pprint(new_map)  # noqa: T203
+        pprint(diff)  # noqa: T203
     assert not diff

@@ -33,9 +33,9 @@ def test_cli_action_rename():
     )
 
     list_dir = sorted(TMP_DIR.iterdir())
-    print("LIST DIR:")
-    for fn in list_dir:
-        print(fn)
     name = list_dir[0].name
+    if name != RENAMED_NAME:
+        for fn in list_dir:
+            print(fn)  # noqa: T201
     assert name == RENAMED_NAME
     _cleanup()

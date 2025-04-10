@@ -9,7 +9,6 @@ from types import MappingProxyType
 
 import pymupdf
 import pytest
-from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum
@@ -260,13 +259,8 @@ INDEXES = (2, 0, 1, 3)
 
 def test_check_unrar():
     """Test the check unrar exec method."""
-    checked = False
-    try:
-        Comicbox.check_unrar_executable()
-        checked = True
-    except Exception as exc:
-        print(exc)
-    assert checked
+    Comicbox.check_unrar_executable()
+    assert True
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
@@ -305,7 +299,7 @@ def test_cover_page(ft):
             raise AssertionError(reason) from exc
 
     if cover != disk_cover:
-        print(f"{cover_path=}")
+        print(f"{cover_path=}")  # noqa: T201
     assert cover == disk_cover
 
 
@@ -325,12 +319,7 @@ def test_cover_paths():
     config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
         cover_path_list = car.get_cover_paths()
-    diff = DeepDiff(_COVER_PATH_LIST, cover_path_list)
-    if diff:
-        print(_COVER_PATH_LIST)
-        print(cover_path_list)
-        print(diff)
-    assert not diff
+    assert_diff(_COVER_PATH_LIST, cover_path_list)
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
@@ -347,5 +336,5 @@ def test_random_access_page(ft):
             # with Path( "/tmp/" / Path(page_path.name) ).open("wb") as f:
             #   f.write(page) # noqa: ERA001
             if disk_page != page:
-                print(f"{fixture.path=} {car.get_page_count()} {index=} {page_path=}")
+                print(f"{fixture.path=} {car.get_page_count()} {index=} {page_path=}")  # noqa: T201
             assert disk_page == page
