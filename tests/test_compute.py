@@ -102,3 +102,28 @@ def test_compute_issue_suffix():
         md = car.get_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
+
+
+ISSUE_PARTS_ONLY_MD = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "issue": {"number": Decimal(1234), "suffix": "SUFFIX"}
+        }
+    }
+)
+
+
+def test_compute_issue_name():
+    """Test computing identifiers from tags."""
+    config = Namespace(
+        comicbox=Namespace(
+            print="snmcp",
+        )
+    )
+    with Comicbox(
+        metadata=ISSUE_PARTS_ONLY_MD, fmt=MetadataFormats.COMICBOX_JSON, config=config
+    ) as car:
+        md = car.get_metadata()
+
+    assert_diff(ISSUE_WITH_PARTS, md)
+
