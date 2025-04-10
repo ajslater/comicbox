@@ -5,8 +5,8 @@ from logging import getLogger
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.identifiers.const import (
+    ALIAS_NID_MAP,
     DEFAULT_NSS_TYPE,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
 )
 from comicbox.identifiers.other import parse_identifier_other_str
 
@@ -17,7 +17,7 @@ def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     urn = URN8141.from_string(tag)
     nid = str(urn.namespace_id)
     if nid:
-        nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), "")
+        nid = ALIAS_NID_MAP.get(nid.lower(), "")
     parts = urn.specific_string.parts
     try:
         nss_type = str(parts[-2])

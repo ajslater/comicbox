@@ -4,10 +4,10 @@ import re
 from contextlib import suppress
 
 from comicbox.identifiers.const import (
+    ALIAS_NID_MAP,
     DEFAULT_NID,
     DEFAULT_NSS_TYPE,
     IDENTIFIER_RE_EXP,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     PARSE_COMICVINE_RE,
     NIDs,
 )
@@ -38,7 +38,7 @@ def _parse_identifier_other_str(full_identifier) -> tuple[str, str, str]:
         return nid, nss_type, nss
     with suppress(IndexError):
         nid = match.group("nid") or ""
-        nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+        nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
         nss_type = DEFAULT_NSS_TYPE
         nss = match.group("nss")
     return nid, nss_type, nss

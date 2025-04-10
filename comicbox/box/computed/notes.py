@@ -7,10 +7,10 @@ from types import MappingProxyType
 from comicbox.box.merge import ComicboxMergeMixin
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers.const import (
+    ALIAS_NID_MAP,
     DEFAULT_NID,
     IDENTIFIER_RE_EXP,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    NID_ORIGIN_MAP,
+    NID_NAME_MAP,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -83,9 +83,9 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         for key in _NOTES_KEYS:
             self._set_computed_notes_key(sub_data, key, match, md)
         if (origin := match.group("origin")) and (
-            nid := NID_ORIGIN_MAP.inverse.get(origin, origin)
+            nid := NID_NAME_MAP.inverse.get(origin, origin)
         ):
-            nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+            nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
             if (nss := match.group("nss")) and (
                 identifier := create_identifier(nid, nss)
             ):
@@ -101,7 +101,7 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         for urn in match.groups():
             nid, _, nss = parse_urn_identifier_and_warn(urn)
             if nid:
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:
                     identifier = create_identifier(nid, nss)
                     identifiers[nid] = identifier
@@ -115,7 +115,7 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
             return identifiers
         for match in matches:
             if nid := match.group("nid"):
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
                 if (nss := match.group("nss")) and (
                     identifier := create_identifier(nid, nss)
                 ):

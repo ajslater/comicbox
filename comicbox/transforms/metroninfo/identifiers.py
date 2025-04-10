@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers.const import (
-    NID_ORIGIN_MAP,
+    NID_NAME_MAP,
     NSS_KEY,
     URL_KEY,
     NIDs,
@@ -55,7 +55,7 @@ def _identifier_primary_source_to_cb_ids(metron_ids):
         if (
             is_item_primary(metron_id)
             and (source_enum := metron_id.get(SOURCE_ATTRIBUTE))
-            and (nid := NID_ORIGIN_MAP.inverse.get(source_enum.value))
+            and (nid := NID_NAME_MAP.inverse.get(source_enum.value))
         ):
             id_parts = IDENTIFIER_PARTS_MAP[nid]
             return {NID_KEY: nid, URL_KEY: id_parts.url_prefix}
@@ -102,7 +102,7 @@ def _identifier_to_cb(native_identifier):
     source = native_identifier.get(SOURCE_ATTRIBUTE, "")
     if isinstance(source, Enum):
         source = source.value
-    nid = NID_ORIGIN_MAP.inverse.get(source, "")
+    nid = NID_NAME_MAP.inverse.get(source, "")
     nss_type = "issue"
     nss = get_cdata(native_identifier) or "" if nid else ""
     identifier = create_identifier(nid, nss, nss_type=nss_type, default_nid=DEFAULT_NID)
@@ -160,7 +160,7 @@ def identifiers_from_cb(values) -> list:
     for nid, comicbox_identifier in comicbox_identifiers.items():
         if (
             (nid not in GTIN_SUBTAG_NID_MAP.values())
-            and (nid_value := NID_ORIGIN_MAP.get(nid))
+            and (nid_value := NID_NAME_MAP.get(nid))
             and (nss := comicbox_identifier.get(NSS_KEY))
         ):
             metron_identifier = {SOURCE_ATTRIBUTE: nid_value, "#text": nss}

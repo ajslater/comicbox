@@ -3,9 +3,9 @@
 from bidict import frozenbidict
 
 from comicbox.identifiers.const import (
+    ALIAS_NID_MAP,
     DEFAULT_NID,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    NID_ORIGIN_MAP,
+    NID_NAME_MAP,
     NID_VALUES,
     NSS_KEY,
 )
@@ -34,7 +34,7 @@ DATA_ORIGIN_NAME_KEYPATH = f"{DATA_ORIGIN_TAG}.name"
 
 def _identifiers_primary_source_key_to_cb(data_origin):
     if (data_origin_id := data_origin.get("id")) and (
-        nid := IDENTIFIER_URN_NIDS_REVERSE_MAP.get(data_origin_id.lower(), DEFAULT_NID)
+        nid := ALIAS_NID_MAP.get(data_origin_id.lower(), DEFAULT_NID)
     ):
         ips = create_identifier_primary_source(nid)
     else:
@@ -53,7 +53,7 @@ def _identifiers_primary_source_key_from_cb(primary_source_key):
     data_origin = None
     if nid := primary_source_key.get(NID_KEY):
         data_origin = {"id": nid}
-        if name := NID_ORIGIN_MAP.get(nid):
+        if name := NID_NAME_MAP.get(nid):
             data_origin["name"] = name
     return data_origin
 
@@ -64,7 +64,7 @@ COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_FROM_CB = MetaSpec(
 
 
 def _get_nid(data_origin_name):
-    return IDENTIFIER_URN_NIDS_REVERSE_MAP.get(data_origin_name.lower(), DEFAULT_NID)
+    return ALIAS_NID_MAP.get(data_origin_name.lower(), DEFAULT_NID)
 
 
 def _issue_id_to_cb(values):

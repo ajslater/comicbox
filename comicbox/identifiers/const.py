@@ -34,23 +34,24 @@ class NIDs(Enum):
 
 
 NID_VALUES = (nid.value for nid in NIDs)
+DEFAULT_NID = NIDs.COMICVINE.value
+DEFAULT_NSS_TYPE = "issue"
 
 
 # Non standard
 class AlternateNIDs(Enum):
     """Alternate NID Names."""
 
-    # TODO not really NIDs, but aliases, move into ALIASES MAP
     CVDB_ALTERNATE = "cvdb"
     CMXDB_ALTERNATE = "cmxdb"
 
 
-DEFAULT_NID = NIDs.COMICVINE.value
-DEFAULT_NSS_TYPE = "issue"
+_ALL_NIDS = (*NID_VALUES, *(nid.value for nid in AlternateNIDs))
+IDENTIFIER_RE_EXP = r"(?P<nid>" + r"|".join(_ALL_NIDS) + r"):?(?P<nss>[\w-]+)"
+COMICVINE_LONG_NSS_EXP = r"(?P<nsstype>\d{4})-(?P<nss>\d+)"
+PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_NSS_EXP)
 
-
-# TODO rename to names
-NID_ORIGIN_MAP = frozenbidict(
+NID_NAME_MAP = frozenbidict(
     {
         # DBs
         NIDs.ANILIST.value: "AniList",
@@ -71,7 +72,7 @@ NID_ORIGIN_MAP = frozenbidict(
         NIDs.UPC.value: "UPC",
     }
 )
-# TODO combine with NID_ORIGIN_MAP look at uses
+
 _IDENTIFIER_URN_NID_ALIASES = MappingProxyType(
     {
         NIDs.ANILIST.value: frozenset({"anilist.co"}),
@@ -96,20 +97,10 @@ _IDENTIFIER_URN_NID_ALIASES = MappingProxyType(
     }
 )
 
-COMICVINE_LONG_NSS_EXP = r"(?P<nsstype>\d{4})-(?P<nss>\d+)"
-PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_NSS_EXP)
-_ALL_NIDS = (*NID_VALUES, *(nid.value for nid in AlternateNIDs))
-IDENTIFIER_RE_EXP = r"(?P<nid>" + r"|".join(_ALL_NIDS) + r"):?(?P<nss>[\w-]+)"
-
-
-def _create_identifier_urn_ids_maps():
-    identifier_urn_ids_reverse = {}
-    for nid, aliases in _IDENTIFIER_URN_NID_ALIASES.items():
-        all_aliases = aliases | {nid, NID_ORIGIN_MAP[nid].lower()}
-        for alias in all_aliases:
-            identifier_urn_ids_reverse[alias] = nid
-    return identifier_urn_ids_reverse
-
-
-# TODO rename not urns
-IDENTIFIER_URN_NIDS_REVERSE_MAP = _create_identifier_urn_ids_maps()
+ALIAS_NID_MAP = MappingProxyType(
+    {
+        alias.lower(): nid
+        for nid, aliases in _IDENTIFIER_URN_NID_ALIASES.items()
+        for alias in aliases | {nid, NID_NAME_MAP[nid]}
+    }
+)

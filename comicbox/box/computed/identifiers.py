@@ -5,8 +5,8 @@ from types import MappingProxyType
 from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.formats import MetadataFormats
 from comicbox.identifiers.const import (
+    ALIAS_NID_MAP,
     DEFAULT_NID,
-    IDENTIFIER_URN_NIDS_REVERSE_MAP,
     NSS_KEY,
     URL_KEY,
     NIDs,
@@ -62,7 +62,7 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             if not (nid and nss):
                 nid, _, nss = parse_identifier_other_str(tag)
             if nid:
-                nid = IDENTIFIER_URN_NIDS_REVERSE_MAP.get(nid.lower(), DEFAULT_NID)
+                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
                 if nss:
                     identifiers[nid] = create_identifier(nid, nss)
         if not identifiers:
@@ -89,7 +89,9 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
         ):
             return None
         for nid in NIDs:
-            if nid.value in identifiers and (ips := create_identifier_primary_source(nid)):
+            if nid.value in identifiers and (
+                ips := create_identifier_primary_source(nid)
+            ):
                 return ips
         return None
 
