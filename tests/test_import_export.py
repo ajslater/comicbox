@@ -3,18 +3,16 @@
 from argparse import Namespace
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from pprint import pprint
 from types import MappingProxyType
 
 import pytest
 from dateutil.tz.tz import tzoffset
-from deepdiff.diff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from tests.const import TEST_METADATA_DIR
-from tests.util import compare_export, get_tmp_dir
+from tests.util import assert_diff, compare_export, get_tmp_dir
 from tests.validate.validate import guess_format
 
 _TMP_DIR = get_tmp_dir(__file__)
@@ -790,12 +788,7 @@ def test_import(fn):
         # car.print_out() debug
         md = car.get_metadata()
 
-    diff = DeepDiff(test_md, md)
-    pprint(test_md)
-    pprint(md)
-    print(diff)
-
-    assert not diff
+    assert_diff(test_md, md)
 
 
 @pytest.mark.parametrize("fn", FNS)

@@ -2,10 +2,8 @@
 
 import sys
 from io import StringIO
-from pprint import pprint
 from types import MappingProxyType
 
-from deepdiff.diff import DeepDiff
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarint import ScalarInt
 
@@ -13,7 +11,7 @@ from comicbox import cli
 from comicbox.schemas.comicbox.cli import ComicboxCLISchema
 from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH, TEST_FILES_DIR
-from tests.util import diff_strings
+from tests.util import assert_diff, diff_strings
 
 CLI_METADATA_ARGS = (
     "comicbox",
@@ -138,18 +136,11 @@ def test_cli_print():
     cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
     output = _get_output(args)
     output = output.split("\n", 4)[4]  # remove first four lines
-    pprint(output)
-
     yaml = YamlRenderModule._get_write_yaml()  # noqa: SLF001
     loaded = yaml.load(output)
     output_dict = _ruamel_to_dict(loaded)
     output_dict = MappingProxyType(output_dict)
-    diff = DeepDiff(CLI_DICT, output_dict, ignore_order=True)
-    pprint(CLI_DICT)
-    pprint(output_dict)
-    pprint(diff)
-
-    assert output_dict == CLI_DICT
+    assert_diff(CLI_DICT, output_dict)
 
 
 LIST_OUTPUT = """

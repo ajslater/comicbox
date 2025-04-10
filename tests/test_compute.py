@@ -2,14 +2,13 @@
 
 from argparse import Namespace
 from datetime import date, datetime
-from pprint import pprint
 from types import MappingProxyType
 
 from dateutil.tz import tzutc
-from deepdiff import DeepDiff
 
 from comicbox.box import Comicbox
 from tests.const import TEST_METADATA_DIR
+from tests.util import assert_diff
 
 DATE_FROM_NOTES_IMPORT = TEST_METADATA_DIR / "comicinfo-notes-date.xml"
 DATE_FROM_NOTES_MD = MappingProxyType(
@@ -40,12 +39,7 @@ def test_compute_date_from_notes():
     config = Namespace(comicbox=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
     with Comicbox(config=config) as car:
         md = car.get_metadata()
-    diff = DeepDiff(DATE_FROM_NOTES_MD, md)
-    if diff:
-        pprint(DATE_FROM_NOTES_MD)
-        pprint(md)
-        pprint(diff)
-    assert not diff
+    assert_diff(DATE_FROM_NOTES_MD, md)
 
 
 IDS_FROM_TAGS_IMPORT = TEST_METADATA_DIR / "comicinfo-ids-from-tags.xml"
@@ -77,9 +71,4 @@ def test_compute_ids_from_tags():
     with Comicbox(config=config) as car:
         md = car.get_metadata()
 
-    diff = DeepDiff(IDS_FROM_TAGS_MD, md)
-    if diff:
-        pprint(IDS_FROM_TAGS_MD)
-        pprint(md)
-        pprint(diff)
-    assert not diff
+    assert_diff(IDS_FROM_TAGS_MD, md)

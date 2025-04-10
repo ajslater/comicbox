@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from pprint import pprint
 from types import MappingProxyType
 
 import pymupdf
@@ -28,6 +27,7 @@ from tests.const import (
     TEST_METADATA_DIR,
     TEST_READ_NOTES,
 )
+from tests.util import assert_diff
 
 
 @dataclass
@@ -281,12 +281,7 @@ def test_codex_import(ft):
         # car.print_out() debug
     assert car_ft == ft
     assert car_count == fixture.page_count
-    diff = DeepDiff(fixture.metadata, car_md)
-    if not diff:
-        pprint(car_md)
-        pprint(fixture.metadata)
-        pprint(diff)
-    assert not diff
+    assert_diff(fixture.metadata, car_md)
 
 
 @pytest.mark.parametrize("ft", FIXTURES)

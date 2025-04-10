@@ -114,11 +114,7 @@ def read_metadata(  # noqa: PLR0913
         glom(disk_md, Delete(PAGES_KEYPATH, ignore_missing=True))
     metadata = MappingProxyType(metadata)
     disk_md = MappingProxyType(disk_md)
-    pprint(metadata)
-    pprint(disk_md)
-    diff = DeepDiff(metadata, disk_md, ignore_order=True)
-    pprint(diff)
-    assert not diff
+    assert_diff(metadata, disk_md)
 
 
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>", "&lt;Notes&gt;")
@@ -334,11 +330,7 @@ class TestParser:
                 Assign("comicbox.page_count", page_count, missing=dict),
             )
             read_reference_metadata = MappingProxyType(read_reference_metadata)
-        pprint(read_reference_metadata)
-        pprint(md)
-        diff = DeepDiff(read_reference_metadata, md)
-        pprint(diff)
-        assert not diff
+        assert_diff(read_reference_metadata, md)
 
     def test_from_metadata(self):
         """Test assign metadata."""
@@ -381,11 +373,7 @@ class TestParser:
         to_dict = dict(test_dict)
         from_dict.pop(UPDATED_AT_KEY, None)
         to_dict.pop(UPDATED_AT_KEY, None)
-        pprint(self.write_reference_native_dict)
-        pprint(test_dict)
-        diff = DeepDiff(from_dict, to_dict)
-        pprint(diff)
-        assert not diff
+        assert_diff(from_dict, to_dict)
 
     def to_dict(self, **kwargs):
         """Export metadata to native dict."""
@@ -600,11 +588,7 @@ def load_cli_and_compare_dicts(path_a, path_b):
     dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
     dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
 
-    pprint(dict_a)
-    pprint(dict_b)
-    diff = DeepDiff(dict_a, dict_b)
-    pprint(diff)
-    return diff
+    assert_diff(dict_a, dict_b)
 
 
 def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
@@ -616,7 +600,7 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
     test_path = test_dir / test_fn
     print(fn.name)
     if fn.name == "comicbox-cli.yaml":
-        assert not load_cli_and_compare_dicts(test_path, fn)
+        load_cli_and_compare_dicts(test_path, fn)
     else:
         assert compare_files(
             test_path,
@@ -633,7 +617,7 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
 
 def assert_diff(old_map, new_map):
     """Assert no diff and print if there is."""
-    if diff := DeepDiff(old_map, new_map):
+    if diff := DeepDiff(old_map, new_map, ignore_order=True):
         pprint(old_map)
         pprint(new_map)
         pprint(diff)

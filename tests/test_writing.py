@@ -2,7 +2,6 @@
 
 from argparse import Namespace
 from decimal import Decimal
-from pprint import pprint
 from types import MappingProxyType
 
 from comicbox.box import Comicbox
@@ -99,9 +98,6 @@ TAGS_SOURCE = MappingProxyType(
 def test_convert_to_cbz_and_cbi_to_cix():
     """Test converting cbr to cbz and writing cbi info as cix."""
     my_setup(TMP_DIR, CBI_CBR_SOURCE_PATH)
-
-    with Comicbox(OLD_TEST_CBR_PATH, config=READ_CONFIG_EMPTY) as car:
-        pprint(car.get_metadata())
 
     # read and write
     # inject tags.

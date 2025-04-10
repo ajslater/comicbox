@@ -9,13 +9,15 @@ from types import MappingProxyType
 import xmltodict
 from glom import Assign, glom
 
+from comicbox.box.comic import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
-from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
+from tests.const import EMPTY_FN, METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
+    assert_diff,
     create_write_dict,
     create_write_metadata,
 )
@@ -389,6 +391,50 @@ SIMPLE_METRON_TESTER = TestParser(
     SIMPLE_WRITE_METRON_STR,
 )
 
+URL_PRIMARY_READ_METADATA = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "identifier_primary_source": {
+                "nid": "metron",
+                "url": "https://metron.cloud/",
+            },
+            "identifiers": {
+                "comicvine": {
+                    "nss": "145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "isbn": {
+                    "nss": "123-456789-0123",
+                    "url": "https://isbndb.com/book/123-456789-0123",
+                },
+                "metron": {
+                    "nss": "999999",
+                    "url": "https://metron.cloud/issue/999999",
+                },
+                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            },
+        }
+    }
+)
+URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
+    {
+        MetronInfoSchema.ROOT_TAG: {
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
+            "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd",
+            "URLs": {
+                "URL": [
+                    {"#text": "https://barcodelookup.com/12345"},
+                    {"#text": "https://comicvine.gamespot.com/c/4000-145269/"},
+                    {"#text": "https://isbndb.com/book/123-456789-0123"},
+                    {"#text": "https://metron.cloud/issue/999999", "@primary": "true"},
+                ]
+            },
+        }
+    }
+)
+
 
 def test_metron_from_metadata():
     """Test metadata import from comicbox.schemas."""
@@ -402,15 +448,28 @@ def test_metron_from_dict():
     SIMPLE_METRON_TESTER.test_from_dict()
 
 
+def test_metron_from_dict_url_primary():
+    """Test getting ips from urls."""
+    from deepdiff import DeepDiff
+    from pprint import pprint
+    pprint(DeepDiff(READ_METRON_DICT, URL_PRIMARY_READ_METRON_DICT))
+    config = Namespace(
+        comicbox=Namespace(
+            metadata=URL_PRIMARY_READ_METRON_DICT,
+            metadat_format=MetadataFormats.METRON_INFO,
+            print="sncmp"
+        )
+    )
+    with Comicbox(config=config) as car:
+        car.print_out()
+        md = car.get_metadata()
+
+    assert_diff(URL_PRIMARY_READ_METADATA, md)
+
+
 def test_metron_from_string():
     """Test metadata import from string."""
-    from pprint import pprint
-
-    print("READ")
-    pprint(METRON_TESTER.read_reference_native_dict)
     METRON_TESTER.test_from_string()
-    print("SIMPLE_READ")
-    pprint(SIMPLE_METRON_TESTER.read_reference_native_dict)
     SIMPLE_METRON_TESTER.test_from_string()
 
 

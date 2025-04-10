@@ -3,7 +3,6 @@
 from argparse import Namespace
 from datetime import datetime
 from decimal import Decimal
-from pprint import pprint
 from types import MappingProxyType
 
 from deepdiff.diff import DeepDiff
@@ -19,7 +18,7 @@ from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_METADATA_DIR,
 )
-from tests.util import get_tmp_dir, my_cleanup, my_setup
+from tests.util import assert_diff, get_tmp_dir, my_cleanup, my_setup
 
 READ_CONFIG = Namespace(comicbox=Namespace(read=["cli"]))
 READ_CONFIG_IGNORE_FN = Namespace(comicbox=Namespace(read_ignore=["fn"], print="sp"))
@@ -156,7 +155,6 @@ def test_cli_action_write():
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
     md = MappingProxyType(md)
-    pprint(md)
 
     args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "-P", "sld")
     print(" ".join(args))
@@ -167,12 +165,7 @@ def test_cli_action_write():
     md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
-    pprint(METADATA)
-    pprint(md)
-
-    diff = DeepDiff(METADATA, md, ignore_order=True)
-    pprint(diff)
-    assert not diff
+    assert_diff(METADATA, md)
     _cleanup()
 
 
@@ -182,7 +175,6 @@ def test_cli_action_write_replace():
     with Comicbox(TMP_PATH) as car:
         md = car.get_metadata()
     md = MappingProxyType(md)
-    pprint(md)
 
     args = (
         *CLI_METADATA_ARGS,
@@ -203,12 +195,7 @@ def test_cli_action_write_replace():
     md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
-    pprint(METADATA_REPLACE)
-    pprint(md)
-
-    diff = DeepDiff(METADATA_REPLACE, md, ignore_order=True)
-    pprint(diff)
-    assert not diff
+    assert_diff(METADATA_REPLACE, md)
     _cleanup()
 
 
@@ -220,7 +207,6 @@ def test_cli_action_cbz():
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     old_md = MappingProxyType(old_md)
-    pprint(old_md)
 
     _setup(CIX_CBI_CBR_SOURCE_PATH)
     cli.main((ComicboxCLISchema.ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
@@ -233,12 +219,7 @@ def test_cli_action_cbz():
     new_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     new_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     new_md = MappingProxyType(new_md)
-    pprint(new_md)
-
-    diff = DeepDiff(old_md, new_md)
-    pprint(diff)
-
-    assert not diff
+    assert_diff(old_md, new_md)
     _cleanup()
 
 
@@ -251,7 +232,6 @@ def test_cli_action_delete_all_tags():
         old_md = car.get_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
-    pprint(old_md)
     assert old_md
 
     args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS)
@@ -261,7 +241,6 @@ def test_cli_action_delete_all_tags():
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
         new_md = car.get_metadata()
     new_md = MappingProxyType(new_md)
-    pprint(new_md)
     diff = DeepDiff(EMPTY_MD, new_md)
     print(diff)
     assert not diff
@@ -276,7 +255,6 @@ def test_cli_action_delete_tags_add_metadata():
         old_md = car.get_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
-    pprint(old_md)
     assert old_md
 
     cli.main((ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS))
@@ -299,11 +277,7 @@ def test_cli_action_delete_tags_add_metadata():
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)
-    pprint(ADDED_MD)
-    pprint(new_md)
-    diff = DeepDiff(ADDED_MD, new_md)
-    print(diff)
-    assert not diff
+    assert_diff(ADDED_MD, new_md)
     _cleanup()
 
 
@@ -315,7 +289,6 @@ def test_cli_action_delete_keys():
         old_md = car.get_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
-    pprint(old_md)
     assert old_md
 
     cli.main(
@@ -337,9 +310,5 @@ def test_cli_action_delete_keys():
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)
-    pprint(ADDED_MD)
-    pprint(new_md)
-    diff = DeepDiff(DELETE_KEYS_MD, new_md)
-    print(diff)
-    assert not diff
+    assert_diff(DELETE_KEYS_MD, new_md)
     _cleanup()
