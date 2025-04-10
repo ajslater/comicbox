@@ -66,14 +66,15 @@ def _identifier_primary_source_to_cb_urls(metron_urls):
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue
-        parsed_url = urlparse(metron_url)
+        url = get_cdata(metron_url)
+        parsed_url = urlparse(url)
         if not parsed_url:
             continue
         netloc = parsed_url.netloc
         if not netloc:
             continue
         for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if netloc.endswith(id_parts.domain):
+            if str(netloc).endswith(id_parts.domain):
                 return create_identifier_primary_source(nid)
     return None
 
@@ -110,21 +111,21 @@ def _identifier_to_cb(native_identifier):
 
 
 def _identifiers_to_cb_identifiers(values):
-    metron_ids = values.get(ID_KEYPATH, {})
     id_identifiers = {}
-    for metron_id in metron_ids:
-        nid, identifier = _identifier_to_cb(metron_id)
-        id_identifiers[nid] = identifier
+    if metron_ids := values.get(ID_KEYPATH):
+        for metron_id in metron_ids:
+            nid, identifier = _identifier_to_cb(metron_id)
+            id_identifiers[nid] = identifier
     return id_identifiers
 
 
 def _identifers_to_cb_gtin(values):
-    metron_gtin = values.get(GTIN_TAG, {})
     gtin_identifiers = {}
-    for tag, nid in GTIN_SUBTAG_NID_MAP.items():
-        if nss := metron_gtin.get(tag):
-            identifier = create_identifier(nid, nss, default_nid=DEFAULT_NID)
-            gtin_identifiers[nid] = identifier
+    if metron_gtin := values.get(GTIN_TAG, {}):
+        for tag, nid in GTIN_SUBTAG_NID_MAP.items():
+            if nss := metron_gtin.get(tag):
+                identifier = create_identifier(nid, nss, default_nid=DEFAULT_NID)
+                gtin_identifiers[nid] = identifier
     return gtin_identifiers
 
 
