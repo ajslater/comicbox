@@ -40,7 +40,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             result = schema.load(md)
             if not result:
                 # try a wrapped version
-                key_path = fmt.value.schema_class.ROOT_KEY_PATH
+                key_path = fmt.value.schema_class.ROOT_KEYPATH
                 assign = Assign(key_path, md, missing=dict)
                 wrapped_md = glom({}, assign)
                 result = schema.load(wrapped_md)
@@ -109,7 +109,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 continue
             try:
                 if (success_md := self._call_load(source, fmt, data)) and glom(
-                    success_md, fmt.value.schema_class.ROOT_KEY_PATH
+                    success_md, fmt.value.schema_class.ROOT_KEYPATH
                 ):
                     LOG.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
@@ -133,7 +133,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 md, fmt = self._load_unknown_metadata(source, source_data.data)
             if md and fmt:
                 schema_class = fmt.value.schema_class
-                embedded_source = glom(md, schema_class.EMBED_KEY_PATH, default=None)
+                embedded_source = glom(md, schema_class.EMBED_KEYPATH, default=None)
                 if EmbeddedStringSetField.is_embedded_metadata(embedded_source):
                     self.add_source(MetadataSources.EMBEDDED, embedded_source)
                 return MappingProxyType(md), fmt

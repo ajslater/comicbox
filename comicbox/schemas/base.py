@@ -101,8 +101,8 @@ class BaseSchema(BaseSubSchema, ABC):
 
     ROOT_TAG = ""
     ROOT_DATA_KEY = ""
-    ROOT_KEY_PATH = ""
-    EMBED_KEY_PATH = ""
+    ROOT_KEYPATH = ""
+    EMBED_KEYPATH = ""
     HAS_PAGE_COUNT = False
     HAS_PAGES = False
 

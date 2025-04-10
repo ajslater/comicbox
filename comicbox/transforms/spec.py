@@ -144,7 +144,7 @@ def _create_specs(
 def create_specs_to_comicbox(
     *metaspecs,
     format_root_keypath: str = "",
-    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEY_PATH,
+    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEYPATH,
 ):
     """Create to comicbox specs."""
     return _create_specs(
@@ -157,7 +157,7 @@ def create_specs_to_comicbox(
 def create_specs_from_comicbox(
     *metaspecs,
     format_root_keypath: str = "",
-    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEY_PATH,
+    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEYPATH,
 ):
     """Create from comicbox specs."""
     return _create_specs(

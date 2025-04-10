@@ -131,7 +131,7 @@ class ComictaggerSchema(JsonSchema):
     """Comictagger Schema."""
 
     ROOT_TAG = "comictagger"
-    ROOT_KEY_PATH = ROOT_TAG
+    ROOT_KEYPATH = ROOT_TAG
     HAS_PAGE_COUNT = True
     HAS_PAGES = True
 

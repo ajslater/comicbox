@@ -44,9 +44,9 @@ from comicbox.transforms.price import (
     price_transform_to_cb,
 )
 from comicbox.transforms.publishing_tags import (
-    PUBLISHER_NAME_KEY_PATH,
-    SERIES_NAME_KEY_PATH,
-    VOLUME_NUMBER_KEY_PATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -150,12 +150,12 @@ SIMPLE_KEYMAP = frozenbidict(
         "language": LANGUAGE_KEY,
         "lastMark": BOOKMARK_KEY,
         "pages": PAGE_COUNT_KEY,
-        "publisher": PUBLISHER_NAME_KEY_PATH,
+        "publisher": PUBLISHER_NAME_KEYPATH,
         "rating": AGE_RATING_KEY,
         "readingDirection": READING_DIRECTION_KEY,
         "rights": RIGHTS_KEY,
-        "series": SERIES_NAME_KEY_PATH,
-        "volume": VOLUME_NUMBER_KEY_PATH,
+        "series": SERIES_NAME_KEYPATH,
+        "volume": VOLUME_NUMBER_KEYPATH,
     }
 )
 NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KEY})
@@ -175,7 +175,7 @@ class CoMetTransform(BaseTransform):
         price_transform_to_cb("price"),
         comet_reprints_transform_to_cb("isVersionOf"),
         stories_key_transform_to_cb("title"),
-        format_root_keypath=CoMetSchema.ROOT_KEY_PATH,
+        format_root_keypath=CoMetSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEYMAP),
@@ -185,5 +185,5 @@ class CoMetTransform(BaseTransform):
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),
         stories_key_transform_from_cb("title"),
-        format_root_keypath=CoMetSchema.ROOT_KEY_PATH,
+        format_root_keypath=CoMetSchema.ROOT_KEYPATH,
     )

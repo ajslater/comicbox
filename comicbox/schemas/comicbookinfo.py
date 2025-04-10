@@ -67,7 +67,7 @@ class ComicBookInfoSchema(JsonSchema):
 
     ROOT_DATA_KEY = "ComicBookInfo/1.0"
     ROOT_TAG = "ComicBookInfo"
-    ROOT_KEY_PATH = ROOT_TAG
+    ROOT_KEYPATH = ROOT_TAG
     TAG_ORDER = ("appID", "lastModified", ROOT_DATA_KEY, "schema")
     HAS_PAGE_COUNT = True
 

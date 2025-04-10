@@ -54,14 +54,14 @@ class PDFXmlTransform(BaseTransform):
         authors_to_credits_transform_to_cb("pdf:Author"),
         name_obj_to_cb(XMLPDF_NAME_OBJ_KEY_MAP.inverse),
         stories_key_transform_to_cb("pdf:Title"),
-        format_root_keypath=PDFXmlSchema.ROOT_KEY_PATH,
+        format_root_keypath=PDFXmlSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=XMLPDF_SIMPLE_KEY_MAP),
         authors_to_credits_transform_from_cb("pdf:Author"),
         name_obj_from_cb(XMLPDF_NAME_OBJ_KEY_MAP),
         stories_key_transform_from_cb("pdf:Title"),
-        format_root_keypath=PDFXmlSchema.ROOT_KEY_PATH,
+        format_root_keypath=PDFXmlSchema.ROOT_KEYPATH,
     )
 
 
@@ -88,12 +88,12 @@ class MuPDFTransform(PDFXmlTransform):
         authors_to_credits_transform_to_cb("author"),
         name_obj_to_cb(MUPDF_NAME_OBJ_KEY_MAP.inverse),
         stories_key_transform_to_cb("title"),
-        format_root_keypath=MuPDFSchema.ROOT_KEY_PATH,
+        format_root_keypath=MuPDFSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=MUPDF_SIMPLE_KEY_MAP),
         authors_to_credits_transform_from_cb("author"),
         name_obj_from_cb(MUPDF_NAME_OBJ_KEY_MAP),
         stories_key_transform_from_cb("title"),
-        format_root_keypath=MuPDFSchema.ROOT_KEY_PATH,
+        format_root_keypath=MuPDFSchema.ROOT_KEYPATH,
     )

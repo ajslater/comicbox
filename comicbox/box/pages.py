@@ -10,8 +10,8 @@ from comicbox.box.metadata import ComicboxMetadataMixin
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
 
-PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
-COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{COVER_IMAGE_KEY}"
+PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGES_KEY}"
+COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"
 LOG = getLogger(__name__)
 
 

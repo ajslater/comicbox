@@ -96,7 +96,7 @@ class MetronInfoTransform(BaseTransform):
         METRON_REPRINTS_TRANSFORM_TO_CB,
         *METRON_RESOURCES_TRANSFORMS_TO_CB,
         METRON_UNIVERSES_TRANSFORM_TO_CB,
-        format_root_keypath=MetronInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=MetronInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
@@ -114,5 +114,5 @@ class MetronInfoTransform(BaseTransform):
         METRON_URLS_TRANSFORM_FROM_CB,
         *METRON_RESOURCES_TRANSFORMS_FROM_CB,
         METRON_UNIVERSES_TRANSFORM_FROM_CB,
-        format_root_keypath=MetronInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=MetronInfoSchema.ROOT_KEYPATH,
     )

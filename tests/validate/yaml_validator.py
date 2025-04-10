@@ -16,7 +16,7 @@ def _stringify_keys(data):
         return data
     pages = {str(key): value for key, value in pages.items()}
     # Glom can't assign to RumaelCommentMaps
-    data[ComicboxSchemaMixin.ROOT_KEY_PATH][PAGES_KEY] = pages
+    data[ComicboxSchemaMixin.ROOT_KEYPATH][PAGES_KEY] = pages
     return data
 
 

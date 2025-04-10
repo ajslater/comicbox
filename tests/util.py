@@ -27,7 +27,7 @@ from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
 )
 from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
-from comicbox.transforms.comicbookinfo import UPDATED_AT_KEY_PATH
+from comicbox.transforms.comicbookinfo import UPDATED_AT_KEYPATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_DATETIME,
@@ -39,9 +39,9 @@ from tests.const import (
 from tests.validate.validate import validate_path
 
 PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
-PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGE_COUNT_KEY}"
-NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{NOTES_KEY}"
-EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{EXT_KEY}"
+PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGE_COUNT_KEY}"
+NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{NOTES_KEY}"
+EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{EXT_KEY}"
 
 
 def get_tmp_dir(filename: str):
@@ -104,8 +104,8 @@ def read_metadata(  # noqa: PLR0913
         glom(metadata, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
     glom(metadata, Assign(EXT_KEYPATH, archive_path.suffix[1:], missing=dict))
     if ignore_updated_at:
-        glom(metadata, Delete(UPDATED_AT_KEY_PATH, ignore_missing=True))
-        glom(disk_md, Delete(UPDATED_AT_KEY_PATH, ignore_missing=True))
+        glom(metadata, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
     if ignore_notes:
         glom(metadata, Delete(NOTES_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(NOTES_KEYPATH, ignore_missing=True))

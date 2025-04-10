@@ -80,7 +80,7 @@ class FilenameSchema(BaseSchema):
     """File name schema."""
 
     ROOT_TAG = "comicfn2dict"
-    ROOT_KEY_PATH = ROOT_TAG
+    ROOT_KEYPATH = ROOT_TAG
 
     comicfn2dict = Nested(FilenameSubSchema)
 

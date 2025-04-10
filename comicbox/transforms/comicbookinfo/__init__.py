@@ -29,11 +29,11 @@ from comicbox.transforms.comicbox import (
 )
 from comicbox.transforms.comicbox.name_objs import name_obj_from_cb, name_obj_to_cb
 from comicbox.transforms.publishing_tags import (
-    ISSUE_COUNT_KEY_PATH,
-    PUBLISHER_NAME_KEY_PATH,
-    SERIES_NAME_KEY_PATH,
-    VOLUME_COUNT_KEY_PATH,
-    VOLUME_NUMBER_KEY_PATH,
+    ISSUE_COUNT_KEYPATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_COUNT_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -45,14 +45,14 @@ from comicbox.transforms.stories import (
     stories_key_transform_to_cb,
 )
 
-TAGGER_KEY_PATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{TAGGER_KEY}"
-UPDATED_AT_KEY_PATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{UPDATED_AT_KEY}"
+TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{TAGGER_KEY}"
+UPDATED_AT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{UPDATED_AT_KEY}"
 
 
 TOP_KEYPATHS = frozenbidict(
     {
-        "appID": TAGGER_KEY_PATH,
-        "lastModified": UPDATED_AT_KEY_PATH,
+        "appID": TAGGER_KEYPATH,
+        "lastModified": UPDATED_AT_KEYPATH,
     }
 )
 SIMPLE_KEYPATHS = frozenbidict(
@@ -61,16 +61,16 @@ SIMPLE_KEYPATHS = frozenbidict(
         "country": COUNTRY_KEY,
         "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
-        "numberOfIssues": ISSUE_COUNT_KEY_PATH,
-        "numberOfVolumes": VOLUME_COUNT_KEY_PATH,
+        "numberOfIssues": ISSUE_COUNT_KEYPATH,
+        "numberOfVolumes": VOLUME_COUNT_KEYPATH,
         "pages": PAGE_COUNT_KEY,
         "publicationDay": DAY_KEYPATH,
         "publicationMonth": MONTH_KEYPATH,
         "publicationYear": YEAR_KEYPATH,
-        "publisher": PUBLISHER_NAME_KEY_PATH,
+        "publisher": PUBLISHER_NAME_KEYPATH,
         "rating": CRITICAL_RATING_KEY,
-        "series": SERIES_NAME_KEY_PATH,
-        "volume": VOLUME_NUMBER_KEY_PATH,
+        "series": SERIES_NAME_KEYPATH,
+        "volume": VOLUME_NUMBER_KEYPATH,
     }
 )
 NAME_OBJ_KEYPATHS = frozenbidict(
@@ -97,7 +97,7 @@ class ComicBookInfoTransform(BaseTransform):
         cbi_credits_primary_to_cb("credits"),
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
         stories_key_transform_to_cb("title"),
-        format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(
@@ -110,5 +110,5 @@ class ComicBookInfoTransform(BaseTransform):
         cbi_credits_transform_from_cb("credits"),
         name_obj_from_cb(NAME_OBJ_KEYPATHS),
         stories_key_transform_from_cb("title"),
-        format_root_keypath=ComicBookInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )

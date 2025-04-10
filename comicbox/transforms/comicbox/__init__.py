@@ -28,12 +28,12 @@ STORE_DATE_KEYPATH = f"{DATE_KEY}.{STORE_DATE_KEY}"
 YEAR_KEYPATH = f"{DATE_KEY}.{YEAR_KEY}"
 MONTH_KEYPATH = f"{DATE_KEY}.{MONTH_KEY}"
 DAY_KEYPATH = f"{DATE_KEY}.{DAY_KEY}"
-_TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{TAGGER_KEY}"
+_TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{TAGGER_KEY}"
 
 TOP_KEY_MAP = MappingProxyType(
     {
         APP_ID_KEY: _TAGGER_KEYPATH,
-        ComicboxSchemaMixin.ROOT_KEY_PATH: ComicboxSchemaMixin.ROOT_KEY_PATH,
+        ComicboxSchemaMixin.ROOT_KEYPATH: ComicboxSchemaMixin.ROOT_KEYPATH,
     }
 )
 METASPEC = MetaSpec(key_map=TOP_KEY_MAP, inherit_root_keypath=False)

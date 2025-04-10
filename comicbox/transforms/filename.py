@@ -19,9 +19,9 @@ from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH, YEAR_KEYPATH
 from comicbox.transforms.publishing_tags import (
-    ISSUE_COUNT_KEY_PATH,
-    SERIES_NAME_KEY_PATH,
-    VOLUME_NUMBER_KEY_PATH,
+    ISSUE_COUNT_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -37,12 +37,12 @@ SIMPLE_KEY_MAP = frozenbidict(
     {
         "ext": EXT_KEY,
         "issue": ISSUE_NAME_KEYPATH,
-        "issue_count": ISSUE_COUNT_KEY_PATH,
+        "issue_count": ISSUE_COUNT_KEYPATH,
         "original_format": ORIGINAL_FORMAT_KEY,
         "remainders": REMAINDERS_KEY,
-        "series": SERIES_NAME_KEY_PATH,
+        "series": SERIES_NAME_KEYPATH,
         "scan_info": SCAN_INFO_KEY,
-        "volume": VOLUME_NUMBER_KEY_PATH,
+        "volume": VOLUME_NUMBER_KEYPATH,
         "year": YEAR_KEYPATH,
     }
 )
@@ -55,10 +55,10 @@ class FilenameTransform(BaseTransform):
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         stories_key_transform_to_cb("title"),
-        format_root_keypath=FilenameSchema.ROOT_KEY_PATH,
+        format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
         stories_key_transform_from_cb("title"),
-        format_root_keypath=FilenameSchema.ROOT_KEY_PATH,
+        format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )

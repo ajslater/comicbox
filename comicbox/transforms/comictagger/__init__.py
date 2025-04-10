@@ -72,12 +72,12 @@ from comicbox.transforms.price import (
     price_transform_to_cb,
 )
 from comicbox.transforms.publishing_tags import (
-    IMPRINT_NAME_KEY_PATH,
-    ISSUE_COUNT_KEY_PATH,
-    PUBLISHER_NAME_KEY_PATH,
-    SERIES_NAME_KEY_PATH,
-    VOLUME_COUNT_KEY_PATH,
-    VOLUME_NUMBER_KEY_PATH,
+    IMPRINT_NAME_KEYPATH,
+    ISSUE_COUNT_KEYPATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_COUNT_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -111,19 +111,19 @@ SIMPLE_KEY_MAP = frozenbidict(
         "day": DAY_KEYPATH,
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
-        "imprint": IMPRINT_NAME_KEY_PATH,
+        "imprint": IMPRINT_NAME_KEYPATH,
         "issue": ISSUE_NAME_KEYPATH,
-        "issue_count": ISSUE_COUNT_KEY_PATH,
+        "issue_count": ISSUE_COUNT_KEYPATH,
         "language": LANGUAGE_KEY,
         "last_mark": BOOKMARK_KEY,
         "maturity_rating": AGE_RATING_KEY,
         "month": MONTH_KEYPATH,
         "notes": NOTES_KEY,
         "page_count": PAGE_COUNT_KEY,
-        "publisher": PUBLISHER_NAME_KEY_PATH,
-        "series": SERIES_NAME_KEY_PATH,
-        "volume_count": VOLUME_COUNT_KEY_PATH,
-        "volume": VOLUME_NUMBER_KEY_PATH,
+        "publisher": PUBLISHER_NAME_KEYPATH,
+        "series": SERIES_NAME_KEYPATH,
+        "volume_count": VOLUME_COUNT_KEYPATH,
+        "volume": VOLUME_NUMBER_KEYPATH,
         "year": YEAR_KEYPATH,
     }
 )
@@ -158,7 +158,7 @@ class ComictaggerTransform(BaseTransform):
         stories_key_transform_to_cb("title"),
         story_arcs_to_cb(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM_TO_CB,
-        format_root_keypath=ComictaggerSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComictaggerSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
@@ -176,5 +176,5 @@ class ComictaggerTransform(BaseTransform):
         stories_key_transform_from_cb("title"),
         *story_arcs_from_cb(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM_FROM_CB,
-        format_root_keypath=ComictaggerSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComictaggerSchema.ROOT_KEYPATH,
     )

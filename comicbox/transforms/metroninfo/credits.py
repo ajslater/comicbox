@@ -111,7 +111,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 )
 
 CREDITS_KEYPATH = "Credits.Credit"
-ROLE_KEY_PATH = "Roles.Role"
+ROLE_KEYPATH = "Roles.Role"
 
 
 def _create_role_variations_to_enum_map(role_aliases):
@@ -188,7 +188,7 @@ def _credit_from_cb(
         for role_name, comicbox_role in comicbox_roles.items():
             metron_roles = _role_from_cb(role_name, comicbox_role, nid, role_map)
             all_metron_roles.extend(metron_roles)
-        glom(metron_credit, Assign(ROLE_KEY_PATH, all_metron_roles, missing=dict))
+        glom(metron_credit, Assign(ROLE_KEYPATH, all_metron_roles, missing=dict))
     return metron_credit
 
 

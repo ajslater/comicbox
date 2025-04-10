@@ -69,11 +69,11 @@ from comicbox.transforms.identifiers import (
     urls_transform_from_cb,
 )
 from comicbox.transforms.publishing_tags import (
-    IMPRINT_NAME_KEY_PATH,
-    ISSUE_COUNT_KEY_PATH,
-    PUBLISHER_NAME_KEY_PATH,
-    SERIES_NAME_KEY_PATH,
-    VOLUME_NUMBER_KEY_PATH,
+    IMPRINT_NAME_KEYPATH,
+    ISSUE_COUNT_KEYPATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,
@@ -183,10 +183,10 @@ SIMPLE_KEY_MAP = frozenbidict(
         "BlackAndWhite": MONOCHROME_KEY,
         "CommunityRating": CRITICAL_RATING_KEY,
         "Country": COUNTRY_KEY,
-        "Count": ISSUE_COUNT_KEY_PATH,
+        "Count": ISSUE_COUNT_KEYPATH,
         "Day": DAY_KEYPATH,
         "Format": ORIGINAL_FORMAT_KEY,
-        "Imprint": IMPRINT_NAME_KEY_PATH,
+        "Imprint": IMPRINT_NAME_KEYPATH,
         "LanguageISO": LANGUAGE_KEY,
         "MainCharacterOrTeam": PROTAGONIST_KEY,
         "Manga": MANGA_KEY,
@@ -194,12 +194,12 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Notes": NOTES_KEY,
         "Number": ISSUE_NAME_KEYPATH,
         "PageCount": PAGE_COUNT_KEY,  # recaluculated by comicbox
-        "Publisher": PUBLISHER_NAME_KEY_PATH,
+        "Publisher": PUBLISHER_NAME_KEYPATH,
         "Review": REVIEW_KEY,
         "ScanInformation": SCAN_INFO_KEY,
-        "Series": SERIES_NAME_KEY_PATH,
+        "Series": SERIES_NAME_KEYPATH,
         "Summary": SUMMARY_KEY,
-        "Volume": VOLUME_NUMBER_KEY_PATH,
+        "Volume": VOLUME_NUMBER_KEYPATH,
         "Year": YEAR_KEYPATH,
     }
 )
@@ -229,7 +229,7 @@ class ComicInfoTransform(BaseTransform):
         COMICINFO_REPRINTS_TO_CB,
         stories_key_transform_to_cb("Title"),
         story_arcs_to_cb("StoryArc", "StoryArcNumber"),
-        format_root_keypath=ComicInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
@@ -241,5 +241,5 @@ class ComicInfoTransform(BaseTransform):
         stories_key_transform_from_cb("Title"),
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),
         urls_transform_from_cb("Web"),
-        format_root_keypath=ComicInfoSchema.ROOT_KEY_PATH,
+        format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )

@@ -37,8 +37,8 @@ DEFAULT_NID = "metron"
 PRIMARY_ATTRIBUTE = "@primary"
 SOURCE_ATTRIBUTE = "@source"
 GTIN_SUBTAG_NID_MAP = MappingProxyType({"ISBN": ISBN_NID, "UPC": UPC_NID})
-ID_KEY_PATH = "IDS.ID"
-URL_KEY_PATH = "URLs.URL"
+ID_KEYPATH = "IDS.ID"
+URL_KEYPATH = "URLs.URL"
 SCOPE_PRIMARY_SOURCE = f"{GLOBAL_SCOPE_PREFIX}.{PRIMARY_NID_KEYPATH}"
 GTIN_TAG = "GTIN"
 
@@ -82,10 +82,10 @@ def _identifier_primary_source_to_cb_urls(metron_urls):
 
 def _identifier_primary_source_to_cb(values):
     if (
-        (metron_identifiers := values.get(ID_KEY_PATH))
+        (metron_identifiers := values.get(ID_KEYPATH))
         and (ips := _identifier_primary_source_to_cb_ids(metron_identifiers))
     ) or (
-        (metron_urls := values.get(URL_KEY_PATH))
+        (metron_urls := values.get(URL_KEYPATH))
         and (ips := _identifier_primary_source_to_cb_urls(metron_urls))
     ):
         return {IDENTIFIER_PRIMARY_SOURCE_KEY: ips}
@@ -93,7 +93,7 @@ def _identifier_primary_source_to_cb(values):
 
 
 METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB = MetaSpec(
-    key_map={IDENTIFIER_PRIMARY_SOURCE_KEY: (ID_KEY_PATH, URL_KEY_PATH)},
+    key_map={IDENTIFIER_PRIMARY_SOURCE_KEY: (ID_KEYPATH, URL_KEYPATH)},
     spec=_identifier_primary_source_to_cb,
     assign_global=True,
 )
@@ -112,7 +112,7 @@ def _identifier_to_cb(native_identifier):
 
 
 def _identifiers_to_cb_identifiers(values):
-    metron_ids = values.get(ID_KEY_PATH, {})
+    metron_ids = values.get(ID_KEYPATH, {})
     id_identifiers = {}
     for metron_id in metron_ids:
         nid, identifier = _identifier_to_cb(metron_id)
@@ -131,7 +131,7 @@ def _identifers_to_cb_gtin(values):
 
 
 def _identifiers_to_cb_urls(values):
-    metron_urls = values.get(URL_KEY_PATH, {})
+    metron_urls = values.get(URL_KEYPATH, {})
     return urls_to_cb(metron_urls)
 
 
@@ -148,7 +148,7 @@ def identifiers_to_cb(values: dict) -> dict:
 
 
 METRON_IDENTIFIERS_TRANSFORM_TO_CB = MetaSpec(
-    {IDENTIFIERS_KEY: (ID_KEY_PATH, GTIN_TAG, URL_KEY_PATH, SCOPE_PRIMARY_SOURCE)},
+    {IDENTIFIERS_KEY: (ID_KEYPATH, GTIN_TAG, URL_KEYPATH, SCOPE_PRIMARY_SOURCE)},
     spec=identifiers_to_cb,
 )
 
@@ -179,7 +179,7 @@ def identifiers_from_cb(values) -> list:
 
 
 METRON_IDENTIFIERS_TRANSFORM_FROM_CB = MetaSpec(
-    {ID_KEY_PATH: (IDENTIFIERS_KEY, PRIMARY_NID_KEYPATH)},
+    {ID_KEYPATH: (IDENTIFIERS_KEY, PRIMARY_NID_KEYPATH)},
     spec=identifiers_from_cb,
 )
 
@@ -219,6 +219,6 @@ def _urls_from_cb(values):
 
 
 METRON_URLS_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={URL_KEY_PATH: (IDENTIFIERS_KEY, PRIMARY_NID_KEYPATH)},
+    key_map={URL_KEYPATH: (IDENTIFIERS_KEY, PRIMARY_NID_KEYPATH)},
     spec=_urls_from_cb,
 )

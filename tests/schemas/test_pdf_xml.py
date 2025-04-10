@@ -32,7 +32,7 @@ METADATA = MappingProxyType(
         }
     }
 )
-_ROOT_KEY_PATH = PDFXmlSchema.ROOT_KEY_PATH.split(".")
+_ROOT_KEYPATH = PDFXmlSchema.ROOT_KEYPATH.split(".")
 PDF_DICT = MappingProxyType(
     {
         PDFXmlSchema.ROOT_TAG: {
@@ -41,9 +41,9 @@ PDF_DICT = MappingProxyType(
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
             "@xsi:schemaLocation": "adobe:ns:meta/ http://ns.adobe.com/pdf/1.3/",
-            _ROOT_KEY_PATH[1]: {
+            _ROOT_KEYPATH[1]: {
                 "@xmlns:rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns",
-                _ROOT_KEY_PATH[2]: {
+                _ROOT_KEYPATH[2]: {
                     "@xmlns:pdf": "http://ns.adobe.com/pdf/1.3/",
                     "pdf:Author": "Jon Osterman",
                     "pdf:Creator": "Pages",
