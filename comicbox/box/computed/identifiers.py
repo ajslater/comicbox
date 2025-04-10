@@ -28,12 +28,29 @@ from comicbox.schemas.comicbox import (
 )
 from comicbox.transforms.identifiers import create_identifier_primary_source
 
+_FORMATS_WITH_IPS = frozenset(
+    {MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO}
+)
+_FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
+    {
+        MetadataFormats.COMIC_BOOK_INFO,
+        MetadataFormats.COMIC_INFO,
+        MetadataFormats.COMICTAGGER,
+        MetadataFormats.PDF,
+        MetadataFormats.PDF_XML,
+    }
+)
+
 
 class ComicboxComputedIdentifers(ComicboxComputedIssue):
     """Comicbox computed identifiers."""
 
     def _get_computed_from_tags(self, sub_data):
-        if not sub_data or TAGS_KEY in self._config.delete_keys:
+        if (
+            not sub_data
+            or TAGS_KEY in self._config.delete_keys
+            or not self._config.read & _FORMATS_WITH_TAGS_WITHOUT_IDS
+        ):
             return None
         tags = sub_data.get(TAGS_KEY)
         if not tags:
@@ -67,10 +84,7 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
     def _add_identifier_primary_source_key(self, sub_data, identifiers):
         if (
             IDENTIFIER_PRIMARY_SOURCE_KEY in self._config.delete_keys
-            or not (
-                self._config.write
-                & frozenset({MetadataFormats.COMICTAGGER, MetadataFormats.METRON_INFO})
-            )
+            or not (self._config.write & _FORMATS_WITH_IPS)
             or sub_data.get(IDENTIFIER_PRIMARY_SOURCE_KEY)
         ):
             return None
