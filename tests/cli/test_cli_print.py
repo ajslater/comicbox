@@ -12,7 +12,7 @@ from ruamel.yaml.scalarint import ScalarInt
 from comicbox import cli
 from comicbox.schemas.comicbox.cli import ComicboxCLISchema
 from comicbox.schemas.yaml import YamlRenderModule
-from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH
+from tests.const import CIX_CBI_CBR_SOURCE_PATH, EMPTY_CBZ_SOURCE_PATH, TEST_FILES_DIR
 from tests.util import diff_strings
 
 CLI_METADATA_ARGS = (
@@ -207,3 +207,16 @@ def test_cli_print_contents():
     print(LIST_OUTPUT)
     diff_strings(LIST_OUTPUT, output)
     assert output == LIST_OUTPUT
+
+
+LIST_RECURSE_OUPUT_PATH = TEST_FILES_DIR / "list_recurse_output.txt"
+
+
+def test_cli_print_list_recurse():
+    """Test recursion."""
+    args = ("comicbox", "--recurse", "-l", str(TEST_FILES_DIR))
+    output = _get_output(args)
+    check_output = LIST_RECURSE_OUPUT_PATH.read_text()
+    if output != check_output:
+        diff_strings(check_output, output)
+    assert check_output == output

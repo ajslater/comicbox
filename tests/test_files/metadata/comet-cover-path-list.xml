@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd">
+	<coverImage>Captain Science 001/CaptainScience#1_02.jpg</coverImage>
+</comet>
