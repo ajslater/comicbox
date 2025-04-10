@@ -1,6 +1,6 @@
 """Comicinfo Identifiers to Comicbox transform."""
 
-from comicbox.identifiers.const import ISBN_NID
+from comicbox.identifiers.const import NIDs
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 from comicbox.schemas.comicinfo import GTIN_TAG, WEB_TAG
@@ -14,7 +14,7 @@ from comicbox.transforms.spec import MetaSpec
 def _to_cb(values):
     # ComicInfo GTINs are abused as identifiers pending a real identifier tag.
     cix_gtin = values.get(GTIN_TAG)
-    comicbox_identifiers = identifiers_to_cb(cix_gtin, ISBN_NID)
+    comicbox_identifiers = identifiers_to_cb(cix_gtin, naked_nid=NIDs.ISBN.value)
 
     cix_web = values.get(WEB_TAG)
     comicbox_web_identifiers = urls_to_cb(cix_web)

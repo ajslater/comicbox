@@ -1,121 +1,105 @@
 """Identifier consts."""
 
 import re
+from enum import Enum
 from types import MappingProxyType
 
 from bidict import frozenbidict
 
-# TODO make an enum
-ANILIST_NID = "anilist"
-ASIN_NID = "asin"
-COMICVINE_NID = "comicvine"
-COMIXOLOGY_NID = "comixology"
-GCD_NID = "grandcomicsdatabase"
-GTIN_NID = "gtin"
-ISBN_NID = "isbn"
-KITSU_NID = "kitsu"
-LCG_NID = "leagueofcomicgeeks"
-MANGADEX_NID = "mangadex"
-MANGAUPDATES_NID = "mangaupdates"
-MARVEL_NID = "marvel"
-METRON_NID = "metron"
-MYANIMELIST_NID = "myanimelist"
-UPC_NID = "upc"
 NSS_KEY = "nss"
 URL_KEY = "url"
-# Non standard
-CVDB_ALTERNATE_NID = "cvdb"
-CMXDB_ALTERNATE_NID = "cmxdb"
 
-NID_ORDER = (
+
+class NIDs(Enum):
+    """Comic Database Namespace Identifiers."""
+
     # Comic DBs
-    METRON_NID,
-    COMICVINE_NID,
-    GCD_NID,
-    LCG_NID,
-    MARVEL_NID,
+    METRON = "metron"
+    COMICVINE = "comicvine"
+    GCD = "grandcomicsdatabase"
+    LCG = "leagueofcomicgeeks"
+    MARVEL = "marvel"
     # Manga DBs
-    ANILIST_NID,
-    KITSU_NID,
-    MANGADEX_NID,
-    MANGAUPDATES_NID,
-    MYANIMELIST_NID,
+    ANILIST = "anilist"
+    KITSU = "kitsu"
+    MANGADEX = "mangadex"
+    MANGAUPDATES = "mangaupdates"
+    MYANIMELIST = "myanimelist"
     # GTINs
-    GTIN_NID,
-    ISBN_NID,
-    UPC_NID,
-    ASIN_NID,
-    COMIXOLOGY_NID,
-)
+    GTIN = "gtin"
+    ISBN = "isbn"
+    UPC = "upc"
+    ASIN = "asin"
+    COMIXOLOGY = "comixology"
 
 
+NID_VALUES = (nid.value for nid in NIDs)
+
+
+# Non standard
+class AlternateNIDs(Enum):
+    """Alternate NID Names."""
+
+    # TODO not really NIDs, but aliases, move into ALIASES MAP
+    CVDB_ALTERNATE = "cvdb"
+    CMXDB_ALTERNATE = "cmxdb"
+
+
+DEFAULT_NID = NIDs.COMICVINE.value
+DEFAULT_NSS_TYPE = "issue"
+
+
+# TODO rename to names
 NID_ORIGIN_MAP = frozenbidict(
     {
         # DBs
-        ANILIST_NID: "AniList",
-        COMICVINE_NID: "Comic Vine",
-        COMIXOLOGY_NID: "ComiXology",
-        GCD_NID: "Grand Comics Database",
-        KITSU_NID: "Kitsu",
-        LCG_NID: "League of Comic Geeks",
-        MANGADEX_NID: "MangaDex",
-        MANGAUPDATES_NID: "MangaUpdates",
-        MARVEL_NID: "Marvel",
-        METRON_NID: "Metron",
-        MYANIMELIST_NID: "MyAnimeList",
+        NIDs.ANILIST.value: "AniList",
+        NIDs.COMICVINE.value: "Comic Vine",
+        NIDs.COMIXOLOGY.value: "ComiXology",
+        NIDs.GCD.value: "Grand Comics Database",
+        NIDs.KITSU.value: "Kitsu",
+        NIDs.LCG.value: "League of Comic Geeks",
+        NIDs.MANGADEX.value: "MangaDex",
+        NIDs.MANGAUPDATES.value: "MangaUpdates",
+        NIDs.MARVEL.value: "Marvel",
+        NIDs.METRON.value: "Metron",
+        NIDs.MYANIMELIST.value: "MyAnimeList",
         # GITNs
-        ASIN_NID: "Amazon",
-        GTIN_NID: "GTIN",
-        ISBN_NID: "ISBN",
-        UPC_NID: "UPC",
+        NIDs.ASIN.value: "Amazon",
+        NIDs.GTIN.value: "GTIN",
+        NIDs.ISBN.value: "ISBN",
+        NIDs.UPC.value: "UPC",
     }
 )
-DEFAULT_NID = COMICVINE_NID
-DEFAULT_NSS_TYPE = "issue"
+# TODO combine with NID_ORIGIN_MAP look at uses
+_IDENTIFIER_URN_NID_ALIASES = MappingProxyType(
+    {
+        NIDs.ANILIST.value: frozenset({"anilist.co"}),
+        NIDs.ASIN.value: frozenset({"amazon.com", "www.amazon.com"}),
+        NIDs.COMICVINE.value: frozenset(
+            {AlternateNIDs.CVDB_ALTERNATE.value, "comicvine.gamespot.org"}
+        ),
+        NIDs.COMIXOLOGY.value: frozenset(
+            {"comixology.com", AlternateNIDs.CMXDB_ALTERNATE.value}
+        ),
+        NIDs.GCD.value: frozenset({"comics.org"}),
+        NIDs.GTIN.value: frozenset({}),
+        NIDs.ISBN.value: frozenset({}),
+        NIDs.KITSU.value: frozenset({"kistu.app"}),
+        NIDs.LCG.value: frozenset({"leagueofcomicgeeks.com"}),
+        NIDs.MANGADEX.value: frozenset({"mangadex.org"}),
+        NIDs.MANGAUPDATES.value: frozenset({"mangaupdates.com"}),
+        NIDs.MARVEL.value: frozenset({"marvel.com"}),
+        NIDs.METRON.value: frozenset({"metron.cloud"}),
+        NIDs.MYANIMELIST.value: frozenset({"myanimelist.net"}),
+        NIDs.UPC.value: frozenset({}),
+    }
+)
 
 COMICVINE_LONG_NSS_EXP = r"(?P<nsstype>\d{4})-(?P<nss>\d+)"
 PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_NSS_EXP)
-_NIDS = (
-    # TODO replace with const enum
-    ANILIST_NID,
-    ASIN_NID,
-    COMICVINE_NID,
-    CVDB_ALTERNATE_NID,
-    COMIXOLOGY_NID,
-    CMXDB_ALTERNATE_NID,
-    GCD_NID,
-    GTIN_NID,
-    ISBN_NID,
-    KITSU_NID,
-    LCG_NID,
-    MANGADEX_NID,
-    MANGAUPDATES_NID,
-    MARVEL_NID,
-    METRON_NID,
-    MYANIMELIST_NID,
-    UPC_NID,
-)
-IDENTIFIER_RE_EXP = r"(?P<nid>" + r"|".join(_NIDS) + r"):?(?P<nss>[\w-]+)"
-
-_IDENTIFIER_URN_NID_ALIASES = MappingProxyType(
-    {
-        ANILIST_NID: frozenset({"anilist.co"}),
-        ASIN_NID: frozenset({"amazon.com", "www.amazon.com"}),
-        COMICVINE_NID: frozenset({CVDB_ALTERNATE_NID, "comicvine.gamespot.org"}),
-        COMIXOLOGY_NID: frozenset({"comixology.com", CMXDB_ALTERNATE_NID}),
-        GCD_NID: frozenset({"comics.org"}),
-        GTIN_NID: frozenset({}),
-        ISBN_NID: frozenset({}),
-        KITSU_NID: frozenset({"kistu.app"}),
-        LCG_NID: frozenset({"leagueofcomicgeeks.com"}),
-        MANGADEX_NID: frozenset({"mangadex.org"}),
-        MANGAUPDATES_NID: frozenset({"mangaupdates.com"}),
-        MARVEL_NID: frozenset({"marvel.com"}),
-        METRON_NID: frozenset({"metron.cloud"}),
-        MYANIMELIST_NID: frozenset({"myanimelist.net"}),
-        UPC_NID: frozenset({}),
-    }
-)
+_ALL_NIDS = (*NID_VALUES, *(nid.value for nid in AlternateNIDs))
+IDENTIFIER_RE_EXP = r"(?P<nid>" + r"|".join(_ALL_NIDS) + r"):?(?P<nss>[\w-]+)"
 
 
 def _create_identifier_urn_ids_maps():
@@ -129,4 +113,3 @@ def _create_identifier_urn_ids_maps():
 
 # TODO rename not urns
 IDENTIFIER_URN_NIDS_REVERSE_MAP = _create_identifier_urn_ids_maps()
-

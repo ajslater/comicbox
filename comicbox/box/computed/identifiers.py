@@ -7,9 +7,9 @@ from comicbox.formats import MetadataFormats
 from comicbox.identifiers.const import (
     DEFAULT_NID,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    NID_ORDER,
     NSS_KEY,
     URL_KEY,
+    NIDs,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -88,8 +88,8 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             or sub_data.get(IDENTIFIER_PRIMARY_SOURCE_KEY)
         ):
             return None
-        for nid in NID_ORDER:
-            if nid in identifiers and (ips := create_identifier_primary_source(nid)):
+        for nid in NIDs:
+            if nid.value in identifiers and (ips := create_identifier_primary_source(nid)):
                 return ips
         return None
 

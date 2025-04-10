@@ -4,12 +4,12 @@ import re
 from contextlib import suppress
 
 from comicbox.identifiers.const import (
-    COMICVINE_NID,
     DEFAULT_NID,
     DEFAULT_NSS_TYPE,
     IDENTIFIER_RE_EXP,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
     PARSE_COMICVINE_RE,
+    NIDs,
 )
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
@@ -24,9 +24,9 @@ def _parse_identifier_str_comicvine(full_identifier) -> tuple[str, str, str]:
     match = PARSE_COMICVINE_RE.search(full_identifier)
     if not match:
         return nid, nss_type, nss
-    nid = COMICVINE_NID
+    nid = NIDs.COMICVINE.value
     nss_type_code = match.group("nsstype") or ""
-    nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].get_type_by_code(nss_type_code)
+    nss_type = IDENTIFIER_PARTS_MAP[nid].get_type_by_code(nss_type_code)
     nss = match.group("nss")
     return nid, nss_type, nss
 

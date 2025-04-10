@@ -8,12 +8,10 @@ from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers.const import (
-    ISBN_NID,
-    METRON_NID,
     NID_ORIGIN_MAP,
     NSS_KEY,
-    UPC_NID,
     URL_KEY,
+    NIDs,
 )
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
@@ -31,12 +29,12 @@ from comicbox.transforms.identifiers import (
     url_from_cb,
     urls_to_cb,
 )
+from comicbox.transforms.metroninfo.const import DEFAULT_NID
 from comicbox.transforms.spec import GLOBAL_SCOPE_PREFIX, MetaSpec
 
-DEFAULT_NID = "metron"
 PRIMARY_ATTRIBUTE = "@primary"
 SOURCE_ATTRIBUTE = "@source"
-GTIN_SUBTAG_NID_MAP = MappingProxyType({"ISBN": ISBN_NID, "UPC": UPC_NID})
+GTIN_SUBTAG_NID_MAP = MappingProxyType({"ISBN": NIDs.ISBN.value, "UPC": NIDs.UPC.value})
 ID_KEYPATH = "IDS.ID"
 URL_KEYPATH = "URLs.URL"
 SCOPE_PRIMARY_SOURCE = f"{GLOBAL_SCOPE_PREFIX}.{PRIMARY_NID_KEYPATH}"
@@ -107,7 +105,7 @@ def _identifier_to_cb(native_identifier):
     nid = NID_ORIGIN_MAP.inverse.get(source, "")
     nss_type = "issue"
     nss = get_cdata(native_identifier) or "" if nid else ""
-    identifier = create_identifier(nid, nss, nss_type=nss_type, default_nid=METRON_NID)
+    identifier = create_identifier(nid, nss, nss_type=nss_type, default_nid=DEFAULT_NID)
     return nid, identifier
 
 
@@ -125,7 +123,7 @@ def _identifers_to_cb_gtin(values):
     gtin_identifiers = {}
     for tag, nid in GTIN_SUBTAG_NID_MAP.items():
         if nss := metron_gtin.get(tag):
-            identifier = create_identifier(nid, nss, default_nid=METRON_NID)
+            identifier = create_identifier(nid, nss, default_nid=DEFAULT_NID)
             gtin_identifiers[nid] = identifier
     return gtin_identifiers
 

@@ -5,8 +5,8 @@ from bidict import frozenbidict
 from comicbox.identifiers.const import (
     DEFAULT_NID,
     IDENTIFIER_URN_NIDS_REVERSE_MAP,
-    NID_ORDER,
     NID_ORIGIN_MAP,
+    NID_VALUES,
     NSS_KEY,
 )
 from comicbox.identifiers.identifiers import (
@@ -84,7 +84,7 @@ COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB = MetaSpec(
 def _issue_id_from_cb(values):
     identifiers = values.get(IDENTIFIERS_KEY)
     primary_nid = values.get(PRIMARY_NID_KEYPATH)
-    for nid in (primary_nid, *NID_ORDER):
+    for nid in (primary_nid, *NID_VALUES):
         if nss := identifiers.get(nid, {}).get(NSS_KEY):
             return nss
     return None
@@ -120,7 +120,7 @@ def _series_id_from_cb(values):
     if not series_identifiers:
         return None
     primary_nid = values.get(PRIMARY_NID_KEYPATH)
-    for nid in (primary_nid, *NID_ORDER):
+    for nid in (primary_nid, *NID_VALUES):
         if nid and (nss := series_identifiers.get(nid, {}).get(NSS_KEY)):
             return nss
     return None

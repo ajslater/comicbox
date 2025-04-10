@@ -5,10 +5,7 @@ from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers.const import (
-    COMICVINE_NID,
-    NSS_KEY,
-)
+from comicbox.identifiers.const import NSS_KEY, NIDs
 from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 from comicbox.schemas.comicbox import (
@@ -37,7 +34,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
 
         if sub_data and (
             comicvine_id := sub_data.get(IDENTIFIERS_KEY, {})
-            .get(COMICVINE_NID, {})
+            .get(NIDs.COMICVINE.value, {})
             .get(NSS_KEY)
         ):
             notes += f" [Issue ID {comicvine_id}]"

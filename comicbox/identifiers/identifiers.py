@@ -8,26 +8,13 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.identifiers.const import (
-    ANILIST_NID,
-    ASIN_NID,
     COMICVINE_LONG_NSS_EXP,
-    COMICVINE_NID,
-    COMIXOLOGY_NID,
     DEFAULT_NID,
     DEFAULT_NSS_TYPE,
-    GCD_NID,
-    ISBN_NID,
-    KITSU_NID,
-    LCG_NID,
-    MANGADEX_NID,
-    MANGAUPDATES_NID,
-    MARVEL_NID,
-    METRON_NID,
-    MYANIMELIST_NID,
     NSS_KEY,
     PARSE_COMICVINE_RE,
-    UPC_NID,
     URL_KEY,
+    NIDs,
 )
 
 _SLUG_REXP = r"(?:/\S*)?"
@@ -122,19 +109,19 @@ class IdentifierParts:
 
 IDENTIFIER_PARTS_MAP = MappingProxyType(
     {
-        ANILIST_NID: IdentifierParts(
+        NIDs.ANILIST.value: IdentifierParts(
             domain="anilist.co",
             types=IdentifierTypes(series="manga"),
             url_path_regex=rf"(?P<nsstype>manga)/(?P<nss>\d+){_SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
-        ASIN_NID: IdentifierParts(
+        NIDs.ASIN.value: IdentifierParts(
             domain="www.amazon.com",
             types=IdentifierTypes(issue="issue"),
             url_path_regex=r"dp/(?P<nss>\S+)",
             url_path_template="dp/{nss}",
         ),
-        COMICVINE_NID: IdentifierParts(
+        NIDs.COMICVINE.value: IdentifierParts(
             domain="comicvine.gamespot.com",
             types=IdentifierTypes(
                 arc="4045",
@@ -149,13 +136,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_NSS_EXP,
             url_path_template="c/{nsstype}-{nss}/",
         ),
-        COMIXOLOGY_NID: IdentifierParts(
+        NIDs.COMIXOLOGY.value: IdentifierParts(
             domain="www.comixology.com",
             types=IdentifierTypes(issue="digital-comic"),
             url_path_regex=r"c/(?P<nsstype>\S+)/(?P<nss>\d+)",
             url_path_template="c/{nsstype}/{nss}",
         ),
-        GCD_NID: IdentifierParts(
+        NIDs.GCD.value: IdentifierParts(
             domain="comics.org",
             types=IdentifierTypes(
                 character="character",
@@ -168,19 +155,19 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<nsstype>\S+)/(?P<nss>\d+)/?",
             url_path_template="{nsstype}/{nss}/",
         ),
-        ISBN_NID: IdentifierParts(
+        NIDs.ISBN.value: IdentifierParts(
             domain="isbndb.com",
             types=IdentifierTypes(issue="book", series="series"),
             url_path_regex=r"(?P<nsstype>book)/(?P<nss>[\d-]+)",
             url_path_template="{nsstype}/{nss}",
         ),
-        KITSU_NID: IdentifierParts(
+        NIDs.KITSU.value: IdentifierParts(
             domain="kitsu.app",
             types=IdentifierTypes(series="manga"),
             url_path_regex=r"(?P<nsstype>manga)/(?P<nss>\S+)",
             url_path_template="{nsstype}/{nss}",
         ),
-        LCG_NID: IdentifierParts(
+        NIDs.LCG.value: IdentifierParts(
             domain="leagueofcomicgeeks.com",
             types=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
@@ -188,25 +175,25 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=rf"(?P<nsstype>\S+)/(?P<nss>\S+){_SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
-        MANGADEX_NID: IdentifierParts(
+        NIDs.MANGADEX.value: IdentifierParts(
             domain="mangadex.org",
             types=IdentifierTypes(series="title"),
             url_path_regex=rf"(?P<nsstype>title)/(?P<nss>\S+){_SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
-        MANGAUPDATES_NID: IdentifierParts(
+        NIDs.MANGAUPDATES.value: IdentifierParts(
             domain="mangaupdates.com",
             types=IdentifierTypes(series="series"),
             url_path_regex=rf"(?P<nsstype>series)/(?P<nss>\S+){_SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
-        MARVEL_NID: IdentifierParts(
+        NIDs.MARVEL.value: IdentifierParts(
             domain="marvel.com",
             types=IdentifierTypes(issue="issue", series="series"),
             url_path_regex=rf"comics/(?P<nsstype>issue|series)/(?P<nss>\d+){_SLUG_REXP}",
             url_path_template="comics/{nsstype}/{nss}/s",
         ),
-        METRON_NID: IdentifierParts(
+        NIDs.METRON.value: IdentifierParts(
             # Metron uses the slug for an id in most urls
             #   but can also use the numeric metron id which redirects to the slug
             # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
@@ -231,13 +218,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<nsstype>\S+)/(?P<nss>\S+)/?",
             url_path_template="{nsstype}/{nss}",
         ),
-        MYANIMELIST_NID: IdentifierParts(
+        NIDs.MYANIMELIST.value: IdentifierParts(
             domain="myanimelist.net",
             types=IdentifierTypes(series="manga"),
             url_path_regex=rf"(?P<nsstype>manga)/(?P<nss>\d+){_SLUG_REXP}",
             url_path_template="{nsstype}/{nss}/s",
         ),
-        UPC_NID: IdentifierParts(
+        NIDs.UPC.value: IdentifierParts(
             domain="barcodelookup.com",
             types=IdentifierTypes(issue="issue"),
             url_path_regex=r"(?P<nss>[\d-]+)",
@@ -256,7 +243,7 @@ def _normalize_comicvine_nss(nss_type, nss):
         nss_type_code = match.group("nsstype")
     except IndexError:
         return nss_type, nss
-    nss_type = IDENTIFIER_PARTS_MAP[COMICVINE_NID].get_type_by_code(
+    nss_type = IDENTIFIER_PARTS_MAP[NIDs.COMICVINE.value].get_type_by_code(
         nss_type_code, nss_type
     )
     with suppress(IndexError):
@@ -272,7 +259,7 @@ def create_identifier(
     if not nid:
         nid = default_nid
     if nss:
-        if nid == COMICVINE_NID:
+        if nid == NIDs.COMICVINE.value:
             nss_type, nss = _normalize_comicvine_nss(nss_type, nss)
         if nss:
             identifier[NSS_KEY] = nss

@@ -3,9 +3,9 @@
 from collections.abc import Mapping
 from logging import getLogger
 
-from comicbox.identifiers.const import METRON_NID
 from comicbox.identifiers.identifiers import create_identifier
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
+from comicbox.transforms.metroninfo.const import DEFAULT_NID
 
 ID_ATTRIBUTE = "@id"
 LOG = getLogger(__name__)
@@ -21,7 +21,7 @@ def metron_id_attribute_to_cb(
         ):
             return
         comicbox_identifier = create_identifier(
-            nid, nss, nss_type=nss_type, default_nid=METRON_NID
+            nid, nss, nss_type=nss_type, default_nid=DEFAULT_NID
         )
         comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
     except Exception as exc:

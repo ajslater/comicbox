@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers.const import (
-    NID_ORDER,
     NSS_KEY,
     URL_KEY,
+    NIDs,
 )
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
@@ -76,11 +76,11 @@ def identifiers_transform_to_cb(identifiers_tag, naked_nid):
 def _identifiers_from_cb(comicbox_identifiers) -> set:
     """Unparse identifier struct to set of strings."""
     urn_strings = set()
-    for nid in NID_ORDER:
+    for nid in NIDs:
         if (
-            (comicbox_identifier := comicbox_identifiers.get(nid))
+            (comicbox_identifier := comicbox_identifiers.get(nid.value))
             and (nss := comicbox_identifier.get(NSS_KEY))
-            and (urn_str := to_urn_string(nid, "", nss))
+            and (urn_str := to_urn_string(nid.value, "", nss))
         ):
             urn_strings.add(urn_str)
     return urn_strings
