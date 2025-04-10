@@ -21,6 +21,7 @@
   - --delete action becomes --delete-all-tags.
   - config.metadata_format exists to hint what format the api metadata is.
   - public box functions take formats instead of transform_classes
+  - get_cover_path() returns the first cover_path without looking for others.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.

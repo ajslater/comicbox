@@ -1,5 +1,6 @@
 """Cover methods."""
 
+from collections.abc import Generator
 from logging import getLogger
 
 from glom import glom
@@ -21,15 +22,14 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
     # COVER PATH FILENAMES #
     ########################
 
-    def _get_cover_page_filenames_tagged(self, metadata: dict) -> dict[str, None]:
+    def _generate_cover_paths_from_pages(self, metadata: dict) -> Generator[str]:
         """Overridden by CIX."""
-        coverlist = {}
         if not metadata:
-            return coverlist
+            return
         metadata = dict(metadata)
         pages = glom(metadata, PAGES_KEYPATH, default=None)
         if not pages:
-            return coverlist
+            return
 
         # Support zero and one index pages.
         has_zero_index = 0 in pages
@@ -38,29 +38,34 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
                 continue
             pagename_index = index if has_zero_index else max(index - 1, 0)
             if pagename := self.get_pagename(pagename_index):
-                coverlist[pagename] = None
-        return coverlist
+                yield pagename
 
-    def _set_cover_path_list(self):
+    def generate_cover_paths(self) -> Generator[str]:
+        """Generate cover paths."""
         metadata = self._get_metadata()
         metadata = dict(metadata)
-        cover_path_list = self._get_cover_page_filenames_tagged(metadata)
+        yield from self._generate_cover_paths_from_pages(metadata)
         if cover_image := glom(metadata, COVER_IMAGE_KEYPATH, default=None):
             pagenames = self.get_page_filenames()
             if cover_image in pagenames:
-                cover_path_list[cover_image] = None
+                yield cover_image
         if first_pagename := self.get_pagename(0):
-            cover_path_list[first_pagename] = None
-        if not cover_path_list:
-            LOG.warning(f"{self._path} could not find cover filename")
-        self._cover_path_list = tuple(cover_path_list.keys())
+            yield first_pagename
 
-    def get_cover_path_list(self):
+    def _get_cover_paths(self):
+        cover_path_generator = self.generate_cover_paths()
+        cover_paths_ordered_set = dict.fromkeys(cover_path_generator)
+        cover_paths = tuple(cover_paths_ordered_set.keys())
+        if not cover_paths:
+            LOG.warning(f"{self._path} could not find cover filename")
+        return cover_paths
+
+    def get_cover_paths(self):
         """Get filename of most likely coverpage."""
         # This could be a generator?
-        if not self._cover_path_list:
-            self._set_cover_path_list()
-        return self._cover_path_list
+        if not self._cover_paths:
+            self._cover_paths = self._get_cover_paths()
+        return self._cover_paths
 
     #############
     # PAGE DATA #
@@ -110,28 +115,27 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
             return next(pages_generator)
         return None
 
+    def _get_cover_page(self, readfile_func):
+        data = None
+        cover_paths = self.generate_cover_paths()
+        bad_cover_paths = set()
+        for cover_path in cover_paths:
+            if cover_path in bad_cover_paths:
+                continue
+            try:
+                data = readfile_func(cover_path)
+                break
+            except Exception as exc:
+                LOG.warning(f"{self._path} reading cover: {cover_path}: {exc}")
+                bad_cover_paths.add(cover_path)
+        return data
+
     @archive_close
     def get_cover_page_pdf_to_pixmap(self):
         """Return cover image from a pdf to a pixmap."""
-        data = None
-        cover_path_list = self.get_cover_path_list()
-        for cover_fn in cover_path_list:
-            try:
-                data = self._archive_readfile_pdf_to_pixmap(cover_fn)
-                break
-            except Exception as exc:
-                LOG.warning(f"{self._path} reading cover: {cover_fn}: {exc}")
-        return data
+        return self._get_cover_page(self._archive_readfile_pdf_to_pixmap)
 
     @archive_close
     def get_cover_page(self):
         """Return cover image data."""
-        data = None
-        cover_path_list = self.get_cover_path_list()
-        for cover_fn in cover_path_list:
-            try:
-                data = self._archive_readfile(cover_fn)
-                break
-            except Exception as exc:
-                LOG.warning(f"{self._path} reading cover: {cover_fn}: {exc}")
-        return data
+        return self._get_cover_page(self._archive_readfile)

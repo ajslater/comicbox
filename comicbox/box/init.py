@@ -114,7 +114,7 @@ class ComicboxInitMixin:
         self._reset_loaded_forward_caches()
 
         self._page_filenames = None
-        self._cover_path_list = []
+        self._cover_paths = ()
         self._page_count = None
 
     @staticmethod

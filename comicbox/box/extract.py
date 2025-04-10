@@ -91,6 +91,5 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
     @archive_close
     def extract_cover_as(self, path=None):
         """Extract the cover image to a destination file."""
-        pagenames = self.get_cover_path_list()
-
-        self._extract_pagenames(pagenames, path=path)
+        cover_paths_generator = self.generate_cover_paths()
+        self._extract_pagenames(cover_paths_generator, path=path)

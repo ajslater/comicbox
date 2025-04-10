@@ -325,11 +325,11 @@ _COVER_PATH_LIST_IMPORTS = (
 )
 
 
-def test_cover_path_list():
+def test_cover_paths():
     """Test codex cover path lists."""
     config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
-        cover_path_list = car.get_cover_path_list()
+        cover_path_list = car.get_cover_paths()
     diff = DeepDiff(_COVER_PATH_LIST, cover_path_list)
     if diff:
         print(_COVER_PATH_LIST)
