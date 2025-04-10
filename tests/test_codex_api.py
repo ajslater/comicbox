@@ -25,6 +25,7 @@ from tests.const import (
     PDF_SOURCE_PATH,
     TEST_DATETIME,
     TEST_FILES_DIR,
+    TEST_METADATA_DIR,
     TEST_READ_NOTES,
 )
 
@@ -311,14 +312,27 @@ def test_cover_page(ft):
     assert cover == disk_cover
 
 
-@pytest.mark.parametrize("ft", FIXTURES)
-def test_cover_path_list(ft):
+_COVER_PATH_LIST = (
+    "Captain Science 001/CaptainScience#1_01.jpg",
+    "Captain Science 001/CaptainScience#1_03.jpg",
+    "Captain Science 001/CaptainScience#1_02.jpg",
+)
+_COVER_PATH_LIST_IMPORTS = (
+    TEST_METADATA_DIR / "comicinfo-cover-path-list.xml",
+    TEST_METADATA_DIR / "comet-cover-path-list.xml",
+)
+
+
+def test_cover_path_list():
     """Test codex cover path lists."""
-    fixture = FIXTURES[ft]
-    with Comicbox(fixture.path) as car:
+    config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
+    with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
         cover_path_list = car.get_cover_path_list()
-    print(cover_path_list)
-    diff = DeepDiff(fixture.cover_path_list, cover_path_list)
+    diff = DeepDiff(_COVER_PATH_LIST, cover_path_list)
+    if diff:
+        print(_COVER_PATH_LIST)
+        print(cover_path_list)
+        print(diff)
     assert not diff
 
 

@@ -10,6 +10,7 @@ from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
 
 PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{PAGES_KEY}"
+COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEY_PATH}.{COVER_IMAGE_KEY}"
 LOG = getLogger(__name__)
 
 
@@ -22,39 +23,45 @@ class ComicboxPagesMixin(ComicboxMetadataMixin):
 
     def _get_cover_page_filenames_tagged(self):
         """Overridden by CIX."""
-        coverlist = []
+        coverlist = set()
         metadata = self._get_metadata()
         if not metadata:
             return coverlist
+        metadata = dict(metadata)
         pages = glom(metadata, PAGES_KEYPATH, default=None)
         if not pages:
             return coverlist
 
         # Support zero and one index pages.
         has_zero_index = 0 in pages
-        for index, page in metadata.get(PAGES_KEY, {}).items():
+        for index, page in pages.items():
             if page.get("page_type") != PageTypeEnum.FRONT_COVER:
                 continue
             pagename_index = index if has_zero_index else max(index - 1, 0)
             if pagename := self.get_pagename(pagename_index):
-                coverlist.append(pagename)
+                coverlist.add(pagename)
         return coverlist
+
+    def _set_cover_path_list(self):
+        cover_path_list = self._get_cover_page_filenames_tagged()
+        metadata = self._get_metadata()
+        metadata = dict(metadata)
+        md_cover_image = glom(metadata, COVER_IMAGE_KEYPATH)
+        if md_cover_image := glom(metadata, COVER_IMAGE_KEYPATH, default=None):
+            pagenames = self.get_page_filenames()
+            if md_cover_image in pagenames:
+                cover_path_list.add(md_cover_image)
+        if first_pagename := self.get_pagename(0):
+            cover_path_list.add(first_pagename)
+        if not cover_path_list:
+            LOG.warning(f"{self._path} could not find cover filename")
+        self._cover_path_list = tuple(cover_path_list)
 
     def get_cover_path_list(self):
         """Get filename of most likely coverpage."""
         # This could be a generator?
         if not self._cover_path_list:
-            cover_path_list = self._get_cover_page_filenames_tagged()
-            metadata = self._get_metadata()
-            if md_cover_image := metadata.get(COVER_IMAGE_KEY):
-                pagenames = self.get_page_filenames()
-                if md_cover_image in pagenames:
-                    cover_path_list.append(md_cover_image)
-            if first_pagename := self.get_pagename(0):
-                cover_path_list.append(first_pagename)
-            if not cover_path_list:
-                LOG.warning(f"{self._path} could not find cover filename")
-            self._cover_path_list = tuple(frozenset(cover_path_list))
+            self._set_cover_path_list()
         return self._cover_path_list
 
     #############
