@@ -39,6 +39,13 @@ comic metadata format is now fully supported.
 
 ## API
 
+### Metadata Formats and Metadata Sources
+
+(MetadataSources)[comicbox/sources.py]
+and
+(MetadataFormats)[comicbox/formats.py]
+have been separated and are now different related Enums.
+
 ### box.extract_covers()
 
 Was named box.extract_covers_as()
