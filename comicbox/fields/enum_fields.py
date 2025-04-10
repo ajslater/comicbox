@@ -146,25 +146,25 @@ class ReadingDirectionField(EnumField):
 class EnumBooleanField(EnumField):
     """An Enum Field that also accepts boolean values."""
 
-    TRUTHY = frozenset({True, "1", "true"})
+    YES = "Yes"
+    TRUTHY = frozenset({True, "1", "true", "True"})
 
     def _deserialize(self, value, *args, **kwargs):
         result = super()._deserialize(value, *args, **kwargs)
         if not isinstance(result, self.ENUM) and value in self.TRUTHY:
-            result = super()._deserialize("yes", *args, **kwargs)
+            result = super()._deserialize(self.YES, *args, **kwargs)
         return result
 
     def _serialize(self, value, *args, **kwargs):
         result = super()._serialize(value, *args, **kwargs)
         if not isinstance(result, self.ENUM) and value in self.TRUTHY:
-            result = super()._serialize("yes", *args, **kwargs)
+            result = super()._serialize(self.YES, *args, **kwargs)
         return result
 
 
 class ComicInfoMangaEnum(Enum):
     """Manga enum for ComicInfo."""
 
-    YES = "Yes"
     YES_RTL = "YesAndRightToLeft"
     NO = "No"
 
@@ -188,7 +188,6 @@ class ComicInfoMangaField(EnumBooleanField):
 class YesNoEnum(Enum):
     """Yes No Enum."""
 
-    YES = "Yes"
     NO = "No"
     UNKNOWN = "Unknown"
 
