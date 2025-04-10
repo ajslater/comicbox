@@ -22,11 +22,11 @@ _TEMPLATE = MappingTemplate(
             {
                 # Options
                 "compute_pages": bool,
-                "config": Optional(str),
+                "config": Optional(OneOf((str, Path))),
                 "delete_all_tags": bool,
                 "delete_keys": Optional(Sequence(str)),
                 "delete_orig": bool,
-                "dest_path": str,
+                "dest_path": OneOf((str, Path)),
                 "dry_run": bool,
                 "loglevel": OneOf((String(), Integer())),
                 "metadata": Optional(dict),
