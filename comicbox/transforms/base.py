@@ -32,14 +32,14 @@ class BaseTransform:
     def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
         schema = ComicboxYamlSchema(path=self._path)
-        transformed_data = glom(dict(data), dict(self.SPECS_TO))
+        transformed_data = glom(dict(data), dict(self.SPECS_TO), glom_debug=True)
         loaded_data = schema.load(transformed_data)
         return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]
 
     def from_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         schema = self._schema
-        transformed_data = glom(dict(data), dict(self.SPECS_FROM))
+        transformed_data = glom(dict(data), dict(self.SPECS_FROM), glom_debug=True)
         self._swap_data_key(schema, transformed_data)
         loaded_data = schema.load(transformed_data)
         return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]
