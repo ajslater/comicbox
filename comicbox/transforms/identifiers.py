@@ -110,7 +110,7 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
         url = urlparse(url_str)
         nid = url.netloc
         nss = ""
-        if url.path:
+        if url.path and url.path != "/":
             nss += url.path
         if url.query:
             nss += "?" + url.query

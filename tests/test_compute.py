@@ -14,6 +14,13 @@ from comicbox.schemas.comictagger import ComictaggerSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
+PRINT_CONFIG = Namespace(
+    comicbox=Namespace(
+        print="snmcp",
+    )
+)
+
+
 DATE_FROM_NOTES_IMPORT = TEST_METADATA_DIR / "comicinfo-notes-date.xml"
 DATE_FROM_NOTES_MD = MappingProxyType(
     {
@@ -91,13 +98,10 @@ ISSUE_WITH_PARTS = MappingProxyType(
 
 def test_compute_issue_suffix():
     """Test computing identifiers from tags."""
-    config = Namespace(
-        comicbox=Namespace(
-            print="snmcp",
-        )
-    )
     with Comicbox(
-        metadata=ISSUE_NAME_ONLY_MD, fmt=MetadataFormats.COMICTAGGER, config=config
+        metadata=ISSUE_NAME_ONLY_MD,
+        fmt=MetadataFormats.COMICTAGGER,
+        config=PRINT_CONFIG,
     ) as car:
         md = car.get_metadata()
 
@@ -115,14 +119,44 @@ ISSUE_PARTS_ONLY_MD = MappingProxyType(
 
 def test_compute_issue_name():
     """Test computing identifiers from tags."""
-    config = Namespace(
-        comicbox=Namespace(
-            print="snmcp",
-        )
-    )
     with Comicbox(
-        metadata=ISSUE_PARTS_ONLY_MD, fmt=MetadataFormats.COMICBOX_JSON, config=config
+        metadata=ISSUE_PARTS_ONLY_MD,
+        fmt=MetadataFormats.COMICBOX_JSON,
+        config=PRINT_CONFIG,
     ) as car:
         md = car.get_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
+
+
+UNKNOWN_URLS = MappingProxyType(
+    {
+        ComictaggerSchema.ROOT_TAG: {
+            "web_link": "http://foo.bar,https://google.com,https://bar.ct/?attr=1#tag"
+        }
+    }
+)
+
+IDENTIFIERS_FROM_URLS = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "identifiers": {
+                "bar.ct": {"nss": "?attr=1#tag", "url": "https://bar.ct/?attr=1#tag"},
+                "foo.bar": {"url": "http://foo.bar"},
+                "google.com": {"url": "https://google.com"},
+            }
+        }
+    }
+)
+
+
+def test_other_urls():
+    """Test non known nid urls."""
+    with Comicbox(
+        metadata=UNKNOWN_URLS,
+        fmt=MetadataFormats.COMICTAGGER,
+        config=PRINT_CONFIG,
+    ) as car:
+        md = car.get_metadata()
+
+    assert_diff(IDENTIFIERS_FROM_URLS, md)
