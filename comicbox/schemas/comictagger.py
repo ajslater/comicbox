@@ -1,30 +1,36 @@
 """Export comicbox.schemas to comicapi metadata."""
+
 # https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py
 from decimal import Decimal
 from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.collections import StringListField, StringSetField
-from comicbox.fields.enum import AgeRatingField, MangaField, YesNoField
+from comicbox.fields.collection_fields import ListField, StringListField, StringSetField
+from comicbox.fields.enum_fields import ComicInfoMangaField, YesNoField
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import BooleanField, DecimalField, IntegerField
+from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbookinfo import ComicBookInfoCreditSchema
-from comicbox.schemas.json import JsonSchema, JsonSubSchema
+from comicbox.schemas.comicinfo import ComicInfoAgeRatingField
+from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
-TAG_ORIGIN_KEY = "tag_origin"
-ISSUE_ID_KEY = "issue_id"
-SERIES_ID_KEY = "series_id"
+ISSUE_ID_TAG = "issue_id"
+SERIES_ID_TAG = "series_id"
 IS_VERSION_OF_TAG = "is_version_of"
 IDENTIFIER_TAG = "identifier"
 STORY_ARC_TAG = "story_arcs"
 PAGES_TAG = "pages"
 INDEX_TAG = "Image"
+SERIES_ALIASES_TAG = "series_aliases"
+TITLE_ALIASES_TAG = "title_aliases"
+BOOKMARK_ATTRIBUTE = "Bookmark"
+IMAGE_ATTRIBUTE = "Image"
+DATA_ORIGIN_TAG = "data_origin"
 
 
-class TagOriginSchema(BaseSubSchema):
+class DataOriginSchema(BaseSubSchema):
     """Comictagger Tag Origin."""
 
     name = StringField()
@@ -51,7 +57,7 @@ class ComictaggerSubSchema(JsonSubSchema):
     """Comictagger schema."""
 
     # comictagger unique
-    tag_origin = Nested(TagOriginSchema())
+    data_origin = Nested(DataOriginSchema)
     issue_id = StringField()
     series_id = StringField()
 
@@ -79,12 +85,12 @@ class ComictaggerSubSchema(JsonSubSchema):
     alternate_count = IntegerField()
     imprint = StringField()
     notes = StringField()
-    web_link = StringField()
+    web_link = StringSetField(as_string=True)
     # format in include
-    manga = MangaField()
+    manga = ComicInfoMangaField()
     black_and_white = YesNoField()
     page_count = IntegerField(minimum=0)
-    maturity_rating = AgeRatingField()
+    maturity_rating = ComicInfoAgeRatingField()
 
     story_arcs = StringListField(sort=False)
     series_groups = StringSetField()
@@ -97,10 +103,10 @@ class ComictaggerSubSchema(JsonSubSchema):
     alternate_images = StringListField(sort=False)
     # credits in include
     tags = StringSetField()
-    pages = Nested(ComictaggerPageInfoSchema, many=True)
+    pages = ListField(Nested(ComictaggerPageInfoSchema), sort_keys=(INDEX_TAG,))
 
     # comet unique
-    price = DecimalField(minimum=Decimal(0.0))
+    price = DecimalField(minimum=Decimal("0.0"))
     is_version_of = StringSetField(as_string=True)
     rights = StringField()
     identifier = StringSetField(as_string=True)
@@ -113,7 +119,10 @@ class ComictaggerSubSchema(JsonSubSchema):
         include = MappingProxyType(
             {
                 "format": StringField(),
-                "credits": Nested(ComicBookInfoCreditSchema, many=True),
+                "credits": ListField(
+                    Nested(ComicBookInfoCreditSchema),
+                    sort_keys=("person", "role", "primary"),
+                ),
             }
         )
 
@@ -121,8 +130,9 @@ class ComictaggerSubSchema(JsonSubSchema):
 class ComictaggerSchema(JsonSchema):
     """Comictagger Schema."""
 
-    CONFIG_KEYS = frozenset({"comictagger", "ct"})
-    FILENAME = "comictagger.json"
-    ROOT_TAGS = ("comictagger",)
+    ROOT_TAG = "comictagger"
+    ROOT_KEYPATH = ROOT_TAG
+    HAS_PAGE_COUNT = True
+    HAS_PAGES = True
 
     comictagger = Nested(ComictaggerSubSchema)

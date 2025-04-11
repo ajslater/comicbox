@@ -1,4 +1,5 @@
 """Test CIX module."""
+
 from argparse import Namespace
 from datetime import datetime
 from decimal import Decimal
@@ -6,65 +7,63 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum import ReadingDirectionEnum
+from comicbox.fields.enum_fields import ReadingDirectionEnum
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comet import CoMetSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
-from comicbox.transforms.comet import CoMetTransform
-from tests.util import (
-    TestParser,
-)
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
+from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["comet"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["comet"], read=["comet"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["comet", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
 
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
-            "characters": {"Captain Science", "Gordon Dane"},
-            "contributors": {
-                "writer": {"Joe Orlando"},
-                "penciller": {"Wally Wood"},
+            "characters": {"Captain Science": {}, "Gordon Dane": {}},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "date": datetime.strptime("1950-12-01", "%Y-%m-%d").date(),  # noqa: DTZ007
-            "genres": {"Science Fiction"},
+            "date": {
+                "cover_date": datetime.strptime("1950-12-01", "%Y-%m-%d").date()  # noqa: DTZ007
+            },
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {"name": "1", "number": Decimal("1")},
             "language": "en",
-            "last_mark": 12,
-            "publisher": "Bell Features",
+            "bookmark": 12,
+            "publisher": {"name": "Bell Features"},
             "original_format": "Comic",
             "page_count": 36,
-            "price": Decimal(0.10).quantize(Decimal("0.01")),
+            "prices": {"": Decimal("0.10").quantize(Decimal("0.01"))},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
             "rights": "Copyright (c) 1950 Bell Features",
-            "title": "The Beginning",
             "series": {"name": "Captain Science"},
+            "stories": {"The Beginning": {}},
             "summary": "A long example description",
-            "volume": {"name": 1},
+            "volume": {"number": 1},
         }
     }
 )
 COMET_DICT = MappingProxyType(
     {
-        CoMetSchema.ROOT_TAGS[0]: {
-            "@xmlns:comet": "http://www.denvog.com/comet/",
+        CoMetSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "http://www.denvog.com/comet/comet.xsd",
+            "@xmlns:comet": "http://www.denvog.com/comet/",
+            "@xsi:schemaLocation": "http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd",
             "character": ["Captain Science", "Gordon Dane"],
             "writer": ["Joe Orlando"],
             "coverImage": "CaptainScience#1_01.jpg",
@@ -72,7 +71,7 @@ COMET_DICT = MappingProxyType(
             "description": "A long example description",
             "format": "Comic",
             "genre": ["Science Fiction"],
-            "identifier": "urn:comicvine:4000-145269",
+            "identifier": "urn:comicvine:145269",
             "isVersionOf": "Captain Science Alternate #001",
             "issue": "1",
             "language": "en",
@@ -90,10 +89,10 @@ COMET_DICT = MappingProxyType(
         }
     }
 )
-COMET_STR = xmltodict.unparse(COMET_DICT, pretty=True, short_empty_elements=True)
+COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
 
 COMET_TESTER = TestParser(
-    CoMetTransform,
+    MetadataFormats.COMET,
     FN,
     METADATA,
     COMET_DICT,
@@ -145,4 +144,4 @@ def test_comet_read():
 
 def test_comet_write():
     """Write comet metadata."""
-    COMET_TESTER.test_md_write(page_count=36)
+    COMET_TESTER.test_md_write(page_count=0)

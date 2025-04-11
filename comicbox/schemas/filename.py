@@ -1,4 +1,5 @@
-"""Parse comic book archive names using the simple 'parse' parser.
+"""
+Parse comic book archive names using the simple 'parse' parser.
 
 A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
@@ -9,21 +10,20 @@ from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow import post_load
 from marshmallow.fields import Nested
 
-from comicbox.fields.collections import StringListField
+from comicbox.fields.collection_fields import StringListField
 from comicbox.fields.fields import StringField
-from comicbox.fields.numbers import IntegerField
+from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
+from comicbox.schemas.comicbox import (
     ISSUE_KEY,
-    ROOT_TAG,
     SERIES_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
 
 SERIES_TAG = SERIES_KEY
 VOLUME_TAG = VOLUME_KEY
-ISSUE_COUNT_TAG = ISSUE_COUNT_KEY
+ISSUE_COUNT_TAG = VOLUME_ISSUE_COUNT_KEY
 ISSUE_TAG = ISSUE_KEY
 _OTHER_SCHEMA_STARTS = ("<?", "<!")
 _OTHER_SCHEMA_ENDS = ("{", ":")
@@ -35,7 +35,7 @@ class FilenameRenderModule:
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
-        data: dict = obj.get(FilenameSchema.ROOT_TAGS[0])  # type: ignore
+        data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod
@@ -53,12 +53,12 @@ class FilenameRenderModule:
         if cls._is_non_filename_format(s):
             return None
 
-        cleaned_s = StringField().deserialize(s)
+        cleaned_s: str | None = StringField().deserialize(s)  # type: ignore[reportAssignmentType]
         if not cleaned_s:
             return None
 
         sub_data = comicfn2dict(cleaned_s, *args, **kwargs)
-        return {FilenameSchema.ROOT_TAGS[0]: sub_data}
+        return {FilenameSchema.ROOT_TAG: sub_data}
 
 
 class FilenameSubSchema(BaseSubSchema):
@@ -86,11 +86,10 @@ class FilenameSubSchema(BaseSubSchema):
 class FilenameSchema(BaseSchema):
     """File name schema."""
 
-    CONFIG_KEYS = frozenset({"fn", "filename"})
-    FILENAME = "comicbox-filename.txt"
-    ROOT_TAGS = (ROOT_TAG,)
+    ROOT_TAG = "comicfn2dict"
+    ROOT_KEYPATH = ROOT_TAG
 
-    comicbox = Nested(FilenameSubSchema)
+    comicfn2dict = Nested(FilenameSubSchema)
 
     class Meta(BaseSchema.Meta):
         """Schema Options."""

@@ -1,4 +1,5 @@
 """Test CBI module."""
+
 from argparse import Namespace
 from decimal import Decimal
 from pathlib import Path
@@ -6,169 +7,174 @@ from types import MappingProxyType
 
 import simplejson as json
 
-from comicbox.fields.enum import PageTypeEnum
-from comicbox.schemas.comicbox_json import ComicboxJsonSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
+from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.formats import MetadataFormats
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
 from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comicbox.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cb"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cb"], read=["cb"], compute_pages=False)
-)
+READ_CONFIG = Namespace(comicbox=Namespace(read=["json", "fn"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["json"], read=["json"]))
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
             "country": "US",
             "series": {"name": "Captain Science"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
-            "publisher": "Youthful Adventure Stories",
-            "month": 11,
-            "year": 1950,
-            "day": 1,
-            "genres": {"Science Fiction"},
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
+            "publisher": {"name": "Youthful Adventure Stories"},
+            "date": {
+                "month": 11,
+                "year": 1950,
+                "day": 1,
+            },
+            "genres": {"Science Fiction": {}},
             "volume": {
-                "name": 1950,
+                "number": 1950,
                 "issue_count": 7,
             },
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "language": "en",
+            "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
-            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
-            "pages": [
-                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
-                {"index": 1, "size": 332936},
-                {"index": 2, "size": 458657},
-                {"index": 3, "size": 450456},
-                {"index": 4, "size": 436648},
-                {"index": 5, "size": 443725},
-                {"index": 6, "size": 469526},
-                {"index": 7, "size": 429811},
-                {"index": 8, "size": 445513},
-                {"index": 9, "size": 446292},
-                {"index": 10, "size": 458589},
-                {"index": 11, "size": 417623},
-                {"index": 12, "size": 445302},
-                {"index": 13, "size": 413271},
-                {"index": 14, "size": 434201},
-                {"index": 15, "size": 439049},
-                {"index": 16, "size": 485957},
-                {"index": 17, "size": 388379},
-                {"index": 18, "size": 368138},
-                {"index": 19, "size": 427874},
-                {"index": 20, "size": 422522},
-                {"index": 21, "size": 442529},
-                {"index": 22, "size": 423785},
-                {"index": 23, "size": 427980},
-                {"index": 24, "size": 445631},
-                {"index": 25, "size": 413615},
-                {"index": 26, "size": 417605},
-                {"index": 27, "size": 439120},
-                {"index": 28, "size": 451598},
-                {"index": 29, "size": 451550},
-                {"index": 30, "size": 438346},
-                {"index": 31, "size": 454914},
-                {"index": 32, "size": 428461},
-                {"index": 33, "size": 438091},
-                {"index": 34, "size": 353013},
-                {"index": 35, "size": 340840},
-            ],
-        }
+            "pages": {
+                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                1: {"size": 332936},
+                2: {"size": 458657},
+                3: {"size": 450456},
+                4: {"size": 436648},
+                5: {"size": 443725},
+                6: {"size": 469526},
+                7: {"size": 429811},
+                8: {"size": 445513},
+                9: {"size": 446292},
+                10: {"size": 458589},
+                11: {"size": 417623},
+                12: {"size": 445302},
+                13: {"size": 413271},
+                14: {"size": 434201},
+                15: {"size": 439049},
+                16: {"size": 485957},
+                17: {"size": 388379},
+                18: {"size": 368138},
+                19: {"size": 427874},
+                20: {"size": 422522},
+                21: {"size": 442529},
+                22: {"size": 423785},
+                23: {"size": 427980},
+                24: {"size": 445631},
+                25: {"size": 413615},
+                26: {"size": 417605},
+                27: {"size": 439120},
+                28: {"size": 451598},
+                29: {"size": 451550},
+                30: {"size": 438346},
+                31: {"size": 454914},
+                32: {"size": 428461},
+                33: {"size": 438091},
+                34: {"size": 353013},
+                35: {"size": 340840},
+            },
+        },
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_COMICBOX_DICT = MappingProxyType(
     {
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
-        "appID": "comicbox/dev",
-        ComicboxJsonSchema.ROOT_TAGS[0]: {
+        "appID": "comicbox dev",
+        ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
-            "contributors": {
-                "penciller": ["Wally Wood"],
-                "writer": ["Joe Orlando"],
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "day": 1,
-            "genres": ["Science Fiction"],
+            "date": {
+                "day": 1,
+                "month": 11,
+                "year": 1950,
+            },
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
+                    "nss": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "issue": "1",
-            "issue_number": Decimal("1"),
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
             "language": "en",
-            "month": 11,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
-            "publisher": "Youthful Adventure Stories",
+            "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
-            "title": "The Beginning",
+            "stories": {"The Beginning": {}},
             "updated_at": TEST_DTTM_STR,
             "volume": {
-                "name": 1950,
+                "number": 1950,
                 "issue_count": 7,
             },
-            "year": 1950,
-            "pages": [
-                {
-                    "index": 0,
+            "pages": {
+                "00": {
                     "page_type": PageTypeEnum.FRONT_COVER.value,
                     "size": 429985,
                 },
-                {"index": 1, "size": 332936},
-                {"index": 2, "size": 458657},
-                {"index": 3, "size": 450456},
-                {"index": 4, "size": 436648},
-                {"index": 5, "size": 443725},
-                {"index": 6, "size": 469526},
-                {"index": 7, "size": 429811},
-                {"index": 8, "size": 445513},
-                {"index": 9, "size": 446292},
-                {"index": 10, "size": 458589},
-                {"index": 11, "size": 417623},
-                {"index": 12, "size": 445302},
-                {"index": 13, "size": 413271},
-                {"index": 14, "size": 434201},
-                {"index": 15, "size": 439049},
-                {"index": 16, "size": 485957},
-                {"index": 17, "size": 388379},
-                {"index": 18, "size": 368138},
-                {"index": 19, "size": 427874},
-                {"index": 20, "size": 422522},
-                {"index": 21, "size": 442529},
-                {"index": 22, "size": 423785},
-                {"index": 23, "size": 427980},
-                {"index": 24, "size": 445631},
-                {"index": 25, "size": 413615},
-                {"index": 26, "size": 417605},
-                {"index": 27, "size": 439120},
-                {"index": 28, "size": 451598},
-                {"index": 29, "size": 451550},
-                {"index": 30, "size": 438346},
-                {"index": 31, "size": 454914},
-                {"index": 32, "size": 428461},
-                {"index": 33, "size": 438091},
-                {"index": 34, "size": 353013},
-                {"index": 35, "size": 340840},
-            ],
+                "01": {"size": 332936},
+                "02": {"size": 458657},
+                "03": {"size": 450456},
+                "04": {"size": 436648},
+                "05": {"size": 443725},
+                "06": {"size": 469526},
+                "07": {"size": 429811},
+                "08": {"size": 445513},
+                "09": {"size": 446292},
+                "10": {"size": 458589},
+                "11": {"size": 417623},
+                "12": {"size": 445302},
+                "13": {"size": 413271},
+                "14": {"size": 434201},
+                "15": {"size": 439049},
+                "16": {"size": 485957},
+                "17": {"size": 388379},
+                "18": {"size": 368138},
+                "19": {"size": 427874},
+                "20": {"size": 422522},
+                "21": {"size": 442529},
+                "22": {"size": 423785},
+                "23": {"size": 427980},
+                "24": {"size": 445631},
+                "25": {"size": 413615},
+                "26": {"size": 417605},
+                "27": {"size": 439120},
+                "28": {"size": 451598},
+                "29": {"size": 451550},
+                "30": {"size": 438346},
+                "31": {"size": 454914},
+                "32": {"size": 428461},
+                "33": {"size": 438091},
+                "34": {"size": 353013},
+                "35": {"size": 340840},
+            },
         },
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
     }
 )
 WRITE_COMICBOX_DICT = create_write_dict(READ_COMICBOX_DICT, ComicboxJsonSchema, "notes")
@@ -180,7 +186,7 @@ WRITE_COMICBOX_STR = json.dumps(
 )
 
 COMICBOX_TESTER = TestParser(
-    ComicboxJsonTransform,
+    MetadataFormats.COMICBOX_JSON,
     FN,
     READ_METADATA,
     READ_COMICBOX_DICT,
@@ -230,9 +236,9 @@ def test_comicbox_to_file():
 
 def test_comicbox_read():
     """Test read from file."""
-    COMICBOX_TESTER.test_md_read(page_count=36)
+    COMICBOX_TESTER.test_md_read(page_count=0)
 
 
 def test_comicbox_write():
     """Test write to file."""
-    COMICBOX_TESTER.test_md_write(page_count=36)
+    COMICBOX_TESTER.test_md_write(page_count=0)

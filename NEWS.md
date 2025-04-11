@@ -1,12 +1,114 @@
 # 📰 News
 
+## v2.0.0
+
+- Features
+
+  - BREAKING comicbox.json and comicbox.yaml schema changes. See
+    [the 2.0 CHANGES document](CHANGES-2.0.0.md).
+  - Support the MetronInfo.xml v1.0 Schema
+  - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
+  - URNs as serialized identifiers in `notes` tag gain an optional tag type
+    attribute in the nss: urn:comicvine:series:1234
+  - ComicInfo.xml gains the Translator tag
+  - PDF modDate is now read and written.
+  - Enum fields now interpret caseless slightly fuzzy value lookups.
+  - For convenice, named or numbered types or collections in the comicbox schema
+    can also parse by their simple name instead of requiring a complex object.
+  - Comictagger schema supports series_aliases and title_aliases as reprints
+  - CB7 archive read support. Comic archives in 7zip archives.
+  - Syntax highlighting used on output. Change or remove with --theme option.
+  - --delete action becomes --delete-all-tags.
+  - config.metadata_format exists to hint what format the api metadata is.
+  - public box functions take formats instead of transform_classes
+  - get_cover_path() returns the first cover_path without looking for others.
+
+- Fixes
+  - ComicInfo.xml StoryArcs tag was not loaded.
+  - Fix proper lowercasing of serialized boolean values in xml attributes.
+  - ComicBookInfo `issue` tag becomes an integer.
+  - Fix ISBN & UPC url detection
+  - ComicInfo.xml orders tags properly per the xsd.
+  - Corrected schemaLocation tags for xml formats to be valid.
+  - ComicBookInfo.json `rating`, and `tags` tags fixed.
+  - Support ComicBookInfo.json `primary` credit tag.
+  - More accurate merging of different metadata sources.
+
+## v1.2.3
+
+- Fix story arc parsing.
+
+## v1.2.2
+
+- Fix Notes parsing for Comictagger beta Metron origin
+- Simplify Identifier URL construction for Metron pk ids.
+
+## v1.2.1
+
+- Fix ignoring MacOS resource forks in archives.
+- Detect .jxl extension (JPEG XL) as a comic page.
+- Dependency xml parsing fixes and better Python 3.13 support.
+
+## v1.2.0
+
+- Add -R --replace_metadata option. Default behavior is to merge keys.
+- Add -D --delete_keys option.
+- Faster metadata writing. Replace files in zipfiles instead of rewriting the
+  entire archive.
+
+## v1.1.10
+
+- Fix parsing negative issue numbers in filenames.
+- Log common non-ComicBookInfo archive comments with less alarm.
+
+## v1.1.9
+
+- Deps security update
+
+## v1.1.8
+
+- Update pycountry
+
+## v1.1.7
+
+- Unknown urls give the path, query and fragment as the nss, not the domain
+
+## v1.1.6
+
+- Ignore dotfiles and macOS resource forks when finding pages.
+
+## v1.1.5
+
+- Fix export of CIX CoverArtist tag.
+- Fix tagging Web and other unknown url tags. Accept any url for comicbox
+  identifiers.
+
+## v1.1.4
+
+- Make language and country code parsing more durable
+
+## v1.1.3
+
+- Updated comicfn2dict fixes filename parsing bugs.
+
+## v1.1.2
+
+- Fix crash copying directories between archives.
+- Fix crash with leftover temp files.
+
+## v1.1.1
+
+- Write ComicInfo.xml in TitleCase so Comictagger can find it.
+- Write MetronInfo.xml & CoMet.xml in TitleCase for beauty.
+- Fix duplicate reprints.
+
 ## v1.1.0
 
 - Fix `--import` option crash.
 - Fix parsing tagger and updated_at from notes.
-- PDFs read all metadata formats from the keywords field and writes
-  ComicInfo.xml to it.
-- ComicInfo.xml accepts spaces as web field separator
+- PDFs read all metadata formats from the keywords field.
+- PDFs write ComicInfo.xml to keywords field.
+- ComicInfo.xml accepts spaces as web field separator.
 - Accept numeric types for issues.
 - Major improvements to filename parsing and diversity of filename schemas.
 

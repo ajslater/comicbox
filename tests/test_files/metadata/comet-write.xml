@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/comet.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd">
 	<character>Captain Science</character>
 	<character>Gordon Dane</character>
 	<coverImage>CaptainScience#1_01.jpg</coverImage>
@@ -7,7 +7,7 @@
 	<description>A long example description</description>
 	<format>Comic</format>
 	<genre>Science Fiction</genre>
-	<identifier>urn:comicvine:4000-145269</identifier>
+	<identifier>urn:comicvine:145269</identifier>
 	<isVersionOf>Captain Science Alternate #001</isVersionOf>
 	<issue>1</issue>
 	<language>en</language>

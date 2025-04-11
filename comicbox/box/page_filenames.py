@@ -1,8 +1,14 @@
 """Calculate page filenames."""
+
+import re
 from sys import maxsize
 
 from comicbox.box.archive import archive_close
 from comicbox.box.archive_read import ComicboxArchiveReadMixin
+
+# ignore dotfiles but not relative ../ leaders.
+# ignore macos resource forks
+_IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
 
 
 class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
@@ -20,7 +26,9 @@ class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
         else:
             self._page_filenames = []
             for filename in archive_filenames:
-                if self.IMAGE_EXT_RE.search(filename) is not None:
+                if not _IGNORE_RE.search(filename) and self.IMAGE_EXT_RE.search(
+                    filename
+                ):
                     self._page_filenames.append(filename)
 
     def get_page_filenames(self):

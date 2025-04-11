@@ -1,31 +1,64 @@
-"""Parse comic book archive names using the simple 'parse' parser.
+"""
+Parse comic book archive names using the simple 'parse' parser.
 
 A more sophisticaed library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
+
+from bidict import frozenbidict
+
+from comicbox.schemas.comicbox import (
+    EXT_KEY,
+    ORIGINAL_FORMAT_KEY,
+    REMAINDERS_KEY,
+    SCAN_INFO_KEY,
+)
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.publishing_tags import NestedPublishingTagsMixin
+from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH, YEAR_KEYPATH
+from comicbox.transforms.publishing_tags import (
+    ISSUE_COUNT_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
+)
+from comicbox.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.transforms.stories import (
+    stories_key_transform_from_cb,
+    stories_key_transform_to_cb,
+)
+
+SIMPLE_KEY_MAP = frozenbidict(
+    {
+        "ext": EXT_KEY,
+        "issue": ISSUE_NAME_KEYPATH,
+        "issue_count": ISSUE_COUNT_KEYPATH,
+        "original_format": ORIGINAL_FORMAT_KEY,
+        "remainders": REMAINDERS_KEY,
+        "series": SERIES_NAME_KEYPATH,
+        "scan_info": SCAN_INFO_KEY,
+        "volume": VOLUME_NUMBER_KEYPATH,
+        "year": YEAR_KEYPATH,
+    }
+)
 
 
-class FilenameTransform(BaseTransform, NestedPublishingTagsMixin):
+class FilenameTransform(BaseTransform):
     """File name schema."""
 
     SCHEMA_CLASS = FilenameSchema
-    SERIES_TAG = "series"
-    VOLUME_TAG = "volume"
-    ISSUE_COUNT_TAG = "issue_count"
-
-    TO_COMICBOX_PRE_TRANSFORM = (
-        *BaseTransform.TO_COMICBOX_PRE_TRANSFORM,
-        NestedPublishingTagsMixin.parse_series,
-        NestedPublishingTagsMixin.parse_volume,
+    SPECS_TO = create_specs_to_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
+        stories_key_transform_to_cb("title"),
+        format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )
-
-    FROM_COMICBOX_PRE_TRANSFORM = (
-        *BaseTransform.FROM_COMICBOX_PRE_TRANSFORM,
-        NestedPublishingTagsMixin.unparse_series,
-        NestedPublishingTagsMixin.unparse_volume,
+    SPECS_FROM = create_specs_from_comicbox(
+        MetaSpec(key_map=SIMPLE_KEY_MAP),
+        stories_key_transform_from_cb("title"),
+        format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )

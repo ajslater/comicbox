@@ -1,52 +1,82 @@
 """Skip keys instead of throwing errors."""
+
 from abc import ABC
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
 
-from marshmallow import EXCLUDE, Schema, ValidationError, post_dump, post_load
-from marshmallow.decorators import pre_load
-from marshmallow.error_store import ErrorStore
+from marshmallow import EXCLUDE, Schema
+from marshmallow.decorators import (
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+)
 
-from comicbox.dict_funcs import sort_dict
-from comicbox.fields.fields import EMPTY_VALUES
+from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
-from comicbox.schemas.error_store import ClearingErrorStore
+from comicbox.schemas.error_store import ClearingErrorStoreSchema
 
 LOG = getLogger(__name__)
 
 
-class BaseSubSchema(Schema, ABC):
+class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     """Base schema."""
 
-    def __init__(self, **kwargs):  # noqa ARG002
-        kwargs["partial"] = True
-        self._path = kwargs.pop("path", None)
-        super().__init__(**kwargs)
+    TAG_ORDER = ()
 
-    def _remove_null_values(self, data):
-        """Remove fields with empty values."""
-        for key, value in tuple(data.items()):
-            if value in EMPTY_VALUES:
-                del data[key]
+    @classmethod
+    def pre_load_validate(cls, data):
+        """Validate schema type first thing to fail as early as possible."""
+        # Meant to be overridden in BaseSchema
+        return data
+
+    @trap_error(pre_load)
+    def pre_load(self, data, **_kwargs):
+        """Singular pre_load hook."""
+        return self.pre_load_validate(data)
+
+    @classmethod
+    def clean_empties(cls, data: dict):
+        """Clean empties from loaded data."""
+        if isinstance(data, Mapping):
+            data = {k: v for k, v in data.items() if not is_empty(v)}
         return data
 
     @trap_error(post_load)
-    def remove_empty_keys_on_load(self, data, **_kwargs):
-        """Remove null keys."""
-        return self._remove_null_values(data)
+    def post_load(self, data, **_kwargs):
+        """Singular post_load hook."""
+        return self.clean_empties(data)
+
+    @pre_dump
+    def pre_dump(self, data, **_kwargs):
+        """Singular pre_dump hook."""
+        return data
+
+    @classmethod
+    def _sort_tag_by_order(cls, data: dict) -> dict:
+        """Sort tag by schema class order tuple."""
+        result = {}
+        for tag in cls.TAG_ORDER:
+            value = data.get(tag)
+            if is_empty(value):
+                continue
+            result[tag] = value
+        return result
+
+    @classmethod
+    def sort_dump(cls, data: dict):
+        """Sort dump by key."""
+        if cls.TAG_ORDER:
+            data = cls._sort_tag_by_order(data)
+        elif isinstance(data, Mapping):
+            data = {k: v for k, v in sorted(data.items()) if not is_empty(v)}
+        return data
 
     @post_dump
-    def remove_empty_keys_on_dump(self, data, **_kwargs):
-        """Remove null keys."""
-        return self._remove_null_values(data)
-
-    def dump(self, *args, **kwargs):
-        """Dump and recursively sort the results."""
-        result = super().dump(*args, **kwargs)
-        if isinstance(result, Mapping):
-            result = sort_dict(result)
-        return result
+    def post_dump(self, data: dict, **_kwargs):
+        """Singular post_dump hook."""
+        return self.sort_dump(data)
 
     def loadf(self, path):
         """Read the string from the designated file."""
@@ -69,42 +99,24 @@ class BaseSubSchema(Schema, ABC):
 class BaseSchema(BaseSubSchema, ABC):
     """Top level base schema that traps errors and records path."""
 
-    CONFIG_KEYS = frozenset()
-    FILENAME = ""
-    ROOT_TAGS = ("",)
+    ROOT_TAG = ""
+    ROOT_DATA_KEY = ""
+    ROOT_KEYPATH = ""
+    EMBED_KEYPATH = ""
+    HAS_PAGE_COUNT = False
+    HAS_PAGES = False
 
-    def set_path(self, path):
-        """Set the path after the instance is created."""
-        self._path = path
-
-    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_field_validators(
-            error_store=clearing_error_store, data=data, **kwargs
-        )
-
-    def _invoke_schema_validators(
-        self,
-        *,
-        error_store: ErrorStore,
-        data,
-        **kwargs,
-    ):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_schema_validators(error_store=clearing_error_store, **kwargs)
-
-    def handle_error(self, error, *_args, **_kwargs):
-        """Log errors as warnings."""
-        if isinstance(error, ValidationError):
-            LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
-        else:
-            LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
-
-    @trap_error(pre_load)
-    def validate_root_tag(self, data, **_kwargs):
+    @classmethod
+    def pre_load_validate(cls, data):
         """Validate the root tag so we don't confuse it with other JSON."""
-        if data and self.ROOT_TAGS[0] not in data:
-            return {}
+        if not data:
+            reason = "No data."
+            LOG.debug(reason)
+            data = {}
+        elif cls.ROOT_TAG not in data and cls.ROOT_DATA_KEY not in data:
+            reason = f"Root tag '{cls.ROOT_TAG}' not found in {tuple(data.keys())}."
+            LOG.debug(reason)
+            # Do not throw an exception so the trapper doesn't trap it and the
+            # loader tries another schema. Return empty dict.
+            data = {}
         return data

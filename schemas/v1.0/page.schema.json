@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v1.0/page.schema.json",
+  "title": "Comicbox Page",
+  "type": "object",
+  "properties": {
+    "index": {
+      "type": "integer"
+    },
+    "page_type": {
+      "type": "string",
+      "enum": [
+        "FrontCover",
+        "InnerCover",
+        "Roundup",
+        "Story",
+        "Advertisement",
+        "Editorial",
+        "Letters",
+        "Preview",
+        "BackCover",
+        "Other",
+        "Deleted"
+      ]
+    },
+    "double_page": {
+      "type": "boolean"
+    },
+    "size": {
+      "type": "integer"
+    },
+    "key": {
+      "type": "integer"
+    },
+    "bookmark": {
+      "type": "string"
+    },
+    "width": {},
+    "height": {
+      "type": "integer"
+    }
+  }
+}

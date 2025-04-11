@@ -1,3 +1,4 @@
+__pycache__
 .circleci
 .git
 .mypy_cache
@@ -5,8 +6,11 @@
 .ruff_cache
 .venv
 /node_modules
+/schemas/*.xsd
 /test-results
 /tests/**/*.json
 /tests/**/*.xml
 /tests/**/*.yaml
-__pycache__
+dist
+package-lock.json
+uv.lock

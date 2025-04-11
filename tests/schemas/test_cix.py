@@ -1,14 +1,16 @@
 """Test CIX module."""
+
 from argparse import Namespace
 from decimal import Decimal
 from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum import PageTypeEnum
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.formats import MetadataFormats
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.transforms.comicinfo import ComicInfoTransform
+from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -16,87 +18,89 @@ from tests.util import (
     create_write_metadata,
 )
 
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=False)
-)
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"], compute_pages=False))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
+READ_CONFIG = Namespace(comicbox=Namespace(read=["cix", "fn"]))
 READ_METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "age_rating": "Teen",
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
+            "date": {
+                "year": 1950,
+                "month": 11,
+                "day": 1,
+            },
             "series": {"name": "Captain Science"},
-            "issue": "1",
-            "issue_number": Decimal("1"),
-            "publisher": "Youthful Adventure Stories",
-            "year": 1950,
-            "month": 11,
-            "day": 1,
-            "volume": {"name": 1950, "issue_count": 7},
+            "issue": {
+                "name": "1",
+                "number": Decimal("1"),
+            },
+            "publisher": {"name": "Youthful Adventure Stories"},
+            "volume": {"number": 1950, "issue_count": 7},
             "language": "en",
             "notes": TEST_READ_NOTES,
             "characters": {
-                "Captain Science",
-                "Gordon Dane",
+                "Captain Science": {},
+                "Gordon Dane": {},
             },
-            "contributors": {
-                "inker": {"Wally Wood"},
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "genres": {"Science Fiction"},
+            "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "4000-145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                    "nss": "145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
-            "pages": [
-                {"index": 0, "page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
-                {"index": 1, "size": 332936},
-                {"index": 2, "size": 458657},
-                {"index": 3, "size": 450456},
-                {"index": 4, "size": 436648},
-                {"index": 5, "size": 443725},
-                {"index": 6, "size": 469526},
-                {"index": 7, "size": 429811},
-                {"index": 8, "size": 445513},
-                {"index": 9, "size": 446292},
-                {"index": 10, "size": 458589},
-                {"index": 11, "size": 417623},
-                {"index": 12, "size": 445302},
-                {"index": 13, "size": 413271},
-                {"index": 14, "size": 434201},
-                {"index": 15, "size": 439049},
-                {"index": 16, "size": 485957},
-                {"index": 17, "size": 388379},
-                {"index": 18, "size": 368138},
-                {"index": 19, "size": 427874},
-                {"index": 20, "size": 422522},
-                {"index": 21, "size": 442529},
-                {"index": 22, "size": 423785},
-                {"index": 23, "size": 427980},
-                {"index": 24, "size": 445631},
-                {"index": 25, "size": 413615},
-                {"index": 26, "size": 417605},
-                {"index": 27, "size": 439120},
-                {"index": 28, "size": 451598},
-                {"index": 29, "size": 451550},
-                {"index": 30, "size": 438346},
-                {"index": 31, "size": 454914},
-                {"index": 32, "size": 428461},
-                {"index": 33, "size": 438091},
-                {"index": 34, "size": 353013},
-                {"index": 35, "size": 340840},
-            ],
-            "page_count": 36,
-            "story_arcs": {
-                "Captain Arc": 4,
-                "Other Arc": 2,
+            "pages": {
+                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                1: {"size": 332936},
+                2: {"size": 458657},
+                3: {"size": 450456},
+                4: {"size": 436648},
+                5: {"size": 443725},
+                6: {"size": 469526},
+                7: {"size": 429811},
+                8: {"size": 445513},
+                9: {"size": 446292},
+                10: {"size": 458589},
+                11: {"size": 417623},
+                12: {"size": 445302},
+                13: {"size": 413271},
+                14: {"size": 434201},
+                15: {"size": 439049},
+                16: {"size": 485957},
+                17: {"size": 388379},
+                18: {"size": 368138},
+                19: {"size": 427874},
+                20: {"size": 422522},
+                21: {"size": 442529},
+                22: {"size": 423785},
+                23: {"size": 427980},
+                24: {"size": 445631},
+                25: {"size": 413615},
+                26: {"size": 417605},
+                27: {"size": 439120},
+                28: {"size": 451598},
+                29: {"size": 451550},
+                30: {"size": 438346},
+                31: {"size": 454914},
+                32: {"size": 428461},
+                33: {"size": 438091},
+                34: {"size": 353013},
+                35: {"size": 340840},
             },
+            "page_count": 36,
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
             ],
+            "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
-            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
         }
     }
@@ -105,23 +109,34 @@ WRITE_METADATA = create_write_metadata(READ_METADATA)
 
 READ_CIX_DICT = MappingProxyType(
     {
-        "ComicInfo": {
+        ComicInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1",
-            "AlternateNumber": "001",
-            "AlternateSeries": "Captain Science Alternate",
-            "Characters": "Captain Science,Gordon Dane",
-            "Count": 7,
-            "Day": 1,
-            "GTIN": "urn:comicvine:4000-145269",
-            "Genre": "Science Fiction",
-            "Inker": "Wally Wood",
-            "LanguageISO": "en",
-            "Month": 11,
-            "Notes": TEST_READ_NOTES,
+            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 "
+            "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd",
+            "Title": "The Beginning;The End",
+            "Series": "Captain Science",
             "Number": "1",
+            "Count": 7,
+            "Volume": 1950,
+            "AlternateSeries": "Captain Science Alternate",
+            "AlternateNumber": "001",
+            "Notes": TEST_READ_NOTES,
+            "Year": 1950,
+            "Month": 11,
+            "Day": 1,
+            "Writer": "Joe Orlando",
+            "Penciller": "Wally Wood",
+            "Inker": "Wally Wood",
+            "Publisher": "Youthful Adventure Stories",
+            "Genre": "Science Fiction",
+            "Web": "https://comicvine.gamespot.com/c/4000-145269/",
             "PageCount": 36,
+            "LanguageISO": "en",
+            "Characters": "Captain Science,Gordon Dane",
+            "StoryArc": "Captain Arc,Other Arc",
+            "StoryArcNumber": "4,2",
+            "AgeRating": "Teen",
             "Pages": {
                 "Page": [
                     {"@Image": 0, "@ImageSize": 429985, "@Type": "FrontCover"},
@@ -162,27 +177,16 @@ READ_CIX_DICT = MappingProxyType(
                     {"@Image": 35, "@ImageSize": 340840},
                 ]
             },
-            "Penciller": "Wally Wood",
-            "Publisher": "Youthful Adventure Stories",
-            "Series": "Captain Science",
-            "StoryArc": "Captain Arc,Other Arc",
-            "StoryArcNumber": "4,2",
-            "Title": "The Beginning",
-            "Volume": 1950,
-            "Web": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
-            "Writer": "Joe Orlando",
-            "Year": 1950,
+            "GTIN": "urn:comicvine:145269",
         }
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, pretty=True, short_empty_elements=True)
-WRITE_CIX_STR = xmltodict.unparse(
-    WRITE_CIX_DICT, pretty=True, short_empty_elements=True
-)
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reprotCallIssue]
 
 CIX_TESTER = TestParser(
-    ComicInfoTransform,
+    MetadataFormats.COMIC_INFO,
     CIX_CBZ_FN,
     READ_METADATA,
     READ_CIX_DICT,
@@ -212,7 +216,7 @@ def test_cix_from_string():
 
 def test_cix_from_file():
     """Test metadata import from file."""
-    CIX_TESTER.test_from_file()
+    CIX_TESTER.test_from_file(page_count=0)
 
 
 def test_cix_to_dict():
@@ -223,12 +227,6 @@ def test_cix_to_dict():
 def test_cix_to_string():
     """Test metadata export to string."""
     test_str = CIX_TESTER.to_string()
-
-    # not tested just for diagnostic
-    # xml_dict = xmltodict.parse(test_str)
-    # diff = DeepDiff(dict(WRITE_CIX_DICT), xml_dict)
-    # print(diff)
-
     CIX_TESTER.compare_string(test_str)
 
 
@@ -244,4 +242,4 @@ def test_cix_read():
 
 def test_cix_write():
     """Write cbz with CIX."""
-    CIX_TESTER.test_md_write(page_count=36)
+    CIX_TESTER.test_md_write(ignore_pages=True, page_count=0)

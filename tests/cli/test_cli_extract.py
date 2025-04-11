@@ -1,6 +1,6 @@
 """Test CLI extract actions."""
+
 from comicbox import cli
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import (
     CBI_CBR_SOURCE_PATH,
     CIX_CBT_SOURCE_PATH,
@@ -19,7 +19,7 @@ def _test_cli_action_extract_util(path, args, test_files):
 
     cli.main(
         (
-            ROOT_TAG,
+            "comicbox",
             "-d",
             str(TMP_DIR),
             *args,
@@ -28,11 +28,9 @@ def _test_cli_action_extract_util(path, args, test_files):
     )
 
     list_dir = list(TMP_DIR.iterdir())
-    print(list_dir)
     assert len(list_dir) == len(test_files)
     for tf in test_files:
         full_path = TMP_DIR / tf
-        print(full_path)
         assert full_path.exists()
     my_cleanup(TMP_DIR)
 
@@ -63,13 +61,13 @@ def _test_cli_action_extract(path, extract, test_files):
 
 
 def test_cli_action_extract_from():
-    """Tetst extract files."""
+    """Test extract files."""
     test_files = ("CaptainScience#1_03.jpg",)
     _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "2", test_files)
 
 
 def test_cli_action_extract_from_forward():
-    """Tetst extract files."""
+    """Test extract files."""
     test_files = (
         "CaptainScience#1_34.jpg",
         "CaptainScience#1_35.jpg",
@@ -79,7 +77,7 @@ def test_cli_action_extract_from_forward():
 
 
 def test_cli_action_extract_to_backward():
-    """Tetst extract files."""
+    """Test extract files."""
     test_files = (
         "CaptainScience#1_01.jpg",
         "CaptainScience#1_02.jpg",
@@ -89,7 +87,7 @@ def test_cli_action_extract_to_backward():
 
 
 def test_cli_action_extract_from_to():
-    """Tetst extract files."""
+    """Test extract files."""
     test_files = [
         "CaptainScience#1_17.jpg",
         "CaptainScience#1_18.jpg",

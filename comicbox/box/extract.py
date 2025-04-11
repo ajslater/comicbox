@@ -1,4 +1,5 @@
 """Methods for extracting files from the archive."""
+
 from logging import INFO, getLogger
 from pathlib import Path
 
@@ -11,12 +12,22 @@ LOG = getLogger(__name__)
 class ComicboxExtractMixin(ComicboxPagesMixin):
     """Methods for extracting files from the archive."""
 
-    def _extract_page(self, path, fn, to_pixmap=False):
+    def _extract_page_get_path(self, path, fn):
         path = path / Path(fn).name if path.is_dir() else path
         if self._archive_is_pdf:
             path = path.with_suffix(self._pdf_suffix)
+        return path
+
+    def _extract_page_pdf_to_pixmap(self, path, fn):
+        path = self._extract_page_get_path(path, fn)
         with path.open("wb") as page_file:
-            data = self._archive_readfile(fn, to_pixmap)
+            data = self._archive_readfile_pdf_to_pixmap(fn)
+            page_file.write(data)
+
+    def _extract_page(self, path, fn):
+        path = self._extract_page_get_path(path, fn)
+        with path.open("wb") as page_file:
+            data = self._archive_readfile(fn)
             page_file.write(data)
 
     def _extract_all_pagenames(self, pagenames, path):
@@ -37,32 +48,48 @@ class ComicboxExtractMixin(ComicboxPagesMixin):
         except Exception as exc:
             LOG.warning(f"No pages extracted: {exc}")
 
-    def _extract_pagenames(self, pagenames, path=None, check_path_is_dir=False):
+    def _extract_pagenames_get_path(self, pagenames, path):
         if not pagenames:
             LOG.warning("No pages to extract.")
-            return
+            return None
         if self._config.dry_run:
             LOG.info(f"Not extracting {len(pagenames)} pages")
-            return
+            return None
 
         path = path if path else self._config.dest_path
-        path = Path(path)
+        return Path(path)
 
-        if check_path_is_dir and not path.is_dir():
-            reason = f"Must extract pages to a directory. {path!s} is not a directory"
-            raise ValueError(reason)
+    def _extract_pagenames_to_dir(self, pagenames, path=None):
+        if path := self._extract_pagenames_get_path(pagenames, path):
+            if not path.is_dir():
+                reason = (
+                    f"Must extract pages to a directory. {path!s} is not a directory"
+                )
+                raise ValueError(reason)
+            self._extract_all_pagenames(pagenames, path)
 
-        self._extract_all_pagenames(pagenames, path)
+    def _extract_pagenames(self, pagenames, path=None):
+        if path := self._extract_pagenames_get_path(pagenames, path):
+            self._extract_all_pagenames(pagenames, path)
+
+    def _extract_pages(self, page_from=None, page_to=None, path=None):
+        pagenames = self.get_pagenames_from(page_from, page_to)
+        self._extract_pagenames_to_dir(pagenames, path=path)
 
     @archive_close
     def extract_pages(self, page_from=None, page_to=None, path=None):
         """Extract pages from archive and write to a path."""
-        pagenames = self.get_pagenames_from(page_from, page_to)
-        self._extract_pagenames(pagenames, path, check_path_is_dir=True)
+        return self._extract_pages(page_from, page_to, path)
 
     @archive_close
-    def extract_cover_as(self, path=None):
-        """Extract the cover image to a destination file."""
-        pagenames = self.get_cover_path_list()
+    def extract_pages_config(self):
+        """Extract pages from archive as configured and write to a path."""
+        return self._extract_pages(
+            self._config.index_from, self._config.index_to, self._config.dest_path
+        )
 
-        self._extract_pagenames(pagenames, path)
+    @archive_close
+    def extract_covers(self, path=None):
+        """Extract the cover image to a destination file."""
+        cover_paths_generator = self.generate_cover_paths()
+        self._extract_pagenames(cover_paths_generator, path=path)

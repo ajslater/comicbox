@@ -1,5 +1,7 @@
 """Initialization mixin."""
+
 import stat
+import sys
 from argparse import Namespace
 from collections.abc import Callable, Mapping
 from contextlib import suppress
@@ -12,15 +14,18 @@ from typing import TYPE_CHECKING
 from zipfile import ZipFile, is_zipfile
 
 from confuse import AttrDict
+from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
-from comicbox.transforms.base import BaseTransform
 
-with suppress(ImportError):
+try:
     from pdffile import PDFFile
+except ImportError:
+    from comicbox.box.dummy import PDFFile
 
 if TYPE_CHECKING:
     from tarfile import TarFile
@@ -30,9 +35,10 @@ if TYPE_CHECKING:
 class SourceData:
     """Pre parsed source metadata."""
 
-    metadata: str | bytes | Mapping
-    transform_class: type[BaseTransform] | None = None
-    path: str | None = None
+    data: str | bytes | Mapping
+    path: Path | str | None = None
+    fmt: MetadataFormats | None = None
+    from_archive: bool = False
 
 
 class ComicboxInitMixin:
@@ -45,8 +51,10 @@ class ComicboxInitMixin:
         path: Path | str | None = None,
         config: AttrDict | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
+        fmt: MetadataFormats | None = None,
     ):
-        """Initialize the archive with a path to the archive.
+        """
+        Initialize the archive with a path to the archive.
 
         path: the path to the comic archive
         config: a confuse AttrDict. If None, Comicbox generates its own from the
@@ -61,9 +69,10 @@ class ComicboxInitMixin:
 
         self._config: AttrDict = get_config(config)
         self._all_sources = None
+        self._archive_is_pdf = False
         self._pdf_suffix = ""
 
-        self._reset_archive(metadata)
+        self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):
         self._merged_metadata: MappingProxyType = MappingProxyType({})
@@ -71,29 +80,33 @@ class ComicboxInitMixin:
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})
         self._metadata: MappingProxyType = MappingProxyType({})
 
-    def _reset_archive(self, metadata):
+    def _reset_archive(self, fmt: MetadataFormats | None, metadata: Mapping | None):
         self._archive_cls: Callable | None = None
         self._file_type: str | None = None
         self._set_archive_cls()
         try:
-            self._archive: ZipFile | RarFile | TarFile | PDFFile | None = None  # type: ignore
+            # FUTURE Custom archive type possible in python 3.12
+            self._archive: (
+                ZipFile | RarFile | TarFile | SevenZipFile | PDFFile | None
+            ) = None  # type: ignore[reportRedeclaration]
         except NameError:
-            self._archive: ZipFile | RarFile | TarFile | None = None
+            self._archive: (
+                ZipFile | RarFile | TarFile | SevenZipFile | PDFFile | None
+            ) = None
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"
         self._info_size_attr = (
-            "size" if self._archive_cls == tarfile_open else "file_size"
+            "size"
+            if self._archive_cls == tarfile_open
+            else None
+            if self._archive_cls == SevenZipFile
+            else "file_size"
         )
         self._namelist = None
         self._infolist = None
 
         self._sources: dict = {}
         if metadata:
-            self._sources[MetadataSources.API] = (
-                SourceData(
-                    metadata,
-                    MetadataSources.API.value.transform_class,
-                ),
-            )
+            self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
         self._parsed: dict = {}
         self._loaded: dict = {}
         self._normalized: dict = {}
@@ -101,27 +114,21 @@ class ComicboxInitMixin:
         self._reset_loaded_forward_caches()
 
         self._page_filenames = None
-        self._cover_path_list = []
+        self._cover_paths = ()
         self._page_count = None
 
     @staticmethod
     def is_pdf_supported() -> bool:
         """Are PDFs supported."""
-        try:
-            return bool(PDFFile)  # type: ignore
-        except NameError:
-            return False
+        return "pdffile" in sys.modules
 
     def _set_archive_cls_pdf(self):
         """PDFFile is only optionally installed."""
-        try:
-            self._archive_is_pdf = PDFFile.is_pdffile(self._path)  # type: ignore
+        with suppress(NameError, OSError):
+            self._archive_is_pdf = PDFFile.is_pdffile(self._path)  # type: ignore[reportPossiblyUnboundVariable]
             if self._archive_is_pdf:
-                # Important to have PDFile before zipfile
-                self._archive_cls = PDFFile  # type: ignore
-                self._pdf_suffix = PDFFile.SUFFIX  # type: ignore
-        except Exception:
-            self._archive_is_pdf = False
+                self._archive_cls = PDFFile  # type: ignore[reportPossiblyUnboundVariable]
+                self._pdf_suffix = PDFFile.SUFFIX  # type: ignore[reportPossiblyUnboundVariable]
         return self._archive_is_pdf
 
     def _set_archive_cls(self):
@@ -130,7 +137,11 @@ class ComicboxInitMixin:
             return
 
         if self._set_archive_cls_pdf():
+            # Important to have PDFile before zipfile
             self._file_type = "PDF"
+        elif is_7zfile(self._path):
+            self._archive_cls = SevenZipFile
+            self._file_type = "CB7"
         elif is_zipfile(self._path):
             self._archive_cls = ZipFile
             self._file_type = "CBZ"

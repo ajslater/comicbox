@@ -37,8 +37,10 @@
 	<Genres>
 		<Genre>Science Fiction</Genre>
 	</Genres>
-	<ID>Comic Vine</ID>
-	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269 urn:isbn:123-456789-0123 urn:upc:12345</Notes>
+	<IDS>
+		<ID primary="true" source="Comic Vine">145269</ID>
+	</IDS>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:4000-145269 urn:isbn:123-456789-0123 urn:upc:12345</Notes>
 	<Number>1</Number>
 	<PageCount>36</PageCount>
 	<Pages>

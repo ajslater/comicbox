@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<MetronInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0">
+<?xml version="1.0" encoding="UTF-8"?>
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd">
+	<AgeRating>Teen Plus</AgeRating>
 	<Arcs>
 		<Arc>
 			<Name>Captain Arc</Name>
@@ -14,6 +15,7 @@
 		<Character>Captain Science</Character>
 		<Character>Gordon Dane</Character>
 	</Characters>
+	<CollectionTitle>Omnibus</CollectionTitle>
 	<CoverDate>1950-11-01</CoverDate>
 	<Credits>
 		<Credit>
@@ -37,21 +39,54 @@
 	<Genres>
 		<Genre>Science Fiction</Genre>
 	</Genres>
-	<ID source="Comic Vine"/>
-	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269 urn:isbn:123-456789-0123 urn:upc:12345</Notes>
+	<IDS>
+		<ID source="Comic Vine">145269</ID>
+		<ID primary="true" source="Metron">999999</ID>
+	</IDS>
+	<LastModified>1970-01-01T00:00:00Z</LastModified>
+	<MangaVolume>1950-1952</MangaVolume>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:999999</Notes>
 	<Number>1</Number>
 	<PageCount>0</PageCount>
-	<Publisher>Youthful Adventure Stories</Publisher>
+	<Prices>
+		<Price country="GB">0.50</Price>
+		<Price country="US">1.25</Price>
+	</Prices>
+	<Publisher id="11">
+		<Imprint id="222">Youthful Imprint</Imprint>
+		<Name>Youthful Adventure Stories</Name>
+	</Publisher>
 	<Reprints>
+		<Reprint>Capitán Ciencia</Reprint>
 		<Reprint>Captain Science Alternate #001</Reprint>
 	</Reprints>
-	<Series lang="en">
+	<Series id="2222" lang="en">
+		<AlternativeNames>
+			<AlternativeName lang="es">Capitán Ciencia</AlternativeName>
+			<AlternativeName>Captain Science Alternate</AlternativeName>
+		</AlternativeNames>
+		<Format>Single Issue</Format>
+		<IssueCount>10</IssueCount>
 		<Name>Captain Science</Name>
+		<SortName>Captain Science</SortName>
+		<StartYear>1950</StartYear>
 		<Volume>1950</Volume>
+		<VolumeCount>1</VolumeCount>
 	</Series>
 	<Stories>
-		<Story>Captain Lost</Story>
+		<Story id="5555">Captain Lost</Story>
 		<Story>Science is Good</Story>
 	</Stories>
-	<URL>https://comicvine.gamespot.com/c/4000-145269/</URL>
+	<URLs>
+		<URL>https://barcodelookup.com/12345</URL>
+		<URL>https://comicvine.gamespot.com/c/4000-145269/</URL>
+		<URL>https://isbndb.com/book/123-456789-0123</URL>
+		<URL primary="true">https://metron.cloud/issue/999999</URL>
+	</URLs>
+	<Universes>
+		<Universe>
+			<Designation>4242</Designation>
+			<Name>Mirror</Name>
+		</Universe>
+	</Universes>
 </MetronInfo>

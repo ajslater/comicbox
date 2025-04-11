@@ -1,4 +1,5 @@
 """Writing Methods."""
+
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
@@ -6,14 +7,15 @@ from pathlib import Path
 from comicbox.box.archive_read import archive_close
 from comicbox.box.archive_write import ComicboxArchiveWriteMixin
 from comicbox.box.pages import ComicboxPagesMixin
-from comicbox.sources import MetadataSources, SourceFrom
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
-from comicbox.transforms.comicbox_json import ComicboxJsonTransform
-from comicbox.transforms.filename import FilenameTransform
-from comicbox.transforms.pdf import MuPDFTransform
+from comicbox.formats import MetadataFormats
+from comicbox.sources import MetadataSources
 
 LOG = getLogger(__name__)
+
+ARCHIVE_FORMATS = frozenset(
+    MetadataSources.ARCHIVE_FILE.value.formats
+    + MetadataSources.ARCHIVE_COMMENT.value.formats
+)
 
 
 class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
@@ -23,93 +25,92 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
     # WRITE METADATA TO ARCHIVE #
     #############################
 
-    def _get_write_sources(self):
-        loaded_sources = frozenset(self._loaded.keys())
+    def _get_write_formats(self):
+        formats = ()
         if self._config.write:
-            sources = self._config.write
+            formats = self._config.write
         elif self._config.cbz:
-            sources = loaded_sources
-        elif self._config.delete:
-            sources = ()
+            loaded_data_lists = (
+                self.get_loaded_metadata(source) for source in MetadataSources
+            )
+            formats = frozenset(
+                loaded_data.fmt
+                for loaded_data_list in loaded_data_lists
+                if loaded_data_list
+                for loaded_data in loaded_data_list
+                if loaded_data
+            )
+        elif self._config.delete_all_tags:
+            reason = "Deleting all tags."
+            LOG.warning(reason)
         else:
             reason = "No formats specified to write"
             LOG.warning(reason)
-            return None
-        return sources
+            formats = None
+        return formats
 
-    def _get_schema_and_transformed_metadata(
-        self, transform_class: type[BaseTransform], metadata: Mapping, sources=()
-    ):
-        schema = transform_class.SCHEMA_CLASS(path=self._path)
-        transform = transform_class(path=self._path)
-        write_transforms = (source.value.transform_class for source in sources)
-        denormalized_metadata = transform.from_comicbox(
-            metadata, write_transforms=write_transforms
-        )
-        return schema, denormalized_metadata
-
-    def _write_pdf(self, metadata, sources):
+    def _write_pdf(self, formats):
         """Write PDF Metadata."""
-        if MetadataSources.PDF in self._config.write:
-            schema, denormalized_metadata = self._get_schema_and_transformed_metadata(
-                MuPDFTransform, metadata, sources
-            )
-            mupdf_md = schema.dump(denormalized_metadata) or {}
-            if not isinstance(mupdf_md, Mapping):
-                return None
-            pdf_md = mupdf_md.get(schema.ROOT_TAGS[0], {})
-            return self.write_pdf_metadata(pdf_md)
-        reason = "Can only write pdf format to pdf files."
-        LOG.warning(reason)
-        return None
+        if MetadataFormats.PDF not in self._config.write:
+            reason = "Can only write pdf format to pdf files."
+            LOG.warning(reason)
+            return None
 
-    def _write_archive_metadata(self, sources, metadata: Mapping):
+        for embed_fmt in MetadataSources.EMBEDDED.value.formats:
+            if embed_fmt in formats:
+                break
+        else:
+            embed_fmt = None
+
+        schema, denormalized_metadata = self._to_dict(MetadataFormats.PDF, embed_fmt)
+        mupdf_md = schema.dump(denormalized_metadata) or {}
+        if not isinstance(mupdf_md, Mapping):
+            return None
+        pdf_md = mupdf_md.get(schema.ROOT_TAG, {})
+        return self.write_pdf_metadata(pdf_md)
+
+    def _write_archive_metadata(self, formats):
         """Prepare archive files and comment and write to archive."""
         # Get files and comment.
         files = {}
-        for source in sources:
-            if source.value.from_archive == SourceFrom.ARCHIVE_FILE:
-                transform_class = source.value.transform_class
-                (
-                    schema,
-                    denormalized_metadata,
-                ) = self._get_schema_and_transformed_metadata(transform_class, metadata)
-                if denormalized_metadata:
-                    files[schema.FILENAME] = schema.dumps(denormalized_metadata)
-
-        if MetadataSources.CBI in sources:
-            schema, denormalized_metadata = self._get_schema_and_transformed_metadata(
-                ComicBookInfoTransform, metadata
-            )
-            comment = schema.dumps(denormalized_metadata)
-            comment = comment.encode(errors="replace")
-        else:
-            comment = b""
+        comment = b""
+        for fmt in formats:
+            if fmt not in ARCHIVE_FORMATS:
+                continue
+            (
+                schema,
+                denormalized_metadata,
+            ) = self._to_dict(fmt)
+            if not denormalized_metadata:
+                continue
+            if fmt in MetadataSources.ARCHIVE_FILE.value.formats:
+                files[fmt.value.filename] = schema.dumps(denormalized_metadata)
+            elif fmt in MetadataSources.ARCHIVE_COMMENT:
+                comment = schema.dumps(denormalized_metadata)
+                comment = comment.encode(errors="replace")
 
         # write to the archive.
         return self.write_archive_metadata(files, comment)
 
     @archive_close
-    def write(self, sources=None):
-        """Write metadata accourding to config.write settings."""
+    def write(self, formats=None):
+        """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
-            self._config.write or self._config.cbz or self._config.delete
+            self._config.write or self._config.cbz or self._config.delete_all_tags
         ):
             LOG.info(f"Not writing metadata for: {self._path}")
             return None
 
-        # Must get metadata *before* get write sources.
-        # metadata = self.get_metadata()
-        metadata = self.get_metadata()
-        if sources is None:
-            sources = self._get_write_sources()
-            if sources is None:
+        # Must get metadata *before* get write formats
+        if formats is None:
+            formats = self._get_write_formats()
+            if formats is None:
                 return None
 
         if self._archive_is_pdf:
-            result = self._write_pdf(metadata, sources)
+            result = self._write_pdf(formats)
         else:
-            result = self._write_archive_metadata(sources, metadata)
+            result = self._write_archive_metadata(formats)
         LOG.info(f"Wrote metadata to: {self._path}")
         return result
 
@@ -122,7 +123,8 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         self,
         dest_path=None,
         metadata: Mapping | None = None,
-        transform_class: type[BaseTransform] = ComicboxJsonTransform,
+        fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
+        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ):
         """Export metadatat to a file with a schema."""
@@ -131,30 +133,26 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         dest_path = Path(dest_path)
         if metadata is None:
             metadata = self._get_metadata()
-        fn = transform_class.SCHEMA_CLASS.FILENAME
+        fn = fmt.value.filename
         path = dest_path / fn
         try:
-            schema, denormalized_metadata = self._get_schema_and_transformed_metadata(
-                transform_class, metadata
-            )
+            schema, denormalized_metadata = self._to_dict(fmt, embed_fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
             LOG.info(f"Exported {path}")
         except Exception:
             LOG.exception(f"Could not export {fn}")
 
     @archive_close
-    def export_files(self, sources=None):
+    def export_files(self, formats=None, embed_fmt=None):
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             LOG.info("Not exporting files.")
             return
-        if not sources:
-            sources = self._config.export
+        if not formats:
+            formats = self._config.export
 
-        Path(self._config.dest_path)
-        self._get_metadata()
-        for source in sources:
-            self.to_file(transform_class=source.value.transform_class)
+        for fmt in formats:
+            self.to_file(fmt=fmt, embed_fmt=embed_fmt)
 
     @archive_close
     def rename_file(self):
@@ -162,10 +160,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         if not self._path:
             reason = "Cannot rename archive without a path."
             raise ValueError(reason)
-        metadata = self._get_metadata()
-        schema, filename_md = self._get_schema_and_transformed_metadata(
-            FilenameTransform, metadata
-        )
+        schema, filename_md = self._to_dict(MetadataFormats.FILENAME)
         fn = schema.dumps(filename_md)
         old_path = self._path
         if not fn:

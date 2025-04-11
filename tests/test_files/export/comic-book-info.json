@@ -2,20 +2,20 @@
   "ComicBookInfo/1.0": {
     "credits": [
       {
+        "person": "Joe Orlando",
+        "role": "Writer"
+      },
+      {
         "person": "Wally Wood",
         "role": "Inker"
       },
       {
         "person": "Wally Wood",
         "role": "Penciller"
-      },
-      {
-        "person": "Joe Orlando",
-        "role": "Writer"
       }
     ],
     "genre": "Science Fiction",
-    "issue": "1",
+    "issue": 1,
     "language": "English",
     "numberOfIssues": 7,
     "pages": 0,
@@ -27,7 +27,7 @@
     "title": "The Beginning",
     "volume": 1950
   },
-  "appID": "comicbox/dev",
-  "lastModified": "1970-01-01T00:00:00",
-  "schema": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki"
+  "appID": "comicbox dev",
+  "lastModified": "2025-03-02T00:48:02",
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
 }

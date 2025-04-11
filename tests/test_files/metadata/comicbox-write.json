@@ -1,190 +1,166 @@
 {
-  "appID": "comicbox/dev",
+  "appID": "comicbox dev",
   "comicbox": {
-    "contributors": {
-      "penciller": [
-        "Wally Wood"
-      ],
-      "writer": [
-        "Joe Orlando"
-      ]
-    },
     "country": "US",
-    "day": 1,
-    "genres": [
-      "Science Fiction"
-    ],
+    "credits": {
+      "Joe Orlando": {
+        "roles": {
+          "Writer": {}
+        }
+      },
+      "Wally Wood": {
+        "roles": {
+          "Penciller": {}
+        }
+      }
+    },
+    "date": {
+      "day": 1,
+      "month": 11,
+      "year": 1950
+    },
+    "genres": {
+      "Science Fiction": {}
+    },
     "identifiers": {
       "comicvine": {
-        "nss": "4000-145269",
+        "nss": "145269",
         "url": "https://comicvine.gamespot.com/c/4000-145269/"
       }
     },
-    "issue": "1",
-    "issue_number": 1,
+    "issue": {
+      "name": "1",
+      "number": 1
+    },
     "language": "en",
-    "month": 11,
-    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00 [Issue ID 145269] urn:comicvine:4000-145269",
+    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:4000-145269",
     "page_count": 36,
-    "pages": [
-      {
-        "index": 0,
+    "pages": {
+      "00": {
         "page_type": "FrontCover",
         "size": 429985
       },
-      {
-        "index": 1,
+      "01": {
         "size": 332936
       },
-      {
-        "index": 2,
+      "02": {
         "size": 458657
       },
-      {
-        "index": 3,
+      "03": {
         "size": 450456
       },
-      {
-        "index": 4,
+      "04": {
         "size": 436648
       },
-      {
-        "index": 5,
+      "05": {
         "size": 443725
       },
-      {
-        "index": 6,
+      "06": {
         "size": 469526
       },
-      {
-        "index": 7,
+      "07": {
         "size": 429811
       },
-      {
-        "index": 8,
+      "08": {
         "size": 445513
       },
-      {
-        "index": 9,
+      "09": {
         "size": 446292
       },
-      {
-        "index": 10,
+      "10": {
         "size": 458589
       },
-      {
-        "index": 11,
+      "11": {
         "size": 417623
       },
-      {
-        "index": 12,
+      "12": {
         "size": 445302
       },
-      {
-        "index": 13,
+      "13": {
         "size": 413271
       },
-      {
-        "index": 14,
+      "14": {
         "size": 434201
       },
-      {
-        "index": 15,
+      "15": {
         "size": 439049
       },
-      {
-        "index": 16,
+      "16": {
         "size": 485957
       },
-      {
-        "index": 17,
+      "17": {
         "size": 388379
       },
-      {
-        "index": 18,
+      "18": {
         "size": 368138
       },
-      {
-        "index": 19,
+      "19": {
         "size": 427874
       },
-      {
-        "index": 20,
+      "20": {
         "size": 422522
       },
-      {
-        "index": 21,
+      "21": {
         "size": 442529
       },
-      {
-        "index": 22,
+      "22": {
         "size": 423785
       },
-      {
-        "index": 23,
+      "23": {
         "size": 427980
       },
-      {
-        "index": 24,
+      "24": {
         "size": 445631
       },
-      {
-        "index": 25,
+      "25": {
         "size": 413615
       },
-      {
-        "index": 26,
+      "26": {
         "size": 417605
       },
-      {
-        "index": 27,
+      "27": {
         "size": 439120
       },
-      {
-        "index": 28,
+      "28": {
         "size": 451598
       },
-      {
-        "index": 29,
+      "29": {
         "size": 451550
       },
-      {
-        "index": 30,
+      "30": {
         "size": 438346
       },
-      {
-        "index": 31,
+      "31": {
         "size": 454914
       },
-      {
-        "index": 32,
+      "32": {
         "size": 428461
       },
-      {
-        "index": 33,
+      "33": {
         "size": 438091
       },
-      {
-        "index": 34,
+      "34": {
         "size": 353013
       },
-      {
-        "index": 35,
+      "35": {
         "size": 340840
       }
-    ],
-    "publisher": "Youthful Adventure Stories",
+    },
+    "publisher": {
+      "name": "Youthful Adventure Stories"
+    },
     "series": {
       "name": "Captain Science"
     },
+    "stories": {
+      "The Beginning": {}
+    },
     "tagger": "comicbox dev",
-    "title": "The Beginning",
-    "updated_at": "1970-01-01T00:00:00",
+    "updated_at": "1970-01-01T00:00:00Z",
     "volume": {
       "issue_count": 7,
-      "name": 1950
-    },
-    "year": 1950
+      "number": 1950
+    }
   },
-  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
 }

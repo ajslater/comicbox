@@ -1,125 +1,45 @@
 """Merge Metadata Methods."""
-from collections.abc import Mapping
-from logging import getLogger
 
-from comicbox.box.sources import ComicboxSourcesMixin
-from comicbox.fields.fields import EMPTY_VALUES
-from comicbox.schemas.comicbox_mixin import (
-    CONTRIBUTORS_KEY,
-    ORDERED_SET_KEYS,
-    PAGES_KEY,
-)
+from types import MappingProxyType
 
-LOG = getLogger(__name__)
+from comicbox.box.normalize import ComicboxNormalizeMixin
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.merge import merge_metadata
+from comicbox.sources import MetadataSources
 
 
-class ComicboxMergeMixin(ComicboxSourcesMixin):
+class ComicboxMergeMixin(ComicboxNormalizeMixin):
     """Merge Metadata Methods."""
 
-    @staticmethod
-    def _create_pages_map(pages):
-        """Create page map from a page list."""
-        pages_map = {}
-        max_pages_index = -1
-        for page in pages:
-            index = page.get("index", 0)
-            pages_map[index] = page
-            max_pages_index = max(max_pages_index, index)
-        return pages_map, max_pages_index
+    def _merge_metadata_by_source(
+        self, source: MetadataSources, merged_md: dict, merger: type[Merger]
+    ):
+        """Order the source md list by format precedence."""
+        format_dict = {}
+        # Set the format dict order to be the one declared in source.formats
+        for fmt in reversed(source.value.formats):
+            format_dict[fmt] = []
+        if normalized_md_list := self.get_normalized_metadata(source):
+            # load the mds into the format dict by format.
+            for loaded in normalized_md_list:
+                format_dict[loaded.fmt] += [loaded.metadata]
+            # load the mds into the source list in format order.
+            for format_normalized_md_list in format_dict.values():
+                for normalized_md in format_normalized_md_list:
+                    merge_metadata(merged_md, normalized_md, merger)
 
-    @classmethod
-    def _create_both_pages_maps(cls, merged_md, md_pages):
-        """Create page maps and compute max page index for mergeesizing new page map."""
-        old_pages = merged_md.get(PAGES_KEY, {})
-        old_pages_map, max_old_pages_index = cls._create_pages_map(old_pages)
-        md_pages_map, max_md_pages_index = cls._create_pages_map(md_pages)
-        max_page_index = max(max_old_pages_index, max_md_pages_index)
-        return old_pages_map, md_pages_map, max_page_index
+    def _set_merged_metadata(self):
+        """Overlay the metadatas in precedence order."""
+        # Order the md list by source precedence
+        merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
+        merger = ReplaceMerger if self._config.replace_metadata else AdditiveMerger
+        for source in MetadataSources:
+            self._merge_metadata_by_source(source, merged_md, merger)
+        self._merged_metadata = MappingProxyType(merged_md)
 
-    @classmethod
-    def _merge_pages(cls, pages, merged_md):
-        """Merge new pages map from two metadatas."""
-        if not pages:
-            return
-
-        # Compute pages maps
-        old_pages_map, md_pages_map, max_page_index = cls._create_both_pages_maps(
-            merged_md, pages
-        )
-        if max_page_index < 0:
-            return
-
-        # Create new_pages_map
-        new_pages_map = {}
-        for index in range(max_page_index + 1):
-            old_page = old_pages_map.get(index, {})
-            md_page = md_pages_map.get(index, {})
-            new_page = {**old_page, **md_page}
-            if new_page:
-                new_pages_map[index] = new_page
-
-        # Assign
-        if new_pages_map:
-            merged_md[PAGES_KEY] = list(new_pages_map.values())
-        else:
-            merged_md.pop(PAGES_KEY, None)
-
-    @staticmethod
-    def _merge_contributors(merged_md, md_contributors):
-        """Merge contributors."""
-        try:
-            if not md_contributors:
-                return
-            if CONTRIBUTORS_KEY not in merged_md:
-                merged_md[CONTRIBUTORS_KEY] = {}
-            for role, persons in md_contributors.items():
-                if role not in merged_md[CONTRIBUTORS_KEY]:
-                    merged_md[CONTRIBUTORS_KEY][role] = set()
-                merged_md[CONTRIBUTORS_KEY][role] |= persons
-        except KeyError:
-            pass
-
-    @staticmethod
-    def _merge_ordered_set(merged_md, key, sequence):
-        ordered_set = {}
-        for value in merged_md.get(key, ()):
-            ordered_set[value] = None
-        for value in sequence:
-            ordered_set[value] = None
-        return tuple(ordered_set.keys())
-
-    def _merge_key(self, merged_md, key, value):
-        """Merge complex values."""
-        try:
-            if value in EMPTY_VALUES:
-                return
-            if key not in merged_md:
-                merged_md[key] = value
-            elif key == PAGES_KEY:
-                self._merge_pages(value, merged_md)
-            elif key == CONTRIBUTORS_KEY:
-                self._merge_contributors(merged_md, value)
-            elif key in ORDERED_SET_KEYS:
-                self._merge_ordered_set(merged_md, key, value)
-            elif isinstance(value, list | tuple):
-                merged_md[key].extend(value)
-            elif isinstance(value, set | frozenset):
-                merged_md[key].update(value)
-            elif isinstance(value, Mapping):
-                self.merge_metadata(merged_md[key], value)
-            else:
-                # be sure to update
-                merged_md[key] = value
-
-        except Exception as exc:
-            LOG.warning(f"{self._path} error merging {key} tag: {exc}")
-
-    def merge_metadata(self, base_md, md):
-        """Merge a dict into another."""
-        for key, value in md.items():
-            self._merge_key(base_md, key, value)
-
-    def merge_metadata_list(self, parsed_md_list, merged_md):
-        """Pop off complex values before simple update."""
-        for parsed_md in parsed_md_list:
-            self.merge_metadata(merged_md, parsed_md.metadata)
+    def get_merged_metadata(self):
+        """Get merged normalized metadata."""
+        if not self._merged_metadata:
+            self._set_merged_metadata()
+        return self._merged_metadata

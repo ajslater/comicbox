@@ -1,9 +1,21 @@
 """Comicbox methods on the archive itself."""
+
 import re
 from functools import wraps
 from logging import getLogger
+from tarfile import TarFile
+from zipfile import ZipFile
+
+from py7zr import SevenZipFile
+from rarfile import RarFile
 
 from comicbox.box.init import ComicboxInitMixin
+
+try:
+    from pdffile import PDFFile
+except ImportError:
+    from comicbox.box.dummy import PDFFile
+
 
 LOG = getLogger(__name__)
 
@@ -24,7 +36,7 @@ def archive_close(fn):
 class ComicboxArchiveMixin(ComicboxInitMixin):
     """Methods on the archive itself."""
 
-    IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|gif)$", re.IGNORECASE)
+    IMAGE_EXT_RE = re.compile(r"\.(jxl|jpe?g|webp|png|gif)$", re.IGNORECASE)
 
     def __enter__(self):
         """Context enter."""
@@ -45,8 +57,11 @@ class ComicboxArchiveMixin(ComicboxInitMixin):
         finally:
             self._archive = None
 
-    def _get_archive(self):
+    def _get_archive(self) -> ZipFile | RarFile | TarFile | SevenZipFile | PDFFile:
         """Set archive instance open for reading."""
         if not self._archive and self._archive_cls:
             self._archive = self._archive_cls(self._path)
+        if not self._archive:
+            reason = f"Unable to make archive from class {self._archive_cls}"
+            raise ValueError(reason)
         return self._archive

@@ -1,4 +1,5 @@
 """Test issue parsing."""
+
 from comicbox.fields.fields import IssueField
 
 ISSUES = {
@@ -7,6 +8,8 @@ ISSUES = {
     "4AU": (" #004AU",),
     "4.0": ("004.0",),
     "1.5": ("1½", "1 1/2"),
+    "0": ("0", "000"),
+    "0.0": ("0.0",),
 }
 
 

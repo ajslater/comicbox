@@ -2,12 +2,14 @@ comicbox:
   # Options
   compute_pages: True
   config: null
-  delete: False
+  delete_all_tags: False
+  delete_keys: []
   delete_orig: False
   dest_path: .
   dry_run: False
   loglevel: INFO
   metadata: {}
+  metadata_format: null
   metadata_cli: null
   read:
     - cli
@@ -20,16 +22,19 @@ comicbox:
     - json
     - pdf
     - yaml
+  theme: gruvbox-dark
+  replace_metadata: False
 
   read_ignore: []
   recurse: False
+  stamp: False
   stamp_notes: True
   tagger: null
   # API Options
   close_fd: True
   # Actions
   cbz: False
-  cover: False
+  covers: False
   export: []
   import_paths: []
   index_from: null

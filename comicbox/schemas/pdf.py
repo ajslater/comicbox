@@ -1,13 +1,29 @@
 """Mimic comicbox.Comicbox functions for PDFs."""
+
 from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collections import StringSetField
+from comicbox.fields.collection_fields import (
+    EmbeddedStringSetField,
+    StringSetField,
+)
 from comicbox.fields.fields import StringField
+from comicbox.fields.pdf import PdfDateTimeField
+from comicbox.fields.xml_fields import (
+    XmlEmbeddedStringSetField,
+    XmlPdfDateTimeField,
+    XmlStringField,
+    XmlStringSetField,
+)
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.json import JsonSchema, JsonSubSchema
-from comicbox.schemas.xml import XmlSchema, XmlSubSchema
+from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
+from comicbox.schemas.xml_schemas import (
+    XmlSchema,
+    XmlSubHeadSchema,
+    XmlSubSchema,
+    create_xml_headers,
+)
 
 
 class MuPDFSubSchema(JsonSubSchema):
@@ -17,7 +33,8 @@ class MuPDFSubSchema(JsonSubSchema):
 
     author = StringSetField(as_string=True)
     creator = StringField()
-    keywords = StringField()
+    keywords = EmbeddedStringSetField()
+    modDate = PdfDateTimeField()  # noqa: N815
     producer = StringField()
     subject = StringSetField(as_string=True)
     title = StringField()
@@ -26,9 +43,9 @@ class MuPDFSubSchema(JsonSubSchema):
 class MuPDFSchema(JsonSchema):
     """muPDFSchema."""
 
-    CONFIG_KEYS = frozenset({"pdf", "mudpdf"})
-    FILENAME = "mupdf.json"
-    ROOT_TAGS = ("MuPDF",)
+    ROOT_TAG = "MuPDF"
+    ROOT_KEYPATH = ROOT_TAG
+    EMBED_KEYPATH = f"{ROOT_KEYPATH}.keywords"
 
     MuPDF = Nested(MuPDFSubSchema)
 
@@ -42,20 +59,21 @@ class PDFSubSchema(BaseSubSchema):
         include = MappingProxyType(
             {
                 "@xmlns:pdf": Constant("http://ns.adobe.com/pdf/1.3/"),
-                "pdf:Author": StringSetField(as_string=True),
-                "pdf:Creator": StringField(),
-                "pdf:Keywords": StringField(),
-                "pdf:Producer": StringField(),
-                "pdf:Subject": StringSetField(as_string=True),
-                "pdf:Title": StringField(),
+                "pdf:Author": XmlStringSetField(as_string=True),
+                "pdf:Creator": XmlStringField(),
+                "pdf:Keywords": XmlEmbeddedStringSetField(),
+                "pdf:ModDate": XmlPdfDateTimeField(),
+                "pdf:Producer": XmlStringField(),
+                "pdf:Subject": XmlStringSetField(as_string=True),
+                "pdf:Title": XmlStringField(),
             }
         )
 
 
-class PDFRDFDescriptionSchema(BaseSubSchema):
+class PDFRDFDescriptionSchema(XmlSubSchema):
     """PDF RDF Description Schema."""
 
-    class Meta(BaseSubSchema.Meta):
+    class Meta(XmlSubSchema.Meta):
         """Schema options."""
 
         include = MappingProxyType(
@@ -66,20 +84,21 @@ class PDFRDFDescriptionSchema(BaseSubSchema):
         )
 
 
-class PDFXMPMetaSchema(XmlSubSchema):
+class PDFXMPMetaSchema(XmlSubHeadSchema):
     """PDF XMP Meta Schema."""
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""
+
+        NS = "x"
+        NS_URI = "adobe:ns:meta/"
+        XSD_URI = "http://ns.adobe.com/pdf/1.3/"
 
         include = MappingProxyType(
             {
+                **create_xml_headers(NS, NS_URI, XSD_URI),
                 "@x:xmptk": Constant(
                     "Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21"
-                ),
-                "@xmlns:x": Constant("adobe:ns:meta/"),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "http://ns.adobe.com/pdf/1.3/"
                 ),
                 "rdf:RDF": Nested(PDFRDFDescriptionSchema),
             }
@@ -89,9 +108,9 @@ class PDFXMPMetaSchema(XmlSubSchema):
 class PDFXmlSchema(XmlSchema):
     """PDF Schema."""
 
-    CONFIG_KEYS = frozenset({"pdfxml"})
-    FILENAME = "pdf.xml"
-    ROOT_TAGS = ("x:xmpmeta", "rdf:RDF", "rdf:Description")
+    ROOT_TAG = "x:xmpmeta"
+    ROOT_KEYPATH = f"{ROOT_TAG}.rdf:RDF.rdf:Description"
+    EMBED_KEYPATH = f"{ROOT_KEYPATH}.pdf:Keywords"
 
     class Meta(XmlSchema.Meta):
         """Schema options."""

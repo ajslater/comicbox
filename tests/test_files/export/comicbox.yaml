@@ -1,37 +1,48 @@
 comicbox:
+  arcs:
+    Captain Arc:
+      number: 4
+    Other Arc:
+      number: 2
   characters:
-    - Captain Science
-    - Gordon Dane
-  contributors:
-    inker:
-      - Wally Wood
-    penciller:
-      - Wally Wood
-    writer:
-      - Joe Orlando
-  day: 1
+    Captain Science: {}
+    Gordon Dane: {}
+  credits:
+    Joe Orlando:
+      roles:
+        Writer: {}
+    Wally Wood:
+      roles:
+        Inker: {}
+        Penciller: {}
+  date:
+    day: 1
+    month: 11
+    year: 1950
   ext: cbz
   genres:
-    - Science Fiction
+    Science Fiction: {}
+  identifier_primary_source:
+    nid: comicvine
+    url: https://comicvine.gamespot.com/
   identifiers:
     comicvine:
-      nss: 4000-145269
+      nss: '145269'
       url: https://comicvine.gamespot.com/captain-science-1/4000-145269/
-  issue: '1'
-  issue_number: 1.00
+  issue:
+    name: '1'
+    number: 1.00
   language: en
-  month: 11
+  notes: Tagged with comicbox dev on 2025-03-02T01:38:25 [Issue ID 145269] urn:comicvine:145269
   page_count: 0
-  publisher: Youthful Adventure Stories
+  publisher:
+    name: Youthful Adventure Stories
   series:
     name: Captain Science
-  story_arcs:
-    Captain Arc: 4
-    Other Arc: 2
+  stories:
+    The Beginning: {}
   tagger: comicbox dev
-  title: The Beginning
-  updated_at: 1970-01-01T00:00:00
+  updated_at: '2025-03-02T01:38:25Z'
   volume:
     issue_count: 7
-    name: 1950
-  year: 1950
+    number: 1950
