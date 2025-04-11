@@ -802,10 +802,11 @@ def test_export(fn):
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)
     with Comicbox("", config=config) as car:
-        # car.print_out() debug
         car.export_files(embed_fmt=embed_fmt)
 
     tmp_fn = _REGULAR_FN.get(fmt, fn)
     tmp_path = _TMP_DIR / tmp_fn
+    # debug circleci
+    print(list(_TMP_DIR.iterdir()))  # noqa: T201
     compare_export(TEST_METADATA_DIR, tmp_path, test_fn=fn, validate=True)
     tmp_path.unlink()
