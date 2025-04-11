@@ -31,6 +31,20 @@ LOG = getLogger(__name__)
 class ComicboxComputedPages(ComicboxComputedNotesMixin):
     """Comicbox Computed Pages."""
 
+    @staticmethod
+    def _enable_page_compute_attribute_pages(formats):
+        # pages only get computed if we're writing to a non comicbox page enabled
+        # format.
+        formats = formats - _COMICBOX_FORMATS
+        return any(fmt.value.schema_class.HAS_PAGES for fmt in formats)
+
+    def _enable_page_compute_attribute_page_count(self, formats):
+        return any(
+            loaded.fmt.value.schema_class.HAS_PAGE_COUNT
+            for loaded_list in self._loaded.values()
+            for loaded in loaded_list
+        ) or any(fmt.value.schema_class.HAS_PAGE_COUNT for fmt in formats)
+
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping):
         """Determine if we should compute this attribute."""
         if (
@@ -43,16 +57,9 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin):
         formats = self._config.all_write_formats
         # If any of the enabled format types have page flags then compute.
         if key == PAGES_KEY:
-            # pages only get computed if we're writing to a non comicbox page enabled
-            # format.
-            formats = formats - _COMICBOX_FORMATS
-            return any(fmt.value.schema_class.HAS_PAGES for fmt in formats)
+            return self._enable_page_compute_attribute_pages(formats)
         if key == PAGE_COUNT_KEY:
-            return any(
-                loaded.fmt.value.schema_class.HAS_PAGE_COUNT
-                for loaded_list in self._loaded.values()
-                for loaded in loaded_list
-            ) or any(fmt.value.schema_class.HAS_PAGE_COUNT for fmt in formats)
+            return self._enable_page_compute_attribute_page_count(formats)
         return False
 
     def _get_computed_page_count_metadata(self, sub_md):

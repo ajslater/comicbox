@@ -37,6 +37,17 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
 class ComicboxComputedIdentifers(ComicboxComputedIssue):
     """Comicbox computed identifiers."""
 
+    @staticmethod
+    def _add_identifier_from_tag(tag: str, identifiers: dict):
+        # Silently fail because most tags are not identifiers
+        nid, _, nss = parse_urn_identifier(tag)
+        if not (nid and nss):
+            nid, _, nss = parse_identifier_other_str(tag)
+        if nid:
+            nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
+            if nss:
+                identifiers[nid] = create_identifier(nid, nss)
+
     def _get_computed_from_tags(self, sub_data):
         # only look for ids in tags if the format has tags but no designated id field.
         if (
@@ -50,15 +61,8 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             return None
         identifiers = {}
         for tag in tags:
-            # Silently fail because most tags are not identifiers
-            nid, _, nss = parse_urn_identifier(tag)
-            if not (nid and nss):
-                nid, _, nss = parse_identifier_other_str(tag)
-            if nid:
-                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
-                if nss:
-                    identifiers[nid] = create_identifier(nid, nss)
-        if not identifiers:
+            if not identifiers:
+                self._add_identifier_from_tag(tag, identifiers)
             return None
         return {IDENTIFIERS_KEY: identifiers}
 
