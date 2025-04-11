@@ -7,7 +7,6 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 from comicfn2dict import comicfn2dict, dict2comicfn
-from marshmallow import post_load
 from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import StringListField
@@ -75,14 +74,6 @@ class FilenameSubSchema(BaseSubSchema):
     volume = IntegerField()
     year = IntegerField()
 
-    @post_load
-    def validate_load(self, data, **_kwargs):
-        """Make results with only remainders no result at all."""
-        if len(data) == 1:
-            data.pop("remainders", None)
-        return data
-
-
 class FilenameSchema(BaseSchema):
     """File name schema."""
 
@@ -95,10 +86,3 @@ class FilenameSchema(BaseSchema):
         """Schema Options."""
 
         render_module = FilenameRenderModule
-
-    @post_load
-    def validate_load_data(self, data, **_kwargs):
-        """If no data, return nothing."""
-        if not data.get(ROOT_TAG):
-            data = {}
-        return data

@@ -36,7 +36,7 @@ class BaseTransform:
         loaded_data = schema.load(transformed_data)
         return MappingProxyType(loaded_data)  # type: ignore[reportAssignmentType]
 
-    def from_comicbox(self, data: Mapping, **_kwargs) -> MappingProxyType:
+    def from_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         schema = self._schema
         transformed_data = glom(dict(data), dict(self.SPECS_FROM), glom_debug=True)
