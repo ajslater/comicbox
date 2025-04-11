@@ -14,6 +14,7 @@ CBZ archives and PDF metadata.
 Comicbox reads and writes:
 
 - [ComicRack ComicInfo.xml v2.1 (draft) schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1),
+- [Metron MetronInfo.xml v1.0](https://metron-project.github.io/docs/category/metroninfo)
 - [Comic Book Lover ComicBookInfo schema](https://code.google.com/archive/p/comicbookinfo/)
 - [CoMet schema](https://github.com/wdhongtw/comet-utils).
 - [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
@@ -85,6 +86,16 @@ packages installed on on your Linux.
 
 ## ⌨️ <a href="usage">Usage</a>
 
+##### Related Projects
+
+Comicbox makes use of two of my other small projects:
+
+[comicfn2dict](https://github.com/ajslater/comicfn2dict) which parses metadata
+in comic filenames into python dicts. This library is also used by Comictagger.
+
+[pdffile](https://github.com/ajslater/pdffile) which presents a ZipFile like
+interface for PDF files.
+
 ### Console
 
 Type
@@ -153,16 +164,16 @@ nvim comicinfo.xml
 # Check that importing the metadata will look how you like
 comicbox --import comicinfo.xml -p "My Overtagged Comic.cbz"
 # Delete all previous metadata from the comic (careful!)
-comicbox --delete "My Overtagged Comic.cbz"
+comicbox --delete-all-tags "My Overtagged Comic.cbz"
 # Import the metadata into the file and write it.
 comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
 ```
 
 #### Quirks
 
-The comicbox.yaml format represents the ComicInfo.xml Web tag as an
-`identifiers.url` tag. Fear not, you don't have to remember this. The CLI
-accepts heterogeneous tag types with the `-m` option, so you can type:
+The comicbox.yaml format represents the ComicInfo.xml Web tag as sub an
+`identifiers.<NID>.url` tag. But fear not, you don't have to remember this. The
+CLI accepts heterogeneous tag types with the `-m` option, so you can type:
 
 <!-- eslint-skip -->
 
@@ -174,9 +185,40 @@ and the identifier tag should appear in comicbox.yaml as:
 
 ```yaml
 identifiers:
-  nss: foo.com
-  url: https://foo.com
+  foo.com:
+    nss: ""
+    url: https://foo.com
 ```
+
+##### Identifiers
+
+Comicbox aggregates IDS, GTINS and URLS from other formats into a common
+Identifiers structure.
+
+##### Reprints
+
+Comicbox aggregates Alternate Names, Aliases and IsVersionOf from other formats
+into a common Reprints list.
+
+##### URNs
+
+Because the Notes field is commonly abused in ComicInfo.xml to represent fields
+ComicInfo does not (yet?) support comicbox parses the notes field heavily
+looking for embedded data. Comicbox also writes identifiers into the Notes field
+using an
+[Uniform Resource Name](https://en.wikipedia.org/wiki/Uniform_Resource_Name)
+format.
+
+Comicbox also looks for identifiers in Tag fields of formats that don't have
+their own Identifiers field.
+
+##### Prettified Fields
+
+Comicbox liberally accepts all kinds of values that may be enums in other
+formats, like AgeRating, Formats and Creidit Roles. In a weak attempt to
+standardize these values comicbox will Title case values submitted to these
+fields. When writing to standard formats, comicbox attempts to transforms these
+values into enums supported by the output format.
 
 #### Packages
 
@@ -371,7 +413,7 @@ date are anyone's guess. It was included because it was easy to do.
 The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
-[Comicbox 2.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comicbox-v2.0.schema.json)
+[Comicbox 2.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
 
 #### Comicbox JSON Format
 

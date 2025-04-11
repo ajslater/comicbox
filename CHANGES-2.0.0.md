@@ -17,7 +17,7 @@ anyway.
 
 #### theme
 
-Pygments theme to use for syntax highlighting. https://pygments.org/styles/.
+[Pygments theme](https://pygments.org/styles/) to use for syntax highlighting. .
 'none' will stop highlighting.
 
 ### Changed Actions
@@ -34,17 +34,16 @@ Was named `delete`.
 
 ### MetronInfo
 
-The (MetronInfo)[https://metron-project.github.io/docs/category/metroninfo]
+The [MetronInfo](https://metron-project.github.io/docs/category/metroninfo)
 comic metadata format is now fully supported.
 
 ## API
 
 ### Metadata Formats and Metadata Sources
 
-(MetadataSources)[comicbox/sources.py]
-and
-(MetadataFormats)[comicbox/formats.py]
-have been separated and are now different related Enums.
+[MetadataSources](comicbox/sources.py) and
+[MetadataFormats](comicbox/formats.py) have been separated and are now different
+related Enums.
 
 ### box.extract_covers()
 
@@ -67,5 +66,5 @@ returns with box.get_metadata(). It is more hierarchical and what used to be
 lists are now often dicts with potentially empty values that when Metron data is
 parsed could have identifiers in them.
 
-(The Comicbox 2.0 JSON Schema is
-available)[https://github.com/ajslater/comicbox/tree/main/comicbox/schemas/v2.0/].
+[The Comicbox 2.0 JSON Schema](https://github.com/ajslater/comicbox/tree/main/comicbox/schemas/v2.0/)
+is available.
