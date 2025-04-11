@@ -61,8 +61,8 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             return None
         identifiers = {}
         for tag in tags:
-            if not identifiers:
-                self._add_identifier_from_tag(tag, identifiers)
+            self._add_identifier_from_tag(tag, identifiers)
+        if not identifiers:
             return None
         return {IDENTIFIERS_KEY: identifiers}
 
