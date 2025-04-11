@@ -773,6 +773,11 @@ _REGULAR_FN = MappingProxyType(
         "metroninfo": "MetronInfo.xml",
         "filename": "comicbox-filename.txt",
         "comicbookinfo": "comic-book-info.json",
+        "comet": "CoMet.xml",
+        "comictagger": "comictagger.json",
+        "json": "comicbox.json",
+        "yaml": "comicbox.yaml",
+        "pdfxml": "pdf.xml",
     }
 )
 
@@ -804,9 +809,7 @@ def test_export(fn):
     with Comicbox("", config=config) as car:
         car.export_files(embed_fmt=embed_fmt)
 
-    tmp_fn = _REGULAR_FN.get(fmt, fn)
+    tmp_fn = _REGULAR_FN[fmt]
     tmp_path = _TMP_DIR / tmp_fn
-    # debug circleci
-    print(list(_TMP_DIR.iterdir()))  # noqa: T201
     compare_export(TEST_METADATA_DIR, tmp_path, test_fn=fn, validate=True)
     tmp_path.unlink()
