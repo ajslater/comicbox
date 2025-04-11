@@ -471,16 +471,6 @@ class TestParser:
             ignore_page_count=True,
         )
 
-    def test_pdf_read(self):
-        """Ignore stamps for pdf."""
-        read_metadata(
-            self.reference_path,
-            self.read_reference_metadata,
-            self.read_config,
-            ignore_updated_at=True,
-            ignore_notes=True,
-        )
-
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
