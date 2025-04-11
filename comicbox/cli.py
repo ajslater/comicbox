@@ -9,8 +9,10 @@ from types import MappingProxyType
 from rich import box
 from rich import print as rich_print
 from rich.console import Group
+from rich.style import Style
 from rich.styled import Styled
 from rich.table import Table
+from rich.text import Text
 from rich_argparse import RichHelpFormatter
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
@@ -115,15 +117,21 @@ def _get_help_print_phases_table():
     return table
 
 
+FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
+Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
+
+
 def _get_help_format_table():
-    title = "Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]"
-    table = Table(title=title, **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table = Table(title=FORMAT_TITLE, **TABLE_ARGS)  # type: ignore[reportArgumentType]
     table.add_column("Format")
     table.add_column("Keys", style="green")
-    for fmt in MetadataFormats:
+    for fmt in reversed(MetadataFormats):
         if not fmt.value.enabled:
             continue
         label = fmt.value.label
+        if label.startswith(("ComicTagger", "Comicbox")):
+            style = Style(dim=True)
+            label = Text(label, style=style)
         keys = ", ".join(sorted(fmt.value.config_keys))
         table.add_row(label, keys)
 
