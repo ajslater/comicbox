@@ -6,6 +6,7 @@ build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
+
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
 
@@ -73,6 +74,7 @@ class FilenameSubSchema(BaseSubSchema):
     title = StringField()
     volume = IntegerField()
     year = IntegerField()
+
 
 class FilenameSchema(BaseSchema):
     """File name schema."""
