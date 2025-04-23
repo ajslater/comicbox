@@ -35,14 +35,20 @@ class SimpleNamedDictField(Union):
         keys: Field | type[Field] = StringField,
         values: Field | type[Field] | None = None,
         allow_empty_values: bool = True,
+        sort: bool = True,
         **kwargs,
     ):
         """Create the union."""
         if values is None:
             values = Nested(IdentifiedSchema)
         fields = [
-            DictField(keys=keys, values=values, allow_empty_values=allow_empty_values),
-            StringSetField(),
+            DictField(
+                keys=keys,
+                values=values,
+                allow_empty_values=allow_empty_values,
+                sort=sort,
+            ),
+            StringSetField(sort=sort),
         ]
         super().__init__(fields, *args, **kwargs)
 
