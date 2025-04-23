@@ -55,7 +55,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
 
     @staticmethod
     def _to_alpha_code(pc_obj):
-        lang_code = None
+        lang_code = ""
         try:
             try:
                 lang_code = pc_obj.alpha_2
@@ -68,24 +68,20 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     def _deserialize(self, value, attr, *args, **kwargs):
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
-        lang_code = None
+        lang_code = self.EMPTY_CODE
         if pc_obj := self._get_pycountry(attr, value):
             lang_code = self._to_alpha_code(pc_obj)
-        if not lang_code and self._allow_empty:
-            lang_code = self.EMPTY_CODE
         return lang_code
 
     def _serialize(self, value, attr, *args, **kwargs):
         """Return the long name."""
         value = super()._serialize(value, attr, *args, **kwargs)
-        lang_code = None
+        lang_code = self.EMPTY_CODE
         if pc_obj := self._get_pycountry(attr, value):
             if self._serialize_name:
                 lang_code = pc_obj.name
             else:
                 lang_code = self._to_alpha_code(pc_obj)
-        if not lang_code and self._allow_empty:
-            lang_code = self.EMPTY_CODE
         return lang_code
 
 
