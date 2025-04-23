@@ -95,14 +95,11 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         file_obj = archive.extractfile(filename)
         return file_obj.read() if file_obj else b""
 
-    @staticmethod
-    def _read_7zipfile(archive, filename: str) -> bytes:
+    def _read_7zipfile(self, archive, filename: str) -> bytes:
         """Read a single file from 7zip."""
-        data = b""
-        if files := archive.read(targets=[filename]):
-            for name, file_obj in files.items():
-                if name == filename:
-                    data = file_obj.read()
+        archive.extract(targets=[filename], factory=self._7zfactory)
+        file_obj = self._7zfactory.products.get(filename)
+        data = file_obj.read() if file_obj else b""
         archive.reset()
         return data
 

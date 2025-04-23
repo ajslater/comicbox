@@ -3,10 +3,12 @@
 import re
 from functools import wraps
 from logging import getLogger
+from sys import maxsize
 from tarfile import TarFile
 from zipfile import ZipFile
 
 from py7zr import SevenZipFile
+from py7zr.io import BytesIOFactory
 from rarfile import RarFile
 
 from comicbox.box.init import ComicboxInitMixin
@@ -64,4 +66,6 @@ class ComicboxArchiveMixin(ComicboxInitMixin):
         if not self._archive:
             reason = f"Unable to make archive from class {self._archive_cls}"
             raise ValueError(reason)
+        if self._archive_cls == SevenZipFile:
+            self._7zfactory = BytesIOFactory(maxsize)
         return self._archive

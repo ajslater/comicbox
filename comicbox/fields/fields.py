@@ -56,7 +56,7 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
 
     def _deserialize(self, value, *_args, **_kwargs):
         if value in _STRING_EMPTY_VALUES:
-            return None
+            return "" #None
 
         if isinstance(value, Enum):
             value = value.value
@@ -70,8 +70,8 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
             reason = f"{type(value)} is not a string"
             raise ValidationError(reason)
         value = str(value).strip()
-        if not value:
-            return None
+        #if not value:
+        #    return None
         return value
 
 
@@ -87,7 +87,7 @@ class IssueField(StringField):
     def parse_issue(num):
         """Parse issues."""
         if not num:
-            return None
+            return "" # None
         num = num.replace(" ", "")
         num = num.lstrip("#")
         num = _LEADING_ZERO_RE.sub(r"\2", num)
@@ -96,7 +96,7 @@ class IssueField(StringField):
 
     def _deserialize(self, value, *args, **kwargs):
         if value is None:
-            return None
+            return "" #None
         value = str(value)
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)
