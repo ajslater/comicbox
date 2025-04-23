@@ -188,7 +188,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     pages = PagesField()  # CIX ONLY, CT
     publisher = SimpleNamedNestedField()  # Comet, CIX, CT, Metron
     prices = DictField(  # Comet, CT, Metron
-        keys=CountryField(allow_empty=True),
+        keys=CountryField(),
         values=DecimalField(places=2, minimum=Decimal(0)),
         allow_empty_keys=True,
         sort=False,
