@@ -285,7 +285,7 @@ def test_cover_page(ft):
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
     is_pdf = cover_path.suffix == ".pdf"
     with Comicbox(fixture.path) as car:
-        cover = car.get_cover_page_pdf_to_pixmap() if is_pdf else car.get_cover_page()
+        cover = car.get_cover_page(to_pixmap=is_pdf)
     with cover_path.open("rb") as f:
         disk_cover = f.read()
     if is_pdf:

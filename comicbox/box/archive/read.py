@@ -5,6 +5,7 @@ from pathlib import Path
 from tarfile import TarFile
 from zipfile import ZipFile
 
+from pdffile import PDFFile
 from py7zr import SevenZipFile
 from rarfile import BadRarFile, RarFile
 
@@ -111,14 +112,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             raise ValueError(reason)
         return archive
 
-    def _archive_readfile_pdf_to_pixmap(self, filename) -> bytes:
-        """Read an archive file to pixmap in memory."""
-        if Path(filename).is_dir():
-            return b""
-        archive = self._archive_readfile_get_archive()
-        return archive.read(filename, to_pixmap=True)  # type: ignore[reportCallIssue]
-
-    def _archive_readfile(self, filename) -> bytes:
+    def _archive_readfile(self, filename, *, to_pixmap=False) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
         data = b""
@@ -129,6 +123,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             data = self._read_tarfile(archive, filename)
         elif isinstance(archive, SevenZipFile):
             data = self._read_7zipfile(archive, filename)
+        elif isinstance(archive, PDFFile) and to_pixmap:
+            data = archive.read(filename, to_pixmap=True)
         else:
             try:
                 data = archive.read(filename)  # type: ignore[reportCallIssue]

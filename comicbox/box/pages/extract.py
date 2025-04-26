@@ -18,16 +18,10 @@ class ComicboxExtractPagesMixin(ComicboxPagesMixin):
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _extract_page_pdf_to_pixmap(self, path, fn):
+    def _extract_page(self, path, fn, *, to_pixmap: bool = False):
         path = self._extract_page_get_path(path, fn)
         with path.open("wb") as page_file:
-            data = self._archive_readfile_pdf_to_pixmap(fn)
-            page_file.write(data)
-
-    def _extract_page(self, path, fn):
-        path = self._extract_page_get_path(path, fn)
-        with path.open("wb") as page_file:
-            data = self._archive_readfile(fn)
+            data = self._archive_readfile(fn, to_pixmap=to_pixmap)
             page_file.write(data)
 
     def _extract_all_pagenames(self, pagenames, path):

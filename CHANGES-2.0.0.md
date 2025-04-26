@@ -47,18 +47,8 @@ related Enums.
 
 ### Method name changes
 
-- Comicbox.write() => Comicbox.dump() 
+- Comicbox.write() => Comicbox.dump()
 - Comicbox.extract_covers_as() => box.extract_covers()
-
-### get_pages() pdf to pixmap methods
-
-The boolean argument to return pdf pages as pixmaps when getting pages has gone
-away and was replaced by new methods:
-
-- box.get_cover_page_pdf_to_pixmap
-- box.get_page_by_filename_pdf_to_pixmap()
-- box.get_page_by_index_pdf_to_pixmap()
-- box.get_pages_pdf_to_pixmap()
 
 ## Comicbox Schema
 
