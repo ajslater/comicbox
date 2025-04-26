@@ -3,7 +3,7 @@
 from glom import glom
 from ruamel.yaml import YAML
 
-from comicbox.box.pages import PAGES_KEYPATH
+from comicbox.box.pages.covers import PAGES_KEYPATH
 from comicbox.schemas.comicbox import PAGES_KEY, ComicboxSchemaMixin
 from tests.validate.json_validator import JsonValidator
 

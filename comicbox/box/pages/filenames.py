@@ -4,7 +4,7 @@ import re
 from sys import maxsize
 
 from comicbox.box.archive import archive_close
-from comicbox.box.archive_read import ComicboxArchiveReadMixin
+from comicbox.box.archive.read import ComicboxArchiveReadMixin
 
 # ignore dotfiles but not relative ../ leaders.
 # ignore macos resource forks
@@ -13,10 +13,6 @@ _IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
 
 class ComicboxPageFilenamesMixin(ComicboxArchiveReadMixin):
     """Calculate page filenames."""
-
-    ##################
-    # PAGE FILENAMES #
-    ##################
 
     def _set_page_filenames(self):
         """Parse the filenames that are comic pages."""

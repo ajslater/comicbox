@@ -5,7 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
-from comicbox.box.archive_read import ComicboxArchiveReadMixin
+from comicbox.box.archive.read import ComicboxArchiveReadMixin
 from comicbox.sources import MetadataSources
 from comicbox.zipfile_remove import ZipFileWithRemove
 
@@ -167,10 +167,6 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             old_api_source_metadata = None
             old_api_source_format = None
         self._reset_archive(old_api_source_format, old_api_source_metadata)
-
-    #########################
-    # SPECIAL ARCHIVE WRITE #
-    #########################
 
     def write_pdf_metadata(self, mupdf_metadata):
         """Write PDF Metadata."""

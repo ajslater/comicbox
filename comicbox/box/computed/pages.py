@@ -6,6 +6,7 @@ from sys import maxsize
 from types import MappingProxyType
 
 from comicbox.box.computed.notes import ComicboxComputedNotesMixin
+from comicbox.box.pages.filenames import ComicboxPageFilenamesMixin
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.merge import AdditiveMerger, ReplaceMerger
@@ -28,7 +29,7 @@ _COMICBOX_FORMATS = frozenset(
 LOG = getLogger(__name__)
 
 
-class ComicboxComputedPages(ComicboxComputedNotesMixin):
+class ComicboxComputedPages(ComicboxComputedNotesMixin, ComicboxPageFilenamesMixin):
     """Comicbox Computed Pages."""
 
     @staticmethod

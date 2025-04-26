@@ -8,9 +8,10 @@ Reads and writes archive file data.
 from logging import getLogger
 from types import MappingProxyType
 
-from comicbox.box.extract import ComicboxExtractMixin
+from comicbox.box.dump import ComicboxDumpMixin
+from comicbox.box.dump_files import ComicboxDumpToFilesMixin
+from comicbox.box.pages.extract import ComicboxExtractPagesMixin
 from comicbox.box.print import ComicboxPrintMixin
-from comicbox.box.write import ComicboxWriteMixin
 from comicbox.print import PrintPhases
 
 LOG = getLogger(__name__)
@@ -32,8 +33,9 @@ _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 class Comicbox(
     ComicboxPrintMixin,
-    ComicboxWriteMixin,
-    ComicboxExtractMixin,
+    ComicboxDumpMixin,
+    ComicboxDumpToFilesMixin,
+    ComicboxExtractPagesMixin,
 ):
     """
     Represent a comic archive.
@@ -44,8 +46,8 @@ class Comicbox(
     _CONFIG_ACTIONS = MappingProxyType(
         {
             "print": ComicboxPrintMixin.print_out,
-            "export": ComicboxWriteMixin.export_files,
-            "covers": ComicboxExtractMixin.extract_covers,
+            "export": ComicboxDumpToFilesMixin.export_files,
+            "covers": ComicboxExtractPagesMixin.extract_covers,
         }
     )
 
@@ -76,7 +78,7 @@ class Comicbox(
             self.extract_pages_config()
             noop = False
         if self._config.write or self._config.cbz or self._config.delete_all_tags:
-            self.write()
+            self.dump()
             noop = False
         return noop
 

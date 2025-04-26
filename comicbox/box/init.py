@@ -25,7 +25,7 @@ from comicbox.sources import MetadataSources
 try:
     from pdffile import PDFFile
 except ImportError:
-    from comicbox.box.dummy import PDFFile
+    from comicbox.box.pdffile_stub import PDFFile
 
 if TYPE_CHECKING:
     from tarfile import TarFile

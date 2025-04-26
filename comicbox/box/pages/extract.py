@@ -9,7 +9,7 @@ from comicbox.box.pages import ComicboxPagesMixin
 LOG = getLogger(__name__)
 
 
-class ComicboxExtractMixin(ComicboxPagesMixin):
+class ComicboxExtractPagesMixin(ComicboxPagesMixin):
     """Methods for extracting files from the archive."""
 
     def _extract_page_get_path(self, path, fn):

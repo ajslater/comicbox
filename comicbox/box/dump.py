@@ -2,10 +2,9 @@
 
 from collections.abc import Mapping
 from logging import getLogger
-from pathlib import Path
 
-from comicbox.box.archive_read import archive_close
-from comicbox.box.archive_write import ComicboxArchiveWriteMixin
+from comicbox.box.archive.read import archive_close
+from comicbox.box.archive.write import ComicboxArchiveWriteMixin
 from comicbox.box.pages import ComicboxPagesMixin
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
@@ -18,14 +17,10 @@ ARCHIVE_FORMATS = frozenset(
 )
 
 
-class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
+class ComicboxDumpMixin(ComicboxArchiveWriteMixin, ComicboxPagesMixin):
     """Writing Methods."""
 
-    #############################
-    # WRITE METADATA TO ARCHIVE #
-    #############################
-
-    def _get_write_formats(self):
+    def _get_dump_formats(self):
         formats = ()
         if self._config.write:
             formats = self._config.write
@@ -49,7 +44,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
             formats = None
         return formats
 
-    def _write_pdf(self, formats):
+    def _dump_to_pdf(self, formats):
         """Write PDF Metadata."""
         if MetadataFormats.PDF not in self._config.write:
             reason = "Can only write pdf format to pdf files."
@@ -69,7 +64,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         pdf_md = mupdf_md.get(schema.ROOT_TAG, {})
         return self.write_pdf_metadata(pdf_md)
 
-    def _write_archive_metadata(self, formats):
+    def _dump_to_archive(self, formats):
         """Prepare archive files and comment and write to archive."""
         # Get files and comment.
         files = {}
@@ -93,7 +88,7 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
         return self.write_archive_metadata(files, comment)
 
     @archive_close
-    def write(self, formats=None):
+    def dump(self, formats=None):
         """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete_all_tags
@@ -103,73 +98,13 @@ class ComicboxWriteMixin(ComicboxPagesMixin, ComicboxArchiveWriteMixin):
 
         # Must get metadata *before* get write formats
         if formats is None:
-            formats = self._get_write_formats()
+            formats = self._get_dump_formats()
             if formats is None:
                 return None
 
         if self._archive_is_pdf:
-            result = self._write_pdf(formats)
+            result = self._dump_to_pdf(formats)
         else:
-            result = self._write_archive_metadata(formats)
+            result = self._dump_to_archive(formats)
         LOG.info(f"Wrote metadata to: {self._path}")
         return result
-
-    ##################
-    # SPECIAL WRITES #
-    ##################
-
-    @archive_close
-    def to_file(
-        self,
-        dest_path=None,
-        metadata: Mapping | None = None,
-        fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
-        embed_fmt: MetadataFormats | None = None,
-        **kwargs,
-    ):
-        """Export metadatat to a file with a schema."""
-        if dest_path is None:
-            dest_path = self._config.dest_path
-        dest_path = Path(dest_path)
-        if metadata is None:
-            metadata = self._get_metadata()
-        fn = fmt.value.filename
-        path = dest_path / fn
-        try:
-            schema, denormalized_metadata = self._to_dict(fmt, embed_fmt)
-            schema.dumpf(denormalized_metadata, path, **kwargs)
-            LOG.info(f"Exported {path}")
-        except Exception:
-            LOG.exception(f"Could not export {fn}")
-
-    @archive_close
-    def export_files(self, formats=None, embed_fmt=None):
-        """Export metadata to all supported file formats."""
-        if self._config.dry_run:
-            LOG.info("Not exporting files.")
-            return
-        if not formats:
-            formats = self._config.export
-
-        for fmt in formats:
-            self.to_file(fmt=fmt, embed_fmt=embed_fmt)
-
-    @archive_close
-    def rename_file(self):
-        """Rename the archive."""
-        if not self._path:
-            reason = "Cannot rename archive without a path."
-            raise ValueError(reason)
-        schema, filename_md = self._to_dict(MetadataFormats.FILENAME)
-        fn = schema.dumps(filename_md)
-        old_path = self._path
-        if not fn:
-            LOG.warning(f"Unable to construct a filename for {old_path}")
-            return
-        new_path = self._path.parent / Path(fn)
-        if self._config.dry_run:
-            LOG.info(f"Would rename:\n{old_path} ==> {new_path}")
-            return
-        self._path.rename(new_path)
-        self._path = new_path
-        LOG.info(f"Renamed:\n{old_path} ==> {new_path}")

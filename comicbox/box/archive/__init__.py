@@ -16,7 +16,7 @@ from comicbox.box.init import ComicboxInitMixin
 try:
     from pdffile import PDFFile
 except ImportError:
-    from comicbox.box.dummy import PDFFile
+    from comicbox.box.pdffile_stub import PDFFile
 
 
 LOG = getLogger(__name__)

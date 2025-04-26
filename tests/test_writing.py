@@ -103,7 +103,7 @@ def test_convert_to_cbz_and_cbi_to_cix():
     # inject tags.
     with Comicbox(OLD_TEST_CBR_PATH, config=WRITE_CONFIG) as car:
         car.add_metadata(TAGS_SOURCE, MetadataFormats.COMICBOX_JSON)
-        car.write()
+        car.dump()
 
     # test
     read_metadata(

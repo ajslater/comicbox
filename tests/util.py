@@ -16,7 +16,7 @@ from glom import Assign, Delete, glom
 from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
-from comicbox.box.pages import PAGES_KEYPATH
+from comicbox.box.pages.covers import PAGES_KEYPATH
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox import (
@@ -484,7 +484,7 @@ class TestParser:
             fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
             # car.print_out() debug
-            car.write()
+            car.dump()
 
     def write_metadata(
         self,
@@ -536,7 +536,7 @@ class TestParser:
                 metadata=self.write_reference_metadata,
                 fmt=MetadataFormats.COMICBOX_YAML,
             ) as car:
-                car.write()
+                car.dump()
         except NameError as exc:
             reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc

@@ -45,9 +45,10 @@ comic metadata format is now fully supported.
 [MetadataFormats](comicbox/formats.py) have been separated and are now different
 related Enums.
 
-### box.extract_covers()
+### Method name changes
 
-Was named box.extract_covers_as()
+- Comicbox.write() => Comicbox.dump() 
+- Comicbox.extract_covers_as() => box.extract_covers()
 
 ### get_pages() pdf to pixmap methods
 

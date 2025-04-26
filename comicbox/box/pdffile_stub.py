@@ -1,4 +1,4 @@
-"""A dummy PDFFile to help with typing."""
+"""A featureless PDFFile stub to help with typing."""
 
 
 class PDFFile:
