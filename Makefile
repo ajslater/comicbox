@@ -94,11 +94,12 @@ lint-backend:
 
 .PHONY: uml
 ## Create a UML class diagram
-## @category Lint
+## #category Lint
 uml:
 	bin/uml.sh
 
 .PHONY: cycle
+## Detect Circular imports
 ## @category Lint
 cycle:
 	uvx pycycle --ignore node_modules,.venv --verbose --here
