@@ -5,7 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from comicbox.box.comic import Comicbox
+from comicbox.box import Comicbox
 from comicbox.config import get_config
 
 if TYPE_CHECKING:
