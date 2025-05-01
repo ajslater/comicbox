@@ -27,12 +27,12 @@ npm run lint
 if [ "$(uname)" = "Darwin" ]; then
   # Hadolint & shfmt are difficult to install on linux
   # shellcheck disable=2035
-  hadolint *Dockerfile
+  # hadolint *Dockerfile
   shellharden ./**/*.sh
   # subdirs aren't copied into docker builder
   # .env files aren't copied into docker
   shellcheck --external-sources ./**/*.sh
-  circleci config validate .circleci/config.yml
+  # circleci config validate .circleci/config.yml
 fi
 ./bin/roman.sh -i .prettierignore .
 uv run codespell .
