@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from logging import getLogger
 from types import MappingProxyType
 
@@ -12,13 +13,19 @@ from comicbox.box.archive import archive_close
 from comicbox.box.computed.identifiers import ComicboxComputedIdentifers
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
+    COVER_DATE_KEY,
+    DATE_KEY,
+    DAY_KEY,
+    MONTH_KEY,
     ORIGINAL_FORMAT_KEY,
     REPRINTS_KEY,
     SCAN_INFO_KEY,
+    YEAR_KEY,
     ComicboxSchemaMixin,
 )
 
 LOG = getLogger(__name__)
+_DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 
 
 @dataclass
@@ -32,6 +39,30 @@ class ComputedData:
 
 class ComicboxComputedMixin(ComicboxComputedIdentifers):
     """Computed metadata methods."""
+
+    @staticmethod
+    def _add_date_part(cover_date: date, key: str, computed_date: dict, attr: str):
+        computed_date[key] = getattr(cover_date, attr)
+
+    @classmethod
+    def _get_computed_from_date(cls, sub_data, **_kwargs):
+        """Synchronize date parts and cover_date."""
+        old_date = sub_data.get(DATE_KEY)
+        computed_date = {}
+        if cover_date := old_date.get(COVER_DATE_KEY):
+            for key, attr in _DATE_PART_KEYS:
+                cls._add_date_part(cover_date, key, computed_date, attr)
+        elif all(
+            (
+                (year := old_date.get(YEAR_KEY)),
+                (month := old_date.get(MONTH_KEY)),
+                (day := old_date.get(DAY_KEY)),
+            )
+        ):
+            computed_date[COVER_DATE_KEY] = date(year, month, day)
+        if not computed_date:
+            return None
+        return computed_date
 
     def _get_computed_from_scan_info(self, sub_data, **_kwargs):
         """Parse scan_info for original format info."""
@@ -84,6 +115,7 @@ class ComicboxComputedMixin(ComicboxComputedIdentifers):
         {
             # Order is important here
             **ComicboxComputedIdentifers.COMPUTED_ACTIONS,
+            "from date": (_get_computed_from_date, AdditiveMerger),
             "from reprints": (_get_computed_from_reprints, ReplaceMerger),
             "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
             "Delete Keys": (_get_delete_keys, None),

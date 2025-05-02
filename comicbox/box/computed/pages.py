@@ -48,16 +48,11 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin, ComicboxPageFilenamesMix
 
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping):
         """Determine if we should compute this attribute."""
-        if (
-            not self._config.compute_pages
-            or key in self._config.delete_keys
-            or not sub_md
-            or not self._path
-        ):
+        if key in self._config.delete_keys or not sub_md or not self._path:
             return False
         formats = self._config.all_write_formats
         # If any of the enabled format types have page flags then compute.
-        if key == PAGES_KEY:
+        if key == PAGES_KEY and self._config.compute_pages:
             return self._enable_page_compute_attribute_pages(formats)
         if key == PAGE_COUNT_KEY:
             return self._enable_page_compute_attribute_page_count(formats)
