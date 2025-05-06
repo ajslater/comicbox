@@ -2,6 +2,7 @@
 <comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd">
 	<character>Captain Science</character>
 	<character>Gordon Dane</character>
+	<date>1950-11-01</date>
 	<genre>Science Fiction</genre>
 	<identifier>urn:comicvine:145269</identifier>
 	<inker>Wally Wood</inker>

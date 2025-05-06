@@ -164,7 +164,7 @@ NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KE
 class CoMetTransform(BaseTransform):
     """CoMet transforms."""
 
-    SCHEMA_CLASS = CoMetSchema
+    SCHEMA_CLASS = CoMetSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(
             key_map=SIMPLE_KEYMAP.inverse,

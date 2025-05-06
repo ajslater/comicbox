@@ -1,15 +1,14 @@
 """Comicbox Computed Pages."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from logging import getLogger
 from sys import maxsize
 from types import MappingProxyType
 
-from comicbox.box.computed.notes import ComicboxComputedNotesMixin
-from comicbox.box.pages.filenames import ComicboxPageFilenamesMixin
+from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.merge import AdditiveMerger, ReplaceMerger
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
     BOOKMARK_KEY,
     PAGE_BOOKMARK_KEY,
@@ -29,7 +28,7 @@ _COMICBOX_FORMATS = frozenset(
 LOG = getLogger(__name__)
 
 
-class ComicboxComputedPages(ComicboxComputedNotesMixin, ComicboxPageFilenamesMixin):
+class ComicboxComputedPages(ComicboxComputedNotes):
     """Comicbox Computed Pages."""
 
     @staticmethod
@@ -125,10 +124,12 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin, ComicboxPageFilenamesMix
             pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: pages}
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
-            "Pages": (_get_computed_pages_metadata, ReplaceMerger),
-            **ComicboxComputedNotesMixin.COMPUTED_ACTIONS,
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
+                "Pages": (_get_computed_pages_metadata, ReplaceMerger),
+                **ComicboxComputedNotes.COMPUTED_ACTIONS,
+            }
+        )
     )

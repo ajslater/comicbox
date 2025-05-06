@@ -1,6 +1,7 @@
 """Test CIX module."""
 
 from argparse import Namespace
+from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -29,6 +30,7 @@ READ_METADATA = MappingProxyType(
                 "Other Arc": {"number": 2},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "year": 1950,
                 "month": 11,
                 "day": 1,
@@ -112,8 +114,10 @@ READ_CIX_DICT = MappingProxyType(
         ComicInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 "
-            "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd",
+            "@xsi:schemaLocation": (
+                "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 "
+                "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
+            ),
             "Title": "The Beginning;The End",
             "Series": "Captain Science",
             "Number": "1",
@@ -182,8 +186,8 @@ READ_CIX_DICT = MappingProxyType(
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
-WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reprotCallIssue]
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
 
 CIX_TESTER = TestParser(
     MetadataFormats.COMIC_INFO,

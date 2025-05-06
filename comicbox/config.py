@@ -164,7 +164,17 @@ def _parse_print(config):
     config.print = frozenset(enum_print_phases)
 
 
-def _read_config_sources(config, args):
+def _add_config_file(args, config):
+    with contextlib.suppress(AttributeError, KeyError):
+        if config_fn := (
+            args.comicbox.config
+            if isinstance(args, Namespace)
+            else args["comicbox"]["config"]
+        ):
+            config.set_file(config_fn)
+
+
+def _read_config_sources(config: Configuration, args: Namespace | Mapping | None):
     """Read config sources in order."""
     # Default System and User configs
     try:
@@ -174,24 +184,16 @@ def _read_config_sources(config, args):
 
     # Args Specified Config File
     if args:
-        with contextlib.suppress(AttributeError, KeyError):
-            if isinstance(args, Namespace):
-                config_fn = args.comicbox.config
-            elif isinstance(args, Mapping):
-                config_fn = args["comicbox"]["config"]
-            else:
-                config_fn = None
-            if config_fn:
-                config.set_file(config_fn)
+        _add_config_file(args, config)
 
     # Env vars
     config.set_env()
 
     # Args
     if args:
-        if isinstance(args, Mapping):
+        if isinstance(args, Mapping | AttrDict):
             config.add(args)
-        if isinstance(args, Namespace):
+        elif isinstance(args, Namespace):  # pyright: ignore[reportUnnecessaryIsInstance]
             config.set_args(args)
 
 
@@ -214,8 +216,8 @@ def get_config(
     _read_config_sources(config, args)
 
     # Create config
-    ad = config.get(_TEMPLATE)
-    ad_config = ad.comicbox  # type: ignore[reportAttributeAccessIssue]
+    ad: AttrDict = config.get(_TEMPLATE)  # pyright: ignore[reportAssignmentType]
+    ad_config = ad.comicbox
 
     # Post Process Config
     _clean_paths(ad_config)

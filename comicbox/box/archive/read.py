@@ -9,11 +9,11 @@ from pdffile import PDFFile
 from py7zr import SevenZipFile
 from rarfile import BadRarFile, RarFile
 
-from comicbox.box.archive import ComicboxArchiveMixin, archive_close
+from comicbox.box.archive.init import ComicboxArchiveInit, archive_close
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
 
-class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
+class ComicboxArchiveRead(ComicboxArchiveInit):
     """Comic archive read methods."""
 
     _COMMENT_ARCHIVE_TYPES = (ZipFile, RarFile)
@@ -33,7 +33,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             else:
                 namelist = archive.namelist()
             # SORTED CASE INSENSITIVELY
-            self._namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
+            namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
+            self._namelist: tuple[str, ...] | None = namelist
         return self._namelist
 
     def _get_info_fn(self, info) -> str:
@@ -60,9 +61,10 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
                 infolist = archive.infolist()
 
             # SORTED CASE INSENSITIVELY
-            self._infolist = tuple(
+            infolist = tuple(
                 sorted(infolist, key=lambda i: self._get_info_fn(i).lower())
             )
+            self._infolist: tuple | None = infolist
         return self._infolist
 
     @archive_close
@@ -98,19 +100,13 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
 
     def _read_7zipfile(self, archive, filename: str) -> bytes:
         """Read a single file from 7zip."""
+        if not self._7zfactory:
+            return b""
         archive.extract(targets=[filename], factory=self._7zfactory)
         file_obj = self._7zfactory.products.get(filename)
         data = file_obj.read() if file_obj else b""
         archive.reset()
         return data
-
-    def _archive_readfile_get_archive(self):
-        self._ensure_read_archive()
-        archive = self._get_archive()
-        if archive is None:
-            reason = "problem getting archive."
-            raise ValueError(reason)
-        return archive
 
     def _archive_readfile(self, filename, *, to_pixmap=False) -> bytes:
         """Read an archive file to memory."""
@@ -118,7 +114,8 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
         data = b""
         if Path(filename).is_dir():
             return data
-        archive = self._archive_readfile_get_archive()
+        self._ensure_read_archive()
+        archive = self._get_archive()
         if isinstance(archive, TarFile):
             data = self._read_tarfile(archive, filename)
         elif isinstance(archive, SevenZipFile):
@@ -127,7 +124,7 @@ class ComicboxArchiveReadMixin(ComicboxArchiveMixin):
             data = archive.read(filename, to_pixmap=True)
         else:
             try:
-                data = archive.read(filename)  # type: ignore[reportCallIssue]
+                data = archive.read(filename)  # pyright: ignore[reportCallIssue]
             except BadRarFile:
                 self.check_unrar_executable()
                 raise

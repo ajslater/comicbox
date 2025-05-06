@@ -89,7 +89,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if UPDATED_AT_KEY not in self._config.delete_keys:
             # Deprecated method needed for python 3.10
             # Update after 2026-11
-            stamp_md[UPDATED_AT_KEY] = datetime.utcnow()  # noqa: DTZ003, type: ignore
+            stamp_md[UPDATED_AT_KEY] = datetime.utcnow()  # noqa: DTZ003, # pyright: ignore[reportDeprecated]
 
         if notes := self._get_computed_notes_stamp(sub_data, stamp_md):
             stamp_md[NOTES_KEY] = notes

@@ -1,7 +1,7 @@
 """Test CLI metadata parsing."""
 
 from argparse import Namespace
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -98,6 +98,7 @@ DELETE_KEYS_MD = MappingProxyType(
             },
             "characters": {"COMET": {}, "Captain Science": {}, "Gordon Dane": {}},
             "date": {
+                "cover_date": date(591, 11, 1),
                 "month": 11,
                 "year": 591,
                 "day": 1,
@@ -119,9 +120,11 @@ DELETE_KEYS_MD = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "original_format": "Comic",
             "page_count": 0,
             "publisher": {"name": "Galactic Press"},

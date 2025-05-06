@@ -4,6 +4,8 @@ from abc import ABC
 from logging import getLogger
 
 import pycountry
+from pycountry.db import Database
+from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
@@ -13,7 +15,7 @@ LOG = getLogger(__name__)
 class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     """A pycountry value."""
 
-    MODULE = pycountry.countries
+    DB: Database = pycountry.countries
     EMPTY_CODE = ""
 
     def __init__(self, *args, serialize_name=False, allow_empty=False, **kwargs):
@@ -39,11 +41,8 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
             if not name:
                 return None
 
-            if len(name) == 2:  # noqa: PLR2004
-                # Language lookup fails for 'en' unless alpha_2 is specified.
-                obj = cls.MODULE.get(alpha_2=name)
-            else:
-                obj = cls.MODULE.lookup(name)
+            # Language lookup fails for 'en' unless alpha_2 is specified.
+            obj = cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
         except Exception as exc:
             LOG.warning(exc)
             obj = None
@@ -65,6 +64,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
             LOG.warning(f"No alpha 2 or alpha 3 code for {pc_obj}")
         return lang_code
 
+    @override
     def _deserialize(self, value, attr, *args, **kwargs):
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
@@ -73,6 +73,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
             lang_code = self._to_alpha_code(pc_obj)
         return lang_code
 
+    @override
     def _serialize(self, value, attr, *args, **kwargs):
         """Return the long name."""
         value = super()._serialize(value, attr, *args, **kwargs)
@@ -88,10 +89,10 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
 class LanguageField(PyCountryField):
     """PyCountry Language Field."""
 
-    MODULE = pycountry.languages
+    DB: Database = pycountry.languages
 
 
 class CountryField(PyCountryField):
     """PyCountry Country Field."""
 
-    MODULE = pycountry.countries
+    DB: Database = pycountry.countries

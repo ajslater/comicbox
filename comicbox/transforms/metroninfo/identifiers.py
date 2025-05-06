@@ -62,12 +62,18 @@ def _identifier_primary_source_to_cb_ids(metron_ids):
     return None
 
 
+def _parse_url(metron_url):
+    parsed_url = None
+    if url := get_cdata(metron_url):
+        parsed_url = urlparse(str(url))
+    return parsed_url
+
+
 def _identifier_primary_source_to_cb_urls(metron_urls):
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue
-        url = get_cdata(metron_url)
-        parsed_url = urlparse(url)
+        parsed_url = _parse_url(metron_url)
         if not parsed_url:
             continue
         netloc = parsed_url.netloc

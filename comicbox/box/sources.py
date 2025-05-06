@@ -5,7 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from types import MappingProxyType
 
-from comicbox.box.archive.read import ComicboxArchiveReadMixin
+from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.pdf import MuPDFSchema
@@ -21,7 +21,7 @@ FILENAME_FORMAT_MAP = MappingProxyType(
 )
 
 
-class ComicboxSourcesMixin(ComicboxArchiveReadMixin):
+class ComicboxSources(ComicboxArchive):
     """Getting and storing source metadata."""
 
     def _get_source_config_metadata(self):
@@ -124,7 +124,7 @@ class ComicboxSourcesMixin(ComicboxArchiveReadMixin):
             archive = self._get_archive()
             if not archive or not self._archive_is_pdf:
                 return source_data_list
-            if md := archive.get_metadata():  # type: ignore[reportAttributeAccessIssue]
+            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue]
                 md = MappingProxyType({MuPDFSchema.ROOT_TAG: md})
                 source_data_list = [
                     SourceData(md, fmt=MetadataFormats.PDF, from_archive=True)

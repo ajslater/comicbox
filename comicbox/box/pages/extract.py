@@ -4,12 +4,12 @@ from logging import INFO, getLogger
 from pathlib import Path
 
 from comicbox.box.archive import archive_close
-from comicbox.box.pages import ComicboxPagesMixin
+from comicbox.box.pages.covers import ComicboxPagesCovers
 
 LOG = getLogger(__name__)
 
 
-class ComicboxExtractPagesMixin(ComicboxPagesMixin):
+class ComicboxExtractPages(ComicboxPagesCovers):
     """Methods for extracting files from the archive."""
 
     def _extract_page_get_path(self, path, fn):

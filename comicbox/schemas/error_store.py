@@ -5,6 +5,7 @@ from logging import DEBUG, WARNING, getLogger
 
 from marshmallow import Schema
 from marshmallow.error_store import ErrorStore, merge_errors
+from typing_extensions import override
 
 LOG = getLogger(__name__)
 
@@ -39,6 +40,7 @@ class ClearingErrorStore(ErrorStore):
         self._ignore_errors = ignore_errors if ignore_errors else frozenset()
         self._clear_errors()
 
+    @override
     def store_error(self, *args, **kwargs):
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
@@ -48,8 +50,8 @@ class ClearingErrorStore(ErrorStore):
 class ClearingErrorStoreSchema(Schema):
     """Suppress Marshmallow errors to skip errored fields."""
 
-    SUPRESS_ERRORS = True
-    _IGNORE_ERRORS = frozenset({"Field may not be null."})
+    SUPRESS_ERRORS: bool = True
+    _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
     def __init__(
         self, ignore_errors: list | tuple | frozenset | set | None = None, **kwargs
@@ -63,6 +65,7 @@ class ClearingErrorStoreSchema(Schema):
         self._ignore_errors = frozenset(ignore_errors) | self._IGNORE_ERRORS
         super().__init__(**kwargs)
 
+    @override
     def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPRESS_ERRORS:
@@ -71,6 +74,7 @@ class ClearingErrorStoreSchema(Schema):
             )
         return super()._deserialize(data, error_store=error_store, **kwargs)
 
+    @override
     def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPRESS_ERRORS:
@@ -79,6 +83,7 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_field_validators(error_store=error_store, data=data, **kwargs)
 
+    @override
     def _invoke_schema_validators(
         self,
         *,
@@ -121,6 +126,7 @@ class ClearingErrorStoreSchema(Schema):
         message = f"{path}{error_name}{errors}"
         LOG.log(loglevel, message)
 
+    @override
     def handle_error(self, error, *_args, **_kwargs):
         """Log errors by severity."""
         if hasattr(error, "normalized_messages"):

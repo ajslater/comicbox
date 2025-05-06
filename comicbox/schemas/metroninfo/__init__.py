@@ -128,8 +128,8 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
 class MetronInfoSchema(XmlSchema):
     """MetronInfo.xml Schema."""
 
-    ROOT_TAG = "MetronInfo"
-    ROOT_KEYPATH = ROOT_TAG
-    HAS_PAGE_COUNT = True
+    ROOT_TAG: str = "MetronInfo"
+    ROOT_KEYPATH: str = ROOT_TAG
+    HAS_PAGE_COUNT: bool = True
 
     MetronInfo = Nested(MetronInfoSubSchema)

@@ -115,7 +115,7 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
     """ComicInfo.xml Sub Schema."""
 
     # ComicInfo.xsd specifies this tag order
-    TAG_ORDER = TAG_ORDER
+    TAG_ORDER: tuple[str, ...] = TAG_ORDER
 
     Title = XmlStringField()
     Series = XmlStringField()
@@ -179,10 +179,10 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
 class ComicInfoSchema(XmlSchema):
     """ComicInfo.xml Schema."""
 
-    ROOT_TAG = "ComicInfo"
-    ROOT_KEYPATH = ROOT_TAG
-    TAG_ORDER = (ROOT_TAG,)
-    HAS_PAGE_COUNT = True
-    HAS_PAGES = True
+    ROOT_TAG: str = "ComicInfo"
+    ROOT_KEYPATH: str = ROOT_TAG
+    TAG_ORDER: tuple[str, ...] = (ROOT_TAG,)
+    HAS_PAGE_COUNT: bool = True
+    HAS_PAGES: bool = True
 
     ComicInfo = Nested(ComicInfoSubSchema)

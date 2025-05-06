@@ -8,6 +8,7 @@ from logging import getLogger
 
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
+from typing_extensions import override
 
 LOG = getLogger(__name__)
 _STRING_EMPTY_VALUES = (None, "")
@@ -54,6 +55,7 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
+    @override
     def _deserialize(self, value, *_args, **_kwargs):
         if value in _STRING_EMPTY_VALUES:
             return ""
@@ -91,6 +93,7 @@ class IssueField(StringField):
         num = num.rstrip(".")
         return half_replace(num)
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

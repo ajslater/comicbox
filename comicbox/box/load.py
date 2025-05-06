@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
-from comicbox.box.sources import ComicboxSourcesMixin
+from comicbox.box.sources import ComicboxSources
 from comicbox.fields.collection_fields import EmbeddedStringSetField
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
@@ -30,7 +30,7 @@ class LoadedMetadata:
     from_archive: bool = False
 
 
-class ComicboxLoadMixin(ComicboxSourcesMixin):
+class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
     def _load_cli_yaml(self, fmt, schema, source_md):
@@ -60,9 +60,9 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             return self._load_cli_yaml(fmt, schema, source_md)
 
         if isinstance(source_md, str | bytes):
-            return schema.loads(source_md)  # type: ignore[reportReturnType]
+            return schema.loads(source_md)  # pyright: ignore[reportReturnType]
 
-        return schema.load(source_md)  # type: ignore[reportReturnType]
+        return schema.load(source_md)  # pyright: ignore[reportReturnType]
 
     @staticmethod
     def _is_comment_not_json(source, exc):

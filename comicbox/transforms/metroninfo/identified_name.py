@@ -38,10 +38,9 @@ def identified_name_with_tag_to_cb(
 ) -> tuple[str | Enum, dict]:
     """Transform metron identified name to comicbox identified object."""
     comicbox_obj = {}
-    if not (name := get_cdata(metron_obj.get(NAME_TAG, ""))):
-        return "", comicbox_obj
-    metron_id_attribute_to_cb(nss_type, metron_obj, comicbox_obj, primary_nid)
-    return name, comicbox_obj
+    if name := get_cdata(metron_obj.get(NAME_TAG, "")):
+        metron_id_attribute_to_cb(nss_type, metron_obj, comicbox_obj, primary_nid)
+    return str(name), comicbox_obj
 
 
 def identified_name_with_tag_from_cb(

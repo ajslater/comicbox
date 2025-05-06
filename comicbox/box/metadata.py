@@ -7,7 +7,7 @@ from types import MappingProxyType
 from glom import Assign, Delete, glom
 
 from comicbox.box.archive import archive_close
-from comicbox.box.computed import ComicboxComputedMixin
+from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
@@ -15,7 +15,7 @@ from comicbox.schemas.merge import merge_metadata
 LOG = getLogger(__name__)
 
 
-class ComicboxMetadataMixin(ComicboxComputedMixin):
+class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
     def _set_computed_merged_metadata_delete(self, merged_md):
@@ -105,7 +105,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt, embed_fmt)
         dump = schema.dump(md, **kwargs)
-        return dict(dump)  # type:ignore[reportArgumentType]
+        return dict(dump)  # pyright:ignore[reportArgumentType, reportCallIssue]
 
     @archive_close
     def to_string(

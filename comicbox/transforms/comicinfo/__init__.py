@@ -218,7 +218,7 @@ NAME_OBJ_KEY_MAP = frozenbidict(
 class ComicInfoTransform(BaseTransform):
     """ComicInfo.xml Schema."""
 
-    SCHEMA_CLASS = ComicInfoSchema
+    SCHEMA_CLASS = ComicInfoSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),

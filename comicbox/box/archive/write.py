@@ -5,7 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
-from comicbox.box.archive.read import ComicboxArchiveReadMixin
+from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.sources import MetadataSources
 from comicbox.zipfile_remove import ZipFileWithRemove
 
@@ -21,7 +21,7 @@ _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
 LOG = getLogger(__name__)
 
 
-class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
+class ComicboxArchiveWrite(ComicboxArchiveRead):
     """Comicboxs methods for writing to the archive."""
 
     def _get_new_archive_path(self):
@@ -172,7 +172,7 @@ class ComicboxArchiveWriteMixin(ComicboxArchiveReadMixin):
             raise ValueError(reason)
         archive = self._get_archive()
         if self._archive_is_pdf:
-            archive.save_metadata(mupdf_metadata)  # type: ignore[reportCallIssue]
+            archive.save_metadata(mupdf_metadata)  # pyright: ignore[reportAttributeAccessIssue]
         else:
             LOG.warning(
                 f"{self._path}: Not writing pdf metadata dict to a not PDF archive."

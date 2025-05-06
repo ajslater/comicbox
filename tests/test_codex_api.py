@@ -52,6 +52,7 @@ TEMPLATE_MD = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -170,15 +171,17 @@ CBT_MD_PATCH = {
             "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "date": {"cover_date": date(1950, 11, 1)},
-        "notes": "Tagged with "
-        "comicbox dev "
-        "on "
-        "1970-01-01T00:00:00Z "
-        "[Issue ID "
-        "145269] "
-        "urn:comicvine:4000-145269 "
-        "urn:isbn:123-456789-0123 "
-        "urn:upc:12345",
+        "notes": (
+            "Tagged with "
+            "comicbox dev "
+            "on "
+            "1970-01-01T00:00:00Z "
+            "[Issue ID "
+            "145269] "
+            "urn:comicvine:4000-145269 "
+            "urn:isbn:123-456789-0123 "
+            "urn:upc:12345"
+        ),
         "page_count": 5,
         "stories": {
             "The Beginning": {},
@@ -228,9 +231,11 @@ CB7_MD_PATCH = {
             },
             "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
         },
-        "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
-        "[Issue ID 145269] urn:comicvine:4000-145269 "
-        "urn:isbn:123-456789-0123 urn:upc:12345",
+        "notes": (
+            "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
+            "[Issue ID 145269] urn:comicvine:4000-145269 "
+            "urn:isbn:123-456789-0123 urn:upc:12345"
+        ),
         "stories": {"The Beginning": {}, "The End": {}},
     }
 }
@@ -292,7 +297,7 @@ def test_cover_page(ft):
         # transform file to image.
         try:
             doc = pymupdf.Document(stream=disk_cover)
-            pix = doc.get_page_pixmap(0)  # type: ignore[reportAttributeAccessIssue]
+            pix = doc.get_page_pixmap(0)  # pyright: ignore[reportAttributeAccessIssue]
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"

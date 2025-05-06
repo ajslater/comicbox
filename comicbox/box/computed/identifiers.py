@@ -1,5 +1,6 @@
 """Comicbox computed identifiers."""
 
+from collections.abc import Callable
 from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
@@ -17,7 +18,7 @@ from comicbox.identifiers.other import (
 from comicbox.identifiers.urns import (
     parse_urn_identifier,
 )
-from comicbox.merge import AdditiveMerger
+from comicbox.merge import AdditiveMerger, Merger
 from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     TAGS_KEY,
@@ -66,9 +67,11 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
             return None
         return {IDENTIFIERS_KEY: identifiers}
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            **ComicboxComputedIssue.COMPUTED_ACTIONS,
-            "from tags": (_get_computed_from_tags, AdditiveMerger),
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                **ComicboxComputedIssue.COMPUTED_ACTIONS,
+                "from tags": (_get_computed_from_tags, AdditiveMerger),
+            }
+        )
     )

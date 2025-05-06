@@ -16,15 +16,15 @@ from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.schemas.metroninfo import CREATOR_TAG
+from comicbox.transforms.identifiers import (
+    PRIMARY_NID_KEYPATH,
+)
+from comicbox.transforms.metroninfo.const import DEFAULT_NID
 from comicbox.transforms.metroninfo.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
 )
-from comicbox.transforms.metroninfo.identifiers import (
-    DEFAULT_NID,
-    PRIMARY_NID_KEYPATH,
-    SCOPE_PRIMARY_SOURCE,
-)
+from comicbox.transforms.metroninfo.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.transforms.spec import MetaSpec
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(

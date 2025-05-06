@@ -142,7 +142,7 @@ NAME_OBJ_KEY_MAP = frozenbidict(
 class ComictaggerTransform(BaseTransform):
     """Comictagger transform."""
 
-    SCHEMA_CLASS = ComictaggerSchema
+    SCHEMA_CLASS = ComictaggerSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),

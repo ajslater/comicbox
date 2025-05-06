@@ -4,6 +4,7 @@ from glom import SKIP, Check, Coalesce, Invoke, T, Val
 from glom.grouping import Group
 
 from comicbox.schemas.comicbox import STORIES_KEY
+from comicbox.transforms.base import skip_not
 from comicbox.transforms.spec import MetaSpec
 
 TITLE_STORIES_DELIMITER = ";"
@@ -15,13 +16,7 @@ def stories_key_transform_to_cb(title_tag):
         key_map={STORIES_KEY: title_tag},
         spec=(
             Invoke(T.split).constants(TITLE_STORIES_DELIMITER),
-            Group(
-                {
-                    Coalesce(
-                        (Invoke(T.strip)), skip=lambda x: not x, default=SKIP
-                    ): Val({})
-                }
-            ),
+            Group({Coalesce((Invoke(T.strip)), skip=skip_not, default=SKIP): Val({})}),
         ),
     )
 

@@ -525,7 +525,7 @@ class TestParser:
         """Create a new empty PDF file."""
         try:
             doc = pymupdf.Document()
-            doc.new_page()  # type: ignore[reportAttributeAccessIssue]
+            doc.new_page()  # pyright: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
             config = deepcopy(self.write_config)

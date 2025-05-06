@@ -1,18 +1,19 @@
 """Comicbox Computed Issue tags."""
 
 import re
+from collections.abc import Callable
 from logging import getLogger
 from types import MappingProxyType
 
 from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
+from comicbox.fields.comicbox import NAME_KEY
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import DecimalField
-from comicbox.merge import AdditiveMerger
+from comicbox.merge import AdditiveMerger, Merger
 from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,
-    NAME_KEY,
     NUMBER_KEY,
 )
 
@@ -82,13 +83,15 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
             return {ISSUE_KEY: issue}
         return None
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            **ComicboxComputedStamp.COMPUTED_ACTIONS,
-            "from issue": (_get_computed_from_issue, AdditiveMerger),
-            "from issue.number & issue.suffix": (
-                _get_computed_issue,
-                AdditiveMerger,
-            ),
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                **ComicboxComputedStamp.COMPUTED_ACTIONS,
+                "from issue": (_get_computed_from_issue, AdditiveMerger),
+                "from issue.number & issue.suffix": (
+                    _get_computed_issue,
+                    AdditiveMerger,
+                ),
+            }
+        )
     )

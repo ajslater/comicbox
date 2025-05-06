@@ -4,14 +4,14 @@ from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
 
-from comicbox.box.archive.read import archive_close
-from comicbox.box.metadata import ComicboxMetadataMixin
+from comicbox.box.archive import archive_close
+from comicbox.box.dump import ComicboxDump
 from comicbox.formats import MetadataFormats
 
 LOG = getLogger(__name__)
 
 
-class ComicboxDumpToFilesMixin(ComicboxMetadataMixin):
+class ComicboxDumpToFiles(ComicboxDump):
     """Special file writes."""
 
     @archive_close
@@ -67,5 +67,5 @@ class ComicboxDumpToFilesMixin(ComicboxMetadataMixin):
             LOG.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
         self._path.rename(new_path)
-        self._path = new_path
+        self._path: Path | None = new_path
         LOG.info(f"Renamed:\n{old_path} ==> {new_path}")

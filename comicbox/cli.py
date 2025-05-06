@@ -14,6 +14,7 @@ from rich.styled import Styled
 from rich.table import Table
 from rich.text import Text
 from rich_argparse import RichHelpFormatter
+from typing_extensions import override
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import PDF_ENABLED, MetadataFormats
@@ -59,6 +60,7 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
 class CSVAction(Action):
     """Parse comma deliminated sequences."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse comma delimited sequences."""
         if isinstance(values, str):
@@ -73,6 +75,7 @@ class CSVAction(Action):
 class PageRangeAction(Action):
     """Parse page range."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse page range delimited by :."""
         values_array = values.split(":")
@@ -105,7 +108,7 @@ TABLE_ARGS = MappingProxyType(
 
 
 def _get_help_print_phases_table():
-    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Phase", style="green")
     table.add_column("Description")
     table.add_column("Shortcut", style="cyan")
@@ -122,7 +125,7 @@ Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented
 
 
 def _get_help_format_table():
-    table = Table(title=FORMAT_TITLE, **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table = Table(title=FORMAT_TITLE, **TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Format")
     table.add_column("Keys", style="green")
     for fmt in reversed(MetadataFormats):
@@ -161,12 +164,14 @@ def _add_option_group(parser):
         dest="metadata_cli",
         metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
-        " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
-        " Place a space after colons so they are properly parsed as YAML key"
-        " value pairs. If your value contains a special YAML character (e.g."
-        " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
-        " brackets in place of indentation.",
+        help=(
+            "Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
+            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
+            " Place a space after colons so they are properly parsed as YAML key"
+            " value pairs. If your value contains a special YAML character (e.g."
+            " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
+            " brackets in place of indentation."
+        ),
     )
     option_group.add_argument(
         "-D",
@@ -215,8 +220,9 @@ def _add_option_group(parser):
         "--quiet",
         action="count",
         default=0,
-        help="Increasingingly quiet success messages, "
-        "warnings and errors with more Qs.",
+        help=(
+            "Increasingingly quiet success messages, warnings and errors with more Qs."
+        ),
     )
     option_group.add_argument(
         "-s",
@@ -230,8 +236,10 @@ def _add_option_group(parser):
         "--no-stamp-notes",
         dest="stamp_notes",
         action="store_false",
-        help="Do not write the notes field with tagger, timestamp and identifiers "
-        "when writing metadata out to a file.",
+        help=(
+            "Do not write the notes field with tagger, timestamp and identifiers "
+            "when writing metadata out to a file."
+        ),
     )
     option_group.add_argument(
         "-t",
@@ -298,8 +306,10 @@ def _add_action_group(parser):
         "-e",
         "--pages",
         action=PageRangeAction,
-        help="Extract a single page or : delimited range of pages by zero based index"
-        " to --dest-path.",
+        help=(
+            "Extract a single page or : delimited range of pages by zero based index"
+            " to --dest-path."
+        ),
     )
     action_group.add_argument(
         "-o", "--covers", action="store_true", help="Extract cover pages."
@@ -315,8 +325,10 @@ def _add_action_group(parser):
         "--write",
         metavar="FORMATS",
         action=CSVAction,
-        help="Write comic metadata formats to archive cbt & cbr are always"
-        " exported to cbz format. Format keys listed below.",
+        help=(
+            "Write comic metadata formats to archive cbt & cbr are always"
+            " exported to cbz format. Format keys listed below."
+        ),
     )
     action_group.add_argument(
         "--rename",
@@ -352,7 +364,7 @@ def get_args(params=None) -> Namespace:
 
     parser = ArgumentParser(
         description=description,
-        epilog=epilog,  # type: ignore[reportArgumentType]
+        epilog=epilog,  # pyright: ignore[reportArgumentType]
         formatter_class=RichHelpFormatter,
         add_help=False,
     )

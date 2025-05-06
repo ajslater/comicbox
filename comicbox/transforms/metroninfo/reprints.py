@@ -12,15 +12,13 @@ from comicbox.schemas.comicbox import (
     SERIES_KEY,
 )
 from comicbox.schemas.metroninfo import ALTERNATIVE_NAMES_TAGPATH, LANG_ATTR
+from comicbox.transforms.identifiers import PRIMARY_NID_KEYPATH
+from comicbox.transforms.metroninfo.const import DEFAULT_NID
 from comicbox.transforms.metroninfo.identifier_attribute import (
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
 )
-from comicbox.transforms.metroninfo.identifiers import (
-    DEFAULT_NID,
-    PRIMARY_NID_KEYPATH,
-    SCOPE_PRIMARY_SOURCE,
-)
+from comicbox.transforms.metroninfo.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.transforms.spec import MetaSpec
 from comicbox.transforms.xml_reprints import (
     FILENAME_TO_REPRINT_SPECS,
@@ -34,7 +32,7 @@ def _reprint_to_cb(metron_reprint, primary_nid) -> dict:
     """Parse a metron Reprint."""
     comicbox_reprint = {}
     if name := get_cdata(metron_reprint):
-        filename_dict = comicfn2dict(name)
+        filename_dict = comicfn2dict(str(name))
         comicbox_reprint = glom(filename_dict, dict(FILENAME_TO_REPRINT_SPECS))
         metron_id_attribute_to_cb(
             "reprint", metron_reprint, comicbox_reprint, primary_nid

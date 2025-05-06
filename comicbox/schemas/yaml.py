@@ -5,6 +5,7 @@ from enum import Enum
 from sys import maxsize
 
 from ruamel.yaml import YAML, StringIO
+from typing_extensions import override
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
@@ -44,7 +45,7 @@ class YamlRenderModule:
 
     @classmethod
     def _config_yaml(cls, yaml: YAML):
-        yaml.sort_base_mapping_type_on_output = True  # type: ignore[reportAssignmentType]
+        yaml.sort_base_mapping_type_on_output = True  # pyright: ignore[reportAttributeAccessIssue]
         yaml.representer.add_representer(Decimal, cls._decimal_representer)
         yaml.representer.add_representer(type(None), cls._none_representer)
         yaml.representer.add_representer(dict, cls._dict_flow_representer)
@@ -97,17 +98,18 @@ class YamlSchema(BaseSchema):
 
         render_module = YamlRenderModule
 
+    @override
     def dumps(
         self,
         obj,
         *args,
-        dfs=False,
-        dump=True,
+        dfs: bool = False,
+        dump: bool = True,
         **kwargs,
     ):
         """Use dfs for render."""
         if dump:
-            serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
+            serialized: dict = super().dump(obj, *args, **kwargs)  # pyright: ignore[reportAssignmentType]
         else:
             serialized = obj
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

@@ -19,8 +19,8 @@ from rich.syntax import PygmentsSyntaxTheme, Syntax
 from rich.table import Table
 from rich.text import Text
 
-from comicbox.box.archive.read import archive_close
-from comicbox.box.metadata import ComicboxMetadataMixin
+from comicbox.box.archive import archive_close
+from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.print import PrintPhases
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
@@ -69,7 +69,7 @@ class ComicboxStyle:
             self.section = _make_style(theme, Comment)
 
 
-class ComicboxPrintMixin(ComicboxMetadataMixin):
+class ComicboxPrint(ComicboxDumpToFiles):
     """Print Methods."""
 
     _CONSOLE = Console()

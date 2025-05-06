@@ -1,10 +1,11 @@
 """Computed metadata methods."""
 
 import re
+from collections.abc import Callable
 from logging import getLogger
 from types import MappingProxyType
 
-from comicbox.box.merge import ComicboxMergeMixin
+from comicbox.box.merge import ComicboxMerge
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers.const import (
     ALIAS_NID_MAP,
@@ -18,7 +19,7 @@ from comicbox.identifiers.identifiers import (
 from comicbox.identifiers.urns import (
     parse_urn_identifier_and_warn,
 )
-from comicbox.merge import AdditiveMerger
+from comicbox.merge import AdditiveMerger, Merger
 from comicbox.schemas.comicbox import (
     COVER_DATE_KEY,
     DATE_KEY,
@@ -63,7 +64,7 @@ _NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
 _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 
 
-class ComicboxComputedNotesMixin(ComicboxMergeMixin):
+class ComicboxComputedNotes(ComicboxMerge):
     """Computed metadata methods for notes field."""
 
     def _set_computed_notes_key(self, sub_data, key, match, md):
@@ -216,11 +217,13 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
             return None
         return sub_md
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            "from notes": (
-                get_computed_from_notes,
-                AdditiveMerger,
-            )
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                "from notes": (
+                    get_computed_from_notes,
+                    AdditiveMerger,
+                )
+            }
+        )
     )

@@ -1,6 +1,7 @@
 """Test CBI module."""
 
 from argparse import Namespace
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
@@ -24,6 +25,7 @@ READ_METADATA = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,

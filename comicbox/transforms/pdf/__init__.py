@@ -48,7 +48,7 @@ XMLPDF_NAME_OBJ_KEY_MAP = frozenbidict(
 class PDFXmlTransform(BaseTransform):
     """PDF Schema."""
 
-    SCHEMA_CLASS = PDFXmlSchema
+    SCHEMA_CLASS = PDFXmlSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=XMLPDF_SIMPLE_KEY_MAP.inverse),
         authors_to_credits_transform_to_cb("pdf:Author"),
@@ -82,7 +82,7 @@ MUPDF_NAME_OBJ_KEY_MAP = frozenbidict(
 class MuPDFTransform(PDFXmlTransform):
     """MuPDF Transformer."""
 
-    SCHEMA_CLASS = MuPDFSchema
+    SCHEMA_CLASS = MuPDFSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=MUPDF_SIMPLE_KEY_MAP.inverse),
         authors_to_credits_transform_to_cb("author"),

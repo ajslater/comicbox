@@ -76,9 +76,9 @@ class IdentifierParts:
         """Initialize url_regex & template prefix."""
         sld = ".".join(self.domain.split(".")[-2:])
         exp = rf".*{sld}/" + self.url_path_regex
-        self._url_regex_exp = exp
-        self.url_regex = re.compile(exp, flags=re.IGNORECASE)
-        self.url_prefix = f"https://{self.domain}/"
+        self._url_regex_exp = exp  # pyright: ignore[reportUninitializedInstanceVariable]
+        self.url_regex = re.compile(exp, flags=re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
+        self.url_prefix = f"https://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def get_type_by_code(self, nss_type_code: str, default=DEFAULT_NSS_TYPE):
         """Get identifier type by url fragment or code."""

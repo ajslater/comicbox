@@ -1,6 +1,8 @@
 """Test CIX module."""
 
 from argparse import Namespace
+from copy import deepcopy
+from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -8,7 +10,12 @@ import xmltodict
 
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comicbox import (
+    COVER_DATE_KEY,
+    DATE_KEY,
+    DAY_KEY,
+    ComicboxSchemaMixin,
+)
 from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
@@ -39,7 +46,6 @@ READ_METADATA = MappingProxyType(
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
-                "day": 1,
                 "month": 11,
                 "year": 1950,
             },
@@ -172,13 +178,38 @@ READ_CIX_DICT = MappingProxyType(
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
-WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
 
 CIX_TESTER = TestParser(
     MetadataFormats.COMIC_INFO,
     "",
     READ_METADATA,
+    READ_CIX_DICT,
+    READ_CIX_STR,
+    READ_CONFIG,
+    WRITE_CONFIG,
+    WRITE_METADATA,
+    WRITE_CIX_DICT,
+    WRITE_CIX_STR,
+    export_fn=EXPORT_FN,
+)
+
+
+def _create_file_read_dict():
+    x = deepcopy(dict(READ_METADATA))
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue]
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue]
+    return MappingProxyType(x)
+
+
+READ_METADATA_FILE = _create_file_read_dict()
+
+
+CIX_FILE_TESTER = TestParser(
+    MetadataFormats.COMIC_INFO,
+    "",
+    READ_METADATA_FILE,
     READ_CIX_DICT,
     READ_CIX_STR,
     READ_CONFIG,
@@ -197,9 +228,9 @@ def test_cix_validation_from_metadata():
 
 def test_cix_validation_from_string():
     """Test metadata import from string."""
-    CIX_TESTER.test_from_string()
+    CIX_FILE_TESTER.test_from_string()
 
 
 def test_cix_validation_from_file():
     """Test metadata import from file."""
-    CIX_TESTER.test_from_file()
+    CIX_FILE_TESTER.test_from_file()

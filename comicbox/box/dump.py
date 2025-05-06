@@ -3,9 +3,8 @@
 from collections.abc import Mapping
 from logging import getLogger
 
-from comicbox.box.archive.read import archive_close
-from comicbox.box.archive.write import ComicboxArchiveWriteMixin
-from comicbox.box.pages import ComicboxPagesMixin
+from comicbox.box.archive.init import archive_close
+from comicbox.box.pages import ComicboxPages
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
 
@@ -17,7 +16,7 @@ ARCHIVE_FORMATS = frozenset(
 )
 
 
-class ComicboxDumpMixin(ComicboxArchiveWriteMixin, ComicboxPagesMixin):
+class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
     def _get_dump_formats(self):

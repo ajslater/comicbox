@@ -28,7 +28,12 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "cover_image": "CaptainScience#1_01.jpg",
-            "date": {"cover_date": date(1950, 12, 1)},
+            "date": {
+                "cover_date": date(1950, 12, 1),
+                "year": 1950,
+                "month": 12,
+                "day": 1,
+            },
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
@@ -129,6 +134,7 @@ FNS = MappingProxyType(
             },
             "country": "US",
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -145,9 +151,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
@@ -203,9 +211,11 @@ FNS = MappingProxyType(
                 }
             },
             "imprint": {"name": "TestImprint"},
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -260,6 +270,7 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -276,9 +287,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -336,6 +349,7 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -356,9 +370,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with Comictagger on "
-            "1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with Comictagger on "
+                "1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -415,6 +431,7 @@ FNS = MappingProxyType(
             },
             "country": "US",
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -435,9 +452,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {
@@ -463,7 +482,12 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "date": {"cover_date": date(1950, 11, 1)},
+            "date": {
+                "cover_date": date(1950, 11, 1),
+                "day": 1,
+                "year": 1950,
+                "month": 11,
+            },
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
                 "nid": "metron",
@@ -601,6 +625,9 @@ FNS = MappingProxyType(
             },
             "date": {
                 "cover_date": date(2011, 10, 1),
+                "day": 1,
+                "year": 2011,
+                "month": 10,
                 "store_date": date(2011, 8, 31),
             },
             "genres": {

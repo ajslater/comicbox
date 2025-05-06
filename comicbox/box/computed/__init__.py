@@ -1,6 +1,6 @@
 """Computed metadata methods."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from logging import getLogger
@@ -37,32 +37,55 @@ class ComputedData:
     merger: type[Merger] | None = AdditiveMerger
 
 
-class ComicboxComputedMixin(ComicboxComputedIdentifers):
+class ComicboxComputed(ComicboxComputedIdentifers):
     """Computed metadata methods."""
 
     @staticmethod
     def _add_date_part(cover_date: date, key: str, computed_date: dict, attr: str):
         computed_date[key] = getattr(cover_date, attr)
 
-    @classmethod
-    def _get_computed_from_date(cls, sub_data, **_kwargs):
+    def _get_computed_from_date(self, sub_data, **_kwargs):
         """Synchronize date parts and cover_date."""
         old_date = sub_data.get(DATE_KEY)
+        if not old_date:
+            return None
         computed_date = {}
-        if cover_date := old_date.get(COVER_DATE_KEY):
-            for key, attr in _DATE_PART_KEYS:
-                cls._add_date_part(cover_date, key, computed_date, attr)
-        elif all(
+        year = old_date.get(YEAR_KEY)
+        month = old_date.get(MONTH_KEY)
+        day = old_date.get(DAY_KEY)
+        msg = ""
+        if all(
             (
-                (year := old_date.get(YEAR_KEY)),
-                (month := old_date.get(MONTH_KEY)),
-                (day := old_date.get(DAY_KEY)),
+                year,
+                month,
+                day,
             )
         ):
-            computed_date[COVER_DATE_KEY] = date(year, month, day)
+            try:
+                computed_date[COVER_DATE_KEY] = date(year, month, day)
+            except ValueError as exc:
+                msg = str(exc)
+                reason = f"{self._path}: {msg}"
+                LOG.warning(reason)
+
+        if COVER_DATE_KEY not in computed_date and (
+            cover_date := old_date.get(COVER_DATE_KEY)
+        ):
+            for key in _DATE_PART_KEYS:
+                self._add_date_part(cover_date, key, computed_date, key)
+        elif msg:
+            if msg.startswith("month"):
+                self._config.delete_keys = frozenset(
+                    self._config.delelte_keys | {"date.month"}
+                )
+            elif msg.startswith("day"):
+                self._config.delete_keys = frozenset(
+                    self._config.delete_keys | {"date.day"}
+                )
+
         if not computed_date:
             return None
-        return computed_date
+        return {DATE_KEY: computed_date}
 
     def _get_computed_from_scan_info(self, sub_data, **_kwargs):
         """Parse scan_info for original format info."""
@@ -111,15 +134,17 @@ class ComicboxComputedMixin(ComicboxComputedIdentifers):
             return None
         return tuple(sorted(self._config.delete_keys))
 
-    _COMPUTED_ACTIONS = MappingProxyType(
-        {
-            # Order is important here
-            **ComicboxComputedIdentifers.COMPUTED_ACTIONS,
-            "from date": (_get_computed_from_date, AdditiveMerger),
-            "from reprints": (_get_computed_from_reprints, ReplaceMerger),
-            "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
-            "Delete Keys": (_get_delete_keys, None),
-        }
+    _COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                # Order is important here
+                **ComicboxComputedIdentifers.COMPUTED_ACTIONS,
+                "from date": (_get_computed_from_date, AdditiveMerger),
+                "from reprints": (_get_computed_from_reprints, ReplaceMerger),
+                "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
+                "Delete Keys": (_get_delete_keys, None),
+            }
+        )
     )
 
     def _set_computed_metadata(self):

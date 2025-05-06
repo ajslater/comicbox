@@ -8,5 +8,5 @@ from comicbox.schemas.enums.maps import COMICINFO_AGE_RATING_MAP
 class ComicInfoAgeRatingField(XmlEnumField):
     """Age Rating Field."""
 
-    ENUM = ComicInfoAgeRatingEnum
+    ENUM = ComicInfoAgeRatingEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = COMICINFO_AGE_RATING_MAP

@@ -11,7 +11,9 @@ from comicbox.fields.collection_fields import (
     StringSetField,
 )
 from comicbox.fields.comicbox import (
-    NAME_KEY,  # noqa: F401
+    NAME_KEY as _FIELD_NAME_KEY,
+)
+from comicbox.fields.comicbox import (
     PagesField,
     RoleField,
     SimpleNamedDictField,
@@ -39,6 +41,7 @@ from comicbox.schemas.comicbox.publishing import (
     VolumeSchema,
 )
 
+NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
 BOOKMARK_KEY = "bookmark"

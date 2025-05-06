@@ -6,6 +6,7 @@ from types import MappingProxyType
 
 from marshmallow import fields
 from stringcase import snakecase, titlecase
+from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 from comicbox.schemas.enums.age_rating import (
@@ -51,7 +52,7 @@ class FuzzyEnumMixin:
         enum_map = {}
         for key, enum in self.ENUM_ALIAS_MAP.items():
             self.add_enum_map_item(key, enum, enum_map)
-        self._enum_map = MappingProxyType(enum_map)
+        self._enum_map = MappingProxyType(enum_map)  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def get_enum(self, value) -> Enum | None:
         """Get an enum from the fuzzy lookup map."""
@@ -65,6 +66,7 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
 
     ENUM = Enum
 
+    @override
     def init_enum_map(self):
         """Transform the ENUM_ALIAS_MAP into the enum lookup map and add the field enum to it as well."""
         super().init_enum_map()
@@ -78,11 +80,13 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
         self.init_enum_map()
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
         enum = self.get_enum(value)
         enum = enum if enum else value
         return super()._deserialize(enum, *args, **kwargs)
 
+    @override
     def _serialize(self, value, *args, **kwargs):
         enum = self.get_enum(value)
         enum = enum if enum else value
@@ -108,7 +112,7 @@ class PageTypeEnum(Enum):
 class PageTypeField(EnumField):
     """ComicPageInfo Page Type Field."""
 
-    ENUM = PageTypeEnum
+    ENUM = PageTypeEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class GenericReadingDirectionEnum(Enum):
@@ -132,7 +136,7 @@ class ReadingDirectionEnum(Enum):
 class ReadingDirectionField(EnumField):
     """Reading direction enum."""
 
-    ENUM = ReadingDirectionEnum
+    ENUM = ReadingDirectionEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = MappingProxyType(
         {
             GenericReadingDirectionEnum.LTR: ReadingDirectionEnum.LTR,
@@ -149,12 +153,14 @@ class EnumBooleanField(EnumField):
     YES = "Yes"
     TRUTHY = frozenset({True, "1", "true", "True"})
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
         result = super()._deserialize(value, *args, **kwargs)
         if not isinstance(result, self.ENUM) and value in self.TRUTHY:
             result = super()._deserialize(self.YES, *args, **kwargs)
         return result
 
+    @override
     def _serialize(self, value, *args, **kwargs):
         result = super()._serialize(value, *args, **kwargs)
         if not isinstance(result, self.ENUM) and value in self.TRUTHY:
@@ -172,15 +178,17 @@ class ComicInfoMangaEnum(Enum):
 class ComicInfoMangaField(EnumBooleanField):
     """Manga field from ComicInfo."""
 
-    ENUM = ComicInfoMangaEnum
+    ENUM = ComicInfoMangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
+    @override
     def _deserialize(self, value, attr, data, *args, **kwargs):
         """Match a manga value to an acceptable value."""
         if data.get("reading_direction") == ReadingDirectionEnum.RTL:
-            LOG.warning(
+            reason = (
                 f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
                 "because of reading_direction"
             )
+            LOG.warning(reason)
             value = ComicInfoMangaEnum.YES_RTL
         return super()._deserialize(value, attr, data, *args, **kwargs)
 
@@ -195,7 +203,7 @@ class YesNoEnum(Enum):
 class YesNoField(EnumBooleanField):
     """A yes no kind of boolean field."""
 
-    ENUM = YesNoEnum
+    ENUM = YesNoEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class PrettifiedStringField(FuzzyEnumMixin, StringField):
@@ -218,6 +226,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
             value = value.replace("  ", " ")
         return value
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
         value = super()._deserialize(value, *args, **kwargs)
         return self._prettify(value)

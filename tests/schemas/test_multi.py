@@ -38,7 +38,7 @@ READ_METADATA = MappingProxyType(
             "imprint": {"name": "CLIImprint"},
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
-                "cover_date": date(1950, 12, 1),
+                "cover_date": date(591, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 591,
@@ -155,10 +155,10 @@ READ_MULTI_DICT = MappingProxyType(
                 "Gordon Dane": {},
             },
             "date": {
+                "cover_date": "0591-11-01",
+                "day": 1,
                 "month": 11,
                 "year": 591,
-                "day": 1,
-                "cover_date": "1950-12-01",
             },
             "genres": {
                 "Science Fiction": {},

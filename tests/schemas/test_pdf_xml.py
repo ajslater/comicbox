@@ -47,43 +47,45 @@ PDF_DICT = MappingProxyType(
                     "@xmlns:pdf": "http://ns.adobe.com/pdf/1.3/",
                     "pdf:Author": "Jon Osterman",
                     "pdf:Creator": "Pages",
-                    "pdf:Keywords": "<?xml "
-                    'version="1.0" '
-                    'encoding="UTF-8"?>\n'
-                    "<ComicInfo "
-                    'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
-                    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-                    'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 '
-                    'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
-                    "\t"
-                    "<Title>the "
-                    "tangle "
-                    "of "
-                    "their "
-                    "lives</Title>\n"
-                    "\t"
-                    "<Series>test "
-                    "pdf</Series>\n"
-                    "\t"
-                    "<Notes>Tagged "
-                    "with "
-                    "comicbox "
-                    "dev "
-                    "on "
-                    "1970-01-01T00:00:00Z</Notes>\n"
-                    "\t"
-                    "<Writer>Jon "
-                    "Osterman</Writer>\n"
-                    "\t"
-                    "<Publisher>SmallPub</Publisher>\n"
-                    "\t"
-                    "<Genre>Science "
-                    "Fiction</Genre>\n"
-                    "\t"
-                    "<Tags>d,e,f</Tags>\n"
-                    "\t"
-                    "<ScanInformation>Pages</ScanInformation>\n"
-                    "</ComicInfo>",
+                    "pdf:Keywords": (
+                        "<?xml "
+                        'version="1.0" '
+                        'encoding="UTF-8"?>\n'
+                        "<ComicInfo "
+                        'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
+                        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+                        'xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 '
+                        'https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">\n'
+                        "\t"
+                        "<Title>the "
+                        "tangle "
+                        "of "
+                        "their "
+                        "lives</Title>\n"
+                        "\t"
+                        "<Series>test "
+                        "pdf</Series>\n"
+                        "\t"
+                        "<Notes>Tagged "
+                        "with "
+                        "comicbox "
+                        "dev "
+                        "on "
+                        "1970-01-01T00:00:00Z</Notes>\n"
+                        "\t"
+                        "<Writer>Jon "
+                        "Osterman</Writer>\n"
+                        "\t"
+                        "<Publisher>SmallPub</Publisher>\n"
+                        "\t"
+                        "<Genre>Science "
+                        "Fiction</Genre>\n"
+                        "\t"
+                        "<Tags>d,e,f</Tags>\n"
+                        "\t"
+                        "<ScanInformation>Pages</ScanInformation>\n"
+                        "</ComicInfo>"
+                    ),
                     "pdf:ModDate": "D:20250302183350+00'00'",
                     "pdf:Producer": "comicbox dev",
                     "pdf:Subject": "Science Fiction",
@@ -93,7 +95,7 @@ PDF_DICT = MappingProxyType(
         }
     }
 )
-PDF_STR = xmltodict.unparse(PDF_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+PDF_STR = xmltodict.unparse(PDF_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
 
 PDF_TESTER = TestParser(
     MetadataFormats.PDF_XML,

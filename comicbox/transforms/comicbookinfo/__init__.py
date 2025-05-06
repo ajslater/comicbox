@@ -84,7 +84,7 @@ NAME_OBJ_KEYPATHS = frozenbidict(
 class ComicBookInfoTransform(BaseTransform):
     """Comic Book Info transform."""
 
-    SCHEMA_CLASS = ComicBookInfoSchema
+    SCHEMA_CLASS = ComicBookInfoSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(
             key_map=TOP_KEYPATHS.inverse,

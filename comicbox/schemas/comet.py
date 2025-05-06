@@ -79,8 +79,8 @@ class CoMetSubSchema(XmlSubHeadSchema):
 class CoMetSchema(XmlSchema):
     """CoMet Schema."""
 
-    ROOT_TAG = "comet"
-    ROOT_KEYPATH = ROOT_TAG
-    HAS_PAGE_COUNT = True
+    ROOT_TAG: str = "comet"
+    ROOT_KEYPATH: str = ROOT_TAG
+    HAS_PAGE_COUNT: bool = True
 
     comet = Nested(CoMetSubSchema)

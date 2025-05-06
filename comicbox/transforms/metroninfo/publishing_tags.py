@@ -35,15 +35,13 @@ from comicbox.schemas.metroninfo import (
     SERIES_TAG,
     VOLUME_TAG,
 )
+from comicbox.transforms.identifiers import PRIMARY_NID_KEYPATH
 from comicbox.transforms.metroninfo.identifier_attribute import (
     ID_ATTRIBUTE,
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
 )
-from comicbox.transforms.metroninfo.identifiers import (
-    PRIMARY_NID_KEYPATH,
-    SCOPE_PRIMARY_SOURCE,
-)
+from comicbox.transforms.metroninfo.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.transforms.spec import MetaSpec
 
 LANGUAGE_TAGPATH = f"{SERIES_TAG}.{LANG_ATTR}"

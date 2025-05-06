@@ -51,7 +51,7 @@ SIMPLE_KEY_MAP = frozenbidict(
 class FilenameTransform(BaseTransform):
     """File name schema."""
 
-    SCHEMA_CLASS = FilenameSchema
+    SCHEMA_CLASS = FilenameSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         stories_key_transform_to_cb("title"),

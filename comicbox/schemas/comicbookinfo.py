@@ -65,11 +65,11 @@ class ComicBookInfoSubSchema(JsonSubSchema):
 class ComicBookInfoSchema(JsonSchema):
     """ComicBookInfo JSON schema."""
 
-    ROOT_DATA_KEY = "ComicBookInfo/1.0"
-    ROOT_TAG = "ComicBookInfo"
-    ROOT_KEYPATH = ROOT_TAG
-    TAG_ORDER = ("appID", "lastModified", ROOT_DATA_KEY, "schema")
-    HAS_PAGE_COUNT = True
+    ROOT_DATA_KEY: str = "ComicBookInfo/1.0"
+    ROOT_TAG: str = "ComicBookInfo"
+    ROOT_KEYPATH: str = ROOT_TAG
+    TAG_ORDER: tuple[str, ...] = ("appID", "lastModified", ROOT_DATA_KEY, "schema")
+    HAS_PAGE_COUNT: bool = True
 
     appID = StringField()  # noqa: N815
     lastModified = DateTimeField()  # noqa: N815

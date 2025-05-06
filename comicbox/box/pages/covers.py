@@ -5,8 +5,8 @@ from logging import getLogger
 
 from glom import glom
 
-from comicbox.box.metadata import ComicboxMetadataMixin
-from comicbox.box.pages.filenames import ComicboxPageFilenamesMixin
+from comicbox.box.archive import archive_close
+from comicbox.box.metadata import ComicboxMetadata
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
 
@@ -15,7 +15,7 @@ _COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"
 LOG = getLogger(__name__)
 
 
-class ComicboxPagesCoversMixin(ComicboxMetadataMixin, ComicboxPageFilenamesMixin):
+class ComicboxPagesCovers(ComicboxMetadata):
     """Cover path methods."""
 
     def _generate_cover_paths_from_pages(self, metadata: dict) -> Generator[str]:
@@ -48,7 +48,7 @@ class ComicboxPagesCoversMixin(ComicboxMetadataMixin, ComicboxPageFilenamesMixin
         if first_pagename := self.get_pagename(0):
             yield first_pagename
 
-    def _get_cover_paths(self):
+    def _get_cover_paths(self) -> tuple[str, ...]:
         cover_path_generator = self.generate_cover_paths()
         cover_paths_ordered_set = dict.fromkeys(cover_path_generator)
         cover_paths = tuple(cover_paths_ordered_set.keys())
@@ -59,6 +59,26 @@ class ComicboxPagesCoversMixin(ComicboxMetadataMixin, ComicboxPageFilenamesMixin
     def get_cover_paths(self):
         """Get filename of most likely coverpage."""
         # This could be a generator?
-        if not self._cover_paths:
-            self._cover_paths = self._get_cover_paths()
+        if self._cover_paths is None:
+            self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
         return self._cover_paths
+
+    def _get_cover_page(self, *, to_pixmap: bool = False):
+        data = None
+        cover_paths = self.generate_cover_paths()
+        bad_cover_paths = set()
+        for cover_path in cover_paths:
+            if cover_path in bad_cover_paths:
+                continue
+            try:
+                data = self._archive_readfile(cover_path, to_pixmap=to_pixmap)
+                break
+            except Exception as exc:
+                LOG.warning(f"{self._path} reading cover: {cover_path}: {exc}")
+                bad_cover_paths.add(cover_path)
+        return data
+
+    @archive_close
+    def get_cover_page(self, *, to_pixmap: bool = False):
+        """Return cover image data."""
+        return self._get_cover_page(to_pixmap=to_pixmap)

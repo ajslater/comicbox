@@ -44,7 +44,10 @@ READ_METADATA = MappingProxyType(
                 "Other Arc": {"number": 2},
             },
             "date": {
-                "cover_date": date(year=1950, month=11, day=1),
+                "cover_date": date(1950, 11, 1),
+                "day": 1,
+                "month": 11,
+                "year": 1950,
             },
             "characters": {
                 "Captain Science": {},
@@ -352,7 +355,7 @@ def unparse_strinfigy_decimals(data):
         stringified_data,
         Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
     )
-    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
 
 
 READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)

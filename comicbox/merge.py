@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableMapping
 
 from mergedeep import Strategy, merge
+from typing_extensions import override
 
 
 class Merger(ABC):
@@ -19,6 +20,7 @@ class Merger(ABC):
 class AdditiveMerger(Merger):
     """Merge with mergedeep."""
 
+    @override
     @staticmethod
     def merge(destination: MutableMapping, *sources: Mapping) -> MutableMapping:
         """Merge with mergedeep."""
@@ -29,6 +31,7 @@ class AdditiveMerger(Merger):
 class ReplaceMerger(Merger):
     """Merge with update."""
 
+    @override
     @staticmethod
     def merge(destination: MutableMapping, *sources: Mapping) -> MutableMapping:
         """Merge with update."""

@@ -2,14 +2,14 @@
 
 from types import MappingProxyType
 
-from comicbox.box.normalize import ComicboxNormalizeMixin
+from comicbox.box.normalize import ComicboxNormalize
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
 from comicbox.sources import MetadataSources
 
 
-class ComicboxMergeMixin(ComicboxNormalizeMixin):
+class ComicboxMerge(ComicboxNormalize):
     """Merge Metadata Methods."""
 
     def _merge_metadata_by_source(

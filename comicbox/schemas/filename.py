@@ -79,8 +79,8 @@ class FilenameSubSchema(BaseSubSchema):
 class FilenameSchema(BaseSchema):
     """File name schema."""
 
-    ROOT_TAG = "comicfn2dict"
-    ROOT_KEYPATH = ROOT_TAG
+    ROOT_TAG: str = "comicfn2dict"
+    ROOT_KEYPATH: str = ROOT_TAG
 
     comicfn2dict = Nested(FilenameSubSchema)
 
