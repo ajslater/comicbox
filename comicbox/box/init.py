@@ -69,7 +69,11 @@ class ComicboxInit:
             reason = f"{self._path} does not exist."
             raise ValueError(reason)
 
-        self._config: AttrDict = get_config(config)
+        if isinstance(config, AttrDict):
+            # don't reparse a confuse processed config
+            self._config = config
+        else:
+            self._config: AttrDict = get_config(config)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):
