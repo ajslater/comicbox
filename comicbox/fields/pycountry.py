@@ -10,6 +10,7 @@ from typing_extensions import override
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 LOG = getLogger(__name__)
+_ALPHA_CODES = ("alpha_2", "alpha_3", "alpha_4", "name")
 
 
 class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
@@ -52,38 +53,31 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
 
         return obj
 
-    @staticmethod
-    def _to_alpha_code(pc_obj):
-        lang_code = ""
-        try:
-            try:
-                lang_code = pc_obj.alpha_2
-            except AttributeError:
-                lang_code = pc_obj.alpha_3
-        except AttributeError:
-            LOG.warning(f"No alpha 2 or alpha 3 code for {pc_obj}")
-        return lang_code
+    @classmethod
+    def _to_alpha_code(cls, pc_obj):
+        code = cls.EMPTY_CODE
+        for attr in _ALPHA_CODES:
+            if code := getattr(pc_obj, attr, cls.EMPTY_CODE):
+                break
+        return code
 
     @override
     def _deserialize(self, value, attr, *args, **kwargs):
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
-        lang_code = self.EMPTY_CODE
+        code = self.EMPTY_CODE
         if pc_obj := self._get_pycountry(attr, value):
-            lang_code = self._to_alpha_code(pc_obj)
-        return lang_code
+            code = self._to_alpha_code(pc_obj)
+        return code
 
     @override
     def _serialize(self, value, attr, *args, **kwargs):
         """Return the long name."""
         value = super()._serialize(value, attr, *args, **kwargs)
-        lang_code = self.EMPTY_CODE
+        code = self.EMPTY_CODE
         if pc_obj := self._get_pycountry(attr, value):
-            if self._serialize_name:
-                lang_code = pc_obj.name
-            else:
-                lang_code = self._to_alpha_code(pc_obj)
-        return lang_code
+            code = pc_obj.name if self._serialize_name else self._to_alpha_code(pc_obj)
+        return code
 
 
 class LanguageField(PyCountryField):
