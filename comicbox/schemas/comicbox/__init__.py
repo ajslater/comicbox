@@ -145,7 +145,7 @@ class UniverseSchema(IdentifiedSchema):
 class ArcSchema(IdentifiedSchema):
     """Story Arc Schema."""
 
-    number = IntegerField()  # CIX, Metron
+    number = IntegerField(minimum=0)  # CIX, Metron
 
 
 class DateSchema(BaseSubSchema):
@@ -225,7 +225,10 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
     updated_at = DateTimeField()  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
-        schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int
+        schema=VolumeSchema,
+        field=IntegerField(minimum=0),
+        name_key=NUMBER_KEY,
+        primitive_type=int,
     )
 
 
