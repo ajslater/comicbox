@@ -70,10 +70,6 @@ class ComicboxInit:
             raise ValueError(reason)
 
         self._config: AttrDict = get_config(config)
-        self._all_sources = None
-        self._archive_is_pdf = False
-        self._pdf_suffix = ""
-
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):
@@ -81,7 +77,6 @@ class ComicboxInit:
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
-        self._7zfactory: BytesIOFactory | None = None  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def _reset_archive(self, fmt: MetadataFormats | None, metadata: Mapping | None):
         self._archive_cls: Callable | None = None
@@ -90,6 +85,11 @@ class ComicboxInit:
         self._archive: ArchiveType | None = None
         self._namelist: tuple[str, ...] | None = None
         self._infolist: tuple | None = None
+        self._7zfactory: BytesIOFactory | None = None
+
+        self._page_filenames: tuple[str, ...] | None = None
+        self._cover_paths: tuple[str, ...] | None = None
+        self._page_count: int | None = None
 
         self._sources: dict = {}
         if metadata:
@@ -97,12 +97,7 @@ class ComicboxInit:
         self._parsed: dict = {}
         self._loaded: dict = {}
         self._normalized: dict = {}
-
         self._reset_loaded_forward_caches()
-
-        self._page_filenames: tuple[str, ...] | None = None
-        self._cover_paths: tuple[str, ...] | None = None
-        self._page_count: int | None = None
 
     @staticmethod
     def is_pdf_supported() -> bool:
@@ -113,15 +108,18 @@ class ComicboxInit:
         """PDFFile is only optionally installed."""
         with suppress(NameError, OSError):
             if PDFFile.is_pdffile(str(self._path)):
-                self._archive_is_pdf = True
+                self._archive_is_pdf = True  # pyright: ignore[reportUninitializedInstanceVariable]
                 self._archive_cls = PDFFile
-                self._pdf_suffix = PDFFile.SUFFIX
+                self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
         return self._archive_is_pdf
 
     def _set_archive_cls(self):
         """Set the path and determine the archive type."""
         if not self._path:
             return
+
+        self._archive_is_pdf: bool = False
+        self._pdf_suffix: str = ""
 
         if self._set_archive_cls_pdf():
             # Important to have PDFile before zipfile
