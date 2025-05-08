@@ -7,7 +7,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
-import eslintPluginImport from "eslint-plugin-import";
+import eslintPluginImport from "eslint-plugin-import-x";
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
@@ -53,8 +53,8 @@ export const CONFIGS = {
       "depend/ban-dependencies": [
         "error",
         {
-          // import-x doesn't work with eslint 9 yet
-          allowed: ["eslint-plugin-import"],
+          // unicorn-x dev's initial reasoning seems to rely on trivia, microoptimizations, and his own DX.
+          allowed: ["eslint-plugin-unicorn"],
         },
       ],
       "max-params": ["warn", 4],
