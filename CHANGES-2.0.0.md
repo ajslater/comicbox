@@ -50,6 +50,23 @@ related Enums.
 - Comicbox.write() => Comicbox.dump()
 - Comicbox.extract_covers_as() => box.extract_covers()
 
+## Pre Config
+
+Configs submitted to Comicbox(config=) are processed and the config logic is
+substantial. If you submit a pre-processed AttrDict config to Comicbox(config=)
+it will not reprocess the config possibly saving some time. e.g.
+
+```python
+from comicbox.box import Comicbox
+from comicbox.config import get_config
+
+CONFIG = get_config({"print": "snp"})
+
+for path in paths:
+  with Comicbox(path, config=CONFIG) as cb:
+    cb.print()
+```
+
 ## Comicbox Schema
 
 The largest changes are to the internal Comicbox metadata schema that comicbox
