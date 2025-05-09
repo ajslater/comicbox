@@ -210,6 +210,8 @@ def get_config(
     if isinstance(args, AttrDict):
         # Already a config
         return args
+    if isinstance(args, Mapping):
+        args = dict(args)
 
     # Read Sources
     config = Configuration(PACKAGE_NAME, modname=modname, read=False)

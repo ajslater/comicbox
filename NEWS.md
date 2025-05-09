@@ -33,8 +33,6 @@
   - ComicBookInfo.json `rating`, and `tags` tags fixed.
   - Support ComicBookInfo.json `primary` credit tag.
   - More accurate merging of different metadata sources.
-  - Comicbox(config=) Will not reprocesses a preprocessed config from
-    comicbox.config.get_config()
 
 ## v1.2.3
 
