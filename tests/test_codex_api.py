@@ -31,6 +31,7 @@ from tests.util import assert_diff
 
 CONFIG = get_config(Namespace(comicbox=Namespace(print="sc")))
 
+
 @dataclass
 class Fixture:
     """Test results."""
@@ -318,6 +319,7 @@ _COVER_PATH_LIST_IMPORTS = (
     TEST_METADATA_DIR / "comicinfo-cover-path-list.xml",
     TEST_METADATA_DIR / "comet-cover-path-list.xml",
 )
+
 
 def test_cover_paths():
     """Test codex cover path lists."""
