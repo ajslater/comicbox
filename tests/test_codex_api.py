@@ -11,6 +11,7 @@ import pymupdf
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -28,6 +29,7 @@ from tests.const import (
 )
 from tests.util import assert_diff
 
+CONFIG = get_config(Namespace(comicbox=Namespace(print="sc")))
 
 @dataclass
 class Fixture:
@@ -272,8 +274,7 @@ def test_check_unrar():
 def test_codex_import(ft):
     """Test codex import methods."""
     fixture = FIXTURES[ft]
-    ns = Namespace(comicbox=Namespace(print="sc"))
-    with Comicbox(fixture.path, config=ns) as car:
+    with Comicbox(fixture.path, config=CONFIG) as car:
         car_ft = car.get_file_type()
         car_md = MappingProxyType(car.get_metadata())
         car_count = car.get_page_count()
@@ -289,7 +290,7 @@ def test_cover_page(ft):
     fixture = FIXTURES[ft]
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
     is_pdf = cover_path.suffix == ".pdf"
-    with Comicbox(fixture.path) as car:
+    with Comicbox(fixture.path, config=CONFIG) as car:
         cover = car.get_cover_page(to_pixmap=is_pdf)
     with cover_path.open("rb") as f:
         disk_cover = f.read()
@@ -318,7 +319,6 @@ _COVER_PATH_LIST_IMPORTS = (
     TEST_METADATA_DIR / "comet-cover-path-list.xml",
 )
 
-
 def test_cover_paths():
     """Test codex cover path lists."""
     config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
@@ -332,7 +332,7 @@ def test_random_access_page(ft):
     """Test codex get page image methods."""
     fixture = FIXTURES[ft]
     files = sorted(Path(TEST_FILES_DIR / fixture.files_path).iterdir())
-    with Comicbox(fixture.path) as car:
+    with Comicbox(fixture.path, config=CONFIG) as car:
         for index in INDEXES:
             page = car.get_page_by_index(index)
             page_path = files[index]

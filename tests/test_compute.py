@@ -8,15 +8,18 @@ from types import MappingProxyType
 from dateutil.tz import tzutc
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comictagger import ComictaggerSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
-PRINT_CONFIG = Namespace(
-    comicbox=Namespace(
-        print="snmcp",
+PRINT_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            print="snmcp",
+        )
     )
 )
 
