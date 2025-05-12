@@ -20,7 +20,7 @@ class ComicboxNormalize(ComicboxLoad):
             return transform.to_comicbox(loaded_data.metadata)
         except Exception:
             reason = (
-                f"{self._path}: Unable to normalze"
+                f"{self._path}: Unable to normalize"
                 f" {source.value.label}:{transform_class} metadata"
             )
             LOG.exception(reason)
