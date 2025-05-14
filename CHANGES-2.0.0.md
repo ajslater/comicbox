@@ -42,13 +42,14 @@ comic metadata format is now fully supported.
 ### Metadata Formats and Metadata Sources
 
 [MetadataSources](comicbox/sources.py) and
-[MetadataFormats](comicbox/formats.py) have been separated and are now different
+[MetadataFormats](comicbox/formats.py) are separated and are now different
 related Enums.
 
 ### Method name changes
 
+- Comicbox.extract_covers_as() => Comicbox.extract_covers()
+- Comicbox.get_cover_image() => Comicbox.get_cover_page()
 - Comicbox.write() => Comicbox.dump()
-- Comicbox.extract_covers_as() => box.extract_covers()
 
 ## Pre Config
 
@@ -70,7 +71,7 @@ for path in paths:
 ## Comicbox Schema
 
 The largest changes are to the internal Comicbox metadata schema that comicbox
-returns with box.get_metadata(). It is more hierarchical and what used to be
+returns with box.get_metadata(). It's more hierarchical and what used to be
 lists are now often dicts with potentially empty values that when Metron data is
 parsed could have identifiers in them.
 
