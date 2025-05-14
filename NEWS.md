@@ -13,8 +13,9 @@
   - ComicInfo.xml gains the Translator tag
   - PDF modDate is now read and written.
   - Enum fields now interpret caseless slightly fuzzy value lookups.
-  - For convenice, named or numbered types or collections in the comicbox schema
-    can also parse by their simple name instead of requiring a complex object.
+  - For convenience, named or numbered types or collections in the comicbox
+    schema can also parse by their simple name instead of requiring a complex
+    object.
   - Comictagger schema supports series_aliases and title_aliases as reprints
   - CB7 archive read support. Comic archives in 7zip archives.
   - Syntax highlighting used on output. Change or remove with --theme option.
@@ -22,6 +23,7 @@
   - config.metadata_format exists to hint what format the api metadata is.
   - public box functions take formats instead of transform_classes
   - get_cover_path() returns the first cover_path without looking for others.
+  - Parse PDF datetimes.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.

@@ -374,7 +374,7 @@ wheels = [
 
 [[package]]
 name = "comicbox"
-version = "2.0.0a4"
+version = "2.0.0a5"
 source = { editable = "." }
 dependencies = [
     { name = "ansicolors" },
@@ -428,7 +428,7 @@ dev = [
 requires-dist = [
     { name = "ansicolors", specifier = ">=1.1.8,<2.0.0" },
     { name = "bidict", specifier = ">=0.23.0,<1.0.0" },
-    { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.2.3,<1.0.0" },
+    { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.2.4,<1.0.0" },
     { name = "comicfn2dict", specifier = ">=0.2.4,<1.0.0" },
     { name = "confuse", specifier = ">=2.0.0,<3.0.0" },
     { name = "deepdiff", specifier = ">=8.2.0,<9.0.0" },
@@ -472,16 +472,17 @@ dev = [
 
 [[package]]
 name = "comicbox-pdffile"
-version = "0.2.3"
+version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filetype" },
     { name = "pymupdf" },
     { name = "python-dateutil" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/f1/2132e4f6a2d98899446e6a90413dc1a0c3f3247327d88a34b6f955d2f154/comicbox_pdffile-0.2.3.tar.gz", hash = "sha256:8b93d69d1e5b5386d9caa752762557de484d3537e84a3b78cd59066a3ed8ce4d", size = 17426, upload-time = "2025-03-03T22:35:23.24Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/cb/bb4a65f6492e8a0edddc9ac4a06dbc89395e402019a8a1f58ddea2664562/comicbox_pdffile-0.2.4.tar.gz", hash = "sha256:61a001534ac59955a8ed0a37a098dfa74ef765179b0e5ba88a5b0881e7bad90a", size = 17963, upload-time = "2025-05-14T04:48:54.533Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/97/4b7c187b1c8f62fb3a8dec7b1ae2ffc5fedc0e297dbfd393e7633c46f2e6/comicbox_pdffile-0.2.3-py3-none-any.whl", hash = "sha256:67871a55b6d3d288fda4f711022b77f5d44f645634a9d0da2ab9b673c1675d29", size = 5072, upload-time = "2025-03-03T22:35:21.82Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/03/421bca2da5142ad7a15418db3fa12bcdae49581bdd51dd51638d52393a94/comicbox_pdffile-0.2.4-py3-none-any.whl", hash = "sha256:2c8142c17bc625edebf9262f6a93f0ff7b3a33c9576376b26c4e72e2344e98cf", size = 5489, upload-time = "2025-05-14T04:48:53.152Z" },
 ]
 
 [[package]]

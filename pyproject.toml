@@ -1,6 +1,6 @@
 [project]
 name = "comicbox"
-version = "2.0.0a4"
+version = "2.0.0a5"
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
@@ -56,7 +56,7 @@ repository = "https://github.com/ajslater/comicbox"
 documentation = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile<1.0.0,>=0.2.3"]
+pdf = ["comicbox-pdffile<1.0.0,>=0.2.4"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
