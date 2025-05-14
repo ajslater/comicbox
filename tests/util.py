@@ -89,6 +89,7 @@ def read_metadata(  # noqa: PLR0913
     archive_path,
     metadata,
     read_config,
+    *,
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
@@ -137,6 +138,7 @@ def _prune_lines(  # noqa: PLR0913
     ignore_notes,
     ignore_updated_at,
     ignore_mod_date,
+    *,
     ignore_page_count: bool,
     ignore_identifiers: bool,
     ignore_tagger: bool,
@@ -170,6 +172,7 @@ def _prune_lines(  # noqa: PLR0913
 def _prune_same_lines(  # noqa: PLR0913
     a_lines,
     b_lines,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -184,9 +187,9 @@ def _prune_same_lines(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     b_lines = _prune_lines(
         b_lines,
@@ -194,9 +197,9 @@ def _prune_same_lines(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     return a_lines, b_lines
 
@@ -204,6 +207,7 @@ def _prune_same_lines(  # noqa: PLR0913
 def _prune_strings(  # noqa: PLR0913
     a_str,
     b_str,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -214,10 +218,10 @@ def _prune_strings(  # noqa: PLR0913
     a_lines, b_lines = _prune_same_lines(
         a_lines,
         b_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
         ignore_page_count=False,
         ignore_identifiers=False,
         ignore_tagger=False,
@@ -230,6 +234,7 @@ def _prune_strings(  # noqa: PLR0913
 def compare_files(  # noqa: PLR0913
     path_a,
     path_b,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -246,13 +251,13 @@ def compare_files(  # noqa: PLR0913
     a_lines, b_lines = _prune_same_lines(
         a_lines,
         b_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
@@ -446,7 +451,7 @@ class TestParser:
         )
         self.teardown_method()
 
-    def test_md_read(self, archive_path=None, page_count=None, ignore_pages=False):
+    def test_md_read(self, archive_path=None, page_count=None, *, ignore_pages=False):
         """Read metadtata from an archive."""
         if archive_path is None:
             archive_path = self.reference_path
@@ -490,6 +495,7 @@ class TestParser:
         self,
         new_test_cbz_path,
         page_count=None,
+        *,
         ignore_pages=False,
     ):
         """Create a test metadata file, read it back and compare the original."""
@@ -510,6 +516,7 @@ class TestParser:
     def test_md_write(
         self,
         page_count=None,
+        *,
         ignore_pages=False,
     ):
         """Write metadtata to an archive."""
@@ -590,7 +597,7 @@ def load_cli_and_compare_dicts(path_a, path_b):
     assert_diff(dict_a, dict_b)
 
 
-def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
+def compare_export(test_dir, fn, fmt="", test_fn=None, *, validate=True):
     """Compare exported files."""
     if validate:
         validate_path(fn, fmt=fmt)

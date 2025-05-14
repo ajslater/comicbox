@@ -22,7 +22,7 @@ class PDFFile:
         """Stub."""
         return False
 
-    def read(self):
+    def read(self, filename: str, *, to_pixmap: bool = False) -> bytes:  # noqa: ARG002
         """Empty."""
         return b""
 

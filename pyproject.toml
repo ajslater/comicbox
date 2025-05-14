@@ -1,6 +1,6 @@
 [project]
 name = "comicbox"
-version = "2.0.0a5"
+version = "2.0.0a6"
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
@@ -257,7 +257,6 @@ task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.lint.per-file-ignores]
 "comicbox/run.py" = ["T201", "T203"]
-"tests/*" = ["FBT001", "FBT002", "FBT003"]
 "tests/test_import.py" = ["DTZ001"]
 "tests/validate/cli.py" = ["T201"]
 

@@ -5,12 +5,16 @@ from pathlib import Path
 from tarfile import TarFile
 from zipfile import ZipFile
 
-from pdffile import PDFFile
 from py7zr import SevenZipFile
 from rarfile import BadRarFile, RarFile
 
 from comicbox.box.archive.init import ComicboxArchiveInit, archive_close
 from comicbox.exceptions import UnsupportedArchiveTypeError
+
+try:
+    from pdffile import PDFFile
+except ImportError:
+    from comicbox.box.pdffile_stub import PDFFile
 
 
 class ComicboxArchiveRead(ComicboxArchiveInit):
@@ -124,7 +128,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             data = archive.read(filename, to_pixmap=True)
         else:
             try:
-                data = archive.read(filename)  # pyright: ignore[reportCallIssue]
+                data = archive.read(filename)
             except BadRarFile:
                 self.check_unrar_executable()
                 raise
