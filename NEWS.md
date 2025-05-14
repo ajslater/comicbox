@@ -24,6 +24,8 @@
   - public box functions take formats instead of transform_classes
   - get_cover_path() returns the first cover_path without looking for others.
   - Parse PDF datetimes.
+  - Comicbox.get_metadata_mtime() returns the mtime for metadata, not pages or
+    other files.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.

@@ -5,6 +5,7 @@ from logging import getLogger
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
+from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.sources import MetadataSources
 from comicbox.zipfile_remove import ZipFileWithRemove
@@ -70,19 +71,12 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     @staticmethod
     def _get_filename_from_info(info):
         """Get the filename to write."""
-        try:
-            # Do not write dirs.
-            # Prevents empty dirs. Files write implicit parents.
-            if info.is_dir():
-                return None
-        except AttributeError:
-            if info.isdir():
-                return None
+        # Do not write dirs.
+        # Prevents empty dirs. Files write implicit parents.
+        if ArchiveInfo.is_dir(info):
+            return None
 
-        try:
-            filename = info.filename
-        except AttributeError:
-            filename = info.name
+        filename = ArchiveInfo.filename(info)
 
         # Don't copy old metadata files to new archive.
         lower_name = Path(filename).name.lower()

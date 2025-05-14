@@ -2,19 +2,16 @@
 
 import shutil
 from pathlib import Path
-from tarfile import TarFile
+from sys import maxsize
 from zipfile import ZipFile
 
 from py7zr import SevenZipFile
+from py7zr.io import BytesIOFactory
 from rarfile import BadRarFile, RarFile
 
+from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.init import ComicboxArchiveInit, archive_close
 from comicbox.exceptions import UnsupportedArchiveTypeError
-
-try:
-    from pdffile import PDFFile
-except ImportError:
-    from comicbox.box.pdffile_stub import PDFFile
 
 
 class ComicboxArchiveRead(ComicboxArchiveInit):
@@ -32,10 +29,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         self._ensure_read_archive()
         if self._namelist is None:
             archive = self._get_archive()
-            if isinstance(archive, TarFile):
-                namelist = archive.getnames()
-            else:
-                namelist = archive.namelist()
+            namelist = Archive.namelist(archive)
             # SORTED CASE INSENSITIVELY
             namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
             self._namelist: tuple[str, ...] | None = namelist
@@ -57,13 +51,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         self._ensure_read_archive()
         if not self._infolist:
             archive = self._get_archive()
-            if isinstance(archive, TarFile):
-                infolist = archive.getmembers()
-            elif isinstance(archive, SevenZipFile):
-                infolist = archive.list()
-            else:
-                infolist = archive.infolist()
-
+            infolist = Archive.infolist(archive)
             # SORTED CASE INSENSITIVELY
             infolist = tuple(
                 sorted(infolist, key=lambda i: self._get_info_fn(i).lower())
@@ -97,20 +85,10 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         except UnsupportedArchiveTypeError:
             return False
 
-    @staticmethod
-    def _read_tarfile(archive, filename: str) -> bytes:
-        file_obj = archive.extractfile(filename)
-        return file_obj.read() if file_obj else b""
-
-    def _read_7zipfile(self, archive, filename: str) -> bytes:
-        """Read a single file from 7zip."""
-        if not self._7zfactory:
-            return b""
-        archive.extract(targets=[filename], factory=self._7zfactory)
-        file_obj = self._7zfactory.products.get(filename)
-        data = file_obj.read() if file_obj else b""
-        archive.reset()
-        return data
+    def _get_7zfactory(self):
+        if not self._7zfactory and self._archive_cls == SevenZipFile:
+            self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
+        return self._7zfactory
 
     def _archive_readfile(self, filename, *, to_pixmap=False) -> bytes:
         """Read an archive file to memory."""
@@ -120,18 +98,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             return data
         self._ensure_read_archive()
         archive = self._get_archive()
-        if isinstance(archive, TarFile):
-            data = self._read_tarfile(archive, filename)
-        elif isinstance(archive, SevenZipFile):
-            data = self._read_7zipfile(archive, filename)
-        elif isinstance(archive, PDFFile) and to_pixmap:
-            data = archive.read(filename, to_pixmap=True)
-        else:
-            try:
-                data = archive.read(filename)
-            except BadRarFile:
-                self.check_unrar_executable()
-                raise
+        factory = self._get_7zfactory()
+        try:
+            data = Archive.read(archive, filename, factory, to_pixmap=to_pixmap)
+        except BadRarFile:
+            self.check_unrar_executable()
+            raise
         return data
 
     def _get_comment(self):

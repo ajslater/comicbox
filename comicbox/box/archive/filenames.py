@@ -2,17 +2,19 @@
 
 import re
 from contextlib import suppress
+from datetime import datetime, timezone
 from sys import maxsize
 
 from comicbox.box.archive.init import archive_close
-from comicbox.box.archive.write import ComicboxArchiveWrite
+from comicbox.box.archive.mtime import ComicboxArchiveMtime
 
 # ignore dotfiles but not relative ../ leaders.
 # ignore macos resource forks
 _IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
+EPOCH_START = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 
-class ComicboxArchiveFilenames(ComicboxArchiveWrite):
+class ComicboxArchiveFilenames(ComicboxArchiveMtime):
     """Calculate page filenames."""
 
     def _set_page_filenames(self):
