@@ -47,18 +47,18 @@ class FuzzyEnumMixin:
         for key_variation in key_variations:
             enum_map[key_variation] = enum
 
-    def init_enum_map(self):
+    def get_enum_alias_map(self) -> dict:
         """Transform the ENUM_ALIAS_MAP into the enum lookup map."""
         enum_map = {}
         for key, enum in self.ENUM_ALIAS_MAP.items():
             self.add_enum_map_item(key, enum, enum_map)
-        self._enum_map = MappingProxyType(enum_map)  # pyright: ignore[reportUninitializedInstanceVariable]
+        return enum_map
 
-    def get_enum(self, value) -> Enum | None:
+    def get_enum(self, value: str | Enum) -> Enum | None:
         """Get an enum from the fuzzy lookup map."""
-        if isinstance(value, Enum):
-            value = value.value
-        return self._enum_map.get(value.lower())
+        key: str = value.value if isinstance(value, Enum) else str(value)
+        key = key.lower()
+        return self._enum_map.get(key)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
@@ -66,19 +66,18 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
 
     ENUM = Enum
 
-    @override
-    def init_enum_map(self):
+    def get_enum_map(self) -> dict:
         """Transform the ENUM_ALIAS_MAP into the enum lookup map and add the field enum to it as well."""
-        super().init_enum_map()
-        enum_map = dict(self._enum_map)
+        enum_map = self.get_enum_alias_map()
         for enum in self.ENUM:
             self.add_enum_map_item(enum, enum, enum_map)
-        self._enum_map = MappingProxyType(enum_map)
+        return enum_map
 
     def __init__(self, *args, **kwargs):
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
-        self.init_enum_map()
+        enum_map = self.get_enum_map()
+        self._enum_map = MappingProxyType(enum_map)
 
     @override
     def _deserialize(self, value, *args, **kwargs):
@@ -151,12 +150,18 @@ class EnumBooleanField(EnumField):
     """An Enum Field that also accepts boolean values."""
 
     YES = "Yes"
-    TRUTHY = frozenset({True, "1", "true", "True"})
+    TRUTHY = frozenset(
+        {
+            "1",
+            "true",
+            "yes",
+        }
+    )
 
     @override
     def _deserialize(self, value, *args, **kwargs):
         result = super()._deserialize(value, *args, **kwargs)
-        if not isinstance(result, self.ENUM) and value in self.TRUTHY:
+        if not isinstance(result, self.ENUM) and str(value).lower() in self.TRUTHY:
             result = super()._deserialize(self.YES, *args, **kwargs)
         return result
 
@@ -214,7 +219,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
     def __init__(self, *args, **kwargs):
         """Use the enum."""
         super().__init__(*args, **kwargs)
-        self.init_enum_map()
+        self._enum_map = MappingProxyType(self.get_enum_alias_map())
 
     def _prettify(self, value) -> str:
         """Conform a value to a known enum or titlecase."""
