@@ -16,7 +16,7 @@ def archive_close(fn):
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
         result = fn(self, *args, **kwargs)
-        if self._config.close_fd:
+        if self._close_fd:
             self.close()
         return result
 
@@ -30,7 +30,7 @@ class ComicboxArchiveInit(ComicboxInit):
 
     def __enter__(self):
         """Context enter."""
-        self._config.close_fd = False
+        self._close_fd = False
         return self
 
     def __exit__(self, *_exc):

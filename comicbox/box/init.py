@@ -98,6 +98,7 @@ class ComicboxInit:
         self._namelist: tuple[str, ...] | None = None
         self._infolist: tuple | None = None
         self._7zfactory: BytesIOFactory | None = None
+        self._close_fd = self._config.close_fd
 
         self._page_filenames: tuple[str, ...] | None = None
         self._cover_paths: tuple[str, ...] | None = None
