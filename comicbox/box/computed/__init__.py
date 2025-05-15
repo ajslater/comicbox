@@ -40,19 +40,10 @@ class ComputedData:
 class ComicboxComputed(ComicboxComputedIdentifers):
     """Computed metadata methods."""
 
-    @staticmethod
-    def _add_date_part(cover_date: date, key: str, computed_date: dict, attr: str):
-        computed_date[key] = getattr(cover_date, attr)
-
-    def _get_computed_from_date(self, sub_data, **_kwargs):
-        """Synchronize date parts and cover_date."""
-        old_date = sub_data.get(DATE_KEY)
-        if not old_date:
-            return None
-        computed_date = {}
-        year = old_date.get(YEAR_KEY)
-        month = old_date.get(MONTH_KEY)
-        day = old_date.get(DAY_KEY)
+    def _set_computed_from_date_cover_date(self, old_date: dict, computed_date: dict):
+        year: int | None = old_date.get(YEAR_KEY)
+        month: int | None = old_date.get(MONTH_KEY)
+        day: int | None = old_date.get(DAY_KEY)
         msg = ""
         if all(
             (
@@ -62,26 +53,45 @@ class ComicboxComputed(ComicboxComputedIdentifers):
             )
         ):
             try:
-                computed_date[COVER_DATE_KEY] = date(year, month, day)
+                dt = date(year, month, day)  # pyright: ignore[reportArgumentType]
+                computed_date[COVER_DATE_KEY] = dt
             except ValueError as exc:
                 msg = str(exc)
                 reason = f"{self._path}: {msg}"
                 LOG.warning(reason)
+        return msg
 
+    @staticmethod
+    def _add_date_part(cover_date: date, key: str, computed_date: dict, attr: str):
+        computed_date[key] = getattr(cover_date, attr)
+
+    def _set_computed_from_date_parts(
+        self, old_date: dict, computed_date: dict, msg: str
+    ):
         if COVER_DATE_KEY not in computed_date and (
             cover_date := old_date.get(COVER_DATE_KEY)
         ):
             for key in _DATE_PART_KEYS:
                 self._add_date_part(cover_date, key, computed_date, key)
         elif msg:
+            # Delete bogus parts if we can't make a date out of them
+            delete_keypath = ""
             if msg.startswith("month"):
-                self._config.delete_keys = frozenset(
-                    self._config.delete_keys | {"date.month"}
-                )
+                delete_keypath = "date.month"
             elif msg.startswith("day"):
-                self._config.delete_keys = frozenset(
-                    self._config.delete_keys | {"date.day"}
-                )
+                delete_keypath = "date.day"
+            if delete_keypath:
+                self._extra_delete_keys.add(delete_keypath)
+
+    def _get_computed_from_date(self, sub_data, **_kwargs):
+        """Synchronize date parts and cover_date."""
+        old_date = sub_data.get(DATE_KEY)
+        if not old_date:
+            return None
+        computed_date = {}
+
+        msg = self._set_computed_from_date_cover_date(old_date, computed_date)
+        self._set_computed_from_date_parts(old_date, computed_date, msg)
 
         if not computed_date:
             return None
@@ -132,7 +142,7 @@ class ComicboxComputed(ComicboxComputedIdentifers):
     def _get_delete_keys(self, _sub_data: Mapping):
         if not self._config.delete_keys:
             return None
-        return tuple(sorted(self._config.delete_keys))
+        return tuple(sorted(self._config.delete_keys | self._extra_delete_keys))
 
     _COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
