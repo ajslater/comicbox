@@ -6,7 +6,6 @@ from pathlib import Path
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.init import archive_close
 from comicbox.box.archive.write import ComicboxArchiveWrite
-from comicbox.sources import MetadataSources
 
 
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
@@ -22,12 +21,6 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
 
     def _get_metadata_files_mtime(self) -> datetime | None:
         """Get the latest metadata archive file mtime according to the read config."""
-        formats = frozenset(
-            frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats)
-            & self._config.read
-        )
-        metadata_lower_filenames = frozenset(fmt.filename.lower() for fmt in formats)
-
         max_mtime: None | datetime = None
         infolist = self._get_archive_infolist()
         for info in infolist:
@@ -39,7 +32,10 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
             if not filename:
                 continue
             path = Path(filename)
-            if path.name.lower() not in metadata_lower_filenames:
+            if (
+                path.name.lower()
+                not in self._config.computed.read_metadata_lower_filenames
+            ):
                 continue
 
             # mtime
@@ -64,7 +60,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
         if self._archive_is_pdf:
             return self.get_path_mtime_dttm()
 
-        if MetadataSources.ARCHIVE_COMMENT.value.formats & self._config.read:
+        if self._config.computed.is_read_comments:
             comment = getattr(archive, "comment", b"")
             if comment.startswith(b"{"):
                 return self.get_path_mtime_dttm()

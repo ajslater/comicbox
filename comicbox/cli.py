@@ -159,6 +159,13 @@ def _add_option_group(parser):
         help="Read metadata formats. Defaults to all.",
     )
     option_group.add_argument(
+        "--read-ignore",
+        action=CSVAction,
+        metavar="FORMATS",
+        dest="read_ignore",
+        help="Subtract these formats from the read formats.",
+    )
+    option_group.add_argument(
         "-m",
         "--metadata",
         dest="metadata_cli",

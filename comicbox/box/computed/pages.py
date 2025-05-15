@@ -49,7 +49,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         """Determine if we should compute this attribute."""
         if key in self._config.delete_keys or not sub_md or not self._path:
             return False
-        formats = self._config.all_write_formats
+        formats = self._config.computed.all_write_formats
         # If any of the enabled format types have page flags then compute.
         if key == PAGES_KEY and self._config.compute_pages:
             return self._enable_page_compute_attribute_pages(formats)

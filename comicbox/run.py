@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
     from confuse import AttrDict
@@ -22,6 +23,7 @@ class Runner:
     def __init__(self, config):
         """Initialize actions and config."""
         self.config: AttrDict = get_config(config)
+        init_logging(self.config.loglevel)
 
     def run_on_file(self, path):
         """Run operations on one file."""

@@ -269,7 +269,8 @@ def test_cli_action_delete_tags_add_metadata():
         )
     )
 
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
+        car.print_out()
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)
@@ -302,7 +303,7 @@ def test_cli_action_delete_keys():
         )
     )
 
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)

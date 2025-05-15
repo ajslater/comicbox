@@ -76,7 +76,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         """Stamp when writing or explicitly told to."""
         if not (
             self._config.stamp
-            or self._config.all_write_formats
+            or self._config.computed.all_write_formats
             or self._config.cbz
             or self._config.export
         ):

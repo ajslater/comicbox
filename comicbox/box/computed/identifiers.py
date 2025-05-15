@@ -4,7 +4,6 @@ from collections.abc import Callable
 from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.formats import MetadataFormats
 from comicbox.identifiers.const import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
@@ -22,16 +21,6 @@ from comicbox.merge import AdditiveMerger, Merger
 from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     TAGS_KEY,
-)
-
-_FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
-    {
-        MetadataFormats.COMIC_BOOK_INFO,
-        MetadataFormats.COMIC_INFO,
-        MetadataFormats.COMICTAGGER,
-        MetadataFormats.PDF,
-        MetadataFormats.PDF_XML,
-    }
 )
 
 
@@ -53,8 +42,8 @@ class ComicboxComputedIdentifers(ComicboxComputedIssue):
         # only look for ids in tags if the format has tags but no designated id field.
         if (
             not sub_data
+            or self._config.computed.is_skip_computed_from_tags
             or TAGS_KEY in self._config.delete_keys
-            or not self._config.read & _FORMATS_WITH_TAGS_WITHOUT_IDS
         ):
             return None
         tags = sub_data.get(TAGS_KEY)

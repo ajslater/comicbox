@@ -2,19 +2,38 @@
 
 import contextlib
 from argparse import Namespace
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from logging import getLogger
 from pathlib import Path
 
-from confuse import Configuration, Integer, OneOf, String
-from confuse.templates import AttrDict, MappingTemplate, Optional, Sequence
+from confuse import Configuration, Subview
+from confuse.templates import (
+    AttrDict,
+    Integer,
+    MappingTemplate,
+    OneOf,
+    Optional,
+    Sequence,
+    String,
+)
 
 from comicbox.formats import MetadataFormats
-from comicbox.logger import init_logging
 from comicbox.print import PrintPhases
+from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER, PACKAGE_NAME
 
 LOG = getLogger(__name__)
+
+_FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
+    {
+        MetadataFormats.COMIC_BOOK_INFO,
+        MetadataFormats.COMIC_INFO,
+        MetadataFormats.COMICTAGGER,
+        MetadataFormats.PDF,
+        MetadataFormats.PDF_XML,
+    }
+)
+
 
 _TEMPLATE = MappingTemplate(
     {
@@ -24,7 +43,7 @@ _TEMPLATE = MappingTemplate(
                 "compute_pages": bool,
                 "config": Optional(OneOf((str, Path))),
                 "delete_all_tags": bool,
-                "delete_keys": Optional(Sequence(str)),
+                "delete_keys": Optional([frozenset, Sequence(str)]),
                 "delete_orig": bool,
                 "dest_path": OneOf((str, Path)),
                 "dry_run": bool,
@@ -32,8 +51,8 @@ _TEMPLATE = MappingTemplate(
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
-                "read": Optional(Sequence(str)),
-                "read_ignore": Optional(Sequence(str)),
+                "read": Optional([frozenset, Sequence(str)]),
+                "read_ignore": Optional([frozenset, Sequence(str)]),
                 "recurse": bool,
                 "replace_metadata": bool,
                 "stamp": bool,
@@ -45,15 +64,28 @@ _TEMPLATE = MappingTemplate(
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),
-                "export": Optional(Sequence(str)),
+                "export": Optional([frozenset, Sequence(str)]),
                 "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
                 "index_to": Optional(int),
-                "print": Optional(str),
+                "print": Optional([frozenset, str]),
                 "rename": Optional(bool),
-                "write": Optional(Sequence(str)),
+                "write": Optional([frozenset, Sequence(str)]),
                 # Targets
-                "paths": Optional(Sequence(OneOf((str, Path)))),
+                "paths": Optional(Sequence(OneOf((str, Path, None)))),
+                # Computed
+                "computed": Optional(
+                    MappingTemplate(
+                        {
+                            "all_write_formats": frozenset,
+                            "read_filename_formats": frozenset,
+                            "read_file_formats": frozenset,
+                            "read_metadata_lower_filenames": frozenset,
+                            "is_read_comments": bool,
+                            "is_skip_computed_from_tags": bool,
+                        }
+                    )
+                ),
             }
         )
     }
@@ -61,42 +93,43 @@ _TEMPLATE = MappingTemplate(
 _SINGLE_NO_PATH = (None,)
 
 
-def _clean_paths(config):
+def _clean_paths(config: Subview):
     """No null paths. Turn off options for no paths."""
-    paths = config.paths
+    paths: Iterable[str | Path] | None = config["paths"].get()  # pyright: ignore[reportAssignmentType]
     paths_removed = False
     if paths:
         filtered_paths = set()
         for path in paths:
             if not path:
                 continue
-            if Path(path).is_dir() and not config.recurse:
+            if Path(path).is_dir() and not config["recurse"].get(bool):
                 LOG.warning(f"{path} is a directory. Ignored without --recurse.")
                 paths_removed = True
                 continue
             filtered_paths.add(path)
-        if paths:
-            paths = tuple(sorted(filtered_paths))
+        paths = tuple(sorted(filtered_paths))
     if paths or paths_removed:
         if not paths:
             LOG.error("No valid paths left.")
-        config.paths = paths
+        final_paths = paths
     else:
-        config.paths = _SINGLE_NO_PATH
+        final_paths = _SINGLE_NO_PATH
+    config["paths"].set(final_paths)
 
 
 def _ensure_cli_yaml(config):
     """Wrap all cli yaml in brackets if its bare."""
-    if not config.metadata_cli:
+    mds = config["metadata_cli"].get()
+    if not mds:
         return
     wrapped_md_list = []
-    for md in config.metadata_cli:
+    for md in mds:
         if not md:
             continue
         wrapped_md = "{" + md + "}" if md[0] != "{" else md
         wrapped_md_list.append(wrapped_md)
 
-    config.metadata_cli = wrapped_md_list
+    config["metadata_cli"].set(tuple(wrapped_md_list))
 
 
 def _get_formats_from_keys(keys, ignore_keys):
@@ -111,7 +144,7 @@ def _get_formats_from_keys(keys, ignore_keys):
     return fmts, keys
 
 
-def _set_config_formats_from_keys(config, key):
+def _get_config_formats_from_keys(config, key):
     """Return a set of schemas from a sequence of config keys."""
     # Keys to set
     keys = config[key] or ()
@@ -132,28 +165,38 @@ def _set_config_formats_from_keys(config, key):
     return frozenset(fmts)
 
 
-def _transform_keys_to_formats(config):
+def _transform_keys_to_formats(config: Subview):
     """Transform schema config keys to format enums."""
-    config.read = _set_config_formats_from_keys(config, "read")
-    if config.delete_all_tags:
-        config.write = config.export = frozenset()
+    if config["delete_all_tags"].get(bool):
+        config["read"].set(frozenset())
+        config["write"].set(frozenset())
+        config["export"].set(frozenset())
     else:
-        config.write = _set_config_formats_from_keys(config, "write")
-    config.export = _set_config_formats_from_keys(config, "export")
-    config.all_write_formats = frozenset(config.write | config.export)
+        read_fmts = _get_config_formats_from_keys(config, "read")
+        read_ignore = config["read_ignore"].get()
+        if read_ignore and (
+            read_ignore_fmts := _get_config_formats_from_keys(config, "read_ignore")
+        ):
+            read_fmts -= read_ignore_fmts
+        config["read"].set(read_fmts)
+        write_fmts = _get_config_formats_from_keys(config, "write")
+        config["write"].set(write_fmts)
+        export_fmts = _get_config_formats_from_keys(config, "export")
+        config["export"] = export_fmts
 
 
-def _deduplicate_delete_keys(config):
+def _deduplicate_delete_keys(config: Subview):
     """Transform delete keys to a set."""
-    config.delete_keys = frozenset(
-        sorted({kp.removeprefix("comicbox.") for kp in config.delete_keys})
-    )
+    delete_keys: list | set | tuple | frozenset = config["delete_keys"].get(list)  # pyright: ignore[reportAssignmentType]
+    delete_keys = frozenset({kp.removeprefix("comicbox.") for kp in delete_keys})
+    config["delete_keys"].set(delete_keys)
 
 
-def _parse_print(config):
-    if not config.print:
-        config.print = ""
-    print_phases = config.print.lower()
+def _parse_print(config: Subview):
+    print_fmts: str | None = config["print"].get()  # pyright: ignore[reportAssignmentType]
+    if not print_fmts:
+        print_fmts = ""
+    print_phases = print_fmts.lower()
     enum_print_phases = set()
     for phase in print_phases:
         try:
@@ -161,7 +204,8 @@ def _parse_print(config):
             enum_print_phases.add(enum)
         except ValueError as exc:
             LOG.warning(exc)
-    config.print = frozenset(enum_print_phases)
+    print_fmts_set = frozenset(enum_print_phases)
+    config["print"].set(print_fmts_set)
 
 
 def _add_config_file(args, config):
@@ -197,9 +241,28 @@ def _read_config_sources(config: Configuration, args: Namespace | Mapping | None
             config.set_args(args)
 
 
-def _set_tagger(config):
-    if not config.tagger:
-        config.tagger = DEFAULT_TAGGER
+def _set_tagger(config: Subview):
+    tagger = config["tagger"].get()
+    if not tagger:
+        config["tagger"].set(DEFAULT_TAGGER)
+
+
+def _set_computed(config):
+    all_write_fmts = frozenset(config["write"].get() | config["export"].get())
+    config["computed"]["all_write_formats"].set(all_write_fmts)
+    read = config["read"].get()
+    rfnf = frozenset(frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats) & read)
+    config["computed"]["read_filename_formats"].set(rfnf)
+    rff = frozenset(frozenset(MetadataSources.ARCHIVE_FILE.value.formats) & read)
+    config["computed"]["read_file_formats"].set(rff)
+    rmlf = frozenset(fmt.value.filename.lower() for fmt in rff)
+    config["computed"]["read_metadata_lower_filenames"].set(rmlf)
+    irc = bool(
+        frozenset(frozenset(MetadataSources.ARCHIVE_COMMENT.value.formats) & read)
+    )
+    config["computed"]["is_read_comments"].set(irc)
+    iscft = not bool(_FORMATS_WITH_TAGS_WITHOUT_IDS & read)
+    config["computed"]["is_skip_computed_from_tags"].set(iscft)
 
 
 def get_config(
@@ -216,17 +279,16 @@ def get_config(
     # Read Sources
     config = Configuration(PACKAGE_NAME, modname=modname, read=False)
     _read_config_sources(config, args)
+    config_program = config[PACKAGE_NAME]
+
+    _clean_paths(config_program)
+    _ensure_cli_yaml(config_program)
+    _deduplicate_delete_keys(config_program)
+    _transform_keys_to_formats(config_program)
+    _set_computed(config_program)
+    _parse_print(config_program)
+    _set_tagger(config_program)
 
     # Create config
     ad: AttrDict = config.get(_TEMPLATE)  # pyright: ignore[reportAssignmentType]
-    ad_config = ad.comicbox
-
-    # Post Process Config
-    _clean_paths(ad_config)
-    _ensure_cli_yaml(ad_config)
-    _transform_keys_to_formats(ad_config)
-    _deduplicate_delete_keys(ad_config)
-    _parse_print(ad_config)
-    _set_tagger(ad_config)
-    init_logging(ad_config.loglevel)
-    return ad_config
+    return ad.comicbox

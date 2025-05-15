@@ -20,6 +20,7 @@ from rarfile import RarFile, is_rarfile
 from comicbox.config import get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
+from comicbox.logger import init_logging
 from comicbox.sources import MetadataSources
 
 try:
@@ -72,6 +73,7 @@ class ComicboxInit:
             raise ValueError(reason)
 
         self._config: AttrDict = get_config(config)
+        init_logging(self._config.loglevel)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):

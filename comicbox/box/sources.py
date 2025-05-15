@@ -80,11 +80,7 @@ class ComicboxSources(ComicboxArchive):
         if not self._path:
             return source_data_list
         try:
-            formats = (
-                frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats)
-                & self._config.read
-            )
-            for fmt in formats:
+            for fmt in self._config.computed.read_filename_formats:
                 source_data_list += [
                     SourceData(self._path.name, fmt=fmt, from_archive=True)
                 ]
@@ -151,8 +147,7 @@ class ComicboxSources(ComicboxArchive):
         """Get source metadata from files in the archive."""
         # search filenames for metadata files and read.
         source_data_list = []
-        file_fmts = frozenset(MetadataSources.ARCHIVE_FILE.value.formats)
-        if not self._path or not file_fmts & self._config.read:
+        if not self._path or not self._config.computed.read_file_formats:
             return source_data_list
         files_dict = {}
         for fn in self._get_archive_namelist():
