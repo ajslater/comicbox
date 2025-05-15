@@ -1,7 +1,7 @@
 """Logging classes."""
 
 import os
-from logging import INFO, basicConfig
+from logging import INFO, basicConfig, root
 
 from rich.logging import RichHandler
 
@@ -11,6 +11,10 @@ LOG_FMT = "%(message)s"
 
 def init_logging(loglevel=INFO):
     """Initialize logging."""
+    if root.handlers:
+        # Do not reinintialize if logging is already set up
+        return
+
     level = os.environ.get("LOGLEVEL", loglevel)
 
     handler = RichHandler(rich_tracebacks=True)
