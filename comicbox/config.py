@@ -3,8 +3,10 @@
 import contextlib
 from argparse import Namespace
 from collections.abc import Iterable, Mapping
+from copy import copy
 from logging import getLogger
 from pathlib import Path
+from types import MappingProxyType
 
 from confuse import Configuration, Subview
 from confuse.templates import (
@@ -91,6 +93,18 @@ _TEMPLATE = MappingTemplate(
     }
 )
 _SINGLE_NO_PATH = (None,)
+_NO_PATH_ATTRS = MappingProxyType(
+    {
+        "index_from": None,
+        "index_to": None,
+        "write": None,
+        "covers": False,
+        "cbz": False,
+        "delete_all_tags": False,
+        "rename": False,
+    }
+)
+_NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 
 def _clean_paths(config: Subview):
@@ -265,14 +279,47 @@ def _set_computed(config):
     config["computed"]["is_skip_computed_from_tags"].set(iscft)
 
 
+def _post_process_set_for_path(config: AttrDict, path: str | Path | None, *, box: bool):
+    """Turn off options and warn if no path."""
+    if path or not box:
+        return config
+    need_file_opts = []
+
+    # Alterations in this method are shallow, no need for deepcopy
+    config = copy(AttrDict(config))
+
+    for phase in _NO_PATH_PRINT_PHASES:
+        if phase in config.print:
+            need_file_opts.append(f"print {phase.name.lower()}")
+            config.print = frozenset(config.print - {phase})
+
+    for attr, val in _NO_PATH_ATTRS.items():
+        if config[attr]:
+            need_file_opts.append(attr)
+            config[attr] = val
+
+    if need_file_opts:
+        plural = "s" if len(need_file_opts) > 1 else ""
+        opts = ", ".join(need_file_opts)
+        LOG.warning(f"Cannot perform action{plural} '{opts}' without an archive path.")
+    return config
+
+
 def get_config(
     args: Namespace | Mapping | AttrDict | None = None,
+    *,
     modname: str = PACKAGE_NAME,
+    path: str | Path | None = None,
+    box: bool = False,
 ) -> AttrDict:
-    """Get the config dict, layering env and args over defaults."""
+    """
+    Get the config dict, layering env and args over defaults.
+
+    Setting the box arg to True reconfigures attributes based on path or no path.
+    """
     if isinstance(args, AttrDict):
         # Already a config
-        return args
+        return _post_process_set_for_path(args, path, box=box)
     if isinstance(args, Mapping):
         args = dict(args)
 
@@ -291,4 +338,4 @@ def get_config(
 
     # Create config
     ad: AttrDict = config.get(_TEMPLATE)  # pyright: ignore[reportAssignmentType]
-    return ad.comicbox
+    return _post_process_set_for_path(ad.comicbox, path, box=box)

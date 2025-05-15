@@ -51,6 +51,18 @@ class ComicboxInit:
 
     _MODE_EXECUTABLE = stat.S_IXUSR ^ stat.S_IXGRP ^ stat.S_IXOTH
 
+    def _validate_path(self, path: Path | str | None) -> Path | None:
+        path = Path(path) if path else None
+        if not path:
+            return path
+        if not path.exists():
+            reason = f"{path} does not exist."
+            raise ValueError(reason)
+        if path.is_dir():
+            reason = f"{path} is a directory."
+            raise ValueError(reason)
+        return path
+
     def __init__(
         self,
         path: Path | str | None = None,
@@ -67,12 +79,8 @@ class ComicboxInit:
         metadata: a comicbox.schemas dict to use instead of gathering the metadata
             from the path.
         """
-        self._path: Path | None = Path(path) if path else None
-        if self._path and not self._path.exists():
-            reason = f"{self._path} does not exist."
-            raise ValueError(reason)
-
-        self._config: AttrDict = get_config(config)
+        self._path = self._validate_path(path)
+        self._config: AttrDict = get_config(config, path=self._path, box=True)
         init_logging(self._config.loglevel)
         self._reset_archive(fmt, metadata)
 

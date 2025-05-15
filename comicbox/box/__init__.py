@@ -9,23 +9,8 @@ from logging import getLogger
 from types import MappingProxyType
 
 from comicbox.box.print import ComicboxPrint
-from comicbox.print import PrintPhases
 
 LOG = getLogger(__name__)
-
-
-_NO_PATH_ATTRS = MappingProxyType(
-    {
-        "index_from": None,
-        "index_to": None,
-        "write": None,
-        "covers": False,
-        "cbz": False,
-        "delete_all_tags": False,
-        "rename": False,
-    }
-)
-_NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 
 class Comicbox(
@@ -45,27 +30,6 @@ class Comicbox(
         }
     )
 
-    def _config_for_no_path(self):
-        """Turn off options and warn if no path."""
-        need_file_opts = []
-
-        for phase in _NO_PATH_PRINT_PHASES:
-            if phase in self._config.print:
-                need_file_opts.append(f"print {phase.name.lower()}")
-                self._config.print = frozenset(self._config.print - {phase})
-
-        for attr, val in _NO_PATH_ATTRS.items():
-            if self._config[attr]:
-                need_file_opts.append(attr)
-                self._config[attr] = val
-
-        if need_file_opts:
-            plural = "s" if len(need_file_opts) > 1 else ""
-            opts = ", ".join(need_file_opts)
-            LOG.warning(
-                f"Cannot perform action{plural} '{opts}' without an archive path."
-            )
-
     def _run_complex_actions(self):
         noop = True
         if (self._config.index_from, self._config.index_to) != (None, None):
@@ -78,9 +42,6 @@ class Comicbox(
 
     def run(self):
         """Perform archive actions."""
-        if not self._path:
-            self._config_for_no_path()
-
         noop = True
         for attr, method in self._CONFIG_ACTIONS.items():
             if self._config[attr]:
