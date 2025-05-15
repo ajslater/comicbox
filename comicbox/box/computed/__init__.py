@@ -76,7 +76,7 @@ class ComicboxComputed(ComicboxComputedIdentifers):
         elif msg:
             if msg.startswith("month"):
                 self._config.delete_keys = frozenset(
-                    self._config.delelte_keys | {"date.month"}
+                    self._config.delete_keys | {"date.month"}
                 )
             elif msg.startswith("day"):
                 self._config.delete_keys = frozenset(
