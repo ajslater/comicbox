@@ -14,7 +14,7 @@ class ArchiveInfo:
     """Get ZipInfo like attributes from all archive info types."""
 
     @staticmethod
-    def datetime(info: InfoType):
+    def datetime(info: InfoType) -> datetime | None:
         """Return mtime as a datetime."""
         dttm = None
         if isinstance(info, ZipInfo):
@@ -29,7 +29,7 @@ class ArchiveInfo:
         return dttm
 
     @staticmethod
-    def is_dir(info: InfoType):
+    def is_dir(info: InfoType) -> bool:
         """Is a directory."""
         if isinstance(info, ZipInfo | RarInfo):
             is_dir = info.is_dir()
@@ -40,7 +40,7 @@ class ArchiveInfo:
         return is_dir
 
     @staticmethod
-    def filename(info: InfoType):
+    def filename(info: InfoType) -> str:
         """Return archive filename."""
         filename = info.name if isinstance(info, TarInfo) else info.filename
         return filename or ""

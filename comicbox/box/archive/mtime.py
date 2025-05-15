@@ -1,6 +1,5 @@
 """Calculate page filenames."""
 
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,16 +8,19 @@ from comicbox.box.archive.init import archive_close
 from comicbox.box.archive.write import ComicboxArchiveWrite
 from comicbox.sources import MetadataSources
 
-# ignore dotfiles but not relative ../ leaders.
-# ignore macos resource forks
-_IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
-EPOCH_START = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-
 
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
 
-    def _get_metadata_files_mtime(self):
+    def get_path_mtime_dttm(self) -> datetime | None:
+        """Get the path mtime as datetime."""
+        if not self._path_mtime_dttm and self._path:
+            self._path_mtime_dttm: datetime | None = datetime.fromtimestamp(
+                self._path.stat().st_mtime, tz=timezone.utc
+            )
+        return self._path_mtime_dttm
+
+    def _get_metadata_files_mtime(self) -> datetime | None:
         """Get the latest metadata archive file mtime according to the read config."""
         formats = frozenset(
             frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats)
@@ -26,12 +28,13 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
         )
         metadata_lower_filenames = frozenset(fmt.filename.lower() for fmt in formats)
 
-        max_mtime = EPOCH_START
+        max_mtime: None | datetime = None
         infolist = self._get_archive_infolist()
         for info in infolist:
             if ArchiveInfo.is_dir(info):
                 continue
 
+            # filename
             filename = ArchiveInfo.filename(info)
             if not filename:
                 continue
@@ -39,29 +42,31 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
             if path.name.lower() not in metadata_lower_filenames:
                 continue
 
+            # mtime
             mtime = ArchiveInfo.datetime(info)
             if not mtime:
-                return self._path and self._path.stat().st_mtime
-            max_mtime = max(max_mtime, mtime)
+                mtime = self.get_path_mtime_dttm()
+            if max_mtime is not None and mtime is not None:
+                max_mtime = max(max_mtime, mtime)
         return max_mtime
 
     @archive_close
-    def get_metadata_files_mtime(self):
+    def get_metadata_files_mtime(self) -> datetime | None:
         """Get the latest metadata archive file mtime according to the read config."""
         return self._get_metadata_files_mtime()
 
     @archive_close
-    def get_metadata_mtime(self):
+    def get_metadata_mtime(self) -> datetime | None:
         """Get the latest metadata mtime according to the read config."""
         # Ensure the archive is ready.
         archive = self._get_archive()
 
         if self._archive_is_pdf:
-            return self._path and self._path.stat().st_mtime
+            return self.get_path_mtime_dttm()
 
         if MetadataSources.ARCHIVE_COMMENT.value.formats & self._config.read:
             comment = getattr(archive, "comment", b"")
             if comment.startswith(b"{"):
-                return self._path and self._path.stat().st_mtime
+                return self.get_path_mtime_dttm()
 
         return self._get_metadata_files_mtime()

@@ -28,6 +28,8 @@ except ImportError:
     from comicbox.box.pdffile_stub import PDFFile
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from py7zr.io import BytesIOFactory
 
     from comicbox.box.types import ArchiveType
@@ -97,6 +99,7 @@ class ComicboxInit:
         self._parsed: dict = {}
         self._loaded: dict = {}
         self._normalized: dict = {}
+        self._path_mtime_dttm: datetime | None = None
         self._reset_loaded_forward_caches()
 
     @staticmethod
