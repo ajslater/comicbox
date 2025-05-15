@@ -5,7 +5,8 @@ from logging import getLogger
 from pathlib import Path
 
 from comicbox.box import Comicbox
-from comicbox.config import FrozenAttrDict, get_config
+from comicbox.config import get_config
+from comicbox.config.frozenattrdict import FrozenAttrDict
 from comicbox.logger import init_logging
 
 LOG = getLogger(__name__)

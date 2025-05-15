@@ -17,7 +17,8 @@ from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 
-from comicbox.config import FrozenAttrDict, get_config
+from comicbox.config import get_config
+from comicbox.config.frozenattrdict import FrozenAttrDict
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
