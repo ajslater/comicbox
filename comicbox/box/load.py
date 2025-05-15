@@ -95,7 +95,6 @@ class ComicboxLoad(ComicboxSources):
             level,
             f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}",
         )
-        LOG.exception(exc)
         if LOG.getEffectiveLevel() == DEBUG:
             LOG.debug(format_exc())
 
