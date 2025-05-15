@@ -17,7 +17,7 @@ from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 
-from comicbox.config import get_config
+from comicbox.config import FrozenAttrDict, get_config
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
@@ -80,13 +80,16 @@ class ComicboxInit:
             from the path.
         """
         self._path = self._validate_path(path)
-        self._config: AttrDict = get_config(config, path=self._path, box=True)
+        self._config: FrozenAttrDict = FrozenAttrDict(
+            get_config(config, path=self._path, box=True)
+        )
         init_logging(self._config.loglevel)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):
         self._merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
 

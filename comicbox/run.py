@@ -3,14 +3,10 @@
 import os
 from logging import getLogger
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from comicbox.box import Comicbox
-from comicbox.config import get_config
+from comicbox.config import FrozenAttrDict, get_config
 from comicbox.logger import init_logging
-
-if TYPE_CHECKING:
-    from confuse import AttrDict
 
 LOG = getLogger(__name__)
 
@@ -22,7 +18,7 @@ class Runner:
 
     def __init__(self, config):
         """Initialize actions and config."""
-        self._config: AttrDict = get_config(config)
+        self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
         init_logging(self._config.loglevel)
 
     def run_on_file(self, path):

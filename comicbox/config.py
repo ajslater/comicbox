@@ -18,6 +18,7 @@ from confuse.templates import (
     Sequence,
     String,
 )
+from typing_extensions import override
 
 from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
@@ -105,6 +106,23 @@ _NO_PATH_ATTRS = MappingProxyType(
     }
 )
 _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
+
+
+class FrozenAttrDict(AttrDict):
+    """A frozen AttrDict."""
+
+    @override
+    def __setattr__(self, key, value):
+        """Not Allowed."""
+        raise NotImplementedError
+
+    def __set__(self, key, value):
+        """Not Allowed."""
+        raise NotImplementedError
+
+    def __delete__(self, key):
+        """Not Allowed."""
+        raise NotImplementedError
 
 
 def _clean_paths(config: Subview):
