@@ -7,9 +7,18 @@ from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.init import archive_close
 from comicbox.box.archive.write import ComicboxArchiveWrite
 
+_BRACKETS = ("{", b"{")
+
 
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
+
+    def _is_comment_json(self, archive):
+        return (
+            self._config.computed.is_read_comments
+            and (comment := getattr(archive, "comment", ""))
+            and (comment[0] in _BRACKETS)
+        )
 
     def get_path_mtime_dttm(self) -> datetime | None:
         """Get the path mtime as datetime."""
@@ -42,8 +51,8 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
             mtime = ArchiveInfo.datetime(info)
             if not mtime:
                 mtime = self.get_path_mtime_dttm()
-            if max_mtime is not None and mtime is not None:
-                max_mtime = max(max_mtime, mtime)
+            if mtime and (max_mtime is None or (max_mtime < mtime)):
+                max_mtime = mtime
         return max_mtime
 
     @archive_close
@@ -57,12 +66,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
         # Ensure the archive is ready.
         archive = self._get_archive()
 
-        if self._archive_is_pdf:
+        if self._archive_is_pdf or self._is_comment_json(archive):
             return self.get_path_mtime_dttm()
-
-        if self._config.computed.is_read_comments:
-            comment = getattr(archive, "comment", b"")
-            if comment.startswith(b"{"):
-                return self.get_path_mtime_dttm()
 
         return self._get_metadata_files_mtime()
