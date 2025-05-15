@@ -8,11 +8,18 @@ import pytest
 from comicbox.box import Comicbox
 from tests.const import TEST_FILES_DIR
 
+
+def _get_stat_mtime(fn):
+    return datetime.fromtimestamp(
+        (TEST_FILES_DIR / fn).stat().st_mtime, tz=timezone.utc
+    )
+
+
 FIXTURES = MappingProxyType(
     {
-        "test_pdf.pdf": datetime(2025, 4, 11, 3, 8, 24, 119570, tzinfo=timezone.utc),
-        "Captain Science #001-cix-cbi.cbr": datetime(
-            2025, 5, 6, 1, 50, 37, 83614, tzinfo=timezone.utc
+        "test_pdf.pdf": _get_stat_mtime("test_pdf.pdf"),
+        "Captain Science #001-cix-cbi.cbr": _get_stat_mtime(
+            "Captain Science #001-cix-cbi.cbr"
         ),
         "Captain Science #001.cbz": datetime(
             2025, 4, 10, 20, 8, 24, tzinfo=timezone.utc
