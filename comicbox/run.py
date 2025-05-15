@@ -22,8 +22,8 @@ class Runner:
 
     def __init__(self, config):
         """Initialize actions and config."""
-        self.config: AttrDict = get_config(config)
-        init_logging(self.config.loglevel)
+        self._config: AttrDict = get_config(config)
+        init_logging(self._config.loglevel)
 
     def run_on_file(self, path):
         """Run operations on one file."""
@@ -32,11 +32,11 @@ class Runner:
             if not path.exists():
                 LOG.error(f"{path} does not exist.")
                 return
-            if path.is_dir() and self.config.recurse:
+            if path.is_dir() and self._config.recurse:
                 self.recurse(path)
                 return
 
-        with Comicbox(path, config=self.config) as car:
+        with Comicbox(path, config=self._config) as car:
             car.print_file_header()
             car.run()
 
@@ -45,7 +45,7 @@ class Runner:
         if not path.is_dir():
             LOG.error(f"{path} is not a directory")
             return
-        if not self.config.recurse:
+        if not self._config.recurse:
             LOG.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
@@ -66,6 +66,6 @@ class Runner:
 
     def run(self):
         """Run actions with config."""
-        paths = self.config.paths
+        paths = self._config.paths
         for path in paths:
             self.run_on_file(path)
