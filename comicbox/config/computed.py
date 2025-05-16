@@ -1,8 +1,7 @@
 """Compute values for config before template load."""
 
-from logging import getLogger
-
 from confuse import Subview
+from loguru import logger
 
 from comicbox.config.formats import transform_keys_to_formats
 from comicbox.config.paths import clean_paths
@@ -11,7 +10,6 @@ from comicbox.print import PrintPhases
 from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER
 
-LOG = getLogger(__name__)
 _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
     {
         MetadataFormats.COMIC_BOOK_INFO,
@@ -56,7 +54,7 @@ def _parse_print(config: Subview):
             enum = PrintPhases(phase)
             enum_print_phases.add(enum)
         except ValueError as exc:
-            LOG.warning(exc)
+            logger.warning(exc)
     print_fmts_set = frozenset(enum_print_phases)
     config["print"].set(print_fmts_set)
 

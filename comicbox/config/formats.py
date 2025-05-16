@@ -1,12 +1,9 @@
 """Transform config format keys to MetadataFormats."""
 
-from logging import getLogger
-
 from confuse import Subview
+from loguru import logger
 
 from comicbox.formats import MetadataFormats
-
-LOG = getLogger(__name__)
 
 
 def _get_formats_from_keys(keys, ignore_keys):
@@ -37,7 +34,7 @@ def _get_config_formats_from_keys(config, key):
     if keys:
         plural = "s" if len(keys) > 1 else ""
         keys_str = ", ".join(sorted(keys))
-        LOG.warning(f"Action '{key}' received invalid format{plural}: {keys_str}")
+        logger.warning(f"Action '{key}' received invalid format{plural}: {keys_str}")
 
     return frozenset(fmts)
 

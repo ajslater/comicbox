@@ -1,9 +1,9 @@
 """Cover Page filename methods."""
 
 from collections.abc import Generator
-from logging import getLogger
 
 from glom import glom
+from loguru import logger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.metadata import ComicboxMetadata
@@ -12,7 +12,6 @@ from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchema
 
 PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGES_KEY}"
 _COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"
-LOG = getLogger(__name__)
 
 
 class ComicboxPagesCovers(ComicboxMetadata):
@@ -53,7 +52,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
         cover_paths_ordered_set = dict.fromkeys(cover_path_generator)
         cover_paths = tuple(cover_paths_ordered_set.keys())
         if not cover_paths:
-            LOG.warning(f"{self._path} could not find cover filename")
+            logger.warning(f"{self._path} could not find cover filename")
         return cover_paths
 
     def get_cover_paths(self):
@@ -74,7 +73,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
                 data = self._archive_readfile(cover_path, to_pixmap=to_pixmap)
                 break
             except Exception as exc:
-                LOG.warning(f"{self._path} reading cover: {cover_path}: {exc}")
+                logger.warning(f"{self._path} reading cover: {cover_path}: {exc}")
                 bad_cover_paths.add(cover_path)
         return data
 

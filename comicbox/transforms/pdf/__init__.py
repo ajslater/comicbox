@@ -1,7 +1,5 @@
 """Transform PDF formats to comicbox and back."""
 
-from logging import getLogger
-
 from bidict import frozenbidict
 
 from comicbox.schemas.comicbox import (
@@ -30,7 +28,6 @@ from comicbox.transforms.stories import (
     stories_key_transform_to_cb,
 )
 
-LOG = getLogger(__name__)
 XMLPDF_SIMPLE_KEY_MAP = frozenbidict(
     {
         "pdf:Creator": SCAN_INFO_KEY,  # original document creator

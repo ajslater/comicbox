@@ -1,13 +1,11 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
 from collections.abc import Mapping
-from logging import DEBUG, WARNING, getLogger
 
+from loguru import logger
 from marshmallow import Schema
 from marshmallow.error_store import ErrorStore, merge_errors
 from typing_extensions import override
-
-LOG = getLogger(__name__)
 
 
 class ClearingErrorStore(ErrorStore):
@@ -117,14 +115,14 @@ class ClearingErrorStoreSchema(Schema):
         return debug_errors, warning_errors
 
     def _log_errors(
-        self, loglevel: int, error_class: type | None, errors: Mapping | list
+        self, loglevel: str, error_class: type | None, errors: Mapping | list
     ):
         if not errors:
             return
         path = f"{self._path}: " if self._path else ""
         error_name = f"{error_class.__name__} - " if error_class else ""
         message = f"{path}{error_name}{errors}"
-        LOG.log(loglevel, message)
+        logger.log(loglevel, message)
 
     @override
     def handle_error(self, error, *_args, **_kwargs):
@@ -144,7 +142,7 @@ class ClearingErrorStoreSchema(Schema):
             error_list = error if isinstance(error, list) else [error]
             debug_errors, warning_errors = self._split_list_errors(error_list)
 
-        logs = {WARNING: warning_errors, DEBUG: debug_errors}
+        logs = {"WARNING": warning_errors, "DEBUG": debug_errors}
 
         for loglevel, errors in logs.items():
             self._log_errors(loglevel, error_class, errors)

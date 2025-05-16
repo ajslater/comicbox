@@ -2,12 +2,11 @@
 
 import re
 from functools import wraps
-from logging import getLogger
+
+from loguru import logger
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType
-
-LOG = getLogger(__name__)
 
 
 def archive_close(fn):
@@ -43,7 +42,7 @@ class ComicboxArchiveInit(ComicboxInit):
             if self._archive and hasattr(self._archive, "close"):
                 self._archive.close()
         except Exception as exc:
-            LOG.warning(f"closing archive {self._path}: {exc}")
+            logger.warning(f"closing archive {self._path}: {exc}")
         finally:
             self._archive = None
 

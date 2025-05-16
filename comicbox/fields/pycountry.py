@@ -1,15 +1,14 @@
 """Marshmallow pycountry fields."""
 
 from abc import ABC
-from logging import getLogger
 
 import pycountry
+from loguru import logger
 from pycountry.db import Database
 from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
-LOG = getLogger(__name__)
 _ALPHA_CODES = ("alpha_2", "alpha_3", "alpha_4", "name")
 
 
@@ -45,11 +44,11 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
             # Language lookup fails for 'en' unless alpha_2 is specified.
             obj = cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
         except Exception as exc:
-            LOG.warning(exc)
+            logger.warning(exc)
             obj = None
 
         if obj is None:
-            LOG.warning(f"Couldn't find {tag} for {name}")
+            logger.warning(f"Couldn't find {tag} for {name}")
 
         return obj
 

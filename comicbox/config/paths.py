@@ -1,20 +1,18 @@
 """Configure for paths."""
 
 from copy import copy
-from logging import getLogger
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from confuse import Subview
 from confuse.templates import AttrDict
+from loguru import logger
 
 from comicbox.print import PrintPhases
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-LOG = getLogger(__name__)
 
 
 _SINGLE_NO_PATH = (None,)
@@ -42,14 +40,14 @@ def clean_paths(config: Subview):
             if not path:
                 continue
             if Path(path).is_dir() and not config["recurse"].get(bool):
-                LOG.warning(f"{path} is a directory. Ignored without --recurse.")
+                logger.warning(f"{path} is a directory. Ignored without --recurse.")
                 paths_removed = True
                 continue
             filtered_paths.add(path)
         paths = tuple(sorted(filtered_paths))
     if paths or paths_removed:
         if not paths:
-            LOG.error("No valid paths left.")
+            logger.error("No valid paths left.")
         final_paths = paths
     else:
         final_paths = _SINGLE_NO_PATH
@@ -78,5 +76,7 @@ def post_process_set_for_path(config: AttrDict, path: str | Path | None, *, box:
     if need_file_opts:
         plural = "s" if len(need_file_opts) > 1 else ""
         opts = ", ".join(need_file_opts)
-        LOG.warning(f"Cannot perform action{plural} '{opts}' without an archive path.")
+        logger.warning(
+            f"Cannot perform action{plural} '{opts}' without an archive path."
+        )
     return config

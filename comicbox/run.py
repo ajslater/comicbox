@@ -1,15 +1,14 @@
 """Run comicbox on files."""
 
 import os
-from logging import getLogger
 from pathlib import Path
+
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.config.frozenattrdict import FrozenAttrDict
 from comicbox.logger import init_logging
-
-LOG = getLogger(__name__)
 
 
 class Runner:
@@ -27,7 +26,7 @@ class Runner:
         if path:
             path = Path(path)
             if not path.exists():
-                LOG.error(f"{path} does not exist.")
+                logger.error(f"{path} does not exist.")
                 return
             if path.is_dir() and self._config.recurse:
                 self.recurse(path)
@@ -40,10 +39,10 @@ class Runner:
     def recurse(self, path):
         """Perform operations recursively on files."""
         if not path.is_dir():
-            LOG.error(f"{path} is not a directory")
+            logger.error(f"{path} is not a directory")
             return
         if not self._config.recurse:
-            LOG.warning(f"Recurse option not set. Ignoring directory {path}")
+            logger.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
         for root, dirnames, filenames in os.walk(path):
@@ -59,7 +58,7 @@ class Runner:
                 try:
                     self.run_on_file(full_path)
                 except Exception:
-                    LOG.exception(full_path)
+                    logger.exception(full_path)
 
     def run(self):
         """Run actions with config."""

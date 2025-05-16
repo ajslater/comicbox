@@ -2,8 +2,8 @@
 
 import re
 from decimal import Decimal
-from logging import getLogger
 
+from loguru import logger
 from marshmallow import fields
 from typing_extensions import override
 
@@ -14,7 +14,6 @@ from comicbox.fields.fields import (
     half_replace,
 )
 
-LOG = getLogger(__name__)
 NumberType = int | float | Decimal
 PAGE_COUNT_KEY = "page_count"
 
@@ -49,7 +48,7 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
             if self._max is not None:
                 result = min(result, self._max)
             if old_result != result:
-                LOG.warning(f"Coerced {old_result} to {result}")
+                logger.warning(f"Coerced {old_result} to {result}")
         return result
 
     def _serialize_post(self, result):

@@ -1,7 +1,8 @@
 """Identifier Fields."""
 
-from logging import getLogger
 from urllib.parse import urlparse
+
+from loguru import logger
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers.const import (
@@ -24,8 +25,6 @@ from comicbox.schemas.comicbox import (
     NID_KEY,
 )
 from comicbox.transforms.spec import MetaSpec
-
-LOG = getLogger(__name__)
 
 PRIMARY_NID_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{NID_KEY}"
 
@@ -57,7 +56,7 @@ def identifiers_to_cb(native_identifiers, naked_nid: str) -> dict:
                 nid, identifier = _identifier_to_cb(native_identifier, naked_nid)
                 comicbox_identifiers[nid] = identifier
             except Exception as exc:
-                LOG.warning(f"Parsing identifier {native_identifier}: {exc}")
+                logger.warning(f"Parsing identifier {native_identifier}: {exc}")
     return comicbox_identifiers
 
 
@@ -121,7 +120,7 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
         if url:
             identifier[URL_KEY] = url_str
     except Exception:
-        LOG.debug(f"Unparsable url: {url_str}")
+        logger.debug(f"Unparsable url: {url_str}")
         nid = ""
     return nid, identifier
 

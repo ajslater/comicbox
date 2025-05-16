@@ -2,8 +2,9 @@
 
 import re
 from collections.abc import Callable
-from logging import getLogger
 from types import MappingProxyType
+
+from loguru import logger
 
 from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
@@ -19,7 +20,6 @@ from comicbox.schemas.comicbox import (
 
 ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
-LOG = getLogger(__name__)
 
 
 class ComicboxComputedIssue(ComicboxComputedStamp):
@@ -35,7 +35,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 )
                 issue[NUMBER_KEY] = issue_number
             except Exception as exc:
-                LOG.warning(f"{self._path} Parsing issue_number from issue {exc}")
+                logger.warning(f"{self._path} Parsing issue_number from issue {exc}")
         if not old_issue_suffix and issue_suffix:
             issue[ISSUE_SUFFIX_KEY] = StringField().deserialize(
                 issue_suffix, ISSUE_SUFFIX_KEY, issue
@@ -61,7 +61,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                     match, old_issue_number, old_issue_suffix, issue
                 )
         except Exception:
-            LOG.debug(f"{self._path} Error parsing issue into components: {issue}")
+            logger.debug(f"{self._path} Error parsing issue into components: {issue}")
             raise
 
         return {ISSUE_KEY: issue}

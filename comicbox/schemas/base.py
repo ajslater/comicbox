@@ -1,9 +1,9 @@
 """Skip keys instead of throwing errors."""
 
 from abc import ABC
-from logging import getLogger
 from pathlib import Path
 
+from loguru import logger
 from marshmallow import EXCLUDE
 from marshmallow.decorators import (
     post_dump,
@@ -16,8 +16,6 @@ from typing_extensions import override
 from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.error_store import ClearingErrorStoreSchema
-
-LOG = getLogger(__name__)
 
 
 class BaseSubSchema(ClearingErrorStoreSchema, ABC):
@@ -110,11 +108,11 @@ class BaseSchema(BaseSubSchema, ABC):
         """Validate the root tag so we don't confuse it with other JSON."""
         if not data:
             reason = "No data."
-            LOG.debug(reason)
+            logger.debug(reason)
             data = {}
         elif cls.ROOT_TAG not in data and cls.ROOT_DATA_KEY not in data:
             reason = f"Root tag '{cls.ROOT_TAG}' not found in {tuple(data.keys())}."
-            LOG.debug(reason)
+            logger.debug(reason)
             # Do not throw an exception so the trapper doesn't trap it and the
             # loader tries another schema. Return empty dict.
             data = {}

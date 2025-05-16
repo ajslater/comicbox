@@ -1,18 +1,16 @@
 """Get Metadata mixin."""
 
 from collections.abc import MutableMapping
-from logging import getLogger
 from types import MappingProxyType
 
 from glom import Assign, Delete, glom
+from loguru import logger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.merge import merge_metadata
-
-LOG = getLogger(__name__)
 
 
 class ComicboxMetadata(ComicboxComputed):
@@ -26,7 +24,7 @@ class ComicboxMetadata(ComicboxComputed):
                 delete = Delete(key_path, ignore_missing=True)
                 glom(sub_data, delete)
             except Exception as exc:
-                LOG.warning(f"Could not delete key path {key_path}: {exc}")
+                logger.warning(f"Could not delete key path {key_path}: {exc}")
 
     def _set_computed_merged_metadata(self):
         merged_md = self.get_merged_metadata()

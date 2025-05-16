@@ -1,14 +1,14 @@
 """Metron ID attributes to comicbox identifiers transform."""
 
 from collections.abc import Mapping
-from logging import getLogger
+
+from loguru import logger
 
 from comicbox.identifiers.identifiers import create_identifier
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 from comicbox.transforms.metroninfo.const import DEFAULT_NID
 
 ID_ATTRIBUTE = "@id"
-LOG = getLogger(__name__)
 
 
 def metron_id_attribute_to_cb(
@@ -25,7 +25,7 @@ def metron_id_attribute_to_cb(
         )
         comicbox_obj[IDENTIFIERS_KEY] = {nid: comicbox_identifier}
     except Exception as exc:
-        LOG.warning(f"Parsing metron tag identifier {nss_type}:{metron_obj} - {exc}")
+        logger.warning(f"Parsing metron tag identifier {nss_type}:{metron_obj} - {exc}")
 
 
 def metron_id_attribute_from_cb(

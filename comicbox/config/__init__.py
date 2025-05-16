@@ -2,7 +2,6 @@
 
 from argparse import Namespace
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 
 from confuse import Configuration
@@ -21,7 +20,6 @@ from comicbox.config.paths import post_process_set_for_path
 from comicbox.config.read import read_config_sources
 from comicbox.version import PACKAGE_NAME
 
-LOG = getLogger(__name__)
 _TEMPLATE = MappingTemplate(
     {
         PACKAGE_NAME: MappingTemplate(

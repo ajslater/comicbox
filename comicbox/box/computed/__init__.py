@@ -3,11 +3,11 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
-from logging import getLogger
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
+from loguru import logger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.computed.identifiers import ComicboxComputedIdentifers
@@ -24,7 +24,6 @@ from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
 )
 
-LOG = getLogger(__name__)
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 
 
@@ -58,7 +57,7 @@ class ComicboxComputed(ComicboxComputedIdentifers):
             except ValueError as exc:
                 msg = str(exc)
                 reason = f"{self._path}: {msg}"
-                LOG.warning(reason)
+                logger.warning(reason)
         return msg
 
     @staticmethod

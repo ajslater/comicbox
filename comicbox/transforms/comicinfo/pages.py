@@ -1,10 +1,10 @@
 """ComicInfo Pages Transformer creator."""
 
 from collections.abc import Mapping
-from logging import getLogger
 
 from glom import SKIP, Coalesce, Fill, T, glom
 from glom.grouping import Group
+from loguru import logger
 
 from comicbox.empty import is_empty
 from comicbox.schemas.comicbox import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
@@ -15,7 +15,6 @@ from comicbox.transforms.spec import (
     create_specs_to_comicbox,
 )
 
-LOG = getLogger(__name__)
 _KEY_SPEC = Coalesce(T[IMAGE_ATTRIBUTE], skip=is_empty, default=SKIP)
 
 
@@ -48,7 +47,7 @@ def _pages_from_cb(values: Mapping, page_spec: dict):
                 cix_pages.append(cix_page)
         except Exception as ex:
             reason = f"Error transforming comicbox page to ComicInfo style page: {ex}"
-            LOG.debug(reason)
+            logger.debug(reason)
     return cix_pages
 
 

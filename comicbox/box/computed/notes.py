@@ -2,8 +2,9 @@
 
 import re
 from collections.abc import Callable
-from logging import getLogger
 from types import MappingProxyType
+
+from loguru import logger
 
 from comicbox.box.merge import ComicboxMerge
 from comicbox.fields.time_fields import DateField, DateTimeField
@@ -33,7 +34,6 @@ from comicbox.schemas.comicbox import (
 )
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSubSchema
 
-LOG = getLogger(__name__)
 _DATE_KEYS = frozenset({COVER_DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
 _NOTES_TAGGER_VERSION_EXP = r"(?:\s(?:dev|test|[\d\.]+\S+))?"
 _NOTES_TAGGER_RE_EXP = (
@@ -153,7 +153,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         try:
             return DateField()._deserialize(date_str)  # noqa: SLF001
         except Exception:
-            LOG.debug(f"Unparsable RELDATE {date_str}")
+            logger.debug(f"Unparsable RELDATE {date_str}")
         return None
 
     def _set_computed_notes_date(self, sub_data, notes, sub_md):

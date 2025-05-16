@@ -1,9 +1,9 @@
 """Marshmallow Enum Fields."""
 
 from enum import Enum
-from logging import getLogger
 from types import MappingProxyType
 
+from loguru import logger
 from marshmallow import fields
 from stringcase import snakecase, titlecase
 from typing_extensions import override
@@ -20,8 +20,6 @@ from comicbox.schemas.enums.metroninfo import (
     MetronAgeRatingEnum,
     MetronFormatEnum,
 )
-
-LOG = getLogger(__name__)
 
 
 class FuzzyEnumMixin:
@@ -193,7 +191,7 @@ class ComicInfoMangaField(EnumBooleanField):
                 f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
                 "because of reading_direction"
             )
-            LOG.warning(reason)
+            logger.warning(reason)
             value = ComicInfoMangaEnum.YES_RTL
         return super()._deserialize(value, attr, data, *args, **kwargs)
 

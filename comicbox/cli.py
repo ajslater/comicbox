@@ -3,7 +3,6 @@
 import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
-from logging import INFO
 from types import MappingProxyType
 
 from rich import box
@@ -21,8 +20,16 @@ from comicbox.formats import PDF_ENABLED, MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
 
-HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
-PRINT_PHASES_DESC = MappingProxyType(
+_TABLE_ARGS = MappingProxyType(
+    {
+        "box": box.HEAVY,
+        "border_style": "bright_black",
+        "row_styles": ("", "on grey7"),
+        "title_justify": "left",
+    }
+)
+_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+_PRINT_PHASES_DESC = MappingProxyType(
     {
         "v": ("Software version", "v"),
         "t": ("File type", ""),
@@ -35,7 +42,7 @@ PRINT_PHASES_DESC = MappingProxyType(
         "p": ("Final metadata merged with computed sources", "p"),
     }
 )
-METADATA_EXAMPLES = Styled(
+_METADATA_EXAMPLES = Styled(
     """
 Metadata can be any tag from any of the supported metadata formats.
 Complex [cyan]--metadata[/cyan] Examples:
@@ -46,8 +53,7 @@ Complex [cyan]--metadata[/cyan] Examples:
 """,
     style="argparse.text",
 )
-
-DELETE_KEYS_EXAMPLES = Styled(
+_DELETE_KEYS_EXAMPLES = Styled(
     """
 Glom key paths are dot delimited. Numbers are list indexes. This deletes three comma delimited nested key paths:
 
@@ -55,6 +61,7 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
     """,
     style="argparse.text",
 )
+_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
 
 class CSVAction(Action):
@@ -97,22 +104,12 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-TABLE_ARGS = MappingProxyType(
-    {
-        "box": box.HEAVY,
-        "border_style": "bright_black",
-        "row_styles": ("", "on grey7"),
-        "title_justify": "left",
-    }
-)
-
-
 def _get_help_print_phases_table():
-    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Phase", style="green")
     table.add_column("Description")
     table.add_column("Shortcut", style="cyan")
-    for phase, attrs in PRINT_PHASES_DESC.items():
+    for phase, attrs in _PRINT_PHASES_DESC.items():
         desc, shortcut = attrs
         if shortcut:
             shortcut = "-" + shortcut
@@ -125,7 +122,7 @@ Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented
 
 
 def _get_help_format_table():
-    table = Table(title=FORMAT_TITLE, **TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Format")
     table.add_column("Keys", style="green")
     for fmt in reversed(MetadataFormats):
@@ -364,8 +361,8 @@ def get_args(params=None) -> Namespace:
 
     epilog = Group(
         _get_help_print_phases_table(),
-        METADATA_EXAMPLES,
-        DELETE_KEYS_EXAMPLES,
+        _METADATA_EXAMPLES,
+        _DELETE_KEYS_EXAMPLES,
         _get_help_format_table(),
     )
 
@@ -394,9 +391,9 @@ def post_process_args(cns):
     if cns.print_metadata:
         cns.print += PrintPhases.METADATA.value
 
-    # Logleve
+    # Loglevel
     if cns.quiet:
-        cns.loglevel = INFO + cns.quiet * 10
+        cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
 def main(params=None):
@@ -408,6 +405,6 @@ def main(params=None):
     runner = Runner(args)
     try:
         runner.run()
-    except HANDLED_EXCEPTIONS as exc:
+    except _HANDLED_EXCEPTIONS as exc:
         rich_print(f"[yellow]{exc}[/yellow]")
         sys.exit(1)

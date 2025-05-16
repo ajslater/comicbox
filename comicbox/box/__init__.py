@@ -5,12 +5,11 @@ Reads and writes metadata via marshmallow schemas.
 Reads and writes archive file data.
 """
 
-from logging import getLogger
 from types import MappingProxyType
 
-from comicbox.box.print import ComicboxPrint
+from loguru import logger
 
-LOG = getLogger(__name__)
+from comicbox.box.print import ComicboxPrint
 
 
 class Comicbox(
@@ -53,4 +52,4 @@ class Comicbox(
             noop = False
 
         if noop:
-            LOG.warning("No action performed")
+            logger.warning("No action performed")

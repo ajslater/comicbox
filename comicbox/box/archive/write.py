@@ -1,9 +1,10 @@
 """Comicboxs methods for writing to the archive."""
 
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
+
+from loguru import logger
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.read import ComicboxArchiveRead
@@ -19,7 +20,6 @@ _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
         if fmt.value.enabled
     }
 )
-LOG = getLogger(__name__)
 
 
 class ComicboxArchiveWrite(ComicboxArchiveRead):
@@ -43,10 +43,10 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         tmp_path.replace(new_path)
         self._path = new_path
         if old_path.suffix != new_path.suffix:
-            LOG.info(f"Converted to: {new_path}")
+            logger.info(f"Converted to: {new_path}")
             if self._config.delete_orig and old_path != new_path and new_path.is_file():
                 old_path.unlink()
-                LOG.info(f"Removed: {old_path}")
+                logger.info(f"Removed: {old_path}")
 
     def _zipfile_remove_metadata_files(self, zf):
         """Remove metadata files from archive."""
@@ -141,7 +141,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     def write_archive_metadata(self, files: Mapping, comment: bytes):
         """Write the metadata files and comment to an archive."""
         if self._archive_is_pdf:
-            LOG.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
+            logger.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
             return
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
@@ -168,6 +168,6 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if self._archive_is_pdf:
             archive.save_metadata(mupdf_metadata)  # pyright: ignore[reportAttributeAccessIssue]
         else:
-            LOG.warning(
+            logger.warning(
                 f"{self._path}: Not writing pdf metadata dict to a not PDF archive."
             )

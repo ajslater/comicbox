@@ -1,11 +1,7 @@
 """Pages methods."""
 
-from logging import getLogger
-
 from comicbox.box.archive.filenames import ComicboxArchiveFilenames
 from comicbox.box.archive.init import archive_close
-
-LOG = getLogger(__name__)
 
 
 class ComicboxArchivePages(ComicboxArchiveFilenames):

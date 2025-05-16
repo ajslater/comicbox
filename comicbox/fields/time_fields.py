@@ -1,16 +1,14 @@
 """Date & Time fields."""
 
 from datetime import date, datetime, timezone
-from logging import getLogger
 
 from dateutil import parser
+from loguru import logger
 from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
 from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-
-LOG = getLogger(__name__)
 
 
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
@@ -30,7 +28,7 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
                     dttm = parser.parse(value_str)
                     dt = dttm.date()
             except Exception:
-                LOG.warning(f"Cannot parse date: {value}")
+                logger.warning(f"Cannot parse date: {value}")
         return dt
 
 
@@ -67,7 +65,7 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
                 if value_str := StringField().deserialize(value):
                     dttm = parser.parse(value_str)
             except Exception:
-                LOG.warning(f"Cannot parse datetime: {value}")
+                logger.warning(f"Cannot parse datetime: {value}")
         if dttm is not None:
             dttm = self._ensure_aware(dttm)
         return dttm

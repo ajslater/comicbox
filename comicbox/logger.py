@@ -1,21 +1,47 @@
 """Logging classes."""
 
 import os
-from logging import INFO, basicConfig, root
+import sys
 
-from rich.logging import RichHandler
+from loguru import logger  # noqa: F401
+from typing_extensions import Any
 
-DATEFMT = "%Y-%m-%d %H:%M:%S %Z"
-LOG_FMT = "%(message)s"
+DEBUG = os.environ.get("DEBUG", "")
 
 
-def init_logging(loglevel=INFO):
+def _log_format():
+    fmt = "<lvl>{time:YYYY-MM-DD HH:mm:ss} | {level: <8}"
+    if DEBUG:
+        fmt += " | </lvl>"
+        fmt += "<dim><cyan>{thread.name}</cyan></dim>:"
+        fmt += "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
+        fmt += "<lvl>"
+    fmt += " | {message}</lvl>"
+    # fmt += "\n{exception}"  only for format as a callable
+    return fmt
+
+
+_LOG_FORMAT = _log_format()
+
+
+def init_logging(loglevel: str = "INFO", logger_=None):
     """Initialize logging."""
-    if root.handlers:
-        # Do not reinintialize if logging is already set up
+    if logger_:
+        global logger  # noqa: PLW0603
+        logger = logger_
         return
 
-    level = os.environ.get("LOGLEVEL", loglevel)
+    logger.level("DEBUG", color="<light-black>")
+    logger.level("INFO", color="<white>")
+    logger.level("SUCCESS", color="<green>")
 
-    handler = RichHandler(rich_tracebacks=True)
-    basicConfig(level=level, format=LOG_FMT, datefmt=DATEFMT, handlers=[handler])
+    log_format = _log_format()
+    kwargs: dict[str, Any] = {
+        "level": loglevel,
+        "backtrace": True,
+        "catch": True,
+        "format": log_format,
+    }
+
+    logger.remove()  # Default "sys.stderr" sink is not picklable
+    logger.add(sys.stdout, **kwargs)

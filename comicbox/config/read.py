@@ -3,12 +3,10 @@
 import contextlib
 from argparse import Namespace
 from collections.abc import Mapping
-from logging import getLogger
 
 from confuse import Configuration
 from confuse.templates import AttrDict
-
-LOG = getLogger(__name__)
+from loguru import logger
 
 
 def _add_config_file(args, config):
@@ -27,7 +25,7 @@ def read_config_sources(config: Configuration, args: Namespace | Mapping | None)
     try:
         config.read()
     except Exception as exc:
-        LOG.warning(exc)
+        logger.warning(exc)
 
     # Args Specified Config File
     if args:

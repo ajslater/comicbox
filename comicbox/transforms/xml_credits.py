@@ -1,6 +1,6 @@
 """XML Credits Mixin."""
 
-from logging import getLogger
+from loguru import logger
 
 from comicbox.fields.enum_fields import EnumField
 from comicbox.schemas.comicbox import (
@@ -9,8 +9,6 @@ from comicbox.schemas.comicbox import (
 )
 from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
 from comicbox.transforms.spec import MetaSpec
-
-LOG = getLogger(__name__)
 
 
 def _create_role_enum_to_alias_map(role_aliases):
@@ -36,7 +34,7 @@ def _xml_credits_to_cb(role_name_persons_map):
                     person_name, role_name, comicbox_credits
                 )
         except Exception:
-            LOG.exception(f"Parsing credit tag {role_name} {persons}")
+            logger.exception(f"Parsing credit tag {role_name} {persons}")
     return comicbox_credits
 
 
@@ -61,7 +59,7 @@ def _xml_credits_from_cb(role_aliases: frozenset, comicbox_credits: dict):
             if lower_roles & role_aliases:
                 person_names.add(person_name)
         except Exception as exc:
-            LOG.warning(
+            logger.warning(
                 f"Transforming comicbox credit {comicbox_credit} to xml tag: {exc}"
             )
     return person_names

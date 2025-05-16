@@ -70,6 +70,7 @@ class ComicboxInit:
         config: AttrDict | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
+        logger=None,
     ):
         """
         Initialize the archive with a path to the archive.
@@ -84,7 +85,7 @@ class ComicboxInit:
         self._config: FrozenAttrDict = FrozenAttrDict(
             get_config(config, path=self._path, box=True)
         )
-        init_logging(self._config.loglevel)
+        init_logging(self._config.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self):

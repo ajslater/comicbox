@@ -1,9 +1,10 @@
 """Comicbox Computed Pages."""
 
 from collections.abc import Callable, Mapping
-from logging import getLogger
 from sys import maxsize
 from types import MappingProxyType
+
+from loguru import logger
 
 from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.fields.enum_fields import PageTypeEnum
@@ -25,7 +26,6 @@ _COMICBOX_FORMATS = frozenset(
         MetadataFormats.COMICBOX_JSON,
     }
 )
-LOG = getLogger(__name__)
 
 
 class ComicboxComputedPages(ComicboxComputedNotes):
@@ -84,7 +84,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             max_page_index = self.get_page_count() - 1
         else:
             # don't strip pages if no path given
-            LOG.debug("No path given, not computing real pages.")
+            logger.debug("No path given, not computing real pages.")
             max_page_index = maxsize
         return max_page_index
 
@@ -119,7 +119,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
                     pages[index] = computed_page
                 index += 1
         except Exception as exc:
-            LOG.warning(f"{self._path}: Compute pages metadata: {exc}")
+            logger.warning(f"{self._path}: Compute pages metadata: {exc}")
         if pages:
             pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: pages}

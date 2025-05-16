@@ -1,7 +1,6 @@
 """Universal Resource Name support."""
 
-from logging import getLogger
-
+from loguru import logger
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.identifiers.const import (
@@ -9,8 +8,6 @@ from comicbox.identifiers.const import (
     DEFAULT_NSS_TYPE,
 )
 from comicbox.identifiers.other import parse_identifier_other_str
-
-LOG = getLogger(__name__)
 
 
 def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
@@ -32,7 +29,7 @@ def parse_urn_identifier_and_warn(tag: str) -> tuple[str, str, str]:
     try:
         nid, nss_type, nss = _parse_urn_identifier(tag)
     except Exception as exc:
-        LOG.debug(f"Unable to decode urn: {tag} {exc}")
+        logger.debug(f"Unable to decode urn: {tag} {exc}")
         nid = nss_type = nss = ""
     return nid, nss_type, nss
 

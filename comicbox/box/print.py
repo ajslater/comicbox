@@ -1,8 +1,8 @@
 """Print Methods."""
 
 from collections.abc import Mapping
-from logging import getLogger
 
+from loguru import logger
 from pygments.styles import get_style_by_name
 from pygments.token import (
     Comment,
@@ -33,7 +33,6 @@ _SOURCES_LOADED_NORMALIZED = frozenset(
 _FILE_RULE_CHAR = "═"
 DEFAULT_STYLE_NAME = "gruvbox-dark"
 MASK_STYLE = Style(bgcolor="default")
-LOG = getLogger(__name__)
 
 
 def _make_style(theme, token):
@@ -84,7 +83,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         try:
             get_style_by_name(style_name)
         except ClassNotFound as exc:
-            LOG.warning(exc)
+            logger.warning(exc)
             style_name = DEFAULT_STYLE_NAME
         self._pygments_style_name = style_name
 

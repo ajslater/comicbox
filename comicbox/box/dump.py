@@ -1,14 +1,13 @@
 """Writing Methods."""
 
 from collections.abc import Mapping
-from logging import getLogger
+
+from loguru import logger
 
 from comicbox.box.archive.init import archive_close
 from comicbox.box.pages import ComicboxPages
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
-
-LOG = getLogger(__name__)
 
 ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats
@@ -36,10 +35,10 @@ class ComicboxDump(ComicboxPages):
             )
         elif self._config.delete_all_tags:
             reason = "Deleting all tags."
-            LOG.warning(reason)
+            logger.warning(reason)
         else:
             reason = "No formats specified to write"
-            LOG.warning(reason)
+            logger.warning(reason)
             formats = None
         return formats
 
@@ -47,7 +46,7 @@ class ComicboxDump(ComicboxPages):
         """Write PDF Metadata."""
         if MetadataFormats.PDF not in self._config.write:
             reason = "Can only write pdf format to pdf files."
-            LOG.warning(reason)
+            logger.warning(reason)
             return None
 
         for embed_fmt in MetadataSources.EMBEDDED.value.formats:
@@ -92,7 +91,7 @@ class ComicboxDump(ComicboxPages):
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete_all_tags
         ):
-            LOG.info(f"Not writing metadata for: {self._path}")
+            logger.info(f"Not writing metadata for: {self._path}")
             return None
 
         # Must get metadata *before* get write formats
@@ -105,5 +104,5 @@ class ComicboxDump(ComicboxPages):
             result = self._dump_to_pdf(formats)
         else:
             result = self._dump_to_archive(formats)
-        LOG.info(f"Wrote metadata to: {self._path}")
+        logger.info(f"Wrote metadata to: {self._path}")
         return result

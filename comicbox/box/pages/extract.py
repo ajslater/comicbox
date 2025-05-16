@@ -1,12 +1,11 @@
 """Methods for extracting files from the archive."""
 
-from logging import INFO, getLogger
 from pathlib import Path
+
+from loguru import logger
 
 from comicbox.box.archive import archive_close
 from comicbox.box.pages.covers import ComicboxPagesCovers
-
-LOG = getLogger(__name__)
 
 
 class ComicboxExtractPages(ComicboxPagesCovers):
@@ -34,20 +33,19 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                     if not path.is_dir():
                         break
                 except Exception as exc:
-                    LOG.warning(f"Could not extract page {fn}: {exc}")
+                    logger.warning(f"Could not extract page {fn}: {exc}")
                     raise
-            if LOG.isEnabledFor(INFO):
-                plural = "s" if success_page_count > 1 else ""
-                LOG.info(f"Saved {success_page_count} page{plural} to {path}")
+            plural = "s" if success_page_count > 1 else ""
+            logger.info(f"Saved {success_page_count} page{plural} to {path}")
         except Exception as exc:
-            LOG.warning(f"No pages extracted: {exc}")
+            logger.warning(f"No pages extracted: {exc}")
 
     def _extract_pagenames_get_path(self, pagenames, path):
         if not pagenames:
-            LOG.warning("No pages to extract.")
+            logger.warning("No pages to extract.")
             return None
         if self._config.dry_run:
-            LOG.info(f"Not extracting {len(pagenames)} pages")
+            logger.info(f"Not extracting {len(pagenames)} pages")
             return None
 
         path = path if path else self._config.dest_path
