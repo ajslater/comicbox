@@ -121,7 +121,9 @@ READ_METADATA = MappingProxyType(
                     },
                 },
                 "Science is Good": {},
+                "metron": {},
             },
+            "title": "Captain Lost; Science is Good; metron",
             "reprints": [
                 {"language": "es", "series": {"name": "Capitán Ciencia"}},
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
@@ -224,6 +226,7 @@ READ_METRON_DICT = MappingProxyType(
                 "Story": [
                     {"@id": "5555", "#text": "Captain Lost"},
                     {"#text": "Science is Good"},
+                    {"#text": "metron"},
                 ]
             },
             "URLs": {
@@ -325,6 +328,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "Story": [
                     {"@id": "5555", "#text": "Captain Lost"},
                     "Science is Good",
+                    "metron",
                 ]
             },
             "Universes": {"Universe": [{"Name": "Mirror", "Designation": "4242"}]},

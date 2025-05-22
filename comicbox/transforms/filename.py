@@ -14,6 +14,7 @@ from comicbox.schemas.comicbox import (
     ORIGINAL_FORMAT_KEY,
     REMAINDERS_KEY,
     SCAN_INFO_KEY,
+    TITLE_KEY,
 )
 from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
@@ -28,10 +29,6 @@ from comicbox.transforms.spec import (
     create_specs_from_comicbox,
     create_specs_to_comicbox,
 )
-from comicbox.transforms.stories import (
-    stories_key_transform_from_cb,
-    stories_key_transform_to_cb,
-)
 
 SIMPLE_KEY_MAP = frozenbidict(
     {
@@ -42,6 +39,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "remainders": REMAINDERS_KEY,
         "series": SERIES_NAME_KEYPATH,
         "scan_info": SCAN_INFO_KEY,
+        "title": TITLE_KEY,
         "volume": VOLUME_NUMBER_KEYPATH,
         "year": YEAR_KEYPATH,
     }
@@ -51,14 +49,12 @@ SIMPLE_KEY_MAP = frozenbidict(
 class FilenameTransform(BaseTransform):
     """File name schema."""
 
-    SCHEMA_CLASS = FilenameSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = FilenameSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
-        stories_key_transform_to_cb("title"),
         format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
-        stories_key_transform_from_cb("title"),
         format_root_keypath=FilenameSchema.ROOT_KEYPATH,
     )

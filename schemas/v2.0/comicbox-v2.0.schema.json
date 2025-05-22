@@ -204,6 +204,9 @@
         "teams": {
           "$ref": "identified-objects.schema.json"
         },
+        "title": {
+          "type": "string"
+        },
         "universes": {
           "type": "object",
           "patternProperties": {

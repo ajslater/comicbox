@@ -61,6 +61,7 @@ READ_METADATA = MappingProxyType(
             "country": "US",
             "page_count": 0,
             "stories": {"The Beginning": {}},
+            "title": "The Beginning",
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
         }

@@ -3,9 +3,8 @@
 from types import MappingProxyType
 
 from comicbox.box.normalize import ComicboxNormalize
-from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
+from comicbox.merge import AdditiveMerger, Merger, UpdateMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.merge import merge_metadata
 from comicbox.sources import MetadataSources
 
 
@@ -27,13 +26,13 @@ class ComicboxMerge(ComicboxNormalize):
             # load the mds into the source list in format order.
             for format_normalized_md_list in format_dict.values():
                 for normalized_md in format_normalized_md_list:
-                    merge_metadata(merged_md, normalized_md, merger)
+                    merger.merge(merged_md, normalized_md)
 
     def _set_merged_metadata(self):
         """Overlay the metadatas in precedence order."""
         # Order the md list by source precedence
         merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
-        merger = ReplaceMerger if self._config.replace_metadata else AdditiveMerger
+        merger = UpdateMerger if self._config.replace_metadata else AdditiveMerger
         for source in MetadataSources:
             self._merge_metadata_by_source(source, merged_md, merger)
         self._merged_metadata = MappingProxyType(merged_md)

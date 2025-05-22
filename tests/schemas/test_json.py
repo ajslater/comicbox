@@ -52,6 +52,7 @@ READ_METADATA = MappingProxyType(
             "language": "en",
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
             "notes": TEST_READ_NOTES,
             "page_count": 36,
@@ -130,6 +131,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
             "stories": {"The Beginning": {}},
+            "title": "The Beginning",
             "updated_at": TEST_DTTM_STR,
             "volume": {
                 "number": 1950,

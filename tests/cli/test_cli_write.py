@@ -81,6 +81,8 @@ METADATA_REPLACE = MappingProxyType(
         ComicboxCLISchema.ROOT_TAG: {
             **METADATA[ComicboxCLISchema.ROOT_TAG],
             "tags": {"d": {}, "e": {}, "f": {}},
+            "title": "bozo_title",
+            "stories": {"bozo_title": {}},
         }
     }
 )
@@ -133,6 +135,7 @@ DELETE_KEYS_MD = MappingProxyType(
             "summary": "A long example description",
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
+            "title": "The Beginning COMET",
             "updated_at": datetime(1970, 1, 1, 0, 0),  # noqa: DTZ001
             "volume": {"issue_count": 77, "number": 999},
         }
@@ -182,6 +185,8 @@ def test_cli_action_write_replace():
         "cr",
         "-m",
         "tags: {d: {},e: {},f: {}}",
+        "-m",
+        "{ title: bozo_title }",
         "-R",
         str(TMP_PATH),
         "-P",

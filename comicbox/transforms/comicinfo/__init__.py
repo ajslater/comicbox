@@ -28,6 +28,7 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
+    TITLE_KEY,
 )
 from comicbox.schemas.comicinfo import (
     BOOKMARK_ATTRIBUTE,
@@ -79,10 +80,6 @@ from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,
     create_specs_to_comicbox,
-)
-from comicbox.transforms.stories import (
-    stories_key_transform_from_cb,
-    stories_key_transform_to_cb,
 )
 from comicbox.transforms.xml_credits import (
     xml_credits_transform_from_cb,
@@ -199,6 +196,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "ScanInformation": SCAN_INFO_KEY,
         "Series": SERIES_NAME_KEYPATH,
         "Summary": SUMMARY_KEY,
+        "Title": TITLE_KEY,
         "Volume": VOLUME_NUMBER_KEYPATH,
         "Year": YEAR_KEYPATH,
     }
@@ -218,7 +216,7 @@ NAME_OBJ_KEY_MAP = frozenbidict(
 class ComicInfoTransform(BaseTransform):
     """ComicInfo.xml Schema."""
 
-    SCHEMA_CLASS = ComicInfoSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = ComicInfoSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
@@ -227,7 +225,6 @@ class ComicInfoTransform(BaseTransform):
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
         comicinfo_bookmark_to_cb("Pages.Page", BOOKMARK_ATTRIBUTE, IMAGE_ATTRIBUTE),
         COMICINFO_REPRINTS_TO_CB,
-        stories_key_transform_to_cb("Title"),
         story_arcs_to_cb("StoryArc", "StoryArcNumber"),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )
@@ -238,7 +235,6 @@ class ComicInfoTransform(BaseTransform):
         identifiers_transform_from_cb("GTIN"),
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
         COMICINFO_REPRINTS_FROM_CB,
-        stories_key_transform_from_cb("Title"),
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),
         urls_transform_from_cb("Web"),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,

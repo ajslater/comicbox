@@ -24,7 +24,7 @@ from comicbox.schemas.comicbox import (
 )
 
 
-class ComicboxComputedIdentifers(ComicboxComputedIssue):
+class ComicboxComputedIdentifiers(ComicboxComputedIssue):
     """Comicbox computed identifiers."""
 
     @staticmethod

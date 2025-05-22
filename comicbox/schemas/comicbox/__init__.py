@@ -111,6 +111,7 @@ SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORE_DATE_KEY = "store_date"
 STORIES_KEY = "stories"
+TITLE_KEY = "title"
 ARCS_KEY = "arcs"
 SUFFIX_KEY = "suffix"
 SUMMARY_KEY = "summary"
@@ -216,6 +217,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     series = SimpleNamedNestedField(
         schema=SeriesSchema
     )  # Comet, CBI, CIX, Filename, Metron
+    title = StringField()  # CB only synthesized from stories
     series_groups = StringSetField()  # CIX ONLY, CT
     stories = SimpleNamedDictField(sort=False)  # CBI, CT, Metron, PDF
     summary = StringField()  # Comet, CIX, CT, CBI, Metron

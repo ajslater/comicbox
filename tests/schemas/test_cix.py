@@ -103,6 +103,7 @@ READ_METADATA = MappingProxyType(
             ],
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning; The End",
             "updated_at": TEST_DATETIME,
         }
     }
@@ -118,7 +119,7 @@ READ_CIX_DICT = MappingProxyType(
                 "https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 "
                 "https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd"
             ),
-            "Title": "The Beginning;The End",
+            "Title": "The Beginning; The End",
             "Series": "Captain Science",
             "Number": "1",
             "Count": 7,

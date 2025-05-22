@@ -119,6 +119,7 @@ TEMPLATE_MD = MappingProxyType(
             ],
             "series": {"name": "Captain Science"},
             "tagger": f"comicbox {VERSION}",
+            "title": "The Beginning; The End",
             "updated_at": TEST_DATETIME,
             "volume": {"number": 1950, "issue_count": 7},
         }
@@ -199,15 +200,16 @@ PDF_MD = MappingProxyType(
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},
-            "notes": "Tagged with comicbox dev on 2025-03-03T21:50:22",
+            "notes": "Tagged with comicbox dev on 2025-05-22T03:12:25Z",
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
             "stories": {"the tangle of their lives": {}},
             "tags": {"d": {}, "e": {}, "f": {}},
-            "tagger": f"comicbox {VERSION}",
+            "title": "the tangle of their lives",
+            "tagger": "comicbox dev",
             "publisher": {"name": "SmallPub"},
-            "updated_at": datetime(2025, 3, 3, 21, 50, 22, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 5, 22, 3, 12, 25, tzinfo=timezone.utc),
         }
     }
 )

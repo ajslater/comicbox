@@ -20,6 +20,7 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TAGS_KEY,
     TEAMS_KEY,
+    TITLE_KEY,
 )
 from comicbox.schemas.comictagger import (
     STORY_ARC_TAG,
@@ -65,7 +66,6 @@ from comicbox.transforms.comictagger.identifiers import (
 from comicbox.transforms.comictagger.reprints import (
     CT_REPRINTS_TRANSFORM_TO_CB,
     CT_SERIES_ALIASES_TRANSFORM_FROM_CB,
-    CT_TITLE_ALIASES_TRANSFORM_FROM_CB,
 )
 from comicbox.transforms.price import (
     price_transform_from_cb,
@@ -83,10 +83,6 @@ from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,
     create_specs_to_comicbox,
-)
-from comicbox.transforms.stories import (
-    stories_key_transform_from_cb,
-    stories_key_transform_to_cb,
 )
 
 IMAGE_TAG = "Image"
@@ -122,6 +118,7 @@ SIMPLE_KEY_MAP = frozenbidict(
         "page_count": PAGE_COUNT_KEY,
         "publisher": PUBLISHER_NAME_KEYPATH,
         "series": SERIES_NAME_KEYPATH,
+        "title": TITLE_KEY,
         "volume_count": VOLUME_COUNT_KEYPATH,
         "volume": VOLUME_NUMBER_KEYPATH,
         "year": YEAR_KEYPATH,
@@ -142,7 +139,7 @@ NAME_OBJ_KEY_MAP = frozenbidict(
 class ComictaggerTransform(BaseTransform):
     """Comictagger transform."""
 
-    SCHEMA_CLASS = ComictaggerSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = ComictaggerSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
@@ -155,7 +152,6 @@ class ComictaggerTransform(BaseTransform):
         comicinfo_bookmark_to_cb("pages", BOOKMARK_TAG, IMAGE_TAG),
         price_transform_to_cb("price"),
         CT_REPRINTS_TRANSFORM_TO_CB,
-        stories_key_transform_to_cb("title"),
         story_arcs_to_cb(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM_TO_CB,
         format_root_keypath=ComictaggerSchema.ROOT_KEYPATH,
@@ -172,8 +168,6 @@ class ComictaggerTransform(BaseTransform):
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("is_version_of"),
         CT_SERIES_ALIASES_TRANSFORM_FROM_CB,
-        CT_TITLE_ALIASES_TRANSFORM_FROM_CB,
-        stories_key_transform_from_cb("title"),
         *story_arcs_from_cb(STORY_ARC_TAG, ""),
         COMICTAGGER_URLS_TRANSFORM_FROM_CB,
         format_root_keypath=ComictaggerSchema.ROOT_KEYPATH,

@@ -12,6 +12,7 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TAGGER_KEY,
     TAGS_KEY,
+    TITLE_KEY,
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
@@ -40,10 +41,6 @@ from comicbox.transforms.spec import (
     create_specs_from_comicbox,
     create_specs_to_comicbox,
 )
-from comicbox.transforms.stories import (
-    stories_key_transform_from_cb,
-    stories_key_transform_to_cb,
-)
 
 TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{TAGGER_KEY}"
 UPDATED_AT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{UPDATED_AT_KEY}"
@@ -70,6 +67,7 @@ SIMPLE_KEYPATHS = frozenbidict(
         "publisher": PUBLISHER_NAME_KEYPATH,
         "rating": CRITICAL_RATING_KEY,
         "series": SERIES_NAME_KEYPATH,
+        "title": TITLE_KEY,
         "volume": VOLUME_NUMBER_KEYPATH,
     }
 )
@@ -84,7 +82,7 @@ NAME_OBJ_KEYPATHS = frozenbidict(
 class ComicBookInfoTransform(BaseTransform):
     """Comic Book Info transform."""
 
-    SCHEMA_CLASS = ComicBookInfoSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = ComicBookInfoSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(
             key_map=TOP_KEYPATHS.inverse,
@@ -96,7 +94,6 @@ class ComicBookInfoTransform(BaseTransform):
         cbi_credits_transform_to_cb("credits"),
         cbi_credits_primary_to_cb("credits"),
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
-        stories_key_transform_to_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
@@ -109,6 +106,5 @@ class ComicBookInfoTransform(BaseTransform):
         ),
         cbi_credits_transform_from_cb("credits"),
         name_obj_from_cb(NAME_OBJ_KEYPATHS),
-        stories_key_transform_from_cb("title"),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )

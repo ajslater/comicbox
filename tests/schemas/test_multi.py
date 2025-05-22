@@ -132,6 +132,7 @@ READ_METADATA = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
+            "title": "The Beginning COMET",
             "updated_at": TEST_DATETIME,
             "tagger": "comicbox dev",
         }
@@ -245,6 +246,7 @@ READ_MULTI_DICT = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
+            "title": "The Beginning COMET",
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}

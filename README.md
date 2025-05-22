@@ -171,6 +171,8 @@ comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
 
 #### Quirks
 
+##### --metadata parses all formats.
+
 The comicbox.yaml format represents the ComicInfo.xml Web tag as sub an
 `identifiers.<NID>.url` tag. But fear not, you don't have to remember this. The
 CLI accepts heterogeneous tag types with the `-m` option, so you can type:
@@ -189,6 +191,20 @@ identifiers:
     nss: ""
     url: https://foo.com
 ```
+
+You don't even need the root tag.
+
+##### Setting Title when Stories are present.
+
+If the metadata contains Stories (MetronInfo.xml only) the title is computed
+from the Stories. If you wish to set the title regardless, use the --replace
+option. e.g.
+
+```sh
+comicbox -m "series: 'G.I. Robot', title: 'Foreign and Domestic'" -Rp
+```
+
+But be aware it will also create a story with the title's new name.
 
 ##### Identifiers
 

@@ -356,6 +356,7 @@ class TestParser:
         """Test load from native dict."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
+            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 

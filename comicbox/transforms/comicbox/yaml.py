@@ -7,4 +7,4 @@ from comicbox.transforms.comicbox import ComicboxBaseTransform
 class ComicboxYamlTransform(ComicboxBaseTransform):
     """Comicbox YAML transform."""
 
-    SCHEMA_CLASS = ComicboxYamlSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = ComicboxYamlSchema

@@ -43,6 +43,7 @@ comicbox:
   stories:
     The Beginning: {}
   tagger: comicbox dev
+  title: The Beginning
   updated_at: '2025-03-02T01:38:25Z'
   volume:
     issue_count: 7

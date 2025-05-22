@@ -10,7 +10,6 @@ from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.merge import merge_metadata
 
 
 class ComicboxMetadata(ComicboxComputed):
@@ -34,10 +33,9 @@ class ComicboxMetadata(ComicboxComputed):
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
             if computed_sub_data and computed_data.merger:
-                merge_metadata(
+                computed_data.merger.merge(
                     merged_md,
                     computed_data.metadata,
-                    computed_data.merger,
                 )
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)

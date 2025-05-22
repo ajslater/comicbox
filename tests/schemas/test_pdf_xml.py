@@ -28,6 +28,7 @@ METADATA = MappingProxyType(
             "stories": {"the tangle of their lives": {}},
             "tags": {"d": {}, "e": {}, "f": {}},
             "tagger": "comicbox dev",
+            "title": "the tangle of their lives",
             "updated_at": datetime(2025, 3, 2, 18, 33, 50),  # noqa: DTZ001
         }
     }

@@ -25,6 +25,7 @@ SUB_DATA: Mapping[str, Any] = {
     },
     "series": {"name": "Captain Science"},
     "stories": {"The Beginning - nothing": {}},
+    "title": "The Beginning - nothing",
     "date": {
         "year": 1950,
     },

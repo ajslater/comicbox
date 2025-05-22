@@ -86,6 +86,7 @@ METADATA = MappingProxyType(
             "volume": {"number": 1950, "issue_count": 7},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
+            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
         }
     }

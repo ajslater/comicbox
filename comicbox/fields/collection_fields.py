@@ -163,7 +163,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
 
     FIELD: fields.Field = StringField  # pyright: ignore[reportAssignmentType]
     DEFAULT_SEPARATORS: str = ",;"
-    DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(r"[,;]")
+    DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(rf"[{DEFAULT_SEPARATORS}]")
 
     def __init__(self, *args, as_string=False, sort=True, separators="", **kwargs):
         """Initialize as a string list."""

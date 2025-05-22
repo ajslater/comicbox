@@ -80,7 +80,7 @@ SIMPLE_KEY_MAP = frozenbidict(
 class MetronInfoTransform(BaseTransform):
     """MetronInfo.xml Transformer."""
 
-    SCHEMA_CLASS = MetronInfoSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = MetronInfoSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,  # must come before most other resources

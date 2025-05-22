@@ -140,9 +140,7 @@ tests/test_files/Captain Science #001-cix.cbt
 │   3  │ Captain Science 001/CaptainScience#1_04.jpg │
 │   4  │ Captain Science 001/CaptainScience#1_05.jpg │
 │      │ Captain Science 001/comicinfo.xml           │
-│      │ Captain Science 001/comicinfo.xml~          │
 │      │ Captain Science 001/metroninfo.xml          │
-│      │ Captain Science 001/metroninfo.xml~         │
 └──────┴─────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════════
 tests/test_files/Captain Science #001-cix.cbz
@@ -251,9 +249,7 @@ tests/test_files/Captain Science #001.cbz
 │   3  │ Captain Science 001/CaptainScience#1_04.jpg │
 │   4  │ Captain Science 001/CaptainScience#1_05.jpg │
 │      │ Captain Science 001/comicinfo.xml           │
-│      │ Captain Science 001/comicinfo.xml~          │
 │      │ Captain Science 001/metroninfo.xml          │
-│      │ Captain Science 001/metroninfo.xml~         │
 │      │ comicinfo.xml                               │
 └──────┴─────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════════

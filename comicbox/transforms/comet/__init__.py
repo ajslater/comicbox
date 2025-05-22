@@ -19,6 +19,7 @@ from comicbox.schemas.comicbox import (
     READING_DIRECTION_KEY,
     RIGHTS_KEY,
     SUMMARY_KEY,
+    TITLE_KEY,
 )
 from comicbox.schemas.enums.comet import CoMetRoleTagEnum
 from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
@@ -52,10 +53,6 @@ from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,
     create_specs_to_comicbox,
-)
-from comicbox.transforms.stories import (
-    stories_key_transform_from_cb,
-    stories_key_transform_to_cb,
 )
 from comicbox.transforms.xml_credits import (
     xml_credits_transform_from_cb,
@@ -155,6 +152,7 @@ SIMPLE_KEYMAP = frozenbidict(
         "readingDirection": READING_DIRECTION_KEY,
         "rights": RIGHTS_KEY,
         "series": SERIES_NAME_KEYPATH,
+        "title": TITLE_KEY,
         "volume": VOLUME_NUMBER_KEYPATH,
     }
 )
@@ -164,7 +162,7 @@ NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KE
 class CoMetTransform(BaseTransform):
     """CoMet transforms."""
 
-    SCHEMA_CLASS = CoMetSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = CoMetSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(
             key_map=SIMPLE_KEYMAP.inverse,
@@ -174,7 +172,6 @@ class CoMetTransform(BaseTransform):
         identifiers_transform_to_cb("identifier", DEFAULT_NID),
         price_transform_to_cb("price"),
         comet_reprints_transform_to_cb("isVersionOf"),
-        stories_key_transform_to_cb("title"),
         format_root_keypath=CoMetSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
@@ -184,6 +181,5 @@ class CoMetTransform(BaseTransform):
         identifiers_transform_from_cb("identifier"),
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),
-        stories_key_transform_from_cb("title"),
         format_root_keypath=CoMetSchema.ROOT_KEYPATH,
     )

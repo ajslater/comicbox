@@ -56,6 +56,7 @@ METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "summary": "A long example description",
+            "title": "The Beginning",
             "volume": {"number": 1},
         }
     }

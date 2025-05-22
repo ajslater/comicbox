@@ -7,4 +7,4 @@ from comicbox.transforms.comicbox import ComicboxBaseTransform
 class ComicboxJsonTransform(ComicboxBaseTransform):
     """Comicbox JSON transform."""
 
-    SCHEMA_CLASS = ComicboxJsonSchema  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    SCHEMA_CLASS = ComicboxJsonSchema
