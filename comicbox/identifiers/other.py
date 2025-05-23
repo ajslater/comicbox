@@ -3,7 +3,7 @@
 import re
 from contextlib import suppress
 
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
     DEFAULT_NSS_TYPE,

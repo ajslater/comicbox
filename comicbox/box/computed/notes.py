@@ -8,7 +8,7 @@ from loguru import logger
 
 from comicbox.box.merge import ComicboxMerge
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
     IDENTIFIER_RE_EXP,

@@ -2,7 +2,7 @@
 
 from bidict import frozenbidict
 
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
     NID_NAME_MAP,

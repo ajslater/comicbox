@@ -4,7 +4,7 @@ from collections.abc import Callable
 from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     ALIAS_NID_MAP,
     DEFAULT_NID,
 )

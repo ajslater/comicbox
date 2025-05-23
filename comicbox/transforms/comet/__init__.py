@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.identifiers.const import DEFAULT_NID
+from comicbox.identifiers import DEFAULT_NID
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,

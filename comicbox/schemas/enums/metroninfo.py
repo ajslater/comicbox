@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     NID_NAME_MAP,
     NIDs,
 )

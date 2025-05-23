@@ -5,7 +5,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers.const import DEFAULT_NID
+from comicbox.identifiers import DEFAULT_NID
 from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     IMPRINT_KEY,

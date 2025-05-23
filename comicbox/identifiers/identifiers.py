@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     COMICVINE_LONG_NSS_EXP,
     DEFAULT_NID,
     DEFAULT_NSS_TYPE,

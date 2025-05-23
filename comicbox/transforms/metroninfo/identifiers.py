@@ -7,7 +7,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     NID_NAME_MAP,
     NSS_KEY,
     URL_KEY,

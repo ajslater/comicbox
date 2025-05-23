@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers.const import NSS_KEY, NIDs
+from comicbox.identifiers import NSS_KEY, NIDs
 from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 from comicbox.schemas.comicbox import (

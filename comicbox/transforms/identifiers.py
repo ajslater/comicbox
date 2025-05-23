@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from loguru import logger
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     NSS_KEY,
     URL_KEY,
     NIDs,

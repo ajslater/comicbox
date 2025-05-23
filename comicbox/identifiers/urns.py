@@ -3,7 +3,7 @@
 from loguru import logger
 from urnparse import URN8141, NSIdentifier, NSSString
 
-from comicbox.identifiers.const import (
+from comicbox.identifiers import (
     ALIAS_NID_MAP,
     DEFAULT_NSS_TYPE,
 )
