@@ -129,6 +129,12 @@ WEB_KEY = "web"
 YEAR_KEY = "year"
 
 
+class ArcSchema(IdentifiedSchema):
+    """Story Arc Schema."""
+
+    number = IntegerField(minimum=0)  # CIX, Metron
+
+
 class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
@@ -141,12 +147,6 @@ class UniverseSchema(IdentifiedSchema):
     """Universe Schema."""
 
     designation = StringField()  # Metron ONLY
-
-
-class ArcSchema(IdentifiedSchema):
-    """Story Arc Schema."""
-
-    number = IntegerField(minimum=0)  # CIX, Metron
 
 
 class DateSchema(BaseSubSchema):
