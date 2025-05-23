@@ -4,9 +4,6 @@
   "title": "Comicbox Volume",
   "type": "object",
   "properties": {
-    "identifiers": {
-      "$ref": "identifiers.schema.json"
-    },
     "issue_count": {
       "type": "integer"
     },

@@ -17,7 +17,7 @@ class SeriesSchema(IdentifiedNameSchema):
     volume_count = IntegerField(minimum=0)  # CBI, CT, Metron
 
 
-class VolumeSchema(IdentifiedSchema):
+class VolumeSchema(BaseSubSchema):
     """Volume Schema."""
 
     issue_count = IntegerField(minimum=0)  # CBI, CT, CIX, Filename, Metron
