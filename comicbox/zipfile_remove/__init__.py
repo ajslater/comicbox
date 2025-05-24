@@ -1,6 +1,12 @@
-"""ZipFile with Remove method."""
-# From https://github.com/python/cpython/pull/103033
-# Not linted to compare against above PR
+"""
+ZipFile with Remove method.
+
+From https://github.com/python/cpython/pull/103033
+Not linted to compare against above PR
+
+The newest PR that addresses this issue is https://github.com/python/cpython/pull/134627
+But it relies on so many cpython changes that I can't subclass ZipFile or even copy the entire package.
+"""
 from zipfile import ZipFile, ZipInfo
 
 
