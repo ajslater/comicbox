@@ -8,9 +8,7 @@ from urllib.parse import urlparse
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
-    ID_KEY_KEY,
     ID_SOURCE_NAME_MAP,
-    URL_KEY,
     IdSources,
 )
 from comicbox.identifiers.identifiers import (
@@ -19,7 +17,9 @@ from comicbox.identifiers.identifiers import (
 )
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import (
+    ID_KEY_KEY,
     ID_SOURCE_KEY,
+    ID_URL_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
 )
@@ -60,7 +60,7 @@ def _identifier_primary_source_to_cb_ids(metron_ids):
             and (id_source := ID_SOURCE_NAME_MAP.inverse.get(source_enum.value))
         ):
             id_parts = IDENTIFIER_PARTS_MAP[id_source]
-            return {ID_SOURCE_KEY: id_source, URL_KEY: id_parts.url_prefix}
+            return {ID_SOURCE_KEY: id_source, ID_URL_KEY: id_parts.url_prefix}
     return None
 
 

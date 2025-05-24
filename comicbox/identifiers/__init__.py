@@ -6,9 +6,6 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-ID_KEY_KEY = "id_key"
-URL_KEY = "url"
-
 
 class IdSources(Enum):
     """Comic Database Namespace Identifiers."""

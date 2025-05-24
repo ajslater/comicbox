@@ -11,11 +11,10 @@ from comicbox.identifiers import (
     COMICVINE_LONG_ID_KEY_EXP,
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
-    ID_KEY_KEY,
     PARSE_COMICVINE_RE,
-    URL_KEY,
     IdSources,
 )
+from comicbox.schemas.comicbox import ID_KEY_KEY, ID_URL_KEY
 
 _SLUG_REXP = r"(?:/\S*)?"
 
@@ -270,5 +269,5 @@ def create_identifier(
     if not url and id_key and (id_parts := IDENTIFIER_PARTS_MAP.get(id_source)):
         url = id_parts.unparse_url(id_type, id_key)
     if url:
-        identifier[URL_KEY] = url
+        identifier[ID_URL_KEY] = url
     return identifier

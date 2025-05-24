@@ -5,7 +5,6 @@ from bidict import frozenbidict
 from comicbox.identifiers import (
     ALIAS_ID_SOURCE_MAP,
     DEFAULT_ID_SOURCE,
-    ID_KEY_KEY,
     ID_SOURCE_NAME_MAP,
     ID_SOURCE_VALUES,
 )
@@ -13,6 +12,7 @@ from comicbox.identifiers.identifiers import (
     create_identifier,
 )
 from comicbox.schemas.comicbox import (
+    ID_KEY_KEY,
     ID_SOURCE_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,

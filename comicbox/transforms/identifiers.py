@@ -5,11 +5,7 @@ from urllib.parse import urlparse
 from loguru import logger
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import (
-    ID_KEY_KEY,
-    URL_KEY,
-    IdSources,
-)
+from comicbox.identifiers import IdSources
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     IdentifierParts,
@@ -20,7 +16,9 @@ from comicbox.identifiers.urns import (
     to_urn_string,
 )
 from comicbox.schemas.comicbox import (
+    ID_KEY_KEY,
     ID_SOURCE_KEY,
+    ID_URL_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
 )
@@ -34,7 +32,7 @@ def create_identifier_primary_source(id_source):
     ips = {ID_SOURCE_KEY: id_source}
     id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
     if id_parts and (url := id_parts.unparse_url("", "")):
-        ips[URL_KEY] = url
+        ips[ID_URL_KEY] = url
     return ips
 
 
@@ -122,7 +120,7 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
         if id_key:
             identifier[ID_KEY_KEY] = id_key
         if url:
-            identifier[URL_KEY] = url_str
+            identifier[ID_URL_KEY] = url_str
     except Exception:
         logger.debug(f"Unparsable url: {url_str}")
         id_source = ""
@@ -168,10 +166,10 @@ def url_from_cb(
     comicbox_identifier: dict,
 ) -> str:
     """Unparse one identifier into one url tag."""
-    url = comicbox_identifier.get(URL_KEY, "")
+    url = comicbox_identifier.get(ID_URL_KEY, "")
     if not url and (id_key := comicbox_identifier.get(ID_KEY_KEY)):
         new_identifier = create_identifier(id_source, id_key)
-        url = new_identifier.get(URL_KEY, "")
+        url = new_identifier.get(ID_URL_KEY, "")
     return url
 
 
