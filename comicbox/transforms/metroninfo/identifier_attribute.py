@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from loguru import logger
 
 from comicbox.identifiers.identifiers import create_identifier
-from comicbox.schemas.comicbox import IDENTIFIERS_KEY
+from comicbox.schemas.comicbox import ID_KEY_KEY, IDENTIFIERS_KEY
 from comicbox.transforms.metroninfo.const import DEFAULT_ID_SOURCE
 
 ID_ATTRIBUTE = "@id"
@@ -39,7 +39,7 @@ def metron_id_attribute_from_cb(
         if (
             primary_id_source
             and id_source == primary_id_source
-            and (id_key := identifier.get("id_key"))
+            and (id_key := identifier.get(ID_KEY_KEY))
         ):
             metron_obj[ID_ATTRIBUTE] = id_key
             break

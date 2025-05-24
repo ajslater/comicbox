@@ -62,7 +62,7 @@ READ_METADATA = MappingProxyType(
             "imprint": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "222",
+                        "key": "222",
                         "url": "https://metron.cloud/imprint/222",
                     },
                 },
@@ -74,18 +74,18 @@ READ_METADATA = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "id_key": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "id_key": "999999",
+                    "key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
             "issue": {
                 "name": "1",
@@ -102,7 +102,7 @@ READ_METADATA = MappingProxyType(
             "publisher": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "11",
+                        "key": "11",
                         "url": "https://metron.cloud/publisher/11",
                     },
                 },
@@ -111,7 +111,7 @@ READ_METADATA = MappingProxyType(
             "series": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "2222",
+                        "key": "2222",
                         "url": "https://metron.cloud/series/2222",
                     }
                 },
@@ -124,7 +124,7 @@ READ_METADATA = MappingProxyType(
                 "Captain Lost": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "5555",
+                            "key": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
@@ -416,18 +416,18 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "id_key": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "id_key": "999999",
+                    "key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
         }
     }

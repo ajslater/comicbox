@@ -11,7 +11,7 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.schemas.comicbox import STORIES_KEY, TITLE_KEY
 
-STORIES = {"a": {"identifiers": {"comicvine": {"id_key": "123"}}}, "d": {}}
+STORIES = {"a": {"identifiers": {"comicvine": {"key": "123"}}}, "d": {}}
 TITLE = "a; b; c"
 TITLE_FROM_STORIES = "a; d"
 ALL_STORIES = {"b": {}, "c": {}, **STORIES}

@@ -30,7 +30,7 @@ READ_METADATA = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -90,7 +90,7 @@ READ_YAML_DICT = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },

@@ -80,7 +80,7 @@ READ_METADATA = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -238,7 +238,7 @@ READ_MULTI_DICT = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },

@@ -9,7 +9,7 @@ comicbox:
       number: 1
       identifiers:
         metron:
-          id_key: "123"
+          key: "123"
     e:
       number: 3
     f:
@@ -20,7 +20,7 @@ comicbox:
     Boy Empirical:
       identifiers:
         metron:
-          id_key: 345
+          key: 345
   collection_title: The Big Omnibus
   country: US
   community_rating: 5.0
@@ -47,7 +47,7 @@ comicbox:
     Science Fiction: {}
   identifiers:
     comicvine:
-      id_key: "145269"
+      key: "145269"
       url: https://comicvine.gamespot.com/c/4000-145269/
   imprint:
     name: TestImprint

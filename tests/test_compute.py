@@ -36,7 +36,7 @@ DATE_FROM_NOTES_MD = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -62,11 +62,11 @@ IDS_FROM_TAGS_MD = MappingProxyType(
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifiers": {
                 "comicvine": {
-                    "id_key": "1234",
+                    "key": "1234",
                     "url": "https://comicvine.gamespot.com/c/4000-1234/",
                 },
                 "metron": {
-                    "id_key": "9999",
+                    "key": "9999",
                     "url": "https://metron.cloud/issue/9999",
                 },
             },
@@ -145,7 +145,7 @@ IDENTIFIERS_FROM_URLS = MappingProxyType(
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifiers": {
                 "bar.ct": {
-                    "id_key": "?attr=1#tag",
+                    "key": "?attr=1#tag",
                     "url": "https://bar.ct/?attr=1#tag",
                 },
                 "foo.bar": {"url": "http://foo.bar"},

@@ -10,7 +10,7 @@ from comicbox.schemas.base import BaseSubSchema
 class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron
     """Identifier schema."""
 
-    id_key = StringField()
+    key = StringField()
     url = StringField()
 
 

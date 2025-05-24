@@ -64,7 +64,7 @@ TEMPLATE_MD = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -165,14 +165,14 @@ CBT_MD_PATCH = {
         },
         "identifiers": {
             "comicvine": {
-                "id_key": "145269",
+                "key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "id_key": "123-456789-0123",
+                "key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "date": {"cover_date": date(1950, 11, 1)},
         "notes": (
@@ -227,14 +227,14 @@ CB7_MD_PATCH = {
         },
         "identifiers": {
             "comicvine": {
-                "id_key": "145269",
+                "key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "id_key": "123-456789-0123",
+                "key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "notes": (
             "Tagged with comicbox dev on 1970-01-01T00:00:00Z "

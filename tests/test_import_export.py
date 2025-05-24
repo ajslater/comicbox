@@ -37,7 +37,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -146,7 +146,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -211,7 +211,7 @@ FNS = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -283,7 +283,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -363,11 +363,11 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
-                    "id_key": "99999",
+                    "key": "99999",
                     "url": "https://metron.cloud/issue/99999",
                 },
             },
@@ -450,7 +450,7 @@ FNS = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -469,7 +469,7 @@ FNS = MappingProxyType(
             "series": {
                 "identifiers": {
                     "comicvine": {
-                        "id_key": "45678",
+                        "key": "45678",
                         "url": "https://comicvine.gamespot.com/c/4050-45678/",
                     }
                 },
@@ -503,23 +503,23 @@ FNS = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "id_key": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "id_key": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "id_key": "999999",
+                    "key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
             "imprint": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "222",
+                        "key": "222",
                         "url": "https://metron.cloud/imprint/222",
                     }
                 },
@@ -540,7 +540,7 @@ FNS = MappingProxyType(
             "publisher": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "11",
+                        "key": "11",
                         "url": "https://metron.cloud/publisher/11",
                     }
                 },
@@ -553,7 +553,7 @@ FNS = MappingProxyType(
             "series": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "2222",
+                        "key": "2222",
                         "url": "https://metron.cloud/series/2222",
                     }
                 },
@@ -566,7 +566,7 @@ FNS = MappingProxyType(
                 "Captain Lost": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "5555",
+                            "key": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
@@ -587,7 +587,7 @@ FNS = MappingProxyType(
                 "Origin": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "78945",
+                            "key": "78945",
                             "url": "https://metron.cloud/arc/78945",
                         }
                     },
@@ -599,7 +599,7 @@ FNS = MappingProxyType(
                 "Aquaman": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "45678",
+                            "key": "45678",
                             "url": "https://metron.cloud/character/45678",
                         }
                     }
@@ -624,7 +624,7 @@ FNS = MappingProxyType(
                 "Geoff Johns": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "32165",
+                            "key": "32165",
                             "url": "https://metron.cloud/creator/32165",
                         }
                     },
@@ -632,7 +632,7 @@ FNS = MappingProxyType(
                         "Writer": {
                             "identifiers": {
                                 "metron": {
-                                    "id_key": "32165",
+                                    "key": "32165",
                                     "url": "https://metron.cloud/role/32165",
                                 }
                             }
@@ -658,7 +658,7 @@ FNS = MappingProxyType(
                 "Super-Hero": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "98745",
+                            "key": "98745",
                             "url": "https://metron.cloud/genre/98745",
                         }
                     }
@@ -671,31 +671,31 @@ FNS = MappingProxyType(
             "identifiers": {
                 "bar.foo": {"url": "https://bar.foo"},
                 "comicvine": {
-                    "id_key": "290431",
+                    "key": "290431",
                     "url": "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
                 },
                 "foo.bar": {"url": "https://foo.bar"},
                 "grandcomicsdatabase": {
-                    "id_key": "543",
+                    "key": "543",
                     "url": "https://comics.org/issue/543/",
                 },
                 "isbn": {
-                    "id_key": "1234567890123",
+                    "key": "1234567890123",
                     "url": "https://isbndb.com/book/1234567890123",
                 },
                 "metron": {
-                    "id_key": "290431",
+                    "key": "290431",
                     "url": "https://metron.cloud/issue/290431",
                 },
                 "upc": {
-                    "id_key": "76194130593600111",
+                    "key": "76194130593600111",
                     "url": "https://barcodelookup.com/76194130593600111",
                 },
             },
             "imprint": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "1234",
+                        "key": "1234",
                         "url": "https://metron.cloud/imprint/1234",
                     }
                 },
@@ -710,7 +710,7 @@ FNS = MappingProxyType(
                 "Gotham City": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "12389",
+                            "key": "12389",
                             "url": "https://metron.cloud/location/12389",
                         }
                     }
@@ -724,7 +724,7 @@ FNS = MappingProxyType(
             "publisher": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "12345",
+                        "key": "12345",
                         "url": "https://metron.cloud/publisher/12345",
                     }
                 },
@@ -735,7 +735,7 @@ FNS = MappingProxyType(
                 {
                     "identifiers": {
                         "metron": {
-                            "id_key": "65498",
+                            "key": "65498",
                             "url": "https://metron.cloud/reprint/65498",
                         }
                     },
@@ -748,7 +748,7 @@ FNS = MappingProxyType(
             "series": {
                 "identifiers": {
                     "metron": {
-                        "id_key": "65478",
+                        "key": "65478",
                         "url": "https://metron.cloud/series/65478",
                     }
                 },
@@ -761,7 +761,7 @@ FNS = MappingProxyType(
                 "Justice League, Part One": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "12",
+                            "key": "12",
                             "url": "https://metron.cloud/story/12",
                         }
                     }
@@ -774,7 +774,7 @@ FNS = MappingProxyType(
                 "Foo": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "78945",
+                            "key": "78945",
                             "url": "https://metron.cloud/tag/78945",
                         }
                     }
@@ -784,7 +784,7 @@ FNS = MappingProxyType(
                 "Justice League": {
                     "identifiers": {
                         "metron": {
-                            "id_key": "49948",
+                            "key": "49948",
                             "url": "https://metron.cloud/team/49948",
                         }
                     }
@@ -797,7 +797,7 @@ FNS = MappingProxyType(
                     "designation": "Earth 25",
                     "identifiers": {
                         "metron": {
-                            "id_key": "24",
+                            "key": "24",
                             "url": "https://metron.cloud/universe/24",
                         }
                     },

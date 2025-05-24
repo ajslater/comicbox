@@ -7,7 +7,7 @@
     ".+": {
       "type": "object",
       "properties": {
-        "id_key": {
+        "key": {
           "type": "string"
         },
         "url": {
@@ -15,7 +15,7 @@
           "format": "uri"
         }
       },
-      "required": ["id_key"]
+      "required": ["key"]
     }
   }
 }
