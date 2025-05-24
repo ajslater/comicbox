@@ -90,7 +90,7 @@ class IdentifierParts:
         if not match:
             return "", ""
         try:
-            id_type_slug = match.group("id_keytype")
+            id_type_slug = match.group("id_type")
         except IndexError:
             id_type_slug = ""
         id_type = self.get_type_by_code(id_type_slug, self.types.default_slug_type)
@@ -101,7 +101,7 @@ class IdentifierParts:
         """Create url from identifier parts."""
         if id_type and id_key:
             type_value = getattr(self.types, id_type)
-            path = self.url_path_template.format(id_keytype=type_value, id_key=id_key)
+            path = self.url_path_template.format(id_type=type_value, id_key=id_key)
         else:
             path = ""
         return self.url_prefix + path
@@ -112,8 +112,8 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
         IdSources.ANILIST.value: IdentifierParts(
             domain="anilist.co",
             types=IdentifierTypes(series="manga"),
-            url_path_regex=rf"(?P<id_keytype>manga)/(?P<id_key>\d+){_SLUG_REXP}",
-            url_path_template="{id_keytype}/{id_key}/s",
+            url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.ASIN.value: IdentifierParts(
             domain="www.amazon.com",
@@ -134,13 +134,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 team="4060",
             ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_ID_KEY_EXP,
-            url_path_template="c/{id_keytype}-{id_key}/",
+            url_path_template="c/{id_type}-{id_key}/",
         ),
         IdSources.COMIXOLOGY.value: IdentifierParts(
             domain="www.comixology.com",
             types=IdentifierTypes(issue="digital-comic"),
-            url_path_regex=r"c/(?P<id_keytype>\S+)/(?P<id_key>\d+)",
-            url_path_template="c/{id_keytype}/{id_key}",
+            url_path_regex=r"c/(?P<id_type>\S+)/(?P<id_key>\d+)",
+            url_path_template="c/{id_type}/{id_key}",
         ),
         IdSources.GCD.value: IdentifierParts(
             domain="comics.org",
@@ -152,46 +152,46 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 publisher="indicia_publisher",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<id_keytype>\S+)/(?P<id_key>\d+)/?",
-            url_path_template="{id_keytype}/{id_key}/",
+            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\d+)/?",
+            url_path_template="{id_type}/{id_key}/",
         ),
         IdSources.ISBN.value: IdentifierParts(
             domain="isbndb.com",
             types=IdentifierTypes(issue="book", series="series"),
-            url_path_regex=r"(?P<id_keytype>book)/(?P<id_key>[\d-]+)",
-            url_path_template="{id_keytype}/{id_key}",
+            url_path_regex=r"(?P<id_type>book)/(?P<id_key>[\d-]+)",
+            url_path_template="{id_type}/{id_key}",
         ),
         IdSources.KITSU.value: IdentifierParts(
             domain="kitsu.app",
             types=IdentifierTypes(series="manga"),
-            url_path_regex=r"(?P<id_keytype>manga)/(?P<id_key>\S+)",
-            url_path_template="{id_keytype}/{id_key}",
+            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>\S+)",
+            url_path_template="{id_type}/{id_key}",
         ),
         IdSources.LCG.value: IdentifierParts(
             domain="leagueofcomicgeeks.com",
             types=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
             ),
-            url_path_regex=rf"(?P<id_keytype>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
-            url_path_template="{id_keytype}/{id_key}/s",
+            url_path_regex=rf"(?P<id_type>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGADEX.value: IdentifierParts(
             domain="mangadex.org",
             types=IdentifierTypes(series="title"),
-            url_path_regex=rf"(?P<id_keytype>title)/(?P<id_key>\S+){_SLUG_REXP}",
-            url_path_template="{id_keytype}/{id_key}/s",
+            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGAUPDATES.value: IdentifierParts(
             domain="mangaupdates.com",
             types=IdentifierTypes(series="series"),
-            url_path_regex=rf"(?P<id_keytype>series)/(?P<id_key>\S+){_SLUG_REXP}",
-            url_path_template="{id_keytype}/{id_key}/s",
+            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MARVEL.value: IdentifierParts(
             domain="marvel.com",
             types=IdentifierTypes(issue="issue", series="series"),
-            url_path_regex=rf"comics/(?P<id_keytype>issue|series)/(?P<id_key>\d+){_SLUG_REXP}",
-            url_path_template="comics/{id_keytype}/{id_key}/s",
+            url_path_regex=rf"comics/(?P<id_type>issue|series)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="comics/{id_type}/{id_key}/s",
         ),
         IdSources.METRON.value: IdentifierParts(
             # Metron uses the slug for an id in most urls
@@ -215,14 +215,14 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
                 team="team",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<id_keytype>\S+)/(?P<id_key>\S+)/?",
-            url_path_template="{id_keytype}/{id_key}",
+            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\S+)/?",
+            url_path_template="{id_type}/{id_key}",
         ),
         IdSources.MYANIMELIST.value: IdentifierParts(
             domain="myanimelist.net",
             types=IdentifierTypes(series="manga"),
-            url_path_regex=rf"(?P<id_keytype>manga)/(?P<id_key>\d+){_SLUG_REXP}",
-            url_path_template="{id_keytype}/{id_key}/s",
+            url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.UPC.value: IdentifierParts(
             domain="barcodelookup.com",
@@ -240,7 +240,7 @@ def _normalize_comicvine_id_key(id_type, id_key):
     if not match:
         return id_type, id_key
     try:
-        id_type_code = match.group("id_keytype")
+        id_type_code = match.group("id_type")
     except IndexError:
         return id_type, id_key
     id_type = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE.value].get_type_by_code(

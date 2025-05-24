@@ -25,7 +25,7 @@ def _parse_identifier_str_comicvine(full_identifier) -> tuple[str, str, str]:
     if not match:
         return id_source, id_type, id_key
     id_source = IdSources.COMICVINE.value
-    id_type_code = match.group("id_keytype") or ""
+    id_type_code = match.group("id_type") or ""
     id_type = IDENTIFIER_PARTS_MAP[id_source].get_type_by_code(id_type_code)
     id_key = match.group("id_key")
     return id_source, id_type, id_key

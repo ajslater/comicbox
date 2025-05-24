@@ -53,7 +53,7 @@ _ALL_IdSources = (
 IDENTIFIER_RE_EXP = (
     r"(?P<id_source>" + r"|".join(_ALL_IdSources) + r"):?(?P<id_key>[\w-]+)"
 )
-COMICVINE_LONG_ID_KEY_EXP = r"(?P<id_keytype>\d{4})-(?P<id_key>\d+)"
+COMICVINE_LONG_ID_KEY_EXP = r"(?P<id_type>\d{4})-(?P<id_key>\d+)"
 PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_ID_KEY_EXP)
 
 ID_SOURCE_NAME_MAP = frozenbidict(
