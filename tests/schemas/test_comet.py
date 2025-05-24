@@ -37,7 +37,7 @@ METADATA = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },

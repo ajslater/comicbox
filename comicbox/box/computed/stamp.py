@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers import NSS_KEY, NIDs
+from comicbox.identifiers import ID_KEY_KEY, IdSources
 from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 from comicbox.schemas.comicbox import (
@@ -34,8 +34,8 @@ class ComicboxComputedStamp(ComicboxComputedPages):
 
         if sub_data and (
             comicvine_id := sub_data.get(IDENTIFIERS_KEY, {})
-            .get(NIDs.COMICVINE.value, {})
-            .get(NSS_KEY)
+            .get(IdSources.COMICVINE.value, {})
+            .get(ID_KEY_KEY)
         ):
             notes += f" [Issue ID {comicvine_id}]"
         return notes
@@ -50,12 +50,12 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             return notes
         urn_strs = set()
         # The are issues which is the default type.
-        nss_type = ""
-        for nid, identifier in identifiers.items():
-            nss = identifier.get(NSS_KEY)
-            if not nss:
+        id_type = ""
+        for id_source, identifier in identifiers.items():
+            id_key = identifier.get(ID_KEY_KEY)
+            if not id_key:
                 continue
-            urn_str = to_urn_string(nid, nss_type, nss)
+            urn_str = to_urn_string(id_source, id_type, id_key)
             urn_strs.add(urn_str)
         notes += " ".join(sorted(urn_strs))
         return notes

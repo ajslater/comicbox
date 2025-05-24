@@ -2,7 +2,6 @@
 
 from argparse import Namespace
 from io import StringIO
-from pathlib import Path
 from types import MappingProxyType
 
 from comicbox.fields.enum_fields import PageTypeEnum
@@ -18,7 +17,6 @@ from tests.const import (
 )
 from tests.util import TestParser, create_write_dict, create_write_metadata, get_tmp_dir
 
-TEST_FILES_PATH = Path("tests/test_files")
 FN = "yaml.cbz"
 TMP_DIR = get_tmp_dir(__file__)
 TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
@@ -32,7 +30,7 @@ READ_METADATA = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -92,7 +90,7 @@ READ_YAML_DICT = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },

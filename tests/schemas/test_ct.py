@@ -33,7 +33,7 @@ READ_METADATA = MappingProxyType(
             "series": {
                 "identifiers": {
                     "comicvine": {
-                        "nss": "45678",
+                        "id_key": "45678",
                         "url": "https://comicvine.gamespot.com/c/4050-45678/",
                     }
                 },
@@ -41,7 +41,7 @@ READ_METADATA = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -50,7 +50,7 @@ READ_METADATA = MappingProxyType(
                 "number": Decimal("1"),
             },
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "id_source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "publisher": {"name": "Youthful Adventure Stories"},

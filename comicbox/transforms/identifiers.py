@@ -6,9 +6,9 @@ from loguru import logger
 
 from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import (
-    NSS_KEY,
+    ID_KEY_KEY,
     URL_KEY,
-    NIDs,
+    IdSources,
 )
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
@@ -20,51 +20,55 @@ from comicbox.identifiers.urns import (
     to_urn_string,
 )
 from comicbox.schemas.comicbox import (
+    ID_SOURCE_KEY,
     IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
-    NID_KEY,
 )
 from comicbox.transforms.spec import MetaSpec
 
-PRIMARY_NID_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{NID_KEY}"
+PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
 
 
-def create_identifier_primary_source(nid):
+def create_identifier_primary_source(id_source):
     """Create identifier primary source."""
-    ips = {NID_KEY: nid}
-    id_parts = IDENTIFIER_PARTS_MAP.get(nid)
+    ips = {ID_SOURCE_KEY: id_source}
+    id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
     if id_parts and (url := id_parts.unparse_url("", "")):
         ips[URL_KEY] = url
     return ips
 
 
-def _identifier_to_cb(native_identifier, naked_nid) -> tuple[str, dict]:
+def _identifier_to_cb(native_identifier, naked_id_source) -> tuple[str, dict]:
     """Parse one identifier urn or string."""
-    nid, nss_type, nss = parse_string_identifier(native_identifier, naked_nid)
-    comicbox_identifier = create_identifier(
-        nid, nss, nss_type=nss_type, default_nid=naked_nid
+    id_source, id_type, id_key = parse_string_identifier(
+        native_identifier, naked_id_source
     )
-    return nid, comicbox_identifier
+    comicbox_identifier = create_identifier(
+        id_source, id_key, id_type=id_type, default_id_source=naked_id_source
+    )
+    return id_source, comicbox_identifier
 
 
-def identifiers_to_cb(native_identifiers, naked_nid: str) -> dict:
+def identifiers_to_cb(native_identifiers, naked_id_source: str) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
     if native_identifiers:
         for native_identifier in native_identifiers:
             try:
-                nid, identifier = _identifier_to_cb(native_identifier, naked_nid)
-                comicbox_identifiers[nid] = identifier
+                id_source, identifier = _identifier_to_cb(
+                    native_identifier, naked_id_source
+                )
+                comicbox_identifiers[id_source] = identifier
             except Exception as exc:
                 logger.warning(f"Parsing identifier {native_identifier}: {exc}")
     return comicbox_identifiers
 
 
-def identifiers_transform_to_cb(identifiers_tag, naked_nid):
+def identifiers_transform_to_cb(identifiers_tag, naked_id_source):
     """Transform identifier tags to comicbox identifiers."""
 
     def to_cb(native_identifiers):
-        return identifiers_to_cb(native_identifiers, naked_nid)
+        return identifiers_to_cb(native_identifiers, naked_id_source)
 
     return MetaSpec(
         key_map={IDENTIFIERS_KEY: identifiers_tag},
@@ -75,11 +79,11 @@ def identifiers_transform_to_cb(identifiers_tag, naked_nid):
 def _identifiers_from_cb(comicbox_identifiers) -> set:
     """Unparse identifier struct to set of strings."""
     urn_strings = set()
-    for nid in NIDs:
+    for id_source in IdSources:
         if (
-            (comicbox_identifier := comicbox_identifiers.get(nid.value))
-            and (nss := comicbox_identifier.get(NSS_KEY))
-            and (urn_str := to_urn_string(nid.value, "", nss))
+            (comicbox_identifier := comicbox_identifiers.get(id_source.value))
+            and (id_key := comicbox_identifier.get(ID_KEY_KEY))
+            and (urn_str := to_urn_string(id_source.value, "", id_key))
         ):
             urn_strings.add(urn_str)
     return urn_strings
@@ -93,13 +97,13 @@ def identifiers_transform_from_cb(identifiers_tag):
     )
 
 
-def _parse_url(nid: str, id_parts: IdentifierParts, url: str) -> dict | None:
-    """Try to parse a single nid from a url."""
-    nss_type, nss = id_parts.parse_url(url)
-    if not nss_type or not nss:
-        # iterating over all nids so fail if not perfect.
+def _parse_url(id_source: str, id_parts: IdentifierParts, url: str) -> dict | None:
+    """Try to parse a single id_source from a url."""
+    id_type, id_key = id_parts.parse_url(url)
+    if not id_type or not id_key:
+        # iterating over all id_sources so fail if not perfect.
         return {}
-    return create_identifier(nid, nss, url=url, nss_type=nss_type)
+    return create_identifier(id_source, id_key, url=url, id_type=id_type)
 
 
 def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
@@ -107,22 +111,22 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
     identifier = {}
     try:
         url = urlparse(url_str)
-        nid = url.netloc
-        nss = ""
+        id_source = url.netloc
+        id_key = ""
         if url.path and url.path != "/":
-            nss += url.path
+            id_key += url.path
         if url.query:
-            nss += "?" + url.query
+            id_key += "?" + url.query
         if url.fragment:
-            nss += "#" + url.fragment
-        if nss:
-            identifier[NSS_KEY] = nss
+            id_key += "#" + url.fragment
+        if id_key:
+            identifier[ID_KEY_KEY] = id_key
         if url:
             identifier[URL_KEY] = url_str
     except Exception:
         logger.debug(f"Unparsable url: {url_str}")
-        nid = ""
-    return nid, identifier
+        id_source = ""
+    return id_source, identifier
 
 
 def url_to_cb(
@@ -132,12 +136,12 @@ def url_to_cb(
     url_str = get_cdata(native_url)
     if not url_str:
         return "", {}
-    for nid, id_parts in IDENTIFIER_PARTS_MAP.items():
-        if identifier := _parse_url(nid, id_parts, url_str):
+    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
+        if identifier := _parse_url(id_source, id_parts, url_str):
             break
     else:
-        nid, identifier = _parse_unknown_url(url_str)
-    return nid, identifier
+        id_source, identifier = _parse_unknown_url(url_str)
+    return id_source, identifier
 
 
 def urls_to_cb(urls):
@@ -145,9 +149,9 @@ def urls_to_cb(urls):
     comicbox_identifiers = {}
     if urls:
         for url in urls:
-            nid, identifier = url_to_cb(url)
-            if nid or identifier:
-                comicbox_identifiers[nid] = identifier
+            id_source, identifier = url_to_cb(url)
+            if id_source or identifier:
+                comicbox_identifiers[id_source] = identifier
     return comicbox_identifiers
 
 
@@ -160,13 +164,13 @@ def urls_transform_to_cb(urls_tag):
 
 
 def url_from_cb(
-    nid: str,
+    id_source: str,
     comicbox_identifier: dict,
 ) -> str:
     """Unparse one identifier into one url tag."""
     url = comicbox_identifier.get(URL_KEY, "")
-    if not url and (nss := comicbox_identifier.get(NSS_KEY)):
-        new_identifier = create_identifier(nid, nss)
+    if not url and (id_key := comicbox_identifier.get(ID_KEY_KEY)):
+        new_identifier = create_identifier(id_source, id_key)
         url = new_identifier.get(URL_KEY, "")
     return url
 
@@ -174,8 +178,8 @@ def url_from_cb(
 def _urls_from_cb(comicbox_identifiers) -> set:
     """Unparse urls struct to set of strings."""
     url_strings = set()
-    for nid, comicbox_identifier in comicbox_identifiers.items():
-        if url := url_from_cb(nid, comicbox_identifier):
+    for id_source, comicbox_identifier in comicbox_identifiers.items():
+        if url := url_from_cb(id_source, comicbox_identifier):
             url_strings.add(url)
     return url_strings
 

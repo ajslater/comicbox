@@ -91,7 +91,7 @@
         "identifier_primary_source": {
           "type": "object",
           "properties": {
-            "nid": {
+            "id_source": {
               "type": "string"
             },
             "url": {
@@ -99,7 +99,7 @@
               "format": "uri"
             }
           },
-          "required": ["nid"]
+          "required": ["id_source"]
         },
         "imprint": {
           "$ref": "named-identified-object.schema.json"

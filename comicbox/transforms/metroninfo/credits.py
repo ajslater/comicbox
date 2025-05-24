@@ -17,9 +17,9 @@ from comicbox.schemas.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.schemas.metroninfo import CREATOR_TAG
 from comicbox.transforms.identifiers import (
-    PRIMARY_NID_KEYPATH,
+    PRIMARY_ID_SOURCE_KEYPATH,
 )
-from comicbox.transforms.metroninfo.const import DEFAULT_NID
+from comicbox.transforms.metroninfo.const import DEFAULT_ID_SOURCE
 from comicbox.transforms.metroninfo.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
@@ -130,16 +130,16 @@ def _create_role_variations_to_enum_map(role_aliases):
     return role_map
 
 
-def _credit_to_cb(metron_credit, primary_nid) -> tuple[str, dict]:
+def _credit_to_cb(metron_credit, primary_id_source) -> tuple[str, dict]:
     """Copy a single metron style credit entry into comicbox credits."""
     metron_creator = metron_credit.pop(CREATOR_TAG, {})
     person_name, comicbox_credit = identified_name_to_cb(
-        metron_creator, "creator", primary_nid
+        metron_creator, "creator", primary_id_source
     )
     if metron_roles := glom(metron_credit, "Roles.Role", default=None):
         for metron_role in metron_roles:
             role_name, comicbox_role = identified_name_to_cb(
-                metron_role, "role", primary_nid
+                metron_role, "role", primary_id_source
             )
             if role_name:
                 glom(
@@ -154,15 +154,15 @@ def _credits_to_cb(values):
     metron_credits = values.get(CREDITS_KEYPATH)
     if not metron_credits:
         return {}
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     return {
         person_credit[0]: person_credit[1]
         for metron_credit in metron_credits
-        if (person_credit := _credit_to_cb(metron_credit, primary_nid))
+        if (person_credit := _credit_to_cb(metron_credit, primary_id_source))
     }
 
 
-def _role_from_cb(role_name, comicbox_role, nid, role_map):
+def _role_from_cb(role_name, comicbox_role, id_source, role_map):
     """Unparse a metron role to an enum only value."""
     metron_roles = []
 
@@ -170,23 +170,25 @@ def _role_from_cb(role_name, comicbox_role, nid, role_map):
         # Handle expanding one role into many.
         metron_role = []
         for metron_role_enum in metron_role_enums:
-            metron_role = identified_name_from_cb(metron_role_enum, comicbox_role, nid)
+            metron_role = identified_name_from_cb(
+                metron_role_enum, comicbox_role, id_source
+            )
             metron_roles.append(metron_role)
     return metron_roles
 
 
 def _credit_from_cb(
-    person_name: str, comicbox_credit: dict, nid: str, role_map
+    person_name: str, comicbox_credit: dict, id_source: str, role_map
 ) -> dict:
     """Aggregate comicbox credits into Metron credit dict."""
     if not person_name:
         return {}
-    metron_creator = identified_name_from_cb(person_name, comicbox_credit, nid)
+    metron_creator = identified_name_from_cb(person_name, comicbox_credit, id_source)
     metron_credit = {CREATOR_TAG: metron_creator}
     if comicbox_roles := comicbox_credit.get(ROLES_KEY):
         all_metron_roles = []
         for role_name, comicbox_role in comicbox_roles.items():
-            metron_roles = _role_from_cb(role_name, comicbox_role, nid, role_map)
+            metron_roles = _role_from_cb(role_name, comicbox_role, id_source, role_map)
             all_metron_roles.extend(metron_roles)
         glom(metron_credit, Assign(ROLE_KEYPATH, all_metron_roles, missing=dict))
     return metron_credit
@@ -194,13 +196,13 @@ def _credit_from_cb(
 
 def _credits_from_cb(values, role_map):
     comicbox_credits = values.get(CREDITS_KEY)
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return [
         metron_credit
         for person_name, comicbox_credit in comicbox_credits.items()
         if (
             metron_credit := _credit_from_cb(
-                person_name, comicbox_credit, primary_nid, role_map
+                person_name, comicbox_credit, primary_id_source, role_map
             )
         )
     ]
@@ -220,6 +222,6 @@ def metron_credits_from_cb():
         return _credits_from_cb(values, role_map)
 
     return MetaSpec(
-        key_map={CREDITS_KEYPATH: (CREDITS_KEY, PRIMARY_NID_KEYPATH)},
+        key_map={CREDITS_KEYPATH: (CREDITS_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
         spec=from_cb,
     )

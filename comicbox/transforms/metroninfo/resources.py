@@ -7,7 +7,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import DEFAULT_NID
+from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.schemas.comicbox import (
     ARCS_KEY,
     CHARACTERS_KEY,
@@ -22,7 +22,7 @@ from comicbox.schemas.comicbox import (
     UNIVERSES_KEY,
 )
 from comicbox.schemas.metroninfo import COUNTRY_ATTR, DESIGNATION_TAG, NUMBER_TAG
-from comicbox.transforms.identifiers import PRIMARY_NID_KEYPATH
+from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.transforms.metroninfo.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
@@ -50,15 +50,15 @@ _RESOURCES_KEY_MAP = MappingProxyType(
 
 def metron_list_to_comicbox_dict(
     metron_objs: list[Mapping],
-    nss_type: str,
-    primary_nid: str,
+    id_type: str,
+    primary_id_source: str,
     func: Callable[[Mapping | str, str, str], tuple[str | Enum, dict]],
 ) -> dict[str | Enum, dict]:
     """Transform metron lists into comicbox name dicts."""
     comicbox_objs = {}
     if metron_objs:
         for metron_obj in metron_objs:
-            name, comicbox_obj = func(metron_obj, nss_type, primary_nid)
+            name, comicbox_obj = func(metron_obj, id_type, primary_id_source)
             if name:
                 comicbox_objs[name] = comicbox_obj
     return comicbox_objs
@@ -66,39 +66,39 @@ def metron_list_to_comicbox_dict(
 
 def comicbox_dict_to_metron_list(
     comicbox_objs: Mapping,
-    primary_nid: str,
+    primary_id_source: str,
     func: Callable[[str | Enum, Mapping, str], dict],
 ) -> list[dict]:
     """Transform comicbox name dicts into metron lists."""
     metron_list = []
     if comicbox_objs:
         for name, comicbox_obj in comicbox_objs.items():
-            if metron_obj := func(name, comicbox_obj, primary_nid):
+            if metron_obj := func(name, comicbox_obj, primary_id_source):
                 metron_list.append(metron_obj)
     return metron_list
 
 
-def _resources_to_cb(metron_resources, nss_type, nid):
+def _resources_to_cb(metron_resources, id_type, id_source):
     return metron_list_to_comicbox_dict(
-        metron_resources, nss_type, nid, identified_name_to_cb
+        metron_resources, id_type, id_source, identified_name_to_cb
     )
 
 
 def _resources_from_cb(cb_key, values):
     comicbox_resources = values.get(cb_key)
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return comicbox_dict_to_metron_list(
-        comicbox_resources, primary_nid, identified_name_from_cb
+        comicbox_resources, primary_id_source, identified_name_from_cb
     )
 
 
 def _create_resource_transform_to(metron_key_path, cb_key):
-    nss_type = metron_key_path.split(".")[1].lower()
+    id_type = metron_key_path.split(".")[1].lower()
 
     def to_cb(values):
         metron_resources = values.get(metron_key_path)
-        nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
-        return _resources_to_cb(metron_resources, nss_type, nid)
+        id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+        return _resources_to_cb(metron_resources, id_type, id_source)
 
     return MetaSpec(
         key_map={cb_key: (metron_key_path, SCOPE_PRIMARY_SOURCE)}, spec=to_cb
@@ -110,7 +110,7 @@ def _create_resource_transform_from(metron_key_path, cb_key):
         return _resources_from_cb(cb_key, values)
 
     return MetaSpec(
-        key_map={metron_key_path: (cb_key, PRIMARY_NID_KEYPATH)},
+        key_map={metron_key_path: (cb_key, PRIMARY_ID_SOURCE_KEYPATH)},
         spec=from_cb,
     )
 
@@ -134,13 +134,13 @@ METRON_RESOURCES_TRANSFORMS_FROM_CB = _create_resource_transforms_from()
 
 
 def _arc_to_cb(
-    metron_arc: Mapping | str, nss_type: str, primary_nid: str
+    metron_arc: Mapping | str, id_type: str, primary_id_source: str
 ) -> tuple[str | Enum, dict]:
     if not isinstance(metron_arc, Mapping):
         return "", {}
 
     name, comicbox_arc = identified_name_with_tag_to_cb(
-        metron_arc, nss_type, primary_nid
+        metron_arc, id_type, primary_id_source
     )
     if name:
         number = metron_arc.get(NUMBER_TAG)
@@ -151,12 +151,14 @@ def _arc_to_cb(
 
 def _arcs_to_cb(values):
     metron_arcs = values.get(ARC_KEYPATH, [])
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
-    return metron_list_to_comicbox_dict(metron_arcs, "arc", primary_nid, _arc_to_cb)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    return metron_list_to_comicbox_dict(
+        metron_arcs, "arc", primary_id_source, _arc_to_cb
+    )
 
 
-def _arc_from_cb(name, comicbox_arc, primary_nid):
-    metron_arc = identified_name_with_tag_from_cb(name, comicbox_arc, primary_nid)
+def _arc_from_cb(name, comicbox_arc, primary_id_source):
+    metron_arc = identified_name_with_tag_from_cb(name, comicbox_arc, primary_id_source)
     if number := comicbox_arc.get(NUMBER_KEY):
         metron_arc[NUMBER_TAG] = number
     return metron_arc
@@ -164,8 +166,8 @@ def _arc_from_cb(name, comicbox_arc, primary_nid):
 
 def _arcs_from_cb(values):
     comicbox_arcs = values.get(ARCS_KEY)
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
-    return comicbox_dict_to_metron_list(comicbox_arcs, primary_nid, _arc_from_cb)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    return comicbox_dict_to_metron_list(comicbox_arcs, primary_id_source, _arc_from_cb)
 
 
 METRON_ARCS_TRANSFORM_TO_CB = MetaSpec(
@@ -174,7 +176,7 @@ METRON_ARCS_TRANSFORM_TO_CB = MetaSpec(
 )
 
 METRON_ARCS_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={"Arcs.Arc": (ARCS_KEY, PRIMARY_NID_KEYPATH)}, spec=_arcs_from_cb
+    key_map={"Arcs.Arc": (ARCS_KEY, PRIMARY_ID_SOURCE_KEYPATH)}, spec=_arcs_from_cb
 )
 
 
@@ -204,11 +206,11 @@ METRON_PRICES_TRANSFORM_TO_CB = MetaSpec(
 METRON_PRICES_TRANSFORM_FROM_CB = MetaSpec(key_map=_PRICE_KEY_MAP, spec=_prices_from_cb)
 
 
-def _universe_to_cb(metron_universe, nss_type, primary_nid):
+def _universe_to_cb(metron_universe, id_type, primary_id_source):
     if not isinstance(metron_universe, Mapping):
         return "", {}
     name, comicbox_universe = identified_name_with_tag_to_cb(
-        metron_universe, nss_type, primary_nid
+        metron_universe, id_type, primary_id_source
     )
     if name and (designation := metron_universe.get(DESIGNATION_TAG)):
         comicbox_universe[DESIGNATION_KEY] = designation
@@ -217,15 +219,15 @@ def _universe_to_cb(metron_universe, nss_type, primary_nid):
 
 def _universes_to_cb(values):
     metron_universes = values.get(UNIVERSES_KEYPATH)
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     return metron_list_to_comicbox_dict(
-        metron_universes, "universe", primary_nid, _universe_to_cb
+        metron_universes, "universe", primary_id_source, _universe_to_cb
     )
 
 
-def _universe_from_cb(name, comicbox_universe, primary_nid):
+def _universe_from_cb(name, comicbox_universe, primary_id_source):
     metron_universe = identified_name_with_tag_from_cb(
-        name, comicbox_universe, primary_nid
+        name, comicbox_universe, primary_id_source
     )
     if metron_universe and (designation := comicbox_universe.get(DESIGNATION_KEY)):
         metron_universe[DESIGNATION_TAG] = designation
@@ -234,9 +236,9 @@ def _universe_from_cb(name, comicbox_universe, primary_nid):
 
 def _universes_from_cb(values):
     comicbox_universes = values.get(UNIVERSES_KEY)
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return comicbox_dict_to_metron_list(
-        comicbox_universes, primary_nid, _universe_from_cb
+        comicbox_universes, primary_id_source, _universe_from_cb
     )
 
 
@@ -245,6 +247,6 @@ METRON_UNIVERSES_TRANSFORM_TO_CB = MetaSpec(
     spec=_universes_to_cb,
 )
 METRON_UNIVERSES_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={"Universes.Universe": (UNIVERSES_KEY, PRIMARY_NID_KEYPATH)},
+    key_map={"Universes.Universe": (UNIVERSES_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
     spec=_universes_from_cb,
 )

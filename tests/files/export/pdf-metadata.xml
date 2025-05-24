@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<x:xmpmeta x:xmptk="Adobe XMP Core 5.6-c140 79.160451, 2017/05/06-01:08:21" xmlns:x="adobe:ns:meta/">
+	<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns">
+		<rdf:Description xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
+			<pdf:Author>Joe Orlando</pdf:Author>
+			<pdf:Keywords>'<?xml version="1.0" encoding="UTF-8"?>\n<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">\n\t<Genre>Science Fiction</Genre>\n\t<Publisher>SmallPub</Publisher>\n\t<ScanInformation>Pages</ScanInformation>\n\t<Series>test pdf</Series>\n\t<Tags>d,e,f</Tags>\n\t<Title>the tangle of their lives</Title>\n\t<Writer>Jon Osterman</Writer>\n</ComicInfo>'</pdf:Keywords>
+			<pdf:Producer>Tagged with comicbox dev on 1970-01-01T00:00:00Z</pdf:Producer>
+			<pdf:Subject>Science Fiction</pdf:Subject>
+			<pdf:Title>The Beginning</pdf:Title>
+		</rdf:Description>
+	</rdf:RDF>
+</x:xmpmeta>

@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
-from comicbox.identifiers import DEFAULT_NID
+from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
@@ -169,7 +169,7 @@ class CoMetTransform(BaseTransform):
         ),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(CoMetRoleTagEnum),
-        identifiers_transform_to_cb("identifier", DEFAULT_NID),
+        identifiers_transform_to_cb("identifier", DEFAULT_ID_SOURCE),
         price_transform_to_cb("price"),
         comet_reprints_transform_to_cb("isVersionOf"),
         format_root_keypath=CoMetSchema.ROOT_KEYPATH,

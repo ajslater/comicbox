@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">
+	<Title>The Beginning</Title>
+	<Series>Captain Science</Series>
+	<Number>1</Number>
+	<Count>7</Count>
+	<Volume>1950</Volume>
+	<Notes>Tagged with comicbox dev on 2025-03-02T00:47:29 [Issue ID 145269] urn:comicvine:145269</Notes>
+	<Year>1950</Year>
+	<Month>11</Month>
+	<Day>1</Day>
+	<Writer>Joe Orlando</Writer>
+	<Penciller>Wally Wood</Penciller>
+	<Inker>Wally Wood</Inker>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Genre>Science Fiction</Genre>
+	<Web>https://comicvine.gamespot.com/captain-science-1/4000-145269/</Web>
+	<PageCount>0</PageCount>
+	<LanguageISO>en</LanguageISO>
+	<Characters>Captain Science,Gordon Dane</Characters>
+	<StoryArc>Captain Arc,Other Arc</StoryArc>
+	<StoryArcNumber>4,2</StoryArcNumber>
+	<GTIN>urn:comicvine:145269</GTIN>
+</ComicInfo>

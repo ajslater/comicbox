@@ -1,5 +1,5 @@
 """Metron Transform constants."""
 
-from comicbox.identifiers import NIDs
+from comicbox.identifiers import IdSources
 
-DEFAULT_NID = NIDs.METRON.value
+DEFAULT_ID_SOURCE = IdSources.METRON.value

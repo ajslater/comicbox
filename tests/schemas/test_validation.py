@@ -51,7 +51,7 @@ READ_METADATA = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },

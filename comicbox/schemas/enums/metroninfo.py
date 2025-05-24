@@ -3,8 +3,8 @@
 from enum import Enum
 
 from comicbox.identifiers import (
-    NID_NAME_MAP,
-    NIDs,
+    ID_SOURCE_NAME_MAP,
+    IdSources,
 )
 
 
@@ -112,12 +112,12 @@ class MetronRoleEnum(Enum):
 class MetronSourceEnum(Enum):
     """Metron Valid Sources."""
 
-    ANILIST = NID_NAME_MAP[NIDs.ANILIST.value]
-    COMICVINE = NID_NAME_MAP[NIDs.COMICVINE.value]
-    GCD = NID_NAME_MAP[NIDs.GCD.value]
-    KITSU = NID_NAME_MAP[NIDs.KITSU.value]
-    LCG = NID_NAME_MAP[NIDs.LCG.value]
-    MANGADEX = NID_NAME_MAP[NIDs.MANGADEX.value]
-    MANGAUPDATES = NID_NAME_MAP[NIDs.MANGAUPDATES.value]
-    METRON = NID_NAME_MAP[NIDs.METRON.value]
-    MYANIMELIST = NID_NAME_MAP[NIDs.MYANIMELIST.value]
+    ANILIST = ID_SOURCE_NAME_MAP[IdSources.ANILIST.value]
+    COMICVINE = ID_SOURCE_NAME_MAP[IdSources.COMICVINE.value]
+    GCD = ID_SOURCE_NAME_MAP[IdSources.GCD.value]
+    KITSU = ID_SOURCE_NAME_MAP[IdSources.KITSU.value]
+    LCG = ID_SOURCE_NAME_MAP[IdSources.LCG.value]
+    MANGADEX = ID_SOURCE_NAME_MAP[IdSources.MANGADEX.value]
+    MANGAUPDATES = ID_SOURCE_NAME_MAP[IdSources.MANGAUPDATES.value]
+    METRON = ID_SOURCE_NAME_MAP[IdSources.METRON.value]
+    MYANIMELIST = ID_SOURCE_NAME_MAP[IdSources.MYANIMELIST.value]

@@ -188,7 +188,7 @@ and the identifier tag should appear in comicbox.yaml as:
 ```yaml
 identifiers:
   foo.com:
-    nss: ""
+    id_key: ""
     url: https://foo.com
 ```
 

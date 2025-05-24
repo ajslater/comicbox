@@ -64,7 +64,7 @@ TEMPLATE_MD = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -160,19 +160,19 @@ CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
         "identifier_primary_source": {
-            "nid": "comicvine",
+            "id_source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {
             "comicvine": {
-                "nss": "145269",
+                "id_key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "nss": "123-456789-0123",
+                "id_key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "date": {"cover_date": date(1950, 11, 1)},
         "notes": (
@@ -222,19 +222,19 @@ CB7_MD_PATCH = {
         "ext": "cb7",
         "page_count": 5,
         "identifier_primary_source": {
-            "nid": "comicvine",
+            "id_source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {
             "comicvine": {
-                "nss": "145269",
+                "id_key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "nss": "123-456789-0123",
+                "id_key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "notes": (
             "Tagged with comicbox dev on 1970-01-01T00:00:00Z "

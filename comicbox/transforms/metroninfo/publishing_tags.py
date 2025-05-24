@@ -5,7 +5,7 @@ from types import MappingProxyType
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import DEFAULT_NID
+from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.schemas.comicbox import (
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
@@ -35,7 +35,7 @@ from comicbox.schemas.metroninfo import (
     SERIES_TAG,
     VOLUME_TAG,
 )
-from comicbox.transforms.identifiers import PRIMARY_NID_KEYPATH
+from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.transforms.metroninfo.identifier_attribute import (
     ID_ATTRIBUTE,
     metron_id_attribute_from_cb,
@@ -74,35 +74,37 @@ def _publisher_to_cb(values):
     metron_publisher = values.get(PUBLISHER_TAG)
     if not metron_publisher:
         return None
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     comicbox_publisher = {}
     if name := metron_publisher.get(NAME_TAG):
         comicbox_publisher[NAME_KEY] = name
     metron_id_attribute_to_cb(
-        "publisher", metron_publisher, comicbox_publisher, primary_nid
+        "publisher", metron_publisher, comicbox_publisher, primary_id_source
     )
     return comicbox_publisher
 
 
-def _imprint_from_cb(values, primary_nid):
+def _imprint_from_cb(values, primary_id_source):
     comicbox_imprint = values.get(IMPRINT_KEY)
     if not comicbox_imprint:
         return None
     metron_imprint = {}
     if imprint_name := comicbox_imprint.get(NAME_KEY):
         metron_imprint["#text"] = imprint_name
-    metron_id_attribute_from_cb(metron_imprint, comicbox_imprint, primary_nid)
+    metron_id_attribute_from_cb(metron_imprint, comicbox_imprint, primary_id_source)
     return metron_imprint
 
 
 def _publisher_from_cb(values):
     metron_publisher = {}
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     if comicbox_publisher := values.get(PUBLISHER_KEY):
         if publisher_name := comicbox_publisher.get(NAME_KEY):
             metron_publisher[NAME_TAG] = publisher_name
-        metron_id_attribute_from_cb(metron_publisher, comicbox_publisher, primary_nid)
-    if metron_imprint := _imprint_from_cb(values, primary_nid):
+        metron_id_attribute_from_cb(
+            metron_publisher, comicbox_publisher, primary_id_source
+        )
+    if metron_imprint := _imprint_from_cb(values, primary_id_source):
         metron_publisher[IMPRINT_TAG] = metron_imprint
     return metron_publisher
 
@@ -113,7 +115,7 @@ METRON_PUBLISHER_TRANSFORM_TO_CB = MetaSpec(
 )
 
 METRON_PUBLISHER_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={PUBLISHER_TAG: (PUBLISHER_KEY, IMPRINT_KEY, PRIMARY_NID_KEYPATH)},
+    key_map={PUBLISHER_TAG: (PUBLISHER_KEY, IMPRINT_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
     spec=_publisher_from_cb,
 )
 
@@ -122,11 +124,13 @@ def _imprint_to_cb(values):
     metron_imprint = values.get(IMPRINT_TAGPATH)
     if not metron_imprint:
         return None
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     comicbox_imprint = {}
     if imprint_name := get_cdata(metron_imprint):
         comicbox_imprint[NAME_KEY] = imprint_name
-    metron_id_attribute_to_cb("imprint", metron_imprint, comicbox_imprint, primary_nid)
+    metron_id_attribute_to_cb(
+        "imprint", metron_imprint, comicbox_imprint, primary_id_source
+    )
     return comicbox_imprint
 
 
@@ -143,9 +147,11 @@ def _series_id_to_cb(values):
     metron_series = values.get(SERIES_TAG)
     if not metron_series:
         return None
-    primary_nid = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_NID)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     comicbox_series = {}
-    metron_id_attribute_to_cb("series", metron_series, comicbox_series, primary_nid)
+    metron_id_attribute_to_cb(
+        "series", metron_series, comicbox_series, primary_id_source
+    )
     return comicbox_series.get(IDENTIFIERS_KEY)
 
 
@@ -153,9 +159,9 @@ def _series_id_from_cb(values):
     comicbox_series = values.get(SERIES_KEY)
     if not comicbox_series:
         return None
-    primary_nid = values.get(PRIMARY_NID_KEYPATH, DEFAULT_NID)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     metron_series = {}
-    metron_id_attribute_from_cb(metron_series, comicbox_series, primary_nid)
+    metron_id_attribute_from_cb(metron_series, comicbox_series, primary_id_source)
     return metron_series.get(ID_ATTRIBUTE)
 
 
@@ -166,7 +172,7 @@ METRON_SERIES_IDENTIFIER_TRANSFORM_TO_CB = MetaSpec(
 )
 
 METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={SERIES_ID_TAGPATH: (SERIES_KEY, PRIMARY_NID_KEYPATH)},
+    key_map={SERIES_ID_TAGPATH: (SERIES_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
     spec=_series_id_from_cb,
 )
 

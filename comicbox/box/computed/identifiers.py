@@ -5,8 +5,8 @@ from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.identifiers import (
-    ALIAS_NID_MAP,
-    DEFAULT_NID,
+    ALIAS_ID_SOURCE_MAP,
+    DEFAULT_ID_SOURCE,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -30,13 +30,13 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
     @staticmethod
     def _add_identifier_from_tag(tag: str, identifiers: dict):
         # Silently fail because most tags are not identifiers
-        nid, _, nss = parse_urn_identifier(tag)
-        if not (nid and nss):
-            nid, _, nss = parse_identifier_other_str(tag)
-        if nid:
-            nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
-            if nss:
-                identifiers[nid] = create_identifier(nid, nss)
+        id_source, _, id_key = parse_urn_identifier(tag)
+        if not (id_source and id_key):
+            id_source, _, id_key = parse_identifier_other_str(tag)
+        if id_source:
+            id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
+            if id_key:
+                identifiers[id_source] = create_identifier(id_source, id_key)
 
     def _get_computed_from_tags(self, sub_data):
         # only look for ids in tags if the format has tags but no designated id field.

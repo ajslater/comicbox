@@ -61,28 +61,31 @@ READ_METADATA = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "imprint": {
                 "identifiers": {
-                    "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"},
+                    "metron": {
+                        "id_key": "222",
+                        "url": "https://metron.cloud/imprint/222",
+                    },
                 },
                 "name": "Youthful Imprint",
             },
             "identifier_primary_source": {
-                "nid": "metron",
+                "id_source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "nss": "123-456789-0123",
+                    "id_key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "nss": "999999",
+                    "id_key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
             },
             "issue": {
                 "name": "1",
@@ -98,13 +101,19 @@ READ_METADATA = MappingProxyType(
             },
             "publisher": {
                 "identifiers": {
-                    "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"},
+                    "metron": {
+                        "id_key": "11",
+                        "url": "https://metron.cloud/publisher/11",
+                    },
                 },
                 "name": "Youthful Adventure Stories",
             },
             "series": {
                 "identifiers": {
-                    "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
+                    "metron": {
+                        "id_key": "2222",
+                        "url": "https://metron.cloud/series/2222",
+                    }
                 },
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
@@ -115,7 +124,7 @@ READ_METADATA = MappingProxyType(
                 "Captain Lost": {
                     "identifiers": {
                         "metron": {
-                            "nss": "5555",
+                            "id_key": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
@@ -402,23 +411,23 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifier_primary_source": {
-                "nid": "metron",
+                "id_source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "nss": "123-456789-0123",
+                    "id_key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "nss": "999999",
+                    "id_key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"id_key": "12345", "url": "https://barcodelookup.com/12345"},
             },
         }
     }

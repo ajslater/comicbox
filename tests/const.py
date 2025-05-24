@@ -9,7 +9,7 @@ from ruamel.yaml.timestamp import TimeStamp
 from comicbox.version import PACKAGE_NAME, VERSION
 
 # DIRS
-TEST_FILES_DIR = Path("tests/test_files")
+TEST_FILES_DIR = Path("tests/files")
 TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
 TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"

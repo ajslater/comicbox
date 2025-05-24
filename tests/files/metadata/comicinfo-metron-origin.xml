@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">
+	<Title>The Beginning</Title>
+	<Series>Captain Science</Series>
+	<Number>1</Number>
+	<Count>7</Count>
+	<Volume>1950</Volume>
+	<AlternateSeries>Captain Science Alternate</AlternateSeries>
+	<AlternateNumber>001</AlternateNumber>
+	<Year>1950</Year>
+	<Month>11</Month>
+	<Day>1</Day>
+	<Writer>Joe Orlando</Writer>
+	<Penciller>Wally Wood</Penciller>
+	<Inker>Wally Wood</Inker>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Genre>Science Fiction</Genre>
+	<Web>https://comicvine.gamespot.com/c/4000-145269/ https://metron.cloud/issue/99999</Web>
+	<PageCount>0</PageCount>
+	<LanguageISO>en</LanguageISO>
+	<Characters>Captain Science,Gordon Dane</Characters>
+	<StoryArc>Captain Arc,Other Arc</StoryArc>
+	<StoryArcNumber>4,2</StoryArcNumber>
+	<Notes>Tagged with Comictagger on 1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] [CVDB145269]</Notes>
+	<Pages>
+		<Page Image="0" ImageSize="429985" Type="FrontCover"/>
+		<Page Image="1" ImageSize="332936"/>
+		<Page Image="2" ImageSize="458657"/>
+		<Page Image="3" ImageSize="450456"/>
+		<Page Image="4" ImageSize="436648"/>
+		<Page Image="5" ImageSize="443725"/>
+		<Page Image="6" ImageSize="469526"/>
+		<Page Image="7" ImageSize="429811"/>
+		<Page Image="8" ImageSize="445513"/>
+		<Page Image="9" ImageSize="446292"/>
+		<Page Image="10" ImageSize="458589"/>
+		<Page Image="11" ImageSize="417623"/>
+		<Page Image="12" ImageSize="445302"/>
+		<Page Image="13" ImageSize="413271"/>
+		<Page Image="14" ImageSize="434201"/>
+		<Page Image="15" ImageSize="439049"/>
+		<Page Image="16" ImageSize="485957"/>
+		<Page Image="17" ImageSize="388379"/>
+		<Page Image="18" ImageSize="368138"/>
+		<Page Image="19" ImageSize="427874"/>
+		<Page Image="20" ImageSize="422522"/>
+		<Page Image="21" ImageSize="442529"/>
+		<Page Image="22" ImageSize="423785"/>
+		<Page Image="23" ImageSize="427980"/>
+		<Page Image="24" ImageSize="445631"/>
+		<Page Image="25" ImageSize="413615"/>
+		<Page Image="26" ImageSize="417605"/>
+		<Page Image="27" ImageSize="439120"/>
+		<Page Image="28" ImageSize="451598"/>
+		<Page Image="29" ImageSize="451550"/>
+		<Page Image="30" ImageSize="438346"/>
+		<Page Image="31" ImageSize="454914"/>
+		<Page Image="32" ImageSize="428461"/>
+		<Page Image="33" ImageSize="438091"/>
+		<Page Image="34" ImageSize="353013"/>
+		<Page Image="35" ImageSize="340840"/>
+	</Pages>
+	<GTIN>urn:comicvine:145269,urn:metron:99999</GTIN>
+</ComicInfo>

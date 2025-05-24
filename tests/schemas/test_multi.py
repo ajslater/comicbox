@@ -75,12 +75,12 @@ READ_METADATA = MappingProxyType(
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "id_source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -233,12 +233,12 @@ READ_MULTI_DICT = MappingProxyType(
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "id_source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },

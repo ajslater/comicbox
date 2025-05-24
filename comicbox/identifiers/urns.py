@@ -4,66 +4,66 @@ from loguru import logger
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.identifiers import (
-    ALIAS_NID_MAP,
-    DEFAULT_NSS_TYPE,
+    ALIAS_ID_SOURCE_MAP,
+    DEFAULT_ID_TYPE,
 )
 from comicbox.identifiers.other import parse_identifier_other_str
 
 
 def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     urn = URN8141.from_string(tag)
-    nid = str(urn.namespace_id)
-    if nid:
-        nid = ALIAS_NID_MAP.get(nid.lower(), "")
+    id_source = str(urn.namespace_id)
+    if id_source:
+        id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), "")
     parts = urn.specific_string.parts
     try:
-        nss_type = str(parts[-2])
+        id_type = str(parts[-2])
     except IndexError:
-        nss_type = DEFAULT_NSS_TYPE
-    nss = str(parts[-1])
-    return nid, nss_type, nss
+        id_type = DEFAULT_ID_TYPE
+    id_key = str(parts[-1])
+    return id_source, id_type, id_key
 
 
 def parse_urn_identifier_and_warn(tag: str) -> tuple[str, str, str]:
     """Parse an identifier from a tag and log a debug warning."""
     try:
-        nid, nss_type, nss = _parse_urn_identifier(tag)
+        id_source, id_type, id_key = _parse_urn_identifier(tag)
     except Exception as exc:
         logger.debug(f"Unable to decode urn: {tag} {exc}")
-        nid = nss_type = nss = ""
-    return nid, nss_type, nss
+        id_source = id_type = id_key = ""
+    return id_source, id_type, id_key
 
 
 def parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     """Parse an identifier from a tag."""
-    nid = nss_type = nss = ""
+    id_source = id_type = id_key = ""
     try:
-        nid, nss_type, nss = _parse_urn_identifier(tag)
+        id_source, id_type, id_key = _parse_urn_identifier(tag)
     except Exception:
-        nid = nss_type = nss = ""
-    return nid, nss_type, nss
+        id_source = id_type = id_key = ""
+    return id_source, id_type, id_key
 
 
-def parse_string_identifier(item: str, default_nid="") -> tuple[str, str, str]:
+def parse_string_identifier(item: str, default_id_source="") -> tuple[str, str, str]:
     """Parse identifiers from strings or xml dicts."""
-    nid, nss_type, nss = parse_urn_identifier_and_warn(item)
-    if not nss:
-        nid, nss_type, nss = parse_identifier_other_str(item)
-    if default_nid and not nid:
-        nid = default_nid
-    if not nss_type:
-        nss_type = DEFAULT_NSS_TYPE
+    id_source, id_type, id_key = parse_urn_identifier_and_warn(item)
+    if not id_key:
+        id_source, id_type, id_key = parse_identifier_other_str(item)
+    if default_id_source and not id_source:
+        id_source = default_id_source
+    if not id_type:
+        id_type = DEFAULT_ID_TYPE
 
-    return nid, nss_type, nss
+    return id_source, id_type, id_key
 
 
-def to_urn_string(nid_str: str, nss_type: str, nss_str: str) -> str:
+def to_urn_string(id_source_str: str, id_type: str, id_key_str: str) -> str:
     """Compose an urn string."""
-    if "." in nid_str:
+    if "." in id_source_str:
         return ""
-    nid = NSIdentifier(nid_str)
-    if nss_type:
-        nss_str = nss_type + ":" + nss_str
-    nss = NSSString(nss_str)
-    urn = URN8141(nid=nid, nss=nss)
+    id_source = NSIdentifier(id_source_str)
+    if id_type:
+        id_key_str = id_type + ":" + id_key_str
+    id_key = NSSString(id_key_str)
+    urn = URN8141(nid=id_source, nss=id_key)
     return str(urn)

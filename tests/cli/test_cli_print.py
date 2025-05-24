@@ -52,7 +52,7 @@ def _get_output(args):
 
 FILETYPE_OUTPUT = """
 ════════════════════════════════════════════════════════════════════════════════
-tests/test_files/empty.cbz
+tests/files/empty.cbz
 CBZ
 """
 
@@ -66,9 +66,9 @@ def test_cli_filetype():
 
 SOURCE_OUTPUT = """
 ════════════════════════════════════════════════════════════════════════════════
-tests/test_files/empty.cbz
+tests/files/empty.cbz
 ────────────────────────────────────────────────────────────────────────────────
-Source Filename tests/test_files/empty.cbz as Filename
+Source Filename tests/files/empty.cbz as Filename
 empty.cbz
 """
 
@@ -83,9 +83,9 @@ def test_cli_source():
 
 LOADED_OUTPUT = """
 ════════════════════════════════════════════════════════════════════════════════
-tests/test_files/empty.cbz
+tests/files/empty.cbz
 ────────────────────────────────────────────────────────────────────────────────
-Loaded Filename tests/test_files/empty.cbz as Filename
+Loaded Filename tests/files/empty.cbz as Filename
 comicfn2dict:
   ext: cbz
   series: empty
@@ -135,7 +135,7 @@ def test_cli_print():
 
 LIST_OUTPUT = """
 ════════════════════════════════════════════════════════════════════════════════
-tests/test_files/Captain Science #001-cix-cbi.cbr
+tests/files/Captain Science #001-cix-cbi.cbr
 ┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Page ┃ Archive Path                                ┃
 ┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩

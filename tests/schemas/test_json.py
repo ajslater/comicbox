@@ -25,7 +25,7 @@ READ_METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -116,7 +116,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "id_key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
