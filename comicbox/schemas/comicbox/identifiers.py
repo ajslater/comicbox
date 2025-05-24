@@ -29,5 +29,5 @@ class IdentifiedNameSchema(IdentifiedSchema):  # Comicbox
 class IdentifierPrimarySource(BaseSubSchema):
     """Identifiers Primary Source."""
 
-    id_source = StringField(required=True)  # Metron ONLY
+    source = StringField(required=True)  # Metron ONLY
     url = StringField()  # Comicbox

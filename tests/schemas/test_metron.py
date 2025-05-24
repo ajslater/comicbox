@@ -69,7 +69,7 @@ READ_METADATA = MappingProxyType(
                 "name": "Youthful Imprint",
             },
             "identifier_primary_source": {
-                "id_source": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
@@ -411,7 +411,7 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifier_primary_source": {
-                "id_source": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {

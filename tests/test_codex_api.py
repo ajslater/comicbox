@@ -160,7 +160,7 @@ CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
         "identifier_primary_source": {
-            "id_source": "comicvine",
+            "source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {
@@ -222,7 +222,7 @@ CB7_MD_PATCH = {
         "ext": "cb7",
         "page_count": 5,
         "identifier_primary_source": {
-            "id_source": "comicvine",
+            "source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {

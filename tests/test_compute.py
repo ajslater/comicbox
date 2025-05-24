@@ -157,7 +157,7 @@ IDENTIFIERS_FROM_URLS = MappingProxyType(
 
 
 def test_other_urls():
-    """Test non known id_source urls."""
+    """Test non known source urls."""
     with Comicbox(
         metadata=UNKNOWN_URLS,
         fmt=MetadataFormats.COMICTAGGER,

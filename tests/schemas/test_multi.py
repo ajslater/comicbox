@@ -75,7 +75,7 @@ READ_METADATA = MappingProxyType(
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "id_source": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
@@ -233,7 +233,7 @@ READ_MULTI_DICT = MappingProxyType(
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "id_source": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {

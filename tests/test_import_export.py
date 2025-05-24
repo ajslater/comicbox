@@ -445,7 +445,7 @@ FNS = MappingProxyType(
             },
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
-                "id_source": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
@@ -498,7 +498,7 @@ FNS = MappingProxyType(
             },
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
-                "id_source": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
@@ -665,7 +665,7 @@ FNS = MappingProxyType(
                 },
             },
             "identifier_primary_source": {
-                "id_source": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
