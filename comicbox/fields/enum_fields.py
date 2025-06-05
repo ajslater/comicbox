@@ -3,9 +3,9 @@
 from enum import Enum
 from types import MappingProxyType
 
+from caseconverter import snakecase, titlecase
 from loguru import logger
 from marshmallow import fields
-from stringcase import snakecase, titlecase
 from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta

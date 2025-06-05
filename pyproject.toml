@@ -23,10 +23,10 @@ dependencies = [
   "rich-argparse<2.0.0,>=1.7.0",
   "ruamel-yaml<0.19.00,>=0.17.32",
   "simplejson<4.0.0,>=3.19.1",
-  "stringcase<2.0.0,>=1.2.0",
   "urnparse<1.0.0,>=0.2.0",
   "xmltodict<1.0.0,>=0.14.0",
   "typing-extensions>=4.13.2",
+  "case-converter>=1.2.0",
 ]
 readme = "README.md"
 keywords = [
