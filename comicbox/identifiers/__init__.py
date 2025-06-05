@@ -2,6 +2,7 @@
 
 import re
 from enum import Enum
+from sys import maxsize
 from types import MappingProxyType
 
 from bidict import frozenbidict
@@ -106,3 +107,26 @@ ALIAS_ID_SOURCE_MAP = MappingProxyType(
         for alias in aliases | {id_source, ID_SOURCE_NAME_MAP[id_source]}
     }
 )
+ID_SOURCES_RANK: MappingProxyType[str, int] = MappingProxyType(
+    {enum.value: index for index, enum in enumerate(IdSources)}
+)
+
+
+def compare_identifier_source(
+    id_source_a: IdSources | str | None, id_source_b: IdSources | str | None
+):
+    """Compare identifier sources by string."""
+    if isinstance(id_source_a, IdSources):
+        id_source_a = id_source_a.value
+    else:
+        id_source_a = id_source_a.lower() if id_source_a else ""
+
+    if isinstance(id_source_b, IdSources):
+        id_source_b = id_source_b.value
+    else:
+        id_source_b = id_source_b.lower() if id_source_b else ""
+
+    id_source_a_rank = ID_SOURCES_RANK.get(id_source_a, maxsize)
+    id_source_b_rank = ID_SOURCES_RANK.get(id_source_b, maxsize)
+
+    return id_source_a_rank > id_source_b_rank
