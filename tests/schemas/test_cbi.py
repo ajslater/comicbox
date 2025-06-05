@@ -21,6 +21,7 @@ METADATA = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
+            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -54,7 +55,11 @@ CBI_DICT = MappingProxyType(
         ComicBookInfoSchema.ROOT_DATA_KEY: {
             "country": "United States",
             "credits": [
-                {"person": "Joe Orlando", "role": "Writer"},
+                {
+                    "person": "Joe Orlando",
+                    "primary": True,
+                    "role": "Writer",
+                },
                 {"person": "Wally Wood", "role": "Penciller"},
             ],
             "genre": "Science Fiction",

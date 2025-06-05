@@ -6,6 +6,7 @@
     "credits": [
       {
         "person": "Joe Orlando",
+        "primary": true,
         "role": "Writer"
       },
       {

@@ -67,6 +67,7 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
+            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -847,7 +848,7 @@ def test_import(fn):
     cns = Namespace(import_paths=[import_path], print="ncp")
     config = Namespace(comicbox=cns)
     with Comicbox(config=config) as car:
-        # car.print_out() debug
+        car.print_out()  # debug
         md = car.get_metadata()
 
     assert_diff(test_md, md)
@@ -864,6 +865,7 @@ def test_export(fn):
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)
     with Comicbox("", config=config) as car:
+        car.print_out()  # debug
         car.export_files(embed_fmt=embed_fmt)
 
     tmp_fn = _REGULAR_FN[fmt]
