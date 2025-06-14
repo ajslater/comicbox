@@ -3,11 +3,8 @@
 from glom import SKIP, Coalesce, Iter, T, Val
 from glom.grouping import Group
 
+from comicbox.transforms.base import skip_not
 from comicbox.transforms.spec import MetaSpec
-
-
-def _skip(val) -> bool:
-    return not val
 
 
 def name_obj_to_cb(key_map):
@@ -15,8 +12,8 @@ def name_obj_to_cb(key_map):
     return MetaSpec(
         key_map=key_map,
         spec=(
-            Coalesce(T, skip=_skip),
-            Group({Coalesce(T, skip=_skip, default=SKIP): Val({})}),
+            Coalesce(T, skip=skip_not),
+            Group({Coalesce(T, skip=skip_not, default=SKIP): Val({})}),
         ),
     )
 
@@ -26,7 +23,7 @@ def name_obj_from_cb(key_map):
     return MetaSpec(
         key_map=key_map,
         spec=(
-            Coalesce(T, skip=_skip),
+            Coalesce(T, skip=skip_not),
             Iter().filter().all(),
         ),
     )

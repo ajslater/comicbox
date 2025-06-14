@@ -11,6 +11,7 @@ import pymupdf
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -27,6 +28,8 @@ from tests.const import (
     TEST_READ_NOTES,
 )
 from tests.util import assert_diff
+
+CONFIG = get_config(Namespace(comicbox=Namespace(print="sc")))
 
 
 @dataclass
@@ -52,6 +55,7 @@ TEMPLATE_MD = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -60,7 +64,7 @@ TEMPLATE_MD = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -115,6 +119,7 @@ TEMPLATE_MD = MappingProxyType(
             ],
             "series": {"name": "Captain Science"},
             "tagger": f"comicbox {VERSION}",
+            "title": "The Beginning; The End",
             "updated_at": TEST_DATETIME,
             "volume": {"number": 1950, "issue_count": 7},
         }
@@ -142,6 +147,7 @@ CBZ_MD = _patch_md(CBZ_MD_PATCH)
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "country": "US",
+        "credit_primaries": {"Writer": "Joe Orlando"},
         "ext": "cbr",
         "series": {"volume_count": 1},
         "stories": {
@@ -155,30 +161,32 @@ CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
         "identifier_primary_source": {
-            "nid": "comicvine",
+            "source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {
             "comicvine": {
-                "nss": "145269",
+                "key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "nss": "123-456789-0123",
+                "key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
         },
         "date": {"cover_date": date(1950, 11, 1)},
-        "notes": "Tagged with "
-        "comicbox dev "
-        "on "
-        "1970-01-01T00:00:00Z "
-        "[Issue ID "
-        "145269] "
-        "urn:comicvine:4000-145269 "
-        "urn:isbn:123-456789-0123 "
-        "urn:upc:12345",
+        "notes": (
+            "Tagged with "
+            "comicbox dev "
+            "on "
+            "1970-01-01T00:00:00Z "
+            "[Issue ID "
+            "145269] "
+            "urn:comicvine:4000-145269 "
+            "urn:isbn:123-456789-0123 "
+            "urn:upc:12345"
+        ),
         "page_count": 5,
         "stories": {
             "The Beginning": {},
@@ -193,15 +201,16 @@ PDF_MD = MappingProxyType(
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},
-            "notes": "Tagged with comicbox dev on 2025-03-03T21:50:22",
+            "notes": "Tagged with comicbox dev on 2025-05-22T03:12:25Z",
             "page_count": 4,
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
             "stories": {"the tangle of their lives": {}},
             "tags": {"d": {}, "e": {}, "f": {}},
-            "tagger": f"comicbox {VERSION}",
+            "title": "the tangle of their lives",
+            "tagger": "comicbox dev",
             "publisher": {"name": "SmallPub"},
-            "updated_at": datetime(2025, 3, 3, 21, 50, 22, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 5, 22, 3, 12, 25, tzinfo=timezone.utc),
         }
     }
 )
@@ -214,23 +223,25 @@ CB7_MD_PATCH = {
         "ext": "cb7",
         "page_count": 5,
         "identifier_primary_source": {
-            "nid": "comicvine",
+            "source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
         },
         "identifiers": {
             "comicvine": {
-                "nss": "145269",
+                "key": "145269",
                 "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
-                "nss": "123-456789-0123",
+                "key": "123-456789-0123",
                 "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
         },
-        "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
-        "[Issue ID 145269] urn:comicvine:4000-145269 "
-        "urn:isbn:123-456789-0123 urn:upc:12345",
+        "notes": (
+            "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
+            "[Issue ID 145269] urn:comicvine:4000-145269 "
+            "urn:isbn:123-456789-0123 urn:upc:12345"
+        ),
         "stories": {"The Beginning": {}, "The End": {}},
     }
 }
@@ -267,8 +278,7 @@ def test_check_unrar():
 def test_codex_import(ft):
     """Test codex import methods."""
     fixture = FIXTURES[ft]
-    ns = Namespace(comicbox=Namespace(print="sc"))
-    with Comicbox(fixture.path, config=ns) as car:
+    with Comicbox(fixture.path, config=CONFIG) as car:
         car_ft = car.get_file_type()
         car_md = MappingProxyType(car.get_metadata())
         car_count = car.get_page_count()
@@ -284,15 +294,15 @@ def test_cover_page(ft):
     fixture = FIXTURES[ft]
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
     is_pdf = cover_path.suffix == ".pdf"
-    with Comicbox(fixture.path) as car:
-        cover = car.get_cover_page_pdf_to_pixmap() if is_pdf else car.get_cover_page()
+    with Comicbox(fixture.path, config=CONFIG) as car:
+        cover = car.get_cover_page(to_pixmap=is_pdf)
     with cover_path.open("rb") as f:
         disk_cover = f.read()
     if is_pdf:
         # transform file to image.
         try:
             doc = pymupdf.Document(stream=disk_cover)
-            pix = doc.get_page_pixmap(0)  # type: ignore[reportAttributeAccessIssue]
+            pix = doc.get_page_pixmap(0)  # pyright: ignore[reportAttributeAccessIssue]
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"
@@ -327,7 +337,7 @@ def test_random_access_page(ft):
     """Test codex get page image methods."""
     fixture = FIXTURES[ft]
     files = sorted(Path(TEST_FILES_DIR / fixture.files_path).iterdir())
-    with Comicbox(fixture.path) as car:
+    with Comicbox(fixture.path, config=CONFIG) as car:
         for index in INDEXES:
             page = car.get_page_by_index(index)
             page_path = files[index]

@@ -1,6 +1,6 @@
 """Comic Book Info Credits Transform Mixin."""
 
-from logging import getLogger
+from loguru import logger
 
 from comicbox.schemas.comicbookinfo import (
     PERSON_TAG,
@@ -14,8 +14,6 @@ from comicbox.schemas.comicbox import (
 )
 from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
 from comicbox.transforms.spec import MetaSpec
-
-LOG = getLogger(__name__)
 
 
 def _get_cbi_credit_parts(cbi_credit):
@@ -31,7 +29,7 @@ def _cbi_credits_to_cb(cbi_credits):
             cbi_person, cbi_role = _get_cbi_credit_parts(cbi_credit)
             add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
         except Exception as exc:
-            LOG.warning(f"Parsing credit {cbi_credit}: {exc}")
+            logger.warning(f"Parsing credit {cbi_credit}: {exc}")
     return comicbox_credits
 
 
@@ -81,8 +79,8 @@ def _cbi_credits_from_cb(values):
                 person_name, comicbox_credit, cbi_credits, credit_primaries
             )
         except Exception as exc:
-            LOG.warning(f"Unparsing credit {comicbox_credit} - {exc}")
-            LOG.exception("debug")
+            logger.warning(f"Unparsing credit {comicbox_credit} - {exc}")
+            logger.exception("debug")
     return cbi_credits
 
 

@@ -2,8 +2,9 @@
 
 from glom import glom
 from ruamel.yaml import YAML
+from typing_extensions import override
 
-from comicbox.box.pages import PAGES_KEYPATH
+from comicbox.box.pages.covers import PAGES_KEYPATH
 from comicbox.schemas.comicbox import PAGES_KEY, ComicboxSchemaMixin
 from tests.validate.json_validator import JsonValidator
 
@@ -23,6 +24,7 @@ def _stringify_keys(data):
 class YamlValidator(JsonValidator):
     """Yaml Validator."""
 
+    @override
     def validate(self, source_path):
         """Validate source."""
         source_str = source_path.read_text()

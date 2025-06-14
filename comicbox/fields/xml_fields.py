@@ -3,8 +3,10 @@
 from collections.abc import Mapping
 from functools import wraps
 
+from marshmallow import fields
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
+from typing_extensions import override
 
 from comicbox.fields.collection_fields import (
     EmbeddedStringSetField,
@@ -51,6 +53,7 @@ def cdata(func):
 class XmlStringField(StringField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -59,6 +62,7 @@ class XmlStringField(StringField):
 class XmlIssueField(IssueField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -68,6 +72,7 @@ class XmlIssueField(IssueField):
 class XmlDateField(DateField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -76,6 +81,7 @@ class XmlDateField(DateField):
 class XmlDateTimeField(DateTimeField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -84,6 +90,7 @@ class XmlDateTimeField(DateTimeField):
 class XmlPdfDateTimeField(PdfDateTimeField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -93,6 +100,7 @@ class XmlPdfDateTimeField(PdfDateTimeField):
 class XmlEnumField(EnumField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -101,6 +109,7 @@ class XmlEnumField(EnumField):
 class XmlReadingDirectionField(ReadingDirectionField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -109,6 +118,7 @@ class XmlReadingDirectionField(ReadingDirectionField):
 class XmlOriginalFormatField(OriginalFormatField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -117,6 +127,7 @@ class XmlOriginalFormatField(OriginalFormatField):
 class XmlComicInfoMangaField(ComicInfoMangaField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -125,6 +136,7 @@ class XmlComicInfoMangaField(ComicInfoMangaField):
 class XmlYesNoField(YesNoField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -136,6 +148,7 @@ class XmlYesNoField(YesNoField):
 class XmlBooleanField(BooleanField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -144,7 +157,8 @@ class XmlBooleanField(BooleanField):
 class XmlBooleanAttributeField(BooleanField):
     """Fix xmltodict bug: https://github.com/martinblech/xmltodict/pull/310."""
 
-    def _serialize(self, *args, **kwargs) -> str | None:  # type: ignore[reportIncompatibleMethodOverride]
+    @override
+    def _serialize(self, *args, **kwargs) -> str | None:
         result = super()._serialize(*args, **kwargs)
         return result if result is None else str(result).lower()
 
@@ -152,6 +166,7 @@ class XmlBooleanAttributeField(BooleanField):
 class XmlIntegerField(IntegerField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -160,6 +175,7 @@ class XmlIntegerField(IntegerField):
 class XmlDecimalField(DecimalField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -168,6 +184,7 @@ class XmlDecimalField(DecimalField):
 class XmlTextDecimalField(XmlDecimalField):
     """Fix bug in xmltodict."""
 
+    @override
     def _serialize(self, value, attr, obj, **kwargs):
         """Fix bug in xmltodict."""
         # https://github.com/martinblech/xmltodict/issues/366
@@ -181,6 +198,7 @@ class XmlTextDecimalField(XmlDecimalField):
 class XmlCountryField(CountryField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -189,6 +207,7 @@ class XmlCountryField(CountryField):
 class XmlLanguageField(LanguageField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -213,6 +232,7 @@ class XmlListField(XmlListFieldMixin, ListField):
 class XmlStringListField(XmlListFieldMixin, StringListField):
     """Check for cdata."""
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -221,8 +241,9 @@ class XmlStringListField(XmlListFieldMixin, StringListField):
 class XmlStringSetField(XmlListFieldMixin, StringSetField):
     """Check for cdata."""
 
-    FIELD = XmlStringField
+    FIELD: fields.Field = XmlStringField  # pyright: ignore[reportAssignmentType]
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -231,8 +252,9 @@ class XmlStringSetField(XmlListFieldMixin, StringSetField):
 class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
     """Check for cdata."""
 
-    FIELD = XmlStringField
+    FIELD: fields.Field = XmlStringField  # pyright: ignore[reportAssignmentType]·
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)
@@ -241,8 +263,9 @@ class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
 class XmlIntegerListField(XmlListFieldMixin, IntegerListField):
     """Check for cdata."""
 
-    FIELD = XmlIntegerField
+    FIELD: fields.Field = XmlIntegerField  # pyright: ignore[reportAssignmentType]·
 
+    @override
     @cdata
     def _deserialize(self, *args, **kwargs):
         return super()._deserialize(*args, **kwargs)

@@ -2,22 +2,21 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from logging import DEBUG, WARNING, getLogger
+from logging import DEBUG, WARNING
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
 
 from glom import Assign, glom
+from loguru import logger
 from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
-from comicbox.box.sources import ComicboxSourcesMixin
+from comicbox.box.sources import ComicboxSources
 from comicbox.fields.collection_fields import EmbeddedStringSetField
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
-
-LOG = getLogger(__name__)
 
 
 @dataclass
@@ -30,7 +29,7 @@ class LoadedMetadata:
     from_archive: bool = False
 
 
-class ComicboxLoadMixin(ComicboxSourcesMixin):
+class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
     def _load_cli_yaml(self, fmt, schema, source_md):
@@ -45,7 +44,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 wrapped_md = glom({}, assign)
                 result = schema.load(wrapped_md)
         except Exception as exc:
-            LOG.debug(
+            logger.debug(
                 f'Attempt to load CLI Metadata as {fmt.value.label} "{source_md}": {exc}'
             )
         return result
@@ -60,9 +59,9 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
             return self._load_cli_yaml(fmt, schema, source_md)
 
         if isinstance(source_md, str | bytes):
-            return schema.loads(source_md)  # type: ignore[reportReturnType]
+            return schema.loads(source_md)  # pyright: ignore[reportReturnType]
 
-        return schema.load(source_md)  # type: ignore[reportReturnType]
+        return schema.load(source_md)  # pyright: ignore[reportReturnType]
 
     @staticmethod
     def _is_comment_not_json(source, exc):
@@ -87,16 +86,14 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
         if self._is_comment_not_json(source, exc):
             # Demote not json as json to debug warning because there are so many
             # archive comments that are not intended to be CBI
-            if LOG.getEffectiveLevel() == DEBUG:
-                LOG.debug(f"{self._path}: {name} metadata is not JSON: {exc}")
+            logger.debug(f"{self._path}: {name} metadata is not JSON: {exc}")
             return
 
-        LOG.log(
+        logger.log(
             level,
             f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}",
         )
-        if LOG.getEffectiveLevel() == DEBUG:
-            LOG.debug(format_exc())
+        logger.opt(lazy=True).trace("{e}", e=format_exc())
 
     def _load_unknown_metadata(
         self, source: MetadataSources, data
@@ -111,7 +108,7 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 if (success_md := self._call_load(source, fmt, data)) and glom(
                     success_md, fmt.value.schema_class.ROOT_KEYPATH
                 ):
-                    LOG.debug(f"Parsed {source.value.label} with {fmt.value.label}")
+                    logger.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
             except Exception as exc:
                 self._except_on_load(source, fmt, exc, level=DEBUG)
@@ -167,4 +164,6 @@ class ComicboxLoadMixin(ComicboxSourcesMixin):
                 self._set_loaded_metadata(source)
             return self._loaded.get(source)
         except Exception as exc:
-            LOG.warning(f"{self._path} Parsing or Loading {source.value.label}: {exc}")
+            logger.warning(
+                f"{self._path} Parsing or Loading {source.value.label}: {exc}"
+            )

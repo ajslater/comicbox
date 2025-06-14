@@ -14,8 +14,10 @@ def _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values: Mapping):
     ci_story_arcs = values.get(story_arc_tag)
     if not ci_story_arcs:
         return comicbox_arcs
-    ci_story_arc_numbers = values.get(story_arc_number_tag, [])
-    ci_story_arc_numbers = ci_story_arc_numbers[: len(ci_story_arcs)]
+    if ci_story_arc_numbers := values.get(story_arc_number_tag):
+        ci_story_arc_numbers = ci_story_arc_numbers[: len(ci_story_arcs)]
+    if not ci_story_arc_numbers:
+        ci_story_arc_numbers = []
     zipped_itr = zip_longest(ci_story_arcs, ci_story_arc_numbers, fillvalue=None)
     for zipped_tuple in zipped_itr:
         name, number = zipped_tuple

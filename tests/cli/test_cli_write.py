@@ -1,7 +1,7 @@
 """Test CLI metadata parsing."""
 
 from argparse import Namespace
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -81,6 +81,8 @@ METADATA_REPLACE = MappingProxyType(
         ComicboxCLISchema.ROOT_TAG: {
             **METADATA[ComicboxCLISchema.ROOT_TAG],
             "tags": {"d": {}, "e": {}, "f": {}},
+            "title": "bozo_title",
+            "stories": {"bozo_title": {}},
         }
     }
 )
@@ -98,6 +100,7 @@ DELETE_KEYS_MD = MappingProxyType(
             },
             "characters": {"COMET": {}, "Captain Science": {}, "Gordon Dane": {}},
             "date": {
+                "cover_date": date(591, 11, 1),
                 "month": 11,
                 "year": 591,
                 "day": 1,
@@ -109,7 +112,7 @@ DELETE_KEYS_MD = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -119,9 +122,11 @@ DELETE_KEYS_MD = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "original_format": "Comic",
             "page_count": 0,
             "publisher": {"name": "Galactic Press"},
@@ -130,6 +135,7 @@ DELETE_KEYS_MD = MappingProxyType(
             "summary": "A long example description",
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
+            "title": "The Beginning COMET",
             "updated_at": datetime(1970, 1, 1, 0, 0),  # noqa: DTZ001
             "volume": {"issue_count": 77, "number": 999},
         }
@@ -179,6 +185,8 @@ def test_cli_action_write_replace():
         "cr",
         "-m",
         "tags: {d: {},e: {},f: {}}",
+        "-m",
+        "{ title: bozo_title }",
         "-R",
         str(TMP_PATH),
         "-P",
@@ -266,7 +274,8 @@ def test_cli_action_delete_tags_add_metadata():
         )
     )
 
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
+        car.print_out()
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)
@@ -299,7 +308,7 @@ def test_cli_action_delete_keys():
         )
     )
 
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
         new_md = car.get_metadata()
 
     new_md = MappingProxyType(new_md)

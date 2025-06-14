@@ -1,14 +1,13 @@
 """Comictagger Aliases to reprints."""
 
 from comicfn2dict.parse import comicfn2dict
-from glom import SKIP, Coalesce, Flatten, Invoke, T
+from glom import SKIP, Coalesce, Flatten, T
 
 from comicbox.empty import is_empty
 from comicbox.schemas.comicbox import (
     NAME_KEY,
     REPRINTS_KEY,
     SERIES_KEY,
-    STORIES_KEY,
 )
 from comicbox.schemas.comictagger import (
     IS_VERSION_OF_TAG,
@@ -41,13 +40,6 @@ CT_REPRINTS_TRANSFORM_TO_CB = MetaSpec(
                     default=SKIP,
                 )
             ],
-            TITLE_ALIASES_TAG: [
-                Coalesce(
-                    {STORIES_KEY: T[TITLE_ALIASES_TAG].split(",;")},
-                    skip=is_empty,
-                    default=SKIP,
-                )
-            ],
         },
         Flatten(T.values()),
     ),
@@ -57,12 +49,4 @@ CT_REPRINTS_TRANSFORM_TO_CB = MetaSpec(
 CT_SERIES_ALIASES_TRANSFORM_FROM_CB = MetaSpec(
     key_map={SERIES_ALIASES_TAG: REPRINTS_KEY},
     spec=([(Coalesce(SERIES_NAME_KEYPATH, default=SKIP))],),
-)
-
-
-CT_TITLE_ALIASES_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={
-        TITLE_ALIASES_TAG: REPRINTS_KEY,
-    },
-    spec=([(STORIES_KEY, T.keys(), Invoke(";".join))], set),
 )

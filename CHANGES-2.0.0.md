@@ -42,27 +42,36 @@ comic metadata format is now fully supported.
 ### Metadata Formats and Metadata Sources
 
 [MetadataSources](comicbox/sources.py) and
-[MetadataFormats](comicbox/formats.py) have been separated and are now different
+[MetadataFormats](comicbox/formats.py) are separated and are now different
 related Enums.
 
-### box.extract_covers()
+### Method name changes
 
-Was named box.extract_covers_as()
+- Comicbox.extract_covers_as() => Comicbox.extract_covers()
+- Comicbox.get_cover_image() => Comicbox.get_cover_page()
+- Comicbox.write() => Comicbox.dump()
 
-### get_pages() pdf to pixmap methods
+## Pre Config
 
-The boolean argument to return pdf pages as pixmaps when getting pages has gone
-away and was replaced by new methods:
+Configs submitted to Comicbox(config=) are processed and the config logic is
+substantial. If you submit a pre-processed AttrDict config to Comicbox(config=)
+it will not reprocess the config possibly saving some time. e.g.
 
-- box.get_cover_page_pdf_to_pixmap
-- box.get_page_by_filename_pdf_to_pixmap()
-- box.get_page_by_index_pdf_to_pixmap()
-- box.get_pages_pdf_to_pixmap()
+```python
+from comicbox.box import Comicbox
+from comicbox.config import get_config
+
+CONFIG = get_config({"print": "snp"})
+
+for path in paths:
+  with Comicbox(path, config=CONFIG) as cb:
+    cb.print()
+```
 
 ## Comicbox Schema
 
 The largest changes are to the internal Comicbox metadata schema that comicbox
-returns with box.get_metadata(). It is more hierarchical and what used to be
+returns with box.get_metadata(). It's more hierarchical and what used to be
 lists are now often dicts with potentially empty values that when Metron data is
 parsed could have identifiers in them.
 

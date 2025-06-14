@@ -1,6 +1,5 @@
 appID: comicbox dev
 comicbox:
-  bad: 3
   age_rating: Everyone
   alternate_images:
     - alt0.jxl
@@ -10,7 +9,7 @@ comicbox:
       number: 1
       identifiers:
         metron:
-          nss: "123"
+          key: "123"
     e:
       number: 3
     f:
@@ -21,8 +20,10 @@ comicbox:
     Boy Empirical:
       identifiers:
         metron:
-          nss: 345
+          key: 345
+  collection_title: The Big Omnibus
   country: US
+  community_rating: 5.0
   credits:
     Joe Orlando:
       roles:
@@ -33,6 +34,7 @@ comicbox:
   credit_primaries:
     Joe Orlando: Writer
     Wally Wood: Penciller
+  critical_rating: 10.0
   date:
     cover_date: 1950-11-01
     store_date: 1950-11-28
@@ -45,7 +47,7 @@ comicbox:
     Science Fiction: {}
   identifiers:
     comicvine:
-      nss: "145269"
+      key: "145269"
       url: https://comicvine.gamespot.com/c/4000-145269/
   imprint:
     name: TestImprint
@@ -115,6 +117,8 @@ comicbox:
     - language: de
       series:
         name: Kapitän Wissenschaft
+  review: It wasn't all bad.
+  scan_info: Photocopied
   series:
     name: "Captain Science"
   series_groups:
@@ -129,6 +133,7 @@ comicbox:
     c: {}
   teams:
     Team Scientific Method: {}
+  title: The Beginning
   universes:
     Young Adult Silly Universe:
       designation: 4242

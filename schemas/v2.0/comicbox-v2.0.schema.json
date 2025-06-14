@@ -91,7 +91,7 @@
         "identifier_primary_source": {
           "type": "object",
           "properties": {
-            "nid": {
+            "source": {
               "type": "string"
             },
             "url": {
@@ -99,7 +99,7 @@
               "format": "uri"
             }
           },
-          "required": ["nid"]
+          "required": ["source"]
         },
         "imprint": {
           "$ref": "named-identified-object.schema.json"
@@ -203,6 +203,9 @@
         },
         "teams": {
           "$ref": "identified-objects.schema.json"
+        },
+        "title": {
+          "type": "string"
         },
         "universes": {
           "type": "object",

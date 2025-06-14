@@ -1,21 +1,21 @@
 """Date & Time fields."""
 
 from datetime import date, datetime, timezone
-from logging import getLogger
 
 from dateutil import parser
+from loguru import logger
 from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
+from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-
-LOG = getLogger(__name__)
 
 
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
-    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # type: ignore[reportIncompatibleMethodOverride]
+    @override
+    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Liberally parse dates from strings and date-like structures."""
         dt = None
         if isinstance(value, date):
@@ -25,10 +25,10 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
         else:
             try:
                 if value_str := StringField().deserialize(value):
-                    dttm = parser.parse(value_str)  # type: ignore[reportAssignmentType]
+                    dttm = parser.parse(value_str)
                     dt = dttm.date()
             except Exception:
-                LOG.warning(f"Cannot parse date: {value}")
+                logger.warning(f"Cannot parse date: {value}")
         return dt
 
 
@@ -41,7 +41,8 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
             dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
 
-    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # type: ignore[reportIncompatibleMethodOverride]
+    @override
+    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Liberally parse datetimes from strings and datetime-like structures."""
         dttm = None
         if isinstance(value, TimeStamp):
@@ -62,13 +63,14 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         else:
             try:
                 if value_str := StringField().deserialize(value):
-                    dttm = parser.parse(value_str)  # type: ignore[reportAssignmentType]
+                    dttm = parser.parse(value_str)
             except Exception:
-                LOG.warning(f"Cannot parse datetime: {value}")
+                logger.warning(f"Cannot parse datetime: {value}")
         if dttm is not None:
             dttm = self._ensure_aware(dttm)
         return dttm
 
+    @override
     def _serialize(self, value, *_args, **_kwargs):
         if value is None:
             return None

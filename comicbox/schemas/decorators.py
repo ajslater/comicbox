@@ -1,9 +1,8 @@
 """Wrapped marshmallow decorators."""
 
 from functools import wraps
-from logging import getLogger
 
-LOG = getLogger(__name__)
+from loguru import logger
 
 
 def trap_error(decorator):
@@ -15,7 +14,7 @@ def trap_error(decorator):
             try:
                 return func(self, data, **kwargs)
             except Exception:
-                LOG.exception(func.__name__)
+                logger.exception(func.__name__)
                 return data
 
         return decorator(wrapped)

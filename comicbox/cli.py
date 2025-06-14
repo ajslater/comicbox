@@ -3,7 +3,6 @@
 import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
-from logging import INFO
 from types import MappingProxyType
 
 from rich import box
@@ -14,14 +13,23 @@ from rich.styled import Styled
 from rich.table import Table
 from rich.text import Text
 from rich_argparse import RichHelpFormatter
+from typing_extensions import override
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import PDF_ENABLED, MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
 
-HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
-PRINT_PHASES_DESC = MappingProxyType(
+_TABLE_ARGS = MappingProxyType(
+    {
+        "box": box.HEAVY,
+        "border_style": "bright_black",
+        "row_styles": ("", "on grey7"),
+        "title_justify": "left",
+    }
+)
+_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+_PRINT_PHASES_DESC = MappingProxyType(
     {
         "v": ("Software version", "v"),
         "t": ("File type", ""),
@@ -34,7 +42,7 @@ PRINT_PHASES_DESC = MappingProxyType(
         "p": ("Final metadata merged with computed sources", "p"),
     }
 )
-METADATA_EXAMPLES = Styled(
+_METADATA_EXAMPLES = Styled(
     """
 Metadata can be any tag from any of the supported metadata formats.
 Complex [cyan]--metadata[/cyan] Examples:
@@ -45,8 +53,7 @@ Complex [cyan]--metadata[/cyan] Examples:
 """,
     style="argparse.text",
 )
-
-DELETE_KEYS_EXAMPLES = Styled(
+_DELETE_KEYS_EXAMPLES = Styled(
     """
 Glom key paths are dot delimited. Numbers are list indexes. This deletes three comma delimited nested key paths:
 
@@ -54,11 +61,13 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
     """,
     style="argparse.text",
 )
+_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
 
 class CSVAction(Action):
     """Parse comma deliminated sequences."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse comma delimited sequences."""
         if isinstance(values, str):
@@ -73,6 +82,7 @@ class CSVAction(Action):
 class PageRangeAction(Action):
     """Parse page range."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse page range delimited by :."""
         values_array = values.split(":")
@@ -94,22 +104,12 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-TABLE_ARGS = MappingProxyType(
-    {
-        "box": box.HEAVY,
-        "border_style": "bright_black",
-        "row_styles": ("", "on grey7"),
-        "title_justify": "left",
-    }
-)
-
-
 def _get_help_print_phases_table():
-    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Phase", style="green")
     table.add_column("Description")
     table.add_column("Shortcut", style="cyan")
-    for phase, attrs in PRINT_PHASES_DESC.items():
+    for phase, attrs in _PRINT_PHASES_DESC.items():
         desc, shortcut = attrs
         if shortcut:
             shortcut = "-" + shortcut
@@ -122,7 +122,7 @@ Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented
 
 
 def _get_help_format_table():
-    table = Table(title=FORMAT_TITLE, **TABLE_ARGS)  # type: ignore[reportArgumentType]
+    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
     table.add_column("Format")
     table.add_column("Keys", style="green")
     for fmt in reversed(MetadataFormats):
@@ -156,17 +156,26 @@ def _add_option_group(parser):
         help="Read metadata formats. Defaults to all.",
     )
     option_group.add_argument(
+        "--read-ignore",
+        action=CSVAction,
+        metavar="FORMATS",
+        dest="read_ignore",
+        help="Subtract these formats from the read formats.",
+    )
+    option_group.add_argument(
         "-m",
         "--metadata",
         dest="metadata_cli",
         metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
-        " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
-        " Place a space after colons so they are properly parsed as YAML key"
-        " value pairs. If your value contains a special YAML character (e.g."
-        " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
-        " brackets in place of indentation.",
+        help=(
+            "Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
+            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
+            " Place a space after colons so they are properly parsed as YAML key"
+            " value pairs. If your value contains a special YAML character (e.g."
+            " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
+            " brackets in place of indentation."
+        ),
     )
     option_group.add_argument(
         "-D",
@@ -215,8 +224,16 @@ def _add_option_group(parser):
         "--quiet",
         action="count",
         default=0,
-        help="Increasingingly quiet success messages, "
-        "warnings and errors with more Qs.",
+        help=(
+            "Increasingingly quiet success messages, warnings and errors with more Qs."
+        ),
+    )
+    option_group.add_argument(
+        "-s",
+        "--stamp",
+        dest="stamp",
+        action="store_true",
+        help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
     )
     option_group.add_argument(
         "-s",
@@ -230,8 +247,15 @@ def _add_option_group(parser):
         "--no-stamp-notes",
         dest="stamp_notes",
         action="store_false",
-        help="Do not write the notes field with tagger, timestamp and identifiers "
-        "when writing metadata out to a file.",
+        help=(
+            "Do not write the notes field with tagger, timestamp and identifiers "
+            "when writing metadata out to a file."
+        ),
+    )
+    option_group.add_argument(
+        "-t",
+        "--theme",
+        help="Pygments theme to use for syntax highlighting. https://pygments.org/styles/. 'none' will stop highlighting.",
     )
     option_group.add_argument(
         "-t",
@@ -298,8 +322,10 @@ def _add_action_group(parser):
         "-e",
         "--pages",
         action=PageRangeAction,
-        help="Extract a single page or : delimited range of pages by zero based index"
-        " to --dest-path.",
+        help=(
+            "Extract a single page or : delimited range of pages by zero based index"
+            " to --dest-path."
+        ),
     )
     action_group.add_argument(
         "-o", "--covers", action="store_true", help="Extract cover pages."
@@ -315,8 +341,10 @@ def _add_action_group(parser):
         "--write",
         metavar="FORMATS",
         action=CSVAction,
-        help="Write comic metadata formats to archive cbt & cbr are always"
-        " exported to cbz format. Format keys listed below.",
+        help=(
+            "Write comic metadata formats to archive cbt & cbr are always"
+            " exported to cbz format. Format keys listed below."
+        ),
     )
     action_group.add_argument(
         "--rename",
@@ -345,14 +373,14 @@ def get_args(params=None) -> Namespace:
 
     epilog = Group(
         _get_help_print_phases_table(),
-        METADATA_EXAMPLES,
-        DELETE_KEYS_EXAMPLES,
+        _METADATA_EXAMPLES,
+        _DELETE_KEYS_EXAMPLES,
         _get_help_format_table(),
     )
 
     parser = ArgumentParser(
         description=description,
-        epilog=epilog,  # type: ignore[reportArgumentType]
+        epilog=epilog,  # pyright: ignore[reportArgumentType]
         formatter_class=RichHelpFormatter,
         add_help=False,
     )
@@ -375,9 +403,9 @@ def post_process_args(cns):
     if cns.print_metadata:
         cns.print += PrintPhases.METADATA.value
 
-    # Logleve
+    # Loglevel
     if cns.quiet:
-        cns.loglevel = INFO + cns.quiet * 10
+        cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
 def main(params=None):
@@ -389,6 +417,6 @@ def main(params=None):
     runner = Runner(args)
     try:
         runner.run()
-    except HANDLED_EXCEPTIONS as exc:
+    except _HANDLED_EXCEPTIONS as exc:
         rich_print(f"[yellow]{exc}[/yellow]")
         sys.exit(1)

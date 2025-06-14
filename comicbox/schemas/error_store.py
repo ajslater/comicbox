@@ -1,12 +1,11 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
 from collections.abc import Mapping
-from logging import DEBUG, WARNING, getLogger
 
+from loguru import logger
 from marshmallow import Schema
 from marshmallow.error_store import ErrorStore, merge_errors
-
-LOG = getLogger(__name__)
+from typing_extensions import override
 
 
 class ClearingErrorStore(ErrorStore):
@@ -39,6 +38,7 @@ class ClearingErrorStore(ErrorStore):
         self._ignore_errors = ignore_errors if ignore_errors else frozenset()
         self._clear_errors()
 
+    @override
     def store_error(self, *args, **kwargs):
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
@@ -48,8 +48,8 @@ class ClearingErrorStore(ErrorStore):
 class ClearingErrorStoreSchema(Schema):
     """Suppress Marshmallow errors to skip errored fields."""
 
-    SUPRESS_ERRORS = True
-    _IGNORE_ERRORS = frozenset({"Field may not be null."})
+    SUPRESS_ERRORS: bool = True
+    _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
     def __init__(
         self, ignore_errors: list | tuple | frozenset | set | None = None, **kwargs
@@ -63,6 +63,7 @@ class ClearingErrorStoreSchema(Schema):
         self._ignore_errors = frozenset(ignore_errors) | self._IGNORE_ERRORS
         super().__init__(**kwargs)
 
+    @override
     def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPRESS_ERRORS:
@@ -71,6 +72,7 @@ class ClearingErrorStoreSchema(Schema):
             )
         return super()._deserialize(data, error_store=error_store, **kwargs)
 
+    @override
     def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPRESS_ERRORS:
@@ -79,6 +81,7 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_field_validators(error_store=error_store, data=data, **kwargs)
 
+    @override
     def _invoke_schema_validators(
         self,
         *,
@@ -112,15 +115,16 @@ class ClearingErrorStoreSchema(Schema):
         return debug_errors, warning_errors
 
     def _log_errors(
-        self, loglevel: int, error_class: type | None, errors: Mapping | list
+        self, loglevel: str, error_class: type | None, errors: Mapping | list
     ):
         if not errors:
             return
         path = f"{self._path}: " if self._path else ""
         error_name = f"{error_class.__name__} - " if error_class else ""
         message = f"{path}{error_name}{errors}"
-        LOG.log(loglevel, message)
+        logger.log(loglevel, message)
 
+    @override
     def handle_error(self, error, *_args, **_kwargs):
         """Log errors by severity."""
         if hasattr(error, "normalized_messages"):
@@ -138,7 +142,7 @@ class ClearingErrorStoreSchema(Schema):
             error_list = error if isinstance(error, list) else [error]
             debug_errors, warning_errors = self._split_list_errors(error_list)
 
-        logs = {WARNING: warning_errors, DEBUG: debug_errors}
+        logs = {"WARNING": warning_errors, "DEBUG": debug_errors}
 
         for loglevel, errors in logs.items():
             self._log_errors(loglevel, error_class, errors)

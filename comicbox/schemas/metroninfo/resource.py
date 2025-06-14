@@ -6,15 +6,16 @@ from marshmallow.fields import Field
 
 from comicbox.fields.collection_fields import ListField
 from comicbox.fields.fields import StringField
+from comicbox.fields.metroninfo import MetronIDAttrField
 from comicbox.fields.xml_fields import xml_list_polyfield, xml_polyfield
-from comicbox.schemas.metroninfo.identifiers import MetronIDAttrField
 from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronResourceSchema(XmlSubSchema):
     """Metron Resource Schema."""
 
-    SUPRESS_ERRORS = False  # So the union fails over
+    # So the union fails over
+    SUPRESS_ERRORS: bool = False
 
     class Meta(XmlSubSchema.Meta):
         """XML Attributes."""

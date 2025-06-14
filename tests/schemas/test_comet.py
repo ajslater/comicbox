@@ -1,7 +1,7 @@
 """Test CIX module."""
 
 from argparse import Namespace
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -29,12 +29,15 @@ METADATA = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "date": {
-                "cover_date": datetime.strptime("1950-12-01", "%Y-%m-%d").date()  # noqa: DTZ007
+                "cover_date": date(1950, 12, 1),
+                "day": 1,
+                "month": 12,
+                "year": 1950,
             },
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -53,6 +56,7 @@ METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "summary": "A long example description",
+            "title": "The Beginning",
             "volume": {"number": 1},
         }
     }
@@ -89,7 +93,7 @@ COMET_DICT = MappingProxyType(
         }
     }
 )
-COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
 
 COMET_TESTER = TestParser(
     MetadataFormats.COMET,

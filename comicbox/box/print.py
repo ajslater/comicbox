@@ -1,8 +1,8 @@
 """Print Methods."""
 
 from collections.abc import Mapping
-from logging import getLogger
 
+from loguru import logger
 from pygments.styles import get_style_by_name
 from pygments.token import (
     Comment,
@@ -19,8 +19,8 @@ from rich.syntax import PygmentsSyntaxTheme, Syntax
 from rich.table import Table
 from rich.text import Text
 
-from comicbox.box.archive_read import archive_close
-from comicbox.box.metadata import ComicboxMetadataMixin
+from comicbox.box.archive import archive_close
+from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.print import PrintPhases
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
@@ -33,7 +33,6 @@ _SOURCES_LOADED_NORMALIZED = frozenset(
 _FILE_RULE_CHAR = "═"
 DEFAULT_STYLE_NAME = "gruvbox-dark"
 MASK_STYLE = Style(bgcolor="default")
-LOG = getLogger(__name__)
 
 
 def _make_style(theme, token):
@@ -69,7 +68,7 @@ class ComicboxStyle:
             self.section = _make_style(theme, Comment)
 
 
-class ComicboxPrintMixin(ComicboxMetadataMixin):
+class ComicboxPrint(ComicboxDumpToFiles):
     """Print Methods."""
 
     _CONSOLE = Console()
@@ -84,7 +83,7 @@ class ComicboxPrintMixin(ComicboxMetadataMixin):
         try:
             get_style_by_name(style_name)
         except ClassNotFound as exc:
-            LOG.warning(exc)
+            logger.warning(exc)
             style_name = DEFAULT_STYLE_NAME
         self._pygments_style_name = style_name
 

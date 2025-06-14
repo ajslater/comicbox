@@ -4,6 +4,7 @@ from inspect import isclass
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
+from typing_extensions import override
 
 from comicbox.fields.collection_fields import (
     DictField,
@@ -50,8 +51,9 @@ class SimpleNamedDictField(Union):
             ),
             StringSetField(sort=sort),
         ]
-        super().__init__(fields, *args, **kwargs)
+        super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType]
 
+    @override
     def _deserialize(self, value, attr, *args, **kwargs):
         result = super()._deserialize(value, attr, *args, **kwargs)
         if isinstance(result, set | frozenset):
@@ -82,6 +84,7 @@ class SimpleNamedNestedField(Union):
         fields = [Nested(schema(ignore_errors=UNION_SCHEMA_IGNORE_ERRORS)), field]
         super().__init__(fields, *args, **kwargs)
 
+    @override
     def _deserialize(self, value, attr, *args, **kwargs):
         result = super()._deserialize(value, attr, *args, **kwargs)
         if isinstance(result, self._primitive_type):

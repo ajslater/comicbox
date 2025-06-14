@@ -1,6 +1,7 @@
 """Test CBI module."""
 
 from argparse import Namespace
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
@@ -24,7 +25,7 @@ READ_METADATA = MappingProxyType(
             "series": {"name": "Captain Science"},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -34,6 +35,7 @@ READ_METADATA = MappingProxyType(
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "month": 11,
                 "year": 1950,
                 "day": 1,
@@ -105,6 +107,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "date": {
+                "cover_date": "1950-11-01",
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -112,7 +115,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -127,6 +130,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             "series": {"name": "Captain Science"},
             "tagger": "comicbox dev",
             "stories": {"The Beginning": {}},
+            "title": "The Beginning",
             "updated_at": TEST_DTTM_STR,
             "volume": {
                 "number": 1950,

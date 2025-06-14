@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<comet xmlns:comet="http://www.denvog.com/comet/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.denvog.com/comet/ https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd">
+	<character>Captain Science</character>
+	<character>Gordon Dane</character>
+	<date>1950-11-01</date>
+	<genre>Science Fiction</genre>
+	<identifier>urn:comicvine:145269</identifier>
+	<inker>Wally Wood</inker>
+	<issue>1</issue>
+	<language>en</language>
+	<pages>0</pages>
+	<penciller>Wally Wood</penciller>
+	<publisher>Youthful Adventure Stories</publisher>
+	<series>Captain Science</series>
+	<title>The Beginning</title>
+	<volume>1950</volume>
+	<writer>Joe Orlando</writer>
+</comet>

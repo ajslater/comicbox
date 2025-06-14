@@ -4,12 +4,12 @@ import re
 from abc import ABCMeta
 from decimal import Decimal
 from enum import Enum
-from logging import getLogger
 
+from loguru import logger
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
+from typing_extensions import override
 
-LOG = getLogger(__name__)
 _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
 _HALF_RE = re.compile(r"(½|1/2)")
@@ -31,7 +31,7 @@ class TrapExceptionsMeta(ABCMeta):
             except Exception as exc:
                 # Log the exception
                 cls_name = self.__class__.__name__
-                LOG.warning(
+                logger.warning(
                     f"Could not deserialize {attr}:{value} as {cls_name} - {exc}"
                 )
                 return None
@@ -54,6 +54,7 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
+    @override
     def _deserialize(self, value, *_args, **_kwargs):
         if value in _STRING_EMPTY_VALUES:
             return ""
@@ -91,6 +92,7 @@ class IssueField(StringField):
         num = num.rstrip(".")
         return half_replace(num)
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

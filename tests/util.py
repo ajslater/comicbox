@@ -16,7 +16,7 @@ from glom import Assign, Delete, glom
 from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
-from comicbox.box.pages import PAGES_KEYPATH
+from comicbox.box.pages.covers import PAGES_KEYPATH
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox import (
@@ -89,6 +89,7 @@ def read_metadata(  # noqa: PLR0913
     archive_path,
     metadata,
     read_config,
+    *,
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
@@ -137,6 +138,7 @@ def _prune_lines(  # noqa: PLR0913
     ignore_notes,
     ignore_updated_at,
     ignore_mod_date,
+    *,
     ignore_page_count: bool,
     ignore_identifiers: bool,
     ignore_tagger: bool,
@@ -170,6 +172,7 @@ def _prune_lines(  # noqa: PLR0913
 def _prune_same_lines(  # noqa: PLR0913
     a_lines,
     b_lines,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -184,9 +187,9 @@ def _prune_same_lines(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     b_lines = _prune_lines(
         b_lines,
@@ -194,9 +197,9 @@ def _prune_same_lines(  # noqa: PLR0913
         ignore_notes,
         ignore_updated_at,
         ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     return a_lines, b_lines
 
@@ -204,6 +207,7 @@ def _prune_same_lines(  # noqa: PLR0913
 def _prune_strings(  # noqa: PLR0913
     a_str,
     b_str,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -214,10 +218,10 @@ def _prune_strings(  # noqa: PLR0913
     a_lines, b_lines = _prune_same_lines(
         a_lines,
         b_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
         ignore_page_count=False,
         ignore_identifiers=False,
         ignore_tagger=False,
@@ -230,6 +234,7 @@ def _prune_strings(  # noqa: PLR0913
 def compare_files(  # noqa: PLR0913
     path_a,
     path_b,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
@@ -246,13 +251,13 @@ def compare_files(  # noqa: PLR0913
     a_lines, b_lines = _prune_same_lines(
         a_lines,
         b_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
-        ignore_page_count,
-        ignore_identifiers,
-        ignore_tagger,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
@@ -351,6 +356,7 @@ class TestParser:
         """Test load from native dict."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
+            car.print_out()
             md = car.get_metadata()
         self._test_from(md)
 
@@ -446,7 +452,7 @@ class TestParser:
         )
         self.teardown_method()
 
-    def test_md_read(self, archive_path=None, page_count=None, ignore_pages=False):
+    def test_md_read(self, archive_path=None, page_count=None, *, ignore_pages=False):
         """Read metadtata from an archive."""
         if archive_path is None:
             archive_path = self.reference_path
@@ -484,12 +490,13 @@ class TestParser:
             fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
             # car.print_out() debug
-            car.write()
+            car.dump()
 
     def write_metadata(
         self,
         new_test_cbz_path,
         page_count=None,
+        *,
         ignore_pages=False,
     ):
         """Create a test metadata file, read it back and compare the original."""
@@ -510,6 +517,7 @@ class TestParser:
     def test_md_write(
         self,
         page_count=None,
+        *,
         ignore_pages=False,
     ):
         """Write metadtata to an archive."""
@@ -525,7 +533,7 @@ class TestParser:
         """Create a new empty PDF file."""
         try:
             doc = pymupdf.Document()
-            doc.new_page()  # type: ignore[reportAttributeAccessIssue]
+            doc.new_page()  # pyright: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
             config = deepcopy(self.write_config)
@@ -536,7 +544,7 @@ class TestParser:
                 metadata=self.write_reference_metadata,
                 fmt=MetadataFormats.COMICBOX_YAML,
             ) as car:
-                car.write()
+                car.dump()
         except NameError as exc:
             reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc
@@ -590,7 +598,7 @@ def load_cli_and_compare_dicts(path_a, path_b):
     assert_diff(dict_a, dict_b)
 
 
-def compare_export(test_dir, fn, fmt="", test_fn=None, validate=True):
+def compare_export(test_dir, fn, fmt="", test_fn=None, *, validate=True):
     """Compare exported files."""
     if validate:
         validate_path(fn, fmt=fmt)

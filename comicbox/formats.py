@@ -15,12 +15,22 @@ from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
-try:
-    from pdffile import PDFFile  # noqa: F401
 
-    PDF_ENABLED = True
-except ImportError:
-    PDF_ENABLED = False
+def _get_pdf_enabled():
+    try:
+        from pdffile import PDFFile  # pyright: ignore[reportUnusedImport]
+
+        result = True
+    except ImportError:
+        from comicbox.box.pdffile_stub import (
+            PDFFile,  # noqa: F401 # pyright: ignore[reportUnusedImport]
+        )
+
+        result = False
+    return result
+
+
+PDF_ENABLED = _get_pdf_enabled()
 
 
 @dataclass
@@ -37,7 +47,7 @@ class MetadataFormat:
 
     def __post_init__(self):
         """Hoist the schema class."""
-        self.schema_class = self.transform_class.SCHEMA_CLASS
+        self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 class MetadataFormats(Enum):

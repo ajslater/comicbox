@@ -21,6 +21,14 @@
         "options": {
           "proseWrap": "always"
         }
+      },
+      {
+        "files": [
+          "**/*Dockerfile"
+        ],
+        "options": {
+          "parser": "sh"
+        }
       }
     ]
   },
@@ -40,12 +48,13 @@
     "@prettier/plugin-xml": "^3.1.0",
     "@stylistic/eslint-plugin": "^4.2.0",
     "eslint": "^9.16.0",
+    "eslint_d": "^14.1.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-array-func": "^5.0.1",
     "eslint-plugin-compat": "^6.0.0",
     "eslint-plugin-depend": "^1.0.0",
-    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-import-x": "^4.11.0",
     "eslint-plugin-mdx": "^3.1.5",
     "eslint-plugin-no-secrets": "^2.1.1",
     "eslint-plugin-no-unsanitized": "^4.1.2",
@@ -57,9 +66,8 @@
     "eslint-plugin-simple-import-sort": "^12.0.0",
     "eslint-plugin-sonarjs": "^3.0.0",
     "eslint-plugin-toml": "^0.12.0",
-    "eslint-plugin-unicorn": "^58.0.0",
+    "eslint-plugin-unicorn": "^59.0.0",
     "eslint-plugin-yml": "^1.12.2",
-    "eslint_d": "^14.1.0",
     "prettier": "^3.0.0",
     "prettier-plugin-packagejson": "^2.4.4",
     "prettier-plugin-sh": "^0.17.0",

@@ -49,7 +49,8 @@ class MetronIDSchema(MetronPrimaryAttrSchema):
 class MetronURLSchema(MetronPrimaryAttrSchema):
     """Metron URL Schema."""
 
-    SUPRESS_ERRORS = False  # So the union fails over
+    # So the union fails over
+    SUPRESS_ERRORS: bool = False
 
 
 class MetronGTINSchema(XmlSubSchema):

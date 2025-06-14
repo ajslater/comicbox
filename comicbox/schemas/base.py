@@ -1,29 +1,27 @@
 """Skip keys instead of throwing errors."""
 
 from abc import ABC
-from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 
-from marshmallow import EXCLUDE, Schema
+from loguru import logger
+from marshmallow import EXCLUDE
 from marshmallow.decorators import (
     post_dump,
     post_load,
     pre_dump,
     pre_load,
 )
+from typing_extensions import override
 
 from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.error_store import ClearingErrorStoreSchema
 
-LOG = getLogger(__name__)
-
 
 class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     """Base schema."""
 
-    TAG_ORDER = ()
+    TAG_ORDER: tuple[str, ...] = ()
 
     @classmethod
     def pre_load_validate(cls, data):
@@ -39,9 +37,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     @classmethod
     def clean_empties(cls, data: dict):
         """Clean empties from loaded data."""
-        if isinstance(data, Mapping):
-            data = {k: v for k, v in data.items() if not is_empty(v)}
-        return data
+        return {k: v for k, v in data.items() if not is_empty(v)}
 
     @trap_error(post_load)
     def post_load(self, data, **_kwargs):
@@ -69,7 +65,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         """Sort dump by key."""
         if cls.TAG_ORDER:
             data = cls._sort_tag_by_order(data)
-        elif isinstance(data, Mapping):
+        else:
             data = {k: v for k, v in sorted(data.items()) if not is_empty(v)}
         return data
 
@@ -90,7 +86,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         with Path(path).open("w") as f:
             f.write(str_data)
 
-    class Meta(Schema.Meta):
+    class Meta(ClearingErrorStoreSchema.Meta):
         """Schema options."""
 
         unknown = EXCLUDE
@@ -99,23 +95,24 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
 class BaseSchema(BaseSubSchema, ABC):
     """Top level base schema that traps errors and records path."""
 
-    ROOT_TAG = ""
-    ROOT_DATA_KEY = ""
-    ROOT_KEYPATH = ""
-    EMBED_KEYPATH = ""
-    HAS_PAGE_COUNT = False
-    HAS_PAGES = False
+    ROOT_TAG: str = ""
+    ROOT_DATA_KEY: str = ""
+    ROOT_KEYPATH: str = ""
+    EMBED_KEYPATH: str = ""
+    HAS_PAGE_COUNT: bool = False
+    HAS_PAGES: bool = False
 
+    @override
     @classmethod
     def pre_load_validate(cls, data):
         """Validate the root tag so we don't confuse it with other JSON."""
         if not data:
             reason = "No data."
-            LOG.debug(reason)
+            logger.debug(reason)
             data = {}
         elif cls.ROOT_TAG not in data and cls.ROOT_DATA_KEY not in data:
             reason = f"Root tag '{cls.ROOT_TAG}' not found in {tuple(data.keys())}."
-            LOG.debug(reason)
+            logger.debug(reason)
             # Do not throw an exception so the trapper doesn't trap it and the
             # loader tries another schema. Return empty dict.
             data = {}

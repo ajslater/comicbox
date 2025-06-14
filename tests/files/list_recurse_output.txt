@@ -1,0 +1,356 @@
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/0.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/1.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/2.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/3.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001 (1950) The Beginning - multi.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path     ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│      │ comet.xml        │
+│      │ comicbox.json    │
+│      │ comicbox.yaml    │
+│      │ comicinfo.xml    │
+│      │ comictagger.json │
+└──────┴──────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001 (1950) The Beginning - nothing.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-cbi.cbr
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
+│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
+│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
+│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
+│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
+│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
+│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
+│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
+│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
+│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
+│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
+│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
+│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
+│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
+│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
+│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
+│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
+│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
+│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
+│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
+│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
+│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
+│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
+│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
+│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
+│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
+│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
+│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
+│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
+│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
+│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-cix-cbi.cbr
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
+│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
+│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
+│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
+│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
+│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
+│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
+│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
+│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
+│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
+│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
+│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
+│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
+│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
+│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
+│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
+│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
+│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
+│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
+│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
+│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
+│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
+│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
+│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
+│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
+│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
+│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
+│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
+│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
+│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
+│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
+│      │ comicinfo.xml                               │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-cix.cbt
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│      │ Captain Science 001                         │
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│      │ Captain Science 001/comicinfo.xml           │
+│      │ Captain Science 001/metroninfo.xml          │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-cix.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
+│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
+│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
+│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
+│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
+│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
+│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
+│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
+│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
+│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
+│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
+│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
+│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
+│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
+│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
+│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
+│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
+│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
+│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
+│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
+│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
+│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
+│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
+│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
+│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
+│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
+│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
+│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
+│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
+│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
+│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
+│      │ Captain Science 001/comicinfo.xml           │
+│      │ comicinfo.xml                               │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-comet.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│      │ Captain Science 001/                        │
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
+│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
+│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
+│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
+│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
+│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
+│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
+│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
+│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
+│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
+│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
+│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
+│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
+│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
+│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
+│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
+│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
+│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
+│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
+│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
+│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
+│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
+│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
+│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
+│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
+│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
+│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
+│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
+│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
+│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
+│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
+│      │ Captain Science 001/CoMet.xml               │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001-metron.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path   ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━┩
+│      │ metroninfo.xml │
+└──────┴────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│      │ Captain Science 001/                        │
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│      │ Captain Science 001/comicinfo.xml           │
+│      │ Captain Science 001/metroninfo.xml          │
+│      │ comicinfo.xml                               │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/comicbox-cli.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path      ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│      │ comicbox-cli.yaml │
+└──────┴───────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/comicbox.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path  ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━┩
+│      │ comicbox.json │
+└──────┴───────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/comictagger.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path     ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│      │ comictagger.json │
+└──────┴──────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/empty.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/export.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path      ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│      │ comet.xml         │
+│      │ comicbox-cli.yaml │
+│      │ comicbox.json     │
+│      │ comicbox.yaml     │
+│      │ comicinfo.xml     │
+│      │ comictagger.json  │
+└──────┴───────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/macos_resource_fork.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                      ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│      │ __MACOSX/                         │
+│      │ __MACOSX/.CaptainScience#1_01.jpg │
+│      │ __MACOSX/.CaptainScience#1_02.jpg │
+│   0  │ CaptainScience#1_01.jpg           │
+│   1  │ CaptainScience#1_02.jpg           │
+└──────┴───────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/test_pdf.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+│   1  │ 1            │
+│   2  │ 2            │
+│   3  │ 3            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/xml.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│      │ comicbox.xml │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/yaml.cbz
+┏━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path  ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━┩
+│      │ comicbox.yaml │
+└──────┴───────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/0.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/1.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/2.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘
+════════════════════════════════════════════════════════════════════════════════
+tests/files/pdf/3.pdf
+┏━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path ┃
+┡━━━━━━╇━━━━━━━━━━━━━━┩
+│   0  │ 0            │
+└──────┴──────────────┘

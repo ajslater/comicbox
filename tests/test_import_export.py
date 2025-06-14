@@ -28,11 +28,16 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
             "cover_image": "CaptainScience#1_01.jpg",
-            "date": {"cover_date": date(1950, 12, 1)},
+            "date": {
+                "cover_date": date(1950, 12, 1),
+                "year": 1950,
+                "month": 12,
+                "day": 1,
+            },
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -53,6 +58,7 @@ FNS = MappingProxyType(
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
+            "title": "The Beginning",
             "summary": "A long example description",
             "volume": {"number": 1},
         },
@@ -61,6 +67,7 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
+            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -77,6 +84,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
@@ -107,6 +115,7 @@ FNS = MappingProxyType(
             "summary": "Tales of the Black Freighter...",
             "tags": {"Rorschach": {}, "Ozymandias": {}, "Nite Owl": {}},
             "tagger": "ComicBookLover/888",
+            "title": "At Midnight, All the Agents",
             "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=timezone.utc),
             "volume": {"issue_count": 12, "number": 1},
         },
@@ -121,6 +130,7 @@ FNS = MappingProxyType(
                 "year": 1950,
             },
             "stories": {"The Beginning - nothing": {}},
+            "title": "The Beginning - nothing",
         },
         "comicbox.json": {
             "credits": {
@@ -129,6 +139,7 @@ FNS = MappingProxyType(
             },
             "country": "US",
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -136,7 +147,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -145,9 +156,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
@@ -191,6 +204,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
@@ -198,14 +212,16 @@ FNS = MappingProxyType(
             "arcs": {"d": {"number": 1}, "e": {"number": 3}, "f": {"number": 5}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "imprint": {"name": "TestImprint"},
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -260,6 +276,7 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -267,7 +284,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -276,9 +293,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -325,6 +344,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning; The End",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
@@ -336,6 +356,7 @@ FNS = MappingProxyType(
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
@@ -343,11 +364,11 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
-                    "nss": "99999",
+                    "key": "99999",
                     "url": "https://metron.cloud/issue/99999",
                 },
             },
@@ -356,9 +377,11 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with Comictagger on "
-            "1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with Comictagger on "
+                "1970-01-01T00:00:00Z using info from Metron [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "pages": {
                 0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
@@ -405,6 +428,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "Comictagger",
+            "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
@@ -415,18 +439,19 @@ FNS = MappingProxyType(
             },
             "country": "US",
             "date": {
+                "cover_date": date(1950, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 1950,
             },
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -435,15 +460,17 @@ FNS = MappingProxyType(
                 "number": Decimal("1"),
             },
             "language": "en",
-            "notes": "Tagged with comicbox dev on "
-            "1970-01-01T00:00:00Z [Issue ID 145269] "
-            "[CVDB145269]",
+            "notes": (
+                "Tagged with comicbox dev on "
+                "1970-01-01T00:00:00Z [Issue ID 145269] "
+                "[CVDB145269]"
+            ),
             "page_count": 0,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {
                 "identifiers": {
                     "comicvine": {
-                        "nss": "45678",
+                        "key": "45678",
                         "url": "https://comicvine.gamespot.com/c/4050-45678/",
                     }
                 },
@@ -451,6 +478,7 @@ FNS = MappingProxyType(
             },
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
@@ -463,27 +491,38 @@ FNS = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
             },
-            "date": {"cover_date": date(1950, 11, 1)},
+            "date": {
+                "cover_date": date(1950, 11, 1),
+                "day": 1,
+                "year": 1950,
+                "month": 11,
+            },
             "genres": {"Science Fiction": {}},
             "identifier_primary_source": {
-                "nid": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "nss": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
-                "metron": {"nss": "999999", "url": "https://metron.cloud/issue/999999"},
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+                "metron": {
+                    "key": "999999",
+                    "url": "https://metron.cloud/issue/999999",
+                },
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
             "imprint": {
                 "identifiers": {
-                    "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"}
+                    "metron": {
+                        "key": "222",
+                        "url": "https://metron.cloud/imprint/222",
+                    }
                 },
                 "name": "Youthful Imprint",
             },
@@ -501,7 +540,10 @@ FNS = MappingProxyType(
             },
             "publisher": {
                 "identifiers": {
-                    "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"}
+                    "metron": {
+                        "key": "11",
+                        "url": "https://metron.cloud/publisher/11",
+                    }
                 },
                 "name": "Youthful Adventure Stories",
             },
@@ -511,7 +553,10 @@ FNS = MappingProxyType(
             ],
             "series": {
                 "identifiers": {
-                    "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
+                    "metron": {
+                        "key": "2222",
+                        "url": "https://metron.cloud/series/2222",
+                    }
                 },
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
@@ -522,14 +567,16 @@ FNS = MappingProxyType(
                 "Captain Lost": {
                     "identifiers": {
                         "metron": {
-                            "nss": "5555",
+                            "key": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
                 },
                 "Science is Good": {},
+                "metron": {},
             },
             "tagger": "comicbox dev",
+            "title": "Captain Lost; Science is Good; metron",
             "universes": {"Mirror": {"designation": "4242"}},
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
@@ -541,7 +588,7 @@ FNS = MappingProxyType(
                 "Origin": {
                     "identifiers": {
                         "metron": {
-                            "nss": "78945",
+                            "key": "78945",
                             "url": "https://metron.cloud/arc/78945",
                         }
                     },
@@ -553,7 +600,7 @@ FNS = MappingProxyType(
                 "Aquaman": {
                     "identifiers": {
                         "metron": {
-                            "nss": "45678",
+                            "key": "45678",
                             "url": "https://metron.cloud/character/45678",
                         }
                     }
@@ -578,7 +625,7 @@ FNS = MappingProxyType(
                 "Geoff Johns": {
                     "identifiers": {
                         "metron": {
-                            "nss": "32165",
+                            "key": "32165",
                             "url": "https://metron.cloud/creator/32165",
                         }
                     },
@@ -586,7 +633,7 @@ FNS = MappingProxyType(
                         "Writer": {
                             "identifiers": {
                                 "metron": {
-                                    "nss": "32165",
+                                    "key": "32165",
                                     "url": "https://metron.cloud/role/32165",
                                 }
                             }
@@ -601,6 +648,9 @@ FNS = MappingProxyType(
             },
             "date": {
                 "cover_date": date(2011, 10, 1),
+                "day": 1,
+                "year": 2011,
+                "month": 10,
                 "store_date": date(2011, 8, 31),
             },
             "genres": {
@@ -609,41 +659,44 @@ FNS = MappingProxyType(
                 "Super-Hero": {
                     "identifiers": {
                         "metron": {
-                            "nss": "98745",
+                            "key": "98745",
                             "url": "https://metron.cloud/genre/98745",
                         }
                     }
                 },
             },
             "identifier_primary_source": {
-                "nid": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "bar.foo": {"url": "https://bar.foo"},
                 "comicvine": {
-                    "nss": "290431",
+                    "key": "290431",
                     "url": "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
                 },
                 "foo.bar": {"url": "https://foo.bar"},
                 "grandcomicsdatabase": {
-                    "nss": "543",
+                    "key": "543",
                     "url": "https://comics.org/issue/543/",
                 },
                 "isbn": {
-                    "nss": "1234567890123",
+                    "key": "1234567890123",
                     "url": "https://isbndb.com/book/1234567890123",
                 },
-                "metron": {"nss": "290431", "url": "https://metron.cloud/issue/290431"},
+                "metron": {
+                    "key": "290431",
+                    "url": "https://metron.cloud/issue/290431",
+                },
                 "upc": {
-                    "nss": "76194130593600111",
+                    "key": "76194130593600111",
                     "url": "https://barcodelookup.com/76194130593600111",
                 },
             },
             "imprint": {
                 "identifiers": {
                     "metron": {
-                        "nss": "1234",
+                        "key": "1234",
                         "url": "https://metron.cloud/imprint/1234",
                     }
                 },
@@ -658,7 +711,7 @@ FNS = MappingProxyType(
                 "Gotham City": {
                     "identifiers": {
                         "metron": {
-                            "nss": "12389",
+                            "key": "12389",
                             "url": "https://metron.cloud/location/12389",
                         }
                     }
@@ -672,7 +725,7 @@ FNS = MappingProxyType(
             "publisher": {
                 "identifiers": {
                     "metron": {
-                        "nss": "12345",
+                        "key": "12345",
                         "url": "https://metron.cloud/publisher/12345",
                     }
                 },
@@ -683,7 +736,7 @@ FNS = MappingProxyType(
                 {
                     "identifiers": {
                         "metron": {
-                            "nss": "65498",
+                            "key": "65498",
                             "url": "https://metron.cloud/reprint/65498",
                         }
                     },
@@ -696,7 +749,7 @@ FNS = MappingProxyType(
             "series": {
                 "identifiers": {
                     "metron": {
-                        "nss": "65478",
+                        "key": "65478",
                         "url": "https://metron.cloud/series/65478",
                     }
                 },
@@ -708,7 +761,10 @@ FNS = MappingProxyType(
             "stories": {
                 "Justice League, Part One": {
                     "identifiers": {
-                        "metron": {"nss": "12", "url": "https://metron.cloud/story/12"}
+                        "metron": {
+                            "key": "12",
+                            "url": "https://metron.cloud/story/12",
+                        }
                     }
                 },
                 "Justice League, Part Two": {},
@@ -719,7 +775,7 @@ FNS = MappingProxyType(
                 "Foo": {
                     "identifiers": {
                         "metron": {
-                            "nss": "78945",
+                            "key": "78945",
                             "url": "https://metron.cloud/tag/78945",
                         }
                     }
@@ -729,19 +785,20 @@ FNS = MappingProxyType(
                 "Justice League": {
                     "identifiers": {
                         "metron": {
-                            "nss": "49948",
+                            "key": "49948",
                             "url": "https://metron.cloud/team/49948",
                         }
                     }
                 },
                 "Parademons": {},
             },
+            "title": "Justice League, Part One; Justice League, Part Two",
             "universes": {
                 "ABC": {
                     "designation": "Earth 25",
                     "identifiers": {
                         "metron": {
-                            "nss": "24",
+                            "key": "24",
                             "url": "https://metron.cloud/universe/24",
                         }
                     },
@@ -763,6 +820,7 @@ FNS = MappingProxyType(
             "stories": {"the tangle of their lives": {}},
             "tagger": "comicbox dev",
             "tags": {"d": {}, "e": {}, "f": {}},
+            "title": "the tangle of their lives",
             "updated_at": datetime(2025, 3, 2, 18, 33, 50, tzinfo=timezone.utc),
         },
     }
@@ -790,7 +848,7 @@ def test_import(fn):
     cns = Namespace(import_paths=[import_path], print="ncp")
     config = Namespace(comicbox=cns)
     with Comicbox(config=config) as car:
-        # car.print_out() debug
+        car.print_out()  # debug
         md = car.get_metadata()
 
     assert_diff(test_md, md)
@@ -807,6 +865,7 @@ def test_export(fn):
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)
     with Comicbox("", config=config) as car:
+        car.print_out()  # debug
         car.export_files(embed_fmt=embed_fmt)
 
     tmp_fn = _REGULAR_FN[fmt]

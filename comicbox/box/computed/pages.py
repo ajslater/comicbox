@@ -1,14 +1,15 @@
 """Comicbox Computed Pages."""
 
-from collections.abc import Mapping
-from logging import getLogger
+from collections.abc import Callable, Mapping
 from sys import maxsize
 from types import MappingProxyType
 
-from comicbox.box.computed.notes import ComicboxComputedNotesMixin
+from loguru import logger
+
+from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.merge import AdditiveMerger, ReplaceMerger
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
     BOOKMARK_KEY,
     PAGE_BOOKMARK_KEY,
@@ -25,10 +26,9 @@ _COMICBOX_FORMATS = frozenset(
         MetadataFormats.COMICBOX_JSON,
     }
 )
-LOG = getLogger(__name__)
 
 
-class ComicboxComputedPages(ComicboxComputedNotesMixin):
+class ComicboxComputedPages(ComicboxComputedNotes):
     """Comicbox Computed Pages."""
 
     @staticmethod
@@ -47,16 +47,11 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin):
 
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping):
         """Determine if we should compute this attribute."""
-        if (
-            not self._config.compute_pages
-            or key in self._config.delete_keys
-            or not sub_md
-            or not self._path
-        ):
+        if key in self._config.delete_keys or not sub_md or not self._path:
             return False
-        formats = self._config.all_write_formats
+        formats = self._config.computed.all_write_formats
         # If any of the enabled format types have page flags then compute.
-        if key == PAGES_KEY:
+        if key == PAGES_KEY and self._config.compute_pages:
             return self._enable_page_compute_attribute_pages(formats)
         if key == PAGE_COUNT_KEY:
             return self._enable_page_compute_attribute_page_count(formats)
@@ -89,7 +84,7 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin):
             max_page_index = self.get_page_count() - 1
         else:
             # don't strip pages if no path given
-            LOG.debug("No path given, not computing real pages.")
+            logger.debug("No path given, not computing real pages.")
             max_page_index = maxsize
         return max_page_index
 
@@ -124,15 +119,17 @@ class ComicboxComputedPages(ComicboxComputedNotesMixin):
                     pages[index] = computed_page
                 index += 1
         except Exception as exc:
-            LOG.warning(f"{self._path}: Compute pages metadata: {exc}")
+            logger.warning(f"{self._path}: Compute pages metadata: {exc}")
         if pages:
             pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: pages}
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
-            "Pages": (_get_computed_pages_metadata, ReplaceMerger),
-            **ComicboxComputedNotesMixin.COMPUTED_ACTIONS,
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
+                "Pages": (_get_computed_pages_metadata, ReplaceMerger),
+                **ComicboxComputedNotes.COMPUTED_ACTIONS,
+            }
+        )
     )

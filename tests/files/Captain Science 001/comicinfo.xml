@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">
+	<AgeRating>Teen</AgeRating>
+	<AlternateNumber>001</AlternateNumber>
+	<AlternateSeries>Captain Science Alternate</AlternateSeries>
+	<Characters>Captain Science,Gordon Dane</Characters>
+	<Count>7</Count>
+	<Day>1</Day>
+	<GTIN>urn:comicvine:4000-145269</GTIN>
+	<Genre>Science Fiction</Genre>
+	<Inker>Wally Wood</Inker>
+	<LanguageISO>en</LanguageISO>
+	<Month>11</Month>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]</Notes>
+	<Number>1</Number>
+	<PageCount>36</PageCount>
+	<Pages>
+		<Page Image="0" ImageSize="429985" Type="FrontCover"/>
+		<Page Image="1" ImageSize="332936"/>
+		<Page Image="2" ImageSize="458657"/>
+		<Page Image="3" ImageSize="450456"/>
+		<Page Image="4" ImageSize="436648"/>
+		<Page Image="5" ImageSize="443725"/>
+		<Page Image="6" ImageSize="469526"/>
+		<Page Image="7" ImageSize="429811"/>
+		<Page Image="8" ImageSize="445513"/>
+		<Page Image="9" ImageSize="446292"/>
+		<Page Image="10" ImageSize="458589"/>
+		<Page Image="11" ImageSize="417623"/>
+		<Page Image="12" ImageSize="445302"/>
+		<Page Image="13" ImageSize="413271"/>
+		<Page Image="14" ImageSize="434201"/>
+		<Page Image="15" ImageSize="439049"/>
+		<Page Image="16" ImageSize="485957"/>
+		<Page Image="17" ImageSize="388379"/>
+		<Page Image="18" ImageSize="368138"/>
+		<Page Image="19" ImageSize="427874"/>
+		<Page Image="20" ImageSize="422522"/>
+		<Page Image="21" ImageSize="442529"/>
+		<Page Image="22" ImageSize="423785"/>
+		<Page Image="23" ImageSize="427980"/>
+		<Page Image="24" ImageSize="445631"/>
+		<Page Image="25" ImageSize="413615"/>
+		<Page Image="26" ImageSize="417605"/>
+		<Page Image="27" ImageSize="439120"/>
+		<Page Image="28" ImageSize="451598"/>
+		<Page Image="29" ImageSize="451550"/>
+		<Page Image="30" ImageSize="438346"/>
+		<Page Image="31" ImageSize="454914"/>
+		<Page Image="32" ImageSize="428461"/>
+		<Page Image="33" ImageSize="438091"/>
+		<Page Image="34" ImageSize="353013"/>
+		<Page Image="35" ImageSize="340840"/>
+	</Pages>
+	<Penciller>Wally Wood</Penciller>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Series>Captain Science</Series>
+	<StoryArc>Captain Arc,Other Arc</StoryArc>
+	<StoryArcNumber>4,2</StoryArcNumber>
+	<Title>The Beginning; The End</Title>
+	<Volume>1950</Volume>
+	<Web>https://comicvine.gamespot.com/c/4000-145269/</Web>
+	<Writer>Joe Orlando</Writer>
+	<Year>1950</Year>
+</ComicInfo>

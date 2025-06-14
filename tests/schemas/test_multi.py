@@ -38,7 +38,7 @@ READ_METADATA = MappingProxyType(
             "imprint": {"name": "CLIImprint"},
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
-                "cover_date": date(1950, 12, 1),
+                "cover_date": date(591, 11, 1),
                 "day": 1,
                 "month": 11,
                 "year": 591,
@@ -75,12 +75,12 @@ READ_METADATA = MappingProxyType(
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -132,6 +132,7 @@ READ_METADATA = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
+            "title": "The Beginning COMET",
             "updated_at": TEST_DATETIME,
             "tagger": "comicbox dev",
         }
@@ -155,10 +156,10 @@ READ_MULTI_DICT = MappingProxyType(
                 "Gordon Dane": {},
             },
             "date": {
+                "cover_date": "0591-11-01",
+                "day": 1,
                 "month": 11,
                 "year": 591,
-                "day": 1,
-                "cover_date": "1950-12-01",
             },
             "genres": {
                 "Science Fiction": {},
@@ -232,12 +233,12 @@ READ_MULTI_DICT = MappingProxyType(
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
             "identifier_primary_source": {
-                "nid": "comicvine",
+                "source": "comicvine",
                 "url": "https://comicvine.gamespot.com/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
@@ -245,6 +246,7 @@ READ_MULTI_DICT = MappingProxyType(
             "stories": {
                 "The Beginning COMET": {},
             },
+            "title": "The Beginning COMET",
             "original_format": "Comic",
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}

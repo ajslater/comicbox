@@ -11,7 +11,9 @@ from comicbox.fields.collection_fields import (
     StringSetField,
 )
 from comicbox.fields.comicbox import (
-    NAME_KEY,  # noqa: F401
+    NAME_KEY as _FIELD_NAME_KEY,
+)
+from comicbox.fields.comicbox import (
     PagesField,
     RoleField,
     SimpleNamedDictField,
@@ -39,6 +41,7 @@ from comicbox.schemas.comicbox.publishing import (
     VolumeSchema,
 )
 
+NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"
 APP_ID_KEY = "appID"
 BOOKMARK_KEY = "bookmark"
@@ -58,6 +61,9 @@ EXT_KEY = "ext"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
 IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
+ID_KEY_KEY = "key"
+ID_SOURCE_KEY = "source"
+ID_URL_KEY = "url"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_SUFFIX_KEY = "suffix"
@@ -68,7 +74,6 @@ MONTH_KEY = "month"
 MONOCHROME_KEY = "monochrome"
 NUMBER_KEY = "number"
 NUMBER_TO_KEY = "number_to"
-NID_KEY = "nid"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
@@ -108,6 +113,7 @@ SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORE_DATE_KEY = "store_date"
 STORIES_KEY = "stories"
+TITLE_KEY = "title"
 ARCS_KEY = "arcs"
 SUFFIX_KEY = "suffix"
 SUMMARY_KEY = "summary"
@@ -125,6 +131,12 @@ WEB_KEY = "web"
 YEAR_KEY = "year"
 
 
+class ArcSchema(IdentifiedSchema):
+    """Story Arc Schema."""
+
+    number = IntegerField(minimum=0)  # CIX, Metron
+
+
 class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
@@ -137,12 +149,6 @@ class UniverseSchema(IdentifiedSchema):
     """Universe Schema."""
 
     designation = StringField()  # Metron ONLY
-
-
-class ArcSchema(IdentifiedSchema):
-    """Story Arc Schema."""
-
-    number = IntegerField()  # CIX, Metron
 
 
 class DateSchema(BaseSubSchema):
@@ -167,7 +173,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
-    credit_primaries = DictField(values=RoleField)  # CBI ONLY
+    credit_primaries = DictField(keys=RoleField)  # CBI ONLY
     collection_title = StringField()  # Metron ONLY
     cover_image = StringField()  # Comet ONLY, CT
     critical_rating = DecimalField(places=2)  # CBI, CIX
@@ -213,6 +219,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     series = SimpleNamedNestedField(
         schema=SeriesSchema
     )  # Comet, CBI, CIX, Filename, Metron
+    title = StringField()  # CB only synthesized from stories
     series_groups = StringSetField()  # CIX ONLY, CT
     stories = SimpleNamedDictField(sort=False)  # CBI, CT, Metron, PDF
     summary = StringField()  # Comet, CIX, CT, CBI, Metron
@@ -222,7 +229,10 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
     updated_at = DateTimeField()  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
-        schema=VolumeSchema, field=IntegerField, name_key=NUMBER_KEY, primitive_type=int
+        schema=VolumeSchema,
+        field=IntegerField(minimum=0),
+        name_key=NUMBER_KEY,
+        primitive_type=int,
     )
 
 

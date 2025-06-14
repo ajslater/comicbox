@@ -2,7 +2,6 @@
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from logging import getLogger
 from types import MappingProxyType
 from typing import Any
 
@@ -11,7 +10,6 @@ from glom import A, Coalesce, Path, S, T, Val, assign
 from comicbox.empty import is_empty
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 
-LOG = getLogger(__name__)
 GLOBAL_SCOPE_PREFIX = "S.globals.comicbox"
 
 

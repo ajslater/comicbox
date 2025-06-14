@@ -1,21 +1,18 @@
 """Get Metadata mixin."""
 
 from collections.abc import MutableMapping
-from logging import getLogger
 from types import MappingProxyType
 
 from glom import Assign, Delete, glom
+from loguru import logger
 
 from comicbox.box.archive import archive_close
-from comicbox.box.computed import ComicboxComputedMixin
+from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.merge import merge_metadata
-
-LOG = getLogger(__name__)
 
 
-class ComicboxMetadataMixin(ComicboxComputedMixin):
+class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
     def _set_computed_merged_metadata_delete(self, merged_md):
@@ -26,7 +23,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
                 delete = Delete(key_path, ignore_missing=True)
                 glom(sub_data, delete)
             except Exception as exc:
-                LOG.warning(f"Could not delete key path {key_path}: {exc}")
+                logger.warning(f"Could not delete key path {key_path}: {exc}")
 
     def _set_computed_merged_metadata(self):
         merged_md = self.get_merged_metadata()
@@ -36,10 +33,9 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
             if computed_sub_data and computed_data.merger:
-                merge_metadata(
+                computed_data.merger.merge(
                     merged_md,
                     computed_data.metadata,
-                    computed_data.merger,
                 )
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
@@ -105,7 +101,7 @@ class ComicboxMetadataMixin(ComicboxComputedMixin):
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt, embed_fmt)
         dump = schema.dump(md, **kwargs)
-        return dict(dump)  # type:ignore[reportArgumentType]
+        return dict(dump)  # pyright:ignore[reportArgumentType, reportCallIssue]
 
     @archive_close
     def to_string(

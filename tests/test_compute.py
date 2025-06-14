@@ -8,15 +8,18 @@ from types import MappingProxyType
 from dateutil.tz import tzutc
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comictagger import ComictaggerSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
-PRINT_CONFIG = Namespace(
-    comicbox=Namespace(
-        print="snmcp",
+PRINT_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            print="snmcp",
+        )
     )
 )
 
@@ -33,7 +36,7 @@ DATE_FROM_NOTES_MD = MappingProxyType(
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
@@ -59,11 +62,11 @@ IDS_FROM_TAGS_MD = MappingProxyType(
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifiers": {
                 "comicvine": {
-                    "nss": "1234",
+                    "key": "1234",
                     "url": "https://comicvine.gamespot.com/c/4000-1234/",
                 },
                 "metron": {
-                    "nss": "9999",
+                    "key": "9999",
                     "url": "https://metron.cloud/issue/9999",
                 },
             },
@@ -141,7 +144,10 @@ IDENTIFIERS_FROM_URLS = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifiers": {
-                "bar.ct": {"nss": "?attr=1#tag", "url": "https://bar.ct/?attr=1#tag"},
+                "bar.ct": {
+                    "key": "?attr=1#tag",
+                    "url": "https://bar.ct/?attr=1#tag",
+                },
                 "foo.bar": {"url": "http://foo.bar"},
                 "google.com": {"url": "https://google.com"},
             }
@@ -151,7 +157,7 @@ IDENTIFIERS_FROM_URLS = MappingProxyType(
 
 
 def test_other_urls():
-    """Test non known nid urls."""
+    """Test non known source urls."""
     with Comicbox(
         metadata=UNKNOWN_URLS,
         fmt=MetadataFormats.COMICTAGGER,

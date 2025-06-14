@@ -21,6 +21,7 @@ METADATA = MappingProxyType(
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
+            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -37,6 +38,7 @@ METADATA = MappingProxyType(
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
             "volume": {
                 "issue_count": 7,
@@ -53,7 +55,11 @@ CBI_DICT = MappingProxyType(
         ComicBookInfoSchema.ROOT_DATA_KEY: {
             "country": "United States",
             "credits": [
-                {"person": "Joe Orlando", "role": "Writer"},
+                {
+                    "person": "Joe Orlando",
+                    "primary": True,
+                    "role": "Writer",
+                },
                 {"person": "Wally Wood", "role": "Penciller"},
             ],
             "genre": "Science Fiction",

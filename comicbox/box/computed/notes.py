@@ -1,16 +1,18 @@
 """Computed metadata methods."""
 
 import re
-from logging import getLogger
+from collections.abc import Callable
 from types import MappingProxyType
 
-from comicbox.box.merge import ComicboxMergeMixin
+from loguru import logger
+
+from comicbox.box.merge import ComicboxMerge
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.identifiers.const import (
-    ALIAS_NID_MAP,
-    DEFAULT_NID,
+from comicbox.identifiers import (
+    ALIAS_ID_SOURCE_MAP,
+    DEFAULT_ID_SOURCE,
+    ID_SOURCE_NAME_MAP,
     IDENTIFIER_RE_EXP,
-    NID_NAME_MAP,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -18,7 +20,7 @@ from comicbox.identifiers.identifiers import (
 from comicbox.identifiers.urns import (
     parse_urn_identifier_and_warn,
 )
-from comicbox.merge import AdditiveMerger
+from comicbox.merge import AdditiveMerger, Merger
 from comicbox.schemas.comicbox import (
     COVER_DATE_KEY,
     DATE_KEY,
@@ -32,7 +34,6 @@ from comicbox.schemas.comicbox import (
 )
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSubSchema
 
-LOG = getLogger(__name__)
 _DATE_KEYS = frozenset({COVER_DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
 _NOTES_TAGGER_VERSION_EXP = r"(?:\s(?:dev|test|[\d\.]+\S+))?"
 _NOTES_TAGGER_RE_EXP = (
@@ -42,7 +43,7 @@ _NOTES_TAGGER_RE = re.compile(_NOTES_TAGGER_RE_EXP)
 _NOTES_UPDATED_AT_RE_EXP = r"(?:\s+on\s(?P<updated_at>[12]\d{3}-[012]\d-[01]\d[\sT](?:[012]\d:\d{2}:\d{2}\S*)?))"
 _NOTES_UPDATED_AT_RE = re.compile(_NOTES_UPDATED_AT_RE_EXP)
 _NOTES_ORIGIN_RE_EXP = r"(?:\s+using info from (?P<origin>\w+))"
-_NOTES_IDENTIFIER_RE_EXP = r"(?:\s+\[Issue ID (?P<nss>\w+)\])"
+_NOTES_IDENTIFIER_RE_EXP = r"(?:\s+\[Issue ID (?P<id_key>\w+)\])"
 _NOTES_RE_EXP = (
     _NOTES_TAGGER_RE_EXP
     + _NOTES_UPDATED_AT_RE_EXP
@@ -63,7 +64,7 @@ _NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
 _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 
 
-class ComicboxComputedNotesMixin(ComicboxMergeMixin):
+class ComicboxComputedNotes(ComicboxMerge):
     """Computed metadata methods for notes field."""
 
     def _set_computed_notes_key(self, sub_data, key, match, md):
@@ -83,13 +84,13 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         for key in _NOTES_KEYS:
             self._set_computed_notes_key(sub_data, key, match, md)
         if (origin := match.group("origin")) and (
-            nid := NID_NAME_MAP.inverse.get(origin, origin)
+            id_source := ID_SOURCE_NAME_MAP.inverse.get(origin, origin)
         ):
-            nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
-            if (nss := match.group("nss")) and (
-                identifier := create_identifier(nid, nss)
+            id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
+            if (id_key := match.group("id_key")) and (
+                identifier := create_identifier(id_source, id_key)
             ):
-                identifiers[nid] = identifier
+                identifiers[id_source] = identifier
         return identifiers
 
     @staticmethod
@@ -99,12 +100,14 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         if not match:
             return identifiers
         for urn in match.groups():
-            nid, _, nss = parse_urn_identifier_and_warn(urn)
-            if nid:
-                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
-                if nss:
-                    identifier = create_identifier(nid, nss)
-                    identifiers[nid] = identifier
+            id_source, _, id_key = parse_urn_identifier_and_warn(urn)
+            if id_source:
+                id_source = ALIAS_ID_SOURCE_MAP.get(
+                    id_source.lower(), DEFAULT_ID_SOURCE
+                )
+                if id_key:
+                    identifier = create_identifier(id_source, id_key)
+                    identifiers[id_source] = identifier
         return identifiers
 
     @staticmethod
@@ -114,12 +117,14 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         if not matches:
             return identifiers
         for match in matches:
-            if nid := match.group("nid"):
-                nid = ALIAS_NID_MAP.get(nid.lower(), DEFAULT_NID)
-                if (nss := match.group("nss")) and (
-                    identifier := create_identifier(nid, nss)
+            if id_source := match.group("id_source"):
+                id_source = ALIAS_ID_SOURCE_MAP.get(
+                    id_source.lower(), DEFAULT_ID_SOURCE
+                )
+                if (id_key := match.group("id_key")) and (
+                    identifier := create_identifier(id_source, id_key)
                 ):
-                    identifiers[nid] = identifier
+                    identifiers[id_source] = identifier
         return identifiers
 
     def _set_computed_notes_identifiers(self, sub_data, notes, sub_md):
@@ -136,9 +141,11 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
             urn_identifiers,
         ):
             # Ordered in replacement order.
-            for nid, identifier in notes_identifiers.items():
-                if nid not in explicit_identifiers:
-                    AdditiveMerger.merge(pruned_notes_identifiers, {nid: identifier})
+            for id_source, identifier in notes_identifiers.items():
+                if id_source not in explicit_identifiers:
+                    AdditiveMerger.merge(
+                        pruned_notes_identifiers, {id_source: identifier}
+                    )
         if pruned_notes_identifiers:
             sub_md[IDENTIFIERS_KEY] = pruned_notes_identifiers
 
@@ -152,7 +159,7 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
         try:
             return DateField()._deserialize(date_str)  # noqa: SLF001
         except Exception:
-            LOG.debug(f"Unparsable RELDATE {date_str}")
+            logger.debug(f"Unparsable RELDATE {date_str}")
         return None
 
     def _set_computed_notes_date(self, sub_data, notes, sub_md):
@@ -216,11 +223,13 @@ class ComicboxComputedNotesMixin(ComicboxMergeMixin):
             return None
         return sub_md
 
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            "from notes": (
-                get_computed_from_notes,
-                AdditiveMerger,
-            )
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                "from notes": (
+                    get_computed_from_notes,
+                    AdditiveMerger,
+                )
+            }
+        )
     )

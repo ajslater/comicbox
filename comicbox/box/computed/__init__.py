@@ -1,15 +1,14 @@
 """Computed metadata methods."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from logging import getLogger
 from types import MappingProxyType
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
 
 from comicbox.box.archive import archive_close
-from comicbox.box.computed.identifiers import ComicboxComputedIdentifers
+from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
     ORIGINAL_FORMAT_KEY,
@@ -17,8 +16,6 @@ from comicbox.schemas.comicbox import (
     SCAN_INFO_KEY,
     ComicboxSchemaMixin,
 )
-
-LOG = getLogger(__name__)
 
 
 @dataclass
@@ -30,7 +27,7 @@ class ComputedData:
     merger: type[Merger] | None = AdditiveMerger
 
 
-class ComicboxComputedMixin(ComicboxComputedIdentifers):
+class ComicboxComputed(ComicboxComputedStoriesTitle):
     """Computed metadata methods."""
 
     def _get_computed_from_scan_info(self, sub_data, **_kwargs):
@@ -78,16 +75,18 @@ class ComicboxComputedMixin(ComicboxComputedIdentifers):
     def _get_delete_keys(self, _sub_data: Mapping):
         if not self._config.delete_keys:
             return None
-        return tuple(sorted(self._config.delete_keys))
+        return tuple(sorted(self._config.delete_keys | self._extra_delete_keys))
 
-    _COMPUTED_ACTIONS = MappingProxyType(
-        {
-            # Order is important here
-            **ComicboxComputedIdentifers.COMPUTED_ACTIONS,
-            "from reprints": (_get_computed_from_reprints, ReplaceMerger),
-            "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
-            "Delete Keys": (_get_delete_keys, None),
-        }
+    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
+        MappingProxyType(
+            {
+                # Order is important here
+                **ComicboxComputedStoriesTitle.COMPUTED_ACTIONS,
+                "from reprints": (_get_computed_from_reprints, ReplaceMerger),
+                "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
+                "Delete Keys": (_get_delete_keys, None),
+            }
+        )
     )
 
     def _set_computed_metadata(self):
@@ -96,7 +95,7 @@ class ComicboxComputedMixin(ComicboxComputedIdentifers):
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
 
         # Compute each
-        for label, actions in self._COMPUTED_ACTIONS.items():
+        for label, actions in self.COMPUTED_ACTIONS.items():
             method, merger = actions
             sub_md = method(self, sub_data)
             if not sub_md:

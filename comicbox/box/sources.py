@@ -1,17 +1,23 @@
 """Getting and storing source metadata."""
 
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from types import MappingProxyType
 
+from loguru import logger
+
+from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
-from comicbox.box.page_filenames import ComicboxPageFilenamesMixin
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.pdf import MuPDFSchema
 from comicbox.sources import MetadataSources
 
-LOG = getLogger(__name__)
+FILENAME_FORMAT_MAP = MappingProxyType(
+    {
+        fmt.value.filename.lower(): fmt
+        for fmt in MetadataSources.ARCHIVE_FILE.value.formats
+    }
+)
 
 FILENAME_FORMAT_MAP = MappingProxyType(
     {
@@ -21,7 +27,7 @@ FILENAME_FORMAT_MAP = MappingProxyType(
 )
 
 
-class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
+class ComicboxSources(ComicboxArchive):
     """Getting and storing source metadata."""
 
     def _get_source_config_metadata(self):
@@ -37,7 +43,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             if not fmt or fmt in self._config.read:
                 source_data_list = [SourceData(self._config.metadata, fmt=fmt)]
         except Exception as exc:
-            LOG.warning(f"Error reading metadata from config: {exc}")
+            logger.warning(f"Error reading metadata from config: {exc}")
         return source_data_list
 
     def _get_source_cli_metadata(self):
@@ -50,7 +56,9 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                 sd = SourceData(source_string)
                 source_data_list.append(sd)
             except Exception as exc:
-                LOG.warning(f"Error reading metadata from cli '{source_string}': {exc}")
+                logger.warning(
+                    f"Error reading metadata from cli '{source_string}': {exc}"
+                )
         return source_data_list
 
     def _get_source_import_metadata(self):
@@ -69,10 +77,10 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                     sd = SourceData(source_string, path, fmt)
                     source_data_list.append(sd)
             except Exception as exc:
-                LOG.warning(
+                logger.warning(
                     f"Error reading metadata from import path {path_str}: {exc}"
                 )
-                LOG.exception("")
+                logger.exception("")
         return source_data_list
 
     def _get_source_filename_metadata(self):
@@ -80,16 +88,12 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
         if not self._path:
             return source_data_list
         try:
-            formats = (
-                frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats)
-                & self._config.read
-            )
-            for fmt in formats:
+            for fmt in self._config.computed.read_filename_formats:
                 source_data_list += [
                     SourceData(self._path.name, fmt=fmt, from_archive=True)
                 ]
         except Exception as exc:
-            LOG.warning(
+            logger.warning(
                 f"Error reading metadata from archive filename {self._path}: {exc}"
             )
         return source_data_list
@@ -108,7 +112,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                     SourceData(comment, from_archive=True, fmt=only_comment_format)
                 ]
         except Exception as exc:
-            LOG.warning(f"Error reading archive comment from {self._path}: {exc}")
+            logger.warning(f"Error reading archive comment from {self._path}: {exc}")
         return source_data_list
 
     def _get_source_pdf_metadata(self):
@@ -124,13 +128,13 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
             archive = self._get_archive()
             if not archive or not self._archive_is_pdf:
                 return source_data_list
-            if md := archive.get_metadata():  # type: ignore[reportAttributeAccessIssue]
+            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue]
                 md = MappingProxyType({MuPDFSchema.ROOT_TAG: md})
                 source_data_list = [
                     SourceData(md, fmt=MetadataFormats.PDF, from_archive=True)
                 ]
         except Exception as exc:
-            LOG.warning(f"Error reading from PDF header {self._path}: {exc}")
+            logger.warning(f"Error reading from PDF header {self._path}: {exc}")
         return source_data_list
 
     def _store_top_source_archive_files(self, fn, files_dict):
@@ -151,22 +155,21 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
         """Get source metadata from files in the archive."""
         # search filenames for metadata files and read.
         source_data_list = []
-        file_fmts = frozenset(MetadataSources.ARCHIVE_FILE.value.formats)
-        if not self._path or not file_fmts & self._config.read:
+        if not self._path or not self._config.computed.read_file_formats:
             return source_data_list
         files_dict = {}
         for fn in self._get_archive_namelist():
             try:
                 self._store_top_source_archive_files(fn, files_dict)
             except Exception as exc:
-                LOG.warning(f"Error reading {self._path}:{fn}: {exc}")
+                logger.warning(f"Error reading {self._path}:{fn}: {exc}")
 
         for fmt, value in files_dict.items():
             fn = value[0]
             try:
                 self._add_top_source_archive_file(fmt, fn, source_data_list)
             except Exception as exc:
-                LOG.warning(f"Error reading {self._path}:{fn}: {exc}")
+                logger.warning(f"Error reading {self._path}:{fn}: {exc}")
         return source_data_list
 
     SOURCE_METHOD_MAP = MappingProxyType(
@@ -207,7 +210,7 @@ class ComicboxSourcesMixin(ComicboxPageFilenamesMixin):
                 self._set_source_metadata(source)
             return self._sources.get(source)
         except Exception as exc:
-            LOG.warning(
+            logger.warning(
                 f"{self._path} reading source metadata from {source.value.label}: {exc}"
             )
 

@@ -1,14 +1,13 @@
 """Normalize schemas to Comicbox Schema."""
 
-from logging import getLogger
 from types import MappingProxyType
 
-from comicbox.box.load import ComicboxLoadMixin, LoadedMetadata
+from loguru import logger
 
-LOG = getLogger(__name__)
+from comicbox.box.load import ComicboxLoad, LoadedMetadata
 
 
-class ComicboxNormalizeMixin(ComicboxLoadMixin):
+class ComicboxNormalize(ComicboxLoad):
     """Normalize schemas to Comicbox Schema."""
 
     def _normalize_metadata(self, source, loaded_data):
@@ -19,10 +18,11 @@ class ComicboxNormalizeMixin(ComicboxLoadMixin):
             transform = transform_class(self._path)
             return transform.to_comicbox(loaded_data.metadata)
         except Exception:
-            LOG.exception(
+            reason = (
                 f"{self._path}: Unable to normalize"
                 f" {source.value.label}:{transform_class} metadata"
             )
+            logger.exception(reason)
 
     def _set_normalized_metadata(self, source):
         loaded_metadata_list = self.get_loaded_metadata(source)
@@ -53,4 +53,4 @@ class ComicboxNormalizeMixin(ComicboxLoadMixin):
                 self._set_normalized_metadata(source)
             return self._normalized.get(source)
         except Exception:
-            LOG.exception(f"{self._path} Normalizing {source.value.label}")
+            logger.exception(f"{self._path} Normalizing {source.value.label}")

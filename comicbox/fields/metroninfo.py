@@ -14,14 +14,14 @@ from comicbox.schemas.enums.metroninfo import (
 class MetronAgeRatingField(XmlEnumField):
     """Metron Age Rating Field."""
 
-    ENUM = MetronAgeRatingEnum
+    ENUM = MetronAgeRatingEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = METRON_AGE_RATING_MAP
 
 
 class MetronRoleEnumField(XmlEnumField):
     """Metron Role Enum Field."""
 
-    ENUM = MetronRoleEnum
+    ENUM = MetronRoleEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class MetronIDAttrField(StringField):
@@ -31,11 +31,11 @@ class MetronIDAttrField(StringField):
 class MetronSourceField(XmlEnumField):
     """Metron Source Field."""
 
-    ENUM = MetronSourceEnum
+    ENUM = MetronSourceEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class MetronFormatField(XmlEnumField):
     """Metron Series Format Field."""
 
-    ENUM = MetronFormatEnum
+    ENUM = MetronFormatEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = METRON_FORMAT_MAP

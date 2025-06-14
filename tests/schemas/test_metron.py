@@ -9,7 +9,7 @@ from types import MappingProxyType
 import xmltodict
 from glom import Assign, glom
 
-from comicbox.box.comic import Comicbox
+from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
@@ -44,7 +44,10 @@ READ_METADATA = MappingProxyType(
                 "Other Arc": {"number": 2},
             },
             "date": {
-                "cover_date": date(year=1950, month=11, day=1),
+                "cover_date": date(1950, 11, 1),
+                "day": 1,
+                "month": 11,
+                "year": 1950,
             },
             "characters": {
                 "Captain Science": {},
@@ -58,28 +61,31 @@ READ_METADATA = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "imprint": {
                 "identifiers": {
-                    "metron": {"nss": "222", "url": "https://metron.cloud/imprint/222"},
+                    "metron": {
+                        "key": "222",
+                        "url": "https://metron.cloud/imprint/222",
+                    },
                 },
                 "name": "Youthful Imprint",
             },
             "identifier_primary_source": {
-                "nid": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "nss": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "nss": "999999",
+                    "key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
             "issue": {
                 "name": "1",
@@ -95,13 +101,19 @@ READ_METADATA = MappingProxyType(
             },
             "publisher": {
                 "identifiers": {
-                    "metron": {"nss": "11", "url": "https://metron.cloud/publisher/11"},
+                    "metron": {
+                        "key": "11",
+                        "url": "https://metron.cloud/publisher/11",
+                    },
                 },
                 "name": "Youthful Adventure Stories",
             },
             "series": {
                 "identifiers": {
-                    "metron": {"nss": "2222", "url": "https://metron.cloud/series/2222"}
+                    "metron": {
+                        "key": "2222",
+                        "url": "https://metron.cloud/series/2222",
+                    }
                 },
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
@@ -112,13 +124,15 @@ READ_METADATA = MappingProxyType(
                 "Captain Lost": {
                     "identifiers": {
                         "metron": {
-                            "nss": "5555",
+                            "key": "5555",
                             "url": "https://metron.cloud/story/5555",
                         }
                     },
                 },
                 "Science is Good": {},
+                "metron": {},
             },
+            "title": "Captain Lost; Science is Good; metron",
             "reprints": [
                 {"language": "es", "series": {"name": "Capitán Ciencia"}},
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
@@ -221,6 +235,7 @@ READ_METRON_DICT = MappingProxyType(
                 "Story": [
                     {"@id": "5555", "#text": "Captain Lost"},
                     {"#text": "Science is Good"},
+                    {"#text": "metron"},
                 ]
             },
             "URLs": {
@@ -322,6 +337,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 "Story": [
                     {"@id": "5555", "#text": "Captain Lost"},
                     "Science is Good",
+                    "metron",
                 ]
             },
             "Universes": {"Universe": [{"Name": "Mirror", "Designation": "4242"}]},
@@ -352,7 +368,7 @@ def unparse_strinfigy_decimals(data):
         stringified_data,
         Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
     )
-    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # type: ignore[reportCallIssue]
+    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
 
 
 READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)
@@ -395,23 +411,23 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "identifier_primary_source": {
-                "nid": "metron",
+                "source": "metron",
                 "url": "https://metron.cloud/",
             },
             "identifiers": {
                 "comicvine": {
-                    "nss": "145269",
+                    "key": "145269",
                     "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
-                    "nss": "123-456789-0123",
+                    "key": "123-456789-0123",
                     "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
-                    "nss": "999999",
+                    "key": "999999",
                     "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"nss": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
             },
         }
     }

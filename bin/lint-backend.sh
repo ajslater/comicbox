@@ -7,7 +7,7 @@ set -euxo pipefail
 ####################
 uv run ruff check .
 uv run ruff format --check .
-uv run pyright
+uv run basedpyright
 uv run vulture .
 if [ "$(uname)" = "Darwin" ]; then
   # Radon is only of interest to development
@@ -27,12 +27,12 @@ npm run lint
 if [ "$(uname)" = "Darwin" ]; then
   # Hadolint & shfmt are difficult to install on linux
   # shellcheck disable=2035
-  hadolint *Dockerfile
-  shellharden ./**/*.sh
+  # hadolint *Dockerfile
+  shellharden --check ./**/*.sh
   # subdirs aren't copied into docker builder
   # .env files aren't copied into docker
   shellcheck --external-sources ./**/*.sh
-  circleci config validate .circleci/config.yml
+  # circleci config validate .circleci/config.yml
 fi
 ./bin/roman.sh -i .prettierignore .
 uv run codespell .
