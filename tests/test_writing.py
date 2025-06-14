@@ -138,8 +138,7 @@ PATCHME_METADATA = MappingProxyType(
 def test_patch():
     """Test patching the zipfile."""
     TMP_DIR.mkdir(exist_ok=True)
-
-    shutil.copy(TEST_PATCHME_PATH, TMP_DIR)
+    shutil.copy(TEST_PATCHME_PATH, PATCHME_PATH)
 
     with Comicbox(PATCHME_PATH, config=WRITE_CONFIG) as car:
         car.set_metadata(PATCHME_METADATA)

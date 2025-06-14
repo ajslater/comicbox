@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from pathlib import Path
 
+from icecream import ic
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
@@ -110,6 +111,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
     def _patch_zipfile(self, files, comment):
         """In place remove and append to existing zipfile."""
+        ic("PATCHING")
         if not self._path:
             reason = "No zipfile path to write to."
             raise ValueError(reason)
@@ -118,6 +120,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             self._zipfile_remove_metadata_files(zf)
             self._write_archive_metadata_files(zf, files)
             zf.comment = comment
+        ic("PATCHED")
 
     def _create_zipfile(self, files: Mapping, comment: bytes):
         """Create new zipfile."""
@@ -142,6 +145,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if self._archive_is_pdf:
             logger.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
             return
+        ic("WRITING METADATA", self._archive_cls)
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
         else:
