@@ -236,13 +236,6 @@ def _add_option_group(parser):
         help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
     )
     option_group.add_argument(
-        "-s",
-        "--stamp",
-        dest="stamp",
-        action="store_true",
-        help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
-    )
-    option_group.add_argument(
         "-N",
         "--no-stamp-notes",
         dest="stamp_notes",
@@ -251,11 +244,6 @@ def _add_option_group(parser):
             "Do not write the notes field with tagger, timestamp and identifiers "
             "when writing metadata out to a file."
         ),
-    )
-    option_group.add_argument(
-        "-t",
-        "--theme",
-        help="Pygments theme to use for syntax highlighting. https://pygments.org/styles/. 'none' will stop highlighting.",
     )
     option_group.add_argument(
         "-t",

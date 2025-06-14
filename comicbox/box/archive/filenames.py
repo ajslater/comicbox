@@ -13,10 +13,6 @@ from comicbox.box.archive.mtime import ComicboxArchiveMtime
 _IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
 EPOCH_START = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-# ignore dotfiles but not relative ../ leaders.
-# ignore macos resource forks
-_IGNORE_RE = re.compile(r"(?:^|\/)(?:\.[^\.]|__MACOSX)", re.IGNORECASE)
-
 
 class ComicboxArchiveFilenames(ComicboxArchiveMtime):
     """Calculate page filenames."""

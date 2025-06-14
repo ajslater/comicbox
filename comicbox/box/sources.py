@@ -19,13 +19,6 @@ FILENAME_FORMAT_MAP = MappingProxyType(
     }
 )
 
-FILENAME_FORMAT_MAP = MappingProxyType(
-    {
-        fmt.value.filename.lower(): fmt
-        for fmt in MetadataSources.ARCHIVE_FILE.value.formats
-    }
-)
-
 
 class ComicboxSources(ComicboxArchive):
     """Getting and storing source metadata."""
