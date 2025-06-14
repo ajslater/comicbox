@@ -19,13 +19,13 @@
     "genres": [
       "Science Fiction"
     ],
-    "identifier": "urn:comicvine:145269",
+    "identifier": "urn:comicvine:issue:145269",
     "issue": "1",
     "issue_count": 7,
     "issue_id": "145269",
     "language": "en",
     "month": 11,
-    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:4000-145269",
+    "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:issue:145269",
     "page_count": 0,
     "publisher": "Youthful Adventure Stories",
     "series": "Captain Science",

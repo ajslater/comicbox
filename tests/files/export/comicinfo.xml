@@ -5,7 +5,7 @@
 	<Number>1</Number>
 	<Count>7</Count>
 	<Volume>1950</Volume>
-	<Notes>Tagged with comicbox dev on 2025-03-02T00:47:29 [Issue ID 145269] urn:comicvine:145269</Notes>
+	<Notes>Tagged with comicbox dev on 2025-03-02T00:47:29 [Issue ID 145269] urn:comicvine:issue:145269</Notes>
 	<Year>1950</Year>
 	<Month>11</Month>
 	<Day>1</Day>
@@ -20,5 +20,5 @@
 	<Characters>Captain Science,Gordon Dane</Characters>
 	<StoryArc>Captain Arc,Other Arc</StoryArc>
 	<StoryArcNumber>4,2</StoryArcNumber>
-	<GTIN>urn:comicvine:145269</GTIN>
+	<GTIN>urn:comicvine:issue:145269</GTIN>
 </ComicInfo>

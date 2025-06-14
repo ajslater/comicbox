@@ -52,7 +52,7 @@ TEST_READ_NOTES = (
 )
 TEST_WRITE_NOTES = (
     f"Tagged with {PACKAGE_NAME} {VERSION} on {TEST_DTTM_STR} "
-    f"[Issue ID {_IDENT}] urn:comicvine:4000-145269"
+    f"[Issue ID {_IDENT}] urn:comicvine:issue:145269"
 )
 
 TEST_TIMESTAMP = TimeStamp(*_D_TUPLE)

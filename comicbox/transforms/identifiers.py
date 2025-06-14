@@ -81,7 +81,7 @@ def _identifiers_from_cb(comicbox_identifiers) -> set:
         if (
             (comicbox_identifier := comicbox_identifiers.get(id_source.value))
             and (id_key := comicbox_identifier.get(ID_KEY_KEY))
-            and (urn_str := to_urn_string(id_source.value, "", id_key))
+            and (urn_str := to_urn_string(id_source.value, "issue", id_key))
         ):
             urn_strings.add(urn_str)
     return urn_strings

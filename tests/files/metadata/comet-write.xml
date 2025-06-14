@@ -7,7 +7,7 @@
 	<description>A long example description</description>
 	<format>Comic</format>
 	<genre>Science Fiction</genre>
-	<identifier>urn:comicvine:145269</identifier>
+	<identifier>urn:comicvine:issue:145269</identifier>
 	<isVersionOf>Captain Science Alternate #001</isVersionOf>
 	<issue>1</issue>
 	<language>en</language>

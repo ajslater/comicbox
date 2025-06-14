@@ -75,7 +75,7 @@ COMET_DICT = MappingProxyType(
             "description": "A long example description",
             "format": "Comic",
             "genre": ["Science Fiction"],
-            "identifier": "urn:comicvine:145269",
+            "identifier": "urn:comicvine:issue:145269",
             "isVersionOf": "Captain Science Alternate #001",
             "issue": "1",
             "language": "en",

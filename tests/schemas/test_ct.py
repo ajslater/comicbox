@@ -85,7 +85,7 @@ READ_CT_DICT = MappingProxyType(
             "issue": "1",
             "issue_count": 7,
             "issue_id": "145269",
-            "identifier": "urn:comicvine:145269",
+            "identifier": "urn:comicvine:issue:145269",
             "language": "en",
             "month": 11,
             "notes": TEST_READ_NOTES,
