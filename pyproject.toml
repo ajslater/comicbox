@@ -27,6 +27,7 @@ dependencies = [
   "urnparse<1.0.0,>=0.2.0",
   "xmltodict<1.0.0,>=0.14.0",
   "typing-extensions>=4.13.2",
+  "zipremove>=0.1.0",
 ]
 readme = "README.md"
 keywords = [

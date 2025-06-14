@@ -2,14 +2,13 @@
 
 from collections.abc import Mapping
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from loguru import logger
+from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.sources import MetadataSources
-from comicbox.zipfile_remove import ZipFileWithRemove
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
@@ -115,7 +114,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             reason = "No zipfile path to write to."
             raise ValueError(reason)
         self.close()
-        with ZipFileWithRemove(self._path, "a") as zf:
+        with ZipFile(self._path, "a") as zf:
             self._zipfile_remove_metadata_files(zf)
             self._write_archive_metadata_files(zf, files)
             zf.comment = comment
