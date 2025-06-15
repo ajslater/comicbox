@@ -100,13 +100,13 @@ class ComicboxComputedNotes(ComicboxMerge):
         if not match:
             return identifiers
         for urn in match.groups():
-            id_source, _, id_key = parse_urn_identifier_and_warn(urn)
+            id_source, id_type, id_key = parse_urn_identifier_and_warn(urn)
             if id_source:
                 id_source = ALIAS_ID_SOURCE_MAP.get(
                     id_source.lower(), DEFAULT_ID_SOURCE
                 )
                 if id_key:
-                    identifier = create_identifier(id_source, id_key)
+                    identifier = create_identifier(id_source, id_key, id_type=id_type)
                     identifiers[id_source] = identifier
         return identifiers
 

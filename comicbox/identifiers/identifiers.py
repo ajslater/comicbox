@@ -259,16 +259,19 @@ def get_identifier_url(id_source: str, id_type: str, id_key: str) -> str:
 
 
 def create_identifier(
-    id_source,
-    id_key,
-    url="",
-    id_type=DEFAULT_ID_TYPE,
-    default_id_source=DEFAULT_ID_SOURCE,
+    id_source: str,
+    id_key: str,
+    *,
+    id_type: str = "",
+    url: str = "",
+    default_id_source: str = DEFAULT_ID_SOURCE,
 ):
     """Create identifier dict from parts."""
     identifier = {}
     if not id_source:
         id_source = default_id_source
+    if not id_type:
+        id_type = DEFAULT_ID_TYPE
     if id_key:
         if id_source == IdSources.COMICVINE.value:
             id_type, id_key = _normalize_comicvine_id_key(id_type, id_key)

@@ -62,13 +62,15 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
     @staticmethod
     def _add_identifier_from_tag(tag: str, identifiers: dict):
         # Silently fail because most tags are not identifiers
-        id_source, _, id_key = parse_urn_identifier(tag)
+        id_source, id_type, id_key = parse_urn_identifier(tag)
         if not (id_source and id_key):
-            id_source, _, id_key = parse_identifier_other_str(tag)
+            id_source, id_type, id_key = parse_identifier_other_str(tag)
         if id_source:
             id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
             if id_key:
-                identifiers[id_source] = create_identifier(id_source, id_key)
+                identifiers[id_source] = create_identifier(
+                    id_source, id_key, id_type=id_type
+                )
 
     def _get_computed_from_tags(self, sub_data):
         # only look for ids in tags if the format has tags but no designated id field.
