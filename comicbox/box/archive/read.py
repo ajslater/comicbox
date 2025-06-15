@@ -3,11 +3,11 @@
 import shutil
 from pathlib import Path
 from sys import maxsize
-from zipfile import ZipFile
 
 from py7zr import SevenZipFile
 from py7zr.io import BytesIOFactory
 from rarfile import BadRarFile, RarFile
+from zipremove import ZipFile
 
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.init import ComicboxArchiveInit, archive_close

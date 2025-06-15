@@ -1,6 +1,6 @@
 [project]
 name = "comicbox"
-version = "2.0.0a17"
+version = "2.0.0a18"
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
@@ -24,9 +24,10 @@ dependencies = [
   "rich-argparse<2.0.0,>=1.7.0",
   "ruamel-yaml<0.19.00,>=0.17.32",
   "simplejson<4.0.0,>=3.19.1",
+  "typing-extensions>=4.13.2",
   "urnparse<1.0.0,>=0.2.0",
   "xmltodict<1.0.0,>=0.14.0",
-  "typing-extensions>=4.13.2",
+  "zipremove>=0.1.0",
 ]
 readme = "README.md"
 keywords = [
@@ -133,6 +134,7 @@ omit = [
   "node_modules/*",
   "test-results/*",
   "typings/*",
+  "zipfile_remove/*",
 ]
 
 [tool.coverage.html]
@@ -274,4 +276,5 @@ exclude = [
   "dist/",
   "test-results/",
   "typings/",
+  "comicbox/zipfile_remove/",
 ]

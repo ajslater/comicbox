@@ -11,11 +11,11 @@ from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
 from typing import TYPE_CHECKING
-from zipfile import ZipFile, is_zipfile
 
 from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
+from zipremove import ZipFile, is_zipfile
 
 from comicbox.config import get_config
 from comicbox.config.frozenattrdict import FrozenAttrDict

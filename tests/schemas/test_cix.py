@@ -182,7 +182,7 @@ READ_CIX_DICT = MappingProxyType(
                     {"@Image": 35, "@ImageSize": 340840},
                 ]
             },
-            "GTIN": "urn:comicvine:145269",
+            "GTIN": "urn:comicvine:issue:145269",
         }
     }
 )

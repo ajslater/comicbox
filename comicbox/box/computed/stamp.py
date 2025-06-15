@@ -50,8 +50,8 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if not identifiers:
             return notes
         urn_strs = set()
-        # The are issues which is the default type.
-        id_type = ""
+        # issues is the top level type.
+        id_type = "issue"
         for id_source, identifier in identifiers.items():
             id_key = identifier.get(ID_KEY_KEY)
             if not id_key:

@@ -1,11 +1,11 @@
 """Get ZipInfo like attributes from all archive info types."""
 
 from tarfile import TarFile
-from zipfile import ZipFile
 
 from py7zr import SevenZipFile
 from py7zr.io import BytesIOFactory
 from rarfile import RarFile
+from zipremove import ZipFile
 
 try:
     from pdffile import PDFFile

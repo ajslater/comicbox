@@ -1,10 +1,10 @@
 """Comicbox Types."""
 
 from tarfile import TarFile
-from zipfile import ZipFile
 
 from py7zr import SevenZipFile
 from rarfile import RarFile
+from zipremove import ZipFile
 
 try:
     from pdffile import PDFFile

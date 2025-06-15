@@ -1,5 +1,6 @@
 """Tests for writing."""
 
+import shutil
 from argparse import Namespace
 from decimal import Decimal
 from types import MappingProxyType
@@ -14,6 +15,7 @@ from tests.const import (
     READ_CONFIG_EMPTY,
     TEST_DATETIME,
     TEST_DTTM_STR,
+    TEST_FILES_DIR,
 )
 
 from .util import get_tmp_dir, my_cleanup, my_setup, read_metadata
@@ -110,6 +112,40 @@ def test_convert_to_cbz_and_cbi_to_cix():
     read_metadata(
         NEW_TEST_CBZ_PATH,
         METADATA,
+        READ_CONFIG_EMPTY,
+        ignore_updated_at=True,
+        ignore_notes=True,
+    )
+
+    my_cleanup(TMP_DIR)
+
+
+TEST_PATCHME_PATH = TEST_FILES_DIR / "patchme.cbz"
+PATCHME_PATH = TMP_DIR / TEST_PATCHME_PATH.name
+PATCHME_METADATA = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "ext": "cbz",
+            "page_count": 0,
+            "series": {"name": "patchme"},
+            "stories": {"The End": {}},
+            "title": "The End",
+        }
+    }
+)
+
+
+def test_patch():
+    """Test patching the zipfile."""
+    TMP_DIR.mkdir(exist_ok=True)
+    shutil.copy(TEST_PATCHME_PATH, PATCHME_PATH)
+
+    with Comicbox(PATCHME_PATH, config=WRITE_CONFIG) as car:
+        car.set_metadata(PATCHME_METADATA)
+        car.dump()
+    read_metadata(
+        PATCHME_PATH,
+        PATCHME_METADATA,
         READ_CONFIG_EMPTY,
         ignore_updated_at=True,
         ignore_notes=True,

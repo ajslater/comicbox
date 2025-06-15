@@ -183,7 +183,7 @@ CBT_MD_PATCH = {
             "1970-01-01T00:00:00Z "
             "[Issue ID "
             "145269] "
-            "urn:comicvine:4000-145269 "
+            "urn:comicvine:issue:145269 "
             "urn:isbn:123-456789-0123 "
             "urn:upc:12345"
         ),
@@ -239,7 +239,7 @@ CB7_MD_PATCH = {
         },
         "notes": (
             "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
-            "[Issue ID 145269] urn:comicvine:4000-145269 "
+            "[Issue ID 145269] urn:comicvine:issue:145269 "
             "urn:isbn:123-456789-0123 urn:upc:12345"
         ),
         "stories": {"The Beginning": {}, "The End": {}},

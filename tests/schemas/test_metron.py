@@ -30,10 +30,10 @@ METRON_NOTES = (
     "on "
     "1970-01-01T00:00:00Z "
     "[Issue ID 145269] "
-    "urn:comicvine:145269 "
+    "urn:comicvine:issue:145269 "
     "urn:isbn:123-456789-0123 "
     "urn:upc:12345 "
-    "urn:metron:999999"
+    "urn:metron:issue:999999"
 )
 READ_METADATA = MappingProxyType(
     {

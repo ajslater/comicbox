@@ -1,6 +1,6 @@
 """Get Metadata mixin."""
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from types import MappingProxyType
 
 from glom import Assign, Delete, glom
@@ -50,6 +50,10 @@ class ComicboxMetadata(ComicboxComputed):
     def get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""
         return self._get_metadata()
+
+    def set_metadata(self, metadata: Mapping) -> None:
+        """Programmatically set the metadata."""
+        self._metadata = MappingProxyType(metadata)
 
     def _embed_metadata(
         self, fmt: MetadataFormats, denormalized_metadata: MutableMapping, schema_class

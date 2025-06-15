@@ -21,6 +21,7 @@ FN = "yaml.cbz"
 TMP_DIR = get_tmp_dir(__file__)
 TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
+YAML_NOTES = TEST_READ_NOTES + " urn:comicvine:issue:145269"
 
 READ_CONFIG = Namespace(comicbox=Namespace(read=("fn", "yaml")))
 WRITE_CONFIG = Namespace(comicbox=Namespace(write=["yaml"], read=("fn", "yaml")))
@@ -35,7 +36,7 @@ READ_METADATA = MappingProxyType(
                 }
             },
             "imprint": {"name": "TestImprint"},
-            "notes": TEST_READ_NOTES,
+            "notes": YAML_NOTES,
             "publisher": {"name": "TestPub"},
             "series": {"name": "empty"},
             "tags": {"a": {}, "b": {}, "c": {}},
@@ -95,7 +96,7 @@ READ_YAML_DICT = MappingProxyType(
                 }
             },
             "imprint": {"name": "TestImprint"},
-            "notes": TEST_READ_NOTES,
+            "notes": YAML_NOTES,
             "page_count": 36,
             "pages": {
                 0: {

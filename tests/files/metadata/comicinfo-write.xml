@@ -7,7 +7,7 @@
 	<Volume>1950</Volume>
 	<AlternateSeries>Captain Science Alternate</AlternateSeries>
 	<AlternateNumber>001</AlternateNumber>
-	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:4000-145269</Notes>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:issue:145269</Notes>
 	<Year>1950</Year>
 	<Month>11</Month>
 	<Day>1</Day>
@@ -61,5 +61,5 @@
 		<Page Image="34" ImageSize="353013"/>
 		<Page Image="35" ImageSize="340840"/>
 	</Pages>
-	<GTIN>urn:comicvine:145269</GTIN>
+	<GTIN>urn:comicvine:issue:145269</GTIN>
 </ComicInfo>

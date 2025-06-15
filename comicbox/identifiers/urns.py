@@ -62,8 +62,7 @@ def to_urn_string(id_source_str: str, id_type: str, id_key_str: str) -> str:
     if "." in id_source_str:
         return ""
     id_source = NSIdentifier(id_source_str)
-    if id_type:
-        id_key_str = id_type + ":" + id_key_str
+    id_key_str = id_type + ":" + id_key_str
     id_key = NSSString(id_key_str)
     urn = URN8141(nid=id_source, nss=id_key)
     return str(urn)
