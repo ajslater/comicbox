@@ -250,13 +250,10 @@ def _normalize_comicvine_id_key(id_type, id_key):
     return id_type, id_key
 
 
-def get_identifier_url(id_source: IdSources | str, id_type: str, id_key: str) -> str:
+def get_identifier_url(id_source: str, id_type: str, id_key: str) -> str:
     """Get a url for an identifier if we know the rest."""
     url = ""
-    with suppress(Exception):
-        if isinstance(id_source, str):
-            id_source = IdSources(id_source)
-        id_parts = IDENTIFIER_PARTS_MAP[id_source.value]
+    if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
         url = id_parts.unparse_url(id_type, id_key)
     return url
 
