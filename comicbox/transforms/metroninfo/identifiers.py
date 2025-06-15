@@ -113,7 +113,9 @@ def _identifier_to_cb(native_identifier):
         source = source.value
     id_source = ID_SOURCE_NAME_MAP.inverse.get(source, "")
     id_type = "issue"
-    id_key = get_cdata(native_identifier) or "" if id_source else ""
+    id_key = get_cdata(native_identifier)
+    if not isinstance(id_key, str):
+        id_key = ""
     identifier = create_identifier(
         id_source, id_key, id_type=id_type, default_id_source=DEFAULT_ID_SOURCE
     )
