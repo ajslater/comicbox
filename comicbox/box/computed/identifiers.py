@@ -127,7 +127,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
             all_tags = sub_data.get(key)
             if not all_tags:
                 continue
-            id_type = key[:-1]
+            id_type = "creator" if key == CREDITS_KEY else key[:-1]
             for tag in all_tags.values():
                 cls._add_urls_to_tag(key, id_type, tag, all_urls)
                 if key == CREDITS_KEY and (roles := tag.get(ROLES_KEY)):
