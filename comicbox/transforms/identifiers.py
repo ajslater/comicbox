@@ -31,7 +31,7 @@ def create_identifier_primary_source(id_source):
     """Create identifier primary source."""
     ips = {ID_SOURCE_KEY: id_source}
     id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
-    if id_parts and (url := id_parts.unparse_url("", "")):
+    if id_parts and (url := id_parts.url_prefix):
         ips[ID_URL_KEY] = url
     return ips
 
