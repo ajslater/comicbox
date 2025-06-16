@@ -98,12 +98,11 @@ class IdentifierParts:
 
     def unparse_url(self, id_type: str, id_key: str) -> str:
         """Create url from identifier parts."""
-        if id_type and id_key:
-            type_value = getattr(self.types, id_type)
+        url = ""
+        if type_value := getattr(self.types, id_type, None):
             path = self.url_path_template.format(id_type=type_value, id_key=id_key)
-        else:
-            path = ""
-        return self.url_prefix + path
+            url = self.url_prefix + path
+        return url
 
 
 IDENTIFIER_PARTS_MAP = MappingProxyType(
