@@ -17,6 +17,7 @@ class IdSources(Enum):
     GCD = "grandcomicsdatabase"
     LCG = "leagueofcomicgeeks"
     MARVEL = "marvel"
+    PANELSYNDICATE = "panelsyndicate"
     # Manga DBs
     ANILIST = "anilist"
     KITSU = "kitsu"
@@ -63,6 +64,7 @@ ID_SOURCE_NAME_MAP = frozenbidict(
         IdSources.GCD.value: "Grand Comics Database",
         IdSources.KITSU.value: "Kitsu",
         IdSources.LCG.value: "League of Comic Geeks",
+        IdSources.PANELSYNDICATE.value: "Panel Syndicate",
         IdSources.MANGADEX.value: "MangaDex",
         IdSources.MANGAUPDATES.value: "MangaUpdates",
         IdSources.MARVEL.value: "Marvel",
@@ -81,14 +83,21 @@ _IDENTIFIER_URN_ID_SOURCE_ALIASES = MappingProxyType(
         IdSources.ANILIST.value: frozenset({"anilist.co"}),
         IdSources.ASIN.value: frozenset({"amazon.com", "www.amazon.com"}),
         IdSources.COMICVINE.value: frozenset(
-            {AlternateIdSources.CVDB_ALTERNATE.value, "comicvine.gamespot.org"}
+            {
+                AlternateIdSources.CVDB_ALTERNATE.value,
+                "comicvine.gamespot.org",
+                "www.comicvine.com",
+                "stage.comicvine.com",
+            }
         ),
         IdSources.COMIXOLOGY.value: frozenset(
             {"comixology.com", AlternateIdSources.CMXDB_ALTERNATE.value}
         ),
         IdSources.GCD.value: frozenset({"comics.org"}),
-        IdSources.GTIN.value: frozenset({}),
-        IdSources.ISBN.value: frozenset({}),
+        IdSources.GTIN.value: frozenset(
+            {"www.gs1.org", "www.gs1us.org", "gtinlookup.info", "gtinlookup.org"}
+        ),
+        IdSources.ISBN.value: frozenset({"isbnsearch.org"}),
         IdSources.KITSU.value: frozenset({"kistu.app"}),
         IdSources.LCG.value: frozenset({"leagueofcomicgeeks.com"}),
         IdSources.MANGADEX.value: frozenset({"mangadex.org"}),
@@ -96,7 +105,8 @@ _IDENTIFIER_URN_ID_SOURCE_ALIASES = MappingProxyType(
         IdSources.MARVEL.value: frozenset({"marvel.com"}),
         IdSources.METRON.value: frozenset({"metron.cloud"}),
         IdSources.MYANIMELIST.value: frozenset({"myanimelist.net"}),
-        IdSources.UPC.value: frozenset({}),
+        IdSources.PANELSYNDICATE.value: frozenset({"panelsyndicate.com"}),
+        IdSources.UPC.value: frozenset({"www.barcodelookup.com", "go-upc.com"}),
     }
 )
 
