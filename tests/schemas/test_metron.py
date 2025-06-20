@@ -89,7 +89,7 @@ READ_METADATA = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": METRON_NOTES,

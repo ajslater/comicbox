@@ -43,7 +43,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "bookmark": 12,
@@ -72,7 +72,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "date": {
@@ -101,7 +101,7 @@ FNS = MappingProxyType(
             "genres": {"Superhero": {}},
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "date": {
@@ -124,7 +124,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "issue": {
                 "name": "001",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "date": {
                 "year": 1950,
@@ -153,7 +153,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -290,7 +290,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -374,7 +374,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -457,7 +457,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -528,7 +528,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:issue:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:issue:999999",
@@ -704,7 +704,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "locations": {

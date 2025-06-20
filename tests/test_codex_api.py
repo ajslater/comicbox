@@ -70,7 +70,7 @@ TEMPLATE_MD = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": TEST_READ_NOTES,

@@ -31,7 +31,7 @@ READ_METADATA = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
@@ -122,7 +122,7 @@ READ_COMICBOX_DICT = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": TEST_READ_NOTES,

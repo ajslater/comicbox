@@ -42,7 +42,7 @@ READ_METADATA = MappingProxyType(
             "series": {"name": "2"},  # "Captain Science",
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
@@ -166,7 +166,7 @@ READ_CIX_DICT = MappingProxyType(
             },
             "Penciller": "Wally Wood",
             "Publisher": "Youthful Adventure Stories",
-            "Series": Decimal("2"),
+            "Series": Decimal(2),
             "StoryArc": "Captain Arc,Other Arc",
             "StoryArcNumber": "4,2",
             "Title": None,  # "The Beginning",

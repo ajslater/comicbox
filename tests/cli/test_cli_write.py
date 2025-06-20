@@ -119,7 +119,7 @@ DELETE_KEYS_MD = MappingProxyType(
             "imprint": {"name": "CLIImprint"},
             "issue": {
                 "name": "001",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
