@@ -7,7 +7,6 @@ from types import MappingProxyType
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
 
-from comicbox.box.archive import archive_close
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
@@ -108,7 +107,6 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         # Set values
         self._computed = tuple(computed_list)
 
-    @archive_close
     def get_computed_metadata(self):
         """Get the computed metadata for printing."""
         if not self._computed:

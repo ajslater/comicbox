@@ -151,7 +151,7 @@ class ComicboxSources(ComicboxArchive):
         if not self._path or not self._config.computed.read_file_formats:
             return source_data_list
         files_dict = {}
-        for fn in self._get_archive_namelist():
+        for fn in self.namelist():
             try:
                 self._store_top_source_archive_files(fn, files_dict)
             except Exception as exc:

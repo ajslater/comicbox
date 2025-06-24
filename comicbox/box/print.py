@@ -19,7 +19,6 @@ from rich.syntax import PygmentsSyntaxTheme, Syntax
 from rich.table import Table
 from rich.text import Text
 
-from comicbox.box.archive import archive_close
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.print import PrintPhases
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
@@ -149,7 +148,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         """Print archive namelist."""
         if PrintPhases.FILE_NAMES not in self._config.print:
             return
-        namelist = self._get_archive_namelist()
+        namelist = self.namelist()
         pagenames = self.get_page_filenames()
         table = Table(style="cyan")
         table.add_column("Page")
@@ -305,7 +304,6 @@ class ComicboxPrint(ComicboxDumpToFiles):
             syntax = self._syntax(md, "yaml")
             self.print_section("Merged Metadata", syntax)
 
-    @archive_close
     def print_out(self):
         """Print selections from config.print."""
         self._print_version()

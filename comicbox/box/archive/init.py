@@ -1,25 +1,11 @@
 """Comicbox methods on the archive itself."""
 
 import re
-from functools import wraps
 
 from loguru import logger
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType
-
-
-def archive_close(fn):
-    """Auto close the archive."""
-
-    @wraps(fn)
-    def wrapper(self, *args, **kwargs):
-        result = fn(self, *args, **kwargs)
-        if self._close_fd:
-            self.close()
-        return result
-
-    return wrapper
 
 
 class ComicboxArchiveInit(ComicboxInit):
@@ -29,7 +15,6 @@ class ComicboxArchiveInit(ComicboxInit):
 
     def __enter__(self):
         """Context enter."""
-        self._close_fd = False
         return self
 
     def __exit__(self, *_exc):

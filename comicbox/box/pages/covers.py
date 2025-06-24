@@ -5,7 +5,6 @@ from collections.abc import Generator
 from glom import glom
 from loguru import logger
 
-from comicbox.box.archive import archive_close
 from comicbox.box.metadata import ComicboxMetadata
 from comicbox.fields.enum_fields import PageTypeEnum
 from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
@@ -37,7 +36,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
 
     def generate_cover_paths(self) -> Generator[str]:
         """Generate cover paths."""
-        metadata = self._get_metadata()
+        metadata = self.get_metadata()
         metadata = dict(metadata)
         yield from self._generate_cover_paths_from_pages(metadata)
         if cover_image := glom(metadata, _COVER_IMAGE_KEYPATH, default=None):
@@ -77,7 +76,6 @@ class ComicboxPagesCovers(ComicboxMetadata):
                 bad_cover_paths.add(cover_path)
         return data
 
-    @archive_close
     def get_cover_page(self, *, to_pixmap: bool = False):
         """Return cover image data."""
         return self._get_cover_page(to_pixmap=to_pixmap)

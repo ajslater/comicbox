@@ -267,6 +267,20 @@ change logging level:
 LOGLEVEL=ERROR comicbox -p <path>
 ```
 
+## 🛠 <a href="api">API</a>
+
+Comicbox is mostly used by me in [Codex](https://github.com/ajslater/codex/) as
+a metadata extractor. Here's a brief example, but the API remains undocumented.
+
+```python
+with Comicbox(path_to_comic) as cb:
+  metadata = cb.to_dict()
+  page_count = cb.page_count()
+  file_type = cb.get_file_type()
+  mtime = cb.get_metadata_mtime()
+  image_data = car.get_cover_page(to_pixmap=True)
+```
+
 ## 🛠 <a href="development">Development</a>
 
 You may access most development tasks from the makefile. Run make to see

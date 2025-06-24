@@ -5,7 +5,6 @@ from contextlib import suppress
 from datetime import datetime, timezone
 from sys import maxsize
 
-from comicbox.box.archive.init import archive_close
 from comicbox.box.archive.mtime import ComicboxArchiveMtime
 
 # ignore dotfiles but not relative ../ leaders.
@@ -19,7 +18,7 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
 
     def _set_page_filenames(self):
         """Parse the filenames that are comic pages."""
-        archive_filenames = self._get_archive_namelist()
+        archive_filenames = self.namelist()
         if self._archive_is_pdf:
             self._page_filenames = archive_filenames
         else:
@@ -67,7 +66,6 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
         page_filenames = self.get_page_filenames()
         return len(page_filenames)
 
-    @archive_close
     def get_page_count(self):
         """Get the page count."""
         if self._page_count is None:

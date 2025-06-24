@@ -6,7 +6,6 @@ from types import MappingProxyType
 from glom import Assign, Delete, glom
 from loguru import logger
 
-from comicbox.box.archive import archive_close
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -40,16 +39,11 @@ class ComicboxMetadata(ComicboxComputed):
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
 
-    def _get_metadata(self) -> MappingProxyType:
+    def get_metadata(self) -> MappingProxyType:
         """Return the metadata from the archive."""
         if not self._metadata:
             self._set_computed_merged_metadata()
         return self._metadata
-
-    @archive_close
-    def get_metadata(self) -> MappingProxyType:
-        """Return the metadata from the archive."""
-        return self._get_metadata()
 
     def set_metadata(self, metadata: Mapping) -> None:
         """Programmatically set the metadata."""
@@ -64,7 +58,7 @@ class ComicboxMetadata(ComicboxComputed):
 
         embedded_transform = fmt.value.transform_class(self._path)
         embedded_schema = embedded_transform.SCHEMA_CLASS()
-        metadata = self._get_metadata()
+        metadata = self.get_metadata()
         if (md := embedded_transform.from_comicbox(metadata)) and (
             embedded_value := embedded_schema.dumps(md)
         ):
@@ -86,7 +80,7 @@ class ComicboxMetadata(ComicboxComputed):
 
         # Get transformed md
         transform = fmt.value.transform_class(self._path)
-        md = self._get_metadata()
+        md = self.get_metadata()
         md = transform.from_comicbox(md)
 
         if embed_fmt:
@@ -95,7 +89,6 @@ class ComicboxMetadata(ComicboxComputed):
 
         return schema, MappingProxyType(md)
 
-    @archive_close
     def to_dict(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
@@ -107,7 +100,6 @@ class ComicboxMetadata(ComicboxComputed):
         dump = schema.dump(md, **kwargs)
         return dict(dump)  # pyright:ignore[reportArgumentType, reportCallIssue]
 
-    @archive_close
     def to_string(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,

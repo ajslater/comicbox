@@ -3,9 +3,10 @@
 ## v2.0.0
 
 - Features
-
   - BREAKING comicbox.json and comicbox.yaml schema changes. See
     [the 2.0 CHANGES document](CHANGES-2.0.0.md).
+  - BREAKING config api option close_fd removed. Always use with blocks or call
+    close().
   - Support the MetronInfo.xml v1.0 Schema
   - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
   - URNs as serialized identifiers in `notes` tag gain an optional tag type
@@ -211,33 +212,28 @@
 ## v0.6.2
 
 - Fix
-
   - Enable support for Deflate64.
 
 ## v0.6.1
 
 - Fix
-
   - Fix encoding/decoding crash by replacing uncodable utf-8 characters.
 
 ## v0.6.0
 
 - Features
-
   - Add --metadata cli action. Injects metadata from cli.
   - Warn when no actions performed.
   - == operator for metadata is deep and ignores key order.
   - Credits are now sorted.
 
 - Fix
-
   - Log format conversions.
   - Don't add empty credits list metadata.
 
 ## v0.5.5
 
 - Fix
-
   - Fix dest-path cli argument.
   - Use defusedxml for XML parsing.
   - Fix recursion crash.
@@ -246,13 +242,11 @@
 ## v0.5.4
 
 - Fix
-
   - Remove uneccissary dependencies
 
 ## v0.5.3
 
 - Fix
-
   - Fix filename extension parsing
   - Renamed underscore cli options to use dash instead
   - Fixed crash when recompressing directories.
@@ -260,14 +254,12 @@
 ## v0.5.2
 
 - Features
-
   - ComicArchive class now has a context manager
   - Removed as_pil() methods for pages and covers
 
 ## v0.5.1
 
 - Features
-
   - Methods for getting covers and pages as PIL Images.
   - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
   - closefd option leaves archive open after method calls. Close manually with
@@ -277,7 +269,6 @@
 ## v0.5.0
 
 - Features
-
   - Issues numbers are now strings.
   - Separate read metadata option from print metadata action.
   - Added dry_run option.

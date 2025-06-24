@@ -4,7 +4,6 @@ from collections.abc import Mapping
 
 from loguru import logger
 
-from comicbox.box.archive.init import archive_close
 from comicbox.box.pages import ComicboxPages
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
@@ -85,7 +84,6 @@ class ComicboxDump(ComicboxPages):
         # write to the archive.
         return self.write_archive_metadata(files, comment)
 
-    @archive_close
     def dump(self, formats=None):
         """Write metadata according to config.write settings."""
         if self._config.dry_run or not (

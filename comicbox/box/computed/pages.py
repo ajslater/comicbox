@@ -104,7 +104,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         bookmark = sub_md.get(BOOKMARK_KEY)
         try:
             index = 0
-            infolist = self._get_archive_infolist()
+            infolist = self.infolist()
             for info in infolist:
                 filename = self._get_info_fn(info)
                 if self.IMAGE_EXT_RE.search(filename) is None:

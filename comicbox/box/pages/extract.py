@@ -4,7 +4,6 @@ from pathlib import Path
 
 from loguru import logger
 
-from comicbox.box.archive import archive_close
 from comicbox.box.pages.covers import ComicboxPagesCovers
 
 
@@ -64,23 +63,17 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         if path := self._extract_pagenames_get_path(pagenames, path):
             self._extract_all_pagenames(pagenames, path)
 
-    def _extract_pages(self, page_from=None, page_to=None, path=None):
+    def extract_pages(self, page_from=None, page_to=None, path=None):
+        """Extract pages from archive and write to a path."""
         pagenames = self.get_pagenames_from(page_from, page_to)
         self._extract_pagenames_to_dir(pagenames, path=path)
 
-    @archive_close
-    def extract_pages(self, page_from=None, page_to=None, path=None):
-        """Extract pages from archive and write to a path."""
-        return self._extract_pages(page_from, page_to, path)
-
-    @archive_close
     def extract_pages_config(self):
         """Extract pages from archive as configured and write to a path."""
-        return self._extract_pages(
+        return self.extract_pages(
             self._config.index_from, self._config.index_to, self._config.dest_path
         )
 
-    @archive_close
     def extract_covers(self, path=None):
         """Extract the cover image to a destination file."""
         cover_paths_generator = self.generate_cover_paths()

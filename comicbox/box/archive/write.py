@@ -49,7 +49,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
     def _zipfile_remove_metadata_files(self, zf):
         """Remove metadata files from archive."""
-        for path in self._get_archive_namelist():
+        for path in self.namelist():
             fn = Path(path).name.lower()
             if fn in _ALL_ARCHIVE_METADATA_FILENAMES:
                 zf.remove(path)
@@ -89,7 +89,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
             raise ValueError(reason)
-        infolist = self._get_archive_infolist()
+        infolist = self.infolist()
         for info in infolist:
             filename = self._get_filename_from_info(info)
             if not filename:
