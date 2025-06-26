@@ -8,8 +8,8 @@ from comicbox.fields.xml_fields import get_cdata
 from comicbox.identifiers import IdSources
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
-    IdentifierParts,
     create_identifier,
+    get_id_source_from_url,
 )
 from comicbox.identifiers.urns import (
     parse_string_identifier,
@@ -95,15 +95,6 @@ def identifiers_transform_from_cb(identifiers_tag):
     )
 
 
-def _parse_url(id_source: str, id_parts: IdentifierParts, url: str) -> dict | None:
-    """Try to parse a single id_source from a url."""
-    id_type, id_key = id_parts.parse_url(url)
-    if not id_type or not id_key:
-        # iterating over all id_sources so fail if not perfect.
-        return {}
-    return create_identifier(id_source, id_key, url=url, id_type=id_type)
-
-
 def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
     """Parse unknown urls."""
     identifier = {}
@@ -134,10 +125,13 @@ def url_to_cb(
     url_str = get_cdata(native_url)
     if not url_str:
         return "", {}
-    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
-        if identifier := _parse_url(id_source, id_parts, url_str):
-            break
+    id_source = get_id_source_from_url(url_str)
+    if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
+        id_type, id_key = id_parts.parse_url_path(url_str)
+        identifier = create_identifier(id_source, id_key, id_type=id_type)
     else:
+        identifier = None
+    if not identifier:
         id_source, identifier = _parse_unknown_url(url_str)
     return id_source, identifier
 

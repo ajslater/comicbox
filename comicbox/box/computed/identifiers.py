@@ -5,8 +5,7 @@ from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
-    DEFAULT_ID_SOURCE,
+    get_id_source_by_alias,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -67,7 +66,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         if not (id_source and id_key):
             id_source, id_type, id_key = parse_identifier_other_str(tag)
         if id_source:
-            id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
+            id_source = get_id_source_by_alias(id_source)
             if id_key:
                 identifiers[id_source] = create_identifier(
                     id_source, id_key, id_type=id_type

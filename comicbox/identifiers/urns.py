@@ -4,17 +4,16 @@ from loguru import logger
 from urnparse import URN8141, NSIdentifier, NSSString
 
 from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
     DEFAULT_ID_TYPE,
+    ID_SOURCE_ALIAS_TO_SOURCE_MAP,
 )
 from comicbox.identifiers.other import parse_identifier_other_str
 
 
 def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     urn = URN8141.from_string(tag)
-    id_source = str(urn.namespace_id)
-    if id_source:
-        id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), "")
+    if id_source := str(urn.namespace_id):
+        id_source = ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source.lower(), "")
     parts = urn.specific_string.parts
     try:
         id_type = str(parts[-2])

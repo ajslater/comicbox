@@ -4,12 +4,11 @@ import re
 from contextlib import suppress
 
 from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
-    DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     IDENTIFIER_RE_EXP,
     PARSE_COMICVINE_RE,
     IdSources,
+    get_id_source_by_alias,
 )
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
@@ -38,7 +37,7 @@ def _parse_identifier_other_str(full_identifier) -> tuple[str, str, str]:
         return id_source, id_type, id_key
     with suppress(IndexError):
         id_source = match.group("id_source") or ""
-        id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
+        id_source = get_id_source_by_alias(id_source)
         id_type = DEFAULT_ID_TYPE
         id_key = match.group("id_key")
     return id_source, id_type, id_key

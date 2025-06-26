@@ -9,10 +9,9 @@ from loguru import logger
 from comicbox.box.merge import ComicboxMerge
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
-    DEFAULT_ID_SOURCE,
     ID_SOURCE_NAME_MAP,
     IDENTIFIER_RE_EXP,
+    get_id_source_by_alias,
 )
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -86,7 +85,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         if (origin := match.group("origin")) and (
             id_source := ID_SOURCE_NAME_MAP.inverse.get(origin, origin)
         ):
-            id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
+            id_source = get_id_source_by_alias(id_source)
             if (id_key := match.group("id_key")) and (
                 identifier := create_identifier(id_source, id_key)
             ):
@@ -102,9 +101,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         for urn in match.groups():
             id_source, id_type, id_key = parse_urn_identifier_and_warn(urn)
             if id_source:
-                id_source = ALIAS_ID_SOURCE_MAP.get(
-                    id_source.lower(), DEFAULT_ID_SOURCE
-                )
+                id_source = get_id_source_by_alias(id_source)
                 if id_key:
                     identifier = create_identifier(id_source, id_key, id_type=id_type)
                     identifiers[id_source] = identifier
@@ -118,9 +115,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             return identifiers
         for match in matches:
             if id_source := match.group("id_source"):
-                id_source = ALIAS_ID_SOURCE_MAP.get(
-                    id_source.lower(), DEFAULT_ID_SOURCE
-                )
+                id_source = get_id_source_by_alias(id_source)
                 if (id_key := match.group("id_key")) and (
                     identifier := create_identifier(id_source, id_key)
                 ):

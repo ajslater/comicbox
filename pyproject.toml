@@ -1,6 +1,6 @@
 [project]
 name = "comicbox"
-version = "2.0.0a24"
+version = "2.0.0a25"
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
@@ -161,6 +161,7 @@ pythonpath = ["."]
 exclude = "*~,.*,.*/*,__pycache__/*,dist/*,node_modules/*,test-results/*,typings/*,comicbox/zipfile_remove/*"
 
 [tool.ruff]
+builtins = ["ic"]
 extend-exclude = [
   "**/.*",
   "**/__pycache__",

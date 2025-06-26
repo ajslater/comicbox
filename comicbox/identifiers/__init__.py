@@ -78,16 +78,15 @@ ID_SOURCE_NAME_MAP = frozenbidict(
     }
 )
 
-_IDENTIFIER_URN_ID_SOURCE_ALIASES = MappingProxyType(
+ID_SOURCE_ALIASES = MappingProxyType(
     {
         IdSources.ANILIST.value: frozenset({"anilist.co"}),
-        IdSources.ASIN.value: frozenset({"amazon.com", "www.amazon.com"}),
+        IdSources.ASIN.value: frozenset({"amazon.com"}),
         IdSources.COMICVINE.value: frozenset(
             {
                 AlternateIdSources.CVDB_ALTERNATE.value,
                 "comicvine.gamespot.org",
-                "www.comicvine.com",
-                "stage.comicvine.com",
+                "comicvine.com",
             }
         ),
         IdSources.COMIXOLOGY.value: frozenset(
@@ -95,7 +94,7 @@ _IDENTIFIER_URN_ID_SOURCE_ALIASES = MappingProxyType(
         ),
         IdSources.GCD.value: frozenset({"comics.org"}),
         IdSources.GTIN.value: frozenset(
-            {"www.gs1.org", "www.gs1us.org", "gtinlookup.info", "gtinlookup.org"}
+            {"gs1.org", "gs1us.org", "gtinlookup.info", "gtinlookup.org"}
         ),
         IdSources.ISBN.value: frozenset({"isbnsearch.org"}),
         IdSources.KITSU.value: frozenset({"kistu.app"}),
@@ -106,17 +105,48 @@ _IDENTIFIER_URN_ID_SOURCE_ALIASES = MappingProxyType(
         IdSources.METRON.value: frozenset({"metron.cloud"}),
         IdSources.MYANIMELIST.value: frozenset({"myanimelist.net"}),
         IdSources.PANELSYNDICATE.value: frozenset({"panelsyndicate.com"}),
-        IdSources.UPC.value: frozenset({"www.barcodelookup.com", "go-upc.com"}),
+        IdSources.UPC.value: frozenset({"barcodelookup.com", "go-upc.com"}),
     }
 )
 
-ALIAS_ID_SOURCE_MAP = MappingProxyType(
+ID_SOURCE_ALIAS_TO_SOURCE_MAP = MappingProxyType(
     {
         alias.lower(): id_source
-        for id_source, aliases in _IDENTIFIER_URN_ID_SOURCE_ALIASES.items()
+        for id_source, aliases in ID_SOURCE_ALIASES.items()
         for alias in aliases | {id_source, ID_SOURCE_NAME_MAP[id_source]}
     }
 )
+
+
+def get_id_source_by_alias(id_source_alias: str):
+    """Get id source by alias."""
+    return ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source_alias.lower(), DEFAULT_ID_SOURCE)
+
+
+def _build_source_alias_tree(node, source_value, parts):
+    part = parts[0]
+    if len(parts) == 1:
+        node[part] = IdSources(source_value)
+    else:
+        if part not in node:
+            node[part] = {}
+        _build_source_alias_tree(node[part], source_value, parts[1:])
+
+
+def _create_source_alias_tree():
+    tree = {}
+    for source_value, aliases in ID_SOURCE_ALIASES.items():
+        for alias in aliases:
+            parts = alias.split(".")
+            if len(parts) <= 1:
+                continue
+            parts.reverse()
+            _build_source_alias_tree(tree, source_value, parts)
+    return tree
+
+
+SOURCE_ALIAS_TREE = _create_source_alias_tree()
+
 ID_SOURCES_RANK: MappingProxyType[str, int] = MappingProxyType(
     {enum.value: index for index, enum in enumerate(IdSources)}
 )
