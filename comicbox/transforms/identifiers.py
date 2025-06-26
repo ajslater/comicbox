@@ -128,7 +128,7 @@ def url_to_cb(
     id_source = get_id_source_from_url(url_str)
     if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
         id_type, id_key = id_parts.parse_url_path(url_str)
-        identifier = create_identifier(id_source, id_key, id_type=id_type)
+        identifier = create_identifier(id_source, id_key, id_type=id_type, url=url_str)
     else:
         identifier = None
     if not identifier:
