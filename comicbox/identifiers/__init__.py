@@ -85,7 +85,7 @@ ID_SOURCE_ALIASES = MappingProxyType(
         IdSources.COMICVINE.value: frozenset(
             {
                 AlternateIdSources.CVDB_ALTERNATE.value,
-                "comicvine.gamespot.org",
+                "comicvine.gamespot.com",
                 "comicvine.com",
             }
         ),
@@ -96,7 +96,7 @@ ID_SOURCE_ALIASES = MappingProxyType(
         IdSources.GTIN.value: frozenset(
             {"gs1.org", "gs1us.org", "gtinlookup.info", "gtinlookup.org"}
         ),
-        IdSources.ISBN.value: frozenset({"isbnsearch.org"}),
+        IdSources.ISBN.value: frozenset({"isbnsearch.org", "isbndb.com"}),
         IdSources.KITSU.value: frozenset({"kistu.app"}),
         IdSources.LCG.value: frozenset({"leagueofcomicgeeks.com"}),
         IdSources.MANGADEX.value: frozenset({"mangadex.org"}),
