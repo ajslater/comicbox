@@ -72,10 +72,12 @@ class IdentifierParts:
     id_type: IdentifierTypes
     url_path_regex: str
     url_path_template: str
+    https: bool = True
 
     def __post_init__(self):
         """Initialize url_regex & template prefix."""
-        self.url_prefix = f"https://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
+        scheme = "https" if self.https else "http"
+        self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
         self.url_path_regex_compiled = re.compile(self.url_path_regex, re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def get_type_by_code(self, id_type_code: str, default=DEFAULT_ID_TYPE):
@@ -221,6 +223,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             id_type=IdentifierTypes(series="manga"),
             url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.PANELSYNDICATE.value: IdentifierParts(
+            domain="panelsyndicate.com",
+            id_type=IdentifierTypes(series="comics"),
+            url_path_regex=r"(?P<id_type>comics)/(?P<id_key>\w+)",
+            url_path_template="{id_type}/{id_key}",
+            https=False,  # :o
         ),
         IdSources.UPC.value: IdentifierParts(
             domain="barcodelookup.com",
