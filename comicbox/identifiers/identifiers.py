@@ -85,7 +85,7 @@ class IdentifierParts:
     def parse_url_path(self, url) -> tuple[str, str]:
         """Parse URL path with regex."""
         obj = urlparse(url)
-        match = self.url_path_regex_compiled.search(obj.path)
+        match = self.url_path_regex_compiled.search(obj.path[1:])
         if not match:
             return "", obj.path
         try:
