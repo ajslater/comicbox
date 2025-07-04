@@ -54,6 +54,7 @@ _IRREGULAR_SINGULAR_ID_TYPES = MappingProxyType(
         STORIES_KEY: "story",
     }
 )
+_PARSE_AS_IDENTIFIERS = frozenset({TAGS_KEY, GENRES_KEY})
 
 
 class ComicboxComputedIdentifiers(ComicboxComputedIssue):
@@ -73,19 +74,19 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
                 )
 
     def _get_computed_from_tags(self, sub_data):
-        # only look for ids in tags if the format has tags but no designated id field.
+        # only look for ids in tags and genres if the format has tags but no designated id field.
         if (
             not sub_data
             or self._config.computed.is_skip_computed_from_tags
-            or TAGS_KEY in self._config.delete_keys
+            or _PARSE_AS_IDENTIFIERS.issubset(self._config.delete_keys)
         ):
             return None
-        tags = sub_data.get(TAGS_KEY)
-        if not tags:
-            return None
         identifiers = {}
-        for tag in tags:
-            self._add_identifier_from_tag(tag, identifiers)
+        for key in _PARSE_AS_IDENTIFIERS:
+            if tags := sub_data.get(key):
+                for tag in tags:
+                    self._add_identifier_from_tag(tag, identifiers)
+
         if not identifiers:
             return None
         return {IDENTIFIERS_KEY: identifiers}
