@@ -59,10 +59,10 @@ class ComicboxInit:
             return path
         if not path.exists():
             reason = f"{path} does not exist."
-            raise ValueError(reason)
+            raise FileNotFoundError(reason)
         if path.is_dir():
             reason = f"{path} is a directory."
-            raise ValueError(reason)
+            raise IsADirectoryError(reason)
         return path
 
     def __init__(
