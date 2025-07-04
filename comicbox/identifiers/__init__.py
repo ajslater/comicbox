@@ -45,12 +45,12 @@ class AlternateIdSources(Enum):
     CMXDB_ALTERNATE = "cmxdb"
 
 
-_ALL_IdSources = (
+_ALL_ID_SOURCES = (
     *ID_SOURCE_VALUES,
     *(id_source.value for id_source in AlternateIdSources),
 )
 IDENTIFIER_RE_EXP = (
-    r"(?P<id_source>" + r"|".join(_ALL_IdSources) + r"):?(?P<id_key>[\w-]+)"
+    r"(?P<id_source>" + r"|".join(_ALL_ID_SOURCES) + r"):?(?P<id_key>[\w-]+)"
 )
 COMICVINE_LONG_ID_KEY_EXP = r"(?P<id_type>\d{4})-(?P<id_key>\d+)"
 PARSE_COMICVINE_RE = re.compile(COMICVINE_LONG_ID_KEY_EXP)

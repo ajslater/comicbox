@@ -44,7 +44,11 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
 
     def _get_computed_from_reprints(self, sub_data):
         """Consolidate reprints."""
-        if REPRINTS_KEY in self._config.delete_keys or not sub_data:
+        if (
+            self._config.ignore_reprints
+            or REPRINTS_KEY in self._config.delete_keys
+            or not sub_data
+        ):
             return None
         old_reprints = sub_data.get(REPRINTS_KEY)
         if not old_reprints:

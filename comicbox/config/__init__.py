@@ -32,6 +32,7 @@ _TEMPLATE = MappingTemplate(
                 "delete_orig": bool,
                 "dest_path": OneOf((str, Path)),
                 "dry_run": bool,
+                "ignore_reprints": bool,  # Codex doesn't handle reprints yet. Save time.
                 "loglevel": OneOf((String(), Integer())),
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
