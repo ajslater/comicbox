@@ -7,7 +7,6 @@ comicbox:
   delete_orig: False
   dest_path: .
   dry_run: False
-  ignore_reprints: False
   loglevel: INFO
   metadata: {}
   metadata_format: null

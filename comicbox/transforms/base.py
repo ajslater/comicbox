@@ -8,7 +8,6 @@ from typing import Any
 from glom import glom
 
 from comicbox.schemas.base import BaseSchema
-from comicbox.schemas.comicbox import REPRINTS_KEY
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
@@ -24,11 +23,10 @@ class BaseTransform:
     SPECS_TO: MappingProxyType[str, Any] = MappingProxyType({})
     SPECS_FROM: MappingProxyType[str, Any] = MappingProxyType({})
 
-    def __init__(self, path: Path | None = None, *, ignore_reprints: bool = False):
+    def __init__(self, path: Path | None = None):
         """Initialize instances."""
         self._path: Path | None = path
         self._schema: BaseSchema = self.SCHEMA_CLASS(path=path)
-        self._ignore_reprints = ignore_reprints
 
     @staticmethod
     def _swap_data_key(schema: BaseSchema, transformed_data: dict):
@@ -41,10 +39,7 @@ class BaseTransform:
     def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
         schema = ComicboxYamlSchema(path=self._path)
-        specs_to = dict(self.SPECS_TO)
-        if self._ignore_reprints:
-            specs_to[ComicboxYamlSchema.ROOT_TAG].pop(REPRINTS_KEY, None)
-        transformed_data = glom(dict(data), specs_to, glom_debug=True)
+        transformed_data = glom(dict(data), dict(self.SPECS_TO), glom_debug=True)
         loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
         return MappingProxyType(loaded_data)
 

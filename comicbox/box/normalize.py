@@ -15,9 +15,7 @@ class ComicboxNormalize(ComicboxLoad):
             return None
         transform_class = loaded_data.fmt.value.transform_class
         try:
-            transform = transform_class(
-                self._path, ignore_reprints=self._config.ignore_reprints
-            )
+            transform = transform_class(self._path)
             return transform.to_comicbox(loaded_data.metadata)
         except Exception:
             reason = (
