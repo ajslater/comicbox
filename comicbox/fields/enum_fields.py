@@ -264,3 +264,13 @@ class AgeRatingField(PrettifiedStringField):
     """Prettified Age Rating."""
 
     ENUM_ALIAS_MAP = AGE_RATING_ENUM_MAP
+
+
+class FileTypeEnum(Enum):
+    """File types."""
+
+    CBZ = "CBZ"
+    CBR = "CBR"
+    CB7 = "CB7"
+    CBT = "CBT"
+    PDF = "PDF"
