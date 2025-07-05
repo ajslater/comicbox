@@ -27,7 +27,13 @@ class ClearingErrorStore(ErrorStore):
         self.clear_errors = merge_errors(self.clear_errors, cleaned_errors)
         self.errors = {}
 
-    def __init__(self, error_store: ErrorStore, data, path=None, ignore_errors=None):
+    def __init__(
+        self,
+        error_store: ErrorStore,
+        data,
+        path: str | None = None,
+        ignore_errors: frozenset | None = None,
+    ):
         """Take over error processing."""
         super().__init__()
         self._path = path
@@ -52,11 +58,14 @@ class ClearingErrorStoreSchema(Schema):
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
     def __init__(
-        self, ignore_errors: list | tuple | frozenset | set | None = None, **kwargs
+        self,
+        path: str | None = None,
+        ignore_errors: list | tuple | frozenset | set | None = None,
+        **kwargs,
     ):
         """Initialize path and always use partial."""
+        self._path = path
         kwargs["partial"] = True
-        self._path = kwargs.pop("path", None)
         ignore_errors = (
             frozenset() if ignore_errors is None else frozenset(ignore_errors)
         )
