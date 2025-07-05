@@ -6,7 +6,7 @@ from decimal import Decimal
 from types import MappingProxyType
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import (
@@ -45,7 +45,7 @@ METADATA = MappingProxyType(
             "notes": f"Tagged with comicbox dev on {TEST_DTTM_STR}",
             "page_count": 36,
             "pages": {
-                0: {"size": 429985, "page_type": PageTypeEnum.FRONT_COVER},
+                0: {"size": 429985, "page_type": ComicInfoPageTypeEnum.FRONT_COVER},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},

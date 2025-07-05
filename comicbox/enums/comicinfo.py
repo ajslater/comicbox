@@ -34,3 +34,19 @@ class ComicInfoAgeRatingEnum(Enum):
     PENDING = "Rating Pending"
     TEEN = "Teen"
     X_18_PLUS = "X18+"
+
+
+class ComicInfoPageTypeEnum(Enum):
+    """ComicPageInfo Page Types."""
+
+    FRONT_COVER = "FrontCover"
+    INNER_COVER = "InnerCover"
+    ROUNDUP = "Roundup"
+    STORY = "Story"
+    ADVERTISEMENT = "Advertisement"
+    EDITORIAL = "Editorial"
+    LETTERS = "Letters"
+    PREVIEW = "Preview"
+    BACK_COVER = "BackCover"
+    OTHER = "Other"
+    DELETED = "Deleted"

@@ -4,8 +4,8 @@ from urllib.parse import urlparse
 
 from loguru import logger
 
+from comicbox.enums.comicbox import IdSources
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import IdSources
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,

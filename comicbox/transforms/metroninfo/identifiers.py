@@ -6,11 +6,9 @@ from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse
 
+from comicbox.enums.comicbox import IdSources
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import (
-    ID_SOURCE_NAME_MAP,
-    IdSources,
-)
+from comicbox.identifiers import ID_SOURCE_NAME_MAP
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,

@@ -8,18 +8,14 @@ from loguru import logger
 from marshmallow import fields
 from typing_extensions import override
 
+from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
+from comicbox.enums.maps import (
+    AGE_RATING_ENUM_MAP,
+    GENERIC_FORMAT_MAP,
+    READING_DIRECTION_ENUM_MAP,
+)
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.schemas.enums.age_rating import (
-    DCAgeRatingEnum,
-    GenericAgeRatingEnum,
-    MarvelAgeRatingEnum,
-)
-from comicbox.schemas.enums.comicinfo import ComicInfoAgeRatingEnum
-from comicbox.schemas.enums.metroninfo import (
-    GenericFormatEnum,
-    MetronAgeRatingEnum,
-    MetronFormatEnum,
-)
 
 
 class FuzzyEnumMixin:
@@ -90,58 +86,17 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
         return super()._serialize(enum, *args, **kwargs)
 
 
-class PageTypeEnum(Enum):
-    """ComicPageInfo Page Types."""
-
-    FRONT_COVER = "FrontCover"
-    INNER_COVER = "InnerCover"
-    ROUNDUP = "Roundup"
-    STORY = "Story"
-    ADVERTISEMENT = "Advertisement"
-    EDITORIAL = "Editorial"
-    LETTERS = "Letters"
-    PREVIEW = "Preview"
-    BACK_COVER = "BackCover"
-    OTHER = "Other"
-    DELETED = "Deleted"
-
-
 class PageTypeField(EnumField):
     """ComicPageInfo Page Type Field."""
 
-    ENUM = PageTypeEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
-
-
-class GenericReadingDirectionEnum(Enum):
-    """Long generic reading directions."""
-
-    LTR = "LeftToRight"
-    RTL = "RightToLeft"
-    TTB = "TopToBottom"
-    BTT = "BottomToTop"
-
-
-class ReadingDirectionEnum(Enum):
-    """Four reading directions."""
-
-    LTR = "ltr"
-    RTL = "rtl"
-    TTB = "ttb"
-    BTT = "btt"
+    ENUM = ComicInfoPageTypeEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class ReadingDirectionField(EnumField):
     """Reading direction enum."""
 
     ENUM = ReadingDirectionEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
-    ENUM_ALIAS_MAP = MappingProxyType(
-        {
-            GenericReadingDirectionEnum.LTR: ReadingDirectionEnum.LTR,
-            GenericReadingDirectionEnum.RTL: ReadingDirectionEnum.RTL,
-            GenericReadingDirectionEnum.TTB: ReadingDirectionEnum.TTB,
-            GenericReadingDirectionEnum.BTT: ReadingDirectionEnum.BTT,
-        }
-    )
+    ENUM_ALIAS_MAP = READING_DIRECTION_ENUM_MAP
 
 
 class EnumBooleanField(EnumField):
@@ -235,42 +190,13 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         return self._prettify(value)
 
 
-ORIGINAL_FORMAT_ENUM_MAP = MappingProxyType(
-    {
-        **{enum: enum for enum in GenericFormatEnum},
-        **{enum: enum for enum in MetronFormatEnum},
-    }
-)
-
-
 class OriginalFormatField(PrettifiedStringField):
     """Prettify Original Format."""
 
-    ENUM_ALIAS_MAP = ORIGINAL_FORMAT_ENUM_MAP
-
-
-AGE_RATING_ENUM_MAP = MappingProxyType(
-    {
-        **{enum: enum for enum in GenericAgeRatingEnum},
-        **{enum: enum for enum in DCAgeRatingEnum},
-        **{enum: enum for enum in MarvelAgeRatingEnum},
-        **{enum: enum for enum in ComicInfoAgeRatingEnum},
-        **{enum: enum for enum in MetronAgeRatingEnum},
-    }
-)
+    ENUM_ALIAS_MAP = GENERIC_FORMAT_MAP
 
 
 class AgeRatingField(PrettifiedStringField):
     """Prettified Age Rating."""
 
     ENUM_ALIAS_MAP = AGE_RATING_ENUM_MAP
-
-
-class FileTypeEnum(Enum):
-    """File types."""
-
-    CBZ = "CBZ"
-    CBR = "CBR"
-    CB7 = "CB7"
-    CBT = "CBT"
-    PDF = "PDF"

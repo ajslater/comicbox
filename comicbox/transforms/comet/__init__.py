@@ -5,6 +5,11 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
+from comicbox.enums.comet import CoMetRoleTagEnum
+from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
+from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import (
@@ -21,11 +26,6 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TITLE_KEY,
 )
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
-from comicbox.schemas.enums.metroninfo import MetronRoleEnum
-from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet.reprints import (
     comet_reprints_transform_from_cb,

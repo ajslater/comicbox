@@ -1,48 +1,16 @@
 """Identifier consts."""
 
 import re
-from enum import Enum
 from sys import maxsize
 from types import MappingProxyType
 
 from bidict import frozenbidict
 
-
-class IdSources(Enum):
-    """Comic Database Namespace Identifiers."""
-
-    # Comic DBs
-    METRON = "metron"
-    COMICVINE = "comicvine"
-    GCD = "grandcomicsdatabase"
-    LCG = "leagueofcomicgeeks"
-    MARVEL = "marvel"
-    PANELSYNDICATE = "panelsyndicate"
-    # Manga DBs
-    ANILIST = "anilist"
-    KITSU = "kitsu"
-    MANGADEX = "mangadex"
-    MANGAUPDATES = "mangaupdates"
-    MYANIMELIST = "myanimelist"
-    # GTINs
-    GTIN = "gtin"
-    ISBN = "isbn"
-    UPC = "upc"
-    ASIN = "asin"
-    COMIXOLOGY = "comixology"
-
+from comicbox.enums.comicbox import AlternateIdSources, IdSources
 
 ID_SOURCE_VALUES = (id_source.value for id_source in IdSources)
 DEFAULT_ID_SOURCE = IdSources.COMICVINE.value
 DEFAULT_ID_TYPE = "issue"
-
-
-# Non standard
-class AlternateIdSources(Enum):
-    """Alternate ID_SOURCE Names."""
-
-    CVDB_ALTERNATE = "cvdb"
-    CMXDB_ALTERNATE = "cmxdb"
 
 
 _ALL_ID_SOURCES = (

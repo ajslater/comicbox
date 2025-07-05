@@ -8,13 +8,13 @@ from urllib.parse import urlparse
 
 from bidict import frozenbidict
 
+from comicbox.enums.comicbox import IdSources
 from comicbox.identifiers import (
     COMICVINE_LONG_ID_KEY_EXP,
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     PARSE_COMICVINE_RE,
     SOURCE_ALIAS_TREE,
-    IdSources,
 )
 from comicbox.schemas.comicbox import ID_KEY_KEY, ID_URL_KEY
 

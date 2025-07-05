@@ -5,6 +5,11 @@ from types import MappingProxyType
 
 from bidict import frozenbidict
 
+from comicbox.enums.comet import CoMetRoleTagEnum
+from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
+from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
@@ -35,11 +40,6 @@ from comicbox.schemas.comicinfo import (
     IMAGE_ATTRIBUTE,
     ComicInfoSchema,
 )
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
-from comicbox.schemas.enums.metroninfo import MetronRoleEnum
-from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox import (
     DAY_KEYPATH,

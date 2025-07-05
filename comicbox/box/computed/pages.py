@@ -7,7 +7,7 @@ from types import MappingProxyType
 from loguru import logger
 
 from comicbox.box.computed.notes import ComicboxComputedNotes
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
@@ -74,10 +74,10 @@ class ComicboxComputedPages(ComicboxComputedNotes):
     def _ensure_pages_front_cover_metadata(self, pages):
         """Ensure there is a FrontCover page type in pages."""
         for page in pages.values():
-            if page.get(PAGE_TYPE_KEY) == PageTypeEnum.FRONT_COVER:
+            if page.get(PAGE_TYPE_KEY) == ComicInfoPageTypeEnum.FRONT_COVER:
                 return
 
-        pages[0][PAGE_TYPE_KEY] = PageTypeEnum.FRONT_COVER
+        pages[0][PAGE_TYPE_KEY] = ComicInfoPageTypeEnum.FRONT_COVER
 
     def _get_max_page_index(self):
         if self._path:

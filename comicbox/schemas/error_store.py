@@ -1,6 +1,7 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
 from collections.abc import Mapping
+from pathlib import Path
 
 from loguru import logger
 from marshmallow import Schema
@@ -59,12 +60,12 @@ class ClearingErrorStoreSchema(Schema):
 
     def __init__(
         self,
-        path: str | None = None,
+        path: Path | str | None = None,
         ignore_errors: list | tuple | frozenset | set | None = None,
         **kwargs,
     ):
         """Initialize path and always use partial."""
-        self._path = path
+        self._path = path = str(path) if path else path
         kwargs["partial"] = True
         ignore_errors = (
             frozenset() if ignore_errors is None else frozenset(ignore_errors)

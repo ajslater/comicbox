@@ -9,7 +9,8 @@ import pytest
 from dateutil.tz.tz import tzoffset
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
+from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff, compare_export, get_tmp_dir
@@ -162,7 +163,7 @@ FNS = MappingProxyType(
                 "[CVDB145269]"
             ),
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -224,7 +225,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -300,7 +301,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -384,7 +385,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},

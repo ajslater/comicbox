@@ -4,7 +4,7 @@ from argparse import Namespace
 from io import StringIO
 from types import MappingProxyType
 
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
@@ -42,7 +42,7 @@ READ_METADATA = MappingProxyType(
             "tags": {"a": {}, "b": {}, "c": {}},
             "page_count": 36,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -100,7 +100,7 @@ READ_YAML_DICT = MappingProxyType(
             "page_count": 36,
             "pages": {
                 0: {
-                    "page_type": PageTypeEnum.FRONT_COVER.value,
+                    "page_type": ComicInfoPageTypeEnum.FRONT_COVER.value,
                     "size": 429985,
                 },
                 1: {"size": 332936},

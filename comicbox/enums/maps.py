@@ -3,24 +3,28 @@
 from enum import Enum
 from types import MappingProxyType
 
-from comicbox.schemas.enums.age_rating import (
+from comicbox.enums.comet import CoMetRoleTagEnum
+from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
+from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicinfo import (
+    ComicInfoAgeRatingEnum,
+    ComicInfoRoleTagEnum,
+)
+from comicbox.enums.generic import (
+    GenericFormatEnum,
+    GenericReadingDirectionEnum,
+)
+from comicbox.enums.generic.age_rating import (
     DCAgeRatingEnum,
     GenericAgeRatingEnum,
     MarvelAgeRatingEnum,
 )
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.enums.comicinfo import (
-    ComicInfoAgeRatingEnum,
-    ComicInfoRoleTagEnum,
-)
-from comicbox.schemas.enums.metroninfo import (
-    GenericFormatEnum,
+from comicbox.enums.generic.role import GenericRoleEnum
+from comicbox.enums.metroninfo import (
     MetronAgeRatingEnum,
     MetronFormatEnum,
     MetronRoleEnum,
 )
-from comicbox.schemas.enums.role import GenericRoleEnum
 
 COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
     {
@@ -125,6 +129,16 @@ METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     }
 )
 
+AGE_RATING_ENUM_MAP = MappingProxyType(
+    {
+        **{enum: enum for enum in GenericAgeRatingEnum},
+        **{enum: enum for enum in DCAgeRatingEnum},
+        **{enum: enum for enum in MarvelAgeRatingEnum},
+        **{enum: enum for enum in ComicInfoAgeRatingEnum},
+        **{enum: enum for enum in MetronAgeRatingEnum},
+    }
+)
+
 
 def _variants(enum, *, dashed_canon=False):
     space = " " if not dashed_canon else "-"
@@ -197,5 +211,15 @@ METRON_FORMAT_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
         ),
         # GenericFormatsEnum.WEB_COMIC: MetronFormatEnum.,
         # GenericFormatsEnum.WEB_RIP: MetronFormatEnum.,
+    }
+)
+
+
+READING_DIRECTION_ENUM_MAP = MappingProxyType(
+    {
+        GenericReadingDirectionEnum.LTR: ReadingDirectionEnum.LTR,
+        GenericReadingDirectionEnum.RTL: ReadingDirectionEnum.RTL,
+        GenericReadingDirectionEnum.TTB: ReadingDirectionEnum.TTB,
+        GenericReadingDirectionEnum.BTT: ReadingDirectionEnum.BTT,
     }
 )

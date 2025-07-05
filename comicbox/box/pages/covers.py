@@ -6,7 +6,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.metadata import ComicboxMetadata
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
 
 PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGES_KEY}"
@@ -28,7 +28,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
         # Support zero and one index pages.
         has_zero_index = 0 in pages
         for index, page in pages.items():
-            if page.get("page_type") != PageTypeEnum.FRONT_COVER:
+            if page.get("page_type") != ComicInfoPageTypeEnum.FRONT_COVER:
                 continue
             pagename_index = index if has_zero_index else max(index - 1, 0)
             if pagename := self.get_pagename(pagename_index):

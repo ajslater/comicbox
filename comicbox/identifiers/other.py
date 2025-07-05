@@ -3,11 +3,11 @@
 import re
 from contextlib import suppress
 
+from comicbox.enums.comicbox import IdSources
 from comicbox.identifiers import (
     DEFAULT_ID_TYPE,
     IDENTIFIER_RE_EXP,
     PARSE_COMICVINE_RE,
-    IdSources,
     get_id_source_by_alias,
 )
 from comicbox.identifiers.identifiers import (

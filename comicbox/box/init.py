@@ -19,8 +19,8 @@ from zipremove import ZipFile, is_zipfile
 
 from comicbox.config import get_config
 from comicbox.config.frozenattrdict import FrozenAttrDict
+from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.fields.enum_fields import FileTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
 from comicbox.sources import MetadataSources

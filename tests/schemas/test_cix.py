@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicinfo import ComicInfoSchema
@@ -60,7 +60,7 @@ READ_METADATA = MappingProxyType(
                 }
             },
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},

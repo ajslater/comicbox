@@ -1,14 +1,14 @@
 """MetronInfo Fields."""
 
-from comicbox.fields.fields import StringField
-from comicbox.fields.xml_fields import XmlEnumField
-from comicbox.schemas.enums.maps import METRON_AGE_RATING_MAP, METRON_FORMAT_MAP
-from comicbox.schemas.enums.metroninfo import (
+from comicbox.enums.maps import METRON_AGE_RATING_MAP, METRON_FORMAT_MAP
+from comicbox.enums.metroninfo import (
     MetronAgeRatingEnum,
     MetronFormatEnum,
     MetronRoleEnum,
     MetronSourceEnum,
 )
+from comicbox.fields.fields import StringField
+from comicbox.fields.xml_fields import XmlEnumField
 
 
 class MetronAgeRatingField(XmlEnumField):

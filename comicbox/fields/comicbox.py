@@ -6,6 +6,7 @@ from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 from typing_extensions import override
 
+from comicbox.enums.maps import COMICBOX_ROLE_ALIAS_MAP
 from comicbox.fields.collection_fields import (
     DictField,
     StringSetField,
@@ -22,7 +23,6 @@ from comicbox.schemas.comicbox.identifiers import (
     IdentifiedSchema,
 )
 from comicbox.schemas.comicbox.pages import PageInfoSchema
-from comicbox.schemas.enums.maps import COMICBOX_ROLE_ALIAS_MAP
 
 NAME_KEY = "name"
 
