@@ -166,6 +166,7 @@ GENERIC_FORMAT_MAP: MappingProxyType[Enum | str, Enum] = MappingProxyType(
         "GN": GenericFormatEnum.GRAPHIC_NOVEL,
         "HC": GenericFormatEnum.HARD_COVER,
         **_variants(GenericFormatEnum.ONE_SHOT, dashed_canon=True),
+        "TPB": GenericFormatEnum.TRADE_PAPERBACK,
         "TBP": GenericFormatEnum.TRADE_PAPERBACK,
         "TP": GenericFormatEnum.TRADE_PAPERBACK,
     }
