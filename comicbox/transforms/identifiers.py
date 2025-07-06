@@ -41,10 +41,11 @@ def _identifier_to_cb(native_identifier, naked_id_source) -> tuple[str, dict]:
     id_source, id_type, id_key = parse_string_identifier(
         native_identifier, naked_id_source
     )
+    id_source_str = id_source.value if id_source else ""
     comicbox_identifier = create_identifier(
-        id_source, id_key, id_type=id_type, default_id_source=naked_id_source
+        id_source_str, id_key, id_type=id_type, default_id_source_str=naked_id_source
     )
-    return id_source, comicbox_identifier
+    return id_source_str, comicbox_identifier
 
 
 def identifiers_to_cb(native_identifiers, naked_id_source: str) -> dict:
@@ -53,10 +54,10 @@ def identifiers_to_cb(native_identifiers, naked_id_source: str) -> dict:
     if native_identifiers:
         for native_identifier in native_identifiers:
             try:
-                id_source, identifier = _identifier_to_cb(
+                id_source_str, identifier = _identifier_to_cb(
                     native_identifier, naked_id_source
                 )
-                comicbox_identifiers[id_source] = identifier
+                comicbox_identifiers[id_source_str] = identifier
             except Exception as exc:
                 logger.warning(f"Parsing identifier {native_identifier}: {exc}")
     return comicbox_identifiers
@@ -100,7 +101,7 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
     identifier = {}
     try:
         url = urlparse(url_str)
-        id_source = url.netloc
+        id_source_str = url.netloc
         id_key = ""
         if url.path and url.path != "/":
             id_key += url.path
@@ -114,8 +115,8 @@ def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
             identifier[ID_URL_KEY] = url_str
     except Exception:
         logger.debug(f"Unparsable url: {url_str}")
-        id_source = ""
-    return id_source, identifier
+        id_source_str = ""
+    return id_source_str, identifier
 
 
 def url_to_cb(
@@ -125,15 +126,21 @@ def url_to_cb(
     url_str = get_cdata(native_url)
     if not url_str:
         return "", {}
-    id_source = get_id_source_from_url(url_str)
-    if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
+    id_source_str = get_id_source_from_url(url_str)
+    try:
+        id_source = IdSources(id_source_str)
+    except ValueError:
+        id_source = None
+    if id_source and (id_parts := IDENTIFIER_PARTS_MAP.get(id_source)):
         id_type, id_key = id_parts.parse_url_path(url_str)
-        identifier = create_identifier(id_source, id_key, id_type=id_type, url=url_str)
+        identifier = create_identifier(
+            id_source_str, id_key, id_type=id_type, url=url_str
+        )
     else:
         identifier = None
     if not identifier:
-        id_source, identifier = _parse_unknown_url(url_str)
-    return id_source, identifier
+        id_source_str, identifier = _parse_unknown_url(url_str)
+    return id_source_str, identifier
 
 
 def urls_to_cb(urls):
@@ -141,9 +148,9 @@ def urls_to_cb(urls):
     comicbox_identifiers = {}
     if urls:
         for url in urls:
-            id_source, identifier = url_to_cb(url)
-            if id_source or identifier:
-                comicbox_identifiers[id_source] = identifier
+            id_source_str, identifier = url_to_cb(url)
+            if id_source_str and identifier:
+                comicbox_identifiers[id_source_str] = identifier
     return comicbox_identifiers
 
 
@@ -156,13 +163,13 @@ def urls_transform_to_cb(urls_tag):
 
 
 def url_from_cb(
-    id_source: str,
+    id_source_str: str,
     comicbox_identifier: dict,
 ) -> str:
     """Unparse one identifier into one url tag."""
     url = comicbox_identifier.get(ID_URL_KEY, "")
     if not url and (id_key := comicbox_identifier.get(ID_KEY_KEY)):
-        new_identifier = create_identifier(id_source, id_key)
+        new_identifier = create_identifier(id_source_str, id_key)
         url = new_identifier.get(ID_URL_KEY, "")
     return url
 

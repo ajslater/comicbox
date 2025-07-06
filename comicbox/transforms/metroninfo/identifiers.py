@@ -1,14 +1,15 @@
 """MetronInfo.xml Identifiers & URLs Transform."""
 
 from collections.abc import Mapping
-from enum import Enum
+from contextlib import suppress
 from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlparse
 
 from comicbox.enums.comicbox import IdSources
+from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
+from comicbox.enums.metroninfo import MetronSourceEnum
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.identifiers import ID_SOURCE_NAME_MAP
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -54,11 +55,11 @@ def _identifier_primary_source_to_cb_ids(metron_ids):
     for metron_id in metron_ids:
         if (
             is_item_primary(metron_id)
-            and (source_enum := metron_id.get(SOURCE_ATTRIBUTE))
-            and (id_source := ID_SOURCE_NAME_MAP.inverse.get(source_enum.value))
+            and (metron_id_source := metron_id.get(SOURCE_ATTRIBUTE))
+            and (id_source := getattr(IdSources, metron_id_source.name, None))
+            and (id_parts := IDENTIFIER_PARTS_MAP[id_source])
         ):
-            id_parts = IDENTIFIER_PARTS_MAP[id_source]
-            return {ID_SOURCE_KEY: id_source, ID_URL_KEY: id_parts.url_prefix}
+            return {ID_SOURCE_KEY: id_source.value, ID_URL_KEY: id_parts.url_prefix}
     return None
 
 
@@ -106,18 +107,21 @@ METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB = MetaSpec(
 
 def _identifier_to_cb(native_identifier):
     """Parse metron identifier type into components."""
-    source = native_identifier.get(SOURCE_ATTRIBUTE, "")
-    if isinstance(source, Enum):
-        source = source.value
-    id_source = ID_SOURCE_NAME_MAP.inverse.get(source, "")
+    source_str = native_identifier.get(SOURCE_ATTRIBUTE)
+    id_source = getattr(IdSources, source_str.name, None)
+    # id_source = ID_SOURCE_NAME_MAP.inverse.get(source_str, None)
+    id_source_str = id_source.value if id_source else ""
     id_type = "issue"
     id_key = get_cdata(native_identifier)
     if not isinstance(id_key, str):
         id_key = ""
     identifier = create_identifier(
-        id_source, id_key, id_type=id_type, default_id_source=DEFAULT_ID_SOURCE
+        id_source_str,
+        id_key,
+        id_type=id_type,
+        default_id_source_str=DEFAULT_ID_SOURCE.value,
     )
-    return id_source, identifier
+    return id_source_str, identifier
 
 
 def _identifiers_to_cb_identifiers(values):
@@ -132,12 +136,12 @@ def _identifiers_to_cb_identifiers(values):
 def _identifers_to_cb_gtin(values):
     gtin_identifiers = {}
     if metron_gtin := values.get(GTIN_TAG, {}):
-        for tag, id_source in GTIN_SUBTAG_ID_SOURCE_MAP.items():
+        for tag, id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.items():
             if id_key := metron_gtin.get(tag):
                 identifier = create_identifier(
-                    id_source, id_key, default_id_source=DEFAULT_ID_SOURCE
+                    id_source_str, id_key, default_id_source_str=DEFAULT_ID_SOURCE.value
                 )
-                gtin_identifiers[id_source] = identifier
+                gtin_identifiers[id_source_str] = identifier
     return gtin_identifiers
 
 
@@ -167,20 +171,34 @@ METRON_IDENTIFIERS_TRANSFORM_TO_CB = MetaSpec(
 def identifiers_from_cb(values) -> list:
     """Unparse one identifier to an xml metron GTIN or ID tag."""
     comicbox_identifiers = values.get(IDENTIFIERS_KEY)
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source_str = values.get(
+        PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE.value
+    )
+    try:
+        primary_id_source = IdSources(primary_id_source_str)
+        primary_metron_id_source = getattr(
+            MetronSourceEnum, primary_id_source.name, None
+        )
+    except ValueError:
+        primary_metron_id_source = None
     metron_identifiers = []
     primary_set = False
-    for id_source, comicbox_identifier in comicbox_identifiers.items():
-        if (
-            (id_source not in GTIN_SUBTAG_ID_SOURCE_MAP.values())
-            and (id_source_value := ID_SOURCE_NAME_MAP.get(id_source))
-            and (id_key := comicbox_identifier.get(ID_KEY_KEY))
-        ):
-            metron_identifier = {SOURCE_ATTRIBUTE: id_source_value, "#text": id_key}
-            if id_source == primary_id_source:
-                metron_identifier[PRIMARY_ATTRIBUTE] = True
-                primary_set = True
-            metron_identifiers.append(metron_identifier)
+    for id_source_str, comicbox_identifier in comicbox_identifiers.items():
+        if id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.values():
+            continue
+        with suppress(ValueError):
+            id_source = IdSources(id_source_str)
+            id_source_name = ID_SOURCE_NAME_MAP.get(id_source, "")
+            metron_id_source = MetronSourceEnum(id_source_name)
+            if id_key := comicbox_identifier.get(ID_KEY_KEY):
+                metron_identifier = {
+                    SOURCE_ATTRIBUTE: metron_id_source,
+                    "#text": id_key,
+                }
+                if metron_id_source == primary_metron_id_source:
+                    metron_identifier[PRIMARY_ATTRIBUTE] = True
+                    primary_set = True
+                metron_identifiers.append(metron_identifier)
     if metron_identifiers and not primary_set:
         # This can ignore identifiers aggregated from series alternative names.
         # But I think that's usually fine.

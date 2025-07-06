@@ -10,11 +10,9 @@ from typing_extensions import override
 
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
-from comicbox.enums.maps import (
-    AGE_RATING_ENUM_MAP,
-    GENERIC_FORMAT_MAP,
-    READING_DIRECTION_ENUM_MAP,
-)
+from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
+from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
+from comicbox.enums.maps.reading_direction import READING_DIRECTION_ENUM_MAP
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
 
 

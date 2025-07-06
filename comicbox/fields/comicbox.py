@@ -6,7 +6,7 @@ from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 from typing_extensions import override
 
-from comicbox.enums.maps import COMICBOX_ROLE_ALIAS_MAP
+from comicbox.enums.maps.roles import COMICBOX_ROLE_ALIAS_MAP
 from comicbox.fields.collection_fields import (
     DictField,
     StringSetField,

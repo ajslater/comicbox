@@ -9,12 +9,12 @@ from urllib.parse import urlparse
 from bidict import frozenbidict
 
 from comicbox.enums.comicbox import IdSources
+from comicbox.enums.maps.identifiers import SOURCE_ALIAS_TREE
 from comicbox.identifiers import (
     COMICVINE_LONG_ID_KEY_EXP,
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     PARSE_COMICVINE_RE,
-    SOURCE_ALIAS_TREE,
 )
 from comicbox.schemas.comicbox import ID_KEY_KEY, ID_URL_KEY
 
@@ -107,21 +107,21 @@ class IdentifierParts:
         return url
 
 
-IDENTIFIER_PARTS_MAP = MappingProxyType(
+IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProxyType(
     {
-        IdSources.ANILIST.value: IdentifierParts(
+        IdSources.ANILIST: IdentifierParts(
             domain="anilist.co",
             id_type=IdentifierTypes(series="manga"),
             url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
-        IdSources.ASIN.value: IdentifierParts(
+        IdSources.ASIN: IdentifierParts(
             domain="www.amazon.com",
             id_type=IdentifierTypes(issue="issue"),
             url_path_regex=r"dp/(?P<id_key>\S+)",
             url_path_template="dp/{id_key}",
         ),
-        IdSources.COMICVINE.value: IdentifierParts(
+        IdSources.COMICVINE: IdentifierParts(
             domain="comicvine.gamespot.com",
             id_type=IdentifierTypes(
                 arc="4045",
@@ -136,13 +136,13 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_ID_KEY_EXP,
             url_path_template="c/{id_type}-{id_key}/",
         ),
-        IdSources.COMIXOLOGY.value: IdentifierParts(
+        IdSources.COMIXOLOGY: IdentifierParts(
             domain="www.comixology.com",
             id_type=IdentifierTypes(issue="digital-comic"),
             url_path_regex=r"c/(?P<id_type>\S+)/(?P<id_key>\d+)",
             url_path_template="c/{id_type}/{id_key}",
         ),
-        IdSources.GCD.value: IdentifierParts(
+        IdSources.GCD: IdentifierParts(
             domain="comics.org",
             id_type=IdentifierTypes(
                 character="character",
@@ -155,19 +155,19 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\d+)/?",
             url_path_template="{id_type}/{id_key}/",
         ),
-        IdSources.ISBN.value: IdentifierParts(
+        IdSources.ISBN: IdentifierParts(
             domain="isbndb.com",
             id_type=IdentifierTypes(issue="book", series="series"),
             url_path_regex=r"(?P<id_type>book)/(?P<id_key>[\d-]+)",
             url_path_template="{id_type}/{id_key}",
         ),
-        IdSources.KITSU.value: IdentifierParts(
+        IdSources.KITSU: IdentifierParts(
             domain="kitsu.app",
             id_type=IdentifierTypes(series="manga"),
             url_path_regex=r"(?P<id_type>manga)/(?P<id_key>\S+)",
             url_path_template="{id_type}/{id_key}",
         ),
-        IdSources.LCG.value: IdentifierParts(
+        IdSources.LCG: IdentifierParts(
             domain="leagueofcomicgeeks.com",
             id_type=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
@@ -175,25 +175,25 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=rf"(?P<id_type>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
-        IdSources.MANGADEX.value: IdentifierParts(
+        IdSources.MANGADEX: IdentifierParts(
             domain="mangadex.org",
             id_type=IdentifierTypes(series="title"),
             url_path_regex=rf"(?P<id_type>title)/(?P<id_key>\S+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
-        IdSources.MANGAUPDATES.value: IdentifierParts(
+        IdSources.MANGAUPDATES: IdentifierParts(
             domain="mangaupdates.com",
             id_type=IdentifierTypes(series="series"),
             url_path_regex=rf"(?P<id_type>series)/(?P<id_key>\S+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
-        IdSources.MARVEL.value: IdentifierParts(
+        IdSources.MARVEL: IdentifierParts(
             domain="marvel.com",
             id_type=IdentifierTypes(issue="issue", series="series"),
             url_path_regex=rf"comics/(?P<id_type>issue|series)/(?P<id_key>\d+){_SLUG_REXP}",
             url_path_template="comics/{id_type}/{id_key}/s",
         ),
-        IdSources.METRON.value: IdentifierParts(
+        IdSources.METRON: IdentifierParts(
             # Metron uses the slug for an id in most urls
             #   but can also use the numeric metron id which redirects to the slug
             # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
@@ -218,20 +218,20 @@ IDENTIFIER_PARTS_MAP = MappingProxyType(
             url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\S+)/?",
             url_path_template="{id_type}/{id_key}",
         ),
-        IdSources.MYANIMELIST.value: IdentifierParts(
+        IdSources.MYANIMELIST: IdentifierParts(
             domain="myanimelist.net",
             id_type=IdentifierTypes(series="manga"),
             url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
-        IdSources.PANELSYNDICATE.value: IdentifierParts(
+        IdSources.PANELSYNDICATE: IdentifierParts(
             domain="panelsyndicate.com",
             id_type=IdentifierTypes(series="comics"),
             url_path_regex=r"(?P<id_type>comics)/(?P<id_key>\w+)",
             url_path_template="{id_type}/{id_key}",
             https=False,  # :o
         ),
-        IdSources.UPC.value: IdentifierParts(
+        IdSources.UPC: IdentifierParts(
             domain="barcodelookup.com",
             id_type=IdentifierTypes(issue="issue"),
             url_path_regex=r"(?P<id_key>[\d-]+)",
@@ -250,7 +250,7 @@ def _normalize_comicvine_id_key(id_type, id_key):
         id_type_code = match.group("id_type")
     except IndexError:
         return id_type, id_key
-    id_type = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE.value].get_type_by_code(
+    id_type = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE].get_type_by_code(
         id_type_code, id_type
     )
     with suppress(IndexError):
@@ -258,35 +258,37 @@ def _normalize_comicvine_id_key(id_type, id_key):
     return id_type, id_key
 
 
-def get_identifier_url(id_source: str, id_type: str, id_key: str) -> str:
+def get_identifier_url(id_source_str: str, id_type: str, id_key: str) -> str:
     """Get a url for an identifier if we know the rest."""
     url = ""
-    if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
-        url = id_parts.unparse_url(id_type, id_key)
+    with suppress(ValueError):
+        id_source = IdSources(id_source_str)
+        if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
+            url = id_parts.unparse_url(id_type, id_key)
     return url
 
 
 def create_identifier(
-    id_source: str,
+    id_source_str: str,
     id_key: str,
     *,
     id_type: str = "",
     url: str = "",
-    default_id_source: str = DEFAULT_ID_SOURCE,
+    default_id_source_str: str = DEFAULT_ID_SOURCE.value,
 ):
     """Create identifier dict from parts."""
     identifier = {}
-    if not id_source:
-        id_source = default_id_source
+    if not id_source_str:
+        id_source_str = default_id_source_str
     if not id_type:
         id_type = DEFAULT_ID_TYPE
     if id_key:
-        if id_source == IdSources.COMICVINE.value:
+        if id_source_str == IdSources.COMICVINE.value:
             id_type, id_key = _normalize_comicvine_id_key(id_type, id_key)
         if id_key:
             identifier[ID_KEY_KEY] = id_key
     if not url:
-        url = get_identifier_url(id_source, id_type, id_key)
+        url = get_identifier_url(id_source_str, id_type, id_key)
     if url:
         identifier[ID_URL_KEY] = url
     return identifier
@@ -299,12 +301,12 @@ def get_id_source_from_url(url) -> str:
 
     parts.reverse()
     node = SOURCE_ALIAS_TREE
-    id_source = obj.netloc
+    id_source_str = obj.netloc
     for part in parts:
         node = node.get(part)
         if isinstance(node, IdSources):
-            id_source = node.value
+            id_source_str = node.value
             break
         if not node:
             break
-    return id_source
+    return id_source_str

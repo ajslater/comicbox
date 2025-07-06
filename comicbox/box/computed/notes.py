@@ -7,12 +7,9 @@ from types import MappingProxyType
 from loguru import logger
 
 from comicbox.box.merge import ComicboxMerge
+from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP, get_id_source_by_alias
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.identifiers import (
-    ID_SOURCE_NAME_MAP,
-    IDENTIFIER_RE_EXP,
-    get_id_source_by_alias,
-)
+from comicbox.identifiers import IDENTIFIER_RE_EXP
 from comicbox.identifiers.identifiers import (
     create_identifier,
 )
@@ -82,14 +79,13 @@ class ComicboxComputedNotes(ComicboxMerge):
             return identifiers
         for key in _NOTES_KEYS:
             self._set_computed_notes_key(sub_data, key, match, md)
-        if (origin := match.group("origin")) and (
-            id_source := ID_SOURCE_NAME_MAP.inverse.get(origin, origin)
+        if (
+            (origin := match.group("origin"))
+            and (id_source := ID_SOURCE_NAME_MAP.inverse.get(origin))
+            and (id_key := match.group("id_key"))
+            and (identifier := create_identifier(id_source.value, id_key))
         ):
-            id_source = get_id_source_by_alias(id_source)
-            if (id_key := match.group("id_key")) and (
-                identifier := create_identifier(id_source, id_key)
-            ):
-                identifiers[id_source] = identifier
+            identifiers[id_source.value] = identifier
         return identifiers
 
     @staticmethod
@@ -100,11 +96,9 @@ class ComicboxComputedNotes(ComicboxMerge):
             return identifiers
         for urn in match.groups():
             id_source, id_type, id_key = parse_urn_identifier_and_warn(urn)
-            if id_source:
-                id_source = get_id_source_by_alias(id_source)
-                if id_key:
-                    identifier = create_identifier(id_source, id_key, id_type=id_type)
-                    identifiers[id_source] = identifier
+            if id_source and id_key:
+                identifier = create_identifier(id_source.value, id_key, id_type=id_type)
+                identifiers[id_source.value] = identifier
         return identifiers
 
     @staticmethod
@@ -114,12 +108,13 @@ class ComicboxComputedNotes(ComicboxMerge):
         if not matches:
             return identifiers
         for match in matches:
-            if id_source := match.group("id_source"):
-                id_source = get_id_source_by_alias(id_source)
-                if (id_key := match.group("id_key")) and (
-                    identifier := create_identifier(id_source, id_key)
-                ):
-                    identifiers[id_source] = identifier
+            if (
+                (id_source_str := match.group("id_source"))
+                and (id_source := get_id_source_by_alias(id_source_str))
+                and (id_key := match.group("id_key"))
+                and (identifier := create_identifier(id_source.value, id_key))
+            ):
+                identifiers[id_source.value] = identifier
         return identifiers
 
     def _set_computed_notes_identifiers(self, sub_data, notes, sub_md):

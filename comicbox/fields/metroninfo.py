@@ -1,6 +1,7 @@
 """MetronInfo Fields."""
 
-from comicbox.enums.maps import METRON_AGE_RATING_MAP, METRON_FORMAT_MAP
+from comicbox.enums.maps.age_rating import METRON_AGE_RATING_MAP
+from comicbox.enums.maps.formats import METRON_FORMAT_MAP
 from comicbox.enums.metroninfo import (
     MetronAgeRatingEnum,
     MetronFormatEnum,

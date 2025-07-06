@@ -4,9 +4,6 @@ from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.identifiers import (
-    get_id_source_by_alias,
-)
 from comicbox.identifiers.identifiers import (
     create_identifier,
     get_identifier_url,
@@ -66,12 +63,10 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         id_source, id_type, id_key = parse_urn_identifier(tag)
         if not (id_source and id_key):
             id_source, id_type, id_key = parse_identifier_other_str(tag)
-        if id_source:
-            id_source = get_id_source_by_alias(id_source)
-            if id_key:
-                identifiers[id_source] = create_identifier(
-                    id_source, id_key, id_type=id_type
-                )
+        if id_source and id_key:
+            identifiers[id_source.value] = create_identifier(
+                id_source.value, id_key, id_type=id_type
+            )
 
     def _get_computed_from_tags(self, sub_data):
         # only look for ids in tags and genres if the format has tags but no designated id field.
@@ -96,11 +91,11 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         all_urls = []
         if not identifiers:
             return all_urls
-        for id_source, identifier in identifiers.items():
+        for id_source_str, identifier in identifiers.items():
             if identifier.get(ID_URL_KEY):
                 continue
             if (id_key := identifier.get(ID_KEY_KEY)) and (
-                url := get_identifier_url(id_source, id_type, id_key)
+                url := get_identifier_url(id_source_str, id_type, id_key)
             ):
                 identifier[ID_URL_KEY] = url
                 all_urls.append(url)

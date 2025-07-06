@@ -3,17 +3,16 @@
 from loguru import logger
 from urnparse import URN8141, NSIdentifier, NSSString
 
-from comicbox.identifiers import (
-    DEFAULT_ID_TYPE,
-    ID_SOURCE_ALIAS_TO_SOURCE_MAP,
-)
+from comicbox.enums.comicbox import IdSources
+from comicbox.enums.maps.identifiers import get_id_source_by_alias
+from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.other import parse_identifier_other_str
 
 
-def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
+def _parse_urn_identifier(tag: str) -> tuple[IdSources | None, str, str]:
     urn = URN8141.from_string(tag)
-    if id_source := str(urn.namespace_id):
-        id_source = ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source.lower(), "")
+    id_source_str = str(urn.namespace_id)
+    id_source = get_id_source_by_alias(id_source_str, None)
     parts = urn.specific_string.parts
     try:
         id_type = str(parts[-2])
@@ -23,36 +22,38 @@ def _parse_urn_identifier(tag: str) -> tuple[str, str, str]:
     return id_source, id_type, id_key
 
 
-def parse_urn_identifier_and_warn(tag: str) -> tuple[str, str, str]:
+def parse_urn_identifier_and_warn(tag: str) -> tuple[IdSources | None, str, str]:
     """Parse an identifier from a tag and log a debug warning."""
     try:
         id_source, id_type, id_key = _parse_urn_identifier(tag)
     except Exception as exc:
         logger.debug(f"Unable to decode urn: {tag} {exc}")
-        id_source = id_type = id_key = ""
+        id_source = None
+        id_type = id_key = ""
     return id_source, id_type, id_key
 
 
-def parse_urn_identifier(tag: str) -> tuple[str, str, str]:
+def parse_urn_identifier(tag: str) -> tuple[IdSources | None, str, str]:
     """Parse an identifier from a tag."""
-    id_source = id_type = id_key = ""
     try:
         id_source, id_type, id_key = _parse_urn_identifier(tag)
     except Exception:
-        id_source = id_type = id_key = ""
+        id_source = None
+        id_type = id_key = ""
     return id_source, id_type, id_key
 
 
-def parse_string_identifier(item: str, default_id_source="") -> tuple[str, str, str]:
+def parse_string_identifier(
+    item: str, default_id_source: IdSources | None = None
+) -> tuple[IdSources | None, str, str]:
     """Parse identifiers from strings or xml dicts."""
     id_source, id_type, id_key = parse_urn_identifier_and_warn(item)
     if not id_key:
         id_source, id_type, id_key = parse_identifier_other_str(item)
-    if default_id_source and not id_source:
+    if not id_source:
         id_source = default_id_source
     if not id_type:
         id_type = DEFAULT_ID_TYPE
-
     return id_source, id_type, id_key
 
 

@@ -1,7 +1,7 @@
 """ComicInfo Fields."""
 
 from comicbox.enums.comicinfo import ComicInfoAgeRatingEnum
-from comicbox.enums.maps import COMICINFO_AGE_RATING_MAP
+from comicbox.enums.maps.age_rating import COMICINFO_AGE_RATING_MAP
 from comicbox.fields.xml_fields import XmlEnumField
 
 

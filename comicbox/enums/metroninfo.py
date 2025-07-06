@@ -3,7 +3,7 @@
 from enum import Enum
 
 from comicbox.enums.comicbox import IdSources
-from comicbox.identifiers import ID_SOURCE_NAME_MAP
+from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
 
 
 class MetronAgeRatingEnum(Enum):
@@ -82,12 +82,12 @@ class MetronRoleEnum(Enum):
 class MetronSourceEnum(Enum):
     """Metron Valid Sources."""
 
-    ANILIST = ID_SOURCE_NAME_MAP[IdSources.ANILIST.value]
-    COMICVINE = ID_SOURCE_NAME_MAP[IdSources.COMICVINE.value]
-    GCD = ID_SOURCE_NAME_MAP[IdSources.GCD.value]
-    KITSU = ID_SOURCE_NAME_MAP[IdSources.KITSU.value]
-    LCG = ID_SOURCE_NAME_MAP[IdSources.LCG.value]
-    MANGADEX = ID_SOURCE_NAME_MAP[IdSources.MANGADEX.value]
-    MANGAUPDATES = ID_SOURCE_NAME_MAP[IdSources.MANGAUPDATES.value]
-    METRON = ID_SOURCE_NAME_MAP[IdSources.METRON.value]
-    MYANIMELIST = ID_SOURCE_NAME_MAP[IdSources.MYANIMELIST.value]
+    ANILIST = ID_SOURCE_NAME_MAP[IdSources.ANILIST]
+    COMICVINE = ID_SOURCE_NAME_MAP[IdSources.COMICVINE]
+    GCD = ID_SOURCE_NAME_MAP[IdSources.GCD]
+    KITSU = ID_SOURCE_NAME_MAP[IdSources.KITSU]
+    LCG = ID_SOURCE_NAME_MAP[IdSources.LCG]
+    MANGADEX = ID_SOURCE_NAME_MAP[IdSources.MANGADEX]
+    MANGAUPDATES = ID_SOURCE_NAME_MAP[IdSources.MANGAUPDATES]
+    METRON = ID_SOURCE_NAME_MAP[IdSources.METRON]
+    MYANIMELIST = ID_SOURCE_NAME_MAP[IdSources.MYANIMELIST]
