@@ -1,5 +1,6 @@
 """Parsing methods."""
 
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from logging import DEBUG, WARNING
@@ -167,3 +168,5 @@ class ComicboxLoad(ComicboxSources):
             logger.warning(
                 f"{self._path} Parsing or Loading {source.value.label}: {exc}"
             )
+            if os.environ.get("DEBUG"):
+                logger.exception(exc)
