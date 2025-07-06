@@ -109,7 +109,6 @@ def _identifier_to_cb(native_identifier):
     """Parse metron identifier type into components."""
     source_str = native_identifier.get(SOURCE_ATTRIBUTE)
     id_source = getattr(IdSources, source_str.name, None)
-    # id_source = ID_SOURCE_NAME_MAP.inverse.get(source_str, None)
     id_source_str = id_source.value if id_source else ""
     id_type = "issue"
     id_key = get_cdata(native_identifier)
