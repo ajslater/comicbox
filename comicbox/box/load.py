@@ -94,7 +94,7 @@ class ComicboxLoad(ComicboxSources):
             level,
             f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}",
         )
-        logger.opt(lazy=True).trace("{e}", e=format_exc())
+        logger.opt(lazy=True).trace(format_exc())
 
     def _load_unknown_metadata(
         self, source: MetadataSources, data
