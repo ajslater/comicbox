@@ -30,7 +30,10 @@ GENERIC_FORMAT_MAP: MappingProxyType[Enum | str, Enum] = MappingProxyType(
     {
         **_all_variants(GenericFormatEnum),
         "Boxed Set": GenericFormatEnum.BOX_SET,
+        "Boxed-Set": GenericFormatEnum.BOX_SET,
         "GN": GenericFormatEnum.GRAPHIC_NOVEL,
+        "Hard-Cover": GenericFormatEnum.HARD_COVER,
+        "Hard Cover": GenericFormatEnum.HARD_COVER,
         "HC": GenericFormatEnum.HARD_COVER,
         **_variants(GenericFormatEnum.ONE_SHOT, dashed_canon=True),
         "TPB": GenericFormatEnum.TRADE_PAPERBACK,

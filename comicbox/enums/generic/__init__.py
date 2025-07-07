@@ -36,7 +36,7 @@ class GenericFormatEnum(Enum):
     DIRECTOR_S_CUT = "Director's Cut"
     GIANT_SIZED = "Giant Sized"
     GRAPHIC_NOVEL = "Graphic Novel"
-    HARD_COVER = "Hard Cover"
+    HARD_COVER = "Hardcover"
     HD_UPSCALED = "HD Upscaled"
     KING_SIZED = "King Sized"
     MAGAZINE = "Magazine"
