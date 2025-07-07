@@ -56,6 +56,24 @@ class ComictaggerPageInfoSchema(BaseSchema):
 class ComictaggerSubSchema(JsonSubSchema):
     """Comictagger schema."""
 
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "pages": frozenset(
+                {
+                    "pages",
+                }
+            ),
+            "reprints": frozenset(
+                {
+                    "alternate_series",
+                    "alternate_number",
+                    "alternate_count",
+                    "alternate_images",
+                }
+            ),
+        }
+    )
+
     # comictagger unique
     data_origin = Nested(DataOriginSchema)
     issue_id = StringField()

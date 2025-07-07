@@ -1,6 +1,7 @@
 """Mixin for Comicbox Schemas."""
 
 from decimal import Decimal
+from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
@@ -163,6 +164,21 @@ class DateSchema(BaseSubSchema):
 
 class ComicboxSubSchemaMixin(IdentifiedSchema):
     """Mixin for Comicbox Sub Schemas."""
+
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "pages": frozenset(
+                {
+                    "pages",
+                }
+            ),
+            "reprints": frozenset(
+                {
+                    "reprints",
+                }
+            ),
+        }
+    )
 
     age_rating = AgeRatingField()  # CIX, Metron
     alternate_images = StringSetField()  # CT ONLY

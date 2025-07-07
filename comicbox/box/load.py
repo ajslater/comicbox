@@ -55,7 +55,7 @@ class ComicboxLoad(ComicboxSources):
     ) -> Mapping | None:
         """Load string or dict."""
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path)
+        schema = schema_class(path=self._path, exclude=self._config.delete_keys)
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
 

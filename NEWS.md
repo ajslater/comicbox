@@ -3,6 +3,7 @@
 ## v2.0.0
 
 - Features
+
   - BREAKING comicbox.json and comicbox.yaml schema changes. See
     [the 2.0 CHANGES document](CHANGES-2.0.0.md).
   - BREAKING config api option close_fd removed. Always use with blocks or call
@@ -27,6 +28,7 @@
   - Parse PDF datetimes.
   - Comicbox.get_metadata_mtime() returns the mtime for metadata, not pages or
     other files.
+  - delete_keys option now excludes keys from loading entirely.
 
 - Fixes
   - ComicInfo.xml StoryArcs tag was not loaded.
@@ -222,6 +224,7 @@
 ## v0.6.0
 
 - Features
+
   - Add --metadata cli action. Injects metadata from cli.
   - Warn when no actions performed.
   - == operator for metadata is deep and ignores key order.
@@ -269,6 +272,7 @@
 ## v0.5.0
 
 - Features
+
   - Issues numbers are now strings.
   - Separate read metadata option from print metadata action.
   - Added dry_run option.

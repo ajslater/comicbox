@@ -29,6 +29,16 @@ IS_VERSION_OF_TAG = "isVersionOf"
 class CoMetSubSchema(XmlSubHeadSchema):
     """CoMet Sub Schema."""
 
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "reprints": frozenset(
+                {
+                    "isVersionOf",
+                }
+            )
+        }
+    )
+
     character = XmlStringSetField()
     coverImage = XmlStringField()  # noqa: N815
     date = XmlDateField()
