@@ -85,6 +85,15 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+[tool.hatch.build.targets.wheel]
+exclude = ["comicbox/**/README.md"]
+
+[tool.hatch.build.targets.sdist]
+include = ['comicbox', 'tests']
+
 [tool.basedpyright]
 exclude = [
   "**/.*",
@@ -139,9 +148,6 @@ omit = [
 
 [tool.coverage.html]
 directory = "test-results/coverage"
-
-[tool.hatch.build.targets.sdist]
-include = ['comicbox', 'tests', 'NEWS.md']
 
 [tool.pytest.ini_options]
 addopts = """
