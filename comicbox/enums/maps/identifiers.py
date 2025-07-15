@@ -33,7 +33,20 @@ ID_SOURCE_NAME_MAP: frozenbidict[IdSources, str] = frozenbidict(
 _ID_SOURCE_ALIASES: MappingProxyType[IdSources, frozenset[str]] = MappingProxyType(
     {
         IdSources.ANILIST: frozenset({"anilist.co"}),
-        IdSources.ASIN: frozenset({"amazon.com"}),
+        IdSources.ASIN: frozenset(
+            {
+                "amazon.com",
+                "amazon.ca",
+                "amazon.co.uk",
+                "amazon.co.jp",
+                "amazon.com.mx",
+                "amazon.com.br",
+                "amazon.es",
+                "amazon.de",
+                "amazon.fr",
+                "amazon.it",
+            }
+        ),
         IdSources.COMICVINE: frozenset(
             {
                 AlternateIdSources.CVDB_ALTERNATE.value,
