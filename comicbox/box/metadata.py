@@ -49,10 +49,6 @@ class ComicboxMetadata(ComicboxComputed):
         """Programmatically set the metadata."""
         self._metadata = MappingProxyType(metadata)
 
-    def set_metadata(self, metadata: Mapping) -> None:
-        """Programmatically set the metadata."""
-        self._metadata = MappingProxyType(metadata)
-
     def _embed_metadata(
         self, fmt: MetadataFormats, denormalized_metadata: MutableMapping, schema_class
     ):
