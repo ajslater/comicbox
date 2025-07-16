@@ -19,6 +19,7 @@ from zipremove import ZipFile, is_zipfile
 
 from comicbox.config import get_config
 from comicbox.config.frozenattrdict import FrozenAttrDict
+from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
@@ -58,10 +59,10 @@ class ComicboxInit:
             return path
         if not path.exists():
             reason = f"{path} does not exist."
-            raise ValueError(reason)
+            raise FileNotFoundError(reason)
         if path.is_dir():
             reason = f"{path} is a directory."
-            raise ValueError(reason)
+            raise IsADirectoryError(reason)
         return path
 
     def __init__(
@@ -97,13 +98,12 @@ class ComicboxInit:
 
     def _reset_archive(self, fmt: MetadataFormats | None, metadata: Mapping | None):
         self._archive_cls: Callable | None = None
-        self._file_type: str | None = None
+        self._file_type: FileTypeEnum | None = None
         self._set_archive_cls()
         self._archive: ArchiveType | None = None
         self._namelist: tuple[str, ...] | None = None
         self._infolist: tuple | None = None
         self._7zfactory: BytesIOFactory | None = None
-        self._close_fd = self._config.close_fd
 
         self._page_filenames: tuple[str, ...] | None = None
         self._cover_paths: tuple[str, ...] | None = None
@@ -142,19 +142,19 @@ class ComicboxInit:
 
         if self._set_archive_cls_pdf():
             # Important to have PDFile before zipfile
-            self._file_type = "PDF"
+            self._file_type = FileTypeEnum.PDF
         elif is_7zfile(self._path):
             self._archive_cls = SevenZipFile
-            self._file_type = "CB7"
+            self._file_type = FileTypeEnum.CB7
         elif is_zipfile(self._path):
             self._archive_cls = ZipFile
-            self._file_type = "CBZ"
+            self._file_type = FileTypeEnum.CBZ
         elif is_rarfile(self._path):
             self._archive_cls = RarFile
-            self._file_type = "CBR"
+            self._file_type = FileTypeEnum.CBR
         elif is_tarfile(self._path):
             self._archive_cls = tarfile_open
-            self._file_type = "CBT"
+            self._file_type = FileTypeEnum.CBT
         else:
             reason = f"Unsupported archive type: {self._path}"
             raise UnsupportedArchiveTypeError(reason)
@@ -170,4 +170,4 @@ class ComicboxInit:
 
     def get_file_type(self):
         """Return archive type string."""
-        return self._file_type
+        return self._file_type.value if self._file_type else None

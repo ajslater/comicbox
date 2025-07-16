@@ -4,8 +4,8 @@ from datetime import datetime
 from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
+from comicbox.enums.comicbox import IdSources
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers import IdSources
 from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 from comicbox.schemas.comicbox import (

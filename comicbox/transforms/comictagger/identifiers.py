@@ -1,11 +1,16 @@
 """Comictagger identifier transforms."""
 
+from contextlib import suppress
+
 from bidict import frozenbidict
 
-from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
-    DEFAULT_ID_SOURCE,
+from comicbox.enums.comicbox import IdSources
+from comicbox.enums.maps.identifiers import (
     ID_SOURCE_NAME_MAP,
+    get_id_source_by_alias,
+)
+from comicbox.identifiers import (
+    DEFAULT_ID_SOURCE,
     ID_SOURCE_VALUES,
 )
 from comicbox.identifiers.identifiers import (
@@ -34,7 +39,7 @@ DATA_ORIGIN_NAME_KEYPATH = f"{DATA_ORIGIN_TAG}.name"
 
 def _identifiers_primary_source_key_to_cb(data_origin):
     if (data_origin_id := data_origin.get("id")) and (
-        id_source := ALIAS_ID_SOURCE_MAP.get(data_origin_id.lower(), DEFAULT_ID_SOURCE)
+        id_source := get_id_source_by_alias(data_origin_id)
     ):
         ips = create_identifier_primary_source(id_source)
     else:
@@ -51,10 +56,12 @@ COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB = MetaSpec(
 
 def _identifiers_primary_source_key_from_cb(primary_source_key):
     data_origin = None
-    if id_source := primary_source_key.get(ID_SOURCE_KEY):
-        data_origin = {"id": id_source}
-        if name := ID_SOURCE_NAME_MAP.get(id_source):
-            data_origin["name"] = name
+    if id_source_str := primary_source_key.get(ID_SOURCE_KEY):
+        data_origin = {"id": id_source_str}
+        with suppress(ValueError):
+            id_source = IdSources(id_source_str)
+            if name := ID_SOURCE_NAME_MAP.get(id_source):
+                data_origin["name"] = name
     return data_origin
 
 
@@ -63,16 +70,13 @@ COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _get_id_source(data_origin_name):
-    return ALIAS_ID_SOURCE_MAP.get(data_origin_name.lower(), DEFAULT_ID_SOURCE)
-
-
 def _issue_id_to_cb(values):
     data_origin_name = values.get(DATA_ORIGIN_NAME_KEYPATH)
-    id_source = _get_id_source(data_origin_name)
+    id_source = get_id_source_by_alias(data_origin_name)
     issue_id = values.get(ISSUE_ID_TAG)
-    identifier = create_identifier(id_source, issue_id)
-    return {id_source: identifier}
+    id_source_str = id_source.value if id_source else ""
+    identifier = create_identifier(id_source_str, issue_id)
+    return {id_source_str: identifier}
 
 
 COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB = MetaSpec(
@@ -104,9 +108,10 @@ def _series_id_to_cb(values):
     if not series_id:
         return None
     data_origin_name = values.get(DATA_ORIGIN_NAME_KEYPATH)
-    id_source = _get_id_source(data_origin_name)
-    identifier = create_identifier(id_source, series_id, id_type="series")
-    return {id_source: identifier}
+    id_source = get_id_source_by_alias(data_origin_name)
+    id_source_str = id_source.value if id_source else ""
+    identifier = create_identifier(id_source_str, series_id, id_type="series")
+    return {id_source_str: identifier}
 
 
 COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB = MetaSpec(

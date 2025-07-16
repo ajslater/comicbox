@@ -1,37 +1,19 @@
-"""Enum Maps."""
+"""Age Rating enum maps."""
 
 from enum import Enum
 from types import MappingProxyType
 
-from comicbox.schemas.enums.age_rating import (
+from comicbox.enums.comicinfo import (
+    ComicInfoAgeRatingEnum,
+)
+from comicbox.enums.generic.age_rating import (
     DCAgeRatingEnum,
     GenericAgeRatingEnum,
     MarvelAgeRatingEnum,
 )
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicbookinfo import ComicBookInfoRoleEnum
-from comicbox.schemas.enums.comicinfo import (
-    ComicInfoAgeRatingEnum,
-    ComicInfoRoleTagEnum,
-)
-from comicbox.schemas.enums.metroninfo import (
-    GenericFormatEnum,
+from comicbox.enums.metroninfo import (
     MetronAgeRatingEnum,
-    MetronFormatEnum,
-    MetronRoleEnum,
 )
-from comicbox.schemas.enums.role import GenericRoleEnum
-
-COMICBOX_ROLE_ALIAS_MAP = MappingProxyType(
-    {
-        **{enum: enum for enum in CoMetRoleTagEnum},
-        **{enum: enum for enum in ComicBookInfoRoleEnum},
-        **{enum: enum for enum in ComicInfoRoleTagEnum},
-        **{enum: enum for enum in MetronRoleEnum},
-        **{enum: enum for enum in GenericRoleEnum},
-    }
-)
-
 
 COMICINFO_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     {
@@ -125,30 +107,12 @@ METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     }
 )
 
-METRON_FORMAT_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
+AGE_RATING_ENUM_MAP = MappingProxyType(
     {
-        # GenericFormatEnum.ANTHOLOGY: MetronFormatEnum.,
-        # GenericFormatEnum.ANNOTATION: MetronFormatEnum.,
-        GenericFormatEnum.BOX_SET: MetronFormatEnum.OMNIBUS,
-        GenericFormatEnum.DIGITAL: MetronFormatEnum.DIGITAL_CHAPTER,
-        # GenericFormatEnum.DIRECTORS_CUT: MetronFormatEnum.,
-        # GenericFormatEnum.DIRECTOR_S_CUT: MetronFormatEnum.,
-        GenericFormatEnum.GIANT_SIZED: MetronFormatEnum.ANNUAL,
-        GenericFormatEnum.GN: MetronFormatEnum.GRAPHIC_NOVEL,
-        GenericFormatEnum.HARD_COVER: MetronFormatEnum.HARDCOVER,
-        GenericFormatEnum.HC: MetronFormatEnum.HARDCOVER,
-        GenericFormatEnum.HD_UPSCALED: MetronFormatEnum.DIGITAL_CHAPTER,
-        GenericFormatEnum.KING_SIZED: MetronFormatEnum.ANNUAL,
-        # GenericFormatEnum.MAGAZINE: MetronFormatEnum.,
-        # GenericFormatEnum.MANGA: MetronFormatEnum.,
-        GenericFormatEnum.ONE_DASH_SHOT: MetronFormatEnum.ONE_SHOT,
-        # GenericFormatEnum.PDF_RIP: MetronFormatEnum.,
-        # GenericFormatEnum.PREVIEW: MetronFormatEnum.,
-        # GenericFormatEnum.PROLOGUE: MetronFormatEnum.,
-        # GenericFormatEnum.SCANLATION: MetronFormatEnum.,
-        # GenericFormatEnum.SCRIPT: MetronFormatEnum.,
-        GenericFormatEnum.TBP: MetronFormatEnum.TRADE_PAPERBACK,
-        # GenericFormatsEnum.WEB_COMIC: MetronFormatEnum.,
-        # GenericFormatsEnum.WEB_RIP: MetronFormatEnum.,
+        **{enum: enum for enum in GenericAgeRatingEnum},
+        **{enum: enum for enum in DCAgeRatingEnum},
+        **{enum: enum for enum in MarvelAgeRatingEnum},
+        **{enum: enum for enum in ComicInfoAgeRatingEnum},
+        **{enum: enum for enum in MetronAgeRatingEnum},
     }
 )

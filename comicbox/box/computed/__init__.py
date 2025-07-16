@@ -7,8 +7,8 @@ from types import MappingProxyType
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
 
-from comicbox.box.archive import archive_close
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
+from comicbox.fields.enum_fields import OriginalFormatField
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
     ORIGINAL_FORMAT_KEY,
@@ -41,6 +41,8 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         match = ORIGINAL_FORMAT_RE.search(scan_info)
         if not match:
             return None
+        original_format = match.group(ORIGINAL_FORMAT_KEY)
+        original_format = OriginalFormatField().deserialize(original_format)
         return {ORIGINAL_FORMAT_KEY: match.group(ORIGINAL_FORMAT_KEY)}
 
     def _get_computed_from_reprints(self, sub_data):
@@ -108,7 +110,6 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         # Set values
         self._computed = tuple(computed_list)
 
-    @archive_close
     def get_computed_metadata(self):
         """Get the computed metadata for printing."""
         if not self._computed:

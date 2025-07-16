@@ -47,7 +47,7 @@ READ_METADATA = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "identifier_primary_source": {
                 "source": "comicvine",

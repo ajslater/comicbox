@@ -2,7 +2,7 @@
 
 from types import MappingProxyType
 
-from glom import Assign, glom
+from glom import Assign, Path, glom
 
 from comicbox.schemas.comicbox import ROLES_KEY
 
@@ -18,5 +18,5 @@ def add_credit_role_to_comicbox_credits(
     if not (person_name and role_name):
         return
     role_name = ROLE_SPELLING.get(role_name.lower(), role_name)
-    dest_path = f"{person_name}.{ROLES_KEY}.{role_name}"
+    dest_path = Path(person_name, ROLES_KEY, role_name)
     glom(comicbox_credits, Assign(dest_path, {}, missing=dict))

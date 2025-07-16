@@ -2,6 +2,7 @@
 
 from abc import ABC
 from pathlib import Path
+from types import MappingProxyType
 
 from loguru import logger
 from marshmallow import EXCLUDE
@@ -11,6 +12,7 @@ from marshmallow.decorators import (
     pre_dump,
     pre_load,
 )
+from marshmallow.types import StrSequenceOrSet
 from typing_extensions import override
 
 from comicbox.empty import is_empty
@@ -22,6 +24,27 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     """Base schema."""
 
     TAG_ORDER: tuple[str, ...] = ()
+    # Currently only mapping "pages" and "reprints" fields for each schema for Codex out of laziness
+    # But this should speed up Codex reads
+    DELETE_KEY_MAP = MappingProxyType({})
+
+    def _create_exclude(self, exclude: StrSequenceOrSet) -> set[str]:
+        final_exclude = set()
+        fields = getattr(self, "fields", {})
+        for key in exclude:
+            if "." in key:
+                # Deep keypaths not allowed
+                continue
+            if local_keys := self.DELETE_KEY_MAP.get(key):
+                final_exclude |= local_keys
+            elif key in fields:
+                final_exclude.add(key)
+        return final_exclude
+
+    def __init__(self, *args, exclude: StrSequenceOrSet = (), **kwargs):
+        """Initialize with exclude keys."""
+        exclude = self._create_exclude(exclude)
+        super().__init__(*args, exclude=exclude, **kwargs)
 
     @classmethod
     def pre_load_validate(cls, data):

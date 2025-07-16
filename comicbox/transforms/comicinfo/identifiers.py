@@ -1,6 +1,6 @@
 """Comicinfo Identifiers to Comicbox transform."""
 
-from comicbox.identifiers import IdSources
+from comicbox.enums.comicbox import IdSources
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import IDENTIFIERS_KEY
 from comicbox.schemas.comicinfo import GTIN_TAG, WEB_TAG

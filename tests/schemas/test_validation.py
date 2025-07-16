@@ -8,7 +8,7 @@ from types import MappingProxyType
 
 import xmltodict
 
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import (
     COVER_DATE_KEY,
@@ -42,7 +42,7 @@ READ_METADATA = MappingProxyType(
             "series": {"name": "2"},  # "Captain Science",
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "date": {
@@ -64,7 +64,7 @@ READ_METADATA = MappingProxyType(
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "genres": {"Science Fiction": {}},
             "pages": {
-                0: {"size": 429985, "page_type": PageTypeEnum.FRONT_COVER},
+                0: {"size": 429985, "page_type": ComicInfoPageTypeEnum.FRONT_COVER},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -166,7 +166,7 @@ READ_CIX_DICT = MappingProxyType(
             },
             "Penciller": "Wally Wood",
             "Publisher": "Youthful Adventure Stories",
-            "Series": Decimal("2"),
+            "Series": Decimal(2),
             "StoryArc": "Captain Arc,Other Arc",
             "StoryArcNumber": "4,2",
             "Title": None,  # "The Beginning",

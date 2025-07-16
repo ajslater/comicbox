@@ -4,10 +4,6 @@ from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.identifiers import (
-    ALIAS_ID_SOURCE_MAP,
-    DEFAULT_ID_SOURCE,
-)
 from comicbox.identifiers.identifiers import (
     create_identifier,
     get_identifier_url,
@@ -32,6 +28,7 @@ from comicbox.schemas.comicbox import (
     PUBLISHER_KEY,
     ROLES_KEY,
     SERIES_KEY,
+    STORIES_KEY,
     TAGS_KEY,
     TEAMS_KEY,
     UNIVERSES_KEY,
@@ -44,9 +41,17 @@ _IDENTIFIED_TAG_KEYS = (
     CREDITS_KEY,
     GENRES_KEY,
     LOCATIONS_KEY,
+    STORIES_KEY,
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
+_IRREGULAR_SINGULAR_ID_TYPES = MappingProxyType(
+    {
+        CREDITS_KEY: "creator",
+        STORIES_KEY: "story",
+    }
+)
+_PARSE_AS_IDENTIFIERS = frozenset({TAGS_KEY, GENRES_KEY})
 
 
 class ComicboxComputedIdentifiers(ComicboxComputedIssue):
@@ -55,28 +60,28 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
     @staticmethod
     def _add_identifier_from_tag(tag: str, identifiers: dict):
         # Silently fail because most tags are not identifiers
-        id_source, _, id_key = parse_urn_identifier(tag)
+        id_source, id_type, id_key = parse_urn_identifier(tag)
         if not (id_source and id_key):
-            id_source, _, id_key = parse_identifier_other_str(tag)
-        if id_source:
-            id_source = ALIAS_ID_SOURCE_MAP.get(id_source.lower(), DEFAULT_ID_SOURCE)
-            if id_key:
-                identifiers[id_source] = create_identifier(id_source, id_key)
+            id_source, id_type, id_key = parse_identifier_other_str(tag)
+        if id_source and id_key:
+            identifiers[id_source.value] = create_identifier(
+                id_source.value, id_key, id_type=id_type
+            )
 
     def _get_computed_from_tags(self, sub_data):
-        # only look for ids in tags if the format has tags but no designated id field.
+        # only look for ids in tags and genres if the format has tags but no designated id field.
         if (
             not sub_data
             or self._config.computed.is_skip_computed_from_tags
-            or TAGS_KEY in self._config.delete_keys
+            or _PARSE_AS_IDENTIFIERS.issubset(self._config.delete_keys)
         ):
             return None
-        tags = sub_data.get(TAGS_KEY)
-        if not tags:
-            return None
         identifiers = {}
-        for tag in tags:
-            self._add_identifier_from_tag(tag, identifiers)
+        for key in _PARSE_AS_IDENTIFIERS:
+            if tags := sub_data.get(key):
+                for tag in tags:
+                    self._add_identifier_from_tag(tag, identifiers)
+
         if not identifiers:
             return None
         return {IDENTIFIERS_KEY: identifiers}
@@ -86,11 +91,11 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         all_urls = []
         if not identifiers:
             return all_urls
-        for id_source, identifier in identifiers.items():
+        for id_source_str, identifier in identifiers.items():
             if identifier.get(ID_URL_KEY):
                 continue
             if (id_key := identifier.get(ID_KEY_KEY)) and (
-                url := get_identifier_url(id_source, id_type, id_key)
+                url := get_identifier_url(id_source_str, id_type, id_key)
             ):
                 identifier[ID_URL_KEY] = url
                 all_urls.append(url)
@@ -127,7 +132,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
             all_tags = sub_data.get(key)
             if not all_tags:
                 continue
-            id_type = key[:-1]
+            id_type = _IRREGULAR_SINGULAR_ID_TYPES.get(key, key[:-1])
             for tag in all_tags.values():
                 cls._add_urls_to_tag(key, id_type, tag, all_urls)
                 if key == CREDITS_KEY and (roles := tag.get(ROLES_KEY)):

@@ -44,8 +44,6 @@ _TEMPLATE = MappingTemplate(
                 "stamp_notes": bool,
                 "tagger": Optional(str),
                 "theme": Optional(str),
-                # API Options
-                "close_fd": bool,
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),

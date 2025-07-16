@@ -10,7 +10,7 @@ from rarfile import BadRarFile, RarFile
 from zipremove import ZipFile
 
 from comicbox.box.archive.archive import Archive
-from comicbox.box.archive.init import ComicboxArchiveInit, archive_close
+from comicbox.box.archive.init import ComicboxArchiveInit
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
 
@@ -24,7 +24,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             reason = "Cannot read archive without a path."
             raise ValueError(reason)
 
-    def _get_archive_namelist(self):
+    def namelist(self):
         """Get list of files in the archive."""
         self._ensure_read_archive()
         if self._namelist is None:
@@ -41,12 +41,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
     def _get_info_size(self, info) -> int | None:
         return getattr(info, self._info_size_attr) if self._info_size_attr else None
 
-    @archive_close
-    def namelist(self):
-        """Get the archive file namelist."""
-        return self._get_archive_namelist()
-
-    def _get_archive_infolist(self):
+    def infolist(self):
         """Get info list of members from the archive."""
         self._ensure_read_archive()
         if not self._infolist:
@@ -58,11 +53,6 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             )
             self._infolist: tuple | None = infolist
         return self._infolist
-
-    @archive_close
-    def infolist(self):
-        """Get the archive file infolist."""
-        return self._get_archive_infolist()
 
     @classmethod
     def check_unrar_executable(cls) -> bool:

@@ -9,7 +9,8 @@ import pytest
 from dateutil.tz.tz import tzoffset
 
 from comicbox.box import Comicbox
-from comicbox.fields.enum_fields import PageTypeEnum, ReadingDirectionEnum
+from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff, compare_export, get_tmp_dir
@@ -43,7 +44,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "bookmark": 12,
@@ -72,7 +73,7 @@ FNS = MappingProxyType(
             "genres": {"Science Fiction": {}},
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "date": {
@@ -101,7 +102,7 @@ FNS = MappingProxyType(
             "genres": {"Superhero": {}},
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "date": {
@@ -124,7 +125,7 @@ FNS = MappingProxyType(
             "series": {"name": "Captain Science"},
             "issue": {
                 "name": "001",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "date": {
                 "year": 1950,
@@ -153,7 +154,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -162,7 +163,7 @@ FNS = MappingProxyType(
                 "[CVDB145269]"
             ),
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -224,7 +225,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -290,7 +291,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -300,7 +301,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -374,7 +375,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -384,7 +385,7 @@ FNS = MappingProxyType(
             ),
             "page_count": 0,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},
@@ -457,7 +458,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": (
@@ -528,7 +529,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] urn:comicvine:issue:145269 urn:isbn:123-456789-0123 urn:upc:12345 urn:metron:issue:999999",
@@ -704,7 +705,7 @@ FNS = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "locations": {

@@ -12,7 +12,7 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.fields.enum_fields import PageTypeEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.merge import AdditiveMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.version import VERSION
@@ -70,13 +70,13 @@ TEMPLATE_MD = MappingProxyType(
             },
             "issue": {
                 "name": "1",
-                "number": Decimal("1"),
+                "number": Decimal(1),
             },
             "language": "en",
             "notes": TEST_READ_NOTES,
             "page_count": 36,
             "pages": {
-                0: {"page_type": PageTypeEnum.FRONT_COVER, "size": 429985},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
                 1: {"size": 332936},
                 2: {"size": 458657},
                 3: {"size": 450456},

@@ -1,13 +1,13 @@
 """Author to Credits transforms."""
 
+from comicbox.enums.comet import CoMetRoleTagEnum
+from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
+from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
+from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.schemas.enums.comet import CoMetRoleTagEnum
-from comicbox.schemas.enums.comicinfo import ComicInfoRoleTagEnum
-from comicbox.schemas.enums.metroninfo import MetronRoleEnum
-from comicbox.schemas.enums.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.transforms.spec import MetaSpec
 
 _AUTHOR_VALUES = frozenset(

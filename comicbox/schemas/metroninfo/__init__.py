@@ -2,6 +2,7 @@
 
 # https://metron-project.github.io/docs/metroninfo/schemas/v1.0
 from decimal import Decimal
+from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
@@ -69,6 +70,16 @@ class MetronUniverseSchema(MetronIdentifiedNameSchema):
 
 class MetronInfoSubSchema(XmlSubHeadSchema):
     """MetronInfo.xml Sub Schema."""
+
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "reprints": frozenset(
+                {
+                    "Reprints",
+                }
+            )
+        }
+    )
 
     IDS = create_sub_tag_field(
         "ID", ListField(Nested(MetronIDSchema), sort_keys=("@source",))

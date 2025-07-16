@@ -21,7 +21,7 @@ SUB_DATA: Mapping[str, Any] = {
     "ext": "cbz",
     "issue": {
         "name": "001",
-        "number": Decimal("1"),
+        "number": Decimal(1),
     },
     "series": {"name": "Captain Science"},
     "stories": {"The Beginning - nothing": {}},

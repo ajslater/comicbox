@@ -1,5 +1,6 @@
 """Parsing methods."""
 
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from logging import DEBUG, WARNING
@@ -54,7 +55,7 @@ class ComicboxLoad(ComicboxSources):
     ) -> Mapping | None:
         """Load string or dict."""
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path)
+        schema = schema_class(path=self._path, exclude=self._config.delete_keys)
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
 
@@ -93,7 +94,7 @@ class ComicboxLoad(ComicboxSources):
             level,
             f"{self._path}: Unable to load {source.value.label}:{name} metadata: {exc}",
         )
-        logger.opt(lazy=True).trace("{e}", e=format_exc())
+        logger.opt(lazy=True).trace(format_exc())
 
     def _load_unknown_metadata(
         self, source: MetadataSources, data
@@ -167,3 +168,5 @@ class ComicboxLoad(ComicboxSources):
             logger.warning(
                 f"{self._path} Parsing or Loading {source.value.label}: {exc}"
             )
+            if os.environ.get("DEBUG"):
+                logger.exception(exc)

@@ -114,6 +114,19 @@ class XmlPageInfoSchema(XmlSubSchema):
 class ComicInfoSubSchema(XmlSubHeadSchema):
     """ComicInfo.xml Sub Schema."""
 
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "pages": frozenset(
+                {
+                    "Pages",
+                }
+            ),
+            "reprints": frozenset(
+                {"AlternateSeries", "AlternateNumber", "AlternateCount"}
+            ),
+        }
+    )
+
     # ComicInfo.xsd specifies this tag order
     TAG_ORDER: tuple[str, ...] = TAG_ORDER
 

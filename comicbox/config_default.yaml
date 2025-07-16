@@ -24,14 +24,12 @@ comicbox:
     - yaml
   theme: gruvbox-dark
   replace_metadata: False
-
   read_ignore: []
   recurse: False
   stamp: False
   stamp_notes: True
   tagger: null
-  # API Options
-  close_fd: True
+
   # Actions
   cbz: False
   covers: False
@@ -42,5 +40,6 @@ comicbox:
   print: ""
   rename: False
   write: []
+
   # Targets
   paths: null
