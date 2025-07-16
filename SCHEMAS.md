@@ -1,4 +1,4 @@
-# 📋 <a href="schemas">Schemas</a>
+# 📋 Schemas
 
 Comicbox supports reading and writing several comic book metadata schemas.
 
@@ -179,4 +179,3 @@ Specifying metadata on the command line like this is additive.
 | Comicbox CLI  | -m --metadata     |
 | Archive       | comicbox-cli.yaml |
 | Import/Export | comicbox-cli.yaml |
-

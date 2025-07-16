@@ -288,10 +288,10 @@ with Comicbox(path_to_comic) as cb:
 
 ## 📋 <a href="schemas">Schemas</a>
 
-Comicbox supports most popular comicbook metadata schema
-definitions. These are defined on the <a href="SCHEMAS.md">SCHEMAS page</a>.
+Comicbox supports most popular comicbook metadata schema definitions. These are
+defined on the <a href="SCHEMAS.md">SCHEMAS page</a>.
 
-## <a href="tags">Tag Translations</a>
+## 🔀 <a href="tags">Tag Translations</a>
 
 A rough <a href="TAGS.md">table</a> of how Comicbox handles tag translations
 between popular comic book metadata formats.
