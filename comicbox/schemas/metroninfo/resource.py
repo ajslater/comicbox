@@ -15,7 +15,7 @@ class MetronResourceSchema(XmlSubSchema):
     """Metron Resource Schema."""
 
     # So the union fails over
-    SUPRESS_ERRORS: bool = False
+    SUPPRESS_ERRORS: bool = False
 
     class Meta(XmlSubSchema.Meta):
         """XML Attributes."""
