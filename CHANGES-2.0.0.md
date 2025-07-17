@@ -17,7 +17,7 @@ anyway.
 
 #### theme
 
-[Pygments theme](https://pygments.org/styles/) to use for syntax highlighting. .
+[Pygments theme](https://pygments.org/styles/) to use for syntax highlighting.
 'none' will stop highlighting.
 
 ### Changed Actions

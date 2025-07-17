@@ -2,11 +2,12 @@
 
 ## v2.0.0
 
-- Features
-  - BREAKING comicbox.json and comicbox.yaml schema changes. See
+- BREAKING CHANGES
+  - comicbox.json and comicbox.yaml schema changes. See
     [the 2.0 CHANGES document](CHANGES-2.0.0.md).
-  - BREAKING config api option close_fd removed. Always use with blocks or call
-    close().
+  - config api option close_fd removed. Always use with blocks or call close().
+
+- Features
   - Support the MetronInfo.xml v1.0 Schema
   - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
   - URNs as serialized identifiers in `notes` tag gain an optional tag type
