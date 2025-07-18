@@ -306,7 +306,7 @@ Comicbox code is hosted at [Github](https://github.com/ajslater/comicbox)
 You may access most development tasks from the makefile. Run make to see
 documentation.
 
-## Environment variables
+### Environment variables
 
 There is a special environment variable `DEBUG_TRANSFORM` that will print
 verbose schema transform information
