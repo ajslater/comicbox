@@ -58,7 +58,7 @@
             ".+": {
               "properties": {
                 "role": {
-                  "$ref": "identifed-object.schema.json"
+                  "$ref": "identified-object.schema.json"
                 }
               }
             }
