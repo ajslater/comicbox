@@ -45,6 +45,10 @@ automatically tags comics with the ComicVine API and has a desktop UI.
 
 Comicbox has a [NEWS file](NEWS.md) to summarize changes that affect users.
 
+## 🕸️ HTML Docs
+
+[HTML formatted docs are available here](https://comicbox.readthedocs.io)
+
 ## 📦 Installation
 
 <!-- eslint-skip -->
@@ -296,6 +300,8 @@ A rough [table](TAGS.md) of how Comicbox handles tag translations between
 popular comic book metadata formats.
 
 ## 🛠 Development
+
+Comicbox code is hosted at [Github](https://github.com/ajslater/comicbox)
 
 You may access most development tasks from the makefile. Run make to see
 documentation.
