@@ -2,14 +2,14 @@
 
 A comic book archive metadata reader and writer.
 
-## ✨ <a href="features">Features</a>
+## ✨ Features
 
-### 📚<a href="comicFormats">Comic Formats</a>
+### 📚 Comic Formats
 
 Comicbox reads CBZ, CBR, CBT, and optionally PDF. Comicbox archives and writes
 CBZ archives and PDF metadata.
 
-### 🏷️ <a href="metadata_formats">Metadata Formats</a>
+### 🏷️ Metadata Formats
 
 Comicbox reads and writes:
 
@@ -18,7 +18,7 @@ Comicbox reads and writes:
 - [Comic Book Lover ComicBookInfo schema](https://code.google.com/archive/p/comicbookinfo/)
 - [CoMet schema](https://github.com/wdhongtw/comet-utils).
 - [PDF Metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data).
-  - Embedding ComicInfo.xml or MetronInfo.xml inside PDFs.
+    - Embedding ComicInfo.xml or MetronInfo.xml inside PDFs.
 - A variety of filename schemes that encode metadata.
 
 ### Usefulness
@@ -41,12 +41,11 @@ Comicbox does _not_ use popular metadata database APIs or have a GUI!
 useful comicbook tagger. It does most of what Comicbox does but also
 automatically tags comics with the ComicVine API and has a desktop UI.
 
-## <a name="news">📜 News</a>
+## 📜 News
 
-Comicbox has a <a href="NEWS.md">NEWS file</a> to summarize changes that affect
-users.
+Comicbox has a [NEWS file](NEWS.md) to summarize changes that affect users.
 
-## 📦 <a href="install">Installation</a>
+## 📦 Installation
 
 <!-- eslint-skip -->
 
@@ -89,7 +88,7 @@ PYMUPDF_SETUP_PY_LIMITED_API=0 pip install comicbox
 You will also have to have the `build-essential` and `python3-dev` or equivalent
 packages installed on on your Linux.
 
-## ⌨️ <a href="usage">Usage</a>
+## ⌨️ Use
 
 ##### Related Projects
 
@@ -192,9 +191,9 @@ and the identifier tag should appear in comicbox.yaml as:
 
 ```yaml
 identifiers:
-  foo.com:
-    id_key: ""
-    url: https://foo.com
+    foo.com:
+        id_key: ""
+        url: https://foo.com
 ```
 
 You don't even need the root tag.
@@ -272,7 +271,7 @@ change logging level:
 LOGLEVEL=ERROR comicbox -p <path>
 ```
 
-## 🛠 <a href="api">API</a>
+## 🛠 API
 
 Comicbox is mostly used by me in [Codex](https://github.com/ajslater/codex/) as
 a metadata extractor. Here's a brief example, but the API remains undocumented.
@@ -286,17 +285,17 @@ with Comicbox(path_to_comic) as cb:
   image_data = car.get_cover_page(to_pixmap=True)
 ```
 
-## 📋 <a href="schemas">Schemas</a>
+## 📋 Schemas
 
 Comicbox supports most popular comicbook metadata schema definitions. These are
-defined on the <a href="SCHEMAS.md">SCHEMAS page</a>.
+defined on the [SCHEMAS page](SCHEMAS.md).
 
-## 🔀 <a href="tags">Tag Translations</a>
+## 🔀 Tag Translations
 
-A rough <a href="TAGS.md">table</a> of how Comicbox handles tag translations
-between popular comic book metadata formats.
+A rough [table](TAGS.md) of how Comicbox handles tag translations between
+popular comic book metadata formats.
 
-## 🛠 <a href="development">Development</a>
+## 🛠 Development
 
 You may access most development tasks from the makefile. Run make to see
 documentation.

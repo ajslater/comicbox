@@ -68,8 +68,11 @@ dev = [
   "codespell<3.0.0,>=2.1.0",
   "coverage[toml]<8.0,>=7.0",
   "check-jsonschema<1.0.0,>=0.31.0",
+  "icecream>=2.1.4",
   "jsonschema[format]<5.0.0,>=4.20.1",
   "hatchling<2.0.0,>=1.27.0",
+  "mkdocs>=1.6.1",
+  "mkdocs-minify-plugin>=0.8.0",
   "pytest-cov<7.0,>=6.0",
   "pytest-gitignore<2.0,>=1.3",
   "radon[toml]<7.0.0,>=6.0.1",
@@ -78,7 +81,6 @@ dev = [
   "types-python-dateutil<3.0.0.0,>=2.8.19.13",
   "vulture<3.0,>=2.1",
   "xmlschema<5.0.0,>=4.0.0",
-  "icecream>=2.1.4",
 ]
 
 [build-system]

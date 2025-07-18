@@ -121,4 +121,17 @@ news:
 
 .PHONY: all
 
+.PHONY: docs
+## Build doc site
+## @category Docs
+docs:
+	uv run mkdocs build --strict --site-dir docs/site
+
+.PHONY: docs-server
+## Build doc site
+## @category Docs
+docs-server:
+	uv run mkdocs serve --open --dirty
+
+
 include bin/makefile-help.mk

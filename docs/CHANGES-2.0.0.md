@@ -1,5 +1,8 @@
 # Changes 2.0.0
 
+This is not an exhaustive list of changes, but more of a reference sheet to get
+you started if you have a workflow or library that depends on comicbox.
+
 ## Config & CLI
 
 ### New Options
