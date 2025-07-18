@@ -1,4 +1,4 @@
-# Tag Translations
+# 🏷️ Tag Translations
 
 This is a rough table of how Comicbox handles tag translations between popular
 comic book metadata formats.
