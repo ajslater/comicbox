@@ -71,6 +71,7 @@ dev = [
   "icecream>=2.1.4",
   "jsonschema[format]<5.0.0,>=4.20.1",
   "hatchling<2.0.0,>=1.27.0",
+  "mkapi>=4.4.4",
   "mkdocs>=1.6.1",
   "mkdocs-minify-plugin>=0.8.0",
   "pytest-cov<7.0,>=6.0",

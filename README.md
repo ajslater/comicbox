@@ -289,6 +289,9 @@ with Comicbox(path_to_comic) as cb:
   image_data = car.get_cover_page(to_pixmap=True)
 ```
 
+Attached to these docs in the navigation header there are some auto generated
+API docs that might be better than nothing.
+
 ## 📋 Schemas
 
 Comicbox supports most popular comicbook metadata schema definitions. These are

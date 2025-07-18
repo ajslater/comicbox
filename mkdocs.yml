@@ -17,9 +17,17 @@ plugins:
       css_files:
         - style.css
   - search
+  - mkapi
 markdown_extensions:
   - smarty
   - toc:
       permalink: true
 extra_css:
   - style.css
+nav:
+  - CHANGES-1.0.0.md
+  - CHANGES-2.0.0.md
+  - NEWS.md
+  - SCHEMAS.md
+  - TAGS.md
+  - API: $api/comicbox.***
