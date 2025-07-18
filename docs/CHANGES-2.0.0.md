@@ -44,9 +44,10 @@ comic metadata format is now fully supported.
 
 ### Metadata Formats and Metadata Sources
 
-[MetadataSources](https://github.com/ajslater/comicbox/tree/main/comicbox/sources.py) and
-[MetadataFormats](https://github.com/ajslater/comicbox/tree/main/comicbox/formats.py) are separated and are now different
-related Enums.
+[MetadataSources](https://github.com/ajslater/comicbox/tree/main/comicbox/sources.py)
+and
+[MetadataFormats](https://github.com/ajslater/comicbox/tree/main/comicbox/formats.py)
+are separated and are now different related Enums.
 
 ### Method name changes
 
