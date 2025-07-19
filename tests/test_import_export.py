@@ -850,7 +850,7 @@ def test_import(fn):
     config = Namespace(comicbox=cns)
     with Comicbox(config=config) as car:
         car.print_out()  # debug
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(test_md, md)
 

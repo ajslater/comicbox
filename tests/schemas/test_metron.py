@@ -475,7 +475,7 @@ def test_metron_from_dict_url_primary():
     )
     with Comicbox(config=config) as car:
         car.print_out()
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(URL_PRIMARY_READ_METADATA, md)
 

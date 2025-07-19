@@ -39,14 +39,18 @@ class ComicboxMetadata(ComicboxComputed):
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
 
-    def get_metadata(self) -> MappingProxyType:
-        """Return the metadata from the archive."""
+    def get_internal_metadata(self) -> MappingProxyType:
+        """
+        Return the internal metadata from the archive.
+
+        Most external applications should use box.to_dict()
+        """
         if not self._metadata:
             self._set_computed_merged_metadata()
         return self._metadata
 
-    def set_metadata(self, metadata: Mapping) -> None:
-        """Programmatically set the metadata."""
+    def set_internal_metadata(self, metadata: Mapping) -> None:
+        """Programmatically set the raw metadata."""
         self._metadata = MappingProxyType(metadata)
 
     def _embed_metadata(
@@ -58,7 +62,7 @@ class ComicboxMetadata(ComicboxComputed):
 
         embedded_transform = fmt.value.transform_class(self._path)
         embedded_schema = embedded_transform.SCHEMA_CLASS()
-        metadata = self.get_metadata()
+        metadata = self.get_internal_metadata()
         if (md := embedded_transform.from_comicbox(metadata)) and (
             embedded_value := embedded_schema.dumps(md)
         ):
@@ -80,7 +84,7 @@ class ComicboxMetadata(ComicboxComputed):
 
         # Get transformed md
         transform = fmt.value.transform_class(self._path)
-        md = self.get_metadata()
+        md = self.get_internal_metadata()
         md = transform.from_comicbox(md)
 
         if embed_fmt:

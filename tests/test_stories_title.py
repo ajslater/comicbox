@@ -63,7 +63,7 @@ def test_story_title_combo(label):
 
     with Comicbox(metadata=md_in, config=PRINT_CONFIG) as car:
         # car.print_out() debug
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     diff = DeepDiff(md_out, md)
 

@@ -54,6 +54,9 @@ are separated and are now different related Enums.
 - Comicbox.extract_covers_as() => Comicbox.extract_covers()
 - Comicbox.get_cover_image() => Comicbox.get_cover_page()
 - Comicbox.write() => Comicbox.dump()
+- Comicbox.box.get_metadata() => Comicbox.box.get_internal_metadata() 
+  - Most applications should use box.to_dict()
+- Comicbox.box.set_metadata() => Comicbox.box.set_internal_metadata()
 
 ## Pre Config
 

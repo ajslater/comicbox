@@ -101,7 +101,7 @@ def read_metadata(  # noqa: PLR0913
 
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
-        disk_md = dict(car.get_metadata())
+        disk_md = dict(car.get_internal_metadata())
     metadata = dict(metadata)
     if ignore_page_count:
         glom(metadata, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
@@ -349,7 +349,7 @@ class TestParser:
             metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=PRINT_CONFIG
         ) as car:
             # car.print_out() debug
-            md = car.get_metadata()
+            md = car.get_internal_metadata()
         self._test_from(md)
 
     def test_from_dict(self):
@@ -357,7 +357,7 @@ class TestParser:
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
             car.print_out()
-            md = car.get_metadata()
+            md = car.get_internal_metadata()
         self._test_from(md)
 
     def test_from_string(self):
@@ -365,7 +365,7 @@ class TestParser:
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_string, self.fmt)
             # car.print_out() debug
-            md = car.get_metadata()
+            md = car.get_internal_metadata()
         self._test_from(md)
 
     def test_from_file(self, page_count=None):
@@ -373,7 +373,7 @@ class TestParser:
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
             # car.print_out() debug
-            md = car.get_metadata()
+            md = car.get_internal_metadata()
         self._test_from(md, page_count=page_count)
 
     def compare_dict(self, test_dict):

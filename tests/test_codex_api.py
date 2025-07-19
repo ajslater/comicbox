@@ -280,7 +280,7 @@ def test_codex_import(ft):
     fixture = FIXTURES[ft]
     with Comicbox(fixture.path, config=CONFIG) as car:
         car_ft = car.get_file_type()
-        car_md = MappingProxyType(car.get_metadata())
+        car_md = MappingProxyType(car.get_internal_metadata())
         car_count = car.get_page_count()
         # car.print_out() debug
     assert car_ft == ft

@@ -157,14 +157,14 @@ def test_cli_action_write():
     """Test cli metadata write to file."""
     _setup()
     with Comicbox(TMP_PATH) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
     md = MappingProxyType(md)
 
     args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "-P", "sld")
     cli.main(args)
 
     with Comicbox(TMP_PATH) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
     md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
@@ -176,7 +176,7 @@ def test_cli_action_write_replace():
     """Test cli metadata write to file."""
     _setup()
     with Comicbox(TMP_PATH) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
     md = MappingProxyType(md)
 
     args = (
@@ -195,7 +195,7 @@ def test_cli_action_write_replace():
     cli.main(args)
 
     with Comicbox(TMP_PATH) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
     md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
@@ -207,7 +207,7 @@ def test_cli_action_cbz():
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
     with Comicbox(TMP_CBR_PATH) as car:
-        old_md = car.get_metadata()
+        old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     old_md = MappingProxyType(old_md)
@@ -217,7 +217,7 @@ def test_cli_action_cbz():
     assert not TMP_CBR_PATH.exists()
 
     with Comicbox(TMP_CBZ_PATH) as car:
-        new_md = car.get_metadata()
+        new_md = car.get_internal_metadata()
     assert new_md[ComicboxCLISchema.ROOT_TAG]["ext"] == "cbz"
     new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
     new_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
@@ -233,7 +233,7 @@ def test_cli_action_delete_all_tags():
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
         # car.print_out() debug
-        old_md = car.get_metadata()
+        old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     assert old_md
@@ -242,7 +242,7 @@ def test_cli_action_delete_all_tags():
     cli.main(args)
 
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
-        new_md = car.get_metadata()
+        new_md = car.get_internal_metadata()
     new_md = MappingProxyType(new_md)
     assert_diff(EMPTY_MD, new_md)
     _cleanup()
@@ -253,7 +253,7 @@ def test_cli_action_delete_tags_add_metadata():
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
-        old_md = car.get_metadata()
+        old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     assert old_md
@@ -276,7 +276,7 @@ def test_cli_action_delete_tags_add_metadata():
 
     with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
         car.print_out()
-        new_md = car.get_metadata()
+        new_md = car.get_internal_metadata()
 
     new_md = MappingProxyType(new_md)
     assert_diff(ADDED_MD, new_md)
@@ -288,7 +288,7 @@ def test_cli_action_delete_keys():
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)
     with Comicbox(TMP_MULTI_PATH, config=config) as car:
-        old_md = car.get_metadata()
+        old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md = MappingProxyType(old_md)
     assert old_md
@@ -309,7 +309,7 @@ def test_cli_action_delete_keys():
     )
 
     with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
-        new_md = car.get_metadata()
+        new_md = car.get_internal_metadata()
 
     new_md = MappingProxyType(new_md)
     assert_diff(DELETE_KEYS_MD, new_md)

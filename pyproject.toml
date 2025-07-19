@@ -79,6 +79,7 @@ dev = [
   "radon[toml]<7.0.0,>=6.0.1",
   "ruff<1.0.0,>=0.9.9",
   "toml-cli<1.0.0,>=0.7.0",
+  "ty>=0.0.1a14",
   "types-python-dateutil<3.0.0.0,>=2.8.19.13",
   "vulture<3.0,>=2.1",
   "xmlschema<5.0.0,>=4.0.0",
@@ -274,6 +275,21 @@ task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.lint.pycodestyle]
 ignore-overlong-task-comments = true
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.10"
+
+[tool.ty.src]
+exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
+  "dist",
+  "test-results",
+  "typings",
+  "vulture_ignorelist.py",
+]
 
 [tool.vulture]
 min_confidence = 61

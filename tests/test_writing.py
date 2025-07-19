@@ -141,7 +141,7 @@ def test_patch():
     shutil.copy(TEST_PATCHME_PATH, PATCHME_PATH)
 
     with Comicbox(PATCHME_PATH, config=WRITE_CONFIG) as car:
-        car.set_metadata(PATCHME_METADATA)
+        car.set_internal_metadata(PATCHME_METADATA)
         car.dump()
     read_metadata(
         PATCHME_PATH,
