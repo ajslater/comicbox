@@ -19,7 +19,7 @@ class ArchiveInfo:
         dttm = None
         if isinstance(info, ZipInfo):
             if date_time := info.date_time:
-                dttm = datetime(*date_time, tzinfo=timezone.utc)
+                dttm = datetime(*date_time, tzinfo=timezone.utc)  # ty: ignore[missing-argument]
         elif isinstance(info, TarInfo):
             dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
         elif isinstance(info, SevenZipInfo):

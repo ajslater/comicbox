@@ -3,7 +3,6 @@
 from collections.abc import Mapping
 from functools import wraps
 
-from marshmallow import fields
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 from typing_extensions import override
@@ -241,7 +240,7 @@ class XmlStringListField(XmlListFieldMixin, StringListField):
 class XmlStringSetField(XmlListFieldMixin, StringSetField):
     """Check for cdata."""
 
-    FIELD: fields.Field = XmlStringField  # pyright: ignore[reportAssignmentType]
+    FIELD = XmlStringField
 
     @override
     @cdata
@@ -252,7 +251,7 @@ class XmlStringSetField(XmlListFieldMixin, StringSetField):
 class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
     """Check for cdata."""
 
-    FIELD: fields.Field = XmlStringField  # pyright: ignore[reportAssignmentType]·
+    FIELD = XmlStringField
 
     @override
     @cdata
@@ -263,7 +262,7 @@ class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
 class XmlIntegerListField(XmlListFieldMixin, IntegerListField):
     """Check for cdata."""
 
-    FIELD: fields.Field = XmlIntegerField  # pyright: ignore[reportAssignmentType]·
+    FIELD = XmlIntegerField
 
     @override
     @cdata

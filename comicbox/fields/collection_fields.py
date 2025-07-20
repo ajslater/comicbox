@@ -161,7 +161,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
 class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     """A list of non empty strings."""
 
-    FIELD: fields.Field = StringField  # pyright: ignore[reportAssignmentType]
+    FIELD: type[fields.Field] = StringField
     DEFAULT_SEPARATORS: str = ",;"
     DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(rf"[{DEFAULT_SEPARATORS}]")
 

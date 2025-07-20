@@ -17,8 +17,8 @@ ARCHIVE_FORMATS = frozenset(
 class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
-    def _get_dump_formats(self):
-        formats = ()
+    def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
+        formats = frozenset()
         if self._config.write:
             formats = self._config.write
         elif self._config.cbz:
@@ -61,7 +61,7 @@ class ComicboxDump(ComicboxPages):
         pdf_md = mupdf_md.get(schema.ROOT_TAG, {})
         return self.write_pdf_metadata(pdf_md)
 
-    def _dump_to_archive(self, formats):
+    def _dump_to_archive(self, formats: frozenset[MetadataFormats]):
         """Prepare archive files and comment and write to archive."""
         # Get files and comment.
         files = {}
@@ -77,14 +77,14 @@ class ComicboxDump(ComicboxPages):
                 continue
             if fmt in MetadataSources.ARCHIVE_FILE.value.formats:
                 files[fmt.value.filename] = schema.dumps(denormalized_metadata)
-            elif fmt in MetadataSources.ARCHIVE_COMMENT:
+            elif fmt in MetadataSources.ARCHIVE_COMMENT.value.formats:
                 comment = schema.dumps(denormalized_metadata)
                 comment = comment.encode(errors="replace")
 
         # write to the archive.
         return self.write_archive_metadata(files, comment)
 
-    def dump(self, formats=None):
+    def dump(self, formats: frozenset[MetadataFormats] | None = None):
         """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete_all_tags

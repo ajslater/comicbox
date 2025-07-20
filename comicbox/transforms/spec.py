@@ -63,7 +63,7 @@ def _get_spec_source_values(
             key, value = _get_multi_values_spec(source_root_path, p)
             values[key] = value
     else:
-        source_path = _path_from_tuple(source_root_path_str, source_path_strs)
+        source_path = _path_from_tuple(source_root_path_str, source_path_strs)  # ty: ignore[invalid-argument-type]
         # No default so it throws out of the current spec line.
         values = Coalesce(source_path, skip=is_empty)
     return values
