@@ -233,7 +233,7 @@ class StringSetField(StringListField):
 class IntegerListField(StringListField):
     """A list of integers."""
 
-    FIELD = IntegerField  # pyright: ignore[reportAssignmentType]
+    FIELD = IntegerField
 
     def __init__(self, *args, sort: bool = False, **kwargs):
         """Use not sorting as the default."""
