@@ -161,7 +161,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
 class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     """A list of non empty strings."""
 
-    FIELD: fields.Field = StringField  # pyright: ignore[reportAssignmentType]
+    FIELD: type[fields.Field] = StringField
     DEFAULT_SEPARATORS: str = ",;"
     DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(rf"[{DEFAULT_SEPARATORS}]")
 
@@ -233,7 +233,7 @@ class StringSetField(StringListField):
 class IntegerListField(StringListField):
     """A list of integers."""
 
-    FIELD = IntegerField  # pyright: ignore[reportAssignmentType]
+    FIELD = IntegerField
 
     def __init__(self, *args, sort: bool = False, **kwargs):
         """Use not sorting as the default."""

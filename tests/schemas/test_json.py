@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -16,8 +17,8 @@ from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comicbox.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["json", "fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["json"], read=["json"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["json", "fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["json"], read=["json"])))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -241,7 +242,7 @@ def test_comicbox_to_file():
 
 def test_comicbox_read():
     """Test read from file."""
-    COMICBOX_TESTER.test_md_read(page_count=0)
+    COMICBOX_TESTER.test_md_read()
 
 
 def test_comicbox_write():

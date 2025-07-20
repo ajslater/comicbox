@@ -52,7 +52,7 @@ def test_compute_date_from_notes():
     """Test getting the cover image."""
     config = Namespace(comicbox=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
     with Comicbox(config=config) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
     assert_diff(DATE_FROM_NOTES_MD, md)
 
 
@@ -82,7 +82,7 @@ def test_compute_ids_from_tags():
         comicbox=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,), print="snmcp")
     )
     with Comicbox(config=config) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(IDS_FROM_TAGS_MD, md)
 
@@ -106,7 +106,7 @@ def test_compute_issue_suffix():
         fmt=MetadataFormats.COMICTAGGER,
         config=PRINT_CONFIG,
     ) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
 
@@ -127,7 +127,7 @@ def test_compute_issue_name():
         fmt=MetadataFormats.COMICBOX_JSON,
         config=PRINT_CONFIG,
     ) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
 
@@ -163,6 +163,6 @@ def test_other_urls():
         fmt=MetadataFormats.COMICTAGGER,
         config=PRINT_CONFIG,
     ) as car:
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(IDENTIFIERS_FROM_URLS, md)

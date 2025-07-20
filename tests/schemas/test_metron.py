@@ -10,6 +10,7 @@ import xmltodict
 from glom import Assign, glom
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.metroninfo import MetronInfoSchema
@@ -22,8 +23,9 @@ from tests.util import (
     create_write_metadata,
 )
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["mi", "fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["mi"], read=["mi"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["mi", "fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["mi"], read=["mi"])))
+
 METRON_NOTES = (
     "Tagged with "
     "comicbox dev "
@@ -450,6 +452,15 @@ URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
         }
     }
 )
+URL_PRIMARY_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            metadata=URL_PRIMARY_READ_METRON_DICT,
+            metadat_format=MetadataFormats.METRON_INFO,
+            print="sncmp",
+        )
+    )
+)
 
 
 def test_metron_from_metadata():
@@ -466,16 +477,9 @@ def test_metron_from_dict():
 
 def test_metron_from_dict_url_primary():
     """Test getting ips from urls."""
-    config = Namespace(
-        comicbox=Namespace(
-            metadata=URL_PRIMARY_READ_METRON_DICT,
-            metadat_format=MetadataFormats.METRON_INFO,
-            print="sncmp",
-        )
-    )
-    with Comicbox(config=config) as car:
+    with Comicbox(config=URL_PRIMARY_CONFIG) as car:
         car.print_out()
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
     assert_diff(URL_PRIMARY_READ_METADATA, md)
 

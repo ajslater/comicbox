@@ -35,7 +35,7 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
             )
         ):
             try:
-                dt = date(year, month, day)  # pyright: ignore[reportArgumentType]
+                dt = date(year, month, day)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
                 computed_date[COVER_DATE_KEY] = dt
             except ValueError as exc:
                 msg = str(exc)

@@ -1,6 +1,5 @@
 """Special file writes."""
 
-from collections.abc import Mapping
 from pathlib import Path
 
 from loguru import logger
@@ -15,7 +14,6 @@ class ComicboxDumpToFiles(ComicboxDump):
     def to_file(
         self,
         dest_path=None,
-        metadata: Mapping | None = None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
         embed_fmt: MetadataFormats | None = None,
         **kwargs,
@@ -24,8 +22,6 @@ class ComicboxDumpToFiles(ComicboxDump):
         if dest_path is None:
             dest_path = self._config.dest_path
         dest_path = Path(dest_path)
-        if metadata is None:
-            metadata = self.get_metadata()
         fn = fmt.value.filename
         path = dest_path / fn
         try:

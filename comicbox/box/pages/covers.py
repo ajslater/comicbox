@@ -16,15 +16,8 @@ _COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"
 class ComicboxPagesCovers(ComicboxMetadata):
     """Cover path methods."""
 
-    def _generate_cover_paths_from_pages(self, metadata: dict) -> Generator[str]:
+    def _generate_cover_paths_from_pages(self, pages: dict) -> Generator[str]:
         """Overridden by CIX."""
-        if not metadata:
-            return
-        metadata = dict(metadata)
-        pages = glom(metadata, PAGES_KEYPATH, default=None)
-        if not pages:
-            return
-
         # Support zero and one index pages.
         has_zero_index = 0 in pages
         for index, page in pages.items():
@@ -36,9 +29,9 @@ class ComicboxPagesCovers(ComicboxMetadata):
 
     def generate_cover_paths(self) -> Generator[str]:
         """Generate cover paths."""
-        metadata = self.get_metadata()
-        metadata = dict(metadata)
-        yield from self._generate_cover_paths_from_pages(metadata)
+        metadata = dict(self.get_internal_metadata())
+        if pages := glom(metadata, PAGES_KEYPATH, default=None):
+            yield from self._generate_cover_paths_from_pages(pages)
         if cover_image := glom(metadata, _COVER_IMAGE_KEYPATH, default=None):
             pagenames = self.get_page_filenames()
             if cover_image in pagenames:

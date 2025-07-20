@@ -19,7 +19,8 @@
           "**/*.md"
         ],
         "options": {
-          "proseWrap": "always"
+          "proseWrap": "always",
+          "tabWidth": 4
         }
       },
       {

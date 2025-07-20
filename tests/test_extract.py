@@ -4,6 +4,7 @@ from argparse import Namespace
 from filecmp import cmp
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from tests.const import (
     CIX_CBZ_SOURCE_PATH,
     PDF_SOURCE_PATH,
@@ -21,6 +22,9 @@ COVER_FN = "cover.jpg"
 COVER_PATH_DEST = TMP_DIR / "CaptainScience#1_01.jpg"
 PDF_COVER_PATH_SOURCE = TEST_FILES_DIR / "pdf" / "0.pdf"
 PDF_COVER_PATH_DEST = TMP_DIR / "0.pdf"
+PAGES_CONFIG = get_config(
+    Namespace(comicbox=Namespace(index_from=2, index_to=3, dest_path=str(TMP_DIR)))
+)
 
 
 def _compare_extract_pages():
@@ -45,10 +49,7 @@ def test_extract_pages():
 def test_extract_pages_config():
     """Test extracting pages with config."""
     TMP_DIR.mkdir(exist_ok=True)
-    config = Namespace(
-        comicbox=Namespace(index_from=2, index_to=3, dest_path=str(TMP_DIR))
-    )
-    with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
+    with Comicbox(CIX_CBZ_SOURCE_PATH, config=PAGES_CONFIG) as car:
         car.extract_pages_config()
 
     _compare_extract_pages()

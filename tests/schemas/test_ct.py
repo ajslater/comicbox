@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comictagger import ComictaggerSchema
@@ -15,8 +16,8 @@ from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comictagger.cbz")
-READ_CONFIG = Namespace(comicbox=Namespace(read=["ct", "fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["ct"], read=["ct"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["ct", "fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["ct"], read=["ct"])))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

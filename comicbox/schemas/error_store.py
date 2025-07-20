@@ -55,7 +55,7 @@ class ClearingErrorStore(ErrorStore):
 class ClearingErrorStoreSchema(Schema):
     """Suppress Marshmallow errors to skip errored fields."""
 
-    SUPRESS_ERRORS: bool = True
+    SUPPRESS_ERRORS: bool = True
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
     def __init__(
@@ -76,7 +76,7 @@ class ClearingErrorStoreSchema(Schema):
     @override
     def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
+        if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
                 error_store, data, self._path, ignore_errors=self._ignore_errors
             )
@@ -85,7 +85,7 @@ class ClearingErrorStoreSchema(Schema):
     @override
     def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
         """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
+        if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
                 error_store, data, self._path, ignore_errors=self._ignore_errors
             )
@@ -100,7 +100,7 @@ class ClearingErrorStoreSchema(Schema):
         **kwargs,
     ):
         """Skip keys and log warnings instead of throwing validation or type errors."""
-        if self.SUPRESS_ERRORS:
+        if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
                 error_store, data, self._path, ignore_errors=self._ignore_errors
             )

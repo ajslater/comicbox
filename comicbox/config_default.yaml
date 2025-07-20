@@ -1,6 +1,7 @@
 comicbox:
   # Options
-  compute_pages: True
+  compute_pages: False
+  compute_page_count: True
   config: null
   delete_all_tags: False
   delete_keys: []

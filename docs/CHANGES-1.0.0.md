@@ -1,4 +1,4 @@
-# Changes 1.0.0
+# 🛠️ Changes 1.0.0
 
 This is not an exhaustive list of changes, but more of a reference sheet to get
 you started if you have a workflow or library that depends on comicbox.
@@ -27,16 +27,16 @@ cli.
 
 ```yaml
 Format keys for --ignore-read, --write, and --export:
-  Filename: fn, filename (read only)
-  PDF: pdf
-  CoMet: comet
-  ComicBookInfo: cbi, comicbooklover, comicbookinfo, cbl
-  ComicInfo: cix, comicrack, comicinfo, cr, ci, comicinfoxml
-  ComicTagger: comictagger, ct
-  Comicbox XML: xml (read only)
-  Comicbox YAML: yaml
-  Comicbox JSON: json, comicbox, cb
-  Comicbox CLI: cli
+    Filename: fn, filename (read only)
+    PDF: pdf
+    CoMet: comet
+    ComicBookInfo: cbi, comicbooklover, comicbookinfo, cbl
+    ComicInfo: cix, comicrack, comicinfo, cr, ci, comicinfoxml
+    ComicTagger: comictagger, ct
+    Comicbox XML: xml (read only)
+    Comicbox YAML: yaml
+    Comicbox JSON: json, comicbox, cb
+    Comicbox CLI: cli
 ```
 
 ## New Formats

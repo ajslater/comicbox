@@ -29,7 +29,7 @@ from tests.const import (
 )
 from tests.util import assert_diff
 
-CONFIG = get_config(Namespace(comicbox=Namespace(print="sc")))
+CONFIG = get_config(Namespace(comicbox=Namespace(print="sc", compute_page_count=False)))
 
 
 @dataclass
@@ -135,11 +135,11 @@ def _patch_md(patch):
 
 CBZ_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
+        "page_count": 0,
         "stories": {
             "The Beginning": {},
             "The End": {},
         },
-        "page_count": 36,
     }
 }
 CBZ_MD = _patch_md(CBZ_MD_PATCH)
@@ -149,6 +149,7 @@ CBR_MD_PATCH = {
         "country": "US",
         "credit_primaries": {"Writer": "Joe Orlando"},
         "ext": "cbr",
+        "page_count": 0,
         "series": {"volume_count": 1},
         "stories": {
             "The Beginning": {},
@@ -187,7 +188,6 @@ CBT_MD_PATCH = {
             "urn:isbn:123-456789-0123 "
             "urn:upc:12345"
         ),
-        "page_count": 5,
         "stories": {
             "The Beginning": {},
             "The End": {},
@@ -201,8 +201,8 @@ PDF_MD = MappingProxyType(
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},
-            "notes": "Tagged with comicbox dev on 2025-05-22T03:12:25Z",
             "page_count": 4,
+            "notes": "Tagged with comicbox dev on 2025-05-22T03:12:25Z",
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
             "stories": {"the tangle of their lives": {}},
@@ -221,7 +221,6 @@ CB7_MD_PATCH = {
             "cover_date": date(1950, 11, 1),
         },
         "ext": "cb7",
-        "page_count": 5,
         "identifier_primary_source": {
             "source": "comicvine",
             "url": "https://comicvine.gamespot.com/",
@@ -280,9 +279,9 @@ def test_codex_import(ft):
     fixture = FIXTURES[ft]
     with Comicbox(fixture.path, config=CONFIG) as car:
         car_ft = car.get_file_type()
-        car_md = MappingProxyType(car.get_metadata())
+        car_md = MappingProxyType(car.get_internal_metadata())
         car_count = car.get_page_count()
-        # car.print_out() debug
+        car.print_out()  # debug
     assert car_ft == ft
     assert car_count == fixture.page_count
     assert_diff(fixture.metadata, car_md)
@@ -302,7 +301,7 @@ def test_cover_page(ft):
         # transform file to image.
         try:
             doc = pymupdf.Document(stream=disk_cover)
-            pix = doc.get_page_pixmap(0)  # pyright: ignore[reportAttributeAccessIssue]
+            pix = doc.get_page_pixmap(0)  # pyright: ignore[reportAttributeAccessIssue] # ty: ignore[unresolved-attribute]
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"

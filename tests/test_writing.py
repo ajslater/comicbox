@@ -6,6 +6,7 @@ from decimal import Decimal
 from types import MappingProxyType
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -23,7 +24,9 @@ from .util import get_tmp_dir, my_cleanup, my_setup, read_metadata
 TMP_DIR = get_tmp_dir(__file__)
 OLD_TEST_CBR_PATH = TMP_DIR / CBI_CBR_FN
 NEW_TEST_CBZ_PATH = OLD_TEST_CBR_PATH.with_suffix(".cbz")
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"]))
+WRITE_CONFIG = get_config(
+    Namespace(comicbox=Namespace(write=["cix"], compute_pages=True))
+)
 METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -141,7 +144,7 @@ def test_patch():
     shutil.copy(TEST_PATCHME_PATH, PATCHME_PATH)
 
     with Comicbox(PATCHME_PATH, config=WRITE_CONFIG) as car:
-        car.set_metadata(PATCHME_METADATA)
+        car.set_internal_metadata(PATCHME_METADATA)
         car.dump()
     read_metadata(
         PATCHME_PATH,

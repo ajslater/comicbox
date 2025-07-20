@@ -116,6 +116,7 @@ class ComicboxInit:
         self._loaded: dict = {}
         self._normalized: dict = {}
         self._path_mtime_dttm: datetime | None = None
+        self._dict_formats: frozenset[MetadataFormats] = frozenset()
         self._reset_loaded_forward_caches()
 
     @staticmethod

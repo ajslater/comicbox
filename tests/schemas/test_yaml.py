@@ -4,6 +4,7 @@ from argparse import Namespace
 from io import StringIO
 from types import MappingProxyType
 
+from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -23,8 +24,10 @@ TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_NOTES = TEST_READ_NOTES + " urn:comicvine:issue:145269"
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=("fn", "yaml")))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["yaml"], read=("fn", "yaml")))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=("fn", "yaml"))))
+WRITE_CONFIG = get_config(
+    Namespace(comicbox=Namespace(write=["yaml"], read=("fn", "yaml")))
+)
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

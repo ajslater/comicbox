@@ -1,11 +1,11 @@
 """Test getting pages."""
 
 from argparse import Namespace
+from pprint import pprint
 from types import MappingProxyType
 
 import pytest
 from deepdiff import DeepDiff
-from icecream import ic
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -63,11 +63,9 @@ def test_story_title_combo(label):
 
     with Comicbox(metadata=md_in, config=PRINT_CONFIG) as car:
         # car.print_out() debug
-        md = car.get_metadata()
+        md = car.get_internal_metadata()
 
-    diff = DeepDiff(md_out, md)
-
-    if diff:
-        ic(diff)
-        ic(md)
+    if diff := DeepDiff(md_out, md):
+        pprint(diff)  # noqa: T203
+        pprint(md)  # noqa: T203
     assert not diff

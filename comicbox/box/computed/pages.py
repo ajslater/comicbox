@@ -8,7 +8,6 @@ from loguru import logger
 
 from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
-from comicbox.formats import MetadataFormats
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 from comicbox.schemas.comicbox import (
     BOOKMARK_KEY,
@@ -19,11 +18,10 @@ from comicbox.schemas.comicbox import (
     PAGES_KEY,
 )
 
-_COMICBOX_FORMATS = frozenset(
+_ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
     {
-        MetadataFormats.COMICBOX_CLI_YAML,
-        MetadataFormats.COMICBOX_YAML,
-        MetadataFormats.COMICBOX_JSON,
+        PAGE_COUNT_KEY: ("compute_page_count", "HAS_PAGE_COUNT"),
+        PAGES_KEY: ("compute_pages", "HAS_PAGES"),
     }
 )
 
@@ -31,31 +29,17 @@ _COMICBOX_FORMATS = frozenset(
 class ComicboxComputedPages(ComicboxComputedNotes):
     """Comicbox Computed Pages."""
 
-    @staticmethod
-    def _enable_page_compute_attribute_pages(formats):
-        # pages only get computed if we're writing to a non comicbox page enabled
-        # format.
-        formats = formats - _COMICBOX_FORMATS
-        return any(fmt.value.schema_class.HAS_PAGES for fmt in formats)
-
-    def _enable_page_compute_attribute_page_count(self, formats):
-        return any(
-            loaded.fmt.value.schema_class.HAS_PAGE_COUNT
-            for loaded_list in self._loaded.values()
-            for loaded in loaded_list
-        ) or any(fmt.value.schema_class.HAS_PAGE_COUNT for fmt in formats)
-
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping):
         """Determine if we should compute this attribute."""
         if key in self._config.delete_keys or not sub_md or not self._path:
             return False
-        formats = self._config.computed.all_write_formats
-        # If any of the enabled format types have page flags then compute.
-        if key == PAGES_KEY and self._config.compute_pages:
-            return self._enable_page_compute_attribute_pages(formats)
-        if key == PAGE_COUNT_KEY:
-            return self._enable_page_compute_attribute_page_count(formats)
-        return False
+        formats = frozenset(
+            self._config.computed.all_write_formats | self._dict_formats
+        )
+        config_attr, schema_attr = _ENABLE_PAGE_COMPUTE_ATTRS[key]
+        return getattr(self._config, config_attr, False) and (
+            any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)
+        )
 
     def _get_computed_page_count_metadata(self, sub_md):
         """

@@ -8,14 +8,15 @@ from typing import Any
 
 from glom import glom
 
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(read=["fn"], write=["fn"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"], write=["fn"])))
 
 SUB_DATA: Mapping[str, Any] = {
     "ext": "cbz",

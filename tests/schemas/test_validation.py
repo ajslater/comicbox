@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 import xmltodict
 
+from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import (
@@ -26,8 +27,8 @@ from tests.util import (
 )
 
 EXPORT_FN = "comicinfo-validation.xml"
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix"]))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cix"], read=["cix"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cix"])))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

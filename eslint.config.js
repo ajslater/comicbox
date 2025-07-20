@@ -100,7 +100,7 @@ export default defineConfig([
   },
   eslintPluginPrettierRecommended,
   eslintPluginSecurity.configs.recommended,
-  eslintPluginStylistic.configs["all-flat"],
+  eslintPluginStylistic.configs.all,
   {
     languageOptions: {
       globals: {
