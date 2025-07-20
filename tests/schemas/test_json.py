@@ -241,7 +241,7 @@ def test_comicbox_to_file():
 
 def test_comicbox_read():
     """Test read from file."""
-    COMICBOX_TESTER.test_md_read(page_count=0)
+    COMICBOX_TESTER.test_md_read()
 
 
 def test_comicbox_write():

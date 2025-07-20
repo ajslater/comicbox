@@ -19,8 +19,12 @@ from tests.util import (
     create_write_metadata,
 )
 
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], read=["cix"]))
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cix", "fn"]))
+WRITE_CONFIG = Namespace(
+    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=True)
+)
+READ_CONFIG = Namespace(
+    comicbox=Namespace(read=["cix", "fn"], compute_pages=True, compute_page_count=False)
+)
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -242,7 +246,7 @@ def test_cix_to_file():
 
 def test_cix_read():
     """Read RAR with CIX."""
-    CIX_TESTER.test_md_read()
+    CIX_TESTER.test_md_read(page_count=0)
 
 
 def test_cix_write():

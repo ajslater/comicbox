@@ -206,17 +206,20 @@ def test_cli_action_write_replace():
 def test_cli_action_cbz():
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    with Comicbox(TMP_CBR_PATH) as car:
+    config = get_config(Namespace(comicbox=Namespace(compute_page_count=False)))
+    with Comicbox(TMP_CBR_PATH, config=config) as car:
         old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     old_md = MappingProxyType(old_md)
 
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    cli.main((ComicboxCLISchema.ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
+    cli.main(
+        (ComicboxCLISchema.ROOT_TAG, "--cbz", "-A", "--delete-orig", str(TMP_CBR_PATH))
+    )
     assert not TMP_CBR_PATH.exists()
 
-    with Comicbox(TMP_CBZ_PATH) as car:
+    with Comicbox(TMP_CBZ_PATH, config=config) as car:
         new_md = car.get_internal_metadata()
     assert new_md[ComicboxCLISchema.ROOT_TAG]["ext"] == "cbz"
     new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
@@ -268,7 +271,7 @@ def test_cli_action_delete_tags_add_metadata():
             "cix",
             "-r",
             "cix,cli",
-            "-GN",
+            "-N",
             "-pP",
             "sncd",
         )
@@ -302,7 +305,7 @@ def test_cli_action_delete_keys():
             "age_rating,arcs.Captain Arc,credits.Joe Orlando CBI.roles,credits.Wally Wood CBI.roles,pages,series,reprints.0.series",
             "-w",
             "cix",
-            "-GN",
+            "-N",
             "-pP",
             "mcd",
         )

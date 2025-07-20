@@ -288,7 +288,7 @@ def test_multi_to_dict():
 
 def test_multi_read():
     """Test read from file."""
-    MULTI_TESTER.test_md_read(ignore_pages=True)
+    MULTI_TESTER.test_md_read(ignore_pages=True, page_count=36)
 
 
 def test_multi_write():

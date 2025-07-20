@@ -26,6 +26,7 @@ _TEMPLATE = MappingTemplate(
             {
                 # Options
                 "compute_pages": bool,
+                "compute_page_count": bool,
                 "config": Optional(OneOf((str, Path))),
                 "delete_all_tags": bool,
                 "delete_keys": Optional([frozenset, Sequence(str)]),

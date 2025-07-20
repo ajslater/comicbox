@@ -65,7 +65,7 @@ _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "E
 
 
 class CSVAction(Action):
-    """Parse comma deliminated sequences."""
+    """Parse comma delimited sequences."""
 
     @override
     def __call__(self, _parser, namespace, values, _string=None):
@@ -205,12 +205,24 @@ def _add_option_group(parser):
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
     option_group.add_argument(
-        "-G",
-        "--no-compute-pages",
+        "-g",
+        "--compute-pages",
         dest="compute_pages",
+        action="store_true",
+        default=False,
+        help=(
+            "Compute the large ComicInfo style pages metadata from the archive. Turned off by default."
+        ),
+    )
+    option_group.add_argument(
+        "-A",
+        "--no-compute-page-count",
+        dest="compute_page_count",
         action="store_false",
         default=True,
-        help=("Never compute page_count or pages metadata from the archive."),
+        help=(
+            "Do not compute the page count from the archive by reading the table of contents for image files."
+        ),
     )
     option_group.add_argument(
         "-R",
@@ -278,7 +290,7 @@ def _add_action_group(parser):
         "--print",
         dest="print_metadata",
         action="store_true",
-        help="Print merged metadata. Shortcut for -P d.",
+        help="Print merged metadata. Shortcut for -P p.",
     )
     action_group.add_argument(
         "-l",
@@ -368,7 +380,7 @@ def get_args(params=None) -> Namespace:
 
     parser = ArgumentParser(
         description=description,
-        epilog=epilog,  # pyright: ignore[reportArgumentType]
+        epilog=epilog,  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
         formatter_class=RichHelpFormatter,
         add_help=False,
     )

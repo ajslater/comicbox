@@ -7,6 +7,14 @@ you started if you have a workflow or library that depends on comicbox.
 
 ### New Options
 
+#### compute_pages
+
+False by default. Compute the complicated ComicInfo like Pages structure by investigating the archive table of contents.
+
+#### compute_page_count
+
+True by default. Compute the page_count by investigating the archive table of contents.
+
 #### metadata_format
 
 Hint to the metadata parser what format API metadata will be parsed as. Config
@@ -54,8 +62,8 @@ are separated and are now different related Enums.
 - Comicbox.extract_covers_as() => Comicbox.extract_covers()
 - Comicbox.get_cover_image() => Comicbox.get_cover_page()
 - Comicbox.write() => Comicbox.dump()
-- Comicbox.box.get_metadata() => Comicbox.box.get_internal_metadata() 
-  - Most applications should use box.to_dict()
+- Comicbox.box.get_metadata() => Comicbox.box.get_internal_metadata()
+    - Most applications should use box.to_dict()
 - Comicbox.box.set_metadata() => Comicbox.box.set_internal_metadata()
 
 ## Pre Config

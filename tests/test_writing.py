@@ -23,7 +23,7 @@ from .util import get_tmp_dir, my_cleanup, my_setup, read_metadata
 TMP_DIR = get_tmp_dir(__file__)
 OLD_TEST_CBR_PATH = TMP_DIR / CBI_CBR_FN
 NEW_TEST_CBZ_PATH = OLD_TEST_CBR_PATH.with_suffix(".cbz")
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"]))
+WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cix"], compute_pages=True))
 METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
