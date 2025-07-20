@@ -7,6 +7,7 @@ from types import MappingProxyType
 
 import xmltodict
 
+from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
@@ -19,11 +20,15 @@ from tests.util import (
     create_write_metadata,
 )
 
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=True)
+WRITE_CONFIG = get_config(
+    Namespace(comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=True))
 )
-READ_CONFIG = Namespace(
-    comicbox=Namespace(read=["cix", "fn"], compute_pages=True, compute_page_count=False)
+READ_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=["cix", "fn"], compute_pages=True, compute_page_count=False
+        )
+    )
 )
 READ_METADATA = MappingProxyType(
     {

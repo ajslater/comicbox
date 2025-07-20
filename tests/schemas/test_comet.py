@@ -7,6 +7,7 @@ from types import MappingProxyType
 
 import xmltodict
 
+from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comet import CoMetSchema
@@ -15,8 +16,10 @@ from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["comet", "fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["comet", "fn"])))
+WRITE_CONFIG = get_config(
+    Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
+)
 
 METADATA = MappingProxyType(
     {

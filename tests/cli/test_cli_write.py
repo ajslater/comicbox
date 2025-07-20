@@ -18,9 +18,12 @@ from tests.const import (
 )
 from tests.util import assert_diff, get_tmp_dir, my_cleanup, my_setup
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cli"]))
-READ_CONFIG_IGNORE_FN = Namespace(comicbox=Namespace(read_ignore=["fn"], print="sp"))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["cli"], read=["cli"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cli"])))
+READ_CONFIG_IGNORE_FN = get_config(
+    Namespace(comicbox=Namespace(read_ignore=["fn"], print="sp"))
+)
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cli"], read=["cli"])))
+CBZ_CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=False)))
 METADATA = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
@@ -206,8 +209,7 @@ def test_cli_action_write_replace():
 def test_cli_action_cbz():
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    config = get_config(Namespace(comicbox=Namespace(compute_page_count=False)))
-    with Comicbox(TMP_CBR_PATH, config=config) as car:
+    with Comicbox(TMP_CBR_PATH, config=CBZ_CONFIG) as car:
         old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     old_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
@@ -219,7 +221,7 @@ def test_cli_action_cbz():
     )
     assert not TMP_CBR_PATH.exists()
 
-    with Comicbox(TMP_CBZ_PATH, config=config) as car:
+    with Comicbox(TMP_CBZ_PATH, config=CBZ_CONFIG) as car:
         new_md = car.get_internal_metadata()
     assert new_md[ComicboxCLISchema.ROOT_TAG]["ext"] == "cbz"
     new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
@@ -233,8 +235,7 @@ def test_cli_action_cbz():
 def test_cli_action_delete_all_tags():
     """Test delete_tags action."""
     _setup(CBZ_MULTI_SOURCE_PATH)
-    config = get_config(READ_CONFIG_IGNORE_FN)
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
         # car.print_out() debug
         old_md = car.get_internal_metadata()
     old_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
@@ -244,7 +245,7 @@ def test_cli_action_delete_all_tags():
     args = (ComicboxCLISchema.ROOT_TAG, str(TMP_MULTI_PATH), *DELETE_ALL_TAGS_ARGS)
     cli.main(args)
 
-    with Comicbox(TMP_MULTI_PATH, config=config) as car:
+    with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
         new_md = car.get_internal_metadata()
     new_md = MappingProxyType(new_md)
     assert_diff(EMPTY_MD, new_md)

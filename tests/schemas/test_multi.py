@@ -7,6 +7,7 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
@@ -20,9 +21,11 @@ from tests.const import (
 )
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
-READ_CONFIG = Namespace(comicbox=Namespace())
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "ct", "cb"))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace()))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "ct", "cb"))
+    )
 )
 READ_METADATA = MappingProxyType(
     {

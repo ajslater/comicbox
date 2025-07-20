@@ -17,6 +17,7 @@ from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
 from comicbox.box.pages.covers import PAGES_KEYPATH
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
 from comicbox.schemas.comicbox import (
@@ -30,7 +31,6 @@ from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIE
 from comicbox.transforms.comicbookinfo import UPDATED_AT_KEYPATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
-    TEST_DATETIME,
     TEST_FILES_DIR,
     TEST_METADATA_DIR,
     TEST_WRITE_NOTES,
@@ -38,7 +38,7 @@ from tests.const import (
 )
 from tests.validate.validate import validate_path
 
-PRINT_CONFIG = Namespace(comicbox=Namespace(print="slmncd"))
+PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="slmncd")))
 PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGE_COUNT_KEY}"
 NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{NOTES_KEY}"
 EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{EXT_KEY}"
@@ -97,8 +97,6 @@ def read_metadata(  # noqa: PLR0913
     ignore_pages: bool = False,
 ):
     """Read metadata and compare to dict fixture."""
-    read_config.comicbox.print = "slnmcd"
-
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
         disk_md = dict(car.get_internal_metadata())
@@ -480,12 +478,9 @@ class TestParser:
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
-        config = deepcopy(self.write_config)
-        config.comicbox.updated_at = TEST_DATETIME.isoformat()
-        config.comicbox.print = "slmncd"
         with Comicbox(
             new_test_cbz_path,
-            config=config,
+            config=self.write_config,
             metadata=self.write_reference_metadata,
             fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
@@ -536,11 +531,9 @@ class TestParser:
             doc.new_page()  # pyright: ignore[reportAttributeAccessIssue]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
-            config = deepcopy(self.write_config)
-            config.comicbox.updated_at = TEST_DATETIME.isoformat()
             with Comicbox(
                 new_test_pdf_path,
-                config=config,
+                config=self.write_config,
                 metadata=self.write_reference_metadata,
                 fmt=MetadataFormats.COMICBOX_YAML,
             ) as car:

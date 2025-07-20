@@ -6,14 +6,17 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.pdf import MuPDFSchema
 from tests.const import PDF_FN
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["pdf", "fn"]))
-WRITE_CONFIG = Namespace(comicbox=Namespace(write=["pdf", "cix"], read=["pdf"]))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["pdf", "fn"])))
+WRITE_CONFIG = get_config(
+    Namespace(comicbox=Namespace(write=["pdf", "cix"], read=["pdf"]))
+)
 
 METADATA = MappingProxyType(
     {
