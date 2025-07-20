@@ -9,11 +9,13 @@ you started if you have a workflow or library that depends on comicbox.
 
 #### compute_pages
 
-False by default. Compute the complicated ComicInfo like Pages structure by investigating the archive table of contents.
+False by default. Compute the complicated ComicInfo like Pages structure by
+investigating the archive table of contents.
 
 #### compute_page_count
 
-True by default. Compute the page_count by investigating the archive table of contents.
+True by default. Compute the page_count by investigating the archive table of
+contents.
 
 #### metadata_format
 
