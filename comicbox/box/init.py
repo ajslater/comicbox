@@ -28,7 +28,7 @@ from comicbox.sources import MetadataSources
 try:
     from pdffile import PDFFile
 except ImportError:
-    from comicbox.box.pdffile_stub import PDFFile
+    from comicbox.pdffile_stub import PDFFile
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.0.1
+
+- Resolve circular import if not installed with \[pdf\] option.
+
 ## v2.0.0
 
 ### 🚨 BREAKING CHANGES 🚨

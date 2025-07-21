@@ -9,7 +9,7 @@ from zipremove import ZipFile
 try:
     from pdffile import PDFFile
 except ImportError:
-    from comicbox.box.pdffile_stub import PDFFile
+    from comicbox.pdffile_stub import PDFFile
 
 
 ArchiveType = ZipFile | RarFile | TarFile | SevenZipFile | PDFFile
