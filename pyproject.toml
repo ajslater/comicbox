@@ -1,26 +1,41 @@
 [project]
 name = "comicbox"
-requires-python = ">=3.10"
-
-[build-system]
-requires = ["poetry-core>=2.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
-name = "comicbox"
-version = "1.2.3"
-description = "An API for reading comic archive contents and metadata: CBZ, CBR, CBT and PDF"
-license = "LGPL-3.0-only"
-authors = ["AJ Slater <aj@slater.net>"]
+version = "2.0.0"
+description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
+requires-python = "<4.0,>=3.10"
+authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
+license = { text = "LGPL-3.0-only" }
+dependencies = [
+  "ansicolors<2.0.0,>=1.1.8",
+  "bidict<1.0.0,>=0.23.0",
+  "case-converter>=1.2.0",
+  "confuse<3.0.0,>=2.0.0",
+  "comicfn2dict<1.0.0,>=0.2.4",
+  "deepdiff<9.0.0,>=8.2.0",
+  "glom>=24.11.0",
+  "loguru>=0.7.3",
+  "marshmallow<5.0.0,>=4.0.0",
+  "marshmallow-union<1.0.0.0,>=0.1.15.post1",
+  "pycountry<25.0.0,>=24.6.1",
+  "python-dateutil<3.0.0,>=2.8.2",
+  "py7zr<2.0.0,>=1.0.0",
+  "rarfile<5.0,>=4.0",
+  "rich<15.0,>=14.0.0",
+  "rich-argparse<2.0.0,>=1.7.0",
+  "ruamel-yaml<0.19.00,>=0.17.32",
+  "simplejson<4.0.0,>=3.19.1",
+  "typing-extensions>=4.13.2",
+  "urnparse<1.0.0,>=0.2.0",
+  "xmltodict<1.0.0,>=0.14.0",
+  "zipremove>=0.1.0",
+]
 readme = "README.md"
-homepage = "https://github.com/ajslater/comicbox"
-repository = "https://github.com/ajslater/comicbox"
-documentation = "https://github.com/ajslater/comicbox"
 keywords = [
   "comic",
   "cbz",
   "cbr",
   "cbt",
+  "cb7",
   "pdf",
   "comicinfo",
   "comicbookinfo",
@@ -35,53 +50,87 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
 ]
-packages = [{ include = "comicbox" }, { include = "tests", format = "sdist" }]
-include = ["NEWS.md"]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-ansicolors = "^1.1.8"
-bidict = "^0.23.0"
-confuse = "^2.0.0"
-comicbox-pdffile = { version = "^0.2.3", optional = true }
-comicfn2dict = "^0.2.4"
-marshmallow = "^3.19.0"
-marshmallow-union = "^0.1.15.post1"
-pycountry = "^24.6.1"
-python-dateutil = "^2.8.2"
-rarfile = "^4.0"
-ruamel-yaml = ">=0.17.32,<0.19.00"
-simplejson = "^3.19.1"
-stringcase = "^1.2.0"
-urnparse = "^0.2.0"
-xmltodict = "^0.14.0"
+[project.urls]
+homepage = "https://github.com/ajslater/comicbox"
+repository = "https://github.com/ajslater/comicbox"
+documentation = "https://github.com/ajslater/comicbox"
 
-[tool.poetry.group.dev.dependencies]
-wheel = "^0.45.1"
+[project.optional-dependencies]
+pdf = ["comicbox-pdffile<1.0.0,>=0.2.5"]
 
-[tool.poetry.group.lint.dependencies]
-check-jsonschema = "^0.31.0"
-codespell = "^2.1.0"
-pyright = "^1.1.354"
-radon = { version = "^6.0.1", extras = ["toml"] }
-ruff = "^0.9.1"
-types-python-dateutil = "^2.8.19.13"
-vulture = "^2.1"
-
-[tool.poetry.group.test.dependencies]
-coverage = { extras = ["toml"], version = "^7.0" }
-deepdiff = "^8.0.1"
-pytest-cov = "^6.0"
-pytest-gitignore = "^1.3"
-
-[tool.poetry.extras]
-pdf = ["comicbox-pdffile"]
-
-[tool.poetry.scripts]
+[project.scripts]
 comicbox = "comicbox.cli:main"
 
+[dependency-groups]
+dev = [
+  "basedpyright~=1.29.1",
+  "codespell<3.0.0,>=2.1.0",
+  "coverage[toml]<8.0,>=7.0",
+  "check-jsonschema<1.0.0,>=0.31.0",
+  "icecream>=2.1.4",
+  "jsonschema[format]<5.0.0,>=4.20.1",
+  "hatchling<2.0.0,>=1.27.0",
+  "mkapi~=4.4",
+  "mkdocs~=1.6",
+  "mkdocs-minify-plugin>=0.8",
+  "pytest-cov<7.0,>=6.0",
+  "pytest-gitignore<2.0,>=1.3",
+  "radon[toml]<7.0.0,>=6.0.1",
+  "ruff<1.0.0,>=0.9.9",
+  "toml-cli<1.0.0,>=0.7.0",
+  "ty>=0.0.1a14",
+  "types-python-dateutil<3.0.0.0,>=2.8.19.13",
+  "vulture<3.0,>=2.1",
+  "xmlschema<5.0.0,>=4.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+[tool.hatch.build.targets.wheel]
+exclude = ["comicbox/**/README.md"]
+
+[tool.hatch.build.targets.sdist]
+include = ['comicbox', 'tests']
+
+[tool.basedpyright]
+exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
+  "comicbox/zipfile_remove",
+  "dist",
+  "test-results",
+  "typings",
+  "vulture_whitelist.py",
+]
+pythonVersion = "3.10"
+failOnWarnings = false
+reportAny = false
+reportExplicitAny = false
+reportImportCycles = true
+reportIncompatibleUnannotatedOverride = true
+reportMissingParameterType = false
+reportMissingTypeArgument = false
+reportMissingTypeStubs = false
+reportPrivateUsage = false # ruff does this
+reportUnannotatedClassAttribute = false
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+reportUntypedBaseClass = false # Meta inheritance
+reportUnusedCallResult = false
+reportUnusedParameter = false # ruff does this
+
 [tool.codespell]
-skip = './cache,./dist,./test-results,.git,.mypy_cache,.pytest_cache,.venv,*~,node_modules,package-lock.json,poetry.lock,./tests/test_files/*,comicbox/zipfile_remove'
+skip = ".*,*~,./dist,./node_modules,./package.json,./package-lock.json,./uv.lock,./test-results,./tests/test_files/*,comicbox/zipfile_remove"
+
 builtin = 'clear,rare,code'
 check-hidden = true
 ignore-words-list = 'thead,ro,jupyter,coverd'
@@ -91,11 +140,9 @@ source = ["comicbox"]
 branch = true
 concurrency = ["multiprocessing"]
 omit = [
-  ".git/*",
-  ".mypy_cache/*",
-  ".pytest_cache/*",
-  ".venv/*",
+  "*/.*",
   "*__pycache__*",
+  "comicbox/zipfile_remove",
   "dist/*",
   "node_modules/*",
   "test-results/*",
@@ -118,48 +165,37 @@ addopts = """
 """
 junit_family = "xunit2"
 testpaths = "tests"
+pythonpath = ["."]
 
-[tool.pyright]
-exclude = [
+[tool.radon]
+exclude = "*~,.*,.*/*,__pycache__/*,dist/*,node_modules/*,test-results/*,typings/*,comicbox/zipfile_remove/*"
+
+[tool.ruff]
+builtins = ["ic"]
+extend-exclude = [
+  "**/.*",
   "**/__pycache__",
-  "**/node_modules",
-  ".git",
-  ".mypy_cache",
-  ".pytest_cache",
-  ".venv",
   "dist",
-  "package-lock.json",
-  "poetry.lock",
   "test-results",
   "typings",
   "comicbox/zipfile_remove",
 ]
-pythonVersion = "3.10"
-pythonPlatform = "All"
-reportImportCycles = true
-reportMisingImports = true
-useLibraryCodeForTypes = true
-
-[tool.radon]
-exclude = "*~,.git/*,*__pycache__*,.pytest_cache/*,.venv/*,node_modules/*,typings/*,comicbox/zipfile_remove/*"
-
-[tool.ruff]
-extend-exclude = ["cache", "typings", "node_modules", "comicbox/zipfile_remove"]
 target-version = "py310"
 
 [tool.ruff.lint]
 extend-ignore = [
-  "BLE001",  # catch bare exception
-  "COM812",  # missing trailing comma
-  "COM819",  # prohibit trailing comma
-  "D203",    # blank line before class docstring
-  "D206",    # formatted
-  "D212",    # first line multi line docstring.
-  "E111",    # formatted
-  "E114",    # formatted
-  "E117",    # over-indented
-  "E501",    # 88 char line
-  "FBT001",  # boolean params
+  "BLE001", # catch bare exception
+  "COM812", # missing trailing comma
+  "COM819", # prohibit trailing comma
+  "D203",   # blank line before class docstring
+  "D206",   # formatted
+  "D212",   # first line multi line docstring.
+  "E111",   # formatted
+  "E114",   # formatted
+  "E117",   # over-indented
+  "E501",   # 88 char line
+  # "FIX002",  # TODO
+  # "FIX003",  # XXX
   "ISC001",  # formatted
   "PERF203", # try block in loop
   "S101",    # assert
@@ -233,26 +269,38 @@ external = ["V101"]
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
 
 [tool.ruff.lint.per-file-ignores]
-"comicbox/box/print.py" = ["T201", "T203"]
 "comicbox/run.py" = ["T201", "T203"]
-"tests/*" = ["T201", "T203"]
 "tests/test_import.py" = ["DTZ001"]
+"tests/validate/cli.py" = ["T201"]
 
 [tool.ruff.lint.pycodestyle]
 ignore-overlong-task-comments = true
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.10"
+
+[tool.ty.src]
+exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
+  "dist",
+  "test-results",
+  "typings",
+  "vulture_ignorelist.py",
+]
 
 [tool.vulture]
 min_confidence = 61
 sort_by_size = true
 exclude = [
-  ".git/",
-  ".mypy_cache/",
-  ".pytest_cache/",
-  ".venv/",
-  "*__pycache__*",
+  "*/.*",
+  "*/__pycache__*",
+  "*/node_modules*",
+  "comicbox/zipfile_remove/",
   "dist/",
-  "node_modules/",
-  "test_results/",
+  "test-results/",
   "typings/",
   "comicbox/zipfile_remove/",
 ]

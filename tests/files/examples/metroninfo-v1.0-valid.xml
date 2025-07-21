@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd">
+	<AgeRating>Everyone</AgeRating>
+	<Arcs>
+		<Arc id="78945">
+			<Name>Origin</Name>
+			<Number>1</Number>
+		</Arc>
+		<Arc>
+			<Name>The New 52!</Name>
+		</Arc>
+	</Arcs>
+	<Characters>
+		<Character id="45678">Aquaman</Character>
+		<Character>Barry Allen</Character>
+		<Character>Batman</Character>
+		<Character>Cyborg</Character>
+		<Character>Deadman</Character>
+		<Character>Hal Jordan</Character>
+		<Character>Hawkman</Character>
+		<Character>Mera</Character>
+		<Character>Pandora</Character>
+		<Character>Ray Palmer</Character>
+		<Character>Superman</Character>
+		<Character>Wonder Woman</Character>
+	</Characters>
+	<CoverDate>2011-10-01</CoverDate>
+	<Credits>
+		<Credit>
+			<Creator>Alex Sinclair</Creator>
+			<Roles>
+				<Role>Colorist</Role>
+				<Role>Cover</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Dan DiDio</Creator>
+			<Roles>
+				<Role>Publisher</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>David Finch</Creator>
+			<Roles>
+				<Role>Cover</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Eddie Berganza</Creator>
+			<Roles>
+				<Role>Editor</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator id="32165">Geoff Johns</Creator>
+			<Roles>
+				<Role id="32165">Writer</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Jim Lee</Creator>
+			<Roles>
+				<Role>Cover</Role>
+				<Role>Penciller</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Pat Brosseau</Creator>
+			<Roles>
+				<Role>Letterer</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Rex Ogle</Creator>
+			<Roles>
+				<Role>Associate Editor</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Richard Friend</Creator>
+			<Roles>
+				<Role>Cover</Role>
+			</Roles>
+		</Credit>
+		<Credit>
+			<Creator>Scott Williams</Creator>
+			<Roles>
+				<Role>Cover</Role>
+				<Role>Inker</Role>
+			</Roles>
+		</Credit>
+	</Credits>
+	<GTIN>
+		<ISBN>1234567890123</ISBN>
+		<UPC>76194130593600111</UPC>
+	</GTIN>
+	<Genres>
+		<Genre>Crime</Genre>
+		<Genre>Foo Bar</Genre>
+		<Genre id="98745">Super-Hero</Genre>
+	</Genres>
+	<IDS>
+		<ID source="Comic Vine">290431</ID>
+		<ID source="Grand Comics Database">543</ID>
+		<ID primary="true" source="Metron">290431</ID>
+	</IDS>
+	<LastModified>2023-05-31T13:00:46.300882</LastModified>
+	<Locations>
+		<Location id="12389">Gotham City</Location>
+		<Location>Metropolis</Location>
+	</Locations>
+	<MangaVolume>2</MangaVolume>
+	<Notes>Nothing really to say.</Notes>
+	<Number>1</Number>
+	<PageCount>0</PageCount>
+	<Prices>
+		<Price country="GB">1.51</Price>
+		<Price country="US">3.99</Price>
+	</Prices>
+	<Publisher id="12345">
+		<Imprint id="1234">Vertigo</Imprint>
+		<Name>DC Comics</Name>
+	</Publisher>
+	<Reprints>
+		<Reprint>Foo</Reprint>
+		<Reprint id="65498">Foo Bar #001</Reprint>
+		<Reprint>Foo Bar #002</Reprint>
+		<Reprint>Hüsker Dü</Reprint>
+	</Reprints>
+	<Series id="65478" lang="en">
+		<AlternativeNames>
+			<AlternativeName>Foo</AlternativeName>
+			<AlternativeName/>
+			<AlternativeName lang="de">Hüsker Dü</AlternativeName>
+		</AlternativeNames>
+		<Format>Single Issue</Format>
+		<IssueCount>60</IssueCount>
+		<Name>Justice League</Name>
+		<SortName>Justice League</SortName>
+		<StartYear>1970</StartYear>
+		<Volume>2</Volume>
+		<VolumeCount>3</VolumeCount>
+	</Series>
+	<StoreDate>2011-08-31</StoreDate>
+	<Stories>
+		<Story id="12">Justice League, Part One</Story>
+		<Story>Justice League, Part Two</Story>
+	</Stories>
+	<Summary>In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!</Summary>
+	<Tags>
+		<Tag>Bar</Tag>
+		<Tag id="78945">Foo</Tag>
+	</Tags>
+	<Teams>
+		<Team id="49948">Justice League</Team>
+		<Team>Parademons</Team>
+	</Teams>
+	<URLs>
+		<URL>https://bar.foo</URL>
+		<URL>https://barcodelookup.com/76194130593600111</URL>
+		<URL>https://comics.org/issue/543/</URL>
+		<URL>https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/</URL>
+		<URL>https://foo.bar</URL>
+		<URL>https://isbndb.com/book/1234567890123</URL>
+		<URL primary="true">https://metron.cloud/issue/290431</URL>
+	</URLs>
+	<Universes>
+		<Universe id="24">
+			<Designation>Earth 25</Designation>
+			<Name>ABC</Name>
+		</Universe>
+		<Universe>
+			<Name>Amalgam</Name>
+		</Universe>
+	</Universes>
+</MetronInfo>

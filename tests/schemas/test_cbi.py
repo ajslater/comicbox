@@ -6,52 +6,65 @@ from types import MappingProxyType
 
 import simplejson as json
 
+from comicbox.config import get_config
+from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
-from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = Namespace(comicbox=Namespace(read=["cbi"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(write=["cbi"], read=["cbi"], compute_pages=False)
-)
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cbi", "fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cbi"], read=["cbi"])))
 METADATA = MappingProxyType(
     {
-        ROOT_TAG: {
-            "series": {"name": "Captain Science", "volume_count": 1},
-            "issue": "1",
-            "issue_number": Decimal(1),
-            "publisher": "Youthful Adventure Stories",
-            "month": 11,
-            "year": 1950,
-            "genres": {"Science Fiction"},
-            "volume": {
-                "name": 1950,
-                "issue_count": 7,
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "credits": {
+                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "contributors": {
-                "penciller": {"Wally Wood"},
-                "writer": {"Joe Orlando"},
+            "credit_primaries": {"Writer": "Joe Orlando"},
+            "country": "US",
+            "genres": {"Science Fiction": {}},
+            "issue": {
+                "name": "1",
+                "number": Decimal(1),
             },
             "language": "en",
-            "country": "US",
-            "title": "The Beginning",
+            "date": {
+                "year": 1950,
+                "month": 11,
+            },
             "page_count": 36,
+            "publisher": {"name": "Youthful Adventure Stories"},
+            "series": {"name": "Captain Science", "volume_count": 1},
+            "stories": {"The Beginning": {}},
+            "tagger": "comicbox dev",
+            "title": "The Beginning",
             "updated_at": TEST_DATETIME,
+            "volume": {
+                "issue_count": 7,
+                "number": 1950,
+            },
         }
     }
 )
 CBI_DICT = MappingProxyType(
     {
-        ComicBookInfoSchema._ROOT_TAG: {  # noqa: SLF001
+        "appID": "comicbox dev",
+        "lastModified": TEST_DTTM_STR,
+        # ComicBookInfoSchema.ROOT_TAG: {
+        ComicBookInfoSchema.ROOT_DATA_KEY: {
             "country": "United States",
             "credits": [
+                {
+                    "person": "Joe Orlando",
+                    "primary": True,
+                    "role": "Writer",
+                },
                 {"person": "Wally Wood", "role": "Penciller"},
-                {"person": "Joe Orlando", "role": "Writer"},
             ],
             "genre": "Science Fiction",
-            "issue": "1",
+            "issue": 1,
             "language": "English",
             "numberOfIssues": 7,
             "numberOfVolumes": 1,
@@ -63,16 +76,14 @@ CBI_DICT = MappingProxyType(
             "title": "The Beginning",
             "volume": 1950,
         },
-        "appID": "comicbox/dev",
-        "lastModified": TEST_DTTM_STR,
-        "schema": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json",
     }
 )
 
-CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=True, indent=2)
+CBI_STR = json.dumps(dict(CBI_DICT), sort_keys=False, indent=2)
 
 CBI_TESTER = TestParser(
-    ComicBookInfoTransform,
+    MetadataFormats.COMIC_BOOK_INFO,
     CBI_CBR_FN,
     METADATA,
     CBI_DICT,
@@ -124,4 +135,4 @@ def test_cbi_read():
 
 def test_cbi_write():
     """Test write to file."""
-    CBI_TESTER.test_md_write(page_count=36)
+    CBI_TESTER.test_md_write(page_count=0)

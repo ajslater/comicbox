@@ -1,0 +1,312 @@
+"""Identifiers functions."""
+
+import re
+from contextlib import suppress
+from dataclasses import asdict, dataclass
+from types import MappingProxyType
+from urllib.parse import urlparse
+
+from bidict import frozenbidict
+
+from comicbox.enums.comicbox import IdSources
+from comicbox.enums.maps.identifiers import SOURCE_ALIAS_TREE
+from comicbox.identifiers import (
+    COMICVINE_LONG_ID_KEY_EXP,
+    DEFAULT_ID_SOURCE,
+    DEFAULT_ID_TYPE,
+    PARSE_COMICVINE_RE,
+)
+from comicbox.schemas.comicbox import ID_KEY_KEY, ID_URL_KEY
+
+_SLUG_REXP = r"(?:/\S*)?"
+
+
+@dataclass
+class IdentifierTypes:
+    """URL slugs for identifier types."""
+
+    arc: str = ""
+    character: str = ""
+    genre: str = ""
+    imprint: str = ""
+    issue: str = ""
+    location: str = ""
+    publisher: str = ""
+    reprint: str = ""
+    series: str = ""
+    story: str = ""
+    tag: str = ""
+    team: str = ""
+    universe: str = ""
+    volume: str = ""
+    role: str = ""
+    creator: str = ""
+
+    _default_type: str = ""
+    _map: frozenbidict[str, str] | None = None
+
+    @property
+    def map(self) -> frozenbidict:
+        """Initialize reverse dict."""
+        if not self._map:
+            trimmed_dict = {key: value for key, value in asdict(self).items() if value}
+            self._map = frozenbidict(trimmed_dict)
+        return self._map
+
+    @property
+    def default_slug_type(self) -> str:
+        """Return the first allocated slug type."""
+        if not self._default_type:
+            for key, value in self.map.items():
+                if value:
+                    self._default_type = key
+                    break
+        return self._default_type
+
+
+@dataclass
+class IdentifierParts:
+    """Identifier url parser and unparser."""
+
+    domain: str
+    id_type: IdentifierTypes
+    url_path_regex: str
+    url_path_template: str
+    https: bool = True
+
+    def __post_init__(self):
+        """Initialize url_regex & template prefix."""
+        scheme = "https" if self.https else "http"
+        self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
+        self.url_path_regex_compiled = re.compile(self.url_path_regex, re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
+
+    def get_type_by_code(self, id_type_code: str, default=DEFAULT_ID_TYPE):
+        """Get identifier type by url fragment or code."""
+        return self.id_type.map.inverse.get(id_type_code, default)
+
+    def parse_url_path(self, url) -> tuple[str, str]:
+        """Parse URL path with regex."""
+        obj = urlparse(url)
+        match = self.url_path_regex_compiled.search(obj.path[1:])
+        if not match:
+            return "", obj.path
+        try:
+            id_type_slug = match.group("id_type")
+        except IndexError:
+            id_type_slug = ""
+        id_type = self.get_type_by_code(id_type_slug, self.id_type.default_slug_type)
+        id_key = match.group("id_key") or ""
+        return id_type, id_key
+
+    def unparse_url(self, id_type: str, id_key: str) -> str:
+        """Create url from identifier parts."""
+        url = ""
+        if type_value := getattr(self.id_type, id_type, None):
+            path = self.url_path_template.format(id_type=type_value, id_key=id_key)
+            url = self.url_prefix + path
+        return url
+
+
+IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProxyType(
+    {
+        IdSources.ANILIST: IdentifierParts(
+            domain="anilist.co",
+            id_type=IdentifierTypes(series="manga"),
+            url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.ASIN: IdentifierParts(
+            domain="www.amazon.com",
+            id_type=IdentifierTypes(issue="issue"),
+            url_path_regex=r"dp/(?P<id_key>\S+)",
+            url_path_template="dp/{id_key}",
+        ),
+        IdSources.COMICVINE: IdentifierParts(
+            domain="comicvine.gamespot.com",
+            id_type=IdentifierTypes(
+                arc="4045",
+                character="4005",
+                creator="4040",
+                issue="4000",
+                location="4020",
+                publisher="4010",
+                series="4050",
+                team="4060",
+            ),
+            url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_ID_KEY_EXP,
+            url_path_template="c/{id_type}-{id_key}/",
+        ),
+        IdSources.COMIXOLOGY: IdentifierParts(
+            domain="www.comixology.com",
+            id_type=IdentifierTypes(issue="digital-comic"),
+            url_path_regex=r"c/(?P<id_type>\S+)/(?P<id_key>\d+)",
+            url_path_template="c/{id_type}/{id_key}",
+        ),
+        IdSources.GCD: IdentifierParts(
+            domain="comics.org",
+            id_type=IdentifierTypes(
+                character="character",
+                creator="creator",
+                issue="issue",
+                series="series",
+                publisher="indicia_publisher",
+                universe="universe",
+            ),
+            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\d+)/?",
+            url_path_template="{id_type}/{id_key}/",
+        ),
+        IdSources.ISBN: IdentifierParts(
+            domain="isbndb.com",
+            id_type=IdentifierTypes(issue="book", series="series"),
+            url_path_regex=r"(?P<id_type>book)/(?P<id_key>[\d-]+)",
+            url_path_template="{id_type}/{id_key}",
+        ),
+        IdSources.KITSU: IdentifierParts(
+            domain="kitsu.app",
+            id_type=IdentifierTypes(series="manga"),
+            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>\S+)",
+            url_path_template="{id_type}/{id_key}",
+        ),
+        IdSources.LCG: IdentifierParts(
+            domain="leagueofcomicgeeks.com",
+            id_type=IdentifierTypes(
+                issue="comic", series="comics/series", publisher="comics"
+            ),
+            url_path_regex=rf"(?P<id_type>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.MANGADEX: IdentifierParts(
+            domain="mangadex.org",
+            id_type=IdentifierTypes(series="title"),
+            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.MANGAUPDATES: IdentifierParts(
+            domain="mangaupdates.com",
+            id_type=IdentifierTypes(series="series"),
+            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.MARVEL: IdentifierParts(
+            domain="marvel.com",
+            id_type=IdentifierTypes(issue="issue", series="series"),
+            url_path_regex=rf"comics/(?P<id_type>issue|series)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="comics/{id_type}/{id_key}/s",
+        ),
+        IdSources.METRON: IdentifierParts(
+            # Metron uses the slug for an id in most urls
+            #   but can also use the numeric metron id which redirects to the slug
+            # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
+            domain="metron.cloud",
+            id_type=IdentifierTypes(
+                arc="arc",
+                character="character",
+                creator="creator",
+                genre="genre",  # Not Yet Implemented on API
+                imprint="imprint",
+                issue="issue",
+                location="location",  # Not Yet Implemented on API
+                publisher="publisher",
+                reprint="reprint",  # Not Yet Implemented on API
+                role="role",
+                series="series",
+                story="story",  # Not Yet Implemented on API
+                tag="tag",
+                team="team",
+                universe="universe",
+            ),
+            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\S+)/?",
+            url_path_template="{id_type}/{id_key}",
+        ),
+        IdSources.MYANIMELIST: IdentifierParts(
+            domain="myanimelist.net",
+            id_type=IdentifierTypes(series="manga"),
+            url_path_regex=rf"(?P<id_type>manga)/(?P<id_key>\d+){_SLUG_REXP}",
+            url_path_template="{id_type}/{id_key}/s",
+        ),
+        IdSources.PANELSYNDICATE: IdentifierParts(
+            domain="panelsyndicate.com",
+            id_type=IdentifierTypes(series="comics"),
+            url_path_regex=r"(?P<id_type>comics)/(?P<id_key>\w+)",
+            url_path_template="{id_type}/{id_key}",
+            https=False,  # :o
+        ),
+        IdSources.UPC: IdentifierParts(
+            domain="barcodelookup.com",
+            id_type=IdentifierTypes(issue="issue"),
+            url_path_regex=r"(?P<id_key>[\d-]+)",
+            url_path_template="{id_key}",
+        ),
+    }
+)
+
+
+def _normalize_comicvine_id_key(id_type, id_key):
+    """I expect its quite common to list the full comicvine code in situations where only the id is necessary."""
+    match = PARSE_COMICVINE_RE.match(id_key)
+    if not match:
+        return id_type, id_key
+    try:
+        id_type_code = match.group("id_type")
+    except IndexError:
+        return id_type, id_key
+    id_type = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE].get_type_by_code(
+        id_type_code, id_type
+    )
+    with suppress(IndexError):
+        id_key = match.group("id_key")
+    return id_type, id_key
+
+
+def get_identifier_url(id_source_str: str, id_type: str, id_key: str) -> str:
+    """Get a url for an identifier if we know the rest."""
+    url = ""
+    with suppress(ValueError):
+        id_source = IdSources(id_source_str)
+        if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
+            url = id_parts.unparse_url(id_type, id_key)
+    return url
+
+
+def create_identifier(
+    id_source_str: str,
+    id_key: str,
+    *,
+    id_type: str = "",
+    url: str = "",
+    default_id_source_str: str = DEFAULT_ID_SOURCE.value,
+):
+    """Create identifier dict from parts."""
+    identifier = {}
+    if not id_source_str:
+        id_source_str = default_id_source_str
+    if not id_type:
+        id_type = DEFAULT_ID_TYPE
+    if id_key:
+        if id_source_str == IdSources.COMICVINE.value:
+            id_type, id_key = _normalize_comicvine_id_key(id_type, id_key)
+        if id_key:
+            identifier[ID_KEY_KEY] = id_key
+    if not url:
+        url = get_identifier_url(id_source_str, id_type, id_key)
+    if url:
+        identifier[ID_URL_KEY] = url
+    return identifier
+
+
+def get_id_source_from_url(url) -> str:
+    """Parse the id source for a url."""
+    obj = urlparse(url)
+    parts = obj.netloc.split(".")
+
+    parts.reverse()
+    node = SOURCE_ALIAS_TREE
+    id_source_str = obj.netloc
+    for part in parts:
+        node = node.get(part)
+        if isinstance(node, IdSources):
+            id_source_str = node.value
+            break
+        if not node:
+            break
+    return id_source_str

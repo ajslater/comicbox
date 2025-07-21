@@ -1,9 +1,10 @@
 """A class to encapsulate CoMet data."""
+# http://www.denvog.com/comet/comet-specification/
 
 from decimal import Decimal
 from types import MappingProxyType
 
-from marshmallow.fields import Constant, Nested
+from marshmallow.fields import Nested
 
 from comicbox.fields.xml_fields import (
     XmlDateField,
@@ -15,25 +16,29 @@ from comicbox.fields.xml_fields import (
     XmlStringField,
     XmlStringSetField,
 )
-from comicbox.schemas.xml_schemas import XmlSchema, XmlSubSchema
+from comicbox.schemas.xml_schemas import (
+    XmlSchema,
+    XmlSubHeadSchema,
+    create_xml_headers,
+)
 
 IDENTIFIER_TAG = "identifier"
 IS_VERSION_OF_TAG = "isVersionOf"
 
-COLORIST_TAG = "colorist"
-COVER_DESIGNER_TAG = "coverDesigner"
-CREATOR_TAG = "creator"
-EDITOR_TAG = "editor"
-INKER_TAG = "inker"
-LETTERER_TAG = "letterer"
-PENCILLER_TAG = "penciller"
-WRITER_TAG = "writer"
 
-
-class CoMetSubSchema(XmlSubSchema):
+class CoMetSubSchema(XmlSubHeadSchema):
     """CoMet Sub Schema."""
 
-    # http://www.denvog.com/comet/comet-specification/
+    DELETE_KEY_MAP = MappingProxyType(
+        {
+            "reprints": frozenset(
+                {
+                    "isVersionOf",
+                }
+            )
+        }
+    )
+
     character = XmlStringSetField()
     coverImage = XmlStringField()  # noqa: N815
     date = XmlDateField()
@@ -46,7 +51,7 @@ class CoMetSubSchema(XmlSubSchema):
     lastMark = XmlIntegerField(minimum=0)  # noqa: N815
     pages = XmlIntegerField(minimum=0)
     publisher = XmlStringField()
-    price = XmlDecimalField(minimum=Decimal("0.0"))
+    price = XmlDecimalField(minimum=Decimal("0.0"), places=2)
     rating = XmlStringField()
     readingDirection = XmlReadingDirectionField()  # noqa: N815
     rights = XmlStringField()
@@ -54,7 +59,7 @@ class CoMetSubSchema(XmlSubSchema):
     title = XmlStringField()
     volume = XmlIntegerField(minimum=0)
 
-    # Contributors
+    # Credit Roles
     colorist = XmlStringSetField()
     coverDesigner = XmlStringSetField()  # noqa: N815
     creator = XmlStringSetField()
@@ -64,15 +69,18 @@ class CoMetSubSchema(XmlSubSchema):
     penciller = XmlStringSetField()
     writer = XmlStringSetField()
 
-    class Meta(XmlSubSchema.Meta):
+    class Meta(XmlSubHeadSchema.Meta):
         """Schema Options."""
+
+        NS = "comet"
+        NS_URI = "http://www.denvog.com/comet/"
+        XSD_URI = (
+            "https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd"
+        )
 
         include = MappingProxyType(
             {
-                "@xmlns:comet": Constant("http://www.denvog.com/comet/"),
-                XmlSubSchema.Meta.XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "http://www.denvog.com/comet/comet.xsd"
-                ),
+                **create_xml_headers(NS, NS_URI, XSD_URI),
                 "format": XmlStringField(),
             }
         )
@@ -81,8 +89,8 @@ class CoMetSubSchema(XmlSubSchema):
 class CoMetSchema(XmlSchema):
     """CoMet Schema."""
 
-    CONFIG_KEYS = frozenset({"comet"})
-    FILENAME = "CoMet.xml"
-    ROOT_TAGS = ("comet",)
+    ROOT_TAG: str = "comet"
+    ROOT_KEYPATH: str = ROOT_TAG
+    HAS_PAGE_COUNT: bool = True
 
     comet = Nested(CoMetSubSchema)

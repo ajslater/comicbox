@@ -9,6 +9,16 @@ from marshmallow.fields import Constant
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
 
+XML_UNPARSE_ARGS = MappingProxyType(
+    # used by tests
+    {
+        # Capitalize UTF-8 to be standard.
+        "encoding": "UTF-8",
+        "pretty": True,
+        "short_empty_elements": True,
+    }
+)
+
 
 class XmlRenderModule:
     """Marshmallow Render Module imitates json module."""
@@ -17,7 +27,10 @@ class XmlRenderModule:
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to XML string."""
         return xmltodict.unparse(
-            obj, *args, pretty=True, short_empty_elements=True, **kwargs
+            obj,
+            *args,
+            **XML_UNPARSE_ARGS,
+            **kwargs,
         )
 
     @staticmethod
@@ -30,27 +43,46 @@ class XmlRenderModule:
 
 
 class XmlSubSchema(BaseSubSchema, ABC):
-    """XML Sub Schema customizations."""
+    """XML Rendered Sub Schema."""
 
     class Meta(BaseSubSchema.Meta):
         """Schema Options."""
 
-        XSI_SCHEMA_LOCATION_KEY = "@xsi:schemaLocation"
+        render_module = XmlRenderModule
+
+
+def create_xml_headers(
+    ns: str, ns_uri: str, xsd_uri: str
+) -> MappingProxyType[str, Constant]:
+    """Create Namespace and Schema Location XML Attributes."""
+    return MappingProxyType(
+        {
+            f"@xmlns:{ns}": Constant(ns_uri),
+            "@xsi:schemaLocation": Constant(f"{ns_uri} {xsd_uri}"),
+        }
+    )
+
+
+class XmlSubHeadSchema(XmlSubSchema, ABC):
+    """XML Head Sub Schema customizations."""
+
+    class Meta(XmlSubSchema.Meta):
+        """Schema Options."""
+
+        NS = ""
+        NS_URI = ""
+        XSD_URI = ""
 
         include = MappingProxyType(
             {
-                # "@xmlns:comicbox": Constant("https://github.com/ajslater/comicbox/"),
                 "@xmlns:xsd": Constant("http://www.w3.org/2001/XMLSchema"),
                 "@xmlns:xsi": Constant("http://www.w3.org/2001/XMLSchema-instance"),
-                XSI_SCHEMA_LOCATION_KEY: Constant(
-                    "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.xsd"
-                ),
             }
         )
 
 
 class XmlSchema(BaseSchema, ABC):
-    """Xml Schema."""
+    """Xml Rendered Schema."""
 
     class Meta(BaseSchema.Meta):
         """Schema Options."""

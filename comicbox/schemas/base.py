@@ -1,54 +1,101 @@
 """Skip keys instead of throwing errors."""
 
 from abc import ABC
-from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
+from types import MappingProxyType
 
-from marshmallow import EXCLUDE, Schema, ValidationError, post_dump, post_load
-from marshmallow.decorators import pre_load
-from marshmallow.error_store import ErrorStore
+from loguru import logger
+from marshmallow import EXCLUDE
+from marshmallow.decorators import (
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+)
+from marshmallow.types import StrSequenceOrSet
+from typing_extensions import override
 
-from comicbox.dict_funcs import sort_dict
-from comicbox.fields.fields import EMPTY_VALUES
+from comicbox.empty import is_empty
 from comicbox.schemas.decorators import trap_error
-from comicbox.schemas.error_store import ClearingErrorStore
-
-LOG = getLogger(__name__)
+from comicbox.schemas.error_store import ClearingErrorStoreSchema
 
 
-class BaseSubSchema(Schema, ABC):
+class BaseSubSchema(ClearingErrorStoreSchema, ABC):
     """Base schema."""
 
-    def __init__(self, **kwargs):
-        """Initialize path and always use partial."""
-        kwargs["partial"] = True
-        self._path = kwargs.pop("path", None)
-        super().__init__(**kwargs)
+    TAG_ORDER: tuple[str, ...] = ()
+    # Currently only mapping "pages" and "reprints" fields for each schema for Codex out of laziness
+    # But this should speed up Codex reads
+    DELETE_KEY_MAP = MappingProxyType({})
 
-    def _remove_null_values(self, data):
-        """Remove fields with empty values."""
-        for key, value in tuple(data.items()):
-            if value in EMPTY_VALUES:
-                del data[key]
+    def _create_exclude(self, exclude: StrSequenceOrSet) -> set[str]:
+        final_exclude = set()
+        fields = getattr(self, "fields", {})
+        for key in exclude:
+            if "." in key:
+                # Deep keypaths not allowed
+                continue
+            if local_keys := self.DELETE_KEY_MAP.get(key):
+                final_exclude |= local_keys
+            elif key in fields:
+                final_exclude.add(key)
+        return final_exclude
+
+    def __init__(self, *args, exclude: StrSequenceOrSet = (), **kwargs):
+        """Initialize with exclude keys."""
+        exclude = self._create_exclude(exclude)
+        super().__init__(*args, exclude=exclude, **kwargs)
+
+    @classmethod
+    def pre_load_validate(cls, data):
+        """Validate schema type first thing to fail as early as possible."""
+        # Meant to be overridden in BaseSchema
         return data
 
+    @trap_error(pre_load)
+    def pre_load(self, data, **_kwargs):
+        """Singular pre_load hook."""
+        return self.pre_load_validate(data)
+
+    @classmethod
+    def clean_empties(cls, data: dict):
+        """Clean empties from loaded data."""
+        return {k: v for k, v in data.items() if not is_empty(v)}
+
     @trap_error(post_load)
-    def remove_empty_keys_on_load(self, data, **_kwargs):
-        """Remove null keys."""
-        return self._remove_null_values(data)
+    def post_load(self, data, **_kwargs):
+        """Singular post_load hook."""
+        return self.clean_empties(data)
+
+    @pre_dump
+    def pre_dump(self, data, **_kwargs):
+        """Singular pre_dump hook."""
+        return data
+
+    @classmethod
+    def _sort_tag_by_order(cls, data: dict) -> dict:
+        """Sort tag by schema class order tuple."""
+        result = {}
+        for tag in cls.TAG_ORDER:
+            value = data.get(tag)
+            if is_empty(value):
+                continue
+            result[tag] = value
+        return result
+
+    @classmethod
+    def sort_dump(cls, data: dict):
+        """Sort dump by key."""
+        if cls.TAG_ORDER:
+            data = cls._sort_tag_by_order(data)
+        else:
+            data = {k: v for k, v in sorted(data.items()) if not is_empty(v)}
+        return data
 
     @post_dump
-    def remove_empty_keys_on_dump(self, data, **_kwargs):
-        """Remove null keys."""
-        return self._remove_null_values(data)
-
-    def dump(self, *args, **kwargs):
-        """Dump and recursively sort the results."""
-        result = super().dump(*args, **kwargs)
-        if isinstance(result, Mapping):
-            result = sort_dict(result)
-        return result
+    def post_dump(self, data: dict, **_kwargs):
+        """Singular post_dump hook."""
+        return self.sort_dump(data)
 
     def loadf(self, path):
         """Read the string from the designated file."""
@@ -62,7 +109,7 @@ class BaseSubSchema(Schema, ABC):
         with Path(path).open("w") as f:
             f.write(str_data)
 
-    class Meta(Schema.Meta):
+    class Meta(ClearingErrorStoreSchema.Meta):
         """Schema options."""
 
         unknown = EXCLUDE
@@ -71,42 +118,25 @@ class BaseSubSchema(Schema, ABC):
 class BaseSchema(BaseSubSchema, ABC):
     """Top level base schema that traps errors and records path."""
 
-    CONFIG_KEYS = frozenset()
-    FILENAME = ""
-    ROOT_TAGS = ("",)
+    ROOT_TAG: str = ""
+    ROOT_DATA_KEY: str = ""
+    ROOT_KEYPATH: str = ""
+    EMBED_KEYPATH: str = ""
+    HAS_PAGE_COUNT: bool = False
+    HAS_PAGES: bool = False
 
-    def set_path(self, path):
-        """Set the path after the instance is created."""
-        self._path = path
-
-    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_field_validators(
-            error_store=clearing_error_store, data=data, **kwargs
-        )
-
-    def _invoke_schema_validators(
-        self,
-        *,
-        error_store: ErrorStore,
-        data,
-        **kwargs,
-    ):
-        """Skip keys and log warnings instead of throwing validation or type errors."""
-        clearing_error_store = ClearingErrorStore(error_store, data, self._path)
-        super()._invoke_schema_validators(error_store=clearing_error_store, **kwargs)
-
-    def handle_error(self, error, *_args, **_kwargs):
-        """Log errors as warnings."""
-        if isinstance(error, ValidationError):
-            LOG.warning(f"Validation error occurred: {self._path} - {error.messages}")
-        else:
-            LOG.warning(f"Unknown field error occurred: {self._path} - {error}")
-
-    @trap_error(pre_load)
-    def validate_root_tag(self, data, **_kwargs):
+    @override
+    @classmethod
+    def pre_load_validate(cls, data):
         """Validate the root tag so we don't confuse it with other JSON."""
-        if data and self.ROOT_TAGS[0] not in data:
-            return {}
+        if not data:
+            reason = "No data."
+            logger.debug(reason)
+            data = {}
+        elif cls.ROOT_TAG not in data and cls.ROOT_DATA_KEY not in data:
+            reason = f"Root tag '{cls.ROOT_TAG}' not found in {tuple(data.keys())}."
+            logger.debug(reason)
+            # Do not throw an exception so the trapper doesn't trap it and the
+            # loader tries another schema. Return empty dict.
+            data = {}
         return data

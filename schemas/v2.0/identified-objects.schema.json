@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/identified-objects.schema.json",
+  "title": "Comicbox Identified Object Collection",
+  "type": "object",
+  "properties": {
+    ".+": {
+      "$ref": "identified-object.schema.json"
+    }
+  }
+}

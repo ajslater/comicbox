@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/named-identified-object.schema.json",
+  "title": "Comicbox Named Identified Object",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "identifiers": {
+      "$ref": "identifiers.schema.json"
+    }
+  },
+  "required": ["name"]
+}

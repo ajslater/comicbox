@@ -1,0 +1,16 @@
+comicbox:
+  arcs:
+    h:
+      number: 7
+    i:
+      number: 11
+    j:
+      number: 13
+  imprint:
+    name: CLIImprint
+  tagger: comicbox dev
+  tags:
+    a: {}
+    b: {}
+    c: {}
+  updated_at: 1970-01-01T00:00:00

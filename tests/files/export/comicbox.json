@@ -1,0 +1,72 @@
+{
+  "comicbox": {
+    "arcs": {
+      "Captain Arc": {
+        "number": 4
+      },
+      "Other Arc": {
+        "number": 2
+      }
+    },
+    "characters": {
+      "Captain Science": {},
+      "Gordon Dane": {}
+    },
+    "credits": {
+      "Joe Orlando": {
+        "roles": {
+          "Writer": {}
+        }
+      },
+      "Wally Wood": {
+        "roles": {
+          "Inker": {},
+          "Penciller": {}
+        }
+      }
+    },
+    "date": {
+      "cover_date": "1950-11-01",
+      "day": 1,
+      "month": 11,
+      "year": 1950
+    },
+    "ext": "cbz",
+    "genres": {
+      "Science Fiction": {}
+    },
+    "identifier_primary_source": {
+      "source": "comicvine",
+      "url": "https://comicvine.gamespot.com/"
+    },
+    "identifiers": {
+      "comicvine": {
+        "key": "145269",
+        "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/"
+      }
+    },
+    "issue": {
+      "name": "1",
+      "number": 1.0
+    },
+    "language": "en",
+    "page_count": 0,
+    "publisher": {
+      "name": "Youthful Adventure Stories"
+    },
+    "series": {
+      "name": "Captain Science"
+    },
+    "stories": {
+      "The Beginning": {}
+    },
+    "tagger": "comicbox dev",
+    "title": "The Beginning",
+    "updated_at": "1970-01-01T00:00:00Z",
+    "volume": {
+      "issue_count": 7,
+      "number": 1950
+    }
+  },
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
+}

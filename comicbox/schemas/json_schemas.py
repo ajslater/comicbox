@@ -11,12 +11,14 @@ from comicbox.schemas.base import BaseSchema, BaseSubSchema
 class JsonRenderModule:
     """JSON Render module with custom formatting and Decimal support."""
 
-    @staticmethod
-    def dumps(obj: dict, *args, compact=False, **kwargs):
+    COMPACT_SEPARATORS = (",", ":")
+
+    @classmethod
+    def dumps(cls, obj: dict, *args, compact=False, **kwargs):
         """Dump dict to JSON string with formatting."""
         if compact:
             indent = None
-            separators = (",", ":")
+            separators = cls.COMPACT_SEPARATORS
         else:
             indent = 2
             separators = None
@@ -26,7 +28,7 @@ class JsonRenderModule:
             indent=indent,
             iterable_as_array=True,
             separators=separators,
-            sort_keys=True,
+            sort_keys=False,
             use_decimal=True,
             **kwargs,
         )

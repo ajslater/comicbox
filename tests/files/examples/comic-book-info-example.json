@@ -1,0 +1,53 @@
+{
+  "appID": "ComicBookLover/888",
+  "lastModified": "2009-10-25 14:51:31 +0000",
+  "ComicBookInfo/1.0": {
+    "comments": "Tales of the Black Freighter...",
+    "country": "United States",
+    "credits": [
+      {
+        "person": "Gibbons, Dave",
+        "role": "Artist"
+      },
+      {
+        "person": "Gibbons, Dave",
+        "role": "Letterer"
+      },
+      {
+        "person": "Gibbons, John",
+        "role": "Colorer"
+      },
+      {
+        "person": "Kesel, Barbara",
+        "role": "Editor"
+      },
+      {
+        "person": "Moore, Alan",
+        "primary": true,
+        "role": "Writer"
+      },
+      {
+        "person": "Wein, Len",
+        "role": "Editor"
+      }
+    ],
+    "genre": "Superhero",
+    "issue": 1,
+    "language": "English",
+    "numberOfIssues": 12,
+    "numberOfVolumes": 1,
+    "publicationMonth": 9,
+    "publicationYear": 1986,
+    "publisher": "DC Comics",
+    "rating": 5,
+    "series": "Watchmen",
+    "tags": [
+      "Nite Owl",
+      "Ozymandias",
+      "Rorschach"
+    ],
+    "title": "At Midnight, All the Agents",
+    "volume": 1
+  },
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json"
+}

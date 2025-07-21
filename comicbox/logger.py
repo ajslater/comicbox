@@ -1,51 +1,47 @@
 """Logging classes."""
 
-import logging
 import os
-from logging import INFO, Formatter, StreamHandler, basicConfig
-from types import MappingProxyType
+import sys
 
-from colors import color
+from loguru import logger  # noqa: F401
+from typing_extensions import Any
 
-DATEFMT = "%Y-%m-%d %H:%M:%S %Z"
-LOG_FMT = "{asctime} {levelname:8} {message}"
-
-
-class ColorFormatter(Formatter):
-    """Logging Formatter to add colors and count warning / errors."""
-
-    FORMAT_COLORS = MappingProxyType(
-        {
-            "CRITICAL": {"fg": "red", "style": "bold"},
-            "ERROR": {"fg": "red"},
-            "WARNING": {"fg": "yellow"},
-            "INFO": {"fg": "green"},
-            "DEBUG": {"fg": "black", "style": "bold"},
-            "NOTSET": {"fg": "blue"},
-        }
-    )
-
-    def __init__(self, log_format, **kwargs):
-        """Set up formatters."""
-        super().__init__(**kwargs)
-        self.formatters = {}
-        for level_name, args in self.FORMAT_COLORS.items():
-            levelno = getattr(logging, level_name)
-            template = color(log_format, **args)
-            self.formatters[levelno] = Formatter(fmt=template, **kwargs)
-
-    def format(self, record):
-        """Format each log message."""
-        formatter = self.formatters[record.levelno]
-        return formatter.format(record)
+DEBUG = os.environ.get("DEBUG", "")
 
 
-def init_logging(loglevel=INFO):
+def _log_format():
+    fmt = "<lvl>{time:YYYY-MM-DD HH:mm:ss} | {level: <8}"
+    if DEBUG:
+        fmt += " | </lvl>"
+        fmt += "<dim><cyan>{thread.name}</cyan></dim>:"
+        fmt += "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
+        fmt += "<lvl>"
+    fmt += " | {message}</lvl>"
+    # fmt += "\n{exception}"  only for format as a callable
+    return fmt
+
+
+_LOG_FORMAT = _log_format()
+
+
+def init_logging(loglevel: str = "INFO", logger_=None):
     """Initialize logging."""
-    level = os.environ.get("LOGLEVEL", loglevel)
+    if logger_:
+        global logger  # noqa: PLW0603
+        logger = logger_
+        return
 
-    formatter = ColorFormatter(LOG_FMT, style="{", datefmt=DATEFMT)
+    logger.level("DEBUG", color="<light-black>")
+    logger.level("INFO", color="<white>")
+    logger.level("SUCCESS", color="<green>")
 
-    handler = StreamHandler()
-    handler.setFormatter(formatter)
-    basicConfig(level=level, handlers=[handler])
+    log_format = _log_format()
+    kwargs: dict[str, Any] = {
+        "level": loglevel,
+        "backtrace": True,
+        "catch": True,
+        "format": log_format,
+    }
+
+    logger.remove()  # Default "sys.stderr" sink is not picklable
+    logger.add(sys.stdout, **kwargs)

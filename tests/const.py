@@ -6,13 +6,16 @@ from pathlib import Path
 
 from ruamel.yaml.timestamp import TimeStamp
 
+from comicbox.config import get_config
 from comicbox.version import PACKAGE_NAME, VERSION
 
 # DIRS
-TEST_FILES_DIR = Path("tests/test_files")
+TEST_FILES_DIR = Path("tests/files")
 TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
+TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"
 TMP_ROOT_DIR = Path("/tmp")  # noqa: S108
+SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 # SOURCE PATHS
 EMPTY_FN = "empty.cbz"
@@ -25,6 +28,8 @@ CIX_CBT_FN = "Captain Science #001-cix.cbt"
 CIX_CBT_SOURCE_PATH = TEST_FILES_DIR / CIX_CBT_FN
 CIX_CBZ_FN = "Captain Science #001-cix.cbz"
 CIX_CBZ_SOURCE_PATH = TEST_FILES_DIR / CIX_CBZ_FN
+CB7_FN = "Captain Science #001.cb7"
+CB7_SOURCE_PATH = TEST_FILES_DIR / CB7_FN
 METRON_CBZ_FN = "Captain Science #001-metron.cbz"
 EXPORT_FN = "export.cbz"
 EXPORT_SOURCE_PATH = TEST_FILES_DIR / EXPORT_FN
@@ -36,11 +41,11 @@ PDF_SOURCE_PATH = TEST_FILES_DIR / PDF_FN
 
 
 # CONFIGS
-READ_CONFIG_EMPTY = Namespace(comicbox=Namespace())
+READ_CONFIG_EMPTY = get_config(Namespace(comicbox=Namespace()))
 
-TEST_DTTM_STR = "1970-01-01T00:00:00"
+TEST_DTTM_STR = "1970-01-01T00:00:00Z"
 _D_TUPLE = (1970, 1, 1)
-TEST_DATETIME = datetime(*_D_TUPLE)  # noqa: DTZ001
+TEST_DATETIME = datetime(*_D_TUPLE)  # noqa: DTZ001, # ty: ignore[missing-argument]
 _IDENT = 145269
 TEST_READ_NOTES = (
     f"Tagged with {PACKAGE_NAME} {VERSION} on {TEST_DTTM_STR} "
@@ -48,7 +53,7 @@ TEST_READ_NOTES = (
 )
 TEST_WRITE_NOTES = (
     f"Tagged with {PACKAGE_NAME} {VERSION} on {TEST_DTTM_STR} "
-    f"[Issue ID {_IDENT}] urn:comicvine:4000-145269"
+    f"[Issue ID {_IDENT}] urn:comicvine:issue:145269"
 )
 
 TEST_TIMESTAMP = TimeStamp(*_D_TUPLE)

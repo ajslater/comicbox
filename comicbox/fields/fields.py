@@ -1,15 +1,18 @@
 """Custom Marshmallow fields."""
 
+import re
 from abc import ABCMeta
 from decimal import Decimal
-from logging import getLogger
+from enum import Enum
 
+from loguru import logger
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
+from typing_extensions import override
 
-LOG = getLogger(__name__)
 _STRING_EMPTY_VALUES = (None, "")
-EMPTY_VALUES = (*_STRING_EMPTY_VALUES, [], {})
+_LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
+_HALF_RE = re.compile(r"(½|1/2)")
 
 
 class TrapExceptionsMeta(ABCMeta):
@@ -28,7 +31,7 @@ class TrapExceptionsMeta(ABCMeta):
             except Exception as exc:
                 # Log the exception
                 cls_name = self.__class__.__name__
-                LOG.warning(
+                logger.warning(
                     f"Could not deserialize {attr}:{value} as {cls_name} - {exc}"
                 )
                 return None
@@ -51,46 +54,45 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
+    @override
     def _deserialize(self, value, *_args, **_kwargs):
         if value in _STRING_EMPTY_VALUES:
-            return None
+            return ""
 
-        if isinstance(value, str):
+        if isinstance(value, Enum):
+            value = value.value
+        if isinstance(value, int | float | Decimal):
+            value = str(value)
+        elif isinstance(value, str):
             value = value.encode("utf8", "replace")
         if isinstance(value, bytes):
             value = value.decode("utf8", "replace")
         if not isinstance(value, str):
             reason = f"{type(value)} is not a string"
             raise ValidationError(reason)
-        value = str(value).strip()
-        if not value:
-            return None
-        return value
+        return str(value).strip()
 
 
-def half_replace(num_str):
+def half_replace(num):
     """Replace half notation with decimal notation."""
-    num_str = num_str.replace("½", ".5", 1)
-    return num_str.replace("1/2", ".5", 1)
+    return _HALF_RE.sub(".5", num)
 
 
 class IssueField(StringField):
     """Issue Field."""
 
     @staticmethod
-    def parse_issue(num_obj):
+    def parse_issue(num):
         """Parse issues."""
-        num: str | None = StringField().deserialize(num_obj)  # type: ignore[reportAssignmentType]
         if not num:
-            return None
+            return ""
         num = num.replace(" ", "")
         num = num.lstrip("#")
-        num = num.lstrip("0")
+        num = _LEADING_ZERO_RE.sub(r"\2", num)
         num = num.rstrip(".")
         return half_replace(num)
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
-        if isinstance(value, int | float | Decimal):
-            value = str(value)
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

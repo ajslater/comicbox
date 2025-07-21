@@ -1,0 +1,14 @@
+{
+  "appID": "comicbox dev",
+  "comicbox": {
+    "country": "United States",
+    "day": 1,
+    "genres": {"Science Fiction":{}, "comicbox Genre":{}},
+    "volume": { "issue_count": 77 },
+    "month": 11,
+    "page_count": 36,
+    "tagger": "comicbox dev",
+    "updated_at": "1970-01-01T00:00:00"
+  },
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json"
+}

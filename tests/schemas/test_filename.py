@@ -6,33 +6,35 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
+from glom import glom
+
+from comicbox.config import get_config
+from comicbox.formats import MetadataFormats
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.filename import FilenameSchema
-from comicbox.transforms.filename import FilenameTransform
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
-READ_CONFIG = Namespace(comicbox=Namespace(read=["fn"], compute_pages=False))
-WRITE_CONFIG = Namespace(
-    comicbox=Namespace(read=["fn"], write=["fn"], compute_pages=False)
-)
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"])))
+WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"], write=["fn"])))
 
-METADATA = MappingProxyType(
-    {
-        ROOT_TAG: {
-            "ext": "cbz",
-            "issue": "001",
-            "issue_number": Decimal("1"),
-            "title": "The Beginning - nothing",
-            "series": {"name": "Captain Science"},
-            "year": 1950,
-        }
-    }
-)
-
+SUB_DATA: Mapping[str, Any] = {
+    "ext": "cbz",
+    "issue": {
+        "name": "001",
+        "number": Decimal(1),
+    },
+    "series": {"name": "Captain Science"},
+    "stories": {"The Beginning - nothing": {}},
+    "title": "The Beginning - nothing",
+    "date": {
+        "year": 1950,
+    },
+}
+METADATA = MappingProxyType({ComicboxSchemaMixin.ROOT_TAG: SUB_DATA})
 FILENAME_DICT = MappingProxyType(
     {
-        FilenameSchema.ROOT_TAGS[0]: {
+        FilenameSchema.ROOT_TAG: {
             "ext": "cbz",
             "issue": "001",
             "title": "The Beginning - nothing",
@@ -42,19 +44,18 @@ FILENAME_DICT = MappingProxyType(
     }
 )
 
-SUB_DATA: Mapping[str, Any] = METADATA[ROOT_TAG]
 FILENAME_STR = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
-    f" {SUB_DATA['title']}.{SUB_DATA['ext']}"
+    f"{glom(SUB_DATA, 'series.name')} #{glom(SUB_DATA, 'issue.name')} ({glom(SUB_DATA, 'date.year')})"
+    f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 FILENAME_STR_NO_REMAINDER = (
-    f"{SUB_DATA['series']['name']} #{SUB_DATA['issue']} ({SUB_DATA['year']})"
-    f" {SUB_DATA['title']}.{SUB_DATA['ext']}"
+    f"{glom(SUB_DATA, 'series.name')} #{glom(SUB_DATA, 'issue.name')} ({glom(SUB_DATA, 'date.year')})"
+    f" {next(iter(SUB_DATA['stories']))}.{SUB_DATA['ext']}"
 )
 
 
 FN_TESTER = TestParser(
-    FilenameTransform,
+    MetadataFormats.FILENAME,
     FN,
     METADATA,
     FILENAME_DICT,
