@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v1.0/comicbox.schema.json",
+  "title": "Comicbox",
+  "version": "1.0",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string"
+    },
+    "appID": {
+      "type": "string"
+    },
+    "comicbox": {
+      "type": "object",
+      "properties": {
+        "age_rating": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "community_rating": {
+          "type": "number"
+        },
+        "contributors": {
+          "type": "object",
+          "patternProperties": {
+            "^colorist|cover_artist|creator|editor|inker|letterer|penicller|writer$": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "country": {
+        "type": "string"
+      },
+      "cover_image": {
+        "type": "string"
+      },
+      "critical_rating": {
+        "type": "number"
+      },
+      "day": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 31
+      },
+      "ext": {
+        "type": "string"
+      },
+      "original_format": {
+        "type": "string"
+      },
+      "genres": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "identifiers": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "issue": {
+        "type": "string"
+      },
+      "issue_number": {
+        "type": "integer"
+      },
+      "issue_suffix": {
+        "type": "string"
+      },
+      "imprint": {
+        "type": "string"
+      },
+      "language": {
+        "type": "string"
+      },
+      "last_mark": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "manga": {
+        "type": "string",
+        "enum": ["Yes", "YesAndRightToLeft", "No"]
+      },
+      "month": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "monochrome": {
+        "type": "boolean"
+      },
+      "page_count": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "pages": {
+        "type": "array",
+        "items": {
+          "$ref": "page.schema.json"
+        }
+      },
+      "publisher": {
+        "type": "string"
+      },
+      "price": {
+        "type": "number",
+        "minimum": 0
+      },
+      "protagonist": {
+        "type": "string"
+      },
+      "reading_direction": {
+        "type": "string",
+        "enum": ["rtl", "ltr", "ttb", "btt"]
+      },
+      "remainder": {
+        "type": "string"
+      },
+      "reprints": {
+        "type": "array",
+        "items": {
+          "$ref": "reprint.schema.json"
+        }
+      },
+      "review": {
+        "type": "string"
+      },
+      "rights": {
+        "type": "string"
+      },
+      "scan_info": {
+        "type": "string"
+      },
+      "series": {
+        "$ref": "series.schema.json"
+      },
+      "series_groups": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "story_arcs": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer"
+        }
+      },
+      "summary": {
+        "type": "string"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "@title": {
+        "type": "string"
+      },
+      "teams": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "web": {
+        "type": "string",
+        "format": "uri"
+      },
+      "volume": {
+        "$ref": "volume.schema.json"
+      },
+      "year": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}

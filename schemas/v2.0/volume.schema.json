@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/volume.schema.json",
+  "title": "Comicbox Volume",
+  "type": "object",
+  "properties": {
+    "issue_count": {
+      "type": "integer"
+    },
+    "number": {
+      "type": "integer"
+    },
+    "number_to": {
+      "type": "integer"
+    }
+  }
+}

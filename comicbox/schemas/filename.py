@@ -8,24 +8,22 @@ effective, simple and easy to read and to contribute to.
 """
 
 from comicfn2dict import comicfn2dict, dict2comicfn
-from marshmallow import post_load
 from marshmallow.fields import Nested
 
 from comicbox.fields.collection_fields import StringListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import (
-    ISSUE_COUNT_KEY,
+from comicbox.schemas.comicbox import (
     ISSUE_KEY,
-    ROOT_TAG,
     SERIES_KEY,
+    VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
 
 SERIES_TAG = SERIES_KEY
 VOLUME_TAG = VOLUME_KEY
-ISSUE_COUNT_TAG = ISSUE_COUNT_KEY
+ISSUE_COUNT_TAG = VOLUME_ISSUE_COUNT_KEY
 ISSUE_TAG = ISSUE_KEY
 _OTHER_SCHEMA_STARTS = ("<?", "<!")
 _OTHER_SCHEMA_ENDS = ("{", ":")
@@ -37,7 +35,7 @@ class FilenameRenderModule:
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
-        data: dict = obj.get(FilenameSchema.ROOT_TAGS[0], {})
+        data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod
@@ -60,7 +58,7 @@ class FilenameRenderModule:
             return None
 
         sub_data = comicfn2dict(cleaned_s, *args, **kwargs)
-        return {FilenameSchema.ROOT_TAGS[0]: sub_data}
+        return {FilenameSchema.ROOT_TAG: sub_data}
 
 
 class FilenameSubSchema(BaseSubSchema):
@@ -77,31 +75,16 @@ class FilenameSubSchema(BaseSubSchema):
     volume = IntegerField()
     year = IntegerField()
 
-    @post_load
-    def validate_load(self, data, **_kwargs):
-        """Make results with only remainders no result at all."""
-        if len(data) == 1:
-            data.pop("remainders", None)
-        return data
-
 
 class FilenameSchema(BaseSchema):
     """File name schema."""
 
-    CONFIG_KEYS = frozenset({"fn", "filename"})
-    FILENAME = "comicbox-filename.txt"
-    ROOT_TAGS = (ROOT_TAG,)
+    ROOT_TAG: str = "comicfn2dict"
+    ROOT_KEYPATH: str = ROOT_TAG
 
-    comicbox = Nested(FilenameSubSchema)
+    comicfn2dict = Nested(FilenameSubSchema)
 
     class Meta(BaseSchema.Meta):
         """Schema Options."""
 
         render_module = FilenameRenderModule
-
-    @post_load
-    def validate_load_data(self, data, **_kwargs):
-        """If no data, return nothing."""
-        if not data.get(ROOT_TAG):
-            data = {}
-        return data

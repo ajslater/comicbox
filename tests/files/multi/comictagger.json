@@ -1,0 +1,18 @@
+{
+  "appID": "comicbox dev",
+  "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/comicbox.schema.json",
+  "comictagger": {
+    "country": "US",
+    "data_origin": {
+      "id": "comicvine",
+      "name": "Comic Vine"
+    },
+    "day": 1,
+    "genre": "Science Fiction",
+    "issue_count": 9,
+    "language": "fr",
+    "month": 11,
+    "page_count": 36,
+    "publisher": "Youthful Adventure Stories COMICTAGGER"
+  }
+}

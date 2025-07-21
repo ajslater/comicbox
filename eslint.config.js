@@ -2,11 +2,12 @@ import eslintJs from "@eslint/js";
 import eslintJson from "@eslint/json";
 import eslintPluginComments from "@eslint-community/eslint-plugin-eslint-comments/configs";
 import eslintPluginStylistic from "@stylistic/eslint-plugin";
+import { defineConfig } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
-import eslintPluginImport from "eslint-plugin-import";
+import eslintPluginImport from "eslint-plugin-import-x";
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
@@ -52,8 +53,8 @@ export const CONFIGS = {
       "depend/ban-dependencies": [
         "error",
         {
-          // import-x doesn't work with eslint 9 yet
-          allowed: ["eslint-plugin-import"],
+          // unicorn-x dev's initial reasoning seems to rely on trivia, microoptimizations, and his own DX.
+          allowed: ["eslint-plugin-unicorn"],
         },
       ],
       "max-params": ["warn", 4],
@@ -77,8 +78,9 @@ export const CONFIGS = {
 };
 Object.freeze(CONFIGS);
 
-export default [
+export default defineConfig([
   {
+    name: "globalIgnores",
     ignores: [
       "!.circleci",
       "**/__pycache__/",
@@ -91,14 +93,14 @@ export default [
       "dist/",
       "node_modules/",
       "package-lock.json",
-      "poetry.lock",
+      "uv.lock",
       "test-results/",
       "typings/",
     ],
   },
   eslintPluginPrettierRecommended,
   eslintPluginSecurity.configs.recommended,
-  eslintPluginStylistic.configs["all-flat"],
+  eslintPluginStylistic.configs.all,
   {
     languageOptions: {
       globals: {
@@ -175,4 +177,4 @@ export default [
     },
   },
   eslintConfigPrettier, // Best if last
-];
+]);

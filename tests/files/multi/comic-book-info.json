@@ -1,0 +1,26 @@
+{
+  "ComicBookInfo/1.0": {
+    "country": "United States",
+    "credits": [
+      {
+        "person": "Wally Wood CBI",
+        "role": "Penciller"
+      },
+      {
+        "person": "Joe Orlando CBI",
+        "role": "Writer"
+      }
+    ],
+    "genre": "Science Fiction",
+    "language": "en",
+    "numberOfIssues": 2,
+    "pages": 36,
+    "publicationMonth": 11,
+    "publisher": "Youthful Adventure Stories",
+    "title": "The Beginning CBI",
+    "volume": 1950
+  },
+  "appID": "comicbox dev",
+  "lastModified": "1970-01-01T00:00:00",
+  "schema": "https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki"
+}

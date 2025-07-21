@@ -1,7 +1,6 @@
 """Test CLI extract actions."""
 
 from comicbox import cli
-from comicbox.schemas.comicbox_mixin import ROOT_TAG
 from tests.const import (
     CBI_CBR_SOURCE_PATH,
     CIX_CBT_SOURCE_PATH,
@@ -20,7 +19,7 @@ def _test_cli_action_extract_util(path, args, test_files):
 
     cli.main(
         (
-            ROOT_TAG,
+            "comicbox",
             "-d",
             str(TMP_DIR),
             *args,
@@ -29,11 +28,9 @@ def _test_cli_action_extract_util(path, args, test_files):
     )
 
     list_dir = list(TMP_DIR.iterdir())
-    print(list_dir)
     assert len(list_dir) == len(test_files)
     for tf in test_files:
         full_path = TMP_DIR / tf
-        print(full_path)
         assert full_path.exists()
     my_cleanup(TMP_DIR)
 

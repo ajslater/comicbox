@@ -1,21 +1,73 @@
 """Cli for comicbox."""
 
 import sys
-from argparse import Action, ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
-from logging import INFO
+from types import MappingProxyType
+
+from rich import box
+from rich import print as rich_print
+from rich.console import Group
+from rich.style import Style
+from rich.styled import Styled
+from rich.table import Table
+from rich.text import Text
+from rich_argparse import RichHelpFormatter
+from typing_extensions import override
 
 from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.formats import PDF_ENABLED, MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
-from comicbox.sources import MetadataSources
 
-HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+_TABLE_ARGS = MappingProxyType(
+    {
+        "box": box.HEAVY,
+        "border_style": "bright_black",
+        "row_styles": ("", "on grey7"),
+        "title_justify": "left",
+    }
+)
+_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+_PRINT_PHASES_DESC = MappingProxyType(
+    {
+        "v": ("Software version", "v"),
+        "t": ("File type", ""),
+        "f": ("File names", "l"),
+        "s": ("Source metadata", ""),
+        "l": ("Loaded metadata sources", ""),
+        "n": ("Loaded metadata normalized to comicbox schema", ""),
+        "m": ("Merged normalized intermediate metadata", ""),
+        "c": ("Computed metadata sources", ""),
+        "p": ("Final metadata merged with computed sources", "p"),
+    }
+)
+_METADATA_EXAMPLES = Styled(
+    """
+Metadata can be any tag from any of the supported metadata formats.
+Complex [cyan]--metadata[/cyan] Examples:
+  [cyan]-m[/cyan] 'Character: anna,bea,carol, contributors: {inker: [Other Name], writer: [Other Name, Writer Name]}, arcs: {Arc Name: 1, Other Arc Name: 5}'
+  [cyan]-m[/cyan] '{publisher: My Press}'
+  [cyan]-m[/cyan] \"Title: 'GI Robot: Foreign and Domestic'\"
+  [cyan]-m[/cyan] \"series: 'Solarpunk: Kūchū Bōsōzoku'\"
+""",
+    style="argparse.text",
+)
+_DELETE_KEYS_EXAMPLES = Styled(
+    """
+Glom key paths are dot delimited. Numbers are list indexes. This deletes three comma delimited nested key paths:
+
+  [cyan]-D[/cyan] [dark_cyan]series,arcs.Across the Multiverse.number,reprints.0.series[/dark_cyan]
+    """,
+    style="argparse.text",
+)
+_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
 
 class CSVAction(Action):
-    """Parse comma deliminated sequences."""
+    """Parse comma delimited sequences."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse comma delimited sequences."""
         if isinstance(values, str):
@@ -30,6 +82,7 @@ class CSVAction(Action):
 class PageRangeAction(Action):
     """Parse page range."""
 
+    @override
     def __call__(self, _parser, namespace, values, _string=None):
         """Parse page range delimited by :."""
         values_array = values.split(":")
@@ -51,34 +104,38 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-def map_keys(config, prefix, list_key, maps, value):
-    """Map keyed values to config booleans."""
-    key_list = getattr(config, list_key)
-    if key_list:
-        for key in key_list:
-            lower_key = key.lower()
-            for attr_suffix, parser_class in maps.items():
-                if lower_key in parser_class.CONFIG_KEYS:
-                    attr = f"{prefix}_{attr_suffix}"
-                    setattr(config, attr, value)
-    delattr(config, list_key)
+def _get_help_print_phases_table():
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table.add_column("Phase", style="green")
+    table.add_column("Description")
+    table.add_column("Shortcut", style="cyan")
+    for phase, attrs in _PRINT_PHASES_DESC.items():
+        desc, shortcut = attrs
+        if shortcut:
+            shortcut = "-" + shortcut
+        table.add_row(phase, desc, shortcut)
+    return table
 
 
-def _create_format_help():
-    lines = ""
-    max_space = max(len(source.value.label) for source in MetadataSources) + 1
-    for source in MetadataSources:
-        if not source.value.configurable:
+FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
+Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
+
+
+def _get_help_format_table():
+    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table.add_column("Format")
+    table.add_column("Keys", style="green")
+    for fmt in reversed(MetadataFormats):
+        if not fmt.value.enabled:
             continue
-        label = source.value.label
-        keys = ", ".join(source.value.transform_class.SCHEMA_CLASS.CONFIG_KEYS)
-        space = (max_space - len(label)) * " "
-        lines += f"  {label}:{space}{keys}"
-        if not source.value.writable:
-            lines += " (read only)"
-        lines += "\n"
+        label = fmt.value.label
+        if label.startswith(("ComicTagger", "Comicbox")):
+            style = Style(dim=True)
+            label = Text(label, style=style)
+        keys = ", ".join(sorted(fmt.value.config_keys))
+        table.add_row(label, keys)
 
-    return lines
+    return table
 
 
 def _add_option_group(parser):
@@ -99,23 +156,32 @@ def _add_option_group(parser):
         help="Read metadata formats. Defaults to all.",
     )
     option_group.add_argument(
+        "--read-ignore",
+        action=CSVAction,
+        metavar="FORMATS",
+        dest="read_ignore",
+        help="Subtract these formats from the read formats.",
+    )
+    option_group.add_argument(
         "-m",
         "--metadata",
         dest="metadata_cli",
         metavar="YAML_METADATA",
         action="append",
-        help="Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
-        " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
-        " Place a space after colons so they are properly parsed as YAML key"
-        " value pairs. If your value contains a special YAML character (e.g."
-        " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
-        " brackets in place of indentation.",
+        help=(
+            "Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
+            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
+            " Place a space after colons so they are properly parsed as YAML key"
+            " value pairs. If your value contains a special YAML character (e.g."
+            " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
+            " brackets in place of indentation."
+        ),
     )
     option_group.add_argument(
         "-D",
         "--delete-keys",
         action=CSVAction,
-        help="Delete a comma delimited list of comicbox keys entirely from the final metadata.",
+        help="Delete a comma delimited list of comicbox glom key paths entirely from the final metadata. Example below.",
     )
     option_group.add_argument(
         "-d",
@@ -125,7 +191,7 @@ def _add_option_group(parser):
     option_group.add_argument(
         "--delete-orig",
         action="store_true",
-        help="Delete the original cbr or cbt file if it was converted to a cbz successfully.",
+        help="Delete the original cbr, cbt, or cb7 file if it was converted to a cbz successfully.",
     )
     option_group.add_argument(
         "--recurse",
@@ -139,12 +205,24 @@ def _add_option_group(parser):
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
     option_group.add_argument(
-        "-G",
-        "--no-compute-pages",
+        "-g",
+        "--compute-pages",
         dest="compute_pages",
+        action="store_true",
+        default=False,
+        help=(
+            "Compute the large ComicInfo style pages metadata from the archive. Turned off by default."
+        ),
+    )
+    option_group.add_argument(
+        "-A",
+        "--no-compute-page-count",
+        dest="compute_page_count",
         action="store_false",
         default=True,
-        help=("Never compute page_count or pages metadata from the archive."),
+        help=(
+            "Do not compute the page count from the archive by reading the table of contents for image files."
+        ),
     )
     option_group.add_argument(
         "-R",
@@ -158,16 +236,31 @@ def _add_option_group(parser):
         "--quiet",
         action="count",
         default=0,
-        help="Increasingingly quiet success messages, "
-        "warnings and errors with more Qs.",
+        help=(
+            "Increasingingly quiet success messages, warnings and errors with more Qs."
+        ),
+    )
+    option_group.add_argument(
+        "-s",
+        "--stamp",
+        dest="stamp",
+        action="store_true",
+        help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
     )
     option_group.add_argument(
         "-N",
         "--no-stamp-notes",
         dest="stamp_notes",
         action="store_false",
-        help="Do not write the notes field with tagger, timestamp and identifiers "
-        "when writing metadata out to a file.",
+        help=(
+            "Do not write the notes field with tagger, timestamp and identifiers "
+            "when writing metadata out to a file."
+        ),
+    )
+    option_group.add_argument(
+        "-t",
+        "--theme",
+        help="Pygments theme to use for syntax highlighting. https://pygments.org/styles/. 'none' will stop highlighting.",
     )
 
 
@@ -197,7 +290,7 @@ def _add_action_group(parser):
         "--print",
         dest="print_metadata",
         action="store_true",
-        help="Print merged metadata. Shortcut for -P d.",
+        help="Print merged metadata. Shortcut for -P p.",
     )
     action_group.add_argument(
         "-l",
@@ -221,7 +314,7 @@ def _add_action_group(parser):
         help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
     action_group.add_argument(
-        "--delete",
+        "--delete-all-tags",
         action="store_true",
         help="Delete all tags from the archive. Overrides --write.",
     )
@@ -229,11 +322,13 @@ def _add_action_group(parser):
         "-e",
         "--pages",
         action=PageRangeAction,
-        help="Extract a single page or : delimited range of pages by zero based index"
-        " to --dest-path.",
+        help=(
+            "Extract a single page or : delimited range of pages by zero based index"
+            " to --dest-path."
+        ),
     )
     action_group.add_argument(
-        "-o", "--cover", action="store_true", help="Extract cover page(s)."
+        "-o", "--covers", action="store_true", help="Extract cover pages."
     )
     action_group.add_argument(
         "-z",
@@ -246,8 +341,10 @@ def _add_action_group(parser):
         "--write",
         metavar="FORMATS",
         action=CSVAction,
-        help="Write comic metadata formats to archive cbt & cbr are always"
-        " exported to cbz format. Format keys listed below.",
+        help=(
+            "Write comic metadata formats to archive cbt & cbr are always"
+            " exported to cbz format. Format keys listed below."
+        ),
     )
     action_group.add_argument(
         "--rename",
@@ -270,35 +367,21 @@ def _add_target_group(parser):
 
 def get_args(params=None) -> Namespace:
     """Get arguments and options."""
-    description = "Comic book archive read/write tool."
-    formats = _create_format_help()
-    epilog = (
-        "PRINT_PHASES Characters:\n"
-        "  v  Software version (Shortcut -v)\n"
-        "  t  File type\n"
-        "  f  File names (Shortcut -l)\n"
-        "  s  Source metadata\n"
-        "  l  Loaded metadata sources\n"
-        "  n  Loaded metadata normalized to comicbox schema\n"
-        "  m  Merged normalized intermediate metadata\n"
-        "  c  Computed metadata sources\n"
-        "  d  Final metadata merged with computed sources. (Shortcut -p)\n"
-        "\n"
-        "Complex --metadata Example:\n"
-        "  -m 'Character: anna,bea,carol, contributors: {inker: [Other Name],"
-        " writer: [Other Name, Writer Name]},"
-        " story_arcs: {Arc Name: 1, Other Arc Name: 5}'\n"
-        "  -m '{publisher: My Press}'\n"
-        "  -m 'Title: The Dark Freighter'\n"
-        "  -m \"series: 'Solarpunk: Kaze Bosozoku'\"\n"
-        "\n"
-        "  Metadata can be any tag from any of the supported metadata formats.\n\n"
-        "Format keys for --ignore-read, --write, and --export:\n" + formats
+    description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
+    if not PDF_ENABLED:
+        description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
+
+    epilog = Group(
+        _get_help_print_phases_table(),
+        _METADATA_EXAMPLES,
+        _DELETE_KEYS_EXAMPLES,
+        _get_help_format_table(),
     )
+
     parser = ArgumentParser(
         description=description,
-        epilog=epilog,
-        formatter_class=RawDescriptionHelpFormatter,
+        epilog=epilog,  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
+        formatter_class=RichHelpFormatter,
         add_help=False,
     )
     _add_option_group(parser)
@@ -320,9 +403,9 @@ def post_process_args(cns):
     if cns.print_metadata:
         cns.print += PrintPhases.METADATA.value
 
-    # Logleve
+    # Loglevel
     if cns.quiet:
-        cns.loglevel = INFO + cns.quiet * 10
+        cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
 def main(params=None):
@@ -334,6 +417,6 @@ def main(params=None):
     runner = Runner(args)
     try:
         runner.run()
-    except HANDLED_EXCEPTIONS as exc:
-        print(exc)  # noqa: T201
+    except _HANDLED_EXCEPTIONS as exc:
+        rich_print(f"[yellow]{exc}[/yellow]")
         sys.exit(1)

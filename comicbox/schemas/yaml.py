@@ -5,14 +5,17 @@ from enum import Enum
 from sys import maxsize
 
 from ruamel.yaml import YAML, StringIO
+from typing_extensions import override
 
 from comicbox.fields.fields import StringField
 from comicbox.schemas.base import BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox_mixin import INDEX_KEY, ROOT_TAG
+from comicbox.schemas.comicbox import BOOKMARK_KEY, ID_KEY_KEY, PAGE_KEYS
+from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"
 _MAP_TAG = f"{_TAG_YAML}:map"
+_FLOW_KEYS = frozenset({IMAGE_ATTRIBUTE, *PAGE_KEYS} - {BOOKMARK_KEY, ID_KEY_KEY})
 
 
 class YamlRenderModule:
@@ -26,8 +29,7 @@ class YamlRenderModule:
     @staticmethod
     def _dict_flow_representer(dumper, data):
         """Represent page dict as a single line."""
-        if INDEX_KEY in data:
-            data = dict(sorted(data.items()))
+        if _FLOW_KEYS & data.keys():
             return dumper.represent_mapping(_MAP_TAG, data, flow_style=True)
 
         return dumper.represent_dict(data)
@@ -42,26 +44,35 @@ class YamlRenderModule:
         return dumper.represent_str(data.value)
 
     @classmethod
-    def get_write_yaml(cls, dfs: bool = False):  # noqa: FBT002
-        """Get write yaml with special formatting."""
-        yaml = YAML()
-        yaml.default_flow_style = dfs
-        if dfs:
-            yaml.width = maxsize
-        else:
-            yaml.indent(mapping=2, sequence=4, offset=2)
-
-        yaml.sort_base_mapping_type_on_output = True  # type: ignore[reportAssignmentType]
+    def _config_yaml(cls, yaml: YAML):
+        yaml.sort_base_mapping_type_on_output = True  # pyright: ignore[reportAttributeAccessIssue]
         yaml.representer.add_representer(Decimal, cls._decimal_representer)
         yaml.representer.add_representer(type(None), cls._none_representer)
         yaml.representer.add_representer(dict, cls._dict_flow_representer)
         yaml.representer.add_multi_representer(Enum, cls._enum_representer)
+
+    @classmethod
+    def _get_write_yaml_dfs(cls):
+        """Get write yaml with special formatting in default flow style."""
+        yaml = YAML()
+        yaml.default_flow_style = True
+        yaml.width = maxsize
+        cls._config_yaml(yaml)
+        return yaml
+
+    @classmethod
+    def _get_write_yaml(cls):
+        """Get write yaml with special formatting."""
+        yaml = YAML()
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        cls._config_yaml(yaml)
+
         return yaml
 
     @classmethod
     def dumps(cls, obj: dict, *args, dfs=False, **kwargs):
         """Dump dict to YAML string."""
-        yaml = cls.get_write_yaml(dfs=dfs)
+        yaml = cls._get_write_yaml_dfs() if dfs else cls._get_write_yaml()
         with StringIO() as buf:
             yaml.dump(obj, buf, *args, **kwargs)
             return buf.getvalue()
@@ -87,23 +98,18 @@ class YamlSchema(BaseSchema):
 
         render_module = YamlRenderModule
 
-    def dump(self, obj, *args, allowed_null_keys=None, **kwargs):
-        """Allow null keys on dump."""
-        saved_null_keys = set()
-        if allowed_null_keys:
-            sub_data = obj.get(ROOT_TAG, {})
-            for key in allowed_null_keys:
-                if key in sub_data and sub_data.get(key) is None:
-                    saved_null_keys.add(key)
-        serialized: dict = super().dump(obj, *args, **kwargs)  # type: ignore[reportAssignmentType]
-        if saved_null_keys:
-            if ROOT_TAG not in serialized:
-                serialized[ROOT_TAG] = {}
-            for key in saved_null_keys:
-                serialized[ROOT_TAG][key] = None
-        return serialized
-
-    def dumps(self, obj, *args, dfs=False, allowed_null_keys=None, **kwargs):
+    @override
+    def dumps(
+        self,
+        obj,
+        *args,
+        dfs: bool = False,
+        dump: bool = True,
+        **kwargs,
+    ):
         """Use dfs for render."""
-        serialized: dict = self.dump(obj, allowed_null_keys=allowed_null_keys, **kwargs)  # type: ignore[reportAssignmentType]
+        if dump:
+            serialized: dict = super().dump(obj, *args, **kwargs)  # pyright: ignore[reportAssignmentType]
+        else:
+            serialized = obj
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

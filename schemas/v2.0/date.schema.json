@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/date.schema.json",
+  "title": "Comicbox Date Properties",
+  "type": "object",
+  "properties": {
+    "cover_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "store_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "day": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 31
+    },
+    "month": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "year": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

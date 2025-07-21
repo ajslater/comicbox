@@ -1,202 +1,200 @@
 """Marshmallow Enum Fields."""
 
-import re
 from enum import Enum
-from logging import getLogger
 from types import MappingProxyType
 
-from comicfn2dict.regex import ORIGINAL_FORMAT_PATTERNS
+from caseconverter import snakecase, titlecase
+from loguru import logger
 from marshmallow import fields
-from stringcase import titlecase
+from typing_extensions import override
 
+from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
+from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
+from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
+from comicbox.enums.maps.reading_direction import READING_DIRECTION_ENUM_MAP
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
-from comicbox.fields.number_fields import BooleanField
-
-_ORIGINAL_FORMAT_RE_EXP = r"^" + r"|".join(ORIGINAL_FORMAT_PATTERNS) + r"$"
-_ORIGINAL_FORMAT_RE = re.compile(_ORIGINAL_FORMAT_RE_EXP, flags=re.IGNORECASE)
-_CAPS_FORMATS = frozenset({"HC", "TPB"})
-_PREFORMATTED_FORMATS = frozenset({"PDF Rip"})
 
 
-LOG = getLogger(__name__)
+class FuzzyEnumMixin:
+    """Fuzzy lookup get_enum() method that allows caseless enum lookups with variations."""
+
+    ENUM_ALIAS_MAP = MappingProxyType({})
+
+    @staticmethod
+    def get_key_variations(key: str | Enum) -> set[str]:
+        """Get enum caseless slightly fuzzy lookup key variations for a key."""
+        new_key = key.value if isinstance(key, Enum) else key
+        new_key = new_key.lower()
+        key_variations = {new_key}
+        key_variations.add(new_key.replace(" ", ""))
+        space_case = snakecase(new_key).replace("_", "")
+        key_variations.add(space_case)
+        return key_variations
+
+    @classmethod
+    def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict):
+        """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
+        key_variations = cls.get_key_variations(key)
+        for key_variation in key_variations:
+            enum_map[key_variation] = enum
+
+    def get_enum_alias_map(self) -> dict:
+        """Transform the ENUM_ALIAS_MAP into the enum lookup map."""
+        enum_map = {}
+        for key, enum in self.ENUM_ALIAS_MAP.items():
+            self.add_enum_map_item(key, enum, enum_map)
+        return enum_map
+
+    def get_enum(self, value: str | Enum) -> Enum | None:
+        """Get an enum from the fuzzy lookup map."""
+        key: str = value.value if isinstance(value, Enum) else str(value)
+        key = key.lower()
+        return self._enum_map.get(key)  # pyright: ignore[reportAttributeAccessIssue]
 
 
-class EnumField(fields.Enum, metaclass=TrapExceptionsMeta):
-    """Durable enum field."""
+class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
+    """Fuzzy lookup Enum field that allows caseless enum lookups with variations."""
 
     ENUM = Enum
+
+    def get_enum_map(self) -> dict:
+        """Transform the ENUM_ALIAS_MAP into the enum lookup map and add the field enum to it as well."""
+        enum_map = self.get_enum_alias_map()
+        for enum in self.ENUM:
+            self.add_enum_map_item(enum, enum, enum_map)
+        return enum_map
 
     def __init__(self, *args, **kwargs):
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
+        enum_map = self.get_enum_map()
+        self._enum_map = MappingProxyType(enum_map)
 
+    @override
     def _deserialize(self, value, *args, **kwargs):
-        if isinstance(value, Enum):
-            """Because by_value is StringField, convert to string first."""
-            value = value.value
-        return super()._deserialize(value, *args, **kwargs)
+        enum = self.get_enum(value)
+        enum = enum if enum else value
+        return super()._deserialize(enum, *args, **kwargs)
 
-
-class PageTypeEnum(Enum):
-    """ComicPageInfo Page Types."""
-
-    FRONT_COVER = "FrontCover"
-    INNER_COVER = "InnerCover"
-    ROUNDUP = "Roundup"
-    STORY = "Story"
-    ADVERTISEMENT = "Advertisement"
-    EDITORIAL = "Editorial"
-    LETTERS = "Letters"
-    PREVIEW = "Preview"
-    BACK_COVER = "BackCover"
-    OTHER = "Other"
-    DELETED = "Deleted"
+    @override
+    def _serialize(self, value, *args, **kwargs):
+        enum = self.get_enum(value)
+        enum = enum if enum else value
+        return super()._serialize(enum, *args, **kwargs)
 
 
 class PageTypeField(EnumField):
     """ComicPageInfo Page Type Field."""
 
-    ENUM = PageTypeEnum
-
-
-class ReadingDirectionEnum(Enum):
-    """Four reading directions."""
-
-    LTR = "ltr"
-    RTL = "rtl"
-    TTB = "ttb"
-    BTT = "btt"
+    ENUM = ComicInfoPageTypeEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class ReadingDirectionField(EnumField):
     """Reading direction enum."""
 
-    ENUM = ReadingDirectionEnum
-
-    def _deserialize(self, value, *args, **kwargs):
-        """Match a reading direction to an acceptable value."""
-        if isinstance(value, str):
-            value = value.lower()
-        return super()._deserialize(value, *args, **kwargs)
+    ENUM = ReadingDirectionEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+    ENUM_ALIAS_MAP = READING_DIRECTION_ENUM_MAP
 
 
-class MangaEnum(Enum):
-    """Manga enum for ComicInfo."""
+class EnumBooleanField(EnumField):
+    """An Enum Field that also accepts boolean values."""
 
     YES = "Yes"
+    TRUTHY = frozenset(
+        {
+            "1",
+            "true",
+            "yes",
+        }
+    )
+
+    @override
+    def _deserialize(self, value, *args, **kwargs):
+        result = super()._deserialize(value, *args, **kwargs)
+        if not isinstance(result, self.ENUM) and str(value).lower() in self.TRUTHY:
+            result = super()._deserialize(self.YES, *args, **kwargs)
+        return result
+
+    @override
+    def _serialize(self, value, *args, **kwargs):
+        result = super()._serialize(value, *args, **kwargs)
+        if not isinstance(result, self.ENUM) and value in self.TRUTHY:
+            result = super()._serialize(self.YES, *args, **kwargs)
+        return result
+
+
+class ComicInfoMangaEnum(Enum):
+    """Manga enum for ComicInfo."""
+
     YES_RTL = "YesAndRightToLeft"
     NO = "No"
 
 
-class MangaField(EnumField):
+class ComicInfoMangaField(EnumBooleanField):
     """Manga field from ComicInfo."""
 
-    ENUM = MangaEnum
+    ENUM = ComicInfoMangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
+    @override
     def _deserialize(self, value, attr, data, *args, **kwargs):
         """Match a manga value to an acceptable value."""
         if data.get("reading_direction") == ReadingDirectionEnum.RTL:
-            LOG.warning(
-                f"Coerced manga {value} to {MangaEnum.YES_RTL.value}"
+            reason = (
+                f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
                 "because of reading_direction"
             )
-            value = MangaEnum.YES_RTL
-        elif isinstance(value, str):
-            value = value.strip()
-            if value.lower() == MangaEnum.YES_RTL.value.lower():
-                value = MangaEnum.YES_RTL
-            else:
-                value = value.capitalize()
+            logger.warning(reason)
+            value = ComicInfoMangaEnum.YES_RTL
         return super()._deserialize(value, attr, data, *args, **kwargs)
-
-
-class AgeRatingEnum(Enum):
-    """Age Ratings."""
-
-    A_18_PLUS = "Adults Only 18+"
-    EARLY_CHILDHOOD = "Early Childhood"
-    EVERYONE = "Everyone"
-    E_10_PLUS = "Everyone 10+"
-    G = "G"
-    KIDS_TO_ADULTS = "Kids to Adults"
-    M = "M"
-    MATURE = "Mature"
-    MA_15_PLUS = "MA15+"
-    MA_17_PLUS = "Mature 17+"
-    PG = "PG"
-    R_18_PLUS = "R18+"
-    PENDING = "Rating Pending"
-    TEEN = "Teen"
-    TEEN_PLUS = "Teen Plus"
-    X_18_PLUS = "X18+"
-
-
-_AGE_RATING_MAP = MappingProxyType(
-    {age_rating.value.lower(): age_rating.value for age_rating in AgeRatingEnum}
-)
-
-
-class AgeRatingField(StringField):
-    """
-    Overly lenient age rating field.
-
-    *Not* an Enum. Accept any string.
-    Age ratings are so messy, I think it hurts to be restrictive.
-    """
-
-    def _deserialize(self, value, *args, **kwargs):
-        """Prettify if possible, but allow anything."""
-        value = super()._deserialize(value, *args, **kwargs)
-        if value and (pretty_value := _AGE_RATING_MAP.get(value.lower())):
-            value = pretty_value
-        return value
 
 
 class YesNoEnum(Enum):
     """Yes No Enum."""
 
-    YES = "Yes"
     NO = "No"
     UNKNOWN = "Unknown"
 
 
-class YesNoField(BooleanField):
+class YesNoField(EnumBooleanField):
     """A yes no kind of boolean field."""
 
-    _UNKNOWN_LOWER = YesNoEnum.UNKNOWN.value.lower()
-
-    def _deserialize(self, value, *args, **kwargs) -> bool | None:  # type: ignore[reportIncompatibleMethodOverride]
-        """Accept any boolean value."""
-        if isinstance(value, str) and value.lower() == self._UNKNOWN_LOWER:
-            return None
-        return super()._deserialize(value, *args, **kwargs)
-
-    def _serialize(self, value, *_args, **_kwargs) -> str:  # type: ignore[reportIncompatibleMethodOverride]
-        """Serialize to specific values."""
-        if value is None:
-            return YesNoEnum.UNKNOWN.value
-        if value:
-            return YesNoEnum.YES.value
-        return YesNoEnum.NO.value
+    ENUM = YesNoEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
-class OriginalFormatField(StringField):
+class PrettifiedStringField(FuzzyEnumMixin, StringField):
+    """A string fields that tries to match to an enum and falls back to just titlecasing."""
+
+    ENUM_ALIAS_MAP = MappingProxyType({})
+
+    def __init__(self, *args, **kwargs):
+        """Use the enum."""
+        super().__init__(*args, **kwargs)
+        self._enum_map = MappingProxyType(self.get_enum_alias_map())
+
+    def _prettify(self, value) -> str:
+        """Conform a value to a known enum or titlecase."""
+        enum = self.get_enum(value)
+        if enum:
+            value = enum.value
+        else:
+            value = titlecase(value)
+            value = value.replace("  ", " ")
+        return value
+
+    @override
+    def _deserialize(self, value, *args, **kwargs):
+        value = super()._deserialize(value, *args, **kwargs)
+        return self._prettify(value)
+
+
+class OriginalFormatField(PrettifiedStringField):
     """Prettify Original Format."""
 
-    def _deserialize(self, value, *args, **kwargs):
-        """Prettify Original Format if it's known."""
-        value = super()._deserialize(value, *args, **kwargs)
-        if not value or not _ORIGINAL_FORMAT_RE.search(value):
-            return value
-        value_upper = value.upper()
-        for preformatted_value in _PREFORMATTED_FORMATS:
-            if value_upper == preformatted_value.upper():
-                value = preformatted_value
-                break
-        else:
-            if value_upper in _CAPS_FORMATS:
-                value = value_upper
-            else:
-                value = titlecase(value)
-                value = value.replace("  ", " ")
-        return value
+    ENUM_ALIAS_MAP = GENERIC_FORMAT_MAP
+
+
+class AgeRatingField(PrettifiedStringField):
+    """Prettified Age Rating."""
+
+    ENUM_ALIAS_MAP = AGE_RATING_ENUM_MAP

@@ -19,7 +19,7 @@ def test_get_covers():
     with COVER_IMAGE.open("rb") as cif:
         image = cif.read()
     with Comicbox(ARCHIVE_PATH) as car:
-        page = car.get_cover_image()
+        page = car.get_cover_page()
     assert image == page
 
 

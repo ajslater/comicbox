@@ -1,5 +1,54 @@
 # 📰 News
 
+## v2.0.0
+
+### 🚨 BREAKING CHANGES 🚨
+
+- Schema, API, config and CLI changes. See
+  [the 2.0 CHANGES document](CHANGES-2.0.0.md).
+
+### Features
+
+#### File Formats
+
+- CB7 archive read support. Comic archives in 7zip archives.
+
+#### Schemas
+
+- Support the MetronInfo.xml v1.0 Schema
+- Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
+- ComicInfo.xml gains the `Translator` tag
+- PDF `modDate` is now read and written.
+- URNs as serialized identifiers in `notes` tag gain an optional tag type
+  attribute in the nss: e.g. `urn:comicvine:series:1234`
+- Comictagger schema supports series_aliases and title_aliases as reprints
+- Parse PDF datetime format.
+- Many enum fields now accept caseless and slightly fuzzy value lookups that are
+  coerced to correct types for the specified output metadata format.
+- For convenience, named or numbered types or collections in the comicbox schema
+  may also be parse by their simple name instead of requiring a complex object.
+
+#### Config
+
+- `--delete action` becomes `--delete-all-tags`.
+- `--compute-pages` is off by default. Turn on to recompute ComicInfo style
+  `Pages` structures
+- `--no-compute-page-count` prevents recomputing page_count.
+- `--delete_keys` now excludes keys from loading entirely.
+- Syntax highlighting used on output. Change or remove with `--theme` option.
+
+#### Fixes
+
+- ComicInfo.xml StoryArcs tag was not loaded.
+- Fix proper lowercasing of serialized boolean values in xml attributes.
+- ComicBookInfo `issue` tag becomes an integer.
+- Fix ISBN & UPC url detection
+- ComicInfo.xml orders tags properly per the xsd.
+- Corrected schemaLocation tags for xml formats to be valid.
+- ComicBookInfo.json `rating`, and `tags` tags fixed.
+- Support ComicBookInfo.json `primary` credit tag.
+- More accurate merging of different metadata sources.
+
 ## v1.2.3
 
 - Fix story arc parsing.
@@ -80,8 +129,8 @@
 
 ## v1.0.0
 
-- This version contains large breaking changes, some detailed in
-  [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- 🚨 This version contains large breaking changes 🚨
+    - Some are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
 - Comicbox continues to primarily be an API for reading comic metadata but this
   version contains an enhanced CLI, and more powerful reading, writing,
   synthesis and exporting of metadata.
@@ -93,7 +142,7 @@
 ## v0.10.2
 
 - Sophisticated cli metadata parsing. See cli help and README.
-  - config.metadata_cli holds the new string format.
+    - config.metadata_cli holds the new string format.
 - Writing xml and json metadata to files is now pretty printed.
 - Fix some instances where falsey values were not written.
 - Fix comicinfo.xml ComicPageInfo typing.
@@ -134,34 +183,34 @@
 ## v0.7.0
 
 - Fix
-  - Tags from ComicInfo.xml were not parsed
+    - Tags from ComicInfo.xml were not parsed
 - Features
-  - ComicInfo.xml StoryArcNumber, Review and GTIN now parsed.
-  - ComicInfo.xml Pages attributes now exposed as snake case for python
+    - ComicInfo.xml StoryArcNumber, Review and GTIN now parsed.
+    - ComicInfo.xml Pages attributes now exposed as snake case for python
 
 ## v0.6.7
 
 - Fix
-  - Remove unrar-cffi dependency aciddentally left in during testing
+    - Remove unrar-cffi dependency aciddentally left in during testing
 
 ## v0.6.6
 
 - Features
-  - Print filetype cli option. get_archive_type() api method.
-  - Use unrar.cffi if it's available.
+    - Print filetype cli option. get_archive_type() api method.
+    - Use unrar.cffi if it's available.
 - Dev
-  - Use importlib instead of deprecated pkg_resources.
+    - Use importlib instead of deprecated pkg_resources.
 
 ## v0.6.5
 
 - Feature
-  - Demote parser errors to warnings.
+    - Demote parser errors to warnings.
 
 ## v0.6.4
 
 - Feature --delete-rar option is now --delete-orig
 - Fix
-  - Fix --delete-rar option sometimes deleting original cbzs
+    - Fix --delete-rar option sometimes deleting original cbzs
 
 ## v0.6.3
 
@@ -173,84 +222,76 @@
 ## v0.6.2
 
 - Fix
-
-  - Enable support for Deflate64.
+    - Enable support for Deflate64.
 
 ## v0.6.1
 
 - Fix
-
-  - Fix encoding/decoding crash by replacing uncodable utf-8 characters.
+    - Fix encoding/decoding crash by replacing uncodable utf-8 characters.
 
 ## v0.6.0
 
 - Features
-
-  - Add --metadata cli action. Injects metadata from cli.
-  - Warn when no actions performed.
-  - == operator for metadata is deep and ignores key order.
-  - Credits are now sorted.
+    - Add --metadata cli action. Injects metadata from cli.
+    - Warn when no actions performed.
+    - == operator for metadata is deep and ignores key order.
+    - Credits are now sorted.
 
 - Fix
-
-  - Log format conversions.
-  - Don't add empty credits list metadata.
+    - Log format conversions.
+    - Don't add empty credits list metadata.
 
 ## v0.5.5
 
 - Fix
-
-  - Fix dest-path cli argument.
-  - Use defusedxml for XML parsing.
-  - Fix recursion crash.
-  - Log exception during recursion and proceed.
+    - Fix dest-path cli argument.
+    - Use defusedxml for XML parsing.
+    - Fix recursion crash.
+    - Log exception during recursion and proceed.
 
 ## v0.5.4
 
 - Fix
-
-  - Remove uneccissary dependencies
+    - Remove uneccissary dependencies
 
 ## v0.5.3
 
 - Fix
-
-  - Fix filename extension parsing
-  - Renamed underscore cli options to use dash instead
-  - Fixed crash when recompressing directories.
+    - Fix filename extension parsing
+    - Renamed underscore cli options to use dash instead
+    - Fixed crash when recompressing directories.
 
 ## v0.5.2
 
 - Features
-
-  - ComicArchive class now has a context manager
-  - Removed as_pil() methods for pages and covers
+    - ComicArchive class now has a context manager
+    - Removed as_pil() methods for pages and covers
 
 ## v0.5.1
 
 - Features
-
-  - Methods for getting covers and pages as PIL Images.
-  - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
-  - closefd option leaves archive open after method calls. Close manually with
-    close().
-  - .cbt Tarfile comic archive support.
+    - Methods for getting covers and pages as PIL Images.
+    - Lazy metadata and cover pulling. Removes `metadata` and `cover` options.
+    - closefd option leaves archive open after method calls. Close manually with
+      close().
+    - .cbt Tarfile comic archive support.
 
 ## v0.5.0
 
 - Features
-
-  - Issues numbers are now strings.
-  - Separate read metadata option from print metadata action.
-  - Added dry_run option.
-  - Namespace config under "comicbox" map to allow inclusion in caller configs.
-  - Allow modnames for local config sources, useful when comicbox is a library.
+    - Issues numbers are now strings.
+    - Separate read metadata option from print metadata action.
+    - Added dry_run option.
+    - Namespace config under "comicbox" map to allow inclusion in caller
+      configs.
+    - Allow modnames for local config sources, useful when comicbox is a
+      library.
 
 - Fixes
-  - Trap errors reading user config files.
-  - Fixed cover extraction to a directory.
-  - Abort with message if pages asked to extracted to a filee.
-  - Handle more filename patterns.
+    - Trap errors reading user config files.
+    - Fixed cover extraction to a directory.
+    - Abort with message if pages asked to extracted to a filee.
+    - Handle more filename patterns.
 
 ## v0.4.1 - Yanked
 

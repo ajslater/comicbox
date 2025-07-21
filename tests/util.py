@@ -1,6 +1,8 @@
 """Utility functions for testing metadata."""
 
+import re
 import shutil
+from argparse import Namespace
 from collections.abc import Mapping
 from copy import deepcopy
 from difflib import ndiff
@@ -8,27 +10,38 @@ from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
 
-import fitz
+import pymupdf
 from deepdiff.diff import DeepDiff
+from glom import Assign, Delete, glom
+from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
-from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG
-from comicbox.schemas.comicbox_mixin import (
+from comicbox.box.pages.covers import PAGES_KEYPATH
+from comicbox.config import get_config
+from comicbox.formats import MetadataFormats
+from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
+from comicbox.schemas.comicbox import (
+    EXT_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
-    PAGES_KEY,
-    ROOT_TAG,
     UPDATED_AT_KEY,
+    ComicboxSchemaMixin,
 )
-from comicbox.transforms.base import BaseTransform
+from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
+from comicbox.transforms.comicbookinfo import UPDATED_AT_KEYPATH
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
-    TEST_DATETIME,
     TEST_FILES_DIR,
     TEST_METADATA_DIR,
     TEST_WRITE_NOTES,
     TMP_ROOT_DIR,
 )
+from tests.validate.validate import validate_path
+
+PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="slmncd")))
+PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGE_COUNT_KEY}"
+NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{NOTES_KEY}"
+EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{EXT_KEY}"
 
 
 def get_tmp_dir(filename: str):
@@ -54,119 +67,179 @@ def my_setup(tmp_dir: Path, source_path: Path | None = None):
         assert new_path.exists()
 
 
-def diff_strings(a, b):
+def assert_diff_strings(a, b):
     """Debug string diffs."""
-    diff = ndiff(a.splitlines(keepends=True), b.splitlines(keepends=True))
-    print("".join(diff), end="")
-    for i, s in enumerate(diff):
-        if s[0] == " ":
-            continue
-        if s[0] == "-":
-            print(f'Delete "{s[-1]}" from position {i}')
-        elif s[0] == "+":
-            print(f'Add "{s[-1]}" to position {i}')
+    if a != b:
+        diff = ndiff(a.splitlines(keepends=True), b.splitlines(keepends=True))
+        if diff:
+            print("".join(diff), end="")  # noqa: T201
+        for i, s in enumerate(diff):
+            if s[0] == " ":
+                continue
+            if s[0] == "-":
+                print(f'Delete "{s[-1]}" from position {i}')  # noqa: T201
+            elif s[0] == "+":
+                print(f'Add "{s[-1]}" to position {i}')  # noqa: T201
+        assert not diff
+    else:
+        assert a == b
 
 
 def read_metadata(  # noqa: PLR0913
     archive_path,
     metadata,
     read_config,
+    *,
     ignore_updated_at: bool,
     ignore_notes: bool,
     page_count=None,
+    ignore_page_count: bool = False,
+    ignore_pages: bool = False,
 ):
     """Read metadata and compare to dict fixture."""
-    read_config.comicbox.print = "nslc"
-    print(archive_path)
     with Comicbox(archive_path, config=read_config) as car:
         car.print_out()
-        disk_md = MappingProxyType(car.get_metadata())
-    if page_count is not None:
-        disk_md = dict(disk_md)
-        disk_md[ROOT_TAG][PAGE_COUNT_KEY] = page_count
-        if pages := disk_md.get(PAGES_KEY):
-            if page_count:
-                disk_md[PAGES_KEY] = pages[:page_count]
-            else:
-                disk_md.pop(PAGES_KEY, None)
-        disk_md = MappingProxyType(disk_md)
-    print(f"{ignore_updated_at=} {ignore_notes=}")
+        disk_md = dict(car.get_internal_metadata())
+    metadata = dict(metadata)
+    if ignore_page_count:
+        glom(metadata, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
+    elif page_count is not None:
+        glom(metadata, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
+    glom(metadata, Assign(EXT_KEYPATH, archive_path.suffix[1:], missing=dict))
     if ignore_updated_at:
-        metadata = dict(metadata)
-        metadata[ROOT_TAG].pop(UPDATED_AT_KEY, None)
-        disk_md = dict(disk_md)
-        disk_md[ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        glom(metadata, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
     if ignore_notes:
-        metadata = dict(metadata)
-        metadata[ROOT_TAG].pop(NOTES_KEY, None)
-        disk_md[ROOT_TAG].pop(NOTES_KEY, None)
-    pprint(metadata)
-    pprint(disk_md)
-    diff = DeepDiff(metadata, disk_md, ignore_order=True)
-    pprint(diff)
-    assert not diff
+        glom(metadata, Delete(NOTES_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(NOTES_KEYPATH, ignore_missing=True))
+    if ignore_pages:
+        glom(metadata, Delete(PAGES_KEYPATH, ignore_missing=True))
+        glom(disk_md, Delete(PAGES_KEYPATH, ignore_missing=True))
+    metadata = MappingProxyType(metadata)
+    disk_md = MappingProxyType(disk_md)
+    assert_diff(metadata, disk_md)
 
 
-_NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>")
+_NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>", "&lt;Notes&gt;")
+_LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
+_TMP_IGNORE_SUBSTRINGS = ("<identifier>", "pages:", '"pages":')
+_MOD_DATE_TAGS = ('"modDate":', "<pdf:ModDate>")
+_PAGE_COUNT_TAGS = ('"page_count:"', "<pages>")
+_IDENTIFIERS_TAGS = ('"identifiers:"',)
+_TAGGER_TAGS = ('"appID":',)
 
 
-def _prune_lines(lines, ignore_last_modified, ignore_notes, ignore_updated_at):
+def _prune_lines(  # noqa: PLR0913
+    lines,
+    ignore_last_modified,
+    ignore_notes,
+    ignore_updated_at,
+    ignore_mod_date,
+    *,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
+):
+    skip_substrings = [*_TMP_IGNORE_SUBSTRINGS]
+    if ignore_updated_at:
+        skip_substrings += [UPDATED_AT_KEY]
+    if ignore_mod_date:
+        skip_substrings += _MOD_DATE_TAGS
+    if ignore_last_modified:
+        skip_substrings += _LAST_MODIFIED_TAGS
+    if ignore_notes:
+        skip_substrings += _NOTES_TAGS
+    if ignore_page_count:
+        skip_substrings += _PAGE_COUNT_TAGS
+    if ignore_identifiers:
+        skip_substrings += _IDENTIFIERS_TAGS
+    if ignore_tagger:
+        skip_substrings += _TAGGER_TAGS
+
+    skipped_line_re = re.compile("|".join(skip_substrings))
+
     pruned_lines = []
     for line in lines:
-        if ignore_last_modified and f'"{LAST_MODIFIED_TAG}":' in line:
-            continue
-        if ignore_notes:
-            skip = False
-            for tag in _NOTES_TAGS:
-                if tag in line:
-                    skip = True
-            if skip:
-                continue
-        if ignore_updated_at and UPDATED_AT_KEY in line:
+        if skipped_line_re.search(line):
             continue
         pruned_lines.append(line)
     return pruned_lines
 
 
-def _prune_same_lines(
+def _prune_same_lines(  # noqa: PLR0913
     a_lines,
     b_lines,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
 ):
     a_lines = _prune_lines(
-        a_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     b_lines = _prune_lines(
-        b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        b_lines,
+        ignore_last_modified,
+        ignore_notes,
+        ignore_updated_at,
+        ignore_mod_date,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
     return a_lines, b_lines
 
 
-def _prune_strings(
+def _prune_strings(  # noqa: PLR0913
     a_str,
     b_str,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
 ):
     a_lines = a_str.splitlines()
     b_lines = b_str.splitlines()
     a_lines, b_lines = _prune_same_lines(
-        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines,
+        b_lines,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
+        ignore_page_count=False,
+        ignore_identifiers=False,
+        ignore_tagger=False,
     )
     a_str = "\n".join(a_lines)
     b_str = "\n".join(b_lines)
     return a_str, b_str
 
 
-def compare_files(
+def compare_files(  # noqa: PLR0913
     path_a,
     path_b,
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
+    ignore_mod_date: bool,
+    ignore_page_count: bool,
+    ignore_identifiers: bool,
+    ignore_tagger: bool,
 ):
     """Compare file contents."""
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
@@ -174,14 +247,22 @@ def compare_files(
         b_lines = file_b.readlines()
 
     a_lines, b_lines = _prune_same_lines(
-        a_lines, b_lines, ignore_last_modified, ignore_notes, ignore_updated_at
+        a_lines,
+        b_lines,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
+        ignore_page_count=ignore_page_count,
+        ignore_identifiers=ignore_identifiers,
+        ignore_tagger=ignore_tagger,
     )
 
     for line_a, line_b in zip(a_lines, b_lines, strict=False):
         if line_a != line_b:
-            print(f"{path_a}: {line_a}")
-            print(f"{path_b}: {line_b}")
-            print("".join(b_lines))
+            print(f"{path_a}: {line_a}")  # noqa: T201
+            print(f"{path_b}: {line_b}")  # noqa: T201
+            print("".join(b_lines))  # noqa: T201
             return False
     return True
 
@@ -193,7 +274,7 @@ class TestParser:
 
     def __init__(  # noqa: PLR0913
         self,
-        transform_class: type[BaseTransform],
+        fmt: MetadataFormats,
         test_fn: Path | str,
         read_reference_metadata: Mapping,
         read_native_dict: Mapping,
@@ -206,9 +287,9 @@ class TestParser:
         export_fn=None,
     ):
         """Initialize common variables."""
-        self.transform_class = transform_class
-        self.schema = transform_class.SCHEMA_CLASS(path=test_fn)
-        self.tmp_dir = TMP_ROOT_DIR / f"test_{transform_class.__name__}"
+        self.fmt = fmt
+        self.schema = self.fmt.value.transform_class.SCHEMA_CLASS(path=test_fn)
+        self.tmp_dir = TMP_ROOT_DIR / f"test_{fmt.value.label.replace(' ', '-')}"
         self.test_fn = Path(test_fn)
         self.read_reference_metadata = read_reference_metadata
         self.read_reference_native_dict = read_native_dict
@@ -231,13 +312,13 @@ class TestParser:
         self.reference_path = TEST_FILES_DIR / self.test_fn
         if export_fn is None:
             self.reference_export_path = (
-                TEST_METADATA_DIR / self.schema.FILENAME.lower()
+                TEST_METADATA_DIR / self.fmt.value.filename.lower()
             )
         else:
             self.reference_export_path = TEST_METADATA_DIR / export_fn
         self.read_config = read_config
         self.write_config = write_config
-        self.export_path = self.tmp_dir / self.schema.FILENAME
+        self.export_path = self.tmp_dir / self.fmt.value.filename
 
     def setup_method(self):
         """Create the tmp dir."""
@@ -247,42 +328,51 @@ class TestParser:
         """Remove the tmp dir."""
         my_cleanup(self.tmp_dir)
 
-    def _test_from(self, md):
-        pprint(self.read_reference_metadata)
-        pprint(md)
-        diff = DeepDiff(self.read_reference_metadata, md)
-        pprint(diff)
-        assert not diff
+    def _test_from(self, md, page_count=None):
+        if page_count is None:
+            read_reference_metadata = self.read_reference_metadata
+        else:
+            read_reference_metadata = deepcopy(dict(self.read_reference_metadata))
+            glom(
+                read_reference_metadata,
+                Assign("comicbox.page_count", page_count, missing=dict),
+            )
+            read_reference_metadata = MappingProxyType(read_reference_metadata)
+        assert_diff(read_reference_metadata, md)
 
     def test_from_metadata(self):
         """Test assign metadata."""
         pruned = self.read_reference_metadata
-        with Comicbox(metadata=pruned) as car:
-            md = car.get_metadata()
+        with Comicbox(
+            metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=PRINT_CONFIG
+        ) as car:
+            # car.print_out() debug
+            md = car.get_internal_metadata()
         self._test_from(md)
 
     def test_from_dict(self):
         """Test load from native dict."""
-        with Comicbox() as car:
-            car.add_source(self.read_reference_native_dict, self.transform_class)
-            md = car.get_metadata()
+        with Comicbox(config=PRINT_CONFIG) as car:
+            car.add_metadata(self.read_reference_native_dict, self.fmt)
+            car.print_out()
+            md = car.get_internal_metadata()
         self._test_from(md)
 
     def test_from_string(self):
         """Test load from string."""
-        with Comicbox() as car:
-            car.add_source(self.read_reference_string, self.transform_class)
-            md = car.get_metadata()
-        print(self.read_reference_string)
+        with Comicbox(config=PRINT_CONFIG) as car:
+            car.add_metadata(self.read_reference_string, self.fmt)
+            # car.print_out() debug
+            md = car.get_internal_metadata()
         self._test_from(md)
 
-    def test_from_file(self):
+    def test_from_file(self, page_count=None):
         """Test load from an export file."""
-        print(f"{self.reference_export_path=}")
-        with Comicbox() as car:
-            car.add_file_source(self.reference_export_path, self.transform_class)
-            md = car.get_metadata()
-        self._test_from(md)
+        with Comicbox(config=PRINT_CONFIG) as car:
+            car.add_metadata_file(self.reference_export_path, self.fmt)
+            # car.print_out() debug
+            md = car.get_internal_metadata()
+        self._test_from(md, page_count=page_count)
 
     def compare_dict(self, test_dict):
         """Compare native dicts."""
@@ -290,16 +380,16 @@ class TestParser:
         to_dict = dict(test_dict)
         from_dict.pop(UPDATED_AT_KEY, None)
         to_dict.pop(UPDATED_AT_KEY, None)
-        pprint(self.write_reference_native_dict)
-        pprint(test_dict)
-        diff = DeepDiff(from_dict, to_dict)
-        pprint(diff)
-        assert not diff
+        assert_diff(from_dict, to_dict)
 
     def to_dict(self, **kwargs):
         """Export metadata to native dict."""
-        with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_dict(transform_class=self.transform_class, **kwargs)
+        with Comicbox(
+            metadata=self.write_reference_metadata,
+            fmt=MetadataFormats.COMICBOX_YAML,
+        ) as car:
+            # car.print_out() debug
+            return car.to_dict(fmt=self.fmt, **kwargs)
 
     def test_to_dict(self, **kwargs):
         """Test export metadata to native dict."""
@@ -308,22 +398,23 @@ class TestParser:
 
     def to_string(self, **kwargs):
         """Export metadata to string."""
-        with Comicbox(metadata=self.write_reference_metadata) as car:
-            return car.to_string(transform_class=self.transform_class, **kwargs)
+        with Comicbox(
+            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+        ) as car:
+            # car.print_out() debug
+            return car.to_string(fmt=self.fmt, **kwargs)
 
     def compare_string(self, test_str):
         """Compare strings."""
-        print(self.write_reference_string)
-        print(test_str)
         from_str, to_str = _prune_strings(
             self.write_reference_string,
             test_str,
             ignore_last_modified=True,
             ignore_notes=False,
             ignore_updated_at=True,
+            ignore_mod_date=True,
         )
-        diff_strings(from_str, to_str)
-        assert from_str == to_str
+        assert_diff_strings(from_str, to_str)
 
     def test_to_string(self, **kwargs):
         """Test export to string."""
@@ -333,10 +424,12 @@ class TestParser:
     def test_to_file(self, export_fn=None, **kwargs):
         """Test export to a metadata file."""
         self.setup_method()
-        with Comicbox(metadata=self.write_reference_metadata) as car:
+        with Comicbox(
+            metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
+        ) as car:
             car.to_file(
                 self.export_path.parent,
-                transform_class=self.transform_class,
+                fmt=self.fmt,
                 **kwargs,
             )
         assert self.export_path.exists()
@@ -350,10 +443,14 @@ class TestParser:
             ignore_last_modified=False,
             ignore_notes=False,
             ignore_updated_at=True,
+            ignore_mod_date=True,
+            ignore_page_count=False,
+            ignore_identifiers=False,
+            ignore_tagger=False,
         )
         self.teardown_method()
 
-    def test_md_read(self, archive_path=None, page_count=None):
+    def test_md_read(self, archive_path=None, page_count=None, *, ignore_pages=False):
         """Read metadtata from an archive."""
         if archive_path is None:
             archive_path = self.reference_path
@@ -364,6 +461,7 @@ class TestParser:
             ignore_updated_at=False,
             ignore_notes=False,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
 
     def test_pdf_read(self):
@@ -374,21 +472,28 @@ class TestParser:
             self.read_config,
             ignore_updated_at=True,
             ignore_notes=True,
+            ignore_page_count=True,
         )
 
     def _create_test_cbz(self, new_test_cbz_path):
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
-        config = deepcopy(self.write_config)
-        config.comicbox.updated_at = TEST_DATETIME.isoformat()
-        config.comicbox.print = "slcd"
         with Comicbox(
-            new_test_cbz_path, config=config, metadata=self.write_reference_metadata
+            new_test_cbz_path,
+            config=self.write_config,
+            metadata=self.write_reference_metadata,
+            fmt=MetadataFormats.COMICBOX_YAML,
         ) as car:
-            car.write()
-            car.print_out()
+            # car.print_out() debug
+            car.dump()
 
-    def write_metadata(self, new_test_cbz_path, page_count=0):
+    def write_metadata(
+        self,
+        new_test_cbz_path,
+        page_count=None,
+        *,
+        ignore_pages=False,
+    ):
         """Create a test metadata file, read it back and compare the original."""
         tmp_path = new_test_cbz_path.parent
         tmp_path.mkdir(parents=True, exist_ok=True)
@@ -400,42 +505,44 @@ class TestParser:
             ignore_updated_at=True,
             ignore_notes=True,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
         shutil.rmtree(tmp_path)
 
-    def test_md_write(self, page_count=0):
+    def test_md_write(
+        self,
+        page_count=None,
+        *,
+        ignore_pages=False,
+    ):
         """Write metadtata to an archive."""
         new_fn = self.test_fn.with_suffix(".cbz")
         new_cbz_path = self.tmp_dir / new_fn
         self.write_metadata(
             new_cbz_path,
             page_count=page_count,
+            ignore_pages=ignore_pages,
         )
 
     def _create_test_pdf(self, new_test_pdf_path):
         """Create a new empty PDF file."""
         try:
-            doc = fitz.Document()
-            doc.new_page()  # type: ignore[reportAttributeAccessIssue]
+            doc = pymupdf.Document()
+            doc.new_page()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
             doc.save(new_test_pdf_path, garbage=4, clean=1, deflate=1, pretty=0)
             doc.close()
-            pprint(self.write_reference_metadata)
-            config = deepcopy(self.write_config)
-            config.comicbox.updated_at = TEST_DATETIME.isoformat()
             with Comicbox(
                 new_test_pdf_path,
-                config=config,
+                config=self.write_config,
                 metadata=self.write_reference_metadata,
+                fmt=MetadataFormats.COMICBOX_YAML,
             ) as car:
-                car.write()
+                car.dump()
         except NameError as exc:
-            reason = "fitz not imported from comicbox-pdffile"
+            reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc
 
-    def write_metadata_pdf(
-        self,
-        new_test_pdf_path,
-    ):
+    def write_metadata_pdf(self, new_test_pdf_path, page_count=None):
         """Copy the test metadata pdf and write to it."""
         tmp_path = new_test_pdf_path.parent
         tmp_path.mkdir(parents=True, exist_ok=True)
@@ -446,24 +553,71 @@ class TestParser:
             self.read_config,
             ignore_updated_at=True,
             ignore_notes=True,
+            page_count=page_count,
         )
         shutil.rmtree(tmp_path)
 
-    def test_pdf_write(self):
+    def test_pdf_write(self, page_count=None):
         """Special pdf write test."""
         test_pdf_path = self.tmp_dir / self.test_fn
-        self.write_metadata_pdf(test_pdf_path)
+        self.write_metadata_pdf(test_pdf_path, page_count=page_count)
 
 
 def create_write_metadata(read_metadata, notes=TEST_WRITE_NOTES):
     """Create a write metadata from read metadata."""
     result = deepcopy(dict(read_metadata))
-    result[ROOT_TAG]["notes"] = notes
+    result[ComicboxSchemaMixin.ROOT_TAG]["notes"] = notes
     return MappingProxyType(result)
 
 
 def create_write_dict(read_dict, schema_class, notes_tag, notes=TEST_WRITE_NOTES):
     """Create a write dict from read dict."""
     write_dict = deepcopy(dict(read_dict))
-    write_dict[schema_class.ROOT_TAGS[0]][notes_tag] = notes
+    write_dict[schema_class.ROOT_TAG][notes_tag] = notes
     return MappingProxyType(write_dict)
+
+
+def load_cli_and_compare_dicts(path_a, path_b):
+    """Compare cli strings all on one line."""
+    yaml = YAML()
+    with path_a.open("r") as file_a, path_b.open("r") as file_b:
+        dict_a = yaml.load(file_a)
+        dict_b = yaml.load(file_b)
+    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+
+    assert_diff(dict_a, dict_b)
+
+
+def compare_export(test_dir, fn, fmt="", test_fn=None, *, validate=True):
+    """Compare exported files."""
+    if validate:
+        validate_path(fn, fmt=fmt)
+    if test_fn is None:
+        test_fn = fn.name.lower()
+    test_path = test_dir / test_fn
+    if fn.name == "comicbox-cli.yaml":
+        load_cli_and_compare_dicts(test_path, fn)
+    else:
+        assert compare_files(
+            test_path,
+            fn,
+            ignore_last_modified=True,
+            ignore_notes=True,
+            ignore_updated_at=True,
+            ignore_mod_date=True,
+            ignore_page_count=True,
+            ignore_identifiers=True,
+            ignore_tagger=True,
+        )
+
+
+def assert_diff(old_map, new_map):
+    """Assert no diff and print if there is."""
+    if diff := DeepDiff(old_map, new_map, ignore_order=True):
+        pprint(old_map)  # noqa: T203
+        pprint(new_map)  # noqa: T203
+        pprint(diff)  # noqa: T203
+    assert not diff
