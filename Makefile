@@ -104,12 +104,10 @@ uml:
 cycle:
 	uvx pycycle --ignore node_modules,.venv --verbose --here
 
-## Test
-## @category Test
-T :=
 .PHONY: test
 ## Run Tests. Use T variable to run specific tests
 ## @category Test
+T :=
 test:
 	./bin/test.sh $(T)
 
