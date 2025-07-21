@@ -2,46 +2,52 @@
 
 ## v2.0.0
 
-- BREAKING CHANGES
-    - comicbox.json and comicbox.yaml schema changes. See
-      [the 2.0 CHANGES document](CHANGES-2.0.0.md).
-    - config api option close_fd removed. Always use with blocks or call
-      close().
+### 🚨 BREAKING CHANGES 🚨
 
-- Features
-    - Support the MetronInfo.xml v1.0 Schema
-    - Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier
-      sources.
-    - URNs as serialized identifiers in `notes` tag gain an optional tag type
-      attribute in the nss: urn:comicvine:series:1234
-    - ComicInfo.xml gains the Translator tag
-    - PDF modDate is now read and written.
-    - Enum fields now interpret caseless slightly fuzzy value lookups.
-    - For convenience, named or numbered types or collections in the comicbox
-      schema can also parse by their simple name instead of requiring a complex
-      object.
-    - Comictagger schema supports series_aliases and title_aliases as reprints
-    - CB7 archive read support. Comic archives in 7zip archives.
-    - Syntax highlighting used on output. Change or remove with --theme option.
-    - --delete action becomes --delete-all-tags.
-    - config.metadata_format exists to hint what format the api metadata is.
-    - public box functions take formats instead of transform_classes
-    - get_cover_path() returns the first cover_path without looking for others.
-    - Parse PDF datetimes.
-    - Comicbox.get_metadata_mtime() returns the mtime for metadata, not pages or
-      other files.
-    - delete_keys option now excludes keys from loading entirely.
+- Schema, API, config and CLI changes. See
+  [the 2.0 CHANGES document](CHANGES-2.0.0.md).
 
-- Fixes
-    - ComicInfo.xml StoryArcs tag was not loaded.
-    - Fix proper lowercasing of serialized boolean values in xml attributes.
-    - ComicBookInfo `issue` tag becomes an integer.
-    - Fix ISBN & UPC url detection
-    - ComicInfo.xml orders tags properly per the xsd.
-    - Corrected schemaLocation tags for xml formats to be valid.
-    - ComicBookInfo.json `rating`, and `tags` tags fixed.
-    - Support ComicBookInfo.json `primary` credit tag.
-    - More accurate merging of different metadata sources.
+### Features
+
+#### File Formats
+
+- CB7 archive read support. Comic archives in 7zip archives.
+
+#### Schemas
+
+- Support the MetronInfo.xml v1.0 Schema
+- Add AniList, Kitsu, MangaDex, MangaUpdates, MyAnimeList identifier sources.
+- ComicInfo.xml gains the `Translator` tag
+- PDF `modDate` is now read and written.
+- URNs as serialized identifiers in `notes` tag gain an optional tag type
+  attribute in the nss: e.g. `urn:comicvine:series:1234`
+- Comictagger schema supports series_aliases and title_aliases as reprints
+- Parse PDF datetime format.
+- Many enum fields now accept caseless and slightly fuzzy value lookups that are
+  coerced to correct types for the specified output metadata format.
+- For convenience, named or numbered types or collections in the comicbox schema
+  may also be parse by their simple name instead of requiring a complex object.
+
+#### Config
+
+- `--delete action` becomes `--delete-all-tags`.
+- `--compute-pages` is off by default. Turn on to recompute ComicInfo style
+  `Pages` structures
+- `--no-compute-page-count` prevents recomputing page_count.
+- `--delete_keys` now excludes keys from loading entirely.
+- Syntax highlighting used on output. Change or remove with `--theme` option.
+
+#### Fixes
+
+- ComicInfo.xml StoryArcs tag was not loaded.
+- Fix proper lowercasing of serialized boolean values in xml attributes.
+- ComicBookInfo `issue` tag becomes an integer.
+- Fix ISBN & UPC url detection
+- ComicInfo.xml orders tags properly per the xsd.
+- Corrected schemaLocation tags for xml formats to be valid.
+- ComicBookInfo.json `rating`, and `tags` tags fixed.
+- Support ComicBookInfo.json `primary` credit tag.
+- More accurate merging of different metadata sources.
 
 ## v1.2.3
 
@@ -123,8 +129,8 @@
 
 ## v1.0.0
 
-- This version contains large breaking changes, some detailed in
-  [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- 🚨 This version contains large breaking changes 🚨
+    - Some are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
 - Comicbox continues to primarily be an API for reading comic metadata but this
   version contains an enhanced CLI, and more powerful reading, writing,
   synthesis and exporting of metadata.

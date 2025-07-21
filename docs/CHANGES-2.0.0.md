@@ -1,11 +1,24 @@
 # 🛠️ Changes 2.0.0
 
+## Summary
+
 This is not an exhaustive list of changes, but more of a reference sheet to get
 you started if you have a workflow or library that depends on comicbox.
+
+- The largest change is the comicbox v2.0 schema and hence the output of
+  box.to_dict() and the printed output.
+- The programmatic API and config has changed a little bit, but mostly for deep
+  integrations.
+- A couple CLI options have also changed a little to reflect the config changes.
 
 ## Config & CLI
 
 ### New Options
+
+#### metadata_format
+
+Accepts a format enum to hint what format the api metadata is in and prevent
+iterative guessing.
 
 #### compute_pages
 
@@ -52,12 +65,28 @@ comic metadata format is now fully supported.
 
 ## API
 
+### No more automatic closing.
+
+The config API option `close_fd` was removed. Always use Comicbox with context
+blocks or call close() directly after opening an archive.
+
 ### Metadata Formats and Metadata Sources
 
 [MetadataSources](https://github.com/ajslater/comicbox/tree/main/comicbox/sources.py)
 and
 [MetadataFormats](https://github.com/ajslater/comicbox/tree/main/comicbox/formats.py)
 are separated and are now different related Enums.
+
+Public box functions take formats as paramers instead the old way of accepting
+transform classes.
+
+### get_cover_path()
+
+Returns the first cover_path without looking for others.
+
+### get_metadata_mtime()
+
+Returns the mtime for metadata, not pages or other files.
 
 ### Method name changes
 
