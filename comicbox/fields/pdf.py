@@ -7,7 +7,7 @@ from typing_extensions import override
 try:
     from pdffile import PDFFile
 except ImportError:
-    from comicbox.box.pdffile_stub import PDFFile
+    from comicbox.pdffile_stub import PDFFile
 
 from comicbox.fields.time_fields import DateTimeField
 

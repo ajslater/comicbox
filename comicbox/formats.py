@@ -24,7 +24,7 @@ def _get_pdf_enabled():
 
         result = True
     except ImportError:
-        from comicbox.box.pdffile_stub import (  # noqa: PLC0415
+        from comicbox.pdffile_stub import (  # noqa: PLC0415
             PDFFile,  # noqa: F401 # pyright: ignore[reportUnusedImport]
         )
 
@@ -37,7 +37,7 @@ PDF_ENABLED = _get_pdf_enabled()
 
 @dataclass
 class MetadataFormat:
-    """Metada format attributes."""
+    """Metadata format attributes."""
 
     label: str
     config_keys: frozenset
