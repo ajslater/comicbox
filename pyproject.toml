@@ -1,6 +1,6 @@
 [project]
 name = "comicbox"
-version = "2.0.1"
+version = "2.0.2"
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]

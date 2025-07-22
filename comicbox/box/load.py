@@ -3,7 +3,6 @@
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from logging import DEBUG, WARNING
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
@@ -70,9 +69,9 @@ class ComicboxLoad(ComicboxSources):
         return (
             source == MetadataSources.ARCHIVE_COMMENT
             and isinstance(exc, JSONDecodeError)
-            and exc.pos == 0
+            # and exc.pos == 0
             and exc.lineno == 1
-            and exc.colno == 1
+            # and exc.colno == 1
         )
 
     def _except_on_load(
@@ -80,7 +79,7 @@ class ComicboxLoad(ComicboxSources):
         source: MetadataSources,
         fmt: MetadataFormats | None,
         exc: Exception,
-        level=WARNING,
+        level="WARNING",
     ):
         """When loading fails warn or give stack trace in debug."""
         name = fmt.value.schema_class.__name__ if fmt else "Unknown Schema"
@@ -112,7 +111,7 @@ class ComicboxLoad(ComicboxSources):
                     logger.debug(f"Parsed {source.value.label} with {fmt.value.label}")
                     break
             except Exception as exc:
-                self._except_on_load(source, fmt, exc, level=DEBUG)
+                self._except_on_load(source, fmt, exc, level="DEBUG")
         if not success_md:
             reason = f"Unable to load {source.value.label}."
             raise ValueError(reason)
