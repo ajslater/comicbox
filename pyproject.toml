@@ -52,9 +52,8 @@ classifiers = [
 ]
 
 [project.urls]
-homepage = "https://github.com/ajslater/comicbox"
 repository = "https://github.com/ajslater/comicbox"
-documentation = "https://github.com/ajslater/comicbox"
+documentation = "https://comicbox.readthedocs.io"
 
 [project.optional-dependencies]
 pdf = ["comicbox-pdffile<1.0.0,>=0.2.5"]
