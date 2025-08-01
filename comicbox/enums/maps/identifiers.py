@@ -52,6 +52,9 @@ _ID_SOURCE_ALIASES: MappingProxyType[IdSources, frozenset[str]] = MappingProxyTy
                 AlternateIdSources.CVDB_ALTERNATE.value,
                 "comicvine.gamespot.com",
                 "comicvine.com",
+                "www.comicvine.com",
+                "stage.comicvine.com",
+                "www.stage.comicvine.com",
             }
         ),
         IdSources.COMIXOLOGY: frozenset(
