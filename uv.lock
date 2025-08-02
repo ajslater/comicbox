@@ -415,7 +415,7 @@ wheels = [
 
 [[package]]
 name = "comicbox"
-version = "2.0.3"
+version = "2.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "ansicolors" },

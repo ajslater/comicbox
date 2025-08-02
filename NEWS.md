@@ -1,13 +1,9 @@
 # 📰 News
 
-## v2.0.3
+## v2.0.2
 
 - Ensure mtimes from archives are timezone aware.
 - More aliases for comicvine identifier source.
-- Tighter criteria for warning on possible bad ComicBookInfo archive comments.
-
-## v2.0.2
-
 - Make archive comments that aren't ComicBookInfo JSON log as debug comments
   more often.
 
