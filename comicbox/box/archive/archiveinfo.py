@@ -26,6 +26,8 @@ class ArchiveInfo:
             dttm = info.creationtime
         elif mtime := info.mtime:  # RarInfo
             dttm = mtime
+        if dttm and (dttm.tzinfo is None or dttm.tzinfo.utcoffset(dttm) is None):
+            dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
 
     @staticmethod
