@@ -1,5 +1,12 @@
 # 📰 News
 
+## v2.0.2
+
+- Ensure mtimes from archives are timezone aware.
+- More aliases for comicvine identifier source.
+- Make archive comments that aren't ComicBookInfo JSON log as debug comments
+  more often.
+
 ## v2.0.1
 
 - Resolve circular import if not installed with \[pdf\] option.

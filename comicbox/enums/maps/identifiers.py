@@ -52,6 +52,9 @@ _ID_SOURCE_ALIASES: MappingProxyType[IdSources, frozenset[str]] = MappingProxyTy
                 AlternateIdSources.CVDB_ALTERNATE.value,
                 "comicvine.gamespot.com",
                 "comicvine.com",
+                "www.comicvine.com",
+                "stage.comicvine.com",
+                "www.stage.comicvine.com",
             }
         ),
         IdSources.COMIXOLOGY: frozenset(
@@ -93,6 +96,8 @@ def get_id_source_by_alias(
 
 
 def _build_source_alias_tree(node, source: IdSources, parts):
+    if isinstance(node, IdSources):
+        return
     part = parts[0]
     if len(parts) == 1:
         node[part] = source
