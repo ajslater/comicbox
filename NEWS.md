@@ -4,6 +4,7 @@
 
 - Ensure mtimes from archives are timezone aware.
 - More aliases for comicvine identifier source.
+- Tighter criteria for warning on possible bad ComicBookInfo archive comments.
 
 ## v2.0.2
 
