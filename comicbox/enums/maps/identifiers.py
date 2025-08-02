@@ -96,6 +96,8 @@ def get_id_source_by_alias(
 
 
 def _build_source_alias_tree(node, source: IdSources, parts):
+    if isinstance(node, IdSources):
+        return
     part = parts[0]
     if len(parts) == 1:
         node[part] = source
