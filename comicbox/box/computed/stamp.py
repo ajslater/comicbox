@@ -1,6 +1,6 @@
 """Comicbox Computed tagger, updated_at and notes stamps."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from types import MappingProxyType
 
 from comicbox.box.computed.pages import ComicboxComputedPages
@@ -90,7 +90,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if UPDATED_AT_KEY not in self._config.delete_keys:
             # Deprecated method needed for python 3.10
             # Update after 2026-11
-            stamp_md[UPDATED_AT_KEY] = datetime.utcnow()  # noqa: DTZ003, # pyright: ignore[reportDeprecated]
+            stamp_md[UPDATED_AT_KEY] = datetime.now(tz=timezone.utc)
 
         if notes := self._get_computed_notes_stamp(sub_data, stamp_md):
             stamp_md[NOTES_KEY] = notes

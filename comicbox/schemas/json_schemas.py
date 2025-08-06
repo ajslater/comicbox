@@ -25,11 +25,11 @@ class JsonRenderModule:
         return json.dumps(
             obj,
             *args,
-            indent=indent,
-            iterable_as_array=True,
-            separators=separators,
-            sort_keys=False,
-            use_decimal=True,
+            indent=indent,  # ty: ignore[parameter-already-assigned]
+            iterable_as_array=True,  # ty: ignore[parameter-already-assigned]
+            separators=separators,  # ty: ignore[parameter-already-assigned]
+            sort_keys=False,  # ty: ignore[parameter-already-assigned]
+            use_decimal=True,  # ty: ignore[parameter-already-assigned]
             **kwargs,
         )
 
@@ -38,7 +38,12 @@ class JsonRenderModule:
         """Load JSON string to dict."""
         cleaned_s: str | None = StringField().deserialize(s)  # type:ignore[reportAssignmentType]
         if cleaned_s:
-            return json.loads(cleaned_s, *args, use_decimal=True, **kwargs)
+            return json.loads(
+                cleaned_s,
+                *args,
+                use_decimal=True,  # ty: ignore[parameter-already-assigned]
+                **kwargs,
+            )
         return None
 
 

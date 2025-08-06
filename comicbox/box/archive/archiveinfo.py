@@ -19,14 +19,14 @@ class ArchiveInfo:
         dttm = None
         if isinstance(info, ZipInfo):
             if date_time := info.date_time:
-                dttm = datetime(*date_time, tzinfo=timezone.utc)  # ty: ignore[missing-argument]
+                dttm = datetime(*date_time)  # noqa: DTZ001 # ty: ignore[missing-argument]
         elif isinstance(info, TarInfo):
             dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
         elif isinstance(info, SevenZipInfo):
             dttm = info.creationtime
         elif mtime := info.mtime:  # RarInfo
             dttm = mtime
-        if dttm and (dttm.tzinfo is None or dttm.tzinfo.utcoffset(dttm) is None):
+        if dttm and not dttm.tzinfo:
             dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
 
