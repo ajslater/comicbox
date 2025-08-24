@@ -7,7 +7,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
-import eslintPluginImport from "eslint-plugin-import-x";
+import eslintPluginImport from "eslint-plugin-import";
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
@@ -38,10 +38,12 @@ export const CONFIGS = {
     ...eslintPluginPromise.configs[FLAT_RECOMMENDED],
     ...eslintPluginRegexp.configs[FLAT_RECOMMENDED],
     ...eslintPluginSonarjs.configs.recommended,
+    ...eslintPluginUnicorn.configs.recommended,
     plugins: {
       depend: eslintPluginDepend,
       "no-secrets": eslintPluginNoSecrets,
       "simple-import-sort": eslintPluginSimpleImportSort,
+      sonarjs: eslintPluginSonarjs,
       unicorn: eslintPluginUnicorn,
     },
     languageOptions: {
@@ -50,13 +52,6 @@ export const CONFIGS = {
     },
     rules: {
       "array-func/prefer-array-from": "off", // for modern browsers the spread operator, as preferred by unicorn, works fine.
-      "depend/ban-dependencies": [
-        "error",
-        {
-          // unicorn-x dev's initial reasoning seems to rely on trivia, microoptimizations, and his own DX.
-          allowed: ["eslint-plugin-unicorn"],
-        },
-      ],
       "max-params": ["warn", 4],
       "no-console": "warn",
       "no-debugger": "warn",
@@ -65,7 +60,6 @@ export const CONFIGS = {
       "simple-import-sort/exports": "warn",
       "simple-import-sort/imports": "warn",
       "space-before-function-paren": "off",
-      ...eslintPluginUnicorn.configs[FLAT_RECOMMENDED].rules,
       "unicorn/filename-case": [
         "error",
         { case: "kebabCase", ignore: [".*.md"] },
@@ -83,16 +77,16 @@ export default defineConfig([
     name: "globalIgnores",
     ignores: [
       "!.circleci",
-      "**/__pycache__/",
       "**/*min.css",
       "**/*min.js",
+      "**/__pycache__/",
+      "**/node_modules/",
+      "**/package-lock.json",
       "*~",
       ".git/",
       ".*cache/",
       ".venv/",
       "dist/",
-      "node_modules/",
-      "package-lock.json",
       "uv.lock",
       "test-results/",
       "typings/",
