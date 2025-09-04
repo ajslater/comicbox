@@ -49,7 +49,7 @@ license = "LGPL-3.0-only"
 name = "comicbox"
 readme = "README.md"
 requires-python = "<4.0,>=3.10"
-version = "2.0.2"
+version = "2.0.3"
 
 [project.urls]
 News = "https://comicbox.readthedocs.io/NEWS/"

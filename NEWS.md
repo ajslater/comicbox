@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.0.3
+
+- Normalize more original_format names.
+
 ## v2.0.2
 
 - Ensure mtimes from archives are timezone aware.
