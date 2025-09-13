@@ -11,7 +11,7 @@ from comicbox.fields.enum_fields import PageTypeField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
-    XmlBooleanAttributeField,
+    XmlBooleanField,
     XmlComicInfoMangaField,
     XmlDecimalField,
     XmlIntegerField,
@@ -100,7 +100,7 @@ class XmlPageInfoSchema(XmlSubSchema):
         include = MappingProxyType(
             {
                 BOOKMARK_ATTRIBUTE: StringField(),
-                "@DoublePage": XmlBooleanAttributeField(),
+                "@DoublePage": XmlBooleanField(),
                 "@Key": StringField(),
                 IMAGE_ATTRIBUTE: IntegerField(minimum=0),
                 "@ImageWidth": IntegerField(minimum=0),

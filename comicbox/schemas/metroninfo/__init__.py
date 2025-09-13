@@ -13,10 +13,10 @@ from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.xml_fields import (
     XmlDateField,
     XmlDateTimeField,
+    XmlDecimalField,
     XmlIntegerField,
     XmlListField,
     XmlStringField,
-    XmlTextDecimalField,
     create_sub_tag_field,
     xml_list_polyfield,
 )
@@ -95,7 +95,7 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
         "Price",
         xml_list_polyfield(
             MetronPriceSchema,
-            XmlTextDecimalField(places=2, minimum=Decimal(0)),
+            XmlDecimalField(places=2, minimum=Decimal(0)),
             sort_keys=("@country",),
         ),
     )

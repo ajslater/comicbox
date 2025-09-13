@@ -201,8 +201,8 @@ READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Prices": {
                 "Price": [
-                    {"#text": "0.50", "@country": "GB"},
-                    {"#text": "1.25", "@country": "US"},
+                    {"#text": Decimal("0.50"), "@country": "GB"},
+                    {"#text": Decimal("1.25"), "@country": "US"},
                 ]
             },
             "Publisher": {
@@ -303,8 +303,8 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
             "PageCount": 0,
             "Prices": {
                 "Price": [
-                    {"#text": "0.50", "@country": "GB"},
-                    {"#text": "1.25", "@country": "US"},
+                    {"#text": Decimal("0.50"), "@country": "GB"},
+                    {"#text": Decimal("1.25"), "@country": "US"},
                 ]
             },
             "Publisher": {

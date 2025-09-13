@@ -3,6 +3,7 @@
 ## v2.0.3
 
 - Normalize more original_format names.
+- Update xmltodict. Removes much comicbox fix code.
 
 ## v2.0.2
 
