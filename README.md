@@ -292,6 +292,43 @@ with Comicbox(path_to_comic) as cb:
 Attached to these docs in the navigation header there are some auto generated
 API docs that might be better than nothing.
 
+### API Example
+
+I don't have many examples yet. But here's one someone asked about on GitHub.
+
+#### Adding a ComicInfo.xml formatted dict to the metadata
+
+```python
+from argparse import Namespace
+
+from comicbox.box import Comicbox
+from comicbox.transforms.comicinfo import ComicInfoTransform
+
+
+CBZ_PATH = Path("/Users/GullyFoyle/Comics/DC Comics/Star Spangled War Stories/Star Spangled War Stories (1962) #101.cbz")
+CONFIG = Namespace(
+   # This config writes comicinfo.xml and also reads comicinfo.xml from the source file.
+   # If you don't want to read old data, do not include the read argument.
+    comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=False)
+)
+
+# You can use any comic metadata format as long as it matches it's transform class.
+CIX_DICT = { .... } # A ComicInfo.xml style dict.
+# xml dicts are those parsed and emitted by xmltodict https://github.com/martinblech/xmltodict
+# read about complex elements with attributes on that page.
+SOURCE_TRANSFORM_CLASS = ComicInfoTransform
+
+with Comicbox(CBZ_PATH, config=WRITE_CONFIG) as car:
+    car.add_source(CIX_DICT, SOURCE_TRANSFORM_CLASS)
+    car.write()   # this will write using the config to the cbz_path.
+```
+
+This code would be similar to these command line arguments:
+
+```sh
+comicbox --import my-own-comicbox.json --import my-own-comicinfo.xml --write cr "Star Spangled War Stories (1962) #101.cbz"
+```
+
 ## 📋 Schemas
 
 Comicbox supports most popular comicbook metadata schema definitions. These are

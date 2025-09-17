@@ -54,7 +54,7 @@ COMICINFO_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
         MetronAgeRatingEnum.TEEN_PLUS: ComicInfoAgeRatingEnum.MA_15_PLUS,
         MetronAgeRatingEnum.MATURE: ComicInfoAgeRatingEnum.MA_17_PLUS,
         MetronAgeRatingEnum.EXPLICIT: ComicInfoAgeRatingEnum.R_18_PLUS,
-        MetronAgeRatingEnum.ADULT: ComicInfoAgeRatingEnum.X_18_PLUS,
+        MetronAgeRatingEnum.ADULT: ComicInfoAgeRatingEnum.A_18_PLUS,
     }
 )
 METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(

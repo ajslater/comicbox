@@ -7,7 +7,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginArrayFunc from "eslint-plugin-array-func";
 import eslintPluginCompat from "eslint-plugin-compat";
 import eslintPluginDepend from "eslint-plugin-depend";
-import eslintPluginImport from "eslint-plugin-import-x";
+import eslintPluginImport from "eslint-plugin-import";
 import * as eslintPluginMdx from "eslint-plugin-mdx";
 import eslintPluginNoSecrets from "eslint-plugin-no-secrets";
 import eslintPluginNoUnsanitized from "eslint-plugin-no-unsanitized";
@@ -33,15 +33,17 @@ export const CONFIGS = {
     ...eslintPluginComments.recommended,
     ...eslintPluginCompat.configs[FLAT_RECOMMENDED],
     ...eslintPluginDepend.configs[FLAT_RECOMMENDED],
-    ...eslintPluginImport.flatConfigs.recommended,
+    ...eslintPluginImport.flatConfigs.all,
     ...eslintPluginNoUnsanitized.configs.recommended,
-    ...eslintPluginPromise.configs[FLAT_RECOMMENDED],
-    ...eslintPluginRegexp.configs[FLAT_RECOMMENDED],
-    ...eslintPluginSonarjs.configs.recommended,
+    ...eslintPluginPromise.configs[FLAT_ALL],
+    ...eslintPluginRegexp.configs[FLAT_ALL],
+    ...eslintPluginSonarjs.configs.all,
+    ...eslintPluginUnicorn.configs.all,
     plugins: {
       depend: eslintPluginDepend,
       "no-secrets": eslintPluginNoSecrets,
       "simple-import-sort": eslintPluginSimpleImportSort,
+      sonarjs: eslintPluginSonarjs,
       unicorn: eslintPluginUnicorn,
     },
     languageOptions: {
@@ -49,14 +51,7 @@ export const CONFIGS = {
       ecmaVersion: "latest",
     },
     rules: {
-      "array-func/prefer-array-from": "off", // for modern browsers the spread operator, as preferred by unicorn, works fine.
-      "depend/ban-dependencies": [
-        "error",
-        {
-          // unicorn-x dev's initial reasoning seems to rely on trivia, microoptimizations, and his own DX.
-          allowed: ["eslint-plugin-unicorn"],
-        },
-      ],
+      "@stylistic/multiline-comment-style": "off", // Multiple bugs with this rule
       "max-params": ["warn", 4],
       "no-console": "warn",
       "no-debugger": "warn",
@@ -64,15 +59,6 @@ export const CONFIGS = {
       "security/detect-object-injection": "off",
       "simple-import-sort/exports": "warn",
       "simple-import-sort/imports": "warn",
-      "space-before-function-paren": "off",
-      ...eslintPluginUnicorn.configs[FLAT_RECOMMENDED].rules,
-      "unicorn/filename-case": [
-        "error",
-        { case: "kebabCase", ignore: [".*.md"] },
-      ],
-      "unicorn/prefer-node-protocol": "off",
-      "unicorn/prevent-abbreviations": "off",
-      "unicorn/switch-case-braces": ["warn", "avoid"],
     },
   },
 };
@@ -83,24 +69,24 @@ export default defineConfig([
     name: "globalIgnores",
     ignores: [
       "!.circleci",
-      "**/__pycache__/",
       "**/*min.css",
       "**/*min.js",
+      "**/__pycache__/",
+      "**/node_modules/",
+      "**/package-lock.json",
       "*~",
       ".git/",
       ".*cache/",
       ".venv/",
       "dist/",
-      "node_modules/",
-      "package-lock.json",
       "uv.lock",
       "test-results/",
       "typings/",
     ],
   },
-  eslintPluginPrettierRecommended,
   eslintPluginSecurity.configs.recommended,
   eslintPluginStylistic.configs.all,
+  eslintPluginPrettierRecommended,
   {
     languageOptions: {
       globals: {

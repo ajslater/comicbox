@@ -186,12 +186,12 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
     characters = SimpleNamedDictField()  # Comet, CIX, CT, Metron
     country = CountryField()  # CBI, CIX, CT, Metron
+    collection_title = StringField()  # Metron ONLY
+    cover_image = StringField()  # Comet ONLY, CT
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
     credit_primaries = DictField(keys=RoleField)  # CBI ONLY
-    collection_title = StringField()  # Metron ONLY
-    cover_image = StringField()  # Comet ONLY, CT
     critical_rating = DecimalField(places=2)  # CBI, CIX
     date = Nested(DateSchema)
     ext = StringField()  # Filename ONLY

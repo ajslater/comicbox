@@ -1,5 +1,11 @@
 # 📰 News
 
+## v2.0.3
+
+- Fix ComicInfo.xml coercing Age Rating to wrong value.
+- Normalize more original_format names.
+- Update xmltodict. Removes much comicbox fix code.
+
 ## v2.0.2
 
 - Ensure mtimes from archives are timezone aware.

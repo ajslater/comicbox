@@ -18,13 +18,13 @@ from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
 def _get_pdf_enabled():
     try:
-        from pdffile import (  # noqa: PLC0415
+        from pdffile import (
             PDFFile,  # pyright: ignore[reportUnusedImport]
         )
 
         result = True
     except ImportError:
-        from comicbox.pdffile_stub import (  # noqa: PLC0415
+        from comicbox.pdffile_stub import (
             PDFFile,  # noqa: F401 # pyright: ignore[reportUnusedImport]
         )
 

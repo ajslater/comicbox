@@ -1,7 +1,6 @@
 """Xml versions of fields."""
 
 from collections.abc import Mapping
-from functools import wraps
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
@@ -29,194 +28,104 @@ from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
 from comicbox.schemas.base import BaseSubSchema
 
+CDATA_KEY = "#text"
+
 
 def get_cdata(value):
     """Return the cdata value if it exists or the whole value."""
     if isinstance(value, Mapping):
-        return value.get("#text")
+        return value.get(CDATA_KEY)
     return value
 
 
-def cdata(func):
-    """Get #text cdata from xml dicts."""
+class CDataFieldMixin:
+    """Get value or cdata."""
 
-    @wraps(func)
-    def wrapper(self, value, *args, **kwargs):
+    def _deserialize(self, value, *args, **kwargs):
         value = get_cdata(value)
-        return func(self, value, *args, **kwargs)
-
-    return wrapper
+        return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 # FIELDS
-class XmlStringField(StringField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlStringField(StringField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlIssueField(IssueField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlIssueField(IssueField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
 # DATETIME
-class XmlDateField(DateField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlDateField(DateField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlDateTimeField(DateTimeField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlDateTimeField(DateTimeField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlPdfDateTimeField(PdfDateTimeField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlPdfDateTimeField(PdfDateTimeField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
 # ENUM
-class XmlEnumField(EnumField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlEnumField(EnumField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlReadingDirectionField(ReadingDirectionField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlReadingDirectionField(ReadingDirectionField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlOriginalFormatField(OriginalFormatField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlOriginalFormatField(OriginalFormatField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlComicInfoMangaField(ComicInfoMangaField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlComicInfoMangaField(ComicInfoMangaField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlYesNoField(YesNoField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlYesNoField(YesNoField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
 # NUMBERS
 
 
-class XmlBooleanField(BooleanField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
-
-
-class XmlBooleanAttributeField(BooleanField):
-    """Fix xmltodict bug: https://github.com/martinblech/xmltodict/pull/310."""
+class XmlBooleanField(BooleanField, CDataFieldMixin):
+    """Get value or cdata."""
 
     @override
     def _serialize(self, *args, **kwargs) -> str | None:
+        # xml booleans are lowercase
         result = super()._serialize(*args, **kwargs)
         return result if result is None else str(result).lower()
 
 
-class XmlIntegerField(IntegerField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlIntegerField(IntegerField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlDecimalField(DecimalField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
-
-
-class XmlTextDecimalField(XmlDecimalField):
-    """Fix bug in xmltodict."""
-
-    @override
-    def _serialize(self, value, attr, obj, **kwargs):
-        """Fix bug in xmltodict."""
-        # https://github.com/martinblech/xmltodict/issues/366
-        result = super()._serialize(value, attr, obj, **kwargs)
-        return str(result)
+class XmlDecimalField(DecimalField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
 # PYCOUNTRY
 
 
-class XmlCountryField(CountryField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlCountryField(CountryField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
-class XmlLanguageField(LanguageField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+class XmlLanguageField(LanguageField, CDataFieldMixin):
+    """Get value or cdata."""
 
 
 # COLLECTIONS
 
 
 class XmlListFieldMixin:
-    """Check for cdata."""
+    """Get value or cdata."""
 
     @staticmethod
     def get_tag_value(value):
@@ -225,49 +134,29 @@ class XmlListFieldMixin:
 
 
 class XmlListField(XmlListFieldMixin, ListField):
-    """Check for cdata."""
+    """XML List Field."""
 
 
 class XmlStringListField(XmlListFieldMixin, StringListField):
-    """Check for cdata."""
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
+    """XML String List Field."""
 
 
 class XmlStringSetField(XmlListFieldMixin, StringSetField):
-    """Check for cdata."""
+    """XML String Set Field."""
 
     FIELD = XmlStringField
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
 
 
 class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
-    """Check for cdata."""
+    """XML Embedded String Set Field."""
 
     FIELD = XmlStringField
 
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
-
 
 class XmlIntegerListField(XmlListFieldMixin, IntegerListField):
-    """Check for cdata."""
+    """XML Integer List Field."""
 
     FIELD = XmlIntegerField
-
-    @override
-    @cdata
-    def _deserialize(self, *args, **kwargs):
-        return super()._deserialize(*args, **kwargs)
 
 
 def create_sub_tag_field(

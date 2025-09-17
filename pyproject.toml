@@ -1,35 +1,38 @@
 [project]
-name = "comicbox"
-version = "2.0.2"
-description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
-requires-python = "<4.0,>=3.10"
 authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
-license = { text = "LGPL-3.0-only" }
-dependencies = [
-  "ansicolors<2.0.0,>=1.1.8",
-  "bidict<1.0.0,>=0.23.0",
-  "case-converter>=1.2.0",
-  "confuse<3.0.0,>=2.0.0",
-  "comicfn2dict<1.0.0,>=0.2.4",
-  "deepdiff<9.0.0,>=8.2.0",
-  "glom>=24.11.0",
-  "loguru>=0.7.3",
-  "marshmallow<5.0.0,>=4.0.0",
-  "marshmallow-union<1.0.0.0,>=0.1.15.post1",
-  "pycountry<25.0.0,>=24.6.1",
-  "python-dateutil<3.0.0,>=2.8.2",
-  "py7zr<2.0.0,>=1.0.0",
-  "rarfile<5.0,>=4.0",
-  "rich<15.0,>=14.0.0",
-  "rich-argparse<2.0.0,>=1.7.0",
-  "ruamel-yaml<0.19.00,>=0.17.32",
-  "simplejson<4.0.0,>=3.19.1",
-  "typing-extensions>=4.13.2",
-  "urnparse<1.0.0,>=0.2.0",
-  "xmltodict<1.0.0,>=0.14.0",
-  "zipremove>=0.1.0",
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
 ]
-readme = "README.md"
+dependencies = [
+  "ansicolors~=1.1.8",
+  "bidict~=0.23",
+  "case-converter~=1.2",
+  "confuse~=2.0",
+  "comicfn2dict<1.0.0,>=0.2.4",
+  "deepdiff~=8.2",
+  "glom~=24.11",
+  "loguru~=0.7",
+  "marshmallow~=4.0.0",
+  "marshmallow-union>=0.1.15.post1",
+  "pycountry~=24.6",
+  "python-dateutil~=2.8",
+  "py7zr~=1.0.0",
+  "rarfile~=4.0",
+  "rich~=14.0",
+  "rich-argparse~=1.7",
+  "ruamel-yaml~=0.17",
+  "simplejson~=3.19",
+  "typing-extensions~=4.13",
+  "urnparse~=0.2",
+  "xmltodict~=1.0",
+  "zipremove~=0.1",
+]
+description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [
   "comic",
   "cbz",
@@ -42,18 +45,16 @@ keywords = [
   "comet",
   "metroninfo",
 ]
-classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Environment :: Console",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-  "Intended Audience :: Developers",
-  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
-]
+license = "LGPL-3.0-only"
+name = "comicbox"
+readme = "README.md"
+requires-python = "<4.0,>=3.10"
+version = "2.0.3"
 
 [project.urls]
-repository = "https://github.com/ajslater/comicbox"
-documentation = "https://comicbox.readthedocs.io"
+News = "https://comicbox.readthedocs.io/NEWS/"
+Documentation = "https://comicbox.readthedocs.io"
+Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
 pdf = ["comicbox-pdffile<1.0.0,>=0.2.5"]
@@ -63,39 +64,49 @@ comicbox = "comicbox.cli:main"
 
 [dependency-groups]
 dev = [
-  "basedpyright~=1.29.1",
-  "codespell<3.0.0,>=2.1.0",
-  "coverage[toml]<8.0,>=7.0",
-  "check-jsonschema<1.0.0,>=0.31.0",
-  "icecream>=2.1.4",
-  "jsonschema[format]<5.0.0,>=4.20.1",
-  "hatchling<2.0.0,>=1.27.0",
+  "basedpyright~=1.29",
+  "codespell~=2.4",
+  "coverage[toml]~=7.0",
+  "check-jsonschema~=0.31",
+  "icecream~=2.1",
+  "jsonschema[format]~=4.20",
   "mkapi~=4.4",
   "mkdocs~=1.6",
-  "mkdocs-minify-plugin>=0.8",
-  "pytest-cov<7.0,>=6.0",
-  "pytest-gitignore<2.0,>=1.3",
-  "radon[toml]<7.0.0,>=6.0.1",
-  "ruff<1.0.0,>=0.9.9",
-  "toml-cli<1.0.0,>=0.7.0",
-  "ty>=0.0.1a14",
-  "types-python-dateutil<3.0.0.0,>=2.8.19.13",
-  "vulture<3.0,>=2.1",
-  "xmlschema<5.0.0,>=4.0.0",
+  "mkdocs-minify-plugin~=0.8",
+  "pytest-cov~=7.0",
+  "pytest-gitignore~=1.3",
+  "radon[toml]~=6.0",
+  "ruff~=0.12",
+  "toml-cli~=0.7",
+  "ty>=0.0.1a19",
+  "types-python-dateutil~=2.8",
+  "types-xmltodict~=0.15",
+  "vulture~=2.1",
+  "xmlschema~=4.0",
 ]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build~=0.8.7"]
+build-backend = "uv_build"
 
-[tool.hatch.build]
-skip-excluded-dirs = true
-
-[tool.hatch.build.targets.wheel]
-exclude = ["comicbox/**/README.md"]
-
-[tool.hatch.build.targets.sdist]
-include = ['comicbox', 'tests']
+[tool.uv.build-backend]
+module-root = ""
+source-include = [
+  ".circlci/**",
+  ".*ignore",
+  ".shellcheckrc",
+  "bin/**",
+  "eslint.config.js",
+  "frontend/**",
+  "Makefile",
+  "package-lock.json",
+  "package.json",
+  "tests/**",
+  "uv.lock",
+  "vulture_ignorelist.py",
+]
+source-exclude = ["**/*\\~", "**/.DS_Store"]
+wheel-exclude = []
 
 [tool.basedpyright]
 exclude = [
@@ -106,7 +117,7 @@ exclude = [
   "dist",
   "test-results",
   "typings",
-  "vulture_whitelist.py",
+  "vulture_ignorelist.py",
 ]
 pythonVersion = "3.10"
 failOnWarnings = false
@@ -128,11 +139,10 @@ reportUnusedCallResult = false
 reportUnusedParameter = false # ruff does this
 
 [tool.codespell]
-skip = ".*,*~,./dist,./node_modules,./package.json,./package-lock.json,./uv.lock,./test-results,./tests/test_files/*,comicbox/zipfile_remove"
-
 builtin = 'clear,rare,code'
 check-hidden = true
 ignore-words-list = 'thead,ro,jupyter,coverd'
+skip = ".*,*~,./.venv/*,./dist,./node_modules/*,./package.json,./package-lock.json,./uv.lock,./test-results,./tests/test_files/*,comicbox/zipfile_remove"
 
 [tool.coverage.run]
 source = ["comicbox"]
@@ -146,6 +156,7 @@ omit = [
   "node_modules/*",
   "test-results/*",
   "typings/*",
+  "vulture_ignorelist.py",
   "zipfile_remove/*",
 ]
 
@@ -156,6 +167,7 @@ directory = "test-results/coverage"
 addopts = """
     --junit-xml=test-results/pytest/results.xml
     -ra
+    --strict-config
     --strict-markers
     --cov
     --cov-append
@@ -178,6 +190,7 @@ extend-exclude = [
   "test-results",
   "typings",
   "comicbox/zipfile_remove",
+  "vulture_ignorelist.py",
 ]
 target-version = "py310"
 
@@ -201,68 +214,74 @@ extend-ignore = [
   "W191",    # formatted
 ]
 extend-select = [
-  "A",
   # "AIR",
-  # "ANN",
-  "ARG",
-  "ASYNC",
-  "B",
-  "B9",
-  "BLE",
-  "C",
-  "C4",
-  "C90",
-  "COM",
-  # "CPY",
-  "D",
-  "DJ",
-  # "DOC",
-  "DTZ",
-  "E",
-  "EM",
   "ERA",
-  "EXE",
-  "F",
-  "FA",
   # "FAST",
+  # ########
+  # flake8 #
+  # ########
+  "YTT",
+  # "ANN",
+  "ASYNC",
+  "S",
+  "BLE",
   "FBT",
+  "B",
+  "A",
+  "COM",
+  "C4",
+  # "CPY",
+  "DTZ",
+  "T10",
+  "DJ",
+  "EM",
+  "EXE",
   "FIX",
-  "FLY",
-  "FURB",
-  # "G",
-  "I",
-  "ICN",
-  "INP",
+  "FA",
   "INT",
   "ISC",
+  "ICN",
   "LOG",
-  # "PD",
-  "PERF",
-  "PGH",
+  # "G",
+  "INP",
   "PIE",
-  "PL",
-  "PT",
-  "PTH",
   "PYI",
-  # "Q", Formatted
-  "N",
-  # NPY,
-  "RET",
-  "RSE",
-  "RUF",
-  "S",
-  "SIM",
-  "SLF",
-  "SLOT",
-  "T10",
   "T20",
-  "TCH",
-  # "TD",
+  "PT",
+  # "Q", Formatted
+  "RSE",
+  "RET",
+  "SLF",
+  "SIM",
+  "SLOT",
   "TID",
-  "TRY",
-  "UP",
+  # "TD",
+  "TC",
+  "ARG",
+  "PTH",
+  # ############
+  # end flake8 #
+  # ############
+  "FLY",
+  "I",
+  "C90",
+  # "NPY",
+  # "PD",
+  "N",
+  "PERF",
+  "E",
   "W",
-  "YTT",
+  # "DOC",
+  "D",
+  "F",
+  "PGH",
+  "PLE",
+  "PLR",
+  "PLW",
+  "UP",
+  "FURB",
+  "RUF",
+  "TRY",
 ]
 external = ["V101"]
 task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
@@ -291,8 +310,6 @@ exclude = [
 ]
 
 [tool.vulture]
-min_confidence = 61
-sort_by_size = true
 exclude = [
   "*/.*",
   "*/__pycache__*",
@@ -303,3 +320,5 @@ exclude = [
   "typings/",
   "comicbox/zipfile_remove/",
 ]
+min_confidence = 61
+sort_by_size = true
