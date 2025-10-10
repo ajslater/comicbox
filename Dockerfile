@@ -1,5 +1,5 @@
 # hadolint ignore=DL3007
-FROM nikolaik/python-nodejs:latest
+FROM nikolaik/python-nodejs:python3.13-nodejs24
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
@@ -7,10 +7,10 @@ COPY debian.sources /etc/apt/sources.list.d/
 RUN apt-get clean \
   && apt-get update \
   && apt-get install --no-install-recommends -y \
-    bash \
-    ruamel.yaml.clib \
-    unrar \
-    zlib1g \
+  bash \
+  ruamel.yaml.clib \
+  unrar \
+  zlib1g \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
