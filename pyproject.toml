@@ -46,10 +46,10 @@ keywords = [
   "metroninfo",
 ]
 license = "LGPL-3.0-only"
-name = "comicbox"
 readme = "README.md"
-requires-python = "<4.0,>=3.10"
-version = "2.0.3"
+name = "comicbox"
+requires-python = "<3.14,>=3.10"
+version = "2.0.4"
 
 [project.urls]
 News = "https://comicbox.readthedocs.io/NEWS/"
