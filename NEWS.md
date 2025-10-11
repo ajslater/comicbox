@@ -1,5 +1,10 @@
 # 📰 News
 
+## v2.0.4
+
+- The confuse library dependency doesn't support Python 3.14. So neither does
+  comicbox :(
+
 ## v2.0.3
 
 - Fix ComicInfo.xml coercing Age Rating to wrong value.

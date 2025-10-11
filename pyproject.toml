@@ -25,7 +25,7 @@ dependencies = [
   "rarfile~=4.0",
   "rich~=14.0",
   "rich-argparse~=1.7",
-  "ruamel-yaml~=0.17",
+  "ruamel-yaml~=0.18",
   "simplejson~=3.19",
   "typing-extensions~=4.13",
   "urnparse~=0.2",
@@ -46,10 +46,10 @@ keywords = [
   "metroninfo",
 ]
 license = "LGPL-3.0-only"
-name = "comicbox"
 readme = "README.md"
-requires-python = "<4.0,>=3.10"
-version = "2.0.3"
+name = "comicbox"
+requires-python = "<3.14,>=3.10"
+version = "2.0.4"
 
 [project.urls]
 News = "https://comicbox.readthedocs.io/NEWS/"
