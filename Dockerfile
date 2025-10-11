@@ -7,10 +7,9 @@ COPY debian.sources /etc/apt/sources.list.d/
 RUN apt-get clean \
   && apt-get update \
   && apt-get install --no-install-recommends -y \
-  bash \
-  ruamel.yaml.clib \
-  unrar \
-  zlib1g \
+    bash \
+    unrar \
+    zlib1g \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
