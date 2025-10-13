@@ -301,7 +301,7 @@ def test_cover_page(ft):
         # transform file to image.
         try:
             doc = pymupdf.Document(stream=disk_cover)
-            pix = doc.get_page_pixmap(0)  # pyright: ignore[reportAttributeAccessIssue] # ty: ignore[unresolved-attribute]
+            pix = doc.get_page_pixmap(0)
             disk_cover = pix.tobytes(output="ppm")
         except NameError as exc:
             reason = "fitz not imported from pymupdf (comicbox-pdffile)"
