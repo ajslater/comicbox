@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.0.5
+
+- Fix a crash when dumping comicbox.json format with only one page.
+
 ## v2.0.4
 
 - The confuse library dependency doesn't support Python 3.14. So neither does
