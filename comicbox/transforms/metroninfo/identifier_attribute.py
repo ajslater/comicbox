@@ -17,7 +17,7 @@ def metron_id_attribute_to_cb(
     """Create a metron tag identifier from a metron identifier attribute."""
     try:
         if not (
-            isinstance(metron_obj, Mapping) and (id_key := metron_obj.get(ID_ATTRIBUTE))
+            isinstance(metron_obj, Mapping) and (id_key := metron_obj.get(ID_ATTRIBUTE))  # ty: ignore[invalid-argument-type]
         ):
             return
         comicbox_identifier = create_identifier(
