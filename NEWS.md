@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.0.6
+
+- Python 3.14 support.
+
 ## v2.0.5
 
 - Fix a crash when dumping comicbox.json format with only one page.
