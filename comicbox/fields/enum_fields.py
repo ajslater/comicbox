@@ -50,7 +50,7 @@ class FuzzyEnumMixin:
         """Get an enum from the fuzzy lookup map."""
         key: str = value.value if isinstance(value, Enum) else str(value)
         key = key.lower()
-        return self._enum_map.get(key)  # pyright: ignore[reportAttributeAccessIssue]
+        return self._enum_map.get(key)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
 
 class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):

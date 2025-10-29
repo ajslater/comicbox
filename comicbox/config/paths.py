@@ -32,7 +32,7 @@ _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 def clean_paths(config: Subview):
     """No null paths. Turn off options for no paths."""
-    paths: Iterable[str | Path] | None = config["paths"].get()  # pyright: ignore[reportAssignmentType]
+    paths: Iterable[str | Path] | None = config["paths"].get()
     paths_removed = False
     if paths:
         filtered_paths = set()

@@ -53,7 +53,7 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
 
     def _serialize_post(self, result):
         """Zero pad as_string numbers for sorting."""
-        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue]
+        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
             result = result.zfill(self.ZERO_FILL)
         return result
 
