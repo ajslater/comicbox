@@ -34,7 +34,7 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
         """Get all page filenames."""
         if self._page_filenames is None:
             self._set_page_filenames()
-        return self._page_filenames  # pyright: ignore[reportReturnType]
+        return self._page_filenames  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
     def get_pagenames_from(self, index_from=None, index_to=None):
         """Return a list of page filenames from the given index onward."""

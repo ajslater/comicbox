@@ -125,7 +125,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         self._sort = sort
         self._allow_empty_keys = allow_empty_keys
         self._allow_empty_values = allow_empty_values
-        super().__init__(*args, keys=keys, **kwargs)
+        super().__init__(*args, keys=keys, **kwargs)  # ty: ignore[parameter-already-assigned]
 
     @override
     def _deserialize(self, data, *args, **kwargs):
@@ -194,7 +194,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
-            return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportReturnType]
+            return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
         return []
 
     @override

@@ -42,7 +42,7 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
             and (max_page := max(*tuple(pages.keys()), 0))
         ):
             zero_fill = ceil(log10(max_page))
-            comicbox_field = self.fields[self.ROOT_TAG].schema  # pyright: ignore[reportAttributeAccessIssue]
+            comicbox_field = self.fields[self.ROOT_TAG].schema  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
             pages_field = comicbox_field.fields[PAGES_KEY]
             pages_field.key_field.ZERO_FILL = zero_fill
         return super().dump(obj, *args, **kwargs)

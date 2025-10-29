@@ -38,13 +38,13 @@ def _ensure_cli_yaml(config):
 
 def _deduplicate_delete_keys(config: Subview):
     """Transform delete keys to a set."""
-    delete_keys: list | set | tuple | frozenset = config["delete_keys"].get(list)  # pyright: ignore[reportAssignmentType]
+    delete_keys: list | set | tuple | frozenset = config["delete_keys"].get(list)
     delete_keys = frozenset({kp.removeprefix("comicbox.") for kp in delete_keys})
     config["delete_keys"].set(delete_keys)
 
 
 def _parse_print(config: Subview):
-    print_fmts: str | None = config["print"].get()  # pyright: ignore[reportAssignmentType]
+    print_fmts: str | None = config["print"].get()
     if not print_fmts:
         print_fmts = ""
     print_phases = print_fmts.lower()
@@ -66,11 +66,11 @@ def _set_tagger(config: Subview):
 
 
 def _set_computed(config: Subview):
-    write: frozenset = config["write"].get(frozenset)  # pyright: ignore[reportAssignmentType]
-    export: frozenset = config["export"].get(frozenset)  # pyright: ignore[reportAssignmentType]·
+    write: frozenset = config["write"].get(frozenset)
+    export: frozenset = config["export"].get(frozenset)
     all_write_fmts = frozenset(write | export)
     config["computed"]["all_write_formats"].set(all_write_fmts)
-    read: frozenset = config["read"].get(frozenset)  # pyright: ignore[reportAssignmentType]·
+    read: frozenset = config["read"].get(frozenset)
     rfnf = frozenset(frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats) & read)
     config["computed"]["read_filename_formats"].set(rfnf)
     rff = frozenset(frozenset(MetadataSources.ARCHIVE_FILE.value.formats) & read)

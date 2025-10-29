@@ -43,7 +43,7 @@ class CDataFieldMixin:
 
     def _deserialize(self, value, *args, **kwargs):
         value = get_cdata(value)
-        return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue]
+        return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
 
 # FIELDS

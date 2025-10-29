@@ -103,5 +103,5 @@ def get_config(
     compute_config(config_program)
 
     # Create config
-    ad: AttrDict = config.get(_TEMPLATE)  # pyright: ignore[reportAssignmentType]
+    ad: AttrDict = config.get(_TEMPLATE)
     return post_process_set_for_path(ad.comicbox, path, box=box)
