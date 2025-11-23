@@ -121,7 +121,7 @@ class ComicboxSources(ComicboxArchive):
             archive = self._get_archive()
             if not archive or not self._archive_is_pdf:
                 return source_data_list
-            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue]
+            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[possibly-missing-attribute]
                 md = MappingProxyType({MuPDFSchema.ROOT_TAG: md})
                 source_data_list = [
                     SourceData(md, fmt=MetadataFormats.PDF, from_archive=True)
@@ -176,7 +176,9 @@ class ComicboxSources(ComicboxArchive):
             MetadataSources.ARCHIVE_FILE: _get_source_archive_files_metadata,
         }
     )
-    SOURCES_SET_ELSEWHERE = frozenset({MetadataSources.API, MetadataSources.EMBEDDED})
+    SOURCES_SET_ELSEWHERE = frozenset(
+        {MetadataSources.API, MetadataSources.LEGACY_NESTED}
+    )
 
     def _set_source_metadata(self, source):
         """Set source metadata by source."""

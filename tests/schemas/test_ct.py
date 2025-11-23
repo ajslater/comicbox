@@ -16,7 +16,7 @@ from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comictagger.cbz")
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["ct", "fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["ct"])))
 WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["ct"], read=["ct"])))
 READ_METADATA = MappingProxyType(
     {

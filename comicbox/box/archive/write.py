@@ -47,7 +47,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 old_path.unlink()
                 logger.info(f"Removed: {old_path}")
 
-    def _zipfile_remove_metadata_files(self, zf):
+    def _archive_remove_metadata_files(self, zf):
         """Remove metadata files from archive."""
         for path in self.namelist():
             fn = Path(path).name.lower()
@@ -55,7 +55,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 zf.remove(path)
         zf.repack()
 
-    def _write_archive_metadata_files(self, zf, files):
+    def _archive_write_metadata_files(self, zf, files: Mapping[str, bytes]):
         # Write metadata files.
         for path, data in files.items():
             compress = (
@@ -116,8 +116,8 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ValueError(reason)
         self.close()
         with ZipFile(self._path, "a") as zf:
-            self._zipfile_remove_metadata_files(zf)
-            self._write_archive_metadata_files(zf, files)
+            self._archive_remove_metadata_files(zf)
+            self._archive_write_metadata_files(zf, files)
             zf.comment = comment
 
     def _create_zipfile(self, files: Mapping, comment: bytes):
@@ -130,7 +130,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         tmp_path.unlink(missing_ok=True)
 
         with ZipFile(tmp_path, "x") as zf:
-            self._write_archive_metadata_files(zf, files)
+            self._archive_write_metadata_files(zf, files)
             self._copy_archive_files_to_new_archive(zf)
             zf.comment = comment
 
@@ -138,13 +138,29 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self.close()
         self._cleanup_tmp_archive(tmp_path, new_path)
 
-    def write_archive_metadata(self, files: Mapping, comment: bytes):
+    def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping):
+        if not self._path:
+            reason = "No pdfile path to write to."
+            raise ValueError(reason)
+        if not self._archive_cls:
+            reason = "PDF archive class not initialized."
+            raise ValueError(reason)
+        self.close()
+        with self._archive_cls(self._path) as pf:
+            if self._config.delete_all_tags or mupdf_metadata:
+                pf.write_metadata(mupdf_metadata)
+            if self._config.delete_all_tags or files:
+                self._archive_remove_metadata_files(pf)
+                self._archive_write_metadata_files(pf, files)
+
+    def write_archive_metadata(
+        self, files: Mapping, comment: bytes, mupdf_metadata: Mapping
+    ):
         """Write the metadata files and comment to an archive."""
-        if self._archive_is_pdf:
-            logger.warning(f"{self._path}: Not writing CBZ metadata to a PDF.")
-            return
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
+        elif self._archive_is_pdf:
+            self._update_pdffile(files, mupdf_metadata)
         else:
             self._create_zipfile(files, comment)
 
@@ -158,16 +174,3 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             old_api_source_metadata = None
             old_api_source_format = None
         self._reset_archive(old_api_source_format, old_api_source_metadata)
-
-    def write_pdf_metadata(self, mupdf_metadata):
-        """Write PDF Metadata."""
-        if not self._path:
-            reason = "Cannot write pdf metadata without a path."
-            raise ValueError(reason)
-        archive = self._get_archive()
-        if self._archive_is_pdf:
-            archive.save_metadata(mupdf_metadata)  # pyright: ignore[reportAttributeAccessIssue]
-        else:
-            logger.warning(
-                f"{self._path}: Not writing pdf metadata dict to a not PDF archive."
-            )

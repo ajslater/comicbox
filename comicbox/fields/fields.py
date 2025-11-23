@@ -54,6 +54,11 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
+    def __init__(self, *args, clean_tabs=False, **kwargs):
+        """Add a clean tabs flag."""
+        self.clean_tabs = clean_tabs
+        super().__init__(*args, **kwargs)
+
     @override
     def _deserialize(self, value, *_args, **_kwargs):
         if value in _STRING_EMPTY_VALUES:
@@ -65,8 +70,12 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
             value = str(value)
         elif isinstance(value, str):
             value = value.encode("utf8", "replace")
+        elif isinstance(value, bytearray):
+            value = bytes(value)
         if isinstance(value, bytes):
             value = value.decode("utf8", "replace")
+            if self.clean_tabs:
+                value = value.replace("\t", " ")
         if not isinstance(value, str):
             reason = f"{type(value)} is not a string"
             raise ValidationError(reason)

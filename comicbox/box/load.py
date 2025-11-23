@@ -14,7 +14,7 @@ from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
 from comicbox.box.sources import ComicboxSources
-from comicbox.fields.collection_fields import EmbeddedStringSetField
+from comicbox.fields.collection_fields import LegacyNestedMDStringSetField
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
 
@@ -130,9 +130,13 @@ class ComicboxLoad(ComicboxSources):
                 md, fmt = self._load_unknown_metadata(source, source_data.data)
             if md and fmt:
                 schema_class = fmt.value.schema_class
-                embedded_source = glom(md, schema_class.EMBED_KEYPATH, default=None)
-                if EmbeddedStringSetField.is_embedded_metadata(embedded_source):
-                    self.add_source(MetadataSources.EMBEDDED, embedded_source)
+                legacy_nested_source = glom(
+                    md, schema_class.LEGACY_NESTED_MD_KEYPATH, default=None
+                )
+                if LegacyNestedMDStringSetField.is_nested_metadata(
+                    legacy_nested_source
+                ):
+                    self.add_source(MetadataSources.LEGACY_NESTED, legacy_nested_source)
                 return MappingProxyType(md), fmt
         except Exception as exc:
             self._except_on_load(source, fmt, exc)

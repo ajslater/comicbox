@@ -7,8 +7,7 @@ from sys import maxsize
 from ruamel.yaml import YAML, StringIO
 from typing_extensions import override
 
-from comicbox.fields.fields import StringField
-from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox import BOOKMARK_KEY, ID_KEY_KEY, PAGE_KEYS
 from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
 
@@ -18,7 +17,7 @@ _MAP_TAG = f"{_TAG_YAML}:map"
 _FLOW_KEYS = frozenset({IMAGE_ATTRIBUTE, *PAGE_KEYS} - {BOOKMARK_KEY, ID_KEY_KEY})
 
 
-class YamlRenderModule:
+class YamlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""
 
     @staticmethod
@@ -69,6 +68,7 @@ class YamlRenderModule:
 
         return yaml
 
+    @override
     @classmethod
     def dumps(cls, obj: dict, *args, dfs=False, **kwargs):
         """Dump dict to YAML string."""
@@ -77,11 +77,11 @@ class YamlRenderModule:
             yaml.dump(obj, buf, *args, **kwargs)
             return buf.getvalue()
 
-    @staticmethod
-    def loads(s: bytes | str, *args, **kwargs):
+    @override
+    @classmethod
+    def loads(cls, s: bytes | str, *args, **kwargs):
         """Load YAML string into a dict."""
-        cleaned_s = StringField().deserialize(s)
-        if cleaned_s:
+        if cleaned_s := cls.clean_string(s):
             return YAML().load(cleaned_s, *args, **kwargs)
         return None
 

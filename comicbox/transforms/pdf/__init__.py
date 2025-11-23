@@ -6,6 +6,7 @@ from comicbox.schemas.comicbox import (
     GENRES_KEY,
     SCAN_INFO_KEY,
     TAGGER_KEY,
+    TAGS_KEY,
     TITLE_KEY,
     UPDATED_AT_KEY,
 )
@@ -35,6 +36,7 @@ XMLPDF_SIMPLE_KEY_MAP = frozenbidict(
 )
 XMLPDF_NAME_OBJ_KEY_MAP = frozenbidict(
     {
+        "pdf:Keywords": TAGS_KEY,
         "pdf:Subject": GENRES_KEY,
     },
 )
@@ -68,6 +70,7 @@ MUPDF_SIMPLE_KEY_MAP = frozenbidict(
 )
 MUPDF_NAME_OBJ_KEY_MAP = frozenbidict(
     {
+        "keywords": TAGS_KEY,
         "subject": GENRES_KEY,
     },
 )

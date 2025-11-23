@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1 https://raw.githubusercontent.com/anansi-project/comicinfo/refs/heads/main/drafts/v2.1/ComicInfo.xsd">
+	<Title>the tangle of their lives</Title>
+	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00</Notes>
+	<Writer>Jon Osterman</Writer>
+	<Publisher>SmallPub</Publisher>
+	<Genre>Science Fiction</Genre>
+	<Tags>d,e,f</Tags>
+	<PageCount>4</PageCount>
+	<ScanInformation>Pages</ScanInformation>
+</ComicInfo>

@@ -9,11 +9,12 @@ effective, simple and easy to read and to contribute to.
 
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
+from typing_extensions import override
 
 from comicbox.fields.collection_fields import StringListField
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
-from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     SERIES_KEY,
@@ -29,9 +30,10 @@ _OTHER_SCHEMA_STARTS = ("<?", "<!")
 _OTHER_SCHEMA_ENDS = ("{", ":")
 
 
-class FilenameRenderModule:
+class FilenameRenderModule(BaseRenderModule):
     """Filename Render module."""
 
+    @override
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
@@ -39,26 +41,24 @@ class FilenameRenderModule:
         return dict2comicfn(data, *args, **kwargs)
 
     @staticmethod
-    def _is_non_filename_format(s: str | bytes):
+    def _is_non_filename_format(s: str | bytes | bytearray):
         """Detect if the input is xml, yaml or json."""
+        if not s:
+            return True
         t = str(s).split("\n")[0].strip().lower()
         return t.startswith(_OTHER_SCHEMA_STARTS) or t.endswith(_OTHER_SCHEMA_ENDS)
 
+    @override
     @classmethod
-    def loads(cls, s: bytes | str, *args, **kwargs):
+    def loads(cls, s: str | bytes | bytearray, *args, **kwargs):
         """Load filename to dict."""
-        if not s:
-            return None
-
         if cls._is_non_filename_format(s):
             return None
 
-        cleaned_s: str | None = StringField().deserialize(s)  # type: ignore[reportAssignmentType]
-        if not cleaned_s:
-            return None
-
-        sub_data = comicfn2dict(cleaned_s, *args, **kwargs)
-        return {FilenameSchema.ROOT_TAG: sub_data}
+        if cleaned_s := cls.clean_string(s):
+            sub_data = comicfn2dict(cleaned_s, *args, **kwargs)
+            return {FilenameSchema.ROOT_TAG: sub_data}
+        return None
 
 
 class FilenameSubSchema(BaseSubSchema):

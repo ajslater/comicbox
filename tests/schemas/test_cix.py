@@ -25,9 +25,7 @@ WRITE_CONFIG = get_config(
 )
 READ_CONFIG = get_config(
     Namespace(
-        comicbox=Namespace(
-            read=["cix", "fn"], compute_pages=True, compute_page_count=False
-        )
+        comicbox=Namespace(read=["cix"], compute_pages=True, compute_page_count=False)
     )
 )
 READ_METADATA = MappingProxyType(

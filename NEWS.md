@@ -1,5 +1,13 @@
 # 📰 News
 
+## v2.1.0
+
+- PDFs now write to pdf embedded files instead of overloading the metadata
+  keywords field. Thanks for the idea from @bpepple
+    - PDFS still read full metadata formats from the keywords field if they
+      exist for backward compatibility.
+- Read more flexible datetimes from PDFs
+
 ## v2.0.6
 
 - Python 3.14 support.
@@ -28,7 +36,7 @@
 
 ## v2.0.1
 
-- Resolve circular import if not installed with \[pdf\] option.
+- Resolve circular import if not installed with \[pdf] option.
 
 ## v2.0.0
 
@@ -179,7 +187,7 @@
 
 ## v0.10.1
 
-- Change --metadata cli syntax to use key=\[a,b,c\] for arrays and key=a for
+- Change --metadata cli syntax to use key=\[a,b,c] for arrays and key=a for
   simple values.
 
 ## v0.10.0
@@ -247,6 +255,7 @@
 - Fix
 
 - Fix rename function renaming files to nothing.
+
 - Fix --dry-run feature for rename.
 
 ## v0.6.2
@@ -264,7 +273,7 @@
 - Features
     - Add --metadata cli action. Injects metadata from cli.
     - Warn when no actions performed.
-    - == operator for metadata is deep and ignores key order.
+    - \== operator for metadata is deep and ignores key order.
     - Credits are now sorted.
 
 - Fix

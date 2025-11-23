@@ -16,7 +16,7 @@ from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["comet", "fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["comet"])))
 WRITE_CONFIG = get_config(
     Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
 )

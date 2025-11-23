@@ -15,7 +15,6 @@ class ComicboxDumpToFiles(ComicboxDump):
         self,
         dest_path=None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
-        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ):
         """Export metadatat to a file with a schema."""
@@ -25,13 +24,13 @@ class ComicboxDumpToFiles(ComicboxDump):
         fn = fmt.value.filename
         path = dest_path / fn
         try:
-            schema, denormalized_metadata = self._to_dict(fmt, embed_fmt)
+            schema, denormalized_metadata = self._to_dict(fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
             logger.info(f"Exported {path}")
         except Exception:
             logger.exception(f"Could not export {fn}")
 
-    def export_files(self, formats=None, embed_fmt=None):
+    def export_files(self, formats=None):
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             logger.info("Not exporting files.")
@@ -40,7 +39,7 @@ class ComicboxDumpToFiles(ComicboxDump):
             formats = self._config.export
 
         for fmt in formats:
-            self.to_file(fmt=fmt, embed_fmt=embed_fmt)
+            self.to_file(fmt=fmt)
 
     def rename_file(self):
         """Rename the archive."""

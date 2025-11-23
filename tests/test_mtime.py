@@ -22,7 +22,7 @@ FIXTURES = MappingProxyType(
             "Captain Science #001-cix-cbi.cbr"
         ),
         "Captain Science #001.cbz": datetime(
-            2025, 6, 14, 13, 32, 24, tzinfo=timezone.utc
+            2025, 7, 21, 8, 45, 0, tzinfo=timezone.utc
         ),
         "Captain Science #001 (1950) The Beginning - multi.cbz": datetime(
             2025, 6, 14, 12, 54, 18, tzinfo=timezone.utc

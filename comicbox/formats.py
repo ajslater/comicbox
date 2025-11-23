@@ -135,7 +135,7 @@ class MetadataFormats(Enum):
     )
     COMICBOX_CLI_YAML = MetadataFormat(
         "Comicbox CLI Yaml",
-        frozenset({"cli", "comicbox-cli", "embedded"}),
+        frozenset({"cli", "comicbox-cli"}),
         "comicbox-cli.yaml",
         ComicboxCLITransform,
         has_pages=True,

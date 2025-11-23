@@ -98,15 +98,14 @@ def read_metadata(  # noqa: PLR0913
 ):
     """Read metadata and compare to dict fixture."""
     with Comicbox(archive_path, config=read_config) as car:
-        car.print_out()
         disk_md = dict(car.get_internal_metadata())
+
     metadata = dict(metadata)
     if ignore_page_count:
         glom(metadata, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
     elif page_count is not None:
         glom(metadata, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
-    glom(metadata, Assign(EXT_KEYPATH, archive_path.suffix[1:], missing=dict))
     if ignore_updated_at:
         glom(metadata, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))

@@ -17,7 +17,7 @@ dependencies = [
   "deepdiff~=8.2",
   "glom~=24.11",
   "loguru~=0.7",
-  "marshmallow~=4.0.0",
+  "marshmallow~=4.1.0",
   "marshmallow-union>=0.1.15.post1",
   "pycountry~=24.6",
   "python-dateutil~=2.8",
@@ -49,7 +49,7 @@ license = "LGPL-3.0-only"
 readme = "README.md"
 name = "comicbox"
 requires-python = ">=3.10"
-version = "2.0.6"
+version = "2.1.0"
 
 [project.urls]
 News = "https://comicbox.readthedocs.io/NEWS/"
@@ -57,7 +57,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile<1.0.0,>=0.2.5"]
+pdf = ["comicbox-pdffile~=0.3"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"

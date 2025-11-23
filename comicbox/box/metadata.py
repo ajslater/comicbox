@@ -1,9 +1,9 @@
 """Get Metadata mixin."""
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from types import MappingProxyType
 
-from glom import Assign, Delete, glom
+from glom import Delete, glom
 from loguru import logger
 
 from comicbox.box.computed import ComicboxComputed
@@ -53,30 +53,9 @@ class ComicboxMetadata(ComicboxComputed):
         """Programmatically set the raw metadata."""
         self._metadata = MappingProxyType(metadata)
 
-    def _embed_metadata(
-        self, fmt: MetadataFormats, denormalized_metadata: MutableMapping, schema_class
-    ):
-        """Serialize metadata in the given format into a tag."""
-        if not schema_class.EMBED_KEYPATH:
-            return
-
-        embedded_transform = fmt.value.transform_class(self._path)
-        embedded_schema = embedded_transform.SCHEMA_CLASS()
-        metadata = self.get_internal_metadata()
-        if (md := embedded_transform.from_comicbox(metadata)) and (
-            embedded_value := embedded_schema.dumps(md)
-        ):
-            assign = Assign(
-                schema_class.EMBED_KEYPATH,
-                embedded_value,
-                missing=dict,
-            )
-            glom(denormalized_metadata, assign)
-
     def _to_dict(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        embed_fmt: MetadataFormats | None = None,
     ):
         # Get schema instance.
         schema_class = fmt.value.schema_class
@@ -88,13 +67,9 @@ class ComicboxMetadata(ComicboxComputed):
         try:
             # dict_format is used to determine whether or not to compute some values
             # currently only pages & page_count
-            self._dict_formats = frozenset(filter(None, (fmt, embed_fmt)))
+            self._dict_formats = frozenset({fmt})
             md = self.get_internal_metadata()
             md = transform.from_comicbox(md)
-
-            if embed_fmt:
-                md = dict(md)
-                self._embed_metadata(embed_fmt, md, schema_class)
         finally:
             self._dict_formats = frozenset()
 
@@ -103,20 +78,18 @@ class ComicboxMetadata(ComicboxComputed):
     def to_dict(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ) -> dict:
         """Get merged metadata as a dict."""
-        schema, md = self._to_dict(fmt, embed_fmt)
+        schema, md = self._to_dict(fmt)
         dump = schema.dump(md, **kwargs)
         return dict(dump)  # pyright:ignore[reportArgumentType, reportCallIssue]
 
     def to_string(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        embed_fmt: MetadataFormats | None = None,
         **kwargs,
     ) -> str:
         """Get mergeesized metadata as a string."""
-        schema, md = self._to_dict(fmt, embed_fmt)
+        schema, md = self._to_dict(fmt)
         return schema.dumps(md, **kwargs)
