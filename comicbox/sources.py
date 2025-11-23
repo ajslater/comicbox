@@ -93,8 +93,8 @@ class MetadataSources(Enum):
             MetadataFormats.FILENAME,
         ),
     )
-    EMBEDDED = MetadataSource(
-        "Embedded in Other Metadata",
+    LEGACY_NESTED = MetadataSource(
+        "Nested in Other Metadata",
         path=True,
         formats=(
             MetadataFormats.COMICBOX_CLI_YAML,

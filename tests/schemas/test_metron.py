@@ -23,7 +23,7 @@ from tests.util import (
     create_write_metadata,
 )
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["mi", "fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["mi"])))
 WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["mi"], read=["mi"])))
 
 METRON_NOTES = (

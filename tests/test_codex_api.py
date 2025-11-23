@@ -201,16 +201,13 @@ PDF_MD = MappingProxyType(
             "credits": {"Jon Osterman": {"roles": {"Writer": {}}}},
             "ext": "pdf",
             "genres": {"Science Fiction": {}},
-            "page_count": 4,
-            "notes": "Tagged with comicbox dev on 2025-05-22T03:12:25Z",
             "scan_info": "Pages",
             "series": {"name": "test pdf"},
             "stories": {"the tangle of their lives": {}},
             "tags": {"d": {}, "e": {}, "f": {}},
             "title": "the tangle of their lives",
             "tagger": "comicbox dev",
-            "publisher": {"name": "SmallPub"},
-            "updated_at": datetime(2025, 5, 22, 3, 12, 25, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 11, 21, 3, 11, 14, tzinfo=timezone.utc),
         }
     }
 )

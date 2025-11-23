@@ -7,8 +7,8 @@ from marshmallow_union import Union
 from typing_extensions import override
 
 from comicbox.fields.collection_fields import (
-    EmbeddedStringSetField,
     IntegerListField,
+    LegacyNestedMDStringSetField,
     ListField,
     StringListField,
     StringSetField,
@@ -147,8 +147,8 @@ class XmlStringSetField(XmlListFieldMixin, StringSetField):
     FIELD = XmlStringField
 
 
-class XmlEmbeddedStringSetField(XmlListFieldMixin, EmbeddedStringSetField):
-    """XML Embedded String Set Field."""
+class XmlLegacyNestedMDStringSetField(XmlListFieldMixin, LegacyNestedMDStringSetField):
+    """XML Legacy Nested String Set Field."""
 
     FIELD = XmlStringField
 

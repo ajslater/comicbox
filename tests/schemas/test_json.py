@@ -17,7 +17,7 @@ from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
 FN = Path("comicbox.cbz")
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["json", "fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["json"])))
 WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["json"], read=["json"])))
 READ_METADATA = MappingProxyType(
     {

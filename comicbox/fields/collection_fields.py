@@ -240,13 +240,13 @@ class IntegerListField(StringListField):
         super().__init__(*args, sort=sort, **kwargs)
 
 
-class EmbeddedStringSetField(StringSetField):
-    """Copy data to and from the special embedded field."""
+class LegacyNestedMDStringSetField(StringSetField):
+    """Copy data from the legacy special nested field."""
 
     JSON_XML_START_CHARS = frozenset({"<", "{"})
 
     @classmethod
-    def is_embedded_metadata(cls, value):
+    def is_nested_metadata(cls, value):
         """Return if this looks like a json or xml string."""
         return (
             isinstance(value, str)
@@ -256,14 +256,6 @@ class EmbeddedStringSetField(StringSetField):
 
     @override
     def _deserialize(self, value, attr, data, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
-        if self.is_embedded_metadata(value):
+        if self.is_nested_metadata(value):
             return StringField().deserialize(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)
-
-    @override
-    def _serialize(self, value, attr, obj, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
-        if not value:
-            return None
-        if self.is_embedded_metadata(value):
-            return StringField()._serialize(value, attr, obj, *args, **kwargs)  # noqa: SLF001
-        return super()._serialize(value, attr, obj, *args, **kwargs)

@@ -13,7 +13,7 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cbi", "fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cbi"])))
 WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cbi"], read=["cbi"])))
 METADATA = MappingProxyType(
     {

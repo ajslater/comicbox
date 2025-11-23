@@ -18,7 +18,8 @@ class PdfDateTimeField(DateTimeField):
     @override
     def _deserialize(self, value, *args, **kwargs):
         with suppress(NameError, OSError):
-            return PDFFile.to_datetime(value)
+            if pdf_dttm := PDFFile.to_datetime(value):
+                return pdf_dttm
         return super()._deserialize(value, *args, **kwargs)
 
     @override

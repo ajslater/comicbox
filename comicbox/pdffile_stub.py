@@ -1,6 +1,7 @@
 """A featureless PDFFile stub to help with typing."""
 
 from datetime import datetime, timezone
+from io import BytesIO
 
 
 class PDFFile:
@@ -22,6 +23,9 @@ class PDFFile:
         """Stub."""
         return False
 
+    def save(self):
+        """Empty."""
+
     def read(self, filename: str, *, to_pixmap: bool = False) -> bytes:  # noqa: ARG002
         """Empty."""
         return b""
@@ -41,5 +45,14 @@ class PDFFile:
         """Empty."""
         return {}
 
-    def save_metadata(self, md):
+    def write_metadata(self, md):
+        """Empty."""
+
+    def writestr(self, name: str, buffer: str | bytes | bytearray | BytesIO, **_kwargs):
+        """Empty."""
+
+    def remove(self, name):
+        """Empty."""
+
+    def repack(self):
         """Empty."""

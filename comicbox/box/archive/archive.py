@@ -68,8 +68,8 @@ class Archive:
             data = cls._read_tarfile(archive, filename)
         elif isinstance(archive, SevenZipFile):
             data = cls._read_7zipfile(archive, factory, filename)
-        elif isinstance(archive, PDFFile) and to_pixmap:
-            data = archive.read(filename, to_pixmap=True)
+        elif isinstance(archive, PDFFile):
+            data = archive.read(filename, to_pixmap=to_pixmap)
         else:
             data = archive.read(filename)
         return data

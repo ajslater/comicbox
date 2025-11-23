@@ -5,9 +5,9 @@ from types import MappingProxyType
 
 import xmltodict
 from marshmallow.fields import Constant
+from typing_extensions import override
 
-from comicbox.fields.fields import StringField
-from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 
 XML_UNPARSE_ARGS = MappingProxyType(
     # used by tests
@@ -20,9 +20,10 @@ XML_UNPARSE_ARGS = MappingProxyType(
 )
 
 
-class XmlRenderModule:
+class XmlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""
 
+    @override
     @staticmethod
     def dumps(obj: dict, *args, **kwargs):
         """Dump dict to XML string."""
@@ -33,11 +34,11 @@ class XmlRenderModule:
             **kwargs,
         )
 
-    @staticmethod
-    def loads(s: bytes | str, *args, **kwargs):
+    @override
+    @classmethod
+    def loads(cls, s: bytes | str, *args, **kwargs):
         """Load XML string into a dict."""
-        cleaned_s: str | None = StringField().deserialize(s)  # type:ignore[reportAssignmentType]
-        if cleaned_s:
+        if cleaned_s := cls.clean_string(s):
             return xmltodict.parse(cleaned_s, *args, **kwargs)
         return None
 

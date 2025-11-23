@@ -3,16 +3,17 @@
 from abc import ABC
 
 import simplejson as json
+from typing_extensions import override
 
-from comicbox.fields.fields import StringField
-from comicbox.schemas.base import BaseSchema, BaseSubSchema
+from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 
 
-class JsonRenderModule:
+class JsonRenderModule(BaseRenderModule):
     """JSON Render module with custom formatting and Decimal support."""
 
     COMPACT_SEPARATORS = (",", ":")
 
+    @override
     @classmethod
     def dumps(cls, obj: dict, *args, compact=False, **kwargs):
         """Dump dict to JSON string with formatting."""
@@ -33,11 +34,11 @@ class JsonRenderModule:
             **kwargs,
         )
 
-    @staticmethod
-    def loads(s: bytes | str, *args, **kwargs):
+    @override
+    @classmethod
+    def loads(cls, s: bytes | str, *args, **kwargs):
         """Load JSON string to dict."""
-        cleaned_s: str | None = StringField().deserialize(s)  # type:ignore[reportAssignmentType]
-        if cleaned_s:
+        if cleaned_s := cls.clean_string(s):
             return json.loads(
                 cleaned_s,
                 *args,

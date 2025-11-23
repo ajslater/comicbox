@@ -12,12 +12,22 @@ from marshmallow.decorators import (
     pre_dump,
     pre_load,
 )
-from marshmallow.types import StrSequenceOrSet
+from marshmallow.types import RenderModule, StrSequenceOrSet
 from typing_extensions import override
 
 from comicbox.empty import is_empty
+from comicbox.fields.fields import StringField
 from comicbox.schemas.decorators import trap_error
 from comicbox.schemas.error_store import ClearingErrorStoreSchema
+
+
+class BaseRenderModule(RenderModule, ABC):
+    """Base Render Module."""
+
+    @staticmethod
+    def clean_string(s: str | bytes | bytearray) -> str | None:
+        """Clean a string."""
+        return StringField(clean_tabs=True).deserialize(s)
 
 
 class BaseSubSchema(ClearingErrorStoreSchema, ABC):
@@ -121,7 +131,7 @@ class BaseSchema(BaseSubSchema, ABC):
     ROOT_TAG: str = ""
     ROOT_DATA_KEY: str = ""
     ROOT_KEYPATH: str = ""
-    EMBED_KEYPATH: str = ""
+    LEGACY_NESTED_MD_KEYPATH: str = ""
     HAS_PAGE_COUNT: bool = False
     HAS_PAGES: bool = False
 
