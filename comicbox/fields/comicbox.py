@@ -54,13 +54,13 @@ class SimpleNamedDictField(Union):
         super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType]
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs):
-        result = super()._deserialize(value, attr, *args, **kwargs)
+    def _deserialize(self, value, *args, **kwargs):
+        result = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, set | frozenset):
             dict_value = {}
             for key in result:
                 dict_value[key] = {}
-                result = super()._deserialize(dict_value, attr, *args, **kwargs)
+                result = super()._deserialize(dict_value, *args, **kwargs)
         return result
 
 
@@ -85,11 +85,11 @@ class SimpleNamedNestedField(Union):
         super().__init__(fields, *args, **kwargs)
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs):
-        result = super()._deserialize(value, attr, *args, **kwargs)
+    def _deserialize(self, value, *args, **kwargs):
+        result = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, self._primitive_type):
             complex_value = {self._name_key: result}
-            result = super()._deserialize(complex_value, attr, *args, **kwargs)
+            result = super()._deserialize(complex_value, *args, **kwargs)
         return result
 
 

@@ -15,7 +15,7 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse dates from strings and date-like structures."""
         dt = None
         if isinstance(value, date):
@@ -42,7 +42,7 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse datetimes from strings and datetime-like structures."""
         dttm = None
         if isinstance(value, TimeStamp):

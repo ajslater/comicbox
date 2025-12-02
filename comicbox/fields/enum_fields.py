@@ -72,10 +72,10 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
         self._enum_map = MappingProxyType(enum_map)
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
+    def _deserialize(self, value, attr, data, *args, **kwargs):
         enum = self.get_enum(value)
         enum = enum if enum else value
-        return super()._deserialize(enum, *args, **kwargs)
+        return super()._deserialize(enum, attr, data, *args, **kwargs)
 
     @override
     def _serialize(self, value, *args, **kwargs):
@@ -110,10 +110,10 @@ class EnumBooleanField(EnumField):
     )
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(self, value, attr, data, *args, **kwargs):
+        result = super()._deserialize(value, attr, data, *args, **kwargs)
         if not isinstance(result, self.ENUM) and str(value).lower() in self.TRUTHY:
-            result = super()._deserialize(self.YES, *args, **kwargs)
+            result = super()._deserialize(self.YES, attr, data, *args, **kwargs)
         return result
 
     @override
@@ -139,7 +139,7 @@ class ComicInfoMangaField(EnumBooleanField):
     @override
     def _deserialize(self, value, attr, data, *args, **kwargs):
         """Match a manga value to an acceptable value."""
-        if data.get("reading_direction") == ReadingDirectionEnum.RTL:
+        if data and data.get("reading_direction") == ReadingDirectionEnum.RTL:
             reason = (
                 f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
                 "because of reading_direction"

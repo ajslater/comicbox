@@ -3,6 +3,7 @@
 from decimal import Decimal
 from enum import Enum
 from sys import maxsize
+from typing import Any
 
 from ruamel.yaml import YAML, StringIO
 from typing_extensions import override
@@ -79,7 +80,7 @@ class YamlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: bytes | str, *args, **kwargs):
+    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
         """Load YAML string into a dict."""
         if cleaned_s := cls.clean_string(s):
             return YAML().load(cleaned_s, *args, **kwargs)

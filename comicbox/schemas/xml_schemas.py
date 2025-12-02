@@ -2,6 +2,7 @@
 
 from abc import ABC
 from types import MappingProxyType
+from typing import Any
 
 import xmltodict
 from marshmallow.fields import Constant
@@ -36,7 +37,7 @@ class XmlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: bytes | str, *args, **kwargs):
+    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
         """Load XML string into a dict."""
         if cleaned_s := cls.clean_string(s):
             return xmltodict.parse(cleaned_s, *args, **kwargs)

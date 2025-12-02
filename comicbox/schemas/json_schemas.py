@@ -1,6 +1,7 @@
 """Json Schema."""
 
 from abc import ABC
+from typing import Any
 
 import simplejson as json
 from typing_extensions import override
@@ -36,7 +37,7 @@ class JsonRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: bytes | str, *args, **kwargs):
+    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
         """Load JSON string to dict."""
         if cleaned_s := cls.clean_string(s):
             return json.loads(

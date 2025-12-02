@@ -6,6 +6,7 @@ from typing import Any
 
 from glom import glom
 from marshmallow import fields
+from marshmallow.fields import _InternalT
 from marshmallow.utils import is_collection
 from typing_extensions import override
 
@@ -128,9 +129,9 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         super().__init__(*args, keys=keys, **kwargs)  # ty: ignore[parameter-already-assigned]
 
     @override
-    def _deserialize(self, data, *args, **kwargs):
+    def _deserialize(self, *args, **kwargs):
         """Apply flag conditions."""
-        result_dict = super()._deserialize(data, *args, **kwargs)
+        result_dict = super()._deserialize(*args, **kwargs)
         result_dict.pop(None, None)
         if not self._allow_empty_keys:
             result_dict.pop("", None)
@@ -141,8 +142,8 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         return result_dict
 
     @override
-    def _serialize(self, data, *args, **kwargs):
-        result_dict = super()._serialize(data, *args, **kwargs)
+    def _serialize(self, *args, **kwargs):
+        result_dict = super()._serialize(*args, **kwargs)
         if result_dict is None:
             return None
         result_dict.pop(None, None)
@@ -184,21 +185,21 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         return [str(item) for item in seq if not is_empty(item)]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> list[str] | None:  # pyright:ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> list[_InternalT | None]:
         """Deserialize CSV encodings of lists."""
         if not value:
             return []
         # CSV encoding.
         if isinstance(value, str) and (value := StringField().deserialize(value)):
-            value = self._split_regex.split(value)  # type: ignore[reportArgumentType]
+            value = self._split_regex.split(value)
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
-            return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
+            return super()._deserialize(value, *args, **kwargs)
         return []
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> list[str] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride]
+    def _serialize(self, value, *args, **kwargs) -> list[_InternalT] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if not value:
             return None
         value = self._seq_to_str_seq(value)
@@ -215,7 +216,7 @@ class StringSetField(StringListField):
     """A set of non-empty strings."""
 
     @override
-    def _deserialize(self, *args, **kwargs) -> set[str] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, *args, **kwargs) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:
