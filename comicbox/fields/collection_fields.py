@@ -61,6 +61,28 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Override in XmlListField."""
         return value
 
+    def _sort_value(self, value, sort_dict):
+        if is_empty(value):
+            return
+        key = []
+        if self._sort_keys:
+            for key_path in self._sort_keys:
+                sort_value = glom(value, key_path, default=None)
+                sort_value = self.get_tag_value(sort_value)
+                sort_value = "" if sort_value is None else sort_value
+                key.append(sort_value)
+        else:
+            key = (self.get_tag_value(value),)
+        key = tuple(key)
+
+        # combine elements by key
+        if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
+            new_value = old_value.update(value)
+        else:
+            new_value = value
+
+        sort_dict[key] = new_value
+
     def _sorted(self, values) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
@@ -69,27 +91,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         # If dedupe ever needs to be decoupled, add an index to the key.
         sort_dict = {}
         for value in values:
-            if is_empty(value):
-                continue
-            key = []
-            if self._sort_keys:
-                for key_path in self._sort_keys:
-                    sort_value = glom(value, key_path, default=None)
-                    sort_value = self.get_tag_value(sort_value)
-                    sort_value = "" if sort_value is None else sort_value
-                    key.append(sort_value)
-            else:
-                key = (self.get_tag_value(value),)
-            key = tuple(key)
-
-            # combine elements by key
-            if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
-                new_value = old_value.update(value)
-            else:
-                new_value = value
-
-            sort_dict[key] = new_value
-
+            self._sort_value(value, sort_dict)
         return [item[1] for item in sorted(sort_dict.items())]
 
     @override

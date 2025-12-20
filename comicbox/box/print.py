@@ -193,6 +193,21 @@ class ComicboxPrint(ComicboxDumpToFiles):
             first = False
         return title
 
+    def _print_source(self, source, source_data):
+        if not source_data or not source_data.data:
+            return
+        md = source_data.data
+        if isinstance(md, Mapping):
+            renderable = Pretty(dict(md)) if self._pygments_style_name else md
+        else:
+            print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
+            lexer = fmt.value.lexer if (fmt := source_data.fmt) else ""
+            renderable = self._syntax(print_md, lexer)
+        title = self._add_source_to_title(
+            f"Source {source.value.label}", source, source_data
+        )
+        self.print_section(title, renderable)
+
     def _print_sources(self, source):
         """Print source metadtata."""
         source_data_list = self.get_source_metadata(source)
@@ -200,19 +215,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         if not source_data_list:
             return
         for source_data in source_data_list:
-            if not source_data or not source_data.data:
-                continue
-            md = source_data.data
-            if isinstance(md, Mapping):
-                renderable = Pretty(dict(md)) if self._pygments_style_name else md
-            else:
-                print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
-                lexer = fmt.value.lexer if (fmt := source_data.fmt) else ""
-                renderable = self._syntax(print_md, lexer)
-            title = self._add_source_to_title(
-                f"Source {source.value.label}", source, source_data
-            )
-            self.print_section(title, renderable)
+            self._print_source(source, source_data)
 
     def _print_loaded(self, source):
         """Print loaded metadata."""
