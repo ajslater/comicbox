@@ -153,11 +153,7 @@ export default defineConfig([
     },
   },
   {
-    files: [
-      "**/certbot.yaml",
-      "**/docker-compose*.yaml",
-      "**/.*_treestamps.yaml",
-    ],
+    files: ["**/certbot.yaml", "**/compose*.yaml", "**/.*_treestamps.yaml"],
     rules: {
       "yml/no-empty-mapping-value": "off",
     },

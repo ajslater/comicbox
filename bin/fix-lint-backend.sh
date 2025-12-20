@@ -10,9 +10,9 @@ bin/sortignore.sh
 ####################
 ###### Python ######
 ###################
-uv run ruff check --fix .
-uv run ruff format .
-# uv run djlint templates --profile=django --reformat
+uv run --group lint ruff check --fix .
+uv run --group lint ruff format .
+# uv run --group lint djlint templates --profile=django --reformat
 
 ############################################
 ##### Javascript, JSON, Markdown, YAML #####
