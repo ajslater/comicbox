@@ -25,8 +25,7 @@ class XmlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""
 
     @override
-    @staticmethod
-    def dumps(obj: dict, *args, **kwargs):
+    def dumps(self, obj: dict, *args, **kwargs):
         """Dump dict to XML string."""
         return xmltodict.unparse(
             obj,

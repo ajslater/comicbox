@@ -87,7 +87,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         value = self._deserialize_pre(value)
         result = super()._deserialize(value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
@@ -129,7 +129,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> Decimal | None:  #  pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> Decimal | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         value = self._deserialize_pre(value)
         result = super()._deserialize(value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
