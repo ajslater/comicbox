@@ -28,7 +28,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     def _clean_name(name_obj):
         if not name_obj:
             return None
-        name: str | None = StringField().deserialize(name_obj)  # type: ignore[reportAssignmentType]
+        name: str | None = StringField().deserialize(name_obj)
         if not name:
             return None
         return name.strip()

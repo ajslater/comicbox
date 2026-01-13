@@ -45,7 +45,7 @@ READ_CONFIG_EMPTY = get_config(Namespace(comicbox=Namespace()))
 
 TEST_DTTM_STR = "1970-01-01T00:00:00Z"
 _D_TUPLE = (1970, 1, 1)
-TEST_DATETIME = datetime(*_D_TUPLE)  # noqa: DTZ001, # ty: ignore[missing-argument]
+TEST_DATETIME = datetime(*_D_TUPLE)  # noqa: DTZ001
 _IDENT = 145269
 TEST_READ_NOTES = (
     f"Tagged with {PACKAGE_NAME} {VERSION} on {TEST_DTTM_STR} "
