@@ -258,7 +258,7 @@ class LegacyNestedMDStringSetField(StringSetField):
         )
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, attr, data, *args, **kwargs):
         if self.is_nested_metadata(value):
             return StringField().deserialize(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)
