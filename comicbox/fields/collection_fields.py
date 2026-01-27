@@ -128,7 +128,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         self._sort = sort
         self._allow_empty_keys = allow_empty_keys
         self._allow_empty_values = allow_empty_values
-        super().__init__(*args, keys=keys, **kwargs)  # ty: ignore[parameter-already-assigned]
+        super().__init__(*args, keys=keys, **kwargs)
 
     @override
     def _deserialize(self, *args, **kwargs):

@@ -27,11 +27,11 @@ class JsonRenderModule(BaseRenderModule):
         return json.dumps(
             obj,
             *args,
-            indent=indent,  # ty: ignore[parameter-already-assigned]
-            iterable_as_array=True,  # ty: ignore[parameter-already-assigned]
-            separators=separators,  # ty: ignore[parameter-already-assigned]
-            sort_keys=False,  # ty: ignore[parameter-already-assigned]
-            use_decimal=True,  # ty: ignore[parameter-already-assigned]
+            indent=indent,
+            iterable_as_array=True,
+            separators=separators,
+            sort_keys=False,
+            use_decimal=True,
             **kwargs,
         )
 
@@ -43,7 +43,7 @@ class JsonRenderModule(BaseRenderModule):
             return json.loads(
                 cleaned_s,
                 *args,
-                use_decimal=True,  # ty: ignore[parameter-already-assigned]
+                use_decimal=True,
                 **kwargs,
             )
         return None
