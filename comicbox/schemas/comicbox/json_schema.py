@@ -7,12 +7,21 @@ from typing_extensions import override
 
 from comicbox.fields.comicbox import PagesField
 from comicbox.fields.fields import StringField
+from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.comicbox import (
     PAGES_KEY,
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
+    DateSchema,
 )
 from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
+
+
+class ComicboxJsonDateSchema(DateSchema):
+    """Serialize dates to strings for JSON."""
+
+    cover_date = DateField()
+    store_date = DateField()
 
 
 class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSubSchemaMixin):
@@ -20,6 +29,8 @@ class ComicboxJsonSubSchema(JsonSubSchema, ComicboxSubSchemaMixin):
 
     # Key must be strings in json.
     pages = PagesField(keys_as_string=True)
+    date = Nested(ComicboxJsonDateSchema())
+    updated_at = DateTimeField()
 
 
 class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):

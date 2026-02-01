@@ -34,7 +34,8 @@ class FilenameRenderModule(BaseRenderModule):
     """Filename Render module."""
 
     @override
-    def dumps(self, obj: dict, *args, **kwargs):
+    @classmethod
+    def dumps(cls, obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)
