@@ -14,8 +14,13 @@ from comicbox.fields.fields import StringField, TrapExceptionsMeta
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
+    def __init__(self, *args, serialize_to_str=True, **kwargs):
+        """Configure serialization."""
+        super().__init__(*args, **kwargs)
+        self._serialize_to_str = serialize_to_str
+
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse dates from strings and date-like structures."""
         dt = None
         if isinstance(value, date):
@@ -31,9 +36,20 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
                 logger.warning(f"Cannot parse date: {value}")
         return dt
 
+    @override
+    def _serialize(self, value, *args, **kwargs) -> str | float | None | date:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        if self._serialize_to_str:
+            return super()._serialize(value, *args, **kwargs)
+        return value
+
 
 class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
+
+    def __init__(self, *args, serialize_to_iso=True, **kwargs):
+        """Configure serialization."""
+        super().__init__(*args, **kwargs)
+        self._serialize_to_iso = serialize_to_iso
 
     @staticmethod
     def _ensure_aware(dttm: datetime):
@@ -42,7 +58,7 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse datetimes from strings and datetime-like structures."""
         dttm = None
         if isinstance(value, TimeStamp):
@@ -71,8 +87,11 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _serialize(self, value, *_args, **_kwargs):
+    def _serialize(self, value, *args, **kwargs) -> str | None | datetime:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if value is None:
             return None
-        value = self._ensure_aware(value)
-        return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+        if isinstance(value, datetime):
+            value = self._ensure_aware(value)
+            if self._serialize_to_iso:
+                value = value.isoformat(timespec="seconds").replace("+00:00", "Z")
+        return value

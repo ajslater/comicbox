@@ -1,48 +1,59 @@
 """Json Schema."""
 
 from abc import ABC
+from collections.abc import Mapping
+from datetime import date, datetime
+from types import MappingProxyType
+from typing import Any
 
 import simplejson as json
 from typing_extensions import override
 
+from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
+
+
+def datetime_handler(value):
+    """Convert datetimes to strings for json.dumps."""
+    if isinstance(value, date):
+        value = DateField()._serialize(value, "", None)  # noqa: SLF001
+    elif isinstance(value, datetime):
+        value = DateTimeField()._serialize(value, "", None)  # noqa: SLF001
+    return value
 
 
 class JsonRenderModule(BaseRenderModule):
     """JSON Render module with custom formatting and Decimal support."""
 
     COMPACT_SEPARATORS = (",", ":")
+    NORMAL_DUMPS_ARGS = MappingProxyType({"indent": 2})
+    COMPACT_DUMPS_ARGS = MappingProxyType({"separators": COMPACT_SEPARATORS})
 
     @override
     @classmethod
-    def dumps(cls, obj: dict, *args, compact=False, **kwargs):
+    def dumps(cls, obj: Mapping, *args, compact=False, sort_keys=False, **kwargs):
         """Dump dict to JSON string with formatting."""
-        if compact:
-            indent = None
-            separators = cls.COMPACT_SEPARATORS
-        else:
-            indent = 2
-            separators = None
+        extra_kwargs = cls.COMPACT_DUMPS_ARGS if compact else cls.NORMAL_DUMPS_ARGS
         return json.dumps(
-            obj,
+            dict(obj),
             *args,
-            indent=indent,  # ty: ignore[parameter-already-assigned]
-            iterable_as_array=True,  # ty: ignore[parameter-already-assigned]
-            separators=separators,  # ty: ignore[parameter-already-assigned]
-            sort_keys=False,  # ty: ignore[parameter-already-assigned]
-            use_decimal=True,  # ty: ignore[parameter-already-assigned]
+            sort_keys=sort_keys,
+            iterable_as_array=True,
+            use_decimal=True,
+            default=datetime_handler,
+            **extra_kwargs,
             **kwargs,
         )
 
     @override
     @classmethod
-    def loads(cls, s: bytes | str, *args, **kwargs):
+    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
         """Load JSON string to dict."""
         if cleaned_s := cls.clean_string(s):
             return json.loads(
                 cleaned_s,
                 *args,
-                use_decimal=True,  # ty: ignore[parameter-already-assigned]
+                use_decimal=True,
                 **kwargs,
             )
         return None

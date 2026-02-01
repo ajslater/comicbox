@@ -1,7 +1,7 @@
 """
 Parse comic book archive names using the simple 'parse' parser.
 
-A more sophisticaed library like pyparsing or rebulk might be able to
+A more sophisticated library like pyparsing or rebulk might be able to
 build a faster, more powerful matching engine with fewer parsers with
 optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
@@ -34,8 +34,8 @@ class FilenameRenderModule(BaseRenderModule):
     """Filename Render module."""
 
     @override
-    @staticmethod
-    def dumps(obj: dict, *args, **kwargs):
+    @classmethod
+    def dumps(cls, obj: dict, *args, **kwargs):
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)

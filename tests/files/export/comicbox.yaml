@@ -16,7 +16,7 @@ comicbox:
         Inker: {}
         Penciller: {}
   date:
-    cover_date: '1950-11-01'
+    cover_date: 1950-11-01
     day: 1
     month: 11
     year: 1950

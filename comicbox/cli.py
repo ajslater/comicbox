@@ -4,6 +4,7 @@ import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
 from types import MappingProxyType
+from typing import Any
 
 from rich import box
 from rich import print as rich_print
@@ -68,7 +69,13 @@ class CSVAction(Action):
     """Parse comma delimited sequences."""
 
     @override
-    def __call__(self, _parser, namespace, values, _string=None):
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ):
         """Parse comma delimited sequences."""
         if isinstance(values, str):
             values_array = values.split(",")
@@ -83,18 +90,25 @@ class PageRangeAction(Action):
     """Parse page range."""
 
     @override
-    def __call__(self, _parser, namespace, values, _string=None):
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ):
         """Parse page range delimited by :."""
-        values_array = values.split(":")
-        if not values_array:
+        if isinstance(values, str):
+            values = values.split(":")
+        if not values:
             return
 
-        index_from = int(values_array[0]) if len(values_array[0]) else None
+        index_from = int(values[0]) if len(values[0]) else None
 
-        if len(values_array) == 1:
+        if len(values) == 1:
             index_to = index_from
-        elif len(values_array[1]):
-            index_to = int(values_array[1])
+        elif len(values[1]):
+            index_to = int(values[1])
         else:
             index_to = None
 

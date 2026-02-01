@@ -29,7 +29,7 @@ _TEMPLATE = MappingTemplate(
                 "compute_page_count": bool,
                 "config": Optional(OneOf((str, Path))),
                 "delete_all_tags": bool,
-                "delete_keys": Optional([frozenset, Sequence(str)]),
+                "delete_keys": Optional(OneOf((frozenset, Sequence(str)))),
                 "delete_orig": bool,
                 "dest_path": OneOf((str, Path)),
                 "dry_run": bool,
@@ -37,8 +37,8 @@ _TEMPLATE = MappingTemplate(
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
-                "read": Optional([frozenset, Sequence(str)]),
-                "read_ignore": Optional([frozenset, Sequence(str)]),
+                "read": Optional(frozenset, Sequence(str)),
+                "read_ignore": Optional(OneOf((frozenset, Sequence(str)))),
                 "recurse": bool,
                 "replace_metadata": bool,
                 "stamp": bool,
@@ -48,15 +48,15 @@ _TEMPLATE = MappingTemplate(
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),
-                "export": Optional([frozenset, Sequence(str)]),
+                "export": Optional(OneOf((frozenset, Sequence(str)))),
                 "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
                 "index_to": Optional(int),
-                "print": Optional([frozenset, str]),
+                "print": Optional(OneOf((frozenset, str))),
                 "rename": Optional(bool),
-                "write": Optional([frozenset, Sequence(str)]),
+                "write": Optional(OneOf((frozenset, Sequence(str)))),
                 # Targets
-                "paths": Optional(Sequence(OneOf((str, Path, None)))),
+                "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 # Computed
                 "computed": Optional(
                     MappingTemplate(
@@ -103,5 +103,5 @@ def get_config(
     compute_config(config_program)
 
     # Create config
-    ad: AttrDict = config.get(_TEMPLATE)
+    ad = config.get(_TEMPLATE)
     return post_process_set_for_path(ad.comicbox, path, box=box)

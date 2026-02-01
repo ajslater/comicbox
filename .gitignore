@@ -1,32 +1,34 @@
 __pycache__/
 __pypackages__/
-.cache
-.coverage
-.coverage.*
+__snapshots__
+.*cache
 .coverage*
 .dmypy.json
+.docker-token
 .DS_Store
 .eggs/
 .env
+.env-*
 .eslintcache
 .hypothesis/
 .installed.cfg
 .ipynb_checkpoints
-.mypy_cache
 .mypy_cache/
 .nox/
-.picopt_timestamp
+.npm
+.pypi-token
 .pypirc
 .pyre/
 .pytest_cache/
 .Python
 .python-version
 .ropeproject
+.ruff_cache/
 .scrapy
 .spyderproject
 .spyproject
 .tox/
-.venv
+.venv*
 .webassets-cache
 *.cover
 *.egg
@@ -42,47 +44,13 @@ __pypackages__/
 *.spec
 *~
 *$py.class
-/site
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   install all needed dependencies.
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-#  Usually these files are written by a python script from a template
-# Byte-compiled / optimized / DLL files
-# C extensions
-# Celery stuff
-# comicbox
-# Distribution / packaging
-# Django stuff:
-# Environments
-# Flask stuff:
-# Installer logs
-# IPython
-# Jupyter Notebook
-# mkdocs documentation
-# mypy
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow
-# pipenv
-# PyBuilder
-# pyenv
-# PyInstaller
-# Pyre type checker
-# Rope project settings
-# SageMath parsed files
-# Scrapy stuff:
-# Sphinx documentation
-# Spyder project settings
-# Translations
-# Unit test / coverage reports
-#Pipfile.lock
+build
 build/
 celerybeat-schedule
 celerybeat.pid
 coverage.xml
-db.sqlite3
-db.sqlite3-journal
 develop-eggs/
+dist
 dist/
 dmypy.json
 docs/_build/
@@ -94,12 +62,14 @@ ENV/
 htmlcov/
 instance/
 ipython_config.py
+jspm_packages/
 lib/
 lib64/
 local_settings.py
 MANIFEST
 monkeytype.sqlite3
 node_modules
+node_modules/
 nosetests.xml
 parts/
 pip-delete-this-directory.txt
@@ -110,6 +80,7 @@ sdist/
 share/python-wheels/
 target/
 test-results
+TODO.md
 var/
 venv.bak/
 venv/

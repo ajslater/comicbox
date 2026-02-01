@@ -155,8 +155,8 @@ class UniverseSchema(IdentifiedSchema):
 class DateSchema(BaseSubSchema):
     """Date Schema."""
 
-    cover_date = DateField()  # Comet, PDF, Metron
-    store_date = DateField()  # Metron ONLY
+    cover_date = DateField(serialize_to_str=False)  # Comet, PDF, Metron
+    store_date = DateField(serialize_to_str=False)  # Metron ONLY
     year = IntegerField()  # CIX, CBI, CT, Filename, Metron
     month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
@@ -243,7 +243,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     tags = SimpleNamedDictField()  # CBI, CT, Metron
     teams = SimpleNamedDictField()  # CIX, Metron, CT
     universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
-    updated_at = DateTimeField()  # CBI, Metron, PDF
+    updated_at = DateTimeField(serialize_to_iso=False)  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
         schema=VolumeSchema,
         field=IntegerField(minimum=0),

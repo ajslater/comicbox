@@ -44,4 +44,4 @@ def init_logging(loglevel: str = "INFO", logger_=None):
     }
 
     logger.remove()  # Default "sys.stderr" sink is not picklable
-    logger.add(sys.stdout, **kwargs)  # ty: ignore[no-matching-overload]
+    logger.add(sys.stdout, **kwargs)

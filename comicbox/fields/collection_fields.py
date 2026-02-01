@@ -6,6 +6,7 @@ from typing import Any
 
 from glom import glom
 from marshmallow import fields
+from marshmallow.fields import _InternalT
 from marshmallow.utils import is_collection
 from typing_extensions import override
 
@@ -60,6 +61,28 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Override in XmlListField."""
         return value
 
+    def _sort_value(self, value, sort_dict):
+        if is_empty(value):
+            return
+        key = []
+        if self._sort_keys:
+            for key_path in self._sort_keys:
+                sort_value = glom(value, key_path, default=None)
+                sort_value = self.get_tag_value(sort_value)
+                sort_value = "" if sort_value is None else sort_value
+                key.append(sort_value)
+        else:
+            key = (self.get_tag_value(value),)
+        key = tuple(key)
+
+        # combine elements by key
+        if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
+            new_value = old_value.update(value)
+        else:
+            new_value = value
+
+        sort_dict[key] = new_value
+
     def _sorted(self, values) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
@@ -68,27 +91,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         # If dedupe ever needs to be decoupled, add an index to the key.
         sort_dict = {}
         for value in values:
-            if is_empty(value):
-                continue
-            key = []
-            if self._sort_keys:
-                for key_path in self._sort_keys:
-                    sort_value = glom(value, key_path, default=None)
-                    sort_value = self.get_tag_value(sort_value)
-                    sort_value = "" if sort_value is None else sort_value
-                    key.append(sort_value)
-            else:
-                key = (self.get_tag_value(value),)
-            key = tuple(key)
-
-            # combine elements by key
-            if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
-                new_value = old_value.update(value)
-            else:
-                new_value = value
-
-            sort_dict[key] = new_value
-
+            self._sort_value(value, sort_dict)
         return [item[1] for item in sorted(sort_dict.items())]
 
     @override
@@ -125,12 +128,12 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         self._sort = sort
         self._allow_empty_keys = allow_empty_keys
         self._allow_empty_values = allow_empty_values
-        super().__init__(*args, keys=keys, **kwargs)  # ty: ignore[parameter-already-assigned]
+        super().__init__(*args, keys=keys, **kwargs)
 
     @override
-    def _deserialize(self, data, *args, **kwargs):
+    def _deserialize(self, *args, **kwargs):
         """Apply flag conditions."""
-        result_dict = super()._deserialize(data, *args, **kwargs)
+        result_dict = super()._deserialize(*args, **kwargs)
         result_dict.pop(None, None)
         if not self._allow_empty_keys:
             result_dict.pop("", None)
@@ -141,8 +144,8 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         return result_dict
 
     @override
-    def _serialize(self, data, *args, **kwargs):
-        result_dict = super()._serialize(data, *args, **kwargs)
+    def _serialize(self, *args, **kwargs):
+        result_dict = super()._serialize(*args, **kwargs)
         if result_dict is None:
             return None
         result_dict.pop(None, None)
@@ -184,21 +187,21 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         return [str(item) for item in seq if not is_empty(item)]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> list[str] | None:  # pyright:ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, *args, **kwargs) -> list[_InternalT | None]:
         """Deserialize CSV encodings of lists."""
         if not value:
             return []
         # CSV encoding.
         if isinstance(value, str) and (value := StringField().deserialize(value)):
-            value = self._split_regex.split(value)  # type: ignore[reportArgumentType]
+            value = self._split_regex.split(value)
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
-            return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
+            return super()._deserialize(value, *args, **kwargs)
         return []
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> list[str] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride]
+    def _serialize(self, value, *args, **kwargs) -> list[_InternalT] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if not value:
             return None
         value = self._seq_to_str_seq(value)
@@ -215,7 +218,7 @@ class StringSetField(StringListField):
     """A set of non-empty strings."""
 
     @override
-    def _deserialize(self, *args, **kwargs) -> set[str] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, *args, **kwargs) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:
@@ -255,7 +258,7 @@ class LegacyNestedMDStringSetField(StringSetField):
         )
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):  # type: ignore[reportIncompatibleMethodOverride]
+    def _deserialize(self, value, attr, data, *args, **kwargs):
         if self.is_nested_metadata(value):
             return StringField().deserialize(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)
