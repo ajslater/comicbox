@@ -1,7 +1,6 @@
 """Test CLI metadata parsing."""
 
 from argparse import Namespace
-from io import StringIO
 from types import MappingProxyType
 
 from comicbox.config import get_config
@@ -12,7 +11,6 @@ from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import (
     TEST_DATETIME,
-    TEST_DTTM_STR,
     TEST_METADATA_DIR,
     TEST_READ_NOTES,
 )
@@ -144,20 +142,14 @@ READ_YAML_DICT = MappingProxyType(
             "series": {"name": "empty"},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
-            "updated_at": TEST_DTTM_STR,
+            "updated_at": TEST_DATETIME,
         }
     }
 )
 WRITE_YAML_DICT = create_write_dict(READ_YAML_DICT, ComicboxYamlSchema, "notes")
 
-yaml = YamlRenderModule._get_write_yaml()  # noqa: SLF001
-with StringIO() as buf:
-    yaml.dump(dict(READ_YAML_DICT), buf)
-    READ_YAML_STR = buf.getvalue()
-with StringIO() as buf:
-    yaml.dump(dict(WRITE_YAML_DICT), buf)
-    WRITE_YAML_STR = buf.getvalue()
-
+WRITE_YAML_STR = YamlRenderModule.dumps(WRITE_YAML_DICT)
+READ_YAML_STR = YamlRenderModule.dumps(READ_YAML_DICT)
 
 YAML_TESTER = TestParser(
     MetadataFormats.COMICBOX_YAML,

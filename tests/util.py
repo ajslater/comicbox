@@ -576,16 +576,20 @@ def create_write_dict(read_dict, schema_class, notes_tag, notes=TEST_WRITE_NOTES
     return MappingProxyType(write_dict)
 
 
-def load_cli_and_compare_dicts(path_a, path_b):
+def load_cli_and_compare_dicts(
+    path_a, path_b, *, ignore_updated_at: bool = True, ignore_notes: bool = True
+):
     """Compare cli strings all on one line."""
     yaml = YAML()
     with path_a.open("r") as file_a, path_b.open("r") as file_b:
         dict_a = yaml.load(file_a)
         dict_b = yaml.load(file_b)
-    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
-    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
-    dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
-    dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+    if ignore_updated_at:
+        dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+        dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(UPDATED_AT_KEY, None)
+    if ignore_notes:
+        dict_a[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
+        dict_b[ComicboxSchemaMixin.ROOT_TAG].pop(NOTES_KEY, None)
 
     assert_diff(dict_a, dict_b)
 

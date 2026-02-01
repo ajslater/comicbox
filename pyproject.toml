@@ -12,7 +12,7 @@ dependencies = [
   "ansicolors~=1.1.8",
   "bidict~=0.23",
   "case-converter~=1.2",
-  "confuse~=2.1",
+  "confuse==2.1.0",
   "comicfn2dict<1.0.0,>=0.2.4",
   "deepdiff~=8.2",
   "glom~=25.12",

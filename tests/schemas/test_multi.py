@@ -5,14 +5,13 @@ from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
 
-import simplejson as json
-
 from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
+from comicbox.schemas.json_schemas import JsonRenderModule
 from tests.const import (
     CBZ_MULTI_FN,
     TEST_DATETIME,
@@ -143,7 +142,6 @@ READ_METADATA = MappingProxyType(
     }
 )
 WRITE_METADATA = create_write_metadata(READ_METADATA)
-TEST_LAST_MODIFIED = "1970-1-1"
 READ_MULTI_DICT = MappingProxyType(
     {
         "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
@@ -262,8 +260,8 @@ READ_MULTI_DICT = MappingProxyType(
     }
 )
 WRITE_MULTI_DICT = create_write_dict(READ_MULTI_DICT, ComicboxJsonSchema, "notes")
-READ_MULTI_STR = json.dumps(dict(READ_MULTI_DICT), sort_keys=True, indent=2)
-WRITE_MULTI_STR = json.dumps(dict(WRITE_MULTI_DICT), sort_keys=True, indent=2)
+READ_MULTI_STR = JsonRenderModule.dumps(READ_MULTI_DICT)
+WRITE_MULTI_STR = JsonRenderModule.dumps(WRITE_MULTI_DICT)
 
 MULTI_TESTER = TestParser(
     MetadataFormats.COMICBOX_JSON,
