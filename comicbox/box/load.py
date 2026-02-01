@@ -3,7 +3,6 @@
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from json import JSONDecodeError
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
@@ -11,6 +10,7 @@ from types import MappingProxyType
 from glom import Assign, glom
 from loguru import logger
 from ruamel.yaml import YAML
+from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import SourceData
 from comicbox.box.sources import ComicboxSources
