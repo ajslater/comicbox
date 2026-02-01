@@ -6,13 +6,12 @@ from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
 
-import simplejson as json
-
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
+from comicbox.schemas.json_schemas import JsonRenderModule
 from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
@@ -183,13 +182,10 @@ READ_COMICBOX_DICT = MappingProxyType(
         "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
     }
 )
+
 WRITE_COMICBOX_DICT = create_write_dict(READ_COMICBOX_DICT, ComicboxJsonSchema, "notes")
-READ_COMICBOX_STR = json.dumps(
-    dict(READ_COMICBOX_DICT.items()), sort_keys=True, indent=2
-)
-WRITE_COMICBOX_STR = json.dumps(
-    dict(WRITE_COMICBOX_DICT.items()), sort_keys=True, indent=2
-)
+READ_COMICBOX_STR = JsonRenderModule.dumps(READ_COMICBOX_DICT, sort_keys=True)
+WRITE_COMICBOX_STR = JsonRenderModule.dumps(WRITE_COMICBOX_DICT, sort_keys=True)
 
 COMICBOX_TESTER = TestParser(
     MetadataFormats.COMICBOX_JSON,
