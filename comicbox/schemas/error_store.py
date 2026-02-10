@@ -42,7 +42,7 @@ class ClearingErrorStore(ErrorStore):
         self.errors = error_store.errors
         error_store.errors = {}
         self._data = data
-        self._ignore_errors = ignore_errors if ignore_errors else frozenset()
+        self._ignore_errors = ignore_errors or frozenset()
         self._clear_errors()
 
     @override

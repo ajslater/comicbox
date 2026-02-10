@@ -47,7 +47,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             logger.info(f"Not extracting {len(pagenames)} pages")
             return None
 
-        path = path if path else self._config.dest_path
+        path = path or self._config.dest_path
         return Path(path)
 
     def _extract_pagenames_to_dir(self, pagenames, path=None):

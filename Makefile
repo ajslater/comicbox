@@ -85,7 +85,7 @@ typecheck:
 ## Static typecheck with ty
 ## @category Lint
 ty:
-	uv run --group lint ty check .
+	uv run --group lint --group test ty check .
 
 .PHONY: lint
 ## Lint front and back end

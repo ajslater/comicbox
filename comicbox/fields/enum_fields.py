@@ -74,13 +74,13 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
     @override
     def _deserialize(self, value, attr, data, *args, **kwargs):
         enum = self.get_enum(value)
-        enum = enum if enum else value
+        enum = enum or value
         return super()._deserialize(enum, attr, data, *args, **kwargs)
 
     @override
     def _serialize(self, value, *args, **kwargs):
         enum = self.get_enum(value)
-        enum = enum if enum else value
+        enum = enum or value
         return super()._serialize(enum, *args, **kwargs)
 
 
