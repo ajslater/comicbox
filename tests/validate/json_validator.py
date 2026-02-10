@@ -22,7 +22,7 @@ def _retrieve_from_filesystem(uri: str):
     return Resource.from_contents(contents)
 
 
-_FILESYSTEM_RESOLVING_REGISTRY = Registry(retrieve=_retrieve_from_filesystem)  # ty: ignore[unknown-argument]
+_FILESYSTEM_RESOLVING_REGISTRY = Registry(retrieve=_retrieve_from_filesystem)
 
 
 class JsonValidator(BaseValidator):
