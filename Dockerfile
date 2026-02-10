@@ -1,5 +1,5 @@
 # hadolint ignore=DL3007
-FROM nikolaik/python-nodejs:python3.13-nodejs24
+FROM nikolaik/python-nodejs:python3.14-nodejs24
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
