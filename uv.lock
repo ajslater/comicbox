@@ -584,6 +584,7 @@ dependencies = [
     { name = "glom" },
     { name = "loguru" },
     { name = "marshmallow" },
+    { name = "marshmallow-jsonschema-2" },
     { name = "marshmallow-union" },
     { name = "py7zr" },
     { name = "pycountry" },
@@ -649,6 +650,7 @@ requires-dist = [
     { name = "glom", specifier = "~=25.12" },
     { name = "loguru", specifier = "~=0.7" },
     { name = "marshmallow", specifier = "~=4.2.0" },
+    { name = "marshmallow-jsonschema-2", specifier = ">=0.1.0" },
     { name = "marshmallow-union", specifier = ">=0.1.15.post1" },
     { name = "py7zr", specifier = "~=1.1.0" },
     { name = "pycountry", specifier = "~=24.6" },
@@ -1512,6 +1514,18 @@ wheels = [
 ]
 
 [[package]]
+name = "marshmallow-jsonschema-2"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "marshmallow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/90/29bc200f8caf1c890c5424c051ef760830886f1ca76e5161c65f418712f5/marshmallow_jsonschema_2-0.1.0.tar.gz", hash = "sha256:2905e560fbbecbb2deed36a5daf6ff66de2e428375cc4a8104a442fc3bfda3c3", size = 18395, upload-time = "2026-02-11T08:12:19.579Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/71/06ebdb422fea80ae5dedc0896b9e59ccc16c9e9c55cab1cea0115adc3f96/marshmallow_jsonschema_2-0.1.0-py3-none-any.whl", hash = "sha256:b1b16b68e478f52b1b373c81927559a000b355ed68a866748a2266fb4933cddf", size = 12803, upload-time = "2026-02-11T08:12:17.938Z" },
+]
+
+[[package]]
 name = "marshmallow-union"
 version = "0.1.15.post1"
 source = { registry = "https://pypi.org/simple" }
@@ -1992,7 +2006,9 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/19/fde6ea4712a904b65e8f41124a0e4233879b87a770fe6a8ce857964de6d5/pymupdf-1.27.1-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:bee9f95512f9556dbf2cacfd1413c61b29a55baa07fa7f8fc83d221d8419888a", size = 23986707, upload-time = "2026-02-11T15:03:24.025Z" },
     { url = "https://files.pythonhosted.org/packages/75/c2/070dff91ad3f1bc16fd6c6ceff23495601fcce4c92d28be534417596418a/pymupdf-1.27.1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:3de95a0889395b0966fafd11b94980b7543a816e89dd1c218597a08543ac3415", size = 23263493, upload-time = "2026-02-11T15:03:45.528Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/db/937377f4b3e0fbf6273c17436a49f7db17df1a46b1be9e26653b6fafc0e1/pymupdf-1.27.1-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:2c9d9353b840040cbc724341f4095fb7e2cc1a12a9147d0ec1a0a79f5d773147", size = 24317651, upload-time = "2026-02-11T22:33:38.967Z" },
     { url = "https://files.pythonhosted.org/packages/72/d5/c701cf2d0cdd6e5d6bca3ca9188d7f5d7ce3ae67dd1368d658cd4bae2707/pymupdf-1.27.1-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:aeaed76e72cbc061149a825ab0811c5f4752970c56591c2938c5042ec06b26e1", size = 24945742, upload-time = "2026-02-11T15:04:06.21Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/29/690202b38b93cf77b73a29c25a63a2b6f3fcb36b1f75006e50b8dee7c108/pymupdf-1.27.1-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4f1837554134fb45d390a44de8844b2ca9b6c901c82ccc90b340e3b7f3b126ca", size = 25167965, upload-time = "2026-02-11T22:36:35.478Z" },
     { url = "https://files.pythonhosted.org/packages/3e/99/fe4a7752990bf65277718fffbead4478de9afd1c7288d7a6d643f79a6fa7/pymupdf-1.27.1-cp310-abi3-win_amd64.whl", hash = "sha256:4b6268dff3a9d713034eba5c2ffce0da37c62443578941ac5df433adcde57b2f", size = 19236703, upload-time = "2026-02-11T15:04:19.607Z" },
 ]
 

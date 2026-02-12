@@ -17,7 +17,8 @@
       "type": "integer"
     },
     "volume_count": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

@@ -31,6 +31,7 @@ dependencies = [
   "urnparse~=0.2",
   "xmltodict~=1.0",
   "zipremove~=0.1",
+  "marshmallow-jsonschema-2>=0.1.0",
 ]
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [

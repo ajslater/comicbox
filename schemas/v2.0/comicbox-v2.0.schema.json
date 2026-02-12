@@ -25,16 +25,15 @@
         },
         "arcs": {
           "type": "object",
-          "patternProperties": {
-            ".+": {
-              "type": "object",
-              "properties": {
-                "identifiers": {
-                  "$ref": "identifiers.schema.json"
-                },
-                "number": {
-                  "type": "integer"
-                }
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "identifiers": {
+                "type": "object",
+                "$ref": "identifiers.schema.json"
+              },
+              "number": {
+                "type": "integer"
               }
             }
           }
@@ -46,32 +45,29 @@
         "characters": {
           "$ref": "identified-objects.schema.json"
         },
-        "credits": {
-          "$ref": "credits.schema.json"
-        },
-        "country": {
+        "collection_title": {
           "type": "string"
         },
-        "credit_primaries": {
-          "type": "object",
-          "patternProperties": {
-            ".+": {
-              "properties": {
-                "role": {
-                  "$ref": "identified-object.schema.json"
-                }
-              }
-            }
-          }
-        },
-        "collection_title": {
+        "country": {
           "type": "string"
         },
         "cover_image": {
           "type": "string"
         },
+        "credit_primaries": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "credits": {
+          "additionalProperties": {
+            "$ref": "credit.schema.json"
+          }
+        },
         "critical_rating": {
-          "type": "number"
+          "type": "number",
+          "format": "decimal"
         },
         "date": {
           "$ref": "date.schema.json"
@@ -79,14 +75,8 @@
         "ext": {
           "type": "string"
         },
-        "original_format": {
-          "type": "string"
-        },
         "genres": {
           "$ref": "identified-objects.schema.json"
-        },
-        "identifiers": {
-          "$ref": "identifiers.schema.json"
         },
         "identifier_primary_source": {
           "type": "object",
@@ -100,6 +90,9 @@
             }
           },
           "required": ["source"]
+        },
+        "identifiers": {
+          "$ref": "identifiers.schema.json"
         },
         "imprint": {
           "$ref": "named-identified-object.schema.json"
@@ -121,12 +114,21 @@
         "language": {
           "type": "string"
         },
+        "locations": {
+          "$ref": "identified-objects.schema.json"
+        },
         "manga": {
           "type": "string",
           "enum": ["Yes", "YesAndRightToLeft", "No"]
         },
         "monochrome": {
           "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "original_format": {
+          "type": "string"
         },
         "page_count": {
           "type": "integer",
@@ -140,27 +142,29 @@
             }
           }
         },
-        "publisher": {
-          "$ref": "named-identified-object.schema.json"
-        },
         "prices": {
           "type": "object",
-          "patternProperties": {
-            "[A-Za-z]*": {
-              "type": "number",
-              "minimum": 0
-            }
+          "additionalProperties": {
+            "type": "number",
+            "format": "decimal",
+            "minimum": 0.0
           }
         },
         "protagonist": {
           "type": "string"
+        },
+        "publisher": {
+          "$ref": "identified-object.schema.json"
         },
         "reading_direction": {
           "type": "string",
           "enum": ["rtl", "ltr", "ttb", "btt"]
         },
         "remainder": {
-          "type": "string"
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "reprints": {
           "type": "array",
@@ -189,7 +193,7 @@
         "stories": {
           "type": "object",
           "values": {
-            "$ref": "identified-object.schema.json"
+            "$ref": "identified-objects.schema.json"
           }
         },
         "summary": {
@@ -204,19 +208,14 @@
         "teams": {
           "$ref": "identified-objects.schema.json"
         },
-        "title": {
-          "type": "string"
-        },
         "universes": {
           "type": "object",
-          "patternProperties": {
-            ".+": {
-              "designation": {
-                "type": "string"
-              },
-              "identifiers": {
-                "$ref": "identifiers.schema.json"
-              }
+          "additionalProperties": {
+            "designation": {
+              "type": "string"
+            },
+            "identifiers": {
+              "$ref": "identifiers.schema.json"
             }
           }
         },

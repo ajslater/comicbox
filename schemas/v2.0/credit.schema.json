@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/credit.schema.json",
+  "title": "Comicbox Credit",
+  "type": "object",
+  "properties": {
+    "$ref": "identified-object.schema.json",
+    "properties": {
+      "roles": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "identified-object.schema.json"
+        }
+      }
+    }
+  }
+}

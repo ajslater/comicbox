@@ -3,19 +3,17 @@
   "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/identifiers.schema.json",
   "title": "Comicbox Identifier",
   "type": "object",
-  "patternProperties": {
-    ".+": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string",
-          "format": "uri"
-        }
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "type": "string"
       },
-      "required": ["key"]
-    }
+      "url": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "required": ["key"]
   }
 }

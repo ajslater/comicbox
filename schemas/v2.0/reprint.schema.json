@@ -4,6 +4,12 @@
   "title": "Comicbox Reprint",
   "type": "object",
   "properties": {
+    "identifiers": {
+      "$ref": "identifiers.schema.json"
+    },
+    "issue": {
+      "type": "string"
+    },
     "language": {
       "type": "string"
     },
@@ -12,9 +18,6 @@
     },
     "volume": {
       "$ref": "volume.schema.json"
-    },
-    "issue": {
-      "type": "string"
     }
   }
 }
