@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.1.2
+
+- Fix comicbox jsonschema.
+
 ## v2.1.1
 
 - Pin confuse config library at 2.1.0 due to typing issues with 2.2.0
