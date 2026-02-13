@@ -121,7 +121,7 @@ class ComicboxSources(ComicboxArchive):
             archive = self._get_archive()
             if not archive or not self._archive_is_pdf:
                 return source_data_list
-            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[possibly-missing-attribute]
+            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
                 md = MappingProxyType({MuPDFSchema.ROOT_TAG: md})
                 source_data_list = [
                     SourceData(md, fmt=MetadataFormats.PDF, from_archive=True)

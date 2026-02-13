@@ -179,8 +179,8 @@ READ_CIX_DICT = MappingProxyType(
     }
 )
 WRITE_CIX_DICT = create_write_dict(READ_CIX_DICT, ComicInfoSchema, "Notes")
-READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
-WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
+READ_CIX_STR = xmltodict.unparse(READ_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue], # ty: ignore[no-matching-overload]
+WRITE_CIX_STR = xmltodict.unparse(WRITE_CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue], # ty: ignore[no-matching-overload]
 
 CIX_TESTER = TestParser(
     MetadataFormats.COMIC_INFO,
@@ -199,8 +199,8 @@ CIX_TESTER = TestParser(
 
 def _create_file_read_dict():
     x = deepcopy(dict(READ_METADATA))
-    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue]
-    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue]
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue], # ty: ignore[invalid-assignment]
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue],# ty: ignore[invalid-assignment]
     return MappingProxyType(x)
 
 

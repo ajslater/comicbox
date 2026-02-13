@@ -23,7 +23,7 @@ from comicbox.run import Runner
 
 _TABLE_ARGS = MappingProxyType(
     {
-        "box": box.HEAVY,
+        "box": str(box.HEAVY),
         "border_style": "bright_black",
         "row_styles": ("", "on grey7"),
         "title_justify": "left",
@@ -119,7 +119,7 @@ class PageRangeAction(Action):
 
 
 def _get_help_print_phases_table():
-    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Phase", style="green")
     table.add_column("Description")
     table.add_column("Shortcut", style="cyan")
@@ -136,7 +136,7 @@ Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented
 
 
 def _get_help_format_table():
-    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Format")
     table.add_column("Keys", style="green")
     for fmt in reversed(MetadataFormats):
