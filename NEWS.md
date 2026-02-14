@@ -3,6 +3,7 @@
 ## v2.1.2
 
 - Fix comicbox jsonschema.
+- Many more type annotations. Include py.typed sentinel file.
 
 ## v2.1.1
 

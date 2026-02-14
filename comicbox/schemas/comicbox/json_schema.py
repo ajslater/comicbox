@@ -1,6 +1,7 @@
 """Json Schema."""
 
 from math import ceil, log10
+from typing import Any
 
 from marshmallow.fields import Constant, Nested
 from typing_extensions import override
@@ -45,7 +46,7 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     )
 
     @override
-    def dump(self, obj: dict, *args, **kwargs):
+    def dump(self, obj: dict, *args, **kwargs) -> dict[str, Any]:
         """Inject zero fill for page string numbers."""
         if (
             obj
@@ -56,4 +57,4 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
             comicbox_field = self.fields[self.ROOT_TAG].schema  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
             pages_field = comicbox_field.fields[PAGES_KEY]
             pages_field.key_field.ZERO_FILL = zero_fill
-        return super().dump(obj, *args, **kwargs)
+        return super().dump(obj, *args, **kwargs)  # pyright: ignore[reportReturnType]

@@ -51,7 +51,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
                 final_exclude.add(key)
         return final_exclude
 
-    def __init__(self, *args, exclude: StrSequenceOrSet = (), **kwargs):
+    def __init__(self, *args, exclude: StrSequenceOrSet = (), **kwargs) -> None:
         """Initialize with exclude keys."""
         exclude = self._create_exclude(exclude)
         super().__init__(*args, exclude=exclude, **kwargs)
@@ -68,7 +68,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         return self.pre_load_validate(data)
 
     @classmethod
-    def clean_empties(cls, data: dict):
+    def clean_empties(cls, data: dict) -> dict:
         """Clean empties from loaded data."""
         return {k: v for k, v in data.items() if not is_empty(v)}
 
@@ -94,7 +94,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         return result
 
     @classmethod
-    def sort_dump(cls, data: dict):
+    def sort_dump(cls, data: dict) -> dict:
         """Sort dump by key."""
         if cls.TAG_ORDER:
             data = cls._sort_tag_by_order(data)
@@ -103,17 +103,17 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         return data
 
     @post_dump
-    def post_dump(self, data: dict, **_kwargs):
+    def post_dump(self, data: dict, **_kwargs) -> dict:
         """Singular post_dump hook."""
         return self.sort_dump(data)
 
-    def loadf(self, path):
+    def loadf(self, path) -> list | None | dict:
         """Read the string from the designated file."""
         with Path(path).open("r") as f:
             str_data = f.read()
         return self.loads(str_data)
 
-    def dumpf(self, data, path, **kwargs):
+    def dumpf(self, data, path, **kwargs) -> None:
         """Write the string in the designated file."""
         str_data = self.dumps(data, **kwargs) + "\n"
         with Path(path).open("w") as f:
@@ -137,7 +137,7 @@ class BaseSchema(BaseSubSchema, ABC):
 
     @override
     @classmethod
-    def pre_load_validate(cls, data):
+    def pre_load_validate(cls, data) -> dict:
         """Validate the root tag so we don't confuse it with other JSON."""
         if not data:
             reason = "No data."

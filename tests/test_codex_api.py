@@ -337,8 +337,7 @@ def test_random_access_page(ft):
         for index in INDEXES:
             page = car.get_page_by_index(index)
             page_path = files[index]
-            with page_path.open("rb") as f:
-                disk_page = f.read()
+            disk_page = page_path.read_bytes()
             # with Path( "/tmp/" / Path(page_path.name) ).open("wb") as f:
             #   f.write(page) # noqa: ERA001
             if disk_page != page:

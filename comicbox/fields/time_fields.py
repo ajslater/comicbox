@@ -14,7 +14,7 @@ from comicbox.fields.fields import StringField, TrapExceptionsMeta
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
-    def __init__(self, *args, serialize_to_str=True, **kwargs):
+    def __init__(self, *args, serialize_to_str=True, **kwargs) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_str = serialize_to_str
@@ -46,7 +46,7 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
 class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
 
-    def __init__(self, *args, serialize_to_iso=True, **kwargs):
+    def __init__(self, *args, serialize_to_iso=True, **kwargs) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_iso = serialize_to_iso

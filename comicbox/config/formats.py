@@ -6,7 +6,7 @@ from loguru import logger
 from comicbox.formats import MetadataFormats
 
 
-def _get_formats_from_keys(keys, ignore_keys):
+def _get_formats_from_keys(keys, ignore_keys) -> tuple:
     """Get sources from keys."""
     fmts = []
     for fmt in MetadataFormats:
@@ -18,7 +18,7 @@ def _get_formats_from_keys(keys, ignore_keys):
     return fmts, keys
 
 
-def _get_config_formats_from_keys(config, key):
+def _get_config_formats_from_keys(config, key) -> frozenset:
     """Return a set of schemas from a sequence of config keys."""
     # Keys to set
     keys = config[key] or ()
@@ -39,7 +39,7 @@ def _get_config_formats_from_keys(config, key):
     return frozenset(fmts)
 
 
-def transform_keys_to_formats(config: Subview):
+def transform_keys_to_formats(config: Subview) -> None:
     """Transform schema config keys to format enums."""
     if config["delete_all_tags"].get(bool):
         config["read"].set(frozenset())

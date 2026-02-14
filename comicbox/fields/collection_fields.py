@@ -6,7 +6,6 @@ from typing import Any
 
 from glom import glom
 from marshmallow import fields
-from marshmallow.fields import _InternalT
 from marshmallow.utils import is_collection
 from typing_extensions import override
 
@@ -35,7 +34,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         sort_keys: tuple[str, ...] | list[str] = (),
         allow_empty: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         """Add instance variables."""
         self._sort = sort
         # A tuple of dot delimited keys becomes a tuple of tuples.
@@ -44,7 +43,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
+    def _deserialize(self, value, *args, **kwargs) -> list:
         """Remove empty values."""
         if value is None:
             return []
@@ -61,7 +60,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Override in XmlListField."""
         return value
 
-    def _sort_value(self, value, sort_dict):
+    def _sort_value(self, value, sort_dict) -> None:
         if is_empty(value):
             return
         key = []
@@ -95,7 +94,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         return [item[1] for item in sorted(sort_dict.items())]
 
     @override
-    def _serialize(self, value: Any, *args, **kwargs):
+    def _serialize(self, value: Any, *args, **kwargs) -> list | None:
         if value is None:
             return []
         values = value if isinstance(value, list) else [value]
@@ -122,7 +121,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         allow_empty_keys=False,
         allow_empty_values=False,
         **kwargs,
-    ):
+    ) -> None:
         """Set flags."""
         self._case_insensitive = case_insensitive
         self._sort = sort
@@ -131,7 +130,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         super().__init__(*args, keys=keys, **kwargs)
 
     @override
-    def _deserialize(self, *args, **kwargs):
+    def _deserialize(self, *args, **kwargs) -> dict:
         """Apply flag conditions."""
         result_dict = super()._deserialize(*args, **kwargs)
         result_dict.pop(None, None)
@@ -144,7 +143,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         return result_dict
 
     @override
-    def _serialize(self, *args, **kwargs):
+    def _serialize(self, *args, **kwargs) -> dict | None:
         result_dict = super()._serialize(*args, **kwargs)
         if result_dict is None:
             return None
@@ -168,7 +167,9 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     DEFAULT_SEPARATORS: str = ",;"
     DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(rf"[{DEFAULT_SEPARATORS}]")
 
-    def __init__(self, *args, as_string=False, sort=True, separators="", **kwargs):
+    def __init__(
+        self, *args, as_string=False, sort=True, separators="", **kwargs
+    ) -> None:
         """Initialize as a string list."""
         # The first character in separators is used to join on serialize
         super().__init__(self.FIELD, *args, **kwargs)
@@ -187,21 +188,22 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         return [str(item) for item in seq if not is_empty(item)]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> list[_InternalT | None]:
+    def _deserialize(self, value, *args, **kwargs) -> list[str | None]:
         """Deserialize CSV encodings of lists."""
+        result = []
         if not value:
-            return []
+            return result
         # CSV encoding.
         if isinstance(value, str) and (value := StringField().deserialize(value)):
             value = self._split_regex.split(value)
         if value and is_collection(value):
             # Already deserialized.
             value = self._seq_to_str_seq(value)
-            return super()._deserialize(value, *args, **kwargs)
-        return []
+            result = super()._deserialize(value, *args, **kwargs)
+        return result
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> list[_InternalT] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self, value, *args, **kwargs) -> list[str | None] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if not value:
             return None
         value = self._seq_to_str_seq(value)
@@ -226,10 +228,11 @@ class StringSetField(StringListField):
         return set(str_list)
 
     @override
-    def _serialize(self, value, *args, **kwargs):
+    def _serialize(self, value, *args, **kwargs) -> list[str | None] | str | None:
         if not value:
             return None
         value = set(value)
+        # could force this into a set as well, but may have implications for format serialization
         return super()._serialize(value, *args, **kwargs)
 
 
@@ -238,7 +241,7 @@ class IntegerListField(StringListField):
 
     FIELD = IntegerField
 
-    def __init__(self, *args, sort: bool = False, **kwargs):
+    def __init__(self, *args, sort: bool = False, **kwargs) -> None:
         """Use not sorting as the default."""
         super().__init__(*args, sort=sort, **kwargs)
 
@@ -249,16 +252,18 @@ class LegacyNestedMDStringSetField(StringSetField):
     JSON_XML_START_CHARS = frozenset({"<", "{"})
 
     @classmethod
-    def is_nested_metadata(cls, value):
+    def is_nested_metadata(cls, value) -> bool:
         """Return if this looks like a json or xml string."""
         return (
             isinstance(value, str)
-            and (stripped_value := value.lstrip())
+            and bool(stripped_value := value.lstrip())
             and (stripped_value[0] in cls.JSON_XML_START_CHARS)
         )
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        self, value, attr, data, *args, **kwargs
+    ) -> set[str | None] | list[str | None] | str | None:
         if self.is_nested_metadata(value):
             return StringField().deserialize(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)

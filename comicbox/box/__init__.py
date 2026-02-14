@@ -29,7 +29,7 @@ class Comicbox(
         }
     )
 
-    def _run_complex_actions(self):
+    def _run_complex_actions(self) -> bool:
         noop = True
         if (self._config.index_from, self._config.index_to) != (None, None):
             self.extract_pages_config()
@@ -39,7 +39,7 @@ class Comicbox(
             noop = False
         return noop
 
-    def run(self):
+    def run(self) -> None:
         """Perform archive actions."""
         noop = True
         for attr, method in self._CONFIG_ACTIONS.items():

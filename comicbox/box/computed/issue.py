@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
@@ -25,7 +26,9 @@ _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
 class ComicboxComputedIssue(ComicboxComputedStamp):
     """Comicbox Computed Issue tags."""
 
-    def _parse_issue_match(self, match, old_issue_number, old_issue_suffix, issue):
+    def _parse_issue_match(
+        self, match, old_issue_number, old_issue_suffix, issue
+    ) -> None:
         """Use regex match to break the issue into parts."""
         issue_number, issue_suffix = match.groups()
         if is_empty(old_issue_number) and not is_empty(issue_number):
@@ -41,7 +44,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 issue_suffix, ISSUE_SUFFIX_KEY, issue
             )
 
-    def _get_computed_from_issue(self, sub_data, **_kwargs):
+    def _get_computed_from_issue(self, sub_data, **_kwargs) -> dict[str, Any] | None:
         """Break parsed issue up into parts."""
         if not sub_data:
             return None
@@ -66,7 +69,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
 
         return {ISSUE_KEY: issue}
 
-    def _get_computed_issue(self, sub_data, **_kwargs):
+    def _get_computed_issue(self, sub_data, **_kwargs) -> dict[str, Any] | None:
         """Build issue from parts before dump if issue doesn't already exist."""
         if not sub_data or ISSUE_KEY in self._config.delete_keys:
             return None

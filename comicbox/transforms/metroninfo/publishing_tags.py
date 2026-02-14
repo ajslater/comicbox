@@ -70,7 +70,7 @@ SERIES_KEY_MAP_FROM = MappingProxyType(
 )
 
 
-def _publisher_to_cb(values):
+def _publisher_to_cb(values) -> dict | None:
     metron_publisher = values.get(PUBLISHER_TAG)
     if not metron_publisher:
         return None
@@ -84,7 +84,7 @@ def _publisher_to_cb(values):
     return comicbox_publisher
 
 
-def _imprint_from_cb(values, primary_id_source):
+def _imprint_from_cb(values, primary_id_source) -> dict | None:
     comicbox_imprint = values.get(IMPRINT_KEY)
     if not comicbox_imprint:
         return None
@@ -95,7 +95,7 @@ def _imprint_from_cb(values, primary_id_source):
     return metron_imprint
 
 
-def _publisher_from_cb(values):
+def _publisher_from_cb(values) -> dict:
     metron_publisher = {}
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     if comicbox_publisher := values.get(PUBLISHER_KEY):
@@ -120,7 +120,7 @@ METRON_PUBLISHER_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _imprint_to_cb(values):
+def _imprint_to_cb(values) -> dict | None:
     metron_imprint = values.get(IMPRINT_TAGPATH)
     if not metron_imprint:
         return None
@@ -143,7 +143,7 @@ METRON_SERIES_TRANSFORM_TO_CB = MetaSpec(key_map=SERIES_KEY_MAP_TO)
 METRON_SERIES_TRANSFORM_FROM_CB = MetaSpec(key_map=SERIES_KEY_MAP_FROM)
 
 
-def _series_id_to_cb(values):
+def _series_id_to_cb(values) -> None:
     metron_series = values.get(SERIES_TAG)
     if not metron_series:
         return None
@@ -155,7 +155,7 @@ def _series_id_to_cb(values):
     return comicbox_series.get(IDENTIFIERS_KEY)
 
 
-def _series_id_from_cb(values):
+def _series_id_from_cb(values) -> None:
     comicbox_series = values.get(SERIES_KEY)
     if not comicbox_series:
         return None
@@ -177,7 +177,7 @@ METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _alternative_names_from_cb(comicbox_reprints):
+def _alternative_names_from_cb(comicbox_reprints) -> list | None:
     alt_names = []
     if not comicbox_reprints:
         return alt_names
@@ -201,7 +201,7 @@ METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _volume_to_cb(values):
+def _volume_to_cb(values) -> dict | None:
     volume = {}
     metron_volume = values.get(VOLUME_TAGPATH)
     if metron_volume is not None:
@@ -227,7 +227,7 @@ METRON_VOLUME_TRANSFORM_TO_CB = MetaSpec(
 )
 
 
-def _manga_volume_from_cb(comicbox_volume):
+def _manga_volume_from_cb(comicbox_volume) -> str:
     parts = []
     from_vol = comicbox_volume.get(NUMBER_KEY)
     if from_vol is not None:

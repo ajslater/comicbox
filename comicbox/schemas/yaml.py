@@ -45,7 +45,7 @@ class YamlRenderModule(BaseRenderModule):
         return dumper.represent_str(data.value)
 
     @classmethod
-    def _config_yaml(cls, yaml: YAML):
+    def _config_yaml(cls, yaml: YAML) -> None:
         yaml.sort_base_mapping_type_on_output = True  # pyright: ignore[reportAttributeAccessIssue]
         yaml.representer.add_representer(Decimal, cls._decimal_representer)
         yaml.representer.add_representer(type(None), cls._none_representer)
@@ -53,7 +53,7 @@ class YamlRenderModule(BaseRenderModule):
         yaml.representer.add_multi_representer(Enum, cls._enum_representer)
 
     @classmethod
-    def _get_write_yaml_dfs(cls):
+    def _get_write_yaml_dfs(cls) -> YAML:
         """Get write yaml with special formatting in default flow style."""
         yaml = YAML()
         yaml.default_flow_style = True
@@ -61,7 +61,7 @@ class YamlRenderModule(BaseRenderModule):
         return yaml
 
     @classmethod
-    def _get_write_yaml(cls):
+    def _get_write_yaml(cls) -> YAML:
         """Get write yaml with special formatting."""
         yaml = YAML()
         yaml.indent(mapping=2, sequence=4, offset=2)
@@ -69,7 +69,7 @@ class YamlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: Mapping, *args, dfs=False, **kwargs):
+    def dumps(cls, obj: Mapping, *args, dfs=False, **kwargs) -> str:
         """Dump dict to YAML string."""
         yaml = cls._get_write_yaml_dfs() if dfs else cls._get_write_yaml()
         cls._config_yaml(yaml)
@@ -106,7 +106,7 @@ class YamlSchema(BaseSchema):
         dfs: bool = False,
         dump: bool = True,
         **kwargs,
-    ):
+    ) -> str:
         """Use dfs for render."""
         if dump:
             # Run hooks

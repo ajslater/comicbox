@@ -32,7 +32,7 @@ class LoadedMetadata:
 class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
-    def _load_cli_yaml(self, fmt, schema, source_md):
+    def _load_cli_yaml(self, fmt, schema, source_md) -> dict:
         result = {}
         try:
             md = YAML().load(source_md) if isinstance(source_md, str) else source_md
@@ -64,7 +64,7 @@ class ComicboxLoad(ComicboxSources):
         return schema.load(source_md)  # pyright: ignore[reportReturnType]
 
     @staticmethod
-    def _is_comment_not_json(source, exc):
+    def _is_comment_not_json(source, exc) -> bool:
         """Is this an archive comment and not JSON."""
         return (
             source == MetadataSources.ARCHIVE_COMMENT
@@ -80,7 +80,7 @@ class ComicboxLoad(ComicboxSources):
         fmt: MetadataFormats | None,
         exc: Exception,
         level="WARNING",
-    ):
+    ) -> None:
         """When loading fails warn or give stack trace in debug."""
         name = fmt.value.schema_class.__name__ if fmt else "Unknown Schema"
         if self._is_comment_not_json(source, exc):
@@ -142,7 +142,7 @@ class ComicboxLoad(ComicboxSources):
             self._except_on_load(source, fmt, exc)
         return None, None
 
-    def _set_loaded_metadata(self, source):
+    def _set_loaded_metadata(self, source) -> None:
         source_metadata = self.get_source_metadata(source)
         if not source_metadata:
             return

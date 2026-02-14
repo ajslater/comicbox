@@ -10,6 +10,7 @@ from rarfile import BadRarFile, RarFile
 from zipremove import ZipFile
 
 from comicbox.box.archive.archive import Archive
+from comicbox.box.archive.archiveinfo import InfoType
 from comicbox.box.archive.init import ComicboxArchiveInit
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
@@ -19,12 +20,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
 
     _COMMENT_ARCHIVE_TYPES = (ZipFile, RarFile)
 
-    def _ensure_read_archive(self):
+    def _ensure_read_archive(self) -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot read archive without a path."
             raise ValueError(reason)
 
-    def namelist(self):
+    def namelist(self) -> tuple[str, ...]:
         """Get list of files in the archive."""
         self._ensure_read_archive()
         if self._namelist is None:
@@ -41,7 +42,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
     def _get_info_size(self, info) -> int | None:
         return getattr(info, self._info_size_attr) if self._info_size_attr else None
 
-    def infolist(self):
+    def infolist(self) -> tuple[InfoType, ...]:
         """Get info list of members from the archive."""
         self._ensure_read_archive()
         if not self._infolist:
@@ -51,7 +52,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             infolist = tuple(
                 sorted(infolist, key=lambda i: self._get_info_fn(i).lower())
             )
-            self._infolist: tuple | None = infolist
+            self._infolist = infolist
         return self._infolist
 
     @classmethod
@@ -75,7 +76,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         except UnsupportedArchiveTypeError:
             return False
 
-    def _get_7zfactory(self):
+    def _get_7zfactory(self) -> BytesIOFactory | None:
         if not self._7zfactory and self._archive_cls == SevenZipFile:
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
@@ -96,7 +97,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             raise
         return data
 
-    def _get_comment(self):
+    def _get_comment(self) -> bytes:
         """Get the comment from the archive."""
         archive = self._get_archive()
         comment = getattr(archive, "comment", b"")

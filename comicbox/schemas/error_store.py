@@ -12,11 +12,11 @@ from typing_extensions import override
 class ClearingErrorStore(ErrorStore):
     """Take over error processing."""
 
-    def _clean_error_list(self, key, error_list, cleaned_errors):
+    def _clean_error_list(self, key, error_list, cleaned_errors) -> None:
         if cleaned_error_list := frozenset(error_list) - self._ignore_errors:
             cleaned_errors[key] = sorted(cleaned_error_list)
 
-    def _clear_errors(self):
+    def _clear_errors(self) -> None:
         if not self.errors:
             return
         cleaned_errors = {}
@@ -34,7 +34,7 @@ class ClearingErrorStore(ErrorStore):
         data,
         path: str | None = None,
         ignore_errors: frozenset | None = None,
-    ):
+    ) -> None:
         """Take over error processing."""
         super().__init__()
         self._path = path
@@ -46,7 +46,7 @@ class ClearingErrorStore(ErrorStore):
         self._clear_errors()
 
     @override
-    def store_error(self, *args, **kwargs):
+    def store_error(self, *args, **kwargs) -> None:
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
         self._clear_errors()
@@ -63,7 +63,7 @@ class ClearingErrorStoreSchema(Schema):
         path: Path | str | None = None,
         ignore_errors: list | tuple | frozenset | set | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """Initialize path and always use partial."""
         self._path = path = str(path) if path else path
         kwargs["partial"] = True
@@ -74,7 +74,7 @@ class ClearingErrorStoreSchema(Schema):
         super().__init__(**kwargs)
 
     @override
-    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs):
+    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs) -> list | dict:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -83,7 +83,9 @@ class ClearingErrorStoreSchema(Schema):
         return super()._deserialize(data, error_store=error_store, **kwargs)
 
     @override
-    def _invoke_field_validators(self, *, error_store: ErrorStore, data, **kwargs):
+    def _invoke_field_validators(
+        self, *, error_store: ErrorStore, data, **kwargs
+    ) -> None:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -98,7 +100,7 @@ class ClearingErrorStoreSchema(Schema):
         error_store: ErrorStore,
         data,
         **kwargs,
-    ):
+    ) -> None:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -106,14 +108,14 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_schema_validators(error_store=error_store, **kwargs)
 
-    def _split_list_errors(self, error_list: list):
+    def _split_list_errors(self, error_list: list) -> tuple:
         error_set = frozenset(error_list)
         debug_error_set = error_set & self._ignore_errors
         debug_errors = sorted(debug_error_set)
         warning_errors = sorted(error_set - debug_error_set)
         return debug_errors, warning_errors
 
-    def _split_mapping_errors(self, error: Mapping):
+    def _split_mapping_errors(self, error: Mapping) -> tuple[dict, dict]:
         debug_errors = {}
         warning_errors = {}
         for key, error_list in error.items():
@@ -126,7 +128,7 @@ class ClearingErrorStoreSchema(Schema):
 
     def _log_errors(
         self, loglevel: str, error_class: type | None, errors: Mapping | list
-    ):
+    ) -> None:
         if not errors:
             return
         path = f"{self._path}: " if self._path else ""
@@ -135,7 +137,7 @@ class ClearingErrorStoreSchema(Schema):
         logger.log(loglevel, message)
 
     @override
-    def handle_error(self, error, *_args, **_kwargs):
+    def handle_error(self, error, *_args, **_kwargs) -> None:
         """Log errors by severity."""
         if hasattr(error, "normalized_messages"):
             error_class = type(error)

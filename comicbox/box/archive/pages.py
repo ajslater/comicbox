@@ -1,22 +1,26 @@
 """Pages methods."""
 
+from collections.abc import Iterator
+
 from comicbox.box.archive.filenames import ComicboxArchiveFilenames
 
 
 class ComicboxArchivePages(ComicboxArchiveFilenames):
     """Pages methods."""
 
-    def get_page_by_filename(self, filename: str, *, to_pixmap: bool = False):
+    def get_page_by_filename(self, filename: str, *, to_pixmap: bool = False) -> bytes:
         """Return data for a single page by filename."""
         return self._archive_readfile(filename, to_pixmap=to_pixmap)
 
-    def get_pages(self, page_from=0, page_to=-1, *, to_pixmap: bool = False):
+    def get_pages(
+        self, page_from=0, page_to=-1, *, to_pixmap: bool = False
+    ) -> Iterator:
         """Generate all pages starting with page number."""
         if pagenames := self.get_pagenames_from(page_from, page_to):
             for pagename in pagenames:
                 yield self._archive_readfile(pagename, to_pixmap=to_pixmap)
 
-    def get_page_by_index(self, index: int, *, to_pixmap: bool = False):
+    def get_page_by_index(self, index: int, *, to_pixmap: bool = False) -> bytes | None:
         """Get the page data by index."""
         if pages_generator := self.get_pages(
             page_from=index, page_to=index, to_pixmap=to_pixmap

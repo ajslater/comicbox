@@ -18,7 +18,7 @@ _TITLE_STORIES_JOIN_DELIMITER = f"{_TITLE_STORIES_DELIMITER} "
 class ComicboxComputedStoriesTitle(ComicboxComputedDate):
     """Computed Stories and Title Methods."""
 
-    def _get_computed_from_stories(self, sub_data, **_kwargs):
+    def _get_computed_from_stories(self, sub_data, **_kwargs) -> dict[str, str] | None:
         """Parse stories back into title if no title already exists."""
         # Always overwrite title so Metron, which has no title, will override filename
         # titles.
@@ -28,7 +28,7 @@ class ComicboxComputedStoriesTitle(ComicboxComputedDate):
         title = _TITLE_STORIES_JOIN_DELIMITER.join(stories)
         return {TITLE_KEY: title}
 
-    def _get_computed_from_title(self, sub_data, **_kwargs):
+    def _get_computed_from_title(self, sub_data, **_kwargs) -> dict[str, dict] | None:
         """Parse title from stories."""
         title = sub_data.get(TITLE_KEY)
         if not title:

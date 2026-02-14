@@ -10,7 +10,7 @@ class PDFFile:
     SUFFIX = ""
 
     @classmethod
-    def to_datetime(cls, _value):
+    def to_datetime(cls, _value) -> datetime:
         """Zero."""
         return datetime(0, 0, 0, tzinfo=timezone.utc)
 
@@ -19,7 +19,7 @@ class PDFFile:
         """Empty."""
 
     @classmethod
-    def is_pdffile(cls, _path: str):
+    def is_pdffile(cls, _path: str) -> bool:
         """Stub."""
         return False
 
@@ -30,18 +30,18 @@ class PDFFile:
         """Empty."""
         return b""
 
-    def namelist(self):
+    def namelist(self) -> list:
         """Empty."""
         return []
 
-    def infolist(self):
+    def infolist(self) -> list:
         """Empty."""
         return []
 
     def close(self):
         """Noop."""
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         """Empty."""
         return {}
 

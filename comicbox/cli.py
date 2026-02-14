@@ -75,7 +75,7 @@ class CSVAction(Action):
         namespace: Namespace,
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
-    ):
+    ) -> None:
         """Parse comma delimited sequences."""
         if isinstance(values, str):
             values_array = values.split(",")
@@ -96,7 +96,7 @@ class PageRangeAction(Action):
         namespace: Namespace,
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
-    ):
+    ) -> None:
         """Parse page range delimited by :."""
         if isinstance(values, str):
             values = values.split(":")
@@ -118,7 +118,7 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-def _get_help_print_phases_table():
+def _get_help_print_phases_table() -> Table:
     table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Phase", style="green")
     table.add_column("Description")
@@ -135,7 +135,7 @@ FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cya
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
 
 
-def _get_help_format_table():
+def _get_help_format_table() -> Table:
     table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Format")
     table.add_column("Keys", style="green")
@@ -152,7 +152,7 @@ def _get_help_format_table():
     return table
 
 
-def _add_option_group(parser):
+def _add_option_group(parser) -> None:
     option_group = parser.add_argument_group("Options")
     option_group.add_argument(
         "-c",
@@ -278,7 +278,7 @@ def _add_option_group(parser):
     )
 
 
-def _add_action_group(parser):
+def _add_action_group(parser) -> None:
     action_group = parser.add_argument_group("Actions")
     action_group.add_argument(
         "-P",
@@ -370,7 +370,7 @@ def _add_action_group(parser):
     )
 
 
-def _add_target_group(parser):
+def _add_target_group(parser) -> None:
     target_group = parser.add_argument_group("Targets")
     target_group.add_argument(
         "paths",
@@ -407,7 +407,7 @@ def get_args(params=None) -> Namespace:
     return parser.parse_args(params)
 
 
-def post_process_args(cns):
+def post_process_args(cns) -> None:
     """Adjust CLI config."""
     # Print options
     if cns.version:
@@ -422,7 +422,7 @@ def post_process_args(cns):
         cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
-def main(params=None):
+def main(params=None) -> None:
     """Get CLI arguments and perform the operation on the archive."""
     cns = get_args(params)
     post_process_args(cns)

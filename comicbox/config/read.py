@@ -9,7 +9,7 @@ from confuse.templates import AttrDict
 from loguru import logger
 
 
-def _add_config_file(args, config):
+def _add_config_file(args, config) -> None:
     with contextlib.suppress(AttributeError, KeyError):
         if config_fn := (
             args.comicbox.config
@@ -19,7 +19,9 @@ def _add_config_file(args, config):
             config.set_file(config_fn)
 
 
-def read_config_sources(config: Configuration, args: Namespace | Mapping | None):
+def read_config_sources(
+    config: Configuration, args: Namespace | Mapping | None
+) -> None:
     """Read config sources in order."""
     # Default System and User configs
     try:

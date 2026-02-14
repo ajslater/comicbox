@@ -54,7 +54,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
             self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
         return self._cover_paths
 
-    def _get_cover_page(self, *, to_pixmap: bool = False):
+    def _get_cover_page(self, *, to_pixmap: bool = False) -> bytes | None:
         data = None
         cover_paths = self.generate_cover_paths()
         bad_cover_paths = set()

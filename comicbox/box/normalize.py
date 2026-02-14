@@ -10,7 +10,7 @@ from comicbox.box.load import ComicboxLoad, LoadedMetadata
 class ComicboxNormalize(ComicboxLoad):
     """Normalize schemas to Comicbox Schema."""
 
-    def _normalize_metadata(self, source, loaded_data):
+    def _normalize_metadata(self, source, loaded_data) -> None:
         if not loaded_data.metadata:
             return None
         transform_class = loaded_data.fmt.value.transform_class
@@ -24,7 +24,7 @@ class ComicboxNormalize(ComicboxLoad):
             )
             logger.exception(reason)
 
-    def _set_normalized_metadata(self, source):
+    def _set_normalized_metadata(self, source) -> None:
         loaded_metadata_list = self.get_loaded_metadata(source)
         if not loaded_metadata_list:
             return

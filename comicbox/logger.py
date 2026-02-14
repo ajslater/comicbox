@@ -9,7 +9,7 @@ from typing_extensions import Any
 DEBUG = os.environ.get("DEBUG", "")
 
 
-def _log_format():
+def _log_format() -> str:
     fmt = "<lvl>{time:YYYY-MM-DD HH:mm:ss} | {level: <8}"
     if DEBUG:
         fmt += " | </lvl>"
@@ -24,7 +24,7 @@ def _log_format():
 _LOG_FORMAT = _log_format()
 
 
-def init_logging(loglevel: str = "INFO", logger_=None):
+def init_logging(loglevel: str = "INFO", logger_=None) -> None:
     """Initialize logging."""
     if logger_:
         global logger  # noqa: PLW0603

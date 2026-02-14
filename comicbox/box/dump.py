@@ -48,7 +48,7 @@ class ComicboxDump(ComicboxPages):
         files: dict[str, Mapping],
         pdf_md: dict,
         comment: dict[str, bytes],
-    ):
+    ) -> None:
         if fmt not in ARCHIVE_FORMATS:
             return
         (
@@ -82,7 +82,7 @@ class ComicboxDump(ComicboxPages):
         # write to the archive.
         return self.write_archive_metadata(files, comment["c"], pdf_md)
 
-    def dump(self, formats: frozenset[MetadataFormats] | None = None):
+    def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete_all_tags

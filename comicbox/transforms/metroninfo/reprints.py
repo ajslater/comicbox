@@ -40,7 +40,7 @@ def _reprint_to_cb(metron_reprint, primary_id_source) -> dict:
     return comicbox_reprint
 
 
-def _alternative_name_to_cb(metron_alternative_name, primary_id_source):
+def _alternative_name_to_cb(metron_alternative_name, primary_id_source) -> dict:
     comicbox_reprint = {}
     if not metron_alternative_name:
         return comicbox_reprint
@@ -55,7 +55,7 @@ def _alternative_name_to_cb(metron_alternative_name, primary_id_source):
     return comicbox_reprint
 
 
-def _reprints_to_cb(values):
+def _reprints_to_cb(values) -> list:
     primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     if metron_reprints := values.get(REPRINTS_TAGPATH):
         comicbox_reprints = [
@@ -91,7 +91,7 @@ def _reprint_from_cb(comicbox_reprint, primary_id_source) -> dict:
     return metron_reprint
 
 
-def _reprints_from_cb(values):
+def _reprints_from_cb(values) -> list:
     comicbox_reprints = values.get(REPRINTS_KEY)
     if not comicbox_reprints:
         return []

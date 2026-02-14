@@ -30,7 +30,7 @@ _NO_PATH_ATTRS = MappingProxyType(
 _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 
-def clean_paths(config: Subview):
+def clean_paths(config: Subview) -> None:
     """No null paths. Turn off options for no paths."""
     paths: Iterable[str | Path] | None = config["paths"].get()
     paths_removed = False
@@ -54,7 +54,9 @@ def clean_paths(config: Subview):
     config["paths"].set(final_paths)
 
 
-def post_process_set_for_path(config: AttrDict, path: str | Path | None, *, box: bool):
+def post_process_set_for_path(
+    config: AttrDict, path: str | Path | None, *, box: bool
+) -> AttrDict:
     """Turn off options and warn if no path."""
     if path or not box:
         return config

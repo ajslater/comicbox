@@ -7,7 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 PACKAGE_NAME = "comicbox"
 
 
-def get_version():
+def get_version() -> str:
     """Get the current installed comicbox version."""
     v = "dev"
     if "pytest" not in sys.modules:

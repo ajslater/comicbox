@@ -16,12 +16,12 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         """Initialize actions and config."""
         self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
         init_logging(self._config.loglevel)
 
-    def run_on_file(self, path):
+    def run_on_file(self, path) -> None:
         """Run operations on one file."""
         if path:
             path = Path(path)
@@ -36,7 +36,7 @@ class Runner:
             car.print_file_header()
             car.run()
 
-    def recurse(self, path):
+    def recurse(self, path) -> None:
         """Perform operations recursively on files."""
         if not path.is_dir():
             logger.error(f"{path} is not a directory")
@@ -60,7 +60,7 @@ class Runner:
                 except Exception:
                     logger.exception(full_path)
 
-    def run(self):
+    def run(self) -> None:
         """Run actions with config."""
         paths = self._config.paths
         for path in paths:

@@ -1,8 +1,9 @@
 """Comicbox Computed Pages."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, MutableMapping
 from sys import maxsize
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
@@ -29,7 +30,7 @@ _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
 class ComicboxComputedPages(ComicboxComputedNotes):
     """Comicbox Computed Pages."""
 
-    def _enable_page_compute_attribute(self, key: str, sub_md: Mapping):
+    def _enable_page_compute_attribute(self, key: str, sub_md: Mapping) -> bool:
         """Determine if we should compute this attribute."""
         if key in self._config.delete_keys or not sub_md or not self._path:
             return False
@@ -41,7 +42,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)
         )
 
-    def _get_computed_page_count_metadata(self, sub_md):
+    def _get_computed_page_count_metadata(self, sub_md) -> dict[str, Any] | None:
         """
         Compute page_count from page_filenames.
 
@@ -55,7 +56,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             return {PAGE_COUNT_KEY: real_page_count}
         return None
 
-    def _ensure_pages_front_cover_metadata(self, pages):
+    def _ensure_pages_front_cover_metadata(self, pages) -> None:
         """Ensure there is a FrontCover page type in pages."""
         for page in pages.values():
             if page.get(PAGE_TYPE_KEY) == ComicInfoPageTypeEnum.FRONT_COVER:
@@ -80,7 +81,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         self._ensure_pages_front_cover_metadata(computed_pages)
         return computed_pages
 
-    def _get_computed_pages_metadata(self, sub_md):
+    def _get_computed_pages_metadata(self, sub_md) -> dict[str, MutableMapping] | None:
         """Recompute the tag image sizes for the ComicRack PageInfo list."""
         if not self._enable_page_compute_attribute(PAGES_KEY, sub_md):
             return None
@@ -88,8 +89,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         bookmark = sub_md.get(BOOKMARK_KEY)
         try:
             index = 0
-            infolist = self.infolist()
-            for info in infolist:
+            for info in self.infolist():
                 filename = self._get_info_fn(info)
                 if self.IMAGE_EXT_RE.search(filename) is None:
                     continue

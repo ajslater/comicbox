@@ -3,6 +3,7 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Any
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
@@ -30,7 +31,9 @@ class ComputedData:
 class ComicboxComputed(ComicboxComputedStoriesTitle):
     """Computed metadata methods."""
 
-    def _get_computed_from_scan_info(self, sub_data, **_kwargs):
+    def _get_computed_from_scan_info(
+        self, sub_data, **_kwargs
+    ) -> dict[str, Any] | None:
         """Parse scan_info for original format info."""
         if ORIGINAL_FORMAT_KEY in self._config.delete_keys or not sub_data:
             return None
@@ -45,7 +48,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         original_format = OriginalFormatField().deserialize(original_format)
         return {ORIGINAL_FORMAT_KEY: match.group(ORIGINAL_FORMAT_KEY)}
 
-    def _get_computed_from_reprints(self, sub_data):
+    def _get_computed_from_reprints(self, sub_data) -> dict[str, list] | None:
         """Consolidate reprints."""
         if REPRINTS_KEY in self._config.delete_keys or not sub_data:
             return None
@@ -74,7 +77,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
             return {REPRINTS_KEY: new_reprints}
         return None
 
-    def _get_delete_keys(self, _sub_data: Mapping):
+    def _get_delete_keys(self, _sub_data: Mapping) -> tuple | None:
         if not self._config.delete_keys:
             return None
         return tuple(sorted(self._config.delete_keys | self._extra_delete_keys))
@@ -91,7 +94,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         )
     )
 
-    def _set_computed_metadata(self):
+    def _set_computed_metadata(self) -> None:
         computed_list = []
         merged_md = self.get_merged_metadata()
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
@@ -110,7 +113,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         # Set values
         self._computed = tuple(computed_list)
 
-    def get_computed_metadata(self):
+    def get_computed_metadata(self) -> tuple:
         """Get the computed metadata for printing."""
         if not self._computed:
             self._set_computed_metadata()

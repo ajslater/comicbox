@@ -11,7 +11,7 @@ from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_cre
 from comicbox.transforms.spec import MetaSpec
 
 
-def _create_role_enum_to_alias_map(role_aliases):
+def _create_role_enum_to_alias_map(role_aliases) -> dict:
     """Create role map for native enum value to a list of aliases."""
     role_map = {}
     for native_enum, aliases in role_aliases.items():
@@ -23,7 +23,7 @@ def _create_role_enum_to_alias_map(role_aliases):
     return role_map
 
 
-def _xml_credits_to_cb(role_name_persons_map):
+def _xml_credits_to_cb(role_name_persons_map) -> dict:
     comicbox_credits = {}
     for role_name, persons in role_name_persons_map.items():
         try:
@@ -38,7 +38,7 @@ def _xml_credits_to_cb(role_name_persons_map):
     return comicbox_credits
 
 
-def xml_credits_transform_to_cb(role_tags_enum):
+def xml_credits_transform_to_cb(role_tags_enum) -> MetaSpec:
     """Transform xml credit tags to comicbox credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: tuple(r.value for r in role_tags_enum)},
@@ -46,7 +46,7 @@ def xml_credits_transform_to_cb(role_tags_enum):
     )
 
 
-def _xml_credits_from_cb(role_aliases: frozenset, comicbox_credits: dict):
+def _xml_credits_from_cb(role_aliases: frozenset, comicbox_credits: dict) -> set:
     person_names = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
@@ -74,7 +74,7 @@ def get_from_cb_func(role_aliases):
     return from_cb
 
 
-def xml_credits_transform_from_cb(role_tags_enum, role_aliases):
+def xml_credits_transform_from_cb(role_tags_enum, role_aliases) -> tuple:
     """Transform comicbox credits into several xml tag credits."""
     role_map = _create_role_enum_to_alias_map(role_aliases)
     metaspecs = []

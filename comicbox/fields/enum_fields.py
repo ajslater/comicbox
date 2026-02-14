@@ -33,7 +33,7 @@ class FuzzyEnumMixin:
         return key_variations
 
     @classmethod
-    def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict):
+    def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict) -> None:
         """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
         key_variations = cls.get_key_variations(key)
         for key_variation in key_variations:
@@ -65,7 +65,7 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
             self.add_enum_map_item(enum, enum, enum_map)
         return enum_map
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
         enum_map = self.get_enum_map()
@@ -78,7 +78,7 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
         return super()._deserialize(enum, attr, data, *args, **kwargs)
 
     @override
-    def _serialize(self, value, *args, **kwargs):
+    def _serialize(self, value, *args, **kwargs) -> str | None:
         enum = self.get_enum(value)
         enum = enum or value
         return super()._serialize(enum, *args, **kwargs)
@@ -117,7 +117,7 @@ class EnumBooleanField(EnumField):
         return result
 
     @override
-    def _serialize(self, value, *args, **kwargs):
+    def _serialize(self, value, *args, **kwargs) -> str | None:
         result = super()._serialize(value, *args, **kwargs)
         if not isinstance(result, self.ENUM) and value in self.TRUTHY:
             result = super()._serialize(self.YES, *args, **kwargs)
@@ -167,7 +167,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
 
     ENUM_ALIAS_MAP = MappingProxyType({})
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Use the enum."""
         super().__init__(*args, **kwargs)
         self._enum_map = MappingProxyType(self.get_enum_alias_map())
@@ -183,7 +183,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         return value
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
+    def _deserialize(self, value, *args, **kwargs) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self._prettify(value)
 

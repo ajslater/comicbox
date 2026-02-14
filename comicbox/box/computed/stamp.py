@@ -20,7 +20,7 @@ from comicbox.schemas.comicbox import (
 class ComicboxComputedStamp(ComicboxComputedPages):
     """Comicbox Computed tagger, updated_at and notes stamps."""
 
-    def _get_unparsed_comictagger_style_notes(self, sub_data):
+    def _get_unparsed_comictagger_style_notes(self, sub_data) -> str:
         """Build notes from other tags."""
         notes = ""
         if sub_data and (tagger := sub_data.get(TAGGER_KEY)):
@@ -41,7 +41,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             notes += f" [Issue ID {comicvine_id}]"
         return notes
 
-    def _get_unparsed_urns_for_notes(self, sub_data):
+    def _get_unparsed_urns_for_notes(self, sub_data) -> str:
         """Unparse all types."""
         notes = ""
         if not sub_data:
@@ -61,7 +61,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         notes += " ".join(sorted(urn_strs))
         return notes
 
-    def _get_computed_notes_stamp(self, sub_data, stamp_md):
+    def _get_computed_notes_stamp(self, sub_data, stamp_md) -> str | None:
         """Write comicbox notes to notes field if present."""
         if not self._config.stamp_notes or NOTES_KEY in self._config.delete_keys:
             return None
@@ -73,7 +73,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         notes = f"{comictagger_style_notes} {urn_notes}"
         return notes.strip()
 
-    def _get_tagger_stamp(self, sub_data):
+    def _get_tagger_stamp(self, sub_data) -> dict | None:
         """Stamp when writing or explicitly told to."""
         if not (
             self._config.stamp

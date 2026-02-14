@@ -16,13 +16,13 @@ from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_cre
 from comicbox.transforms.spec import MetaSpec
 
 
-def _get_cbi_credit_parts(cbi_credit):
+def _get_cbi_credit_parts(cbi_credit) -> tuple:
     cbi_person = cbi_credit.get(PERSON_TAG, "")
     cbi_role = cbi_credit.get(ROLE_TAG, "")
     return cbi_person, cbi_role
 
 
-def _cbi_credits_to_cb(cbi_credits):
+def _cbi_credits_to_cb(cbi_credits) -> dict:
     comicbox_credits = {}
     for cbi_credit in cbi_credits:
         try:
@@ -33,7 +33,7 @@ def _cbi_credits_to_cb(cbi_credits):
     return comicbox_credits
 
 
-def cbi_credits_transform_to_cb(credits_tag):
+def cbi_credits_transform_to_cb(credits_tag) -> MetaSpec:
     """Transform for CBI credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: credits_tag},
@@ -41,7 +41,7 @@ def cbi_credits_transform_to_cb(credits_tag):
     )
 
 
-def _cbi_credits_primary_to_cb(cbi_credits):
+def _cbi_credits_primary_to_cb(cbi_credits) -> dict:
     credit_primaries = {}
     for cbi_credit in cbi_credits:
         if cbi_credit.get(PRIMARY_TAG):
@@ -50,14 +50,16 @@ def _cbi_credits_primary_to_cb(cbi_credits):
     return credit_primaries
 
 
-def cbi_credits_primary_to_cb(credits_tag):
+def cbi_credits_primary_to_cb(credits_tag) -> MetaSpec:
     """Transform the credit primaries key from cbi credits."""
     return MetaSpec(
         key_map={CREDIT_PRIMARIES_KEY: credits_tag}, spec=_cbi_credits_primary_to_cb
     )
 
 
-def _cbi_credit_from_cb(person_name, comicbox_credit, cbi_credits, credit_primaries):
+def _cbi_credit_from_cb(
+    person_name, comicbox_credit, cbi_credits, credit_primaries
+) -> None:
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
         return
@@ -69,7 +71,7 @@ def _cbi_credit_from_cb(person_name, comicbox_credit, cbi_credits, credit_primar
         cbi_credits.append(cbi_credit)
 
 
-def _cbi_credits_from_cb(values):
+def _cbi_credits_from_cb(values) -> list:
     comicbox_credits = values.get(CREDITS_KEY)
     credit_primaries = values.get(CREDIT_PRIMARIES_KEY)
     cbi_credits = []
@@ -84,7 +86,7 @@ def _cbi_credits_from_cb(values):
     return cbi_credits
 
 
-def cbi_credits_transform_from_cb(credits_tag):
+def cbi_credits_transform_from_cb(credits_tag) -> MetaSpec:
     """Transform for CBI credits."""
     return MetaSpec(
         key_map={credits_tag: (CREDITS_KEY, CREDIT_PRIMARIES_KEY)},

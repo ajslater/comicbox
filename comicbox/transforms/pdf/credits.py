@@ -30,11 +30,11 @@ _AUTHOR_VALUES = frozenset(
 )
 
 
-def _authors_to_credits(authors):
+def _authors_to_credits(authors) -> dict:
     return {author: {ROLES_KEY: {"Writer": {}}} for author in authors if author}
 
 
-def _credits_to_authors(comicbox_credits):
+def _credits_to_authors(comicbox_credits) -> set:
     authors = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         if not person_name:
@@ -46,7 +46,7 @@ def _credits_to_authors(comicbox_credits):
     return authors
 
 
-def authors_to_credits_transform_to_cb(author_tag):
+def authors_to_credits_transform_to_cb(author_tag) -> MetaSpec:
     """Create a Transform for pdf authors to comicbox credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: author_tag},
@@ -54,7 +54,7 @@ def authors_to_credits_transform_to_cb(author_tag):
     )
 
 
-def authors_to_credits_transform_from_cb(author_tag):
+def authors_to_credits_transform_from_cb(author_tag) -> MetaSpec:
     """Create a Transform for pdf authors to comicbox credits."""
     return MetaSpec(
         key_map={author_tag: CREDITS_KEY},

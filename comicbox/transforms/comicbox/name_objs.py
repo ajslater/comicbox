@@ -7,7 +7,7 @@ from comicbox.transforms.base import skip_not
 from comicbox.transforms.spec import MetaSpec
 
 
-def name_obj_to_cb(key_map):
+def name_obj_to_cb(key_map) -> MetaSpec:
     """Create a name obj to string list key transform spec for a key map."""
     return MetaSpec(
         key_map=key_map,
@@ -18,7 +18,7 @@ def name_obj_to_cb(key_map):
     )
 
 
-def name_obj_from_cb(key_map):
+def name_obj_from_cb(key_map) -> MetaSpec:
     """Create a name obj to string list key transform spec for a key map."""
     return MetaSpec(
         key_map=key_map,

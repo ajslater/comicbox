@@ -38,7 +38,7 @@ class SimpleNamedDictField(Union):
         allow_empty_values: bool = True,
         sort: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         """Create the union."""
         if values is None:
             values = Nested(IdentifiedSchema)
@@ -54,13 +54,13 @@ class SimpleNamedDictField(Union):
         super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType]
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(self, value, *args, **kwargs) -> dict:
+        result: dict = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, set | frozenset):
             dict_value = {}
             for key in result:
                 dict_value[key] = {}
-                result = super()._deserialize(dict_value, *args, **kwargs)
+            result = dict(super()._deserialize(dict_value, *args, **kwargs))
         return result
 
 
@@ -75,7 +75,7 @@ class SimpleNamedNestedField(Union):
         name_key: str = NAME_KEY,
         primitive_type: type = str,
         **kwargs,
-    ):
+    ) -> None:
         """Create the union."""
         self._name_key = name_key
         self._primitive_type = primitive_type
@@ -85,7 +85,7 @@ class SimpleNamedNestedField(Union):
         super().__init__(fields, *args, **kwargs)
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
+    def _deserialize(self, value, *args, **kwargs) -> dict:
         result = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, self._primitive_type):
             complex_value = {self._name_key: result}
@@ -102,7 +102,7 @@ class RoleField(PrettifiedStringField):
 class PagesField(DictField):  # CIX ONLY, CT
     """ComicInfo Pages."""
 
-    def __init__(self, *args, keys_as_string=False, **kwargs):
+    def __init__(self, *args, keys_as_string=False, **kwargs) -> None:
         """ComicInfo Pages with keys_as_string option."""
         super().__init__(
             *args,

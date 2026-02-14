@@ -12,10 +12,10 @@ class FrozenAttrDict(AttrDict):
         """Not Allowed."""
         raise NotImplementedError
 
-    def __set__(self, key, value):
+    def __set__(self, key, value) -> None:
         """Not Allowed."""
         raise NotImplementedError
 
-    def __delete__(self, key):
+    def __delete__(self, key) -> None:
         """Not Allowed."""
         raise NotImplementedError
