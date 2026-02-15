@@ -218,6 +218,9 @@ def _deep_merge_value(key, value, result, list_strategy):
     elif isinstance(base_val, list) and isinstance(value, list):
         # overrides is a list of dicts that might not even benefit
         #   from merging and sorting
+        # Merging and sorting a list of dicts is pretty complicated.
+        #   If I had to with overrides I'd make a special key from
+        #   the files key.
         if list_strategy == "merge":
             value = base_val + value
             if key != "overrides":
