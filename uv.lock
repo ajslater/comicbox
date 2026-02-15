@@ -99,6 +99,15 @@ wheels = [
 ]
 
 [[package]]
+name = "backports-asyncio-runner"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/ff/70dca7d7cb1cbc0edb2c6cc0c38b65cba36cccc491eca64cabd5fe7f8670/backports_asyncio_runner-1.2.0.tar.gz", hash = "sha256:a5aa7b2b7d8f8bfcaa2b57313f70792df84e32a2a746f585213373f900b42162", size = 69893, upload-time = "2025-07-02T02:27:15.685Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/59/76ab57e3fe74484f48a53f8e337171b4a2349e506eabe136d7e01d059086/backports_asyncio_runner-1.2.0-py3-none-any.whl", hash = "sha256:0da0a936a8aeb554eccb426dc55af3ba63bcdc69fa1a600b5bb305413a4477b5", size = 12313, upload-time = "2025-07-02T02:27:14.263Z" },
+]
+
+[[package]]
 name = "backports-datetime-fromisoformat"
 version = "2.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -631,12 +640,17 @@ pdf = [
 ]
 
 [package.dev-dependencies]
+ci = [
+    { name = "requests" },
+]
 dev = [
     { name = "icecream" },
     { name = "infer-types" },
     { name = "neovim" },
     { name = "pyclean" },
+    { name = "semver" },
     { name = "toml-cli" },
+    { name = "tomlkit" },
 ]
 docs = [
     { name = "mkapi" },
@@ -649,6 +663,7 @@ lint = [
     { name = "codespell" },
     { name = "complexipy" },
     { name = "djlint" },
+    { name = "icecream" },
     { name = "jsonschema", extra = ["format"] },
     { name = "radon", extra = ["toml"] },
     { name = "ruff" },
@@ -660,6 +675,7 @@ lint = [
 ]
 test = [
     { name = "coverage", extra = ["toml"] },
+    { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-gitignore" },
 ]
@@ -694,12 +710,16 @@ requires-dist = [
 provides-extras = ["pdf"]
 
 [package.metadata.requires-dev]
+build = []
+ci = [{ name = "requests", specifier = "~=2.32" }]
 dev = [
     { name = "icecream", specifier = "~=2.1" },
     { name = "infer-types", specifier = "~=1.0.0" },
     { name = "neovim", specifier = "~=0.3" },
     { name = "pyclean", specifier = "~=3.1" },
+    { name = "semver", specifier = "~=3.0.4" },
     { name = "toml-cli", specifier = "~=0.7" },
+    { name = "tomlkit", specifier = "~=0.14" },
 ]
 docs = [
     { name = "mkapi", specifier = "~=4.4" },
@@ -707,15 +727,16 @@ docs = [
     { name = "mkdocs-minify-plugin", specifier = "~=0.8" },
 ]
 lint = [
-    { name = "basedpyright", specifier = "~=1.30" },
+    { name = "basedpyright", specifier = "~=1.38" },
     { name = "check-jsonschema", specifier = "~=0.36" },
     { name = "codespell", specifier = "~=2.4" },
     { name = "complexipy", specifier = "~=5.1" },
     { name = "djlint", specifier = "~=1.3.dev0" },
+    { name = "icecream", specifier = "~=2.1" },
     { name = "jsonschema", extras = ["format"], specifier = "~=4.20" },
     { name = "radon", extras = ["toml"], specifier = "~=6.0" },
-    { name = "ruff", specifier = "~=0.13" },
-    { name = "ty", specifier = "~=0.0.4" },
+    { name = "ruff", specifier = "~=0.15" },
+    { name = "ty", specifier = "~=0.0.17" },
     { name = "types-python-dateutil", specifier = "~=2.9" },
     { name = "types-xmltodict", specifier = "~=1.0" },
     { name = "vulture", specifier = "~=2.3" },
@@ -723,6 +744,7 @@ lint = [
 ]
 test = [
     { name = "coverage", extras = ["toml"], specifier = "~=7.0" },
+    { name = "pytest-asyncio", specifier = "~=1.0" },
     { name = "pytest-cov", specifier = "~=7.0" },
     { name = "pytest-gitignore", specifier = "~=1.3" },
 ]
@@ -1064,14 +1086,14 @@ wheels = [
 
 [[package]]
 name = "face"
-version = "24.0.0"
+version = "26.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boltons" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/79/2484075a8549cd64beae697a8f664dee69a5ccf3a7439ee40c8f93c1978a/face-24.0.0.tar.gz", hash = "sha256:611e29a01ac5970f0077f9c577e746d48c082588b411b33a0dd55c4d872949f6", size = 62732, upload-time = "2024-11-02T05:24:26.095Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/4e/0e106b0ba486cc38c858fb5efe899002f2ec4765e0808b298d8e19a16efb/face-26.0.0.tar.gz", hash = "sha256:ae12136ff0052f124811f5319670a8d9d29b7d2caaaabe542813690967cc6bca", size = 49862, upload-time = "2026-02-14T00:17:12.576Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/47/21867c2e5fd006c8d36a560df9e32cb4f1f566b20c5dd41f5f8a2124f7de/face-24.0.0-py3-none-any.whl", hash = "sha256:0e2c17b426fa4639a4e77d1de9580f74a98f4869ba4c7c8c175b810611622cd3", size = 54742, upload-time = "2024-11-02T05:24:24.939Z" },
+    { url = "https://files.pythonhosted.org/packages/63/1d/c2f7a4334f7501a3474766b5bc0948e8e0b0916217a54d092dd700a5ed3c/face-26.0.0-py3-none-any.whl", hash = "sha256:6ec9cf271d8ee2447f04b14264209a09ec9cbe8252255e61fb7ab6b154e300f9", size = 54825, upload-time = "2026-02-14T00:17:11.519Z" },
 ]
 
 [[package]]
@@ -1838,11 +1860,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.7.1"
+version = "4.9.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d3/3e/c81eb24fb98b00bc097b9ce5dee6eca020c52619ed95b246aaec2018c511/platformdirs-4.7.1.tar.gz", hash = "sha256:6f4ff8472e482af4b7e67a183fbe63da846a9b34f57d5019c4d112a181003d82", size = 25254, upload-time = "2026-02-13T17:57:16.833Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/d5/763666321efaded11112de8b7a7f2273dd8d1e205168e73c334e54b0ab9a/platformdirs-4.9.1.tar.gz", hash = "sha256:f310f16e89c4e29117805d8328f7c10876eeff36c94eac879532812110f7d39f", size = 28392, upload-time = "2026-02-14T21:02:44.973Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/82/36dcca0cfa42ad259bf0eb1f7af0d5759710c21928856891631cb47e4771/platformdirs-4.7.1-py3-none-any.whl", hash = "sha256:06ac79ae0c5025949f62711e3f7cd178736515a29bcc669f42a216016cd1dc7a", size = 19070, upload-time = "2026-02-13T17:57:15.67Z" },
+    { url = "https://files.pythonhosted.org/packages/70/77/e8c95e95f1d4cdd88c90a96e31980df7e709e51059fac150046ad67fac63/platformdirs-4.9.1-py3-none-any.whl", hash = "sha256:61d8b967d34791c162d30d60737369cbbd77debad5b981c4bfda1842e71e0d66", size = 21307, upload-time = "2026-02-14T21:02:43.492Z" },
 ]
 
 [[package]]
@@ -2162,6 +2184,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d1/db/7ef3487e0fb0049ddb5ce41d3a49c235bf9ad299b6a25d5780a89f19230f/pytest-9.0.2.tar.gz", hash = "sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11", size = 1568901, upload-time = "2025-12-06T21:30:51.014Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl", hash = "sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b", size = 374801, upload-time = "2025-12-06T21:30:49.154Z" },
+]
+
+[[package]]
+name = "pytest-asyncio"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "backports-asyncio-runner", marker = "python_full_version < '3.11'" },
+    { name = "pytest" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/2c/8af215c0f776415f3590cac4f9086ccefd6fd463befeae41cd4d3f193e5a/pytest_asyncio-1.3.0.tar.gz", hash = "sha256:d7f52f36d231b80ee124cd216ffb19369aa168fc10095013c6b014a34d3ee9e5", size = 50087, upload-time = "2025-11-10T16:07:47.256Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/35/f8b19922b6a25bc0880171a2f1a003eaeb93657475193ab516fd87cac9da/pytest_asyncio-1.3.0-py3-none-any.whl", hash = "sha256:611e26147c7f77640e6d0a92a38ed17c3e9848063698d5c93d5aa7aa11cebff5", size = 15075, upload-time = "2025-11-10T16:07:45.537Z" },
 ]
 
 [[package]]
@@ -2784,6 +2820,15 @@ wheels = [
 ]
 
 [[package]]
+name = "semver"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3155,11 +3200,11 @@ wheels = [
 
 [[package]]
 name = "xmltodict"
-version = "1.0.2"
+version = "1.0.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6a/aa/917ceeed4dbb80d2f04dbd0c784b7ee7bba8ae5a54837ef0e5e062cd3cfb/xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649", size = 25725, upload-time = "2025-09-17T21:59:26.459Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/66/d1242ce8748c698e0036837dfbb530480e31f11d3ecf7101cd4e30d29913/xmltodict-1.0.3.tar.gz", hash = "sha256:3bf1f49c7836df34cf6d9cc7e690c4351f7dfff2ab0b8a1988bba4a9b9474909", size = 25170, upload-time = "2026-02-15T04:05:05.728Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/20/69a0e6058bc5ea74892d089d64dfc3a62ba78917ec5e2cfa70f7c92ba3a5/xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d", size = 13893, upload-time = "2025-09-17T21:59:24.859Z" },
+    { url = "https://files.pythonhosted.org/packages/82/df/5c50d5bfc886cf61e665f34925e70c7d5ab1d39db0bcc4a03f6fdae3cd76/xmltodict-1.0.3-py3-none-any.whl", hash = "sha256:35d65d5c08f2a1121df338a0c4e49ca638480fa7c1b899ded45e0759bf32e40e", size = 13295, upload-time = "2026-02-15T04:05:04.407Z" },
 ]
 
 [[package]]

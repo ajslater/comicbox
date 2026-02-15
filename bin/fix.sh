@@ -1,18 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Fix common linting errors
 set -euxo pipefail
+
+#####################
+###### Makefile #####
+#####################
+mbake format Makefile
 
 ################
 # Ignore files #
 ################
-bin/sortignore.sh
-
-####################
-###### Python ######
-###################
-uv run --group lint ruff check --fix .
-uv run --group lint ruff format .
-# uv run --group lint djlint templates --profile=django --reformat
+bin/sort-ignore.sh
 
 ############################################
 ##### Javascript, JSON, Markdown, YAML #####
@@ -24,12 +22,11 @@ npm run fix
 ###################
 shellharden --replace ./**/*.sh
 
-#####################
-###### Makefile #####
-#####################
-mbake format Makefile
-
 #######################
 ###### Dockerfile #####
 #######################
-dockerfmt ./*Dockerfile --write
+mapfile -t dockerfiles < <(find . -type f -name '*Dockerfile' -print -quit)
+if [ ${#dockerfiles[@]} -gt 0 ]; then
+  # shellcheck disable=SC2035
+  dockerfmt --write "${dockerfiles[@]}"
+fi

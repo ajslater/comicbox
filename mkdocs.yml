@@ -1,11 +1,16 @@
-site_name: Comicbox
-site_author: AJ
-site_description: Comicbox Comic Metadata Reader & Writer
-theme:
-  name: mkdocs
-  color_mode: dark
-  strict: true
-
+extra_css:
+  - style.css
+markdown_extensions:
+  - smarty
+  - toc:
+      permalink: true
+nav:
+  - CHANGES-1.0.0.md
+  - CHANGES-2.0.0.md
+  - NEWS.md
+  - SCHEMAS.md
+  - TAGS.md
+  - API: $api/comicbox.***
 plugins:
   - minify:
       minify_html: true
@@ -18,16 +23,10 @@ plugins:
         - style.css
   - search
   - mkapi
-markdown_extensions:
-  - smarty
-  - toc:
-      permalink: true
-extra_css:
-  - style.css
-nav:
-  - CHANGES-1.0.0.md
-  - CHANGES-2.0.0.md
-  - NEWS.md
-  - SCHEMAS.md
-  - TAGS.md
-  - API: $api/comicbox.***
+site_author: AJ
+site_description: Comicbox Comic Metadata Reader & Writer
+site_name: Comicbox
+theme:
+  color_mode: dark
+  name: mkdocs
+  strict: true
