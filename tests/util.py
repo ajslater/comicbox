@@ -85,7 +85,7 @@ def assert_diff_strings(a, b):
         assert a == b
 
 
-def read_metadata(  # noqa: PLR0913
+def read_metadata(
     archive_path,
     metadata,
     read_config,
@@ -129,7 +129,7 @@ _IDENTIFIERS_TAGS = ('"identifiers:"',)
 _TAGGER_TAGS = ('"appID":',)
 
 
-def _prune_lines(  # noqa: PLR0913
+def _prune_lines(
     lines,
     ignore_last_modified,
     ignore_notes,
@@ -201,7 +201,7 @@ def _prune_same_lines(  # noqa: PLR0913
     return a_lines, b_lines
 
 
-def _prune_strings(  # noqa: PLR0913
+def _prune_strings(
     a_str,
     b_str,
     *,
@@ -620,7 +620,7 @@ def compare_export(test_dir, fn, fmt="", test_fn=None, *, validate=True):
 def assert_diff(old_map, new_map):
     """Assert no diff and print if there is."""
     if diff := DeepDiff(old_map, new_map, ignore_order=True):
-        pprint(old_map)  # noqa: T203
-        pprint(new_map)  # noqa: T203
-        pprint(diff)  # noqa: T203
+        pprint(old_map)
+        pprint(new_map)
+        pprint(diff)
     assert not diff
