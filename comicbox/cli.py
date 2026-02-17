@@ -23,7 +23,7 @@ from comicbox.run import Runner
 
 _TABLE_ARGS = MappingProxyType(
     {
-        "box": str(box.HEAVY),
+        "box": box.HEAVY,
         "border_style": "bright_black",
         "row_styles": ("", "on grey7"),
         "title_justify": "left",
