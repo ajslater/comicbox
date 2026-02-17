@@ -44,7 +44,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
                 return None
 
             # Language lookup fails for 'en' unless alpha_2 is specified.
-            obj: Data | None = (  # # pyright: ignore[reportAssignmentType]
+            obj: Data | None = (
                 cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
             )
         except Exception as exc:

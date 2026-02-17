@@ -20,7 +20,7 @@ dependencies = [
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.2.0",
   "py7zr~=1.1.0",
-  "pycountry~=24.6",
+  "pycountry~=26.2",
   "python-dateutil~=2.8",
   "rarfile~=4.0",
   "rich-argparse~=1.7",
@@ -233,7 +233,7 @@ addopts = [
 ]
 junit_family = "xunit2"
 strict = true
-testpaths = "tests"
+testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.radon]
