@@ -23,10 +23,12 @@ jobs:
       - run:
           command: ./bin/docker-compose-exit.sh comicbox-build
           name: Build Comicbox Dist
+      - run:
+          command: sudo chown -R circleci:circleci dist
+          name: chown dist
       - persist_to_workspace:
           paths:
             - ./README.md
-            - ./bin
             - ./dist
             - ./pyproject.toml
           root: .
