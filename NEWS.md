@@ -2,6 +2,7 @@
 
 ## v2.2.0
 
+- `--validate` validates imported and archive metadata against available schemas
 - `--import` expands quoted "glob\*" paths.
 
 ## v2.1.2
