@@ -16,7 +16,7 @@ from confuse.templates import (
 )
 
 from comicbox.config.computed import compute_config
-from comicbox.config.paths import post_process_set_for_path
+from comicbox.config.paths import expand_glob_paths, post_process_set_for_path
 from comicbox.config.read import read_config_sources
 from comicbox.version import PACKAGE_NAME
 
@@ -102,6 +102,7 @@ def get_config(
     config_program = config[PACKAGE_NAME]
     compute_config(config_program)
 
-    # Create config
     ad = config.get(_TEMPLATE)
+    ad.comicbox.import_paths = expand_glob_paths(ad.comicbox.import_paths)
+
     return post_process_set_for_path(ad.comicbox, path, box=box)

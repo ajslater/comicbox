@@ -1,6 +1,8 @@
 """Configure for paths."""
 
+from collections.abc import Sequence
 from copy import copy
+from glob import glob
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -82,3 +84,15 @@ def post_process_set_for_path(
             f"Cannot perform action{plural} '{opts}' without an archive path."
         )
     return config
+
+
+def expand_glob_paths(paths: Sequence[str | Path]) -> tuple[Path, ...]:
+    """Expand glob paths into a tuple of real paths."""
+    expanded_paths: set[Path] = set()
+    for path in paths:
+        path_str = str(path)
+        if "*" in path_str:
+            expanded_paths |= {Path(expanded_path) for expanded_path in glob(path_str)}  # noqa: PTH207
+        else:
+            expanded_paths.add(Path(path))
+    return tuple(sorted(expanded_paths))

@@ -1,317 +1,52 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<xs:schema
-  elementFormDefault="qualified"
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
->
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:element name="ComicInfo" nillable="true" type="ComicInfo" />
     <xs:complexType name="ComicInfo">
         <xs:sequence>
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Title"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Series"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Number"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="Count"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="Volume"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="AlternateSeries"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="AlternateNumber"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="AlternateCount"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Summary"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Notes"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="Year"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="Month"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="-1"
-        name="Day"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Writer"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Penciller"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Inker"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Colorist"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Letterer"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="CoverArtist"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Editor"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Translator"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Publisher"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Imprint"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Genre"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Tags"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Web"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="0"
-        name="PageCount"
-        type="xs:int"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="LanguageISO"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Format"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="Unknown"
-        name="BlackAndWhite"
-        type="YesNo"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="Unknown"
-        name="Manga"
-        type="Manga"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Characters"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Teams"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Locations"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="ScanInformation"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="StoryArc"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="StoryArcNumber"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="SeriesGroup"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default="Unknown"
-        name="AgeRating"
-        type="AgeRating"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="Pages"
-        type="ArrayOfComicPageInfo"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="CommunityRating"
-        type="Rating"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="MainCharacterOrTeam"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="Review"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        default=""
-        name="GTIN"
-        type="xs:string"
-      />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Title" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Series" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Number" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="Count" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="Volume" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="AlternateSeries" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="AlternateNumber" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="AlternateCount" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Summary" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Notes" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="Year" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="Month" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="-1" name="Day" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Writer" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Penciller" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Inker" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Colorist" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Letterer" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="CoverArtist" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Editor" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Translator" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Publisher" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Imprint" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Genre" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Tags" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Web" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="0" name="PageCount" type="xs:int" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="LanguageISO" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Format" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="Unknown" name="BlackAndWhite" type="YesNo" />
+            <xs:element minOccurs="0" maxOccurs="1" default="Unknown" name="Manga" type="Manga" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Characters" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Teams" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Locations" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="ScanInformation" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="StoryArc" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="StoryArcNumber" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="SeriesGroup" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="Unknown" name="AgeRating" type="AgeRating" />
+            <xs:element minOccurs="0" maxOccurs="1" name="Pages" type="ArrayOfComicPageInfo" />
+            <xs:element minOccurs="0" maxOccurs="1" name="CommunityRating" type="Rating" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="MainCharacterOrTeam" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="Review" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" default="" name="GTIN" type="xs:string" />
         </xs:sequence>
     </xs:complexType>
     <xs:simpleType name="YesNo">
@@ -357,13 +92,7 @@
     </xs:simpleType>
     <xs:complexType name="ArrayOfComicPageInfo">
         <xs:sequence>
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="Page"
-        nillable="true"
-        type="ComicPageInfo"
-      />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="Page" nillable="true" type="ComicPageInfo" />
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="ComicPageInfo">

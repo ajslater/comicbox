@@ -318,7 +318,7 @@ def _add_action_group(parser) -> None:
         "--import",
         action="append",
         dest="import_paths",
-        help="Import metadata from external files.",
+        help="Import metadata from external files. Accepts quoted globs.",
     )
     action_group.add_argument(
         "-x",

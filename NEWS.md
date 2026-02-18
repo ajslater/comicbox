@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.2.0
+
+- `--import` expands quoted "glob\*" paths.
+
 ## v2.1.2
 
 - Fix comicbox jsonschema.

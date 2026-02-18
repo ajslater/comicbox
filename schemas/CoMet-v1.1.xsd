@@ -1,181 +1,37 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!-- https://www.denvog.com/wordpress/comet/comet-specification/ -->
-<xs:schema
-  elementFormDefault="qualified"
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  version="1.1"
->
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1.1">
     <xs:element name="comet" type="cometType" />
     <xs:complexType name="cometType">
         <xs:all>
-            <xs:element
-        minOccurs="1"
-        maxOccurs="1"
-        name="title"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="description"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="series"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="issue"
-        type="xs:nonNegativeInteger"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="volume"
-        type="xs:nonNegativeInteger"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="publisher"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="date"
-        type="xs:date"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="genre"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="character"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="isVersionOf"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="price"
-        type="xs:decimal"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="format"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="language"
-        type="xs:language"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="rating"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="rights"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="identifier"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="pages"
-        type="xs:nonNegativeInteger"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="creator"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="writer"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="penciller"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="editor"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="coverDesigner"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="letterer"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="inker"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="colorist"
-        type="xs:string"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="unbounded"
-        name="coverImage"
-        type="xs:anyURI"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="lastMark"
-        type="xs:nonNegativeInteger"
-      />
-            <xs:element
-        minOccurs="0"
-        maxOccurs="1"
-        name="readingDirection"
-        type="readingDirectionType"
-      />
+            <xs:element minOccurs="1" maxOccurs="1" name="title" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="description" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="series" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="issue" type="xs:nonNegativeInteger" />
+            <xs:element minOccurs="0" maxOccurs="1" name="volume" type="xs:nonNegativeInteger" />
+            <xs:element minOccurs="0" maxOccurs="1" name="publisher" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="date" type="xs:date" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="genre" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="character" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="isVersionOf" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="price" type="xs:decimal" />
+            <xs:element minOccurs="0" maxOccurs="1" name="format" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="language" type="xs:language" />
+            <xs:element minOccurs="0" maxOccurs="1" name="rating" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="rights" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="identifier" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="pages" type="xs:nonNegativeInteger" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="creator" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="writer" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="penciller" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="editor" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="1" name="coverDesigner" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="letterer" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="inker" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="colorist" type="xs:string" />
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="coverImage" type="xs:anyURI" />
+            <xs:element minOccurs="0" maxOccurs="1" name="lastMark" type="xs:nonNegativeInteger" />
+            <xs:element minOccurs="0" maxOccurs="1" name="readingDirection" type="readingDirectionType" />
         </xs:all>
     </xs:complexType>
     <xs:simpleType name="readingDirectionType">
