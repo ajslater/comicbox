@@ -33,6 +33,14 @@
       },
       {
         "files": [
+          "**/*.xsd"
+        ],
+        "options": {
+          "printWidth": 120
+        }
+      },
+      {
+        "files": [
           "**/*Dockerfile"
         ],
         "options": {
