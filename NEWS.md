@@ -8,9 +8,6 @@
   `--pdf-page_format image` for PDFs with single image pages.
 - `--validate` validates imported and archive metadata against available schemas
 - `--import` expands quoted "glob\*" paths.
-
-## v2.1.2
-
 - Fix comicbox jsonschema.
 - Many more type annotations. Include py.typed sentinel file.
 
