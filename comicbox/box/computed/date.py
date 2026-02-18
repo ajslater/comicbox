@@ -22,7 +22,9 @@ _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 class ComicboxComputedDate(ComicboxComputedIdentifiers):
     """Comicbox Computed Date tags."""
 
-    def _set_computed_from_date_cover_date(self, old_date: dict, computed_date: dict):
+    def _set_computed_from_date_cover_date(
+        self, old_date: dict, computed_date: dict
+    ) -> str:
         year: int | None = old_date.get(YEAR_KEY)
         month: int | None = old_date.get(MONTH_KEY)
         day: int | None = old_date.get(DAY_KEY)
@@ -44,12 +46,14 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
         return msg
 
     @staticmethod
-    def _add_date_part(cover_date: date, key: str, computed_date: dict, attr: str):
+    def _add_date_part(
+        cover_date: date, key: str, computed_date: dict, attr: str
+    ) -> None:
         computed_date[key] = getattr(cover_date, attr)
 
     def _set_computed_from_date_parts(
         self, old_date: dict, computed_date: dict, msg: str
-    ):
+    ) -> None:
         if COVER_DATE_KEY not in computed_date and (
             cover_date := old_date.get(COVER_DATE_KEY)
         ):
@@ -65,7 +69,7 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
             if delete_keypath:
                 self._extra_delete_keys.add(delete_keypath)
 
-    def _get_computed_from_date(self, sub_data, **_kwargs):
+    def _get_computed_from_date(self, sub_data, **_kwargs) -> dict[str, dict] | None:
         """Synchronize date parts and cover_date."""
         old_date = sub_data.get(DATE_KEY)
         if not old_date:

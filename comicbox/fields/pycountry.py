@@ -4,7 +4,7 @@ from abc import ABC
 
 import pycountry
 from loguru import logger
-from pycountry.db import Database
+from pycountry.db import Data, Database
 from typing_extensions import override
 
 from comicbox.fields.fields import StringField, TrapExceptionsMeta
@@ -18,14 +18,16 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     DB: Database = pycountry.countries
     EMPTY_CODE = ""
 
-    def __init__(self, *args, serialize_name=False, allow_empty=False, **kwargs):
+    def __init__(
+        self, *args, serialize_name=False, allow_empty=False, **kwargs
+    ) -> None:
         """Optionally serialize with full names."""
         self._serialize_name = serialize_name
         self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def _clean_name(name_obj):
+    def _clean_name(name_obj) -> str | None:
         if not name_obj:
             return None
         name: str | None = StringField().deserialize(name_obj)
@@ -34,7 +36,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return name.strip()
 
     @classmethod
-    def _get_pycountry(cls, tag, name):
+    def _get_pycountry(cls, tag, name) -> Data | None:
         """Get pycountry object for a country or language tag."""
         try:
             name = cls._clean_name(name)
@@ -42,7 +44,9 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
                 return None
 
             # Language lookup fails for 'en' unless alpha_2 is specified.
-            obj = cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
+            obj: Data | None = (
+                cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
+            )
         except Exception as exc:
             logger.warning(exc)
             obj = None
@@ -61,7 +65,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs):  # ty: ignore[invalid-method-override]
+    def _deserialize(self, value, attr, *args, **kwargs) -> str:  # ty: ignore[invalid-method-override]
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE
@@ -70,7 +74,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _serialize(self, value, attr, *args, **kwargs):
+    def _serialize(self, value, attr, *args, **kwargs) -> str:
         """Return the long name."""
         value = super()._serialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE

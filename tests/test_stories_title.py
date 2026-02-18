@@ -66,6 +66,6 @@ def test_story_title_combo(label):
         md = car.get_internal_metadata()
 
     if diff := DeepDiff(md_out, md):
-        pprint(diff)  # noqa: T203
-        pprint(md)  # noqa: T203
+        pprint(diff)
+        pprint(md)
     assert not diff

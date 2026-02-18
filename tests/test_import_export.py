@@ -9,11 +9,11 @@ import pytest
 from dateutil.tz.tz import tzoffset
 
 from comicbox.box import Comicbox
+from comicbox.box.validate.guess_format import guess_format
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff, compare_export, get_tmp_dir
-from tests.validate.validate import guess_format
 
 _TMP_DIR = get_tmp_dir(__file__)
 
@@ -822,19 +822,6 @@ FNS = MappingProxyType(
         },
     }
 )
-_REGULAR_FN = MappingProxyType(
-    {
-        "comicinfo": "ComicInfo.xml",
-        "metroninfo": "MetronInfo.xml",
-        "filename": "comicbox-filename.txt",
-        "comicbookinfo": "comic-book-info.json",
-        "comet": "CoMet.xml",
-        "comictagger": "comictagger.json",
-        "json": "comicbox.json",
-        "yaml": "comicbox.yaml",
-        "pdfxml": "pdf.xml",
-    }
-)
 
 
 @pytest.mark.parametrize("fn", FNS)
@@ -856,15 +843,17 @@ def test_export(fn):
     """Test exporting metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     fmt = guess_format(fn)
-    formats = (fmt,)
-    cns = Namespace(metadata=test_md, dest_path=str(_TMP_DIR), export=formats)
+    assert fmt
+    cns = Namespace(
+        metadata=test_md, dest_path=str(_TMP_DIR), export=list(fmt.value.config_keys)
+    )
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)
     with Comicbox("", config=config) as car:
         car.print_out()  # debug
         car.export_files()
 
-    tmp_fn = _REGULAR_FN[fmt]
+    tmp_fn = fmt.value.filename
     tmp_path = _TMP_DIR / tmp_fn
     compare_export(TEST_METADATA_DIR, tmp_path, test_fn=fn, validate=True)
     tmp_path.unlink()

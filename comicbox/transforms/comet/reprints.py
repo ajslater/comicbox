@@ -13,7 +13,7 @@ from comicbox.transforms.xml_reprints import (
 )
 
 
-def comet_reprints_transform_to_cb(is_version_of_tag):
+def comet_reprints_transform_to_cb(is_version_of_tag) -> MetaSpec:
     """Transform comet is_version_of to reprints."""
     return MetaSpec(
         key_map={REPRINTS_KEY: is_version_of_tag},
@@ -32,7 +32,7 @@ def comet_reprints_transform_to_cb(is_version_of_tag):
     )
 
 
-def comet_reprints_transform_from_cb(is_version_of_tag):
+def comet_reprints_transform_from_cb(is_version_of_tag) -> MetaSpec:
     """Transform comet is_version_of to reprints."""
     return MetaSpec(
         key_map={is_version_of_tag: REPRINTS_KEY},

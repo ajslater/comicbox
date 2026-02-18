@@ -3,6 +3,7 @@
 import re
 
 from loguru import logger
+from typing_extensions import Self
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType
@@ -13,15 +14,15 @@ class ComicboxArchiveInit(ComicboxInit):
 
     IMAGE_EXT_RE = re.compile(r"\.(jxl|jpe?g|webp|png|gif)$", re.IGNORECASE)
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Context enter."""
         return self
 
-    def __exit__(self, *_exc):
+    def __exit__(self, *_exc) -> bool | None:
         """Context close."""
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         """Close the open archive."""
         try:
             if self._archive and hasattr(self._archive, "close"):

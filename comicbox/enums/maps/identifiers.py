@@ -95,7 +95,7 @@ def get_id_source_by_alias(
     return _ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source_alias.lower(), default)
 
 
-def _build_source_alias_tree(node, source: IdSources, parts):
+def _build_source_alias_tree(node, source: IdSources, parts) -> None:
     if isinstance(node, IdSources):
         return
     part = parts[0]
@@ -107,7 +107,7 @@ def _build_source_alias_tree(node, source: IdSources, parts):
         _build_source_alias_tree(node[part], source, parts[1:])
 
 
-def _create_source_alias_tree():
+def _create_source_alias_tree() -> dict:
     tree = {}
     for source, aliases in _ID_SOURCE_ALIASES.items():
         for alias in aliases:

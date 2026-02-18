@@ -8,7 +8,7 @@ from enum import Enum
 from loguru import logger
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
-from typing_extensions import override
+from typing_extensions import Self, override
 
 _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
@@ -38,7 +38,7 @@ class TrapExceptionsMeta(ABCMeta):
 
         return wrapper
 
-    def __new__(cls, name, bases, attrs):
+    def __new__(cls, name, bases, attrs) -> Self:  # pyright: ignore[reportGeneralTypeIssues]
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
@@ -54,13 +54,13 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
-    def __init__(self, *args, clean_tabs=False, **kwargs):
+    def __init__(self, *args, clean_tabs=False, **kwargs) -> None:
         """Add a clean tabs flag."""
         self.clean_tabs = clean_tabs
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs):
+    def _deserialize(self, value, *_args, **_kwargs) -> str:
         if value in _STRING_EMPTY_VALUES:
             return ""
 
@@ -91,7 +91,7 @@ class IssueField(StringField):
     """Issue Field."""
 
     @staticmethod
-    def parse_issue(num):
+    def parse_issue(num) -> str:
         """Parse issues."""
         if not num:
             return ""
@@ -102,6 +102,6 @@ class IssueField(StringField):
         return half_replace(num)
 
     @override
-    def _deserialize(self, value, *args, **kwargs):
+    def _deserialize(self, value, *args, **kwargs) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

@@ -1,6 +1,8 @@
 """Configure for paths."""
 
+from collections.abc import Sequence
 from copy import copy
+from glob import glob
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -30,7 +32,7 @@ _NO_PATH_ATTRS = MappingProxyType(
 _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 
-def clean_paths(config: Subview):
+def clean_paths(config: Subview) -> None:
     """No null paths. Turn off options for no paths."""
     paths: Iterable[str | Path] | None = config["paths"].get()
     paths_removed = False
@@ -54,7 +56,9 @@ def clean_paths(config: Subview):
     config["paths"].set(final_paths)
 
 
-def post_process_set_for_path(config: AttrDict, path: str | Path | None, *, box: bool):
+def post_process_set_for_path(
+    config: AttrDict, path: str | Path | None, *, box: bool
+) -> AttrDict:
     """Turn off options and warn if no path."""
     if path or not box:
         return config
@@ -80,3 +84,15 @@ def post_process_set_for_path(config: AttrDict, path: str | Path | None, *, box:
             f"Cannot perform action{plural} '{opts}' without an archive path."
         )
     return config
+
+
+def expand_glob_paths(paths: Sequence[str | Path]) -> tuple[Path, ...]:
+    """Expand glob paths into a tuple of real paths."""
+    expanded_paths: set[Path] = set()
+    for path in paths:
+        path_str = str(path)
+        if "*" in path_str:
+            expanded_paths |= {Path(expanded_path) for expanded_path in glob(path_str)}  # noqa: PTH207
+        else:
+            expanded_paths.add(Path(path))
+    return tuple(sorted(expanded_paths))

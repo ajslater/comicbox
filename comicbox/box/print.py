@@ -19,7 +19,7 @@ from rich.syntax import PygmentsSyntaxTheme, Syntax
 from rich.table import Table
 from rich.text import Text
 
-from comicbox.box.dump_files import ComicboxDumpToFiles
+from comicbox.box.validate import ComicboxValidate
 from comicbox.print import PrintPhases
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
@@ -41,7 +41,7 @@ def _make_style(theme, token):
 class ComicboxStyle:
     """Rich style definitions."""
 
-    def __init__(self, style_name: str):
+    def __init__(self, style_name: str) -> None:
         """Initialize styles by theme."""
         if not style_name:
             self.section_header = Style()
@@ -67,12 +67,12 @@ class ComicboxStyle:
             self.section = _make_style(theme, Comment)
 
 
-class ComicboxPrint(ComicboxDumpToFiles):
+class ComicboxPrint(ComicboxValidate):
     """Print Methods."""
 
     _CONSOLE = Console()
 
-    def _set_pygments_style(self):
+    def _set_pygments_style(self) -> None:
         style_name = self._config.theme
         if not style_name:
             style_name = DEFAULT_STYLE_NAME
@@ -86,7 +86,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
             style_name = DEFAULT_STYLE_NAME
         self._pygments_style_name = style_name
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Set print variables."""
         super().__init__(*args, **kwargs)
         self._set_pygments_style()
@@ -106,13 +106,13 @@ class ComicboxPrint(ComicboxDumpToFiles):
             else code
         )
 
-    def _print(self, renderable):
+    def _print(self, renderable) -> None:
         if self._pygments_style_name:
             self._CONSOLE.print(renderable)
         else:
             print(renderable)  # noqa: T201
 
-    def print_section(self, title, renderable, subtitle=""):
+    def print_section(self, title, renderable, subtitle="") -> None:
         """Pretty print a titled rule over a renderable."""
         if subtitle:
             title += Text(": ") + Text(subtitle, style=self._style.subtitle)
@@ -121,13 +121,13 @@ class ComicboxPrint(ComicboxDumpToFiles):
         self._CONSOLE.print(title)
         self._print(renderable)
 
-    def _print_version(self):
+    def _print_version(self) -> None:
         """Print package version."""
         if PrintPhases.VERSION not in self._config.print:
             return
         self._print(VERSION)
 
-    def print_file_header(self):
+    def print_file_header(self) -> None:
         """Print header for this Archive's path."""
         if not self._path:
             return
@@ -137,14 +137,14 @@ class ComicboxPrint(ComicboxDumpToFiles):
         )
         self._CONSOLE.print(title)
 
-    def _print_file_type(self):
+    def _print_file_type(self) -> None:
         """Print the file type."""
         if PrintPhases.FILE_TYPE not in self._config.print:
             return
         ft = self.get_file_type()
         self._print(ft)
 
-    def _print_file_names(self):
+    def _print_file_names(self) -> None:
         """Print archive namelist."""
         if PrintPhases.FILE_NAMES not in self._config.print:
             return
@@ -162,7 +162,9 @@ class ComicboxPrint(ComicboxDumpToFiles):
             table.add_row(index, name)
         self._CONSOLE.print(table)
 
-    def _add_source_to_title(self, title, source, source_data, format_preposition="as"):
+    def _add_source_to_title(
+        self, title, source, source_data, format_preposition="as"
+    ) -> Text:
         path = str(self._path) if source.value.from_archive else ""
         path = Text(path, style=self._style.path)
         if source_data.path or source == MetadataSources.ARCHIVE_COMMENT:
@@ -193,7 +195,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
             first = False
         return title
 
-    def _print_source(self, source, source_data):
+    def _print_source(self, source, source_data) -> None:
         if not source_data or not source_data.data:
             return
         md = source_data.data
@@ -208,7 +210,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         )
         self.print_section(title, renderable)
 
-    def _print_sources(self, source):
+    def _print_sources(self, source) -> None:
         """Print source metadtata."""
         source_data_list = self.get_source_metadata(source)
 
@@ -217,7 +219,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         for source_data in source_data_list:
             self._print_source(source, source_data)
 
-    def _print_loaded(self, source):
+    def _print_loaded(self, source) -> None:
         """Print loaded metadata."""
         if PrintPhases.LOADED not in self._config.print:
             return
@@ -236,7 +238,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
 
             self.print_section(title, syntax)
 
-    def _print_normalized(self, source):
+    def _print_normalized(self, source) -> None:
         """Print normalized metadata."""
         if PrintPhases.NORMALIZED not in self._config.print:
             return
@@ -259,7 +261,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
 
             self.print_section(title, syntax)
 
-    def _print_sources_loaded_normalized(self):
+    def _print_sources_loaded_normalized(self) -> None:
         """Print sources, loaded, and normalized metadata."""
         if not _SOURCES_LOADED_NORMALIZED & self._config.print:
             return
@@ -271,7 +273,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
             if PrintPhases.NORMALIZED in self._config.print:
                 self._print_normalized(source)
 
-    def _print_merged(self, schema):
+    def _print_merged(self, schema) -> None:
         if PrintPhases.MERGED not in self._config.print:
             return
         md = self.get_merged_metadata()
@@ -280,7 +282,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
         title = Text("Merged for Compute")
         self.print_section(title, syntax)
 
-    def _print_computed(self, schema):
+    def _print_computed(self, schema) -> None:
         """Print computed metadata."""
         if PrintPhases.COMPUTED not in self._config.print:
             return
@@ -297,7 +299,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
             syntax = self._syntax(str_data, "yaml")
             self.print_section(Text("Computed"), syntax, subtitle=computed_md.label)
 
-    def _print_metadata(self):
+    def _print_metadata(self) -> None:
         """Pretty print the metadata."""
         if (
             PrintPhases.METADATA in self._config.print
@@ -307,7 +309,7 @@ class ComicboxPrint(ComicboxDumpToFiles):
             syntax = self._syntax(md, "yaml")
             self.print_section("Merged Metadata", syntax)
 
-    def print_out(self):
+    def print_out(self) -> None:
         """Print selections from config.print."""
         self._print_version()
         self._print_file_type()

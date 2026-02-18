@@ -115,7 +115,7 @@ CIX_DICT = MappingProxyType(
 )
 PDF_STR = json.dumps(dict(PDF_DICT), sort_keys=True, indent=2)
 PDF_KW_STR = json.dumps(dict(PDF_KW_DICT), sort_keys=True, indent=2)
-CIX_STR = xmltodict.unparse(CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
+CIX_STR = xmltodict.unparse(CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
 
 PDF_METADATA_TESTER = TestParser(
     MetadataFormats.PDF,

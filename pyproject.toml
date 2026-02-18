@@ -1,5 +1,4 @@
 [project]
-authors = [{ name = "AJ Slater", email = "aj@slater.net" }]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
@@ -12,44 +11,50 @@ dependencies = [
   "ansicolors~=1.1.8",
   "bidict~=0.23",
   "case-converter~=1.2",
-  "confuse==2.1.0",
-  "comicfn2dict<1.0.0,>=0.2.4",
+  "comicfn2dict>=0.2.4,<1.0.0",
+  "confuse~=2.1.0,<2.2.0",
   "deepdiff~=8.2",
   "glom~=25.12",
   "loguru~=0.7",
-  "marshmallow~=4.2.0",
+  "jsonschema[format]~=4.20",
+  "marshmallow-jsonschema-2>=0.1.0",
   "marshmallow-union>=0.1.15.post1",
-  "pycountry~=24.6",
-  "python-dateutil~=2.8",
+  "marshmallow~=4.2.0",
   "py7zr~=1.1.0",
+  "pycountry~=26.2",
+  "python-dateutil~=2.8",
   "rarfile~=4.0",
-  "rich~=14.0",
   "rich-argparse~=1.7",
+  "rich~=14.0",
   "ruamel-yaml~=0.18",
   "simplejson~=3.19",
   "typing-extensions~=4.13",
   "urnparse~=0.2",
+  "xmlschema~=4.0",
   "xmltodict~=1.0",
   "zipremove~=0.1",
 ]
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [
-  "comic",
-  "cbz",
+  "cb7",
   "cbr",
   "cbt",
-  "cb7",
-  "pdf",
-  "comicinfo",
-  "comicbookinfo",
+  "cbz",
   "comet",
+  "comic",
+  "comicbookinfo",
+  "comicinfo",
   "metroninfo",
+  "pdf",
 ]
-license = "LGPL-3.0-only"
 readme = "README.md"
+license = "LGPL-3.0-only"
 name = "comicbox"
 requires-python = ">=3.10"
-version = "2.1.1"
+version = "2.2.0"
+[[project.authors]]
+name = "AJ Slater"
+email = "aj@slater.net"
 
 [project.urls]
 News = "https://comicbox.readthedocs.io/NEWS/"
@@ -57,53 +62,87 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile~=0.3"]
+pdf = ["comicbox-pdffile>=0.4,<0.5"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
 
 [dependency-groups]
-dev = ["icecream~=2.1", "neovim~=0.3", "pyclean~=3.1", "toml-cli~=0.7"]
+dev = [
+  "icecream~=2.1",
+  "infer-types~=1.0.0",
+  "neovim~=0.3",
+  "pyclean~=3.1",
+  "semver~=3.0.4",
+  "toml-cli~=0.7",
+  "tomlkit~=0.14",
+]
+build = []
 lint = [
-  "basedpyright~=1.30",
+  "basedpyright~=1.38",
   "check-jsonschema~=0.36",
   "codespell~=2.4",
   "complexipy~=5.1",
   "djlint~=1.3.dev0",
-  "jsonschema[format]~=4.20",
+  "icecream~=2.1",
   "radon[toml]~=6.0",
-  "ruff~=0.13",
-  "ty~=0.0.4",
+  "ruff~=0.15",
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
+  "ty~=0.0.17",
   "vulture~=2.3",
-  "xmlschema~=4.0",
 ]
-test = ["coverage[toml]~=7.0", "pytest-cov~=7.0", "pytest-gitignore~=1.3"]
-docs = ["mkapi~=4.4", "mkdocs~=1.6", "mkdocs-minify-plugin~=0.8"]
+test = [
+  "coverage[toml]~=7.0",
+  "pytest-asyncio~=1.0",
+  "pytest-cov~=7.0",
+  "pytest-gitignore~=1.3",
+]
+docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
+ci = ["requests~=2.32"]
 
 [build-system]
-requires = ["uv_build~=0.8.7"]
+requires = ["uv_build~=0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = ""
 source-include = [
-  ".circlci/**",
   ".*ignore",
+  ".circlci/**",
+  ".env.platforms",
+  ".picopt_treestamps.yaml",
+  ".readthedocs.yaml",
+  ".remarkignore",
   ".shellcheckrc",
+  "Makefile",
+  "NEWS.md",
   "bin/**",
+  "ci/**",
+  "compose.yaml",
+  "docs/DOCKER.md",
+  "docs/NEWS",
+  "docs/NEWS.md",
+  "docs/README.md",
+  "docs/WINDOWS.md",
+  "docs/requirements.txt",
+  "docs/style.css",
+  "docs/style.material.css",
+  "docs/style.mkdocs.css",
+  "docs/style.readthedocs.css",
   "eslint.config.js",
   "frontend/**",
-  "Makefile",
+  "img/**",
+  "mkdocks.yml",
+  "mock_comics/**",
   "package-lock.json",
   "package.json",
   "tests/**",
   "uv.lock",
   "vulture_ignorelist.py",
 ]
-source-exclude = ["**/*\\~", "**/.DS_Store"]
-wheel-exclude = []
+source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
+wheel-exclude = ["**/*\\~", "**/.DS_Store"]
 
 [tool.basedpyright]
 exclude = [
@@ -112,6 +151,9 @@ exclude = [
   "**/node_modules",
   "comicbox/zipfile_remove",
   "dist",
+  "frontend",
+  "site",
+  "site",
   "test-results",
   "typings",
   "vulture_ignorelist.py",
@@ -125,25 +167,38 @@ reportIncompatibleUnannotatedOverride = true
 reportMissingParameterType = false
 reportMissingTypeArgument = false
 reportMissingTypeStubs = false
-reportPrivateUsage = false # ruff does this
+reportPrivateUsage = false
 reportUnannotatedClassAttribute = false
 reportUnknownArgumentType = false
+reportUnknownLambdaType = "hint"
 reportUnknownMemberType = false
 reportUnknownParameterType = false
 reportUnknownVariableType = false
-reportUntypedBaseClass = false # Meta inheritance
 reportUnusedCallResult = false
-reportUnusedParameter = false # ruff does this
+reportUnusedParameter = false
+reportUntypedBaseClass = false
 
 [tool.codespell]
-builtin = 'clear,rare,code'
+builtin = "clear,code,rare"
 check-hidden = true
-ignore-words-list = 'thead,ro,jupyter,coverd'
-skip = ".*,*~,./.venv/*,./dist,./node_modules/*,./package.json,./package-lock.json,./uv.lock,./test-results,./tests/test_files/*,comicbox/zipfile_remove"
+ignore-words-list = "coverd,falsy,jupyter,ro,searchd,thead,versio,ws"
+skip = "*~,.*,./.venv/*,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,comicbox/zipfile_remove"
 
 [tool.complexipy]
 failed = true
 paths = ["comicbox", "tests"]
+exclude = [
+  "*/.*",
+  "frontend",
+  "node_modules",
+  "site",
+  "test-results",
+  "typings",
+  "vulture_ignorelist.py",
+]
+
+[tool.coverage.html]
+directory = "test-results/coverage"
 
 [tool.coverage.run]
 source = ["comicbox"]
@@ -154,146 +209,143 @@ omit = [
   "*__pycache__*",
   "comicbox/zipfile_remove",
   "dist/*",
+  "frontend/*",
   "node_modules/*",
+  "site/*",
   "test-results/*",
   "typings/*",
   "vulture_ignorelist.py",
   "zipfile_remove/*",
 ]
 
-[tool.coverage.html]
-directory = "test-results/coverage"
-
-[tool.pytest.ini_options]
-addopts = """
-    --junit-xml=test-results/pytest/results.xml
-    -ra
-    --strict-config
-    --strict-markers
-    --cov
-    --cov-append
-    --cov-report=html
-    --cov-report=term
-"""
+[tool.pytest]
+minversion = "9.0"
+asyncio_mode = "strict"
+addopts = [
+  "--cov",
+  "--cov-append",
+  "--cov-report=html",
+  "--cov-report=term",
+  "--junit-xml=test-results/pytest/results.xml",
+  "--strict-config",
+  "--strict-markers",
+  "-ra",
+]
 junit_family = "xunit2"
-testpaths = "tests"
+strict = true
+testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.radon]
-exclude = "*~,.*,.*/*,__pycache__/*,dist/*,node_modules/*,test-results/*,typings/*,comicbox/zipfile_remove/*"
+exclude = "*~,.*,.*/*,__pycache__/*,comicbox/zipfile_remove/*,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*"
 
 [tool.ruff]
 builtins = ["ic"]
 extend-exclude = [
   "**/.*",
   "**/__pycache__",
+  "comicbox/zipfile_remove",
   "dist",
+  "frontend",
+  "site",
   "test-results",
   "typings",
-  "comicbox/zipfile_remove",
   "vulture_ignorelist.py",
 ]
+show-fixes = true
 target-version = "py310"
 
 [tool.ruff.lint]
 extend-ignore = [
-  "BLE001", # catch bare exception
-  "COM812", # missing trailing comma
-  "COM819", # prohibit trailing comma
-  "D203",   # blank line before class docstring
-  "D206",   # formatted
-  "D212",   # first line multi line docstring.
-  "E111",   # formatted
-  "E114",   # formatted
-  "E117",   # over-indented
-  "E501",   # 88 char line
-  # "FIX002",  # TODO
-  # "FIX003",  # XXX
-  "ISC001",  # formatted
-  "PERF203", # try block in loop
-  "S101",    # assert
-  "W191",    # formatted
+  "BLE001",
+  "COM812",
+  "COM819",
+  "D203",
+  "D206",
+  "D212",
+  "E111",
+  "E114",
+  "E117",
+  "E501",
+  "ISC001",
+  "PERF203",
+  "S101",
+  "W191",
 ]
 extend-select = [
-  # "AIR",
-  "ERA",
-  # "FAST",
-  # ########
-  # flake8 #
-  # ########
-  "YTT",
-  # "ANN",
-  "ASYNC",
-  "S",
-  "BLE",
-  "FBT",
-  "B",
   "A",
-  "COM",
+  "ARG",
+  "ASYNC",
+  "B",
+  "BLE",
   "C4",
-  # "CPY",
-  "DTZ",
-  "T10",
+  "C90",
+  "COM",
+  "D",
   "DJ",
+  "DTZ",
+  "E",
   "EM",
+  "ERA",
   "EXE",
-  "FIX",
+  "F",
   "FA",
+  "FBT",
+  "FIX",
+  "FLY",
+  "FURB",
+  "I",
+  "ICN",
+  "INP",
   "INT",
   "ISC",
-  "ICN",
   "LOG",
-  # "G",
-  "INP",
-  "PIE",
-  "PYI",
-  "T20",
-  "PT",
-  # "Q", Formatted
-  "RSE",
-  "RET",
-  "SLF",
-  "SIM",
-  "SLOT",
-  "TID",
-  # "TD",
-  "TC",
-  "ARG",
-  "PTH",
-  # ############
-  # end flake8 #
-  # ############
-  "FLY",
-  "I",
-  "C90",
-  # "NPY",
-  # "PD",
   "N",
   "PERF",
-  "E",
-  "W",
-  # "DOC",
-  "D",
-  "F",
   "PGH",
+  "PIE",
   "PLE",
   "PLR",
   "PLW",
-  "UP",
-  "FURB",
+  "PT",
+  "PTH",
+  "PYI",
+  "RET",
+  "RSE",
   "RUF",
+  "S",
+  "SIM",
+  "SLF",
+  "SLOT",
+  "T10",
+  "T20",
+  "TC",
+  "TID",
   "TRY",
+  "UP",
+  "W",
+  "YTT",
 ]
 external = ["V101"]
-task-tags = ["TODO", "FIXME", "XXX", "http", "HACK"]
+task-tags = ["FIXME", "HACK", "TODO", "XXX", "http"]
+
+[tool.ruff.lint.flake8-self]
+ignore-names = ["_meta"]
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.lint.pycodestyle]
+ignore-overlong-task-comments = true
 
 [tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D101", "D102", "T203"]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/test_import.py" = ["DTZ001"]
 "tests/validate/cli.py" = ["T201"]
 
-[tool.ruff.lint.pycodestyle]
-ignore-overlong-task-comments = true
+[tool.ruff.lint.pylint]
+max-args = 8
 
 [tool.ty.environment]
 python = "./.venv"
@@ -305,10 +357,17 @@ exclude = [
   "**/__pycache__",
   "**/node_modules",
   "dist",
+  "frontend",
+  "site",
   "test-results",
   "typings",
   "vulture_ignorelist.py",
 ]
+
+[tool.typos.default.extend-words]
+bookmarkd = "bookmarkd"
+coverd = "coverd"
+versio = "versio"
 
 [tool.vulture]
 exclude = [
@@ -317,9 +376,11 @@ exclude = [
   "*/node_modules*",
   "comicbox/zipfile_remove/",
   "dist/",
+  "frontend/",
+  "site",
   "test-results/",
+  "test_results/",
   "typings/",
-  "comicbox/zipfile_remove/",
 ]
 min_confidence = 61
 sort_by_size = true

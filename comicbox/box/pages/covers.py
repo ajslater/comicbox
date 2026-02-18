@@ -54,7 +54,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
             self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
         return self._cover_paths
 
-    def _get_cover_page(self, *, to_pixmap: bool = False):
+    def _get_cover_page(self, pdf_format: str = "") -> bytes | None:
         data = None
         cover_paths = self.generate_cover_paths()
         bad_cover_paths = set()
@@ -62,13 +62,13 @@ class ComicboxPagesCovers(ComicboxMetadata):
             if cover_path in bad_cover_paths:
                 continue
             try:
-                data = self._archive_readfile(cover_path, to_pixmap=to_pixmap)
+                data = self._archive_readfile(cover_path, pdf_format=pdf_format)
                 break
             except Exception as exc:
                 logger.warning(f"{self._path} reading cover: {cover_path}: {exc}")
                 bad_cover_paths.add(cover_path)
         return data
 
-    def get_cover_page(self, *, to_pixmap: bool = False):
+    def get_cover_page(self, pdf_format=""):
         """Return cover image data."""
-        return self._get_cover_page(to_pixmap=to_pixmap)
+        return self._get_cover_page(pdf_format=pdf_format)

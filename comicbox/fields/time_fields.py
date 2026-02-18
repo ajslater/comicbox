@@ -14,7 +14,7 @@ from comicbox.fields.fields import StringField, TrapExceptionsMeta
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
-    def __init__(self, *args, serialize_to_str=True, **kwargs):
+    def __init__(self, *args, serialize_to_str=True, **kwargs) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_str = serialize_to_str
@@ -37,16 +37,21 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
         return dt
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | float | None | date:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self, value, *args, **kwargs) -> str | float | date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        if value is None:
+            return None
         if self._serialize_to_str:
-            return super()._serialize(value, *args, **kwargs)
+            if isinstance(value, date):
+                value = super()._serialize(value, *args, **kwargs)
+            else:
+                value = StringField()._serialize(value, *args, **kwargs)  # noqa: SLF001
         return value
 
 
 class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
 
-    def __init__(self, *args, serialize_to_iso=True, **kwargs):
+    def __init__(self, *args, serialize_to_iso=True, **kwargs) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_iso = serialize_to_iso
@@ -87,11 +92,13 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | None | datetime:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self, value, *args, **kwargs) -> str | float | datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if value is None:
             return None
         if isinstance(value, datetime):
             value = self._ensure_aware(value)
             if self._serialize_to_iso:
                 value = value.isoformat(timespec="seconds").replace("+00:00", "Z")
+        else:
+            value = StringField()._serialize(value, *args, **kwargs)  # noqa: SLF001
         return value

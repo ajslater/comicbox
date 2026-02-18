@@ -16,7 +16,7 @@ from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
 
-def _get_pdf_enabled():
+def _get_pdf_enabled() -> bool:
     try:
         from pdffile import (
             PDFFile,  # pyright: ignore[reportUnusedImport]
@@ -47,7 +47,7 @@ class MetadataFormat:
     lexer: str = "yaml"
     enabled: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Hoist the schema class."""
         self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
 

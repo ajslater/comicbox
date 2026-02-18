@@ -31,7 +31,9 @@ class JsonRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: Mapping, *args, compact=False, sort_keys=False, **kwargs):
+    def dumps(
+        cls, obj: Mapping, *args, compact=False, sort_keys=False, **kwargs
+    ) -> str:
         """Dump dict to JSON string with formatting."""
         extra_kwargs = cls.COMPACT_DUMPS_ARGS if compact else cls.NORMAL_DUMPS_ARGS
         return json.dumps(

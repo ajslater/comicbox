@@ -23,7 +23,9 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
 
     ZERO_FILL: int = 0
 
-    def _set_range(self, minimum: NumberType | None, maximum: NumberType | None):
+    def _set_range(
+        self, minimum: NumberType | None, maximum: NumberType | None
+    ) -> None:
         self._min = minimum
         self._max = maximum
 
@@ -81,7 +83,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         minimum: int | None = None,
         maximum: int | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
@@ -123,7 +125,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         minimum: Decimal | None = None,
         maximum: Decimal | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)

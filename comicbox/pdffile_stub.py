@@ -1,7 +1,12 @@
 """A featureless PDFFile stub to help with typing."""
 
 from datetime import datetime, timezone
+from enum import Enum
 from io import BytesIO
+
+
+class PageFormat(Enum):
+    """Empty."""
 
 
 class PDFFile:
@@ -10,7 +15,7 @@ class PDFFile:
     SUFFIX = ""
 
     @classmethod
-    def to_datetime(cls, _value):
+    def to_datetime(cls, _value) -> datetime:
         """Zero."""
         return datetime(0, 0, 0, tzinfo=timezone.utc)
 
@@ -19,29 +24,29 @@ class PDFFile:
         """Empty."""
 
     @classmethod
-    def is_pdffile(cls, _path: str):
+    def is_pdffile(cls, _path: str) -> bool:
         """Stub."""
         return False
 
     def save(self):
         """Empty."""
 
-    def read(self, filename: str, *, to_pixmap: bool = False) -> bytes:  # noqa: ARG002
+    def read(self, filename: str, fmt: str = "", props: dict | None = None) -> bytes:  # noqa: ARG002
         """Empty."""
         return b""
 
-    def namelist(self):
+    def namelist(self) -> list:
         """Empty."""
         return []
 
-    def infolist(self):
+    def infolist(self) -> list:
         """Empty."""
         return []
 
     def close(self):
         """Noop."""
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         """Empty."""
         return {}
 

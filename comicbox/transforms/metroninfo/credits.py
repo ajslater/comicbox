@@ -114,7 +114,7 @@ CREDITS_KEYPATH = "Credits.Credit"
 ROLE_KEYPATH = "Roles.Role"
 
 
-def _create_role_variations_to_enum_map(role_aliases):
+def _create_role_variations_to_enum_map(role_aliases) -> dict:
     """Create role map for variations of a role name to to the native enum value."""
     role_map = {}
     for native_enum, aliases in role_aliases.items():
@@ -150,7 +150,7 @@ def _credit_to_cb(metron_credit, primary_id_source) -> tuple[str, dict]:
     return person_name, comicbox_credit
 
 
-def _credits_to_cb(values):
+def _credits_to_cb(values) -> dict:
     metron_credits = values.get(CREDITS_KEYPATH)
     if not metron_credits:
         return {}
@@ -162,7 +162,7 @@ def _credits_to_cb(values):
     }
 
 
-def _role_from_cb(role_name, comicbox_role, id_source, role_map):
+def _role_from_cb(role_name, comicbox_role, id_source, role_map) -> list:
     """Unparse a metron role to an enum only value."""
     metron_roles = []
 
@@ -194,7 +194,7 @@ def _credit_from_cb(
     return metron_credit
 
 
-def _credits_from_cb(values, role_map):
+def _credits_from_cb(values, role_map) -> list:
     comicbox_credits = values.get(CREDITS_KEY)
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return [
@@ -214,7 +214,7 @@ METRON_CREDITS_TRANSFORM_TO_CB = MetaSpec(
 )
 
 
-def metron_credits_from_cb():
+def metron_credits_from_cb() -> MetaSpec:
     """Create credits from cb transform."""
     role_map = _create_role_variations_to_enum_map(ROLE_ALIASES)
 

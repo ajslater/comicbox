@@ -13,7 +13,7 @@ class ComicboxMerge(ComicboxNormalize):
 
     def _merge_metadata_by_source(
         self, source: MetadataSources, merged_md: dict, merger: type[Merger]
-    ):
+    ) -> None:
         """Order the source md list by format precedence."""
         format_dict = {}
         # Set the format dict order to be the one declared in source.formats
@@ -28,7 +28,7 @@ class ComicboxMerge(ComicboxNormalize):
                 for normalized_md in format_normalized_md_list:
                     merger.merge(merged_md, normalized_md)
 
-    def _set_merged_metadata(self):
+    def _set_merged_metadata(self) -> None:
         """Overlay the metadatas in precedence order."""
         # Order the md list by source precedence
         merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}

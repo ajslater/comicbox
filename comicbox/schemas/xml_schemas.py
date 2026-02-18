@@ -26,9 +26,9 @@ class XmlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: dict, *args, **kwargs):
+    def dumps(cls, obj: dict, *args, **kwargs) -> str:
         """Dump dict to XML string."""
-        return xmltodict.unparse(
+        return xmltodict.unparse(  # ty: ignore[no-matching-overload]
             obj,
             *args,
             **XML_UNPARSE_ARGS,

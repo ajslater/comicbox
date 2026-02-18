@@ -21,7 +21,7 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
 )
 
 
-def _ensure_cli_yaml(config):
+def _ensure_cli_yaml(config) -> None:
     """Wrap all cli yaml in brackets if its bare."""
     mds = config["metadata_cli"].get()
     if not mds:
@@ -36,14 +36,14 @@ def _ensure_cli_yaml(config):
     config["metadata_cli"].set(tuple(wrapped_md_list))
 
 
-def _deduplicate_delete_keys(config: Subview):
+def _deduplicate_delete_keys(config: Subview) -> None:
     """Transform delete keys to a set."""
     delete_keys: list | set | tuple | frozenset = config["delete_keys"].get(list)
     delete_keys = frozenset({kp.removeprefix("comicbox.") for kp in delete_keys})
     config["delete_keys"].set(delete_keys)
 
 
-def _parse_print(config: Subview):
+def _parse_print(config: Subview) -> None:
     print_fmts: str | None = config["print"].get()
     if not print_fmts:
         print_fmts = ""
@@ -59,13 +59,13 @@ def _parse_print(config: Subview):
     config["print"].set(print_fmts_set)
 
 
-def _set_tagger(config: Subview):
+def _set_tagger(config: Subview) -> None:
     tagger = config["tagger"].get()
     if not tagger:
         config["tagger"].set(DEFAULT_TAGGER)
 
 
-def _set_computed(config: Subview):
+def _set_computed(config: Subview) -> None:
     write: frozenset = config["write"].get(frozenset)
     export: frozenset = config["export"].get(frozenset)
     all_write_fmts = frozenset(write | export)
@@ -85,7 +85,7 @@ def _set_computed(config: Subview):
     config["computed"]["is_skip_computed_from_tags"].set(iscft)
 
 
-def compute_config(config_program: Subview):
+def compute_config(config_program: Subview) -> None:
     """Compute values for config before template load."""
     clean_paths(config_program)
     _ensure_cli_yaml(config_program)

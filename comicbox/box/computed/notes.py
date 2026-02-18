@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Callable
+from datetime import date
 from types import MappingProxyType
 
 from loguru import logger
@@ -63,7 +64,7 @@ _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 class ComicboxComputedNotes(ComicboxMerge):
     """Computed metadata methods for notes field."""
 
-    def _set_computed_notes_key(self, sub_data, key, match, md):
+    def _set_computed_notes_key(self, sub_data, key, match, md) -> None:
         schema = ComicboxYamlSubSchema(path=self._path)
         if not sub_data.get(key) and (new_value := match.group(key)):
             field = schema.fields.get(key)
@@ -72,7 +73,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             new_value = field.deserialize(new_value)
             md[key] = new_value
 
-    def _get_computed_notes_keys_comictagger(self, notes, sub_data, md):
+    def _get_computed_notes_keys_comictagger(self, notes, sub_data, md) -> dict:
         identifiers = {}
         match = _NOTES_RE.search(notes)
         if not match:
@@ -89,7 +90,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         return identifiers
 
     @staticmethod
-    def _get_computed_notes_urn_identifiers(notes):
+    def _get_computed_notes_urn_identifiers(notes) -> dict:
         identifiers = {}
         match = _URN_RE.search(notes)
         if not match:
@@ -102,7 +103,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         return identifiers
 
     @staticmethod
-    def _get_computed_notes_extra_identifiers(notes):
+    def _get_computed_notes_extra_identifiers(notes) -> dict:
         identifiers = {}
         matches = _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes)
         if not matches:
@@ -117,7 +118,7 @@ class ComicboxComputedNotes(ComicboxMerge):
                 identifiers[id_source.value] = identifier
         return identifiers
 
-    def _set_computed_notes_identifiers(self, sub_data, notes, sub_md):
+    def _set_computed_notes_identifiers(self, sub_data, notes, sub_md) -> None:
         extra_identifiers = self._get_computed_notes_extra_identifiers(notes)
         comictagger_identifiers = self._get_computed_notes_keys_comictagger(
             notes, sub_data, sub_md
@@ -140,7 +141,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             sub_md[IDENTIFIERS_KEY] = pruned_notes_identifiers
 
     @staticmethod
-    def _get_computed_notes_date(notes):
+    def _get_computed_notes_date(notes) -> None | date:
         """Parse the date from the notes."""
         match = _NOTES_RELDATE_RE.search(notes)
         if not match:
@@ -152,7 +153,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             logger.debug(f"Unparsable RELDATE {date_str}")
         return None
 
-    def _set_computed_notes_date(self, sub_data, notes, sub_md):
+    def _set_computed_notes_date(self, sub_data, notes, sub_md) -> None:
         if (old_date := sub_data.get(DATE_KEY, {})) and _DATE_KEYS & frozenset(
             old_date.keys()
         ):
@@ -168,7 +169,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             new_date.update(old_date)
             sub_md[DATE_KEY] = new_date
 
-    def _set_computed_notes_tagger(self, sub_data, notes, sub_md):
+    def _set_computed_notes_tagger(self, sub_data, notes, sub_md) -> None:
         if sub_data.get(TAGGER_KEY):
             # Do not overwrite an explicit tagger
             return
@@ -181,7 +182,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         tagger = match.group("tagger").strip()
         sub_md[TAGGER_KEY] = tagger
 
-    def _set_computed_notes_updated_at(self, sub_data, notes, sub_md):
+    def _set_computed_notes_updated_at(self, sub_data, notes, sub_md) -> None:
         if sub_data.get(UPDATED_AT_KEY):
             # Do not overwrite an explicit updated_at
             return
@@ -195,7 +196,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         updated_at = DateTimeField()._deserialize(dttm_str)  # noqa: SLF001
         sub_md[UPDATED_AT_KEY] = updated_at
 
-    def get_computed_from_notes(self, sub_data):
+    def get_computed_from_notes(self, sub_data) -> dict | None:
         """Parse the tagger, updated_at & identifier from notes if not already set."""
         if not sub_data:
             return None

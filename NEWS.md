@@ -1,5 +1,19 @@
 # 📰 News
 
+## v2.2.0
+
+- Add `--pdf-page-format` option to choose how pdf pages are extracted. Replaces
+  `to_pixmap` in the API.
+- `--cbz` now works on PDF files. Can create original image CBZs with
+  `--pdf-page_format image` for PDFs with single image pages.
+- `--validate` validates imported and archive metadata against available schemas
+- `--import` expands quoted "glob\*" paths.
+
+## v2.1.2
+
+- Fix comicbox jsonschema.
+- Many more type annotations. Include py.typed sentinel file.
+
 ## v2.1.1
 
 - Pin confuse config library at 2.1.0 due to typing issues with 2.2.0

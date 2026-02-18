@@ -135,9 +135,9 @@ CIX_DICT = MappingProxyType(
         }
     }
 )
-PDF_STR = xmltodict.unparse(PDF_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
-PDF_KW_STR = xmltodict.unparse(PDF_KW_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
-CIX_STR = xmltodict.unparse(CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
+PDF_STR = xmltodict.unparse(PDF_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
+PDF_KW_STR = xmltodict.unparse(PDF_KW_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
+CIX_STR = xmltodict.unparse(CIX_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
 
 PDF_METADATA_TESTER = TestParser(
     MetadataFormats.PDF_XML,

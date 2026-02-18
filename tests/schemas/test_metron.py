@@ -370,7 +370,7 @@ def unparse_strinfigy_decimals(data):
         stringified_data,
         Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
     )
-    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue]
+    return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
 
 
 READ_METRON_STR = unparse_strinfigy_decimals(READ_METRON_DICT)

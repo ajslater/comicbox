@@ -13,7 +13,7 @@ def add_credit_role_to_comicbox_credits(
     person_name: str,
     role_name: str,
     comicbox_credits: dict,
-):
+) -> None:
     """Add a credit role to the comicbox credits."""
     if not (person_name and role_name):
         return

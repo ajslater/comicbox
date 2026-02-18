@@ -63,7 +63,7 @@ _ID_SOURCES_RANK: MappingProxyType[str, int] = MappingProxyType(
 
 def compare_identifier_source(
     id_source_a: IdSources | str | None, id_source_b: IdSources | str | None
-):
+) -> bool:
     """Compare identifier sources by string."""
     if isinstance(id_source_a, IdSources):
         id_source_a = id_source_a.value

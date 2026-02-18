@@ -11,7 +11,7 @@ from comicbox.transforms.identifiers import (
 from comicbox.transforms.spec import MetaSpec
 
 
-def _to_cb(values):
+def _to_cb(values) -> dict:
     # ComicInfo GTINs are abused as identifiers pending a real identifier tag.
     cix_gtin = values.get(GTIN_TAG)
     comicbox_identifiers = identifiers_to_cb(

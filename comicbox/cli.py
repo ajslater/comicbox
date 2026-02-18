@@ -62,6 +62,14 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
     """,
     style="argparse.text",
 )
+_PDF_PAGE_FORMAT_DESC = MappingProxyType(
+    {
+        "pdf": "Extract pages as pdf file of one page.",
+        "pixmap": "Extract pages as an uncompressed pixmap of the page.",
+        "image": "Extract the first image in it's original unaltered format on the page. Particularly useful when paired with -z to convert comic "
+        "PDFs to CBZs without reencoding the images.",
+    }
+)
 _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
 
@@ -75,7 +83,7 @@ class CSVAction(Action):
         namespace: Namespace,
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
-    ):
+    ) -> None:
         """Parse comma delimited sequences."""
         if isinstance(values, str):
             values_array = values.split(",")
@@ -96,7 +104,7 @@ class PageRangeAction(Action):
         namespace: Namespace,
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
-    ):
+    ) -> None:
         """Parse page range delimited by :."""
         if isinstance(values, str):
             values = values.split(":")
@@ -118,8 +126,8 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
-def _get_help_print_phases_table():
-    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+def _get_help_print_phases_table() -> Table:
+    table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Phase", style="green")
     table.add_column("Description")
     table.add_column("Shortcut", style="cyan")
@@ -131,12 +139,21 @@ def _get_help_print_phases_table():
     return table
 
 
+def _get_pdf_page_format_phases_table() -> Table:
+    table = Table(title="[dark_cyan]PDF_PAGE_FORMAT[/dark_cyan] values", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    table.add_column("Value", style="green")
+    table.add_column("Description")
+    for key, desc in _PDF_PAGE_FORMAT_DESC.items():
+        table.add_row(key, desc)
+    return table
+
+
 FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
 
 
-def _get_help_format_table():
-    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType]
+def _get_help_format_table() -> Table:
+    table = Table(title=FORMAT_TITLE, **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Format")
     table.add_column("Keys", style="green")
     for fmt in reversed(MetadataFormats):
@@ -152,7 +169,7 @@ def _get_help_format_table():
     return table
 
 
-def _add_option_group(parser):
+def _add_option_group(parser) -> None:
     option_group = parser.add_argument_group("Options")
     option_group.add_argument(
         "-c",
@@ -228,6 +245,15 @@ def _add_option_group(parser):
             "Compute the large ComicInfo style pages metadata from the archive. Turned off by default."
         ),
     )
+    if PDF_ENABLED:
+        option_group.add_argument(
+            "-f",
+            "--pdf-page-format",
+            dest="pdf_page_format",
+            action="store",
+            default="",
+            help=("Method to extract pdf pages and covers. Valid values listed below."),
+        )
     option_group.add_argument(
         "-A",
         "--no-compute-page-count",
@@ -278,7 +304,7 @@ def _add_option_group(parser):
     )
 
 
-def _add_action_group(parser):
+def _add_action_group(parser) -> None:
     action_group = parser.add_argument_group("Actions")
     action_group.add_argument(
         "-P",
@@ -300,6 +326,13 @@ def _add_action_group(parser):
         help="Print software version. Shortcut for -P v",
     )
     action_group.add_argument(
+        "-V",
+        "--validate",
+        dest="validate",
+        action="store_true",
+        help="Validate formats against schema if available. Schemas like ComicInfo enforce a strict tag order. Schemas available at https://github.com/ajslater/comicbox/tree/main/schemas",
+    )
+    action_group.add_argument(
         "-p",
         "--print",
         dest="print_metadata",
@@ -318,7 +351,7 @@ def _add_action_group(parser):
         "--import",
         action="append",
         dest="import_paths",
-        help="Import metadata from external files.",
+        help="Import metadata from external files. Accepts quoted globs.",
     )
     action_group.add_argument(
         "-x",
@@ -370,7 +403,7 @@ def _add_action_group(parser):
     )
 
 
-def _add_target_group(parser):
+def _add_target_group(parser) -> None:
     target_group = parser.add_argument_group("Targets")
     target_group.add_argument(
         "paths",
@@ -390,6 +423,7 @@ def get_args(params=None) -> Namespace:
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
         _get_help_format_table(),
+        _get_pdf_page_format_phases_table(),
     )
 
     parser = ArgumentParser(
@@ -407,7 +441,7 @@ def get_args(params=None) -> Namespace:
     return parser.parse_args(params)
 
 
-def post_process_args(cns):
+def post_process_args(cns) -> None:
     """Adjust CLI config."""
     # Print options
     if cns.version:
@@ -422,7 +456,7 @@ def post_process_args(cns):
         cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
-def main(params=None):
+def main(params=None) -> None:
     """Get CLI arguments and perform the operation on the archive."""
     cns = get_args(params)
     post_process_args(cns)

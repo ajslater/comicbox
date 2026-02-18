@@ -12,6 +12,6 @@ class ComicboxCLISchema(ComicboxYamlSchema):
         """Schema Options."""
 
     @override
-    def dumps(self, obj, *args, **kwargs):
+    def dumps(self, obj, *args, **kwargs) -> str:
         """Dump string as a one liner."""
         return super().dumps(obj, *args, dfs=True, **kwargs)

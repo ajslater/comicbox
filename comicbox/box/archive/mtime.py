@@ -12,10 +12,10 @@ _BRACKETS = ("{", b"{")
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
 
-    def _is_comment_json(self, archive):
+    def _is_comment_json(self, archive) -> bool:
         return (
             self._config.computed.is_read_comments
-            and (comment := getattr(archive, "comment", ""))
+            and bool(comment := getattr(archive, "comment", ""))
             and (comment[0] in _BRACKETS)
         )
 

@@ -23,11 +23,11 @@ class MetaSpec:
     assign_global: bool = False
 
 
-def _path_str_from_tuple(head_keypath: str, tail_keypath: str):
+def _path_str_from_tuple(head_keypath: str, tail_keypath: str) -> str:
     return ".".join(tuple(filter(bool, (head_keypath, tail_keypath))))
 
 
-def _path_from_tuple(head_keypath: str, tail_keypath: str):
+def _path_from_tuple(head_keypath: str, tail_keypath: str) -> Path:
     path_str = _path_str_from_tuple(head_keypath, tail_keypath)
     return Path.from_text(path_str)
 
@@ -53,7 +53,7 @@ def _get_multi_values_spec(
 
 def _get_spec_source_values(
     source_root_path_str: str, source_path_strs: tuple[str] | str
-):
+) -> dict | Coalesce:
     if isinstance(source_path_strs, tuple | list):
         source_root_path = (
             Path.from_text(source_root_path_str) if source_root_path_str else None
@@ -69,7 +69,7 @@ def _get_spec_source_values(
     return values
 
 
-def _get_tail_spec(metaspec_spec):
+def _get_tail_spec(metaspec_spec) -> filter:
     tail_spec = metaspec_spec if isinstance(metaspec_spec, tuple) else (metaspec_spec,)
     return filter(bool, tail_spec)
 
@@ -79,7 +79,7 @@ def _get_spec(
     source_keypaths: str | tuple[str],
     metaspec: MetaSpec,
     dest_keypath: str,
-):
+) -> Coalesce:
     spec = []
     if values := _get_spec_source_values(source_head, source_keypaths):
         spec.append(values)
@@ -101,7 +101,7 @@ def _create_spec(
     metaspec: MetaSpec,
     dest_keypath: str,
     source_keypaths: str | tuple[str],
-):
+) -> tuple[str, Coalesce] | tuple[str, tuple]:
     full_dest_path = _path_str_from_tuple(dest_head, dest_keypath)
     if not full_dest_path:
         return full_dest_path, ()

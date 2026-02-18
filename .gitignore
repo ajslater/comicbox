@@ -59,6 +59,7 @@ eggs/
 env.bak/
 env/
 ENV/
+generate-schema/generated.schema.json
 htmlcov/
 instance/
 ipython_config.py

@@ -18,7 +18,7 @@ from comicbox.transforms.spec import (
 _KEY_SPEC = Coalesce(T[IMAGE_ATTRIBUTE], skip=is_empty, default=SKIP)
 
 
-def comicinfo_pages_to_cb(pages_key_path: str, page_key_map: Mapping):
+def comicinfo_pages_to_cb(pages_key_path: str, page_key_map: Mapping) -> MetaSpec:
     """Transform comicinfo pages into comicbox."""
     page_spec = create_specs_to_comicbox(
         MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
@@ -32,7 +32,7 @@ def comicinfo_pages_to_cb(pages_key_path: str, page_key_map: Mapping):
     )
 
 
-def _pages_from_cb(values: Mapping, page_spec: dict):
+def _pages_from_cb(values: Mapping, page_spec: dict) -> list:
     cix_pages = []
     comicbox_pages = values.get(PAGES_KEY)
     if not comicbox_pages:
@@ -51,7 +51,7 @@ def _pages_from_cb(values: Mapping, page_spec: dict):
     return cix_pages
 
 
-def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping):
+def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping) -> MetaSpec:
     """Transform comicbox pages into comicinfo."""
     page_spec = create_specs_from_comicbox(
         MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
@@ -66,7 +66,9 @@ def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping):
     )
 
 
-def comicinfo_bookmark_to_cb(pages_key_path: str, bookmark_attr: str, image_attr: str):
+def comicinfo_bookmark_to_cb(
+    pages_key_path: str, bookmark_attr: str, image_attr: str
+) -> MetaSpec:
     """Get the bookmark from pages."""
 
     def get_bookmark(pages):

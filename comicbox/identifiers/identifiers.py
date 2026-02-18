@@ -74,7 +74,7 @@ class IdentifierParts:
     url_path_template: str
     https: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize url_regex & template prefix."""
         scheme = "https" if self.https else "http"
         self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -241,7 +241,7 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
 )
 
 
-def _normalize_comicvine_id_key(id_type, id_key):
+def _normalize_comicvine_id_key(id_type, id_key) -> tuple:
     """I expect its quite common to list the full comicvine code in situations where only the id is necessary."""
     match = PARSE_COMICVINE_RE.match(id_key)
     if not match:
@@ -275,7 +275,7 @@ def create_identifier(
     id_type: str = "",
     url: str = "",
     default_id_source_str: str = DEFAULT_ID_SOURCE.value,
-):
+) -> dict:
     """Create identifier dict from parts."""
     identifier = {}
     if not id_source_str:

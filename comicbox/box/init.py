@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
     from py7zr.io import BytesIOFactory
 
+    from comicbox.box.archive.archiveinfo import InfoType
     from comicbox.box.types import ArchiveType
 
 
@@ -72,7 +73,7 @@ class ComicboxInit:
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
         logger=None,
-    ):
+    ) -> None:
         """
         Initialize the archive with a path to the archive.
 
@@ -89,20 +90,22 @@ class ComicboxInit:
         init_logging(self._config.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
-    def _reset_loaded_forward_caches(self):
+    def _reset_loaded_forward_caches(self) -> None:
         self._merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
 
-    def _reset_archive(self, fmt: MetadataFormats | None, metadata: Mapping | None):
+    def _reset_archive(
+        self, fmt: MetadataFormats | None, metadata: Mapping | None
+    ) -> None:
         self._archive_cls: Callable | None = None
         self._file_type: FileTypeEnum | None = None
         self._set_archive_cls()
         self._archive: ArchiveType | None = None
         self._namelist: tuple[str, ...] | None = None
-        self._infolist: tuple | None = None
+        self._infolist: tuple[InfoType, ...] | None = None
         self._7zfactory: BytesIOFactory | None = None
 
         self._page_filenames: tuple[str, ...] | None = None
@@ -124,7 +127,7 @@ class ComicboxInit:
         """Are PDFs supported."""
         return "pdffile" in sys.modules
 
-    def _set_archive_cls_pdf(self):
+    def _set_archive_cls_pdf(self) -> bool:
         """PDFFile is only optionally installed."""
         with suppress(NameError, OSError):
             if PDFFile.is_pdffile(str(self._path)):
@@ -133,7 +136,7 @@ class ComicboxInit:
                 self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
         return self._archive_is_pdf
 
-    def _set_archive_cls(self):
+    def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
         if not self._path:
             return
@@ -165,10 +168,10 @@ class ComicboxInit:
         )
         self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"  # pyright: ignore[reportUninitializedInstanceVariable]
 
-    def get_path(self):
+    def get_path(self) -> Path | None:
         """Get the path for the archive."""
         return self._path
 
-    def get_file_type(self):
+    def get_file_type(self) -> str:
         """Return archive type string."""
-        return self._file_type.value if self._file_type else None
+        return self._file_type.value if self._file_type else ""

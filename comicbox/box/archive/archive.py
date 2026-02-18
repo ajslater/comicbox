@@ -7,6 +7,8 @@ from py7zr.io import BytesIOFactory
 from rarfile import RarFile
 from zipremove import ZipFile
 
+from comicbox.box.archive.archiveinfo import InfoType
+
 try:
     from pdffile import PDFFile
 except ImportError:
@@ -19,14 +21,14 @@ class Archive:
     """Generic Archive ZipFile like methods."""
 
     @staticmethod
-    def namelist(archive: ArchiveType):
+    def namelist(archive: ArchiveType) -> tuple[str, ...]:
         """Return namelist."""
-        return (
+        return tuple(
             archive.getnames() if isinstance(archive, TarFile) else archive.namelist()
         )
 
     @staticmethod
-    def infolist(archive: ArchiveType):
+    def infolist(archive: ArchiveType) -> tuple[InfoType, ...]:
         """Return infolist."""
         if isinstance(archive, TarFile):
             infolist = archive.getmembers()
@@ -34,7 +36,7 @@ class Archive:
             infolist = archive.list()
         else:
             infolist = archive.infolist()
-        return infolist
+        return tuple(infolist)
 
     @staticmethod
     def _read_tarfile(archive: TarFile, filename: str) -> bytes:
@@ -60,16 +62,16 @@ class Archive:
         archive: ArchiveType,
         filename: str,
         factory: None | BytesIOFactory,
-        *,
-        to_pixmap: bool,
-    ):
+        pdf_format: str = "",
+        props: dict | None = None,
+    ) -> bytes:
         """Read one file in the archive's data."""
         if isinstance(archive, TarFile):
             data = cls._read_tarfile(archive, filename)
         elif isinstance(archive, SevenZipFile):
             data = cls._read_7zipfile(archive, factory, filename)
         elif isinstance(archive, PDFFile):
-            data = archive.read(filename, to_pixmap=to_pixmap)
+            data = archive.read(filename, fmt=pdf_format, props=props)
         else:
             data = archive.read(filename)
         return data

@@ -21,7 +21,7 @@ class Strategy(Enum):
     ADDITIVE = 1
 
 
-def _handle_merge_replace(dest_parent, source_parent, key):
+def _handle_merge_replace(dest_parent, source_parent, key) -> None:
     dest = dest_parent[key]
     source = source_parent[key]
 
@@ -39,27 +39,27 @@ def _handle_merge_replace(dest_parent, source_parent, key):
 ############
 
 
-def _merge_counter(dest, source):
+def _merge_counter(dest, source) -> None:
     # Update dest if both dest and source are `Counter` type.
     dest.update(deepcopy(source))
 
 
-def _merge_mapping(dest, source):
+def _merge_mapping(dest, source) -> None:
     # Recurse on mapping
     _deepmerge(dest, source, Strategy.ADDITIVE)
 
 
-def _merge_list(dest, source):
+def _merge_list(dest, source) -> None:
     # Extend dest if both dest and source are `list` type.
     dest.extend(deepcopy(source))
 
 
-def _merge_tuple(dest, source):
+def _merge_tuple(dest, source) -> None:
     # Update dest if both dest and source are `tuple` type.
     dest += tuple(deepcopy(source))
 
 
-def _merge_set(dest, source):
+def _merge_set(dest, source) -> None:
     # Update dest if both dest and source are `set` type.
     dest.update(deepcopy(source))
 
@@ -75,7 +75,7 @@ _MERGE_MAP: MappingProxyType[tuple, Callable] = MappingProxyType(
 )
 
 
-def _handle_merge_additive(dest_parent, source_parent, key):
+def _handle_merge_additive(dest_parent, source_parent, key) -> None:
     # Values are combined into one long collection.
     dest = dest_parent[key]
     source = source_parent[key]

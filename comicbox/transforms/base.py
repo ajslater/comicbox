@@ -23,13 +23,13 @@ class BaseTransform:
     SPECS_TO: MappingProxyType[str, Any] = MappingProxyType({})
     SPECS_FROM: MappingProxyType[str, Any] = MappingProxyType({})
 
-    def __init__(self, path: Path | None = None):
+    def __init__(self, path: Path | None = None) -> None:
         """Initialize instances."""
         self._path: Path | None = path
         self._schema: BaseSchema = self.SCHEMA_CLASS(path=path)
 
     @staticmethod
-    def _swap_data_key(schema: BaseSchema, transformed_data: dict):
+    def _swap_data_key(schema: BaseSchema, transformed_data: dict) -> None:
         """Hack for ComicBookInfo's root key with special characters."""
         if schema.ROOT_DATA_KEY and (
             root := transformed_data.pop(schema.ROOT_TAG, None)

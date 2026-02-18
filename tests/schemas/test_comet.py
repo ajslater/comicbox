@@ -96,7 +96,7 @@ COMET_DICT = MappingProxyType(
         }
     }
 )
-COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue]
+COMET_STR = xmltodict.unparse(COMET_DICT, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType,reportCallIssue],# ty: ignore[no-matching-overload]
 
 COMET_TESTER = TestParser(
     MetadataFormats.COMET,

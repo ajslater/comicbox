@@ -7,6 +7,7 @@ from pathlib import Path
 from confuse import Configuration
 from confuse.templates import (
     AttrDict,
+    Choice,
     Integer,
     MappingTemplate,
     OneOf,
@@ -16,9 +17,15 @@ from confuse.templates import (
 )
 
 from comicbox.config.computed import compute_config
-from comicbox.config.paths import post_process_set_for_path
+from comicbox.config.paths import expand_glob_paths, post_process_set_for_path
 from comicbox.config.read import read_config_sources
 from comicbox.version import PACKAGE_NAME
+
+try:
+    from pdffile import PageFormat
+except ImportError:
+    from comicbox.pdffile_stub import PageFormat
+
 
 _TEMPLATE = MappingTemplate(
     {
@@ -37,6 +44,7 @@ _TEMPLATE = MappingTemplate(
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
+                "pdf_page_format": Choice(("", *(e.value for e in PageFormat))),
                 "read": Optional(frozenset, Sequence(str)),
                 "read_ignore": Optional(OneOf((frozenset, Sequence(str)))),
                 "recurse": bool,
@@ -54,6 +62,7 @@ _TEMPLATE = MappingTemplate(
                 "index_to": Optional(int),
                 "print": Optional(OneOf((frozenset, str))),
                 "rename": Optional(bool),
+                "validate": Optional(bool),
                 "write": Optional(OneOf((frozenset, Sequence(str)))),
                 # Targets
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
@@ -102,6 +111,7 @@ def get_config(
     config_program = config[PACKAGE_NAME]
     compute_config(config_program)
 
-    # Create config
     ad = config.get(_TEMPLATE)
+    ad.comicbox.import_paths = expand_glob_paths(ad.comicbox.import_paths)
+
     return post_process_set_for_path(ad.comicbox, path, box=box)

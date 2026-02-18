@@ -14,7 +14,7 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
-    def _set_computed_merged_metadata_delete(self, merged_md):
+    def _set_computed_merged_metadata_delete(self, merged_md) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
         for key_path in sorted(self._config.delete_keys):
@@ -24,7 +24,7 @@ class ComicboxMetadata(ComicboxComputed):
             except Exception as exc:
                 logger.warning(f"Could not delete key path {key_path}: {exc}")
 
-    def _set_computed_merged_metadata(self):
+    def _set_computed_merged_metadata(self) -> None:
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
         merged_md = dict(merged_md)
@@ -56,7 +56,7 @@ class ComicboxMetadata(ComicboxComputed):
     def _to_dict(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-    ):
+    ) -> tuple:
         # Get schema instance.
         schema_class = fmt.value.schema_class
         schema = schema_class(path=self._path)
@@ -83,7 +83,7 @@ class ComicboxMetadata(ComicboxComputed):
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt)
         dump = schema.dump(md, **kwargs)
-        return dict(dump)  # pyright:ignore[reportArgumentType, reportCallIssue]
+        return dict(dump)
 
     def to_string(
         self,
