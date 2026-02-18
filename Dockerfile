@@ -15,8 +15,5 @@ RUN apt-get clean \
 
 WORKDIR /app
 
-COPY cfg ./cfg
-COPY package.json package-lock.json pyproject.toml uv.lock Makefile ./
-RUN PYMUPDF_SETUP_PY_LIMITED_API=0 make install
-
 COPY . .
+RUN PYMUPDF_SETUP_PY_LIMITED_API=0 make install
