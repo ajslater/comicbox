@@ -37,9 +37,14 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
         return dt
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | float | None | date:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self, value, *args, **kwargs) -> str | float | date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        if value is None:
+            return None
         if self._serialize_to_str:
-            return super()._serialize(value, *args, **kwargs)
+            if isinstance(value, date):
+                value = super()._serialize(value, *args, **kwargs)
+            else:
+                value = StringField()._serialize(value, *args, **kwargs)  # noqa: SLF001
         return value
 
 
@@ -87,11 +92,13 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | None | datetime:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self, value, *args, **kwargs) -> str | float | datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if value is None:
             return None
         if isinstance(value, datetime):
             value = self._ensure_aware(value)
             if self._serialize_to_iso:
                 value = value.isoformat(timespec="seconds").replace("+00:00", "Z")
+        else:
+            value = StringField()._serialize(value, *args, **kwargs)  # noqa: SLF001
         return value
