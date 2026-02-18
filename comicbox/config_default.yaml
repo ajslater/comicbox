@@ -12,6 +12,7 @@ comicbox:
   metadata: {}
   metadata_format: null
   metadata_cli: null
+  pdf_page_format: ""
   read:
     - cli
     - comet

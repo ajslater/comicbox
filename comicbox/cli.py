@@ -62,6 +62,14 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
     """,
     style="argparse.text",
 )
+_PDF_PAGE_FORMAT_DESC = MappingProxyType(
+    {
+        "pdf": "Extract pages as pdf file of one page.",
+        "pixmap": "Extract pages as an uncompressed pixmap of the page.",
+        "image": "Extract the first image in it's original unaltered format on the page. Particularly useful when paired with -z to convert comic "
+        "PDFs to CBZs without reencoding the images.",
+    }
+)
 _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
 
@@ -128,6 +136,15 @@ def _get_help_print_phases_table() -> Table:
         if shortcut:
             shortcut = "-" + shortcut
         table.add_row(phase, desc, shortcut)
+    return table
+
+
+def _get_pdf_page_format_phases_table() -> Table:
+    table = Table(title="[dark_cyan]PDF_PAGE_FORMAT[/dark_cyan] values", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    table.add_column("Value", style="green")
+    table.add_column("Description")
+    for key, desc in _PDF_PAGE_FORMAT_DESC.items():
+        table.add_row(key, desc)
     return table
 
 
@@ -228,6 +245,15 @@ def _add_option_group(parser) -> None:
             "Compute the large ComicInfo style pages metadata from the archive. Turned off by default."
         ),
     )
+    if PDF_ENABLED:
+        option_group.add_argument(
+            "-f",
+            "--pdf-page-format",
+            dest="pdf_page_format",
+            action="store",
+            default="",
+            help=("Method to extract pdf pages and covers. Valid values listed below."),
+        )
     option_group.add_argument(
         "-A",
         "--no-compute-page-count",
@@ -397,6 +423,7 @@ def get_args(params=None) -> Namespace:
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
         _get_help_format_table(),
+        _get_pdf_page_format_phases_table(),
     )
 
     parser = ArgumentParser(

@@ -7,7 +7,6 @@ from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
 
-import pymupdf
 import pytest
 
 from comicbox.box import Comicbox
@@ -289,21 +288,10 @@ def test_cover_page(ft):
     """Test codex cover extraction methods."""
     fixture = FIXTURES[ft]
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
-    is_pdf = cover_path.suffix == ".pdf"
     with Comicbox(fixture.path, config=CONFIG) as car:
-        cover = car.get_cover_page(to_pixmap=is_pdf)
+        cover = car.get_cover_page()
     with cover_path.open("rb") as f:
         disk_cover = f.read()
-    if is_pdf:
-        # transform file to image.
-        try:
-            doc = pymupdf.Document(stream=disk_cover)
-            pix = doc.get_page_pixmap(0)
-            disk_cover = pix.tobytes(output="ppm")
-        except NameError as exc:
-            reason = "fitz not imported from pymupdf (comicbox-pdffile)"
-            raise AssertionError(reason) from exc
-
     if cover != disk_cover:
         print(f"{cover_path=}")  # noqa: T201
     assert cover == disk_cover

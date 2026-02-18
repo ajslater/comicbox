@@ -81,7 +81,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
 
-    def _archive_readfile(self, filename, *, to_pixmap=False) -> bytes:
+    def _get_pdf_format(self, pdf_format: str = "", default: str = ""):
+        return pdf_format or (self._config.pdf_page_format or default)
+
+    def _archive_readfile(
+        self, filename: str, pdf_format: str = "", props: dict | None = None
+    ) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
         data = b""
@@ -90,8 +95,11 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         self._ensure_read_archive()
         archive = self._get_archive()
         factory = self._get_7zfactory()
+        pdf_format = self._get_pdf_format(pdf_format)
         try:
-            data = Archive.read(archive, filename, factory, to_pixmap=to_pixmap)
+            data = Archive.read(
+                archive, filename, factory, pdf_format=pdf_format, props=props
+            )
         except BadRarFile:
             self.check_unrar_executable()
             raise

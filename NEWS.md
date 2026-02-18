@@ -2,6 +2,10 @@
 
 ## v2.2.0
 
+- Add `--pdf-page-format` option to choose how pdf pages are extracted. Replaces
+  `to_pixmap` in the API.
+- `--cbz` now works on PDF files. Can create original image CBZs with
+  `--pdf-page_format image` for PDFs with single image pages.
 - `--validate` validates imported and archive metadata against available schemas
 - `--import` expands quoted "glob\*" paths.
 

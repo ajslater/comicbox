@@ -685,7 +685,7 @@ requires-dist = [
     { name = "ansicolors", specifier = "~=1.1.8" },
     { name = "bidict", specifier = "~=0.23" },
     { name = "case-converter", specifier = "~=1.2" },
-    { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.3,<0.4" },
+    { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.4,<0.5" },
     { name = "comicfn2dict", specifier = ">=0.2.4,<1.0.0" },
     { name = "confuse", specifier = "~=2.1.0,<2.2.0" },
     { name = "deepdiff", specifier = "~=8.2" },
@@ -751,7 +751,7 @@ test = [
 
 [[package]]
 name = "comicbox-pdffile"
-version = "0.3.0"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filetype" },
@@ -759,9 +759,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/6e/2fdd33e7d9bcb48a755545ea16df4f66f6f69113219dd9e81cbac2e8bca9/comicbox_pdffile-0.3.0.tar.gz", hash = "sha256:355c9225705953e51e8c930c3ebdb826b3adc5c55b7a587a5d56f9c35652b6cb", size = 162599, upload-time = "2025-11-23T03:49:10.605Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/8e/1e1c37518f3be771374fa31519b497c44e3a5bd63af263447741bfc6fc30/comicbox_pdffile-0.4.0.tar.gz", hash = "sha256:efc3440bce726e76a6e37268c2ef928224670d5c3ff36c1be9538425a4d4142b", size = 200229, upload-time = "2026-02-17T22:34:51.146Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/12/1bfc50b3ae6ccf8e275fd3760c4de89dd5e691e30931ae1b2d16286b7fa2/comicbox_pdffile-0.3.0-py3-none-any.whl", hash = "sha256:6ae1ae23ec5958eeea11c62f405814e92b9faf012957cdfe6c2c2e173d0ad2f8", size = 5794, upload-time = "2025-11-23T03:49:09.741Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/1f/0908e2e8b47b34094832773c29b46a606c9ea046bf1fafe8b1c11ba5509c/comicbox_pdffile-0.4.0-py3-none-any.whl", hash = "sha256:ca5a2b0426c77def6e10387fdffd85113838f73fe0fd9ddf0b20b32b57959dc9", size = 6187, upload-time = "2026-02-17T22:34:52.093Z" },
 ]
 
 [[package]]

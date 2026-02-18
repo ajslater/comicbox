@@ -62,8 +62,8 @@ class Archive:
         archive: ArchiveType,
         filename: str,
         factory: None | BytesIOFactory,
-        *,
-        to_pixmap: bool,
+        pdf_format: str = "",
+        props: dict | None = None,
     ) -> bytes:
         """Read one file in the archive's data."""
         if isinstance(archive, TarFile):
@@ -71,7 +71,7 @@ class Archive:
         elif isinstance(archive, SevenZipFile):
             data = cls._read_7zipfile(archive, factory, filename)
         elif isinstance(archive, PDFFile):
-            data = archive.read(filename, to_pixmap=to_pixmap)
+            data = archive.read(filename, fmt=pdf_format, props=props)
         else:
             data = archive.read(filename)
         return data

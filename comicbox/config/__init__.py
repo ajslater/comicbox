@@ -7,6 +7,7 @@ from pathlib import Path
 from confuse import Configuration
 from confuse.templates import (
     AttrDict,
+    Choice,
     Integer,
     MappingTemplate,
     OneOf,
@@ -19,6 +20,12 @@ from comicbox.config.computed import compute_config
 from comicbox.config.paths import expand_glob_paths, post_process_set_for_path
 from comicbox.config.read import read_config_sources
 from comicbox.version import PACKAGE_NAME
+
+try:
+    from pdffile import PageFormat
+except ImportError:
+    from comicbox.pdffile_stub import PageFormat
+
 
 _TEMPLATE = MappingTemplate(
     {
@@ -37,6 +44,7 @@ _TEMPLATE = MappingTemplate(
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
+                "pdf_page_format": Choice(("", *(e.value for e in PageFormat))),
                 "read": Optional(frozenset, Sequence(str)),
                 "read_ignore": Optional(OneOf((frozenset, Sequence(str)))),
                 "recurse": bool,

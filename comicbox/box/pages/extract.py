@@ -16,10 +16,13 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _extract_page(self, path, fn, *, to_pixmap: bool = False) -> None:
+    def _extract_page(self, path, fn) -> None:
         path = self._extract_page_get_path(path, fn)
+        props = {}
+        data = self._archive_readfile(fn, props=props)
+        if ext := props.get("ext", ""):
+            path = path.with_suffix("." + ext)
         with path.open("wb") as page_file:
-            data = self._archive_readfile(fn, to_pixmap=to_pixmap)
             page_file.write(data)
 
     def _extract_all_pagenames(self, pagenames, path) -> None:

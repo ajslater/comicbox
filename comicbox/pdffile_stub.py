@@ -1,7 +1,12 @@
 """A featureless PDFFile stub to help with typing."""
 
 from datetime import datetime, timezone
+from enum import Enum
 from io import BytesIO
+
+
+class PageFormat(Enum):
+    """Empty."""
 
 
 class PDFFile:
@@ -26,7 +31,7 @@ class PDFFile:
     def save(self):
         """Empty."""
 
-    def read(self, filename: str, *, to_pixmap: bool = False) -> bytes:  # noqa: ARG002
+    def read(self, filename: str, fmt: str = "", props: dict | None = None) -> bytes:  # noqa: ARG002
         """Empty."""
         return b""
 

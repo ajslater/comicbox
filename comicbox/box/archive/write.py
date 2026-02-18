@@ -84,6 +84,16 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             return None
         return filename
 
+    @staticmethod
+    def _ensure_image_suffix(filename: str, props: dict[str, str] | None) -> str:
+        entry_path = Path(filename)
+        suffix = entry_path.suffix
+        if not suffix:
+            ext = props.get("ext", "jpg") if props else "jpg"
+            suffix = "." + ext
+            filename += suffix
+        return filename
+
     def _copy_archive_files_to_new_archive(self, zf) -> None:
         # copy all files that are *not* metadata files into new archive.
         if not self._archive_cls or not self._path:
@@ -101,7 +111,10 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 if self.IMAGE_EXT_RE.search(filename) is None
                 else ZIP_STORED
             )
-            data = self._archive_readfile(filename, to_pixmap=self._archive_is_pdf)
+            pdf_format = self._get_pdf_format(default="pixmap")
+            props = {}
+            data = self._archive_readfile(filename, pdf_format=pdf_format, props=props)
+            filename = self._ensure_image_suffix(filename, props)
             zf.writestr(
                 filename,
                 data,
@@ -128,7 +141,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         new_path = self._get_new_archive_path()
         tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)
         tmp_path.unlink(missing_ok=True)
-
+        logger.info(f"Creating {new_path}...")
         with ZipFile(tmp_path, "x") as zf:
             self._archive_write_metadata_files(zf, files)
             self._copy_archive_files_to_new_archive(zf)
@@ -159,7 +172,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """Write the metadata files and comment to an archive."""
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
-        elif self._archive_is_pdf:
+        elif self._archive_is_pdf and not self._config.cbz:
             self._update_pdffile(files, mupdf_metadata)
         else:
             self._create_zipfile(files, comment)
