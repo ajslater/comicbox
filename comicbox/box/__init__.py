@@ -24,6 +24,7 @@ class Comicbox(
     _CONFIG_ACTIONS = MappingProxyType(
         {
             "print": ComicboxPrint.print_out,
+            "validate": ComicboxPrint.validate,
             "export": ComicboxPrint.export_files,
             "covers": ComicboxPrint.extract_covers,
         }

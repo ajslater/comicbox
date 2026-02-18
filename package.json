@@ -54,6 +54,14 @@
         "options": {
           "parser": "nginx"
         }
+      },
+      {
+        "files": [
+          "**/*.xsd"
+        ],
+        "options": {
+          "printWidth": 120
+        }
       }
     ]
   },

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from xmlschema import XMLSchema11
 
-from tests.validate.base import BaseValidator
+from comicbox.box.validate.base import BaseValidator
 
 
 class XmlValidator(BaseValidator):
@@ -15,6 +15,6 @@ class XmlValidator(BaseValidator):
         super().__init__(*args, **kwargs)
         self._validator = XMLSchema11(self.schema_path)
 
-    def validate(self, data_path: Path | str):
+    def validate(self, data: str | bytes | Path):
         """Use is_valid on XMLSchema validator."""
-        self._validator.validate(data_path)
+        self._validator.validate(data)

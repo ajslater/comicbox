@@ -3,10 +3,11 @@
 import os
 from pathlib import Path
 
+from comicbox.box.validate import validate_source
 from tests.const import TEST_EXPORT_DIR, TEST_METADATA_DIR
-from tests.validate.validate import guess_format, validate_path
 
 _NUM_TEST_FILES = 16
+_SUFFIXES = frozenset({"." + ext for ext in ("txt", "xml", "json", "yaml", "yml")})
 
 
 def _test_dir(root_dir, substring=""):
@@ -14,14 +15,12 @@ def _test_dir(root_dir, substring=""):
     for root, _, fns in os.walk(root_dir):
         root_path = Path(root)
         for fn in fns:
-            if substring and substring not in fn:
+            if substring and (substring not in fn):
                 continue
             path = root_path / fn
-            try:
-                fmt = guess_format(path)
-            except ValueError:
+            if path.suffix not in _SUFFIXES:
                 continue
-            validate_path(path, fmt)
+            validate_source(path)
             validated.add(path)
     return validated
 

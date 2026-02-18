@@ -17,6 +17,7 @@ from ruamel.yaml import YAML
 
 from comicbox.box import Comicbox
 from comicbox.box.pages.covers import PAGES_KEYPATH
+from comicbox.box.validate import validate_source
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbookinfo import LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG
@@ -36,7 +37,6 @@ from tests.const import (
     TEST_WRITE_NOTES,
     TMP_ROOT_DIR,
 )
-from tests.validate.validate import validate_path
 
 PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="slmncd")))
 PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGE_COUNT_KEY}"
@@ -594,10 +594,10 @@ def load_cli_and_compare_dicts(
     assert_diff(dict_a, dict_b)
 
 
-def compare_export(test_dir, fn, fmt="", test_fn=None, *, validate=True):
+def compare_export(test_dir: Path, fn: Path, test_fn=None, *, validate=True):
     """Compare exported files."""
     if validate:
-        validate_path(fn, fmt=fmt)
+        validate_source(fn)
     if test_fn is None:
         test_fn = fn.name.lower()
     test_path = test_dir / test_fn

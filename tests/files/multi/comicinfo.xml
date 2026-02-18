@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://anansi-project.github.io/docs/comicinfo/schemas/v2.1">
 	<Count>10</Count>
-	<Day>1</Day>
-	<Genre>Comic Info Genre</Genre>
-	<LanguageISO>en</LanguageISO>
-	<Month>11</Month>
+	<Volume>999</Volume>
 	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]</Notes>
+	<Year>0591</Year>
+	<Month>11</Month>
+	<Day>1</Day>
+	<Publisher>Youthful Adventure Stories</Publisher>
+	<Genre>Comic Info Genre</Genre>
+	<Web>https://comicvine.gamespot.com/captain-science-1/4000-145269/</Web>
 	<PageCount>36</PageCount>
+	<LanguageISO>en</LanguageISO>
+	<StoryArc>e,f,g,Captain Arc,Other Arc</StoryArc>
+	<StoryArcNumber>1,3,5,4,2</StoryArcNumber>
 	<Pages>
 		<Page Image="0" ImageSize="429985" Type="FrontCover"/>
 		<Page Image="1" ImageSize="332936"/>
@@ -45,10 +51,4 @@
 		<Page Image="34" ImageSize="353013"/>
 		<Page Image="35" ImageSize="340840"/>
 	</Pages>
-	<Publisher>Youthful Adventure Stories</Publisher>
-	<StoryArc>e,f,g,Captain Arc,Other Arc</StoryArc>
-	<StoryArcNumber>1,3,5,4,2</StoryArcNumber>
-	<Volume>999</Volume>
-	<Web>https://comicvine.gamespot.com/captain-science-1/4000-145269/</Web>
-	<Year>0591</Year>
 </ComicInfo>

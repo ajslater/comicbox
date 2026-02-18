@@ -54,6 +54,7 @@ _TEMPLATE = MappingTemplate(
                 "index_to": Optional(int),
                 "print": Optional(OneOf((frozenset, str))),
                 "rename": Optional(bool),
+                "validate": Optional(bool),
                 "write": Optional(OneOf((frozenset, Sequence(str)))),
                 # Targets
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),

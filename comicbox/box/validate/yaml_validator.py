@@ -1,10 +1,13 @@
 """Validate yaml with jsonchema."""
 
+from pathlib import Path
+
 from glom import glom
 from ruamel.yaml import YAML
 from typing_extensions import override
 
 from comicbox.box.pages.covers import PAGES_KEYPATH
+from comicbox.box.validate.json_validator import JsonValidator
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.schemas.comicbox import (
     COVER_DATE_KEY,
@@ -18,7 +21,6 @@ from comicbox.transforms.comicbox import (
     COVER_DATE_KEYPATH,
     STORE_DATE_KEYPATH,
 )
-from tests.validate.json_validator import JsonValidator
 
 _KEYPATH_PREFIX = ComicboxSchemaMixin.ROOT_KEYPATH + "."
 
@@ -56,9 +58,9 @@ class YamlValidator(JsonValidator):
     """Yaml Validator."""
 
     @override
-    def validate(self, source_path):
+    def validate(self, data: str | bytes | Path):
         """Validate source."""
-        source_str = source_path.read_text()
-        data = YAML().load(source_str)
+        data = self.get_data_str(data)
+        data = YAML().load(data)
         json_data = _stringify_keys(data)
         self._validator.validate(json_data)

@@ -300,6 +300,13 @@ def _add_action_group(parser) -> None:
         help="Print software version. Shortcut for -P v",
     )
     action_group.add_argument(
+        "-V",
+        "--validate",
+        dest="validate",
+        action="store_true",
+        help="Validate formats against schema if available. Schemas like ComicInfo enforce a strict tag order. Schemas available at https://github.com/ajslater/comicbox/tree/main/schemas",
+    )
+    action_group.add_argument(
         "-p",
         "--print",
         dest="print_metadata",

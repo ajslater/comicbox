@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:element name="MetronInfo" type="metroninfoType" />
 
@@ -328,9 +328,7 @@
             <xs:enumeration value="Teen" /> <!-- Appropriate for readers age 12 and older. -->
             <xs:enumeration value="Teen Plus" /> <!-- Appropriate for readers age 15 and older. -->
             <xs:enumeration value="Mature" /> <!-- Appropriate for readers age 17 and older. -->
-            <xs:enumeration
-        value="Explicit"
-      /> <!-- Contains Gore, Sexually Explicit material that would be more extreme than R rating -->
+            <xs:enumeration value="Explicit" /> <!-- Contains Gore, Sexually Explicit material that would be more extreme than R rating -->
             <xs:enumeration value="Adult" /> <!-- Likely pornographic in nature -->
         </xs:restriction>
     </xs:simpleType>

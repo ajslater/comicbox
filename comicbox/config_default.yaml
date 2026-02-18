@@ -40,6 +40,7 @@ comicbox:
   index_to: null
   print: ""
   rename: False
+  validate: False
   write: []
 
   # Targets
