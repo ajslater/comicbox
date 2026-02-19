@@ -66,8 +66,11 @@ _PDF_PAGE_FORMAT_DESC = MappingProxyType(
     {
         "pdf": "Extract pages as pdf file of one page.",
         "pixmap": "Extract pages as an uncompressed pixmap of the page.",
-        "image": "Extract the first image in it's original unaltered format on the page. Particularly useful when paired with -z to convert comic "
-        "PDFs to CBZs without reencoding the images.",
+        "image": (
+            "Extract the first image in it's original unaltered format on the page. "
+            "Particularly useful when paired with [cyan]-z[/cyan] to convert comic PDFs to CBZs "
+            "without reencoding the images."
+        ),
     }
 )
 _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
@@ -200,8 +203,8 @@ def _add_option_group(parser) -> None:
         metavar="YAML_METADATA",
         action="append",
         help=(
-            "Set metadata fields with linear YAML. (e.g.: 'keyA: value,"
-            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}')"
+            "Set metadata fields with linear YAML. (e.g.: [green]'keyA: value,"
+            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
             " Place a space after colons so they are properly parsed as YAML key"
             " value pairs. If your value contains a special YAML character (e.g."
             " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
@@ -212,7 +215,10 @@ def _add_option_group(parser) -> None:
         "-D",
         "--delete-keys",
         action=CSVAction,
-        help="Delete a comma delimited list of comicbox glom key paths entirely from the final metadata. Example below.",
+        help=(
+            "Delete a comma delimited list of comicbox glom key paths entirely from the final "
+            "metadata. Example below."
+        ),
     )
     option_group.add_argument(
         "-d",
@@ -242,7 +248,8 @@ def _add_option_group(parser) -> None:
         action="store_true",
         default=False,
         help=(
-            "Compute the large ComicInfo style pages metadata from the archive. Turned off by default."
+            "Compute the large ComicInfo style pages metadata from the archive. "
+            "Turned off by default."
         ),
     )
     if PDF_ENABLED:
@@ -252,7 +259,7 @@ def _add_option_group(parser) -> None:
             dest="pdf_page_format",
             action="store",
             default="",
-            help=("Method to extract pdf pages and covers. Valid values listed below."),
+            help="Method to extract pdf pages and covers. Valid values listed below.",
         )
     option_group.add_argument(
         "-A",
@@ -261,7 +268,8 @@ def _add_option_group(parser) -> None:
         action="store_false",
         default=True,
         help=(
-            "Do not compute the page count from the archive by reading the table of contents for image files."
+            "Do not compute the page count from the archive by reading the table of contents "
+            "for image files."
         ),
     )
     option_group.add_argument(
@@ -285,7 +293,10 @@ def _add_option_group(parser) -> None:
         "--stamp",
         dest="stamp",
         action="store_true",
-        help="Normally comicbox will only update the notes (if enabled), tagger, and updated_at tags when performing a write or export action. This adds the stamps anyway.",
+        help=(
+            "Normally comicbox will only update the notes (if enabled), tagger, and updated_at "
+            "tags when performing a write or export action. This adds the stamps anyway."
+        ),
     )
     option_group.add_argument(
         "-N",
@@ -300,7 +311,10 @@ def _add_option_group(parser) -> None:
     option_group.add_argument(
         "-t",
         "--theme",
-        help="Pygments theme to use for syntax highlighting. https://pygments.org/styles/. 'none' will stop highlighting.",
+        help=(
+            "Pygments theme to use for syntax highlighting. https://pygments.org/styles/. "
+            "[green]'none'[/green] will stop highlighting."
+        ),
     )
 
 
@@ -316,35 +330,39 @@ def _add_action_group(parser) -> None:
         help=(
             "Print separate phases of metadata processing."
             " Specify with a string that contains phase characters"
-            " listed below. e.g. -P slcm."
+            " listed below. e.g. -P [green]slcm[/green]."
         ),
     )
     action_group.add_argument(
         "-v",
         "--version",
         action="store_true",
-        help="Print software version. Shortcut for -P v",
+        help="Print software version. Shortcut for -P [green]v[/green]",
     )
     action_group.add_argument(
         "-V",
         "--validate",
         dest="validate",
         action="store_true",
-        help="Validate formats against schema if available. Schemas like ComicInfo enforce a strict tag order. Schemas available at https://github.com/ajslater/comicbox/tree/main/schemas",
+        help=(
+            "Validate formats against schema if available. Schemas like ComicInfo enforce a "
+            "strict tag order. Schemas available at "
+            "https://github.com/ajslater/comicbox/tree/main/schemas"
+        ),
     )
     action_group.add_argument(
         "-p",
         "--print",
         dest="print_metadata",
         action="store_true",
-        help="Print merged metadata. Shortcut for -P p.",
+        help="Print merged metadata. Shortcut for -P [green]p[/green].",
     )
     action_group.add_argument(
         "-l",
         "--list",
         dest="print_filenames",
         action="store_true",
-        help="Print filenames in archive. Shortcut for -P f.",
+        help="Print filenames in archive. Shortcut for -P [green]f[/green].",
     )
     action_group.add_argument(
         "-i",
@@ -381,7 +399,11 @@ def _add_action_group(parser) -> None:
         "-z",
         "--cbz",
         action="store_true",
-        help="Export the archive to CBZ format and rewrite all metadata formats found.",
+        help=(
+            "Export the archive to CBZ format and rewrite all metadata formats found. "
+            "When converting PDFs, by default a pixmap is taken of the page. Try -a [green]image[/green] "
+            "if the PDF is a comic with only one big image per page."
+        ),
     )
     action_group.add_argument(
         "-w",
@@ -389,8 +411,8 @@ def _add_action_group(parser) -> None:
         metavar="FORMATS",
         action=CSVAction,
         help=(
-            "Write comic metadata formats to archive cbt & cbr are always"
-            " exported to cbz format. Format keys listed below."
+            "Write comic metadata formats to archive cbt & cbr files are always"
+            " exported to a cbz file. Format keys listed below."
         ),
     )
     action_group.add_argument(
