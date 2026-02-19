@@ -58,7 +58,7 @@ _DELETE_KEYS_EXAMPLES = Styled(
     """
 Glom key paths are dot delimited. Numbers are list indexes. This deletes three comma delimited nested key paths:
 
-  [cyan]-D[/cyan] [dark_cyan]series,arcs.Across the Multiverse.number,reprints.0.series[/dark_cyan]
+  [cyan]-D[/cyan] [green]series,arcs.Across the Multiverse.number,reprints.0.series[/green]
     """,
     style="argparse.text",
 )
