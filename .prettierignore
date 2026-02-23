@@ -4,11 +4,6 @@ __pycache__
 .git
 .venv
 *Dockerfile
-/node_modules
-/test-results
-/tests/**/*.json
-/tests/**/*.xml
-/tests/**/*.yaml
 comicbox/schema_definitions/*Info*.xsd
 dist
 Dockerfile
