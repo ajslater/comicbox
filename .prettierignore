@@ -3,6 +3,7 @@ __pycache__
 .circleci
 .git
 .venv
+*Dockerfile
 comicbox/schema_definitions/*Info*.xsd
 dist
 Dockerfile

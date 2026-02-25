@@ -286,7 +286,7 @@ with Comicbox(path_to_comic) as cb:
   page_count = cb.page_count()
   file_type = cb.get_file_type()
   mtime = cb.get_metadata_mtime()
-  image_data = car.get_cover_page(to_pixmap=True)
+  image_data = car.get_cover_page(pdf_format="pixmap")
 ```
 
 Attached to these docs in the navigation header there are some auto generated
