@@ -51,7 +51,7 @@ readme = "README.md"
 license = "LGPL-3.0-only"
 name = "comicbox"
 requires-python = ">=3.10"
-version = "2.2.0"
+version = "2.2.1"
 [[project.authors]]
 name = "AJ Slater"
 email = "aj@slater.net"
@@ -62,7 +62,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile>=0.4,<0.5"]
+pdf = ["comicbox-pdffile>=0.5,<0.6"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"

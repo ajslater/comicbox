@@ -1,5 +1,11 @@
 # 📰 News
 
+## v2.2.1
+
+- Fix reading PDF metadata breaking on datetimes.
+- PDF datetime parsing failures are warned about instead of raising an exception
+  and abandoning parsing.
+
 ## v2.2.0
 
 - Add `--pdf-page-format` option to choose how pdf pages are extracted. Replaces
