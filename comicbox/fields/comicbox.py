@@ -51,7 +51,7 @@ class SimpleNamedDictField(Union):
             ),
             StringSetField(sort=sort),
         ]
-        super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType]
+        super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
 
     @override
     def _deserialize(self, value, *args, **kwargs) -> dict:
