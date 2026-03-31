@@ -8,7 +8,7 @@ from enum import Enum
 from loguru import logger
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
-from typing_extensions import Self, override
+from typing_extensions import override
 
 _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
@@ -38,7 +38,7 @@ class TrapExceptionsMeta(ABCMeta):
 
         return wrapper
 
-    def __new__(cls, name, bases, attrs) -> Self:  # pyright: ignore[reportGeneralTypeIssues]
+    def __new__(cls, name, bases, attrs) -> "TrapExceptionsMeta":
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
