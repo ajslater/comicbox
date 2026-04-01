@@ -1,6 +1,6 @@
 # 📰 News
 
-## 2.2.2v
+## v2.2.2
 
 - Update deepdiff library
 
