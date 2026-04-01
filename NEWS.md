@@ -1,5 +1,9 @@
 # 📰 News
 
+## 2.2.2v
+
+- Update deepdiff library
+
 ## v2.2.1
 
 - Fix reading PDF metadata breaking on datetimes.
