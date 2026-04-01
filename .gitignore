@@ -2,6 +2,7 @@ __pycache__/
 __pypackages__/
 __snapshots__
 .*cache
+.claude
 .coverage*
 .dmypy.json
 .docker-token
@@ -28,6 +29,7 @@ __snapshots__
 .spyderproject
 .spyproject
 .tox/
+.uv-publish-env
 .venv*
 .webassets-cache
 *.cover

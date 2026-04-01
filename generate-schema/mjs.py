@@ -13,9 +13,9 @@ from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
 schema = ComicboxJsonSchema()
 
 # Monkey Patch marshmallow-jsonchema
-base.PY_TO_JSON_TYPES_MAP[fields._ContantT] = {"type": "const"}  # noqa: SLF001, # pyright: ignore[reportArgumentType]
+base.PY_TO_JSON_TYPES_MAP[fields._ContantT] = {"type": "const"}  # noqa: SLF001, # pyright: ignore[reportArgumentType], #ty: ignore[invalid-assignment]
 base.MARSHMALLOW_TO_PY_TYPES_PAIRS.extend(
-    [  # pyright: ignore[reportArgumentType]
+    [  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         ((fields.Constant, fields._ContantT)),  # noqa: SLF001
         ((EnumField, Enum)),
     ]

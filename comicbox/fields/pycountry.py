@@ -65,7 +65,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs) -> str:  # ty: ignore[invalid-method-override]
+    def _deserialize(self, value, attr, *args, **kwargs) -> str:
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE

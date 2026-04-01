@@ -3,7 +3,6 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
 ]
@@ -13,7 +12,7 @@ dependencies = [
   "case-converter~=1.2",
   "comicfn2dict>=0.2.4,<1.0.0",
   "confuse~=2.1.0,<2.2.0",
-  "deepdiff~=8.2",
+  "deepdiff~=9.0",
   "glom~=25.12",
   "jsonschema[format]~=4.20",
   "loguru~=0.7",
@@ -48,10 +47,10 @@ keywords = [
   "pdf",
 ]
 readme = "README.md"
+requires-python = ">=3.10"
 license = "LGPL-3.0-only"
 name = "comicbox"
-requires-python = ">=3.10"
-version = "2.2.1"
+version = "2.2.2"
 [[project.authors]]
 name = "AJ Slater"
 email = "aj@slater.net"
@@ -104,7 +103,7 @@ docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
 ci = ["requests~=2.32"]
 
 [build-system]
-requires = ["uv_build~=0.10.0"]
+requires = ["uv_build~=0.11.2"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
