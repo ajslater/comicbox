@@ -1,4 +1,13 @@
 services:
+  ci:
+    build:
+      context: .
+      target: comicbox-ci
+    image: comicbox-ci:ci
+    container_name: comicbox-ci
+    volumes:
+      - ./test-results:/app/test-results
+      - ./dist:/app/dist
   comicbox-builder:
     build: .
     image: comicbox-builder
