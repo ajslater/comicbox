@@ -1,5 +1,9 @@
 # 📰 News
 
+## v2.2.3
+
+- Update marshmallow & rich
+
 ## v2.2.2
 
 - Update deepdiff library
