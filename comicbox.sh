@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run comicbox in development
 set -euo pipefail
 export PYTHONDEVMODE=1
