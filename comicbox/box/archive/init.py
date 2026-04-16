@@ -18,7 +18,7 @@ class ComicboxArchiveInit(ComicboxInit):
         """Context enter."""
         return self
 
-    def __exit__(self, *_exc) -> bool | None:
+    def __exit__(self, *_exc: object) -> bool | None:
         """Context close."""
         self.close()
 

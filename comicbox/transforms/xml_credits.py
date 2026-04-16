@@ -1,5 +1,9 @@
 """XML Credits Mixin."""
 
+from collections.abc import Callable, Mapping
+from enum import Enum
+from typing import Any, TypeVar
+
 from loguru import logger
 
 from comicbox.fields.enum_fields import EnumField
@@ -11,7 +15,9 @@ from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_cre
 from comicbox.transforms.spec import MetaSpec
 
 
-def _create_role_enum_to_alias_map(role_aliases) -> dict:
+def _create_role_enum_to_alias_map(
+    role_aliases: Mapping[Any, tuple[Any, ...]],
+) -> dict:
     """Create role map for native enum value to a list of aliases."""
     role_map = {}
     for native_enum, aliases in role_aliases.items():
@@ -23,7 +29,7 @@ def _create_role_enum_to_alias_map(role_aliases) -> dict:
     return role_map
 
 
-def _xml_credits_to_cb(role_name_persons_map) -> dict:
+def _xml_credits_to_cb(role_name_persons_map: dict[str, Any]) -> dict:
     comicbox_credits = {}
     for role_name, persons in role_name_persons_map.items():
         try:
@@ -38,7 +44,7 @@ def _xml_credits_to_cb(role_name_persons_map) -> dict:
     return comicbox_credits
 
 
-def xml_credits_transform_to_cb(role_tags_enum) -> MetaSpec:
+def xml_credits_transform_to_cb(role_tags_enum: type[Enum]) -> MetaSpec:
     """Transform xml credit tags to comicbox credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: tuple(r.value for r in role_tags_enum)},
@@ -65,23 +71,30 @@ def _xml_credits_from_cb(role_aliases: frozenset, comicbox_credits: dict) -> set
     return person_names
 
 
-def get_from_cb_func(role_aliases):
+def get_from_cb_func(
+    role_aliases: frozenset[str],
+) -> Callable[[dict[str, Any]], set[Any]]:
     """Create a function that gets person names from comicbox_credits for one xml credit tag."""
 
-    def from_cb(comicbox_credits):
+    def from_cb(comicbox_credits: dict[str, Any]) -> set[Any]:
         return _xml_credits_from_cb(role_aliases, comicbox_credits)
 
     return from_cb
 
 
-def xml_credits_transform_from_cb(role_tags_enum, role_aliases) -> tuple:
+_RoleTagT = TypeVar("_RoleTagT", bound=Enum)
+
+
+def xml_credits_transform_from_cb(
+    role_tags_enum: type[_RoleTagT], role_aliases: Mapping[_RoleTagT, tuple[Any, ...]]
+) -> tuple:
     """Transform comicbox credits into several xml tag credits."""
     role_map = _create_role_enum_to_alias_map(role_aliases)
     metaspecs = []
     for role_tag_enum in role_tags_enum:
         role_tag = role_tag_enum.value
-        role_aliases = role_map.get(role_tag)
-        func = get_from_cb_func(role_aliases)
+        tag_aliases: frozenset[str] = role_map.get(role_tag, frozenset())
+        func = get_from_cb_func(tag_aliases)
         metaspec = MetaSpec(key_map={role_tag: CREDITS_KEY}, spec=func)
         metaspecs.append(metaspec)
     return tuple(metaspecs)

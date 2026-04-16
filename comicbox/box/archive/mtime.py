@@ -5,6 +5,7 @@ from pathlib import Path
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.write import ComicboxArchiveWrite
+from comicbox.box.types import ArchiveType
 
 _BRACKETS = ("{", b"{")
 
@@ -12,7 +13,7 @@ _BRACKETS = ("{", b"{")
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
 
-    def _is_comment_json(self, archive) -> bool:
+    def _is_comment_json(self, archive: ArchiveType) -> bool:
         return (
             self._config.computed.is_read_comments
             and bool(comment := getattr(archive, "comment", ""))

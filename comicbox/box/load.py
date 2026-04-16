@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
+from typing import Any
 
 from glom import Assign, glom
 from loguru import logger
@@ -33,10 +34,12 @@ class LoadedMetadata:
 class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
-    def _load_cli_yaml(self, fmt, schema, source_md) -> dict:
+    def _load_cli_yaml(
+        self: Any, fmt: MetadataFormats, schema: Any, source_md: str
+    ) -> dict:
         result = {}
         try:
-            md = YAML().load(source_md) if isinstance(source_md, str) else source_md
+            md = YAML().load(source_md)
             result = schema.load(md)
             if not result:
                 # try a wrapped version
@@ -51,7 +54,10 @@ class ComicboxLoad(ComicboxSources):
         return result
 
     def _call_load(
-        self, source: MetadataSources, fmt: MetadataFormats, source_md
+        self: Any,
+        source: MetadataSources,
+        fmt: MetadataFormats,
+        source_md: bytes | str | Mapping,
     ) -> Mapping | None:
         """Load string or dict."""
         schema_class = fmt.value.schema_class
@@ -67,7 +73,7 @@ class ComicboxLoad(ComicboxSources):
         return schema.load(source_md)  # pyright: ignore[reportReturnType]
 
     @staticmethod
-    def _is_comment_not_json(source, exc) -> bool:
+    def _is_comment_not_json(source: MetadataSources, exc: Exception) -> bool:
         """Is this an archive comment and not JSON."""
         return (
             source == MetadataSources.ARCHIVE_COMMENT
@@ -78,11 +84,11 @@ class ComicboxLoad(ComicboxSources):
         )
 
     def _except_on_load(
-        self,
+        self: Any,
         source: MetadataSources,
         fmt: MetadataFormats | None,
         exc: Exception,
-        level="WARNING",
+        level: str = "WARNING",
     ) -> None:
         """When loading fails warn or give stack trace in debug."""
         name = fmt.value.schema_class.__name__ if fmt else "Unknown Schema"
@@ -99,7 +105,7 @@ class ComicboxLoad(ComicboxSources):
         logger.opt(lazy=True).trace(format_exc())
 
     def _load_unknown_metadata(
-        self, source: MetadataSources, data
+        self: Any, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
@@ -121,7 +127,7 @@ class ComicboxLoad(ComicboxSources):
         return success_md, fmt
 
     def _load_metadata(
-        self, source: MetadataSources, source_data: SourceData | None
+        self: Any, source: MetadataSources, source_data: SourceData | None
     ) -> tuple[MappingProxyType | None, MetadataFormats | None]:
         if not source_data:
             return None, None
@@ -145,7 +151,7 @@ class ComicboxLoad(ComicboxSources):
             self._except_on_load(source, fmt, exc)
         return None, None
 
-    def _set_loaded_metadata(self, source) -> None:
+    def _set_loaded_metadata(self: Any, source: MetadataSources) -> None:
         source_metadata = self.get_source_metadata(source)
         if not source_metadata:
             return
@@ -164,7 +170,7 @@ class ComicboxLoad(ComicboxSources):
                 self._loaded[source] = ()
             self._loaded[source] += tuple(loaded_list)
 
-    def get_loaded_metadata(self, source):
+    def get_loaded_metadata(self: Any, source: MetadataSources) -> None:
         """Get loaded metadata by key."""
         try:
             if source not in self._loaded:

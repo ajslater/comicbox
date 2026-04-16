@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from marshmallow import Schema
@@ -12,7 +13,12 @@ from typing_extensions import override
 class ClearingErrorStore(ErrorStore):
     """Take over error processing."""
 
-    def _clean_error_list(self, key, error_list, cleaned_errors) -> None:
+    def _clean_error_list(
+        self,
+        key: str,
+        error_list: list[str],
+        cleaned_errors: dict[Any, Any],
+    ) -> None:
         if cleaned_error_list := frozenset(error_list) - self._ignore_errors:
             cleaned_errors[key] = sorted(cleaned_error_list)
 
@@ -31,7 +37,7 @@ class ClearingErrorStore(ErrorStore):
     def __init__(
         self,
         error_store: ErrorStore,
-        data,
+        data: Mapping[str, Any],
         path: str | None = None,
         ignore_errors: frozenset | None = None,
     ) -> None:
@@ -46,7 +52,7 @@ class ClearingErrorStore(ErrorStore):
         self._clear_errors()
 
     @override
-    def store_error(self, *args, **kwargs) -> None:
+    def store_error(self, *args: Any, **kwargs: Any) -> None:
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
         self._clear_errors()
@@ -66,7 +72,7 @@ class ClearingErrorStoreSchema(Schema):
         self,
         path: Path | str | None = None,
         ignore_errors: list | tuple | frozenset | set | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initialize path and always use partial."""
         self._path = path = str(path) if path else path
@@ -78,7 +84,13 @@ class ClearingErrorStoreSchema(Schema):
         super().__init__(**kwargs)
 
     @override
-    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs) -> list | dict:
+    def _deserialize(
+        self,
+        data: Any,
+        *,
+        error_store: ErrorStore,
+        **kwargs: Any,
+    ) -> list | dict:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -88,7 +100,11 @@ class ClearingErrorStoreSchema(Schema):
 
     @override
     def _invoke_field_validators(
-        self, *, error_store: ErrorStore, data, **kwargs
+        self,
+        *,
+        error_store: ErrorStore,
+        data: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
@@ -131,7 +147,10 @@ class ClearingErrorStoreSchema(Schema):
         return debug_errors, warning_errors
 
     def _log_errors(
-        self, loglevel: str, error_class: type | None, errors: Mapping | list
+        self,
+        loglevel: str,
+        error_class: type | None,
+        errors: Mapping | list,
     ) -> None:
         if not errors:
             return
@@ -141,7 +160,12 @@ class ClearingErrorStoreSchema(Schema):
         logger.log(loglevel, message)
 
     @override
-    def handle_error(self, error, *_args, **_kwargs) -> None:
+    def handle_error(
+        self,
+        error: Any,
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
         """Log errors by severity."""
         if hasattr(error, "normalized_messages"):
             error_class = type(error)

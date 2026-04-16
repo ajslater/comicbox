@@ -120,46 +120,46 @@ CT_TESTER = TestParser(
 )
 
 
-def test_ct_from_metadata():
+def test_ct_from_metadata() -> None:
     """Test assign metadata."""
     CT_TESTER.test_from_metadata()
 
 
-def test_ct_from_dict():
+def test_ct_from_dict() -> None:
     """Test native dict import from comicbox.schemas."""
     CT_TESTER.test_from_dict()
 
 
-def test_ct_from_string():
+def test_ct_from_string() -> None:
     """Test metadata import from string."""
     CT_TESTER.test_from_string()
 
 
-def test_ct_from_file():
+def test_ct_from_file() -> None:
     """Test metadata import from file."""
     CT_TESTER.test_from_file()
 
 
-def test_ct_to_dict():
+def test_ct_to_dict() -> None:
     """Test metadata export to dict."""
     CT_TESTER.test_to_dict()
 
 
-def test_ct_to_string():
+def test_ct_to_string() -> None:
     """Test metadata export to string."""
     CT_TESTER.test_to_string()
 
 
-def test_ct_to_file():
+def test_ct_to_file() -> None:
     """Test metadata export to file."""
     CT_TESTER.test_to_file(export_fn="comictagger-write.json")
 
 
-def test_ct_read():
+def test_ct_read() -> None:
     """Test read from file."""
     CT_TESTER.test_md_read()
 
 
-def test_ct_write():
+def test_ct_write() -> None:
     """Test write to file."""
     CT_TESTER.test_md_write()

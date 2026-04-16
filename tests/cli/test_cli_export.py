@@ -1,5 +1,7 @@
 """Test CLI extract actions."""
 
+from pathlib import Path
+
 from comicbox import cli
 from tests.const import (
     EXPORT_SOURCE_PATH,
@@ -16,7 +18,7 @@ _TMP_DIR = get_tmp_dir(__file__)
 _FORMATS = "comet,comicbookinfo,cli,json,yaml,comicinfo,comictagger,pdf,metroninfo"
 
 
-def _test_cli_action_export_util(path, args):
+def _test_cli_action_export_util(path: Path, args: tuple[str, str]) -> None:
     """Test cli metadata write to file."""
     my_setup(_TMP_DIR)
 
@@ -41,6 +43,6 @@ def _test_cli_action_export_util(path, args):
     my_cleanup(_TMP_DIR)
 
 
-def test_cli_action_export():
+def test_cli_action_export() -> None:
     """Test cli metadata write to file."""
     _test_cli_action_export_util(EXPORT_SOURCE_PATH, ("-x", _FORMATS))

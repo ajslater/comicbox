@@ -3,6 +3,7 @@
 from abc import ABC
 from pathlib import Path
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 from marshmallow import EXCLUDE
@@ -51,19 +52,23 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
                 final_exclude.add(key)
         return final_exclude
 
-    def __init__(self, *args, exclude: StrSequenceOrSet = (), **kwargs) -> None:
+    def __init__(
+        self, *args: Any, exclude: StrSequenceOrSet = (), **kwargs: Any
+    ) -> None:
         """Initialize with exclude keys."""
         exclude = self._create_exclude(exclude)
         super().__init__(*args, exclude=exclude, **kwargs)
 
     @classmethod
-    def pre_load_validate(cls, data):
+    def pre_load_validate(cls, data: dict[str, Any] | None) -> dict[str, Any] | None:
         """Validate schema type first thing to fail as early as possible."""
         # Meant to be overridden in BaseSchema
         return data
 
     @trap_error(pre_load)
-    def pre_load(self, data, **_kwargs):
+    def pre_load(
+        self, data: dict[str, Any] | None, **_kwargs: Any
+    ) -> dict[str, Any] | None:
         """Singular pre_load hook."""
         return self.pre_load_validate(data)
 
@@ -73,12 +78,14 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         return {k: v for k, v in data.items() if not is_empty(v)}
 
     @trap_error(post_load)
-    def post_load(self, data, **_kwargs):
+    def post_load(self, data: dict[str, Any], **_kwargs: Any) -> dict[str, Any]:
         """Singular post_load hook."""
         return self.clean_empties(data)
 
     @pre_dump
-    def pre_dump(self, data, **_kwargs):
+    def pre_dump(
+        self, data: dict[str, Any] | MappingProxyType[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | MappingProxyType[str, Any]:
         """Singular pre_dump hook."""
         return data
 
@@ -103,7 +110,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         return data
 
     @post_dump
-    def post_dump(self, data: dict, **_kwargs) -> dict:
+    def post_dump(self, data: dict, **_kwargs: Any) -> dict:
         """Singular post_dump hook."""
         return self.sort_dump(data)
 
@@ -113,7 +120,9 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
             str_data = f.read()
         return self.loads(str_data)
 
-    def dumpf(self, data, path, **kwargs) -> None:
+    def dumpf(
+        self, data: MappingProxyType[str, Any], path: Path, **kwargs: Any
+    ) -> None:
         """Write the string in the designated file."""
         str_data = self.dumps(data, **kwargs) + "\n"
         with Path(path).open("w") as f:
@@ -137,7 +146,7 @@ class BaseSchema(BaseSubSchema, ABC):
 
     @override
     @classmethod
-    def pre_load_validate(cls, data) -> dict:
+    def pre_load_validate(cls, data: dict[str, Any] | None) -> dict:
         """Validate the root tag so we don't confuse it with other JSON."""
         if not data:
             reason = "No data."

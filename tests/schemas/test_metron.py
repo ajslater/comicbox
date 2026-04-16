@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
 import xmltodict
 from glom import Assign, glom
@@ -360,7 +361,7 @@ WRITE_METRON_DICT = create_write_dict(
 )
 
 
-def unparse_strinfigy_decimals(data):
+def unparse_strinfigy_decimals(data: MappingProxyType[str, Any]) -> str:
     """Stringify decimals for xmltodict."""
     stringified_data = deepcopy(dict(data))
     prices = glom(stringified_data, f"{MetronInfoSchema.ROOT_TAG}.Prices.Price")
@@ -463,19 +464,19 @@ URL_PRIMARY_CONFIG = get_config(
 )
 
 
-def test_metron_from_metadata():
+def test_metron_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     METRON_TESTER.test_from_metadata()
     SIMPLE_METRON_TESTER.test_from_metadata()
 
 
-def test_metron_from_dict():
+def test_metron_from_dict() -> None:
     """Test native dict import."""
     METRON_TESTER.test_from_dict()
     SIMPLE_METRON_TESTER.test_from_dict()
 
 
-def test_metron_from_dict_url_primary():
+def test_metron_from_dict_url_primary() -> None:
     """Test getting ips from urls."""
     with Comicbox(config=URL_PRIMARY_CONFIG) as car:
         car.print_out()
@@ -484,25 +485,25 @@ def test_metron_from_dict_url_primary():
     assert_diff(URL_PRIMARY_READ_METADATA, md)
 
 
-def test_metron_from_string():
+def test_metron_from_string() -> None:
     """Test metadata import from string."""
     METRON_TESTER.test_from_string()
     SIMPLE_METRON_TESTER.test_from_string()
 
 
-def test_metron_from_file():
+def test_metron_from_file() -> None:
     """Test metadata import from file."""
     METRON_TESTER.test_from_file()
     SIMPLE_METRON_TESTER.test_from_file()
 
 
-def test_metron_to_dict():
+def test_metron_to_dict() -> None:
     """Test metadata export to dict."""
     METRON_TESTER.test_to_dict()
     SIMPLE_METRON_TESTER.test_to_dict()
 
 
-def test_metron_to_string():
+def test_metron_to_string() -> None:
     """Test metadata export to string."""
     test_str = METRON_TESTER.to_string()
     METRON_TESTER.compare_string(test_str)
@@ -511,19 +512,19 @@ def test_metron_to_string():
     SIMPLE_METRON_TESTER.compare_string(simple_test_str)
 
 
-def test_metron_to_file():
+def test_metron_to_file() -> None:
     """Test metadata export to file."""
     METRON_TESTER.test_to_file(export_fn="metroninfo-write.xml")
     SIMPLE_METRON_TESTER.test_to_file(export_fn="metroninfo-write.xml")
 
 
-def test_metron_read():
+def test_metron_read() -> None:
     """Read cbz with METRON."""
     METRON_TESTER.test_md_read()
     SIMPLE_METRON_TESTER.test_md_read()
 
 
-def test_metron_write():
+def test_metron_write() -> None:
     """Write cbz with METRON."""
     METRON_TESTER.test_md_write()
     SIMPLE_METRON_TESTER.test_md_write()

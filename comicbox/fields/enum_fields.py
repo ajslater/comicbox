@@ -2,6 +2,7 @@
 
 from enum import Enum
 from types import MappingProxyType
+from typing import Any
 
 from caseconverter import snakecase, titlecase
 from loguru import logger
@@ -65,20 +66,31 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
             self.add_enum_map_item(enum, enum, enum_map)
         return enum_map
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
         enum_map = self.get_enum_map()
         self._enum_map = MappingProxyType(enum_map)
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
+    def _deserialize(
+        self,
+        value: Enum | str,
+        attr: str,
+        data: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Enum:
         enum = self.get_enum(value)
         enum = enum or value
         return super()._deserialize(enum, attr, data, *args, **kwargs)
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | None:
+    def _serialize(
+        self, value: Enum | Any | None, *args: Any, **kwargs: Any
+    ) -> str | None:
+        if value is None:
+            return None
         enum = self.get_enum(value)
         enum = enum or value
         return super()._serialize(enum, *args, **kwargs)
@@ -110,11 +122,13 @@ class EnumBooleanField(EnumField):
     )
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
-        result = super()._deserialize(value, attr, data, *args, **kwargs)
-        if not isinstance(result, self.ENUM) and str(value).lower() in self.TRUTHY:
-            result = super()._deserialize(self.YES, attr, data, *args, **kwargs)
-        return result
+    def _deserialize(self, value: Enum | str | bool, attr, data, *args, **kwargs):
+        if not isinstance(value, self.ENUM):
+            if value is True or (str(value).lower() in self.TRUTHY):
+                value = self.YES
+            else:
+                value = str(value)
+        return super()._deserialize(value, attr, data, *args, **kwargs)
 
     @override
     def _serialize(self, value, *args, **kwargs) -> str | None:
@@ -167,12 +181,12 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
 
     ENUM_ALIAS_MAP = MappingProxyType({})
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Use the enum."""
         super().__init__(*args, **kwargs)
         self._enum_map = MappingProxyType(self.get_enum_alias_map())
 
-    def _prettify(self, value) -> str:
+    def _prettify(self, value: str) -> str:
         """Conform a value to a known enum or titlecase."""
         enum = self.get_enum(value)
         if enum:
@@ -183,9 +197,10 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         return value
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> str:
-        value = super()._deserialize(value, *args, **kwargs)
-        return self._prettify(value)
+    def _deserialize(self, value: Enum | str, *args: Any, **kwargs: Any) -> str:
+        str_value: str = value.value if isinstance(value, Enum) else value
+        str_value = super()._deserialize(str_value, *args, **kwargs)
+        return self._prettify(str_value)
 
 
 class OriginalFormatField(PrettifiedStringField):

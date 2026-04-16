@@ -2,6 +2,7 @@
 
 from enum import Enum
 from types import MappingProxyType
+from typing import Any
 
 from glom import Assign, glom
 
@@ -114,7 +115,9 @@ CREDITS_KEYPATH = "Credits.Credit"
 ROLE_KEYPATH = "Roles.Role"
 
 
-def _create_role_variations_to_enum_map(role_aliases) -> dict:
+def _create_role_variations_to_enum_map(
+    role_aliases: MappingProxyType[Any, tuple],
+) -> dict:
     """Create role map for variations of a role name to to the native enum value."""
     role_map = {}
     for native_enum, aliases in role_aliases.items():
@@ -130,7 +133,9 @@ def _create_role_variations_to_enum_map(role_aliases) -> dict:
     return role_map
 
 
-def _credit_to_cb(metron_credit, primary_id_source) -> tuple[str, dict]:
+def _credit_to_cb(
+    metron_credit: dict[str, dict[str, list[Any]] | str], primary_id_source: str
+) -> tuple[str, dict]:
     """Copy a single metron style credit entry into comicbox credits."""
     metron_creator = metron_credit.pop(CREATOR_TAG, {})
     person_name, comicbox_credit = identified_name_to_cb(
@@ -150,7 +155,9 @@ def _credit_to_cb(metron_credit, primary_id_source) -> tuple[str, dict]:
     return person_name, comicbox_credit
 
 
-def _credits_to_cb(values) -> dict:
+def _credits_to_cb(
+    values: dict[str, Any],
+) -> dict:
     metron_credits = values.get(CREDITS_KEYPATH)
     if not metron_credits:
         return {}
@@ -162,7 +169,12 @@ def _credits_to_cb(values) -> dict:
     }
 
 
-def _role_from_cb(role_name, comicbox_role, id_source, role_map) -> list:
+def _role_from_cb(
+    role_name: str,
+    comicbox_role: dict[Any, Any],
+    id_source: str,
+    role_map: dict[str, set[Any]],
+) -> list:
     """Unparse a metron role to an enum only value."""
     metron_roles = []
 
@@ -178,7 +190,10 @@ def _role_from_cb(role_name, comicbox_role, id_source, role_map) -> list:
 
 
 def _credit_from_cb(
-    person_name: str, comicbox_credit: dict, id_source: str, role_map
+    person_name: str,
+    comicbox_credit: dict,
+    id_source: str,
+    role_map: dict[str, set[Any]],
 ) -> dict:
     """Aggregate comicbox credits into Metron credit dict."""
     if not person_name:
@@ -194,8 +209,11 @@ def _credit_from_cb(
     return metron_credit
 
 
-def _credits_from_cb(values, role_map) -> list:
-    comicbox_credits = values.get(CREDITS_KEY)
+def _credits_from_cb(
+    values: dict[str, Any],
+    role_map: dict[str, set[Any]],
+) -> list:
+    comicbox_credits = values.get(CREDITS_KEY, {})
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return [
         metron_credit
@@ -218,7 +236,9 @@ def metron_credits_from_cb() -> MetaSpec:
     """Create credits from cb transform."""
     role_map = _create_role_variations_to_enum_map(ROLE_ALIASES)
 
-    def from_cb(values):
+    def from_cb(
+        values: dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]] | str],
+    ) -> list[dict[str, dict[str, list[dict[str, Any]] | str]]]:
         return _credits_from_cb(values, role_map)
 
     return MetaSpec(

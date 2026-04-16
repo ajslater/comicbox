@@ -7,7 +7,9 @@ on:
     branches: [main, develop]
 
 env:
-  BUILDER_IMAGE: ghcr.io/${{ github.repository }}/builder
+  CI_IMAGE: ${{ github.event.repository.name }}-ci
+  CI_IMAGE_CI: ${{ github.event.repository.name }}-ci:latest
+  CI_CONTAINER: ${{ github.event.repository.name }}-ci
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 concurrency:
@@ -63,26 +65,28 @@ jobs:
         with:
           context: .
           load: true
-          tags: comicbox-ci:ci
-          cache-from: type=registry,ref=${{ env.BUILDER_IMAGE }}:cache
-          cache-to: type=registry,ref=${{ env.BUILDER_IMAGE }}:cache,mode=max
+          tags: ${{ env.CI_IMAGE_CI }}
+          cache-from: type=registry,ref=${{ env.CI_IMAGE}}:cache
+          cache-to: type=registry,ref=${{ env.CI_IMAGE}}:cache,mode=max
 
       - name: Start Services
-        id: start-services
         if: steps.gate.outputs.dist_found != 'true'
         run: |
           mkdir -p dist test-results
           docker compose up -d ci
 
       - name: Lint
-        id: lint
-        if: steps.start-services.outcome == 'success'
-        run: docker exec comicbox-ci make lint
+        if: steps.gate.outputs.dist_found != 'true'
+        run: docker exec "$CI_CONTAINER" make lint
 
       - name: Tests
         id: tests
-        if: steps.lint.outcome == 'success'
-        run: docker exec comicbox-ci make test
+        if: steps.gate.outputs.dist_found != 'true'
+        run: docker exec "$CI_CONTAINER" make test
+
+      - name: Build Distribution
+        if: steps.gate.outputs.dist_found != 'true'
+        run: docker exec "$CI_CONTAINER" make build
 
       - name: Upload Test Results
         id: upload-tests
@@ -98,22 +102,16 @@ jobs:
         with:
           report_paths: "**/test-results/pytest/*.xml"
 
-      - name: Build Distribution
-        id: build-dist
-        if: steps.tests.outcome == 'success'
-        run: docker exec comicbox-ci make build
-
-      - name: Stop Services
-        if: steps.start-services.outcome == 'success'
-        run: docker compose down
-
       - name: Upload dist artifact
-        if: "!cancelled() && (steps.gate.outputs.dist_found == 'true' || steps.build-dist.outcome =='success')"
         uses: actions/upload-artifact@v7
         with:
           name: python-dist
           path: dist/
           retention-days: 2
+
+      - name: Stop Services
+        if: steps.gate.outputs.dist_found != 'true'
+        run: docker compose down
 
   # ---------------------------------------------------------------------------
   # Deploy to PyPI

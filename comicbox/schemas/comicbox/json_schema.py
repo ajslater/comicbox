@@ -46,7 +46,7 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     )
 
     @override
-    def dump(self, obj: dict, *args, **kwargs) -> dict[str, Any]:
+    def dump(self, obj: dict, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Inject zero fill for page string numbers."""
         if (
             obj

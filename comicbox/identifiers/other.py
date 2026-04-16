@@ -17,7 +17,7 @@ _PARSE_OTHER_RE = re.compile(IDENTIFIER_RE_EXP, flags=re.IGNORECASE)
 
 
 def _parse_identifier_str_comicvine(
-    full_identifier,
+    full_identifier: str,
 ) -> tuple[IdSources | None, str, str]:
     id_source = None
     id_type = id_key = ""
@@ -31,7 +31,9 @@ def _parse_identifier_str_comicvine(
     return id_source, id_type, id_key
 
 
-def _parse_identifier_other_str(full_identifier) -> tuple[IdSources | None, str, str]:
+def _parse_identifier_other_str(
+    full_identifier: str,
+) -> tuple[IdSources | None, str, str]:
     id_source = None
     id_type = id_key = ""
     match = _PARSE_OTHER_RE.search(full_identifier)

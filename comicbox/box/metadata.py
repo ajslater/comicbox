@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from types import MappingProxyType
+from typing import Any
 
 from glom import Delete, glom
 from loguru import logger
@@ -15,7 +16,9 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
-    def _set_computed_merged_metadata_delete(self, merged_md) -> None:
+    def _set_computed_merged_metadata_delete(
+        self: Any, merged_md: dict[str, Any]
+    ) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
         for key_path in sorted(self._config.delete_keys):
@@ -25,7 +28,7 @@ class ComicboxMetadata(ComicboxComputed):
             except Exception as exc:
                 logger.warning(f"Could not delete key path {key_path}: {exc}")
 
-    def _set_computed_merged_metadata(self) -> None:
+    def _set_computed_merged_metadata(self: Any) -> None:
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
         merged_md = dict(merged_md)
@@ -40,7 +43,7 @@ class ComicboxMetadata(ComicboxComputed):
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
 
-    def get_internal_metadata(self) -> MappingProxyType:
+    def get_internal_metadata(self: Any) -> MappingProxyType:
         """
         Return the internal metadata from the archive.
 
@@ -50,12 +53,12 @@ class ComicboxMetadata(ComicboxComputed):
             self._set_computed_merged_metadata()
         return self._metadata
 
-    def set_internal_metadata(self, metadata: Mapping) -> None:
+    def set_internal_metadata(self: Any, metadata: Mapping) -> None:
         """Programmatically set the raw metadata."""
         self._metadata = MappingProxyType(metadata)
 
     def _to_dict(
-        self,
+        self: Any,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     ) -> tuple:
         # Get schema instance.
@@ -77,9 +80,9 @@ class ComicboxMetadata(ComicboxComputed):
         return schema, MappingProxyType(md)
 
     def to_dict(
-        self,
+        self: Any,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict:
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt)
@@ -87,9 +90,9 @@ class ComicboxMetadata(ComicboxComputed):
         return dict(dump)
 
     def to_string(
-        self,
+        self: Any,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Get mergeesized metadata as a string."""
         schema, md = self._to_dict(fmt)

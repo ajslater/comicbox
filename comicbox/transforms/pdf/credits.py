@@ -1,5 +1,7 @@
 """Author to Credits transforms."""
 
+from typing import Any
+
 from comicbox.enums.comet import CoMetRoleTagEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
@@ -30,11 +32,13 @@ _AUTHOR_VALUES = frozenset(
 )
 
 
-def _authors_to_credits(authors) -> dict:
+def _authors_to_credits(authors: set[str]) -> dict:
     return {author: {ROLES_KEY: {"Writer": {}}} for author in authors if author}
 
 
-def _credits_to_authors(comicbox_credits) -> set:
+def _credits_to_authors(
+    comicbox_credits: dict[str, dict[str, dict[str, dict[Any, Any]]]],
+) -> set:
     authors = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         if not person_name:
@@ -46,7 +50,7 @@ def _credits_to_authors(comicbox_credits) -> set:
     return authors
 
 
-def authors_to_credits_transform_to_cb(author_tag) -> MetaSpec:
+def authors_to_credits_transform_to_cb(author_tag: str) -> MetaSpec:
     """Create a Transform for pdf authors to comicbox credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: author_tag},
@@ -54,7 +58,7 @@ def authors_to_credits_transform_to_cb(author_tag) -> MetaSpec:
     )
 
 
-def authors_to_credits_transform_from_cb(author_tag) -> MetaSpec:
+def authors_to_credits_transform_from_cb(author_tag: str) -> MetaSpec:
     """Create a Transform for pdf authors to comicbox credits."""
     return MetaSpec(
         key_map={author_tag: CREDITS_KEY},

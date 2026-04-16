@@ -10,17 +10,17 @@ TMP_PATH = TMP_DIR / EXPORT_SOURCE_PATH.name
 RENAMED_NAME = "Captain Science v1950 #001 (of 007) (1950) The Beginning.cbz"
 
 
-def _setup():
+def _setup() -> None:
     """Set up tmp file."""
     my_setup(TMP_DIR, EXPORT_SOURCE_PATH)
 
 
-def _cleanup():
+def _cleanup() -> None:
     """Clean up tmp dir."""
     my_cleanup(TMP_DIR)
 
 
-def test_cli_action_rename():
+def test_cli_action_rename() -> None:
     """Test cli metadata write to file."""
     _setup()
 

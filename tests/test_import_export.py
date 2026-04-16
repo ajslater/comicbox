@@ -825,7 +825,7 @@ FNS = MappingProxyType(
 
 
 @pytest.mark.parametrize("fn", FNS)
-def test_import(fn):
+def test_import(fn: str) -> None:
     """Test importing metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     import_path = TEST_METADATA_DIR / fn
@@ -839,7 +839,7 @@ def test_import(fn):
 
 
 @pytest.mark.parametrize("fn", FNS)
-def test_export(fn):
+def test_export(fn: str) -> None:
     """Test exporting metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     fmt = guess_format(fn)

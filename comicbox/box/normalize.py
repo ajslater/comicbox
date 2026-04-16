@@ -1,22 +1,26 @@
 """Normalize schemas to Comicbox Schema."""
 
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
 from comicbox.box.load import ComicboxLoad, LoadedMetadata
+from comicbox.sources import MetadataSources
 
 
 class ComicboxNormalize(ComicboxLoad):
     """Normalize schemas to Comicbox Schema."""
 
-    def _get_transform(self, transform_class):
+    def _get_transform(self: Any, transform_class: type[Any]) -> Any:
         """Get or create a cached transform instance."""
         if transform_class not in self._transform_cache:
             self._transform_cache[transform_class] = transform_class(self._path)
         return self._transform_cache[transform_class]
 
-    def _normalize_metadata(self, source, loaded_data) -> None:
+    def _normalize_metadata(
+        self: Any, source: MetadataSources, loaded_data: Any
+    ) -> None:
         if not loaded_data.metadata:
             return None
         transform_class = loaded_data.fmt.value.transform_class
@@ -30,7 +34,7 @@ class ComicboxNormalize(ComicboxLoad):
             )
             logger.exception(reason)
 
-    def _set_normalized_metadata(self, source) -> None:
+    def _set_normalized_metadata(self: Any, source: MetadataSources) -> None:
         loaded_metadata_list = self.get_loaded_metadata(source)
         if not loaded_metadata_list:
             return
@@ -52,7 +56,7 @@ class ComicboxNormalize(ComicboxLoad):
                 self._normalized[source] = ()
             self._normalized[source] = (*self._normalized[source], *normalized_list)
 
-    def get_normalized_metadata(self, source):
+    def get_normalized_metadata(self: Any, source: MetadataSources) -> None:
         """Get normalized metadata by source key."""
         try:
             if source not in self._normalized:

@@ -10,7 +10,7 @@ from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
@@ -29,7 +29,6 @@ try:
     from pdffile import PDFFile
 except ImportError:
     from comicbox.pdffile_stub import PDFFile
-
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -72,7 +71,7 @@ class ComicboxInit:
         config: AttrDict | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
-        logger=None,
+        logger: Any = None,
     ) -> None:
         """
         Initialize the archive with a path to the archive.

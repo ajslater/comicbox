@@ -4,9 +4,10 @@ from collections.abc import Mapping
 from decimal import Decimal
 from enum import Enum
 from sys import maxsize
+from types import MappingProxyType
 from typing import Any
 
-from ruamel.yaml import YAML, StringIO
+from ruamel.yaml import YAML, MappingNode, RoundTripRepresenter, ScalarNode, StringIO
 from typing_extensions import override
 
 from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
@@ -23,12 +24,14 @@ class YamlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""
 
     @staticmethod
-    def _decimal_representer(dumper, data):
+    def _decimal_representer(dumper: RoundTripRepresenter, data: Decimal) -> ScalarNode:
         """Represent decimals as a naked 2 precision float."""
         return dumper.represent_scalar(_FLOAT_TAG, format(data, ".2f"))
 
     @staticmethod
-    def _dict_flow_representer(dumper, data):
+    def _dict_flow_representer(
+        dumper: RoundTripRepresenter, data: dict[str, Any]
+    ) -> MappingNode:
         """Represent page dict as a single line."""
         if _FLOW_KEYS & data.keys():
             return dumper.represent_mapping(_MAP_TAG, data, flow_style=True)
@@ -36,11 +39,11 @@ class YamlRenderModule(BaseRenderModule):
         return dumper.represent_dict(data)
 
     @staticmethod
-    def _none_representer(dumper, data):
+    def _none_representer(dumper: RoundTripRepresenter, data: None) -> ScalarNode:
         return dumper.represent_none(data)
 
     @staticmethod
-    def _enum_representer(dumper, data):
+    def _enum_representer(dumper: RoundTripRepresenter, data: Enum) -> ScalarNode:
         """Represent enums as their value."""
         return dumper.represent_str(data.value)
 
@@ -69,7 +72,7 @@ class YamlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: Mapping, *args, dfs=False, **kwargs) -> str:
+    def dumps(cls, obj: Mapping, *args: Any, dfs: bool = False, **kwargs: Any) -> str:
         """Dump dict to YAML string."""
         yaml = cls._get_write_yaml_dfs() if dfs else cls._get_write_yaml()
         cls._config_yaml(yaml)
@@ -79,7 +82,7 @@ class YamlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
+    def loads(cls, s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
         """Load YAML string into a dict."""
         if cleaned_s := cls.clean_string(s):
             return YAML().load(cleaned_s, *args, **kwargs)
@@ -100,17 +103,13 @@ class YamlSchema(BaseSchema):
 
     @override
     def dumps(
-        self,
-        obj,
-        *args,
+        self: Any,
+        obj: dict[str, Any] | MappingProxyType[str, Any],
+        *args: Any,
         dfs: bool = False,
         dump: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Use dfs for render."""
-        if dump:
-            # Run hooks
-            serialized: dict = self.dump(obj, *args, **kwargs)  # pyright: ignore[reportAssignmentType]
-        else:
-            serialized = obj
+        serialized: Any = self.dump(obj, *args, **kwargs) if dump else obj
         return self.opts.render_module.dumps(serialized, *args, dfs=dfs, **kwargs)

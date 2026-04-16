@@ -1,8 +1,10 @@
 """MetronInfo.xml Transformer for nested tags."""
 
 from collections.abc import Callable, Iterator, Mapping
+from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
+from typing import Any
 
 from bidict import frozenbidict
 
@@ -49,10 +51,10 @@ _RESOURCES_KEY_MAP = MappingProxyType(
 
 
 def metron_list_to_comicbox_dict(
-    metron_objs: list[Mapping],
+    metron_objs: Any,
     id_type: str,
-    primary_id_source: str,
-    func: Callable[[Mapping | str, str, str], tuple[str | Enum, dict]],
+    primary_id_source: Any,
+    func: Callable[..., tuple[str | Enum, dict]],
 ) -> dict[str | Enum, dict]:
     """Transform metron lists into comicbox name dicts."""
     comicbox_objs = {}
@@ -65,9 +67,9 @@ def metron_list_to_comicbox_dict(
 
 
 def comicbox_dict_to_metron_list(
-    comicbox_objs: Mapping,
-    primary_id_source: str,
-    func: Callable[[str | Enum, Mapping, str], dict],
+    comicbox_objs: Any,
+    primary_id_source: Any,
+    func: Callable[..., dict],
 ) -> list[dict]:
     """Transform comicbox name dicts into metron lists."""
     metron_list = []
@@ -78,13 +80,13 @@ def comicbox_dict_to_metron_list(
     return metron_list
 
 
-def _resources_to_cb(metron_resources, id_type, id_source) -> dict:
+def _resources_to_cb(metron_resources: Any, id_type: str, id_source: Any) -> dict:
     return metron_list_to_comicbox_dict(
         metron_resources, id_type, id_source, identified_name_to_cb
     )
 
 
-def _resources_from_cb(cb_key, values) -> list:
+def _resources_from_cb(cb_key: str, values: dict[str, Any]) -> list:
     comicbox_resources = values.get(cb_key)
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return comicbox_dict_to_metron_list(
@@ -92,10 +94,10 @@ def _resources_from_cb(cb_key, values) -> list:
     )
 
 
-def _create_resource_transform_to(metron_key_path, cb_key) -> MetaSpec:
+def _create_resource_transform_to(metron_key_path: str, cb_key: str) -> MetaSpec:
     id_type = metron_key_path.split(".")[1].lower()
 
-    def to_cb(values):
+    def to_cb(values: dict[str, Any]) -> dict[str, dict[Any, Any]]:
         metron_resources = values.get(metron_key_path)
         id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
         return _resources_to_cb(metron_resources, id_type, id_source)
@@ -105,8 +107,10 @@ def _create_resource_transform_to(metron_key_path, cb_key) -> MetaSpec:
     )
 
 
-def _create_resource_transform_from(metron_key_path, cb_key) -> MetaSpec:
-    def from_cb(values):
+def _create_resource_transform_from(metron_key_path: str, cb_key: str) -> MetaSpec:
+    def from_cb(
+        values: dict[str, Any],
+    ) -> list[dict[str, str]]:
         return _resources_from_cb(cb_key, values)
 
     return MetaSpec(
@@ -149,7 +153,7 @@ def _arc_to_cb(
     return name, comicbox_arc
 
 
-def _arcs_to_cb(values) -> dict:
+def _arcs_to_cb(values: dict[str, Any]) -> dict:
     metron_arcs = values.get(ARC_KEYPATH, [])
     primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     return metron_list_to_comicbox_dict(
@@ -157,14 +161,14 @@ def _arcs_to_cb(values) -> dict:
     )
 
 
-def _arc_from_cb(name, comicbox_arc, primary_id_source) -> dict:
+def _arc_from_cb(name: str, comicbox_arc: Any, primary_id_source: str) -> dict:
     metron_arc = identified_name_with_tag_from_cb(name, comicbox_arc, primary_id_source)
     if number := comicbox_arc.get(NUMBER_KEY):
         metron_arc[NUMBER_TAG] = number
     return metron_arc
 
 
-def _arcs_from_cb(values) -> list:
+def _arcs_from_cb(values: dict[str, Any]) -> list:
     comicbox_arcs = values.get(ARCS_KEY)
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return comicbox_dict_to_metron_list(comicbox_arcs, primary_id_source, _arc_from_cb)
@@ -180,7 +184,7 @@ METRON_ARCS_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _prices_to_cb(metron_prices) -> dict:
+def _prices_to_cb(metron_prices: list[dict[str, Decimal | str]]) -> dict:
     comicbox_prices = {}
     for metron_price in metron_prices:
         price = get_cdata(metron_price)
@@ -189,10 +193,10 @@ def _prices_to_cb(metron_prices) -> dict:
     return comicbox_prices
 
 
-def _prices_from_cb(comicbox_prices) -> list:
+def _prices_from_cb(comicbox_prices: dict[str, Decimal]) -> list:
     metron_prices = []
     for country, price in comicbox_prices.items():
-        metron_price = {"#text": price}
+        metron_price: dict[str, Any] = {"#text": price}
         if country:
             metron_price[COUNTRY_ATTR] = country
         metron_prices.append(metron_price)
@@ -207,7 +211,7 @@ METRON_PRICES_TRANSFORM_FROM_CB = MetaSpec(key_map=_PRICE_KEY_MAP, spec=_prices_
 
 
 def _universe_to_cb(
-    metron_universe, id_type, primary_id_source
+    metron_universe: dict[str, str] | None, id_type: str, primary_id_source: str
 ) -> tuple[str | Enum, dict]:
     if not isinstance(metron_universe, Mapping):
         return "", {}
@@ -219,7 +223,7 @@ def _universe_to_cb(
     return name, comicbox_universe
 
 
-def _universes_to_cb(values) -> dict:
+def _universes_to_cb(values: dict[str, Any]) -> dict:
     metron_universes = values.get(UNIVERSES_KEYPATH)
     primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     return metron_list_to_comicbox_dict(
@@ -227,7 +231,9 @@ def _universes_to_cb(values) -> dict:
     )
 
 
-def _universe_from_cb(name, comicbox_universe, primary_id_source) -> dict:
+def _universe_from_cb(
+    name: str, comicbox_universe: dict[str, str], primary_id_source: str
+) -> dict:
     metron_universe = identified_name_with_tag_from_cb(
         name, comicbox_universe, primary_id_source
     )
@@ -236,7 +242,7 @@ def _universe_from_cb(name, comicbox_universe, primary_id_source) -> dict:
     return metron_universe
 
 
-def _universes_from_cb(values) -> list:
+def _universes_from_cb(values: dict[str, Any]) -> list:
     comicbox_universes = values.get(UNIVERSES_KEY)
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return comicbox_dict_to_metron_list(

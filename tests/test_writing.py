@@ -101,7 +101,7 @@ TAGS_SOURCE = MappingProxyType(
 )
 
 
-def test_convert_to_cbz_and_cbi_to_cix():
+def test_convert_to_cbz_and_cbi_to_cix() -> None:
     """Test converting cbr to cbz and writing cbi info as cix."""
     my_setup(TMP_DIR, CBI_CBR_SOURCE_PATH)
 
@@ -138,7 +138,7 @@ PATCHME_METADATA = MappingProxyType(
 )
 
 
-def test_patch():
+def test_patch() -> None:
     """Test patching the zipfile."""
     TMP_DIR.mkdir(exist_ok=True)
     shutil.copy(TEST_PATCHME_PATH, PATCHME_PATH)

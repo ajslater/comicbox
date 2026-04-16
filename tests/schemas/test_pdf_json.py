@@ -151,106 +151,106 @@ PDF_CIX_TESTER = TestParser(
 )
 
 
-def test_pdf_from_metadata():
+def test_pdf_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     PDF_METADATA_TESTER.test_from_metadata()
 
 
-def test_pdf_from_metadata_kw():
+def test_pdf_from_metadata_kw() -> None:
     """Test metadata import from comicbox.schemas."""
     PDF_KW_TESTER.test_from_metadata()
 
 
-def test_pdf_from_metadata_cix():
+def test_pdf_from_metadata_cix() -> None:
     """Test metadata import from comicbox.schemas."""
     PDF_CIX_TESTER.test_from_metadata()
 
 
-def test_pdf_from_dict():
+def test_pdf_from_dict() -> None:
     """Test native dict import."""
     PDF_METADATA_TESTER.test_from_dict()
 
 
-def test_pdf_from_dict_kw():
+def test_pdf_from_dict_kw() -> None:
     """Test native dict import."""
     PDF_KW_TESTER.test_from_dict()
 
 
-def test_pdf_from_string():
+def test_pdf_from_string() -> None:
     """Test metadata import from string."""
     PDF_METADATA_TESTER.test_from_string()
 
 
-def test_pdf_from_string_kw():
+def test_pdf_from_string_kw() -> None:
     """Test metadata import from string."""
     PDF_KW_TESTER.test_from_string()
 
 
-def test_pdf_from_file():
+def test_pdf_from_file() -> None:
     """Test metadata import from file."""
     PDF_METADATA_TESTER.test_from_file()
 
 
-def test_pdf_from_file_kw():
+def test_pdf_from_file_kw() -> None:
     """Test metadata import from file."""
     PDF_KW_TESTER.test_from_file()
 
 
-def test_pdf_from_file_cix():
+def test_pdf_from_file_cix() -> None:
     """Test metadata import from file."""
     PDF_CIX_TESTER.test_from_file()
 
 
-def test_pdf_to_dict():
+def test_pdf_to_dict() -> None:
     """Test metadata export to dict."""
     PDF_METADATA_TESTER.test_to_dict()
 
 
-def test_pdf_to_dict_cix():
+def test_pdf_to_dict_cix() -> None:
     """Test metadata export to dict."""
     PDF_CIX_TESTER.test_to_dict()
 
 
-def test_pdf_to_string():
+def test_pdf_to_string() -> None:
     """Test metadata export to string."""
     PDF_METADATA_TESTER.test_to_string()
 
 
-def test_pdf_to_string_cix():
+def test_pdf_to_string_cix() -> None:
     """Test metadata export to string."""
     PDF_CIX_TESTER.test_to_string()
 
 
-def test_pdf_to_file():
+def test_pdf_to_file() -> None:
     """Test metadata export to file."""
     PDF_METADATA_TESTER.test_to_file()
 
 
-def test_pdf_to_file_cix():
+def test_pdf_to_file_cix() -> None:
     """Test metadata export to file."""
     PDF_CIX_TESTER.test_to_file()
 
 
-def test_pdf_read():
+def test_pdf_read() -> None:
     """Read PDF archive."""
     PDF_METADATA_TESTER.test_pdf_read()
 
 
-def test_pdf_read_kw():
+def test_pdf_read_kw() -> None:
     """Read PDF archive."""
     PDF_KW_TESTER.test_pdf_read()
 
 
-def test_pdf_read_cix():
+def test_pdf_read_cix() -> None:
     """Read PDF archive."""
     PDF_CIX_TESTER.test_pdf_read()
 
 
-def test_pdf_write():
+def test_pdf_write() -> None:
     """Write PDF metadata."""
     PDF_METADATA_TESTER.test_pdf_write(page_count=1)
 
 
-def test_pdf_write_cix():
+def test_pdf_write_cix() -> None:
     """Write PDF metadata."""
     PDF_CIX_TESTER.test_pdf_write(page_count=1)

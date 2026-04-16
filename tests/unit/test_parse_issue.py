@@ -13,7 +13,7 @@ ISSUES = {
 }
 
 
-def test_parse_issue():
+def test_parse_issue() -> None:
     """Test many issue variations."""
     for result, issue_list in ISSUES.items():
         for issue in issue_list:

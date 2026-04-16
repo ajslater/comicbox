@@ -12,7 +12,7 @@ from comicbox.schemas.cache import get_schema
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
-def skip_not(val) -> bool:
+def skip_not(val: Any) -> bool:
     """Skip if not function."""
     return not val
 
@@ -24,7 +24,7 @@ class BaseTransform:
     SPECS_TO: MappingProxyType[str, Any] = MappingProxyType({})
     SPECS_FROM: MappingProxyType[str, Any] = MappingProxyType({})
 
-    def __init__(self, path: Path | None = None) -> None:
+    def __init__(self: Any, path: Path | None = None) -> None:
         """Initialize instances."""
         self._path: Path | None = path
         self._schema: BaseSchema = get_schema(self.SCHEMA_CLASS, path=path)
@@ -37,17 +37,17 @@ class BaseTransform:
         ):
             transformed_data[schema.ROOT_DATA_KEY] = root
 
-    def to_comicbox(self, data: Mapping) -> MappingProxyType:
+    def to_comicbox(self: Any, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
         schema = get_schema(ComicboxYamlSchema, path=self._path)
         transformed_data = glom(dict(data), dict(self.SPECS_TO))
         loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
         return MappingProxyType(loaded_data)
 
-    def from_comicbox(self, data: Mapping) -> MappingProxyType:
+    def from_comicbox(self: Any, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         schema = self._schema
         transformed_data = glom(dict(data), dict(self.SPECS_FROM))
         self._swap_data_key(schema, transformed_data)
-        loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
+        loaded_data: dict = schema.load(transformed_data)
         return MappingProxyType(loaded_data)

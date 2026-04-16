@@ -211,47 +211,47 @@ CIX_TESTER = TestParser(
 )
 
 
-def test_cix_from_metadata():
+def test_cix_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     CIX_TESTER.test_from_metadata()
 
 
-def test_cix_from_dict():
+def test_cix_from_dict() -> None:
     """Test native dict import."""
     CIX_TESTER.test_from_dict()
 
 
-def test_cix_from_string():
+def test_cix_from_string() -> None:
     """Test metadata import from string."""
     CIX_TESTER.test_from_string()
 
 
-def test_cix_from_file():
+def test_cix_from_file() -> None:
     """Test metadata import from file."""
     CIX_TESTER.test_from_file(page_count=0)
 
 
-def test_cix_to_dict():
+def test_cix_to_dict() -> None:
     """Test metadata export to dict."""
     CIX_TESTER.test_to_dict()
 
 
-def test_cix_to_string():
+def test_cix_to_string() -> None:
     """Test metadata export to string."""
     test_str = CIX_TESTER.to_string()
     CIX_TESTER.compare_string(test_str)
 
 
-def test_cix_to_file():
+def test_cix_to_file() -> None:
     """Test metadata export to file."""
     CIX_TESTER.test_to_file(export_fn="comicinfo-write.xml")
 
 
-def test_cix_read():
+def test_cix_read() -> None:
     """Read RAR with CIX."""
     CIX_TESTER.test_md_read(page_count=0)
 
 
-def test_cix_write():
+def test_cix_write() -> None:
     """Write cbz with CIX."""
     CIX_TESTER.test_md_write(ignore_pages=True, page_count=0)

@@ -1,6 +1,7 @@
 """Cover Page filename methods."""
 
 from collections.abc import Generator
+from typing import Any
 
 from glom import glom
 from loguru import logger
@@ -16,7 +17,7 @@ _COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"
 class ComicboxPagesCovers(ComicboxMetadata):
     """Cover path methods."""
 
-    def _generate_cover_paths_from_pages(self, pages: dict) -> Generator[str]:
+    def _generate_cover_paths_from_pages(self: Any, pages: dict) -> Generator[str]:
         """Overridden by CIX."""
         # Support zero and one index pages.
         has_zero_index = 0 in pages
@@ -27,7 +28,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
             if pagename := self.get_pagename(pagename_index):
                 yield pagename
 
-    def generate_cover_paths(self) -> Generator[str]:
+    def generate_cover_paths(self: Any) -> Generator[str]:
         """Generate cover paths."""
         metadata = dict(self.get_internal_metadata())
         if pages := glom(metadata, PAGES_KEYPATH, default=None):
@@ -39,7 +40,7 @@ class ComicboxPagesCovers(ComicboxMetadata):
         if first_pagename := self.get_pagename(0):
             yield first_pagename
 
-    def _get_cover_paths(self) -> tuple[str, ...]:
+    def _get_cover_paths(self: Any) -> tuple[str, ...]:
         cover_path_generator = self.generate_cover_paths()
         cover_paths_ordered_set = dict.fromkeys(cover_path_generator)
         cover_paths = tuple(cover_paths_ordered_set.keys())
@@ -47,14 +48,14 @@ class ComicboxPagesCovers(ComicboxMetadata):
             logger.warning(f"{self._path} could not find cover filename")
         return cover_paths
 
-    def get_cover_paths(self):
+    def get_cover_paths(self: Any) -> tuple[str, str, str]:
         """Get filename of most likely coverpage."""
         # This could be a generator?
         if self._cover_paths is None:
             self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
         return self._cover_paths
 
-    def _get_cover_page(self, pdf_format: str = "") -> bytes | None:
+    def _get_cover_page(self: Any, pdf_format: str = "") -> bytes | None:
         data = None
         cover_paths = self.generate_cover_paths()
         bad_cover_paths = set()
@@ -69,6 +70,6 @@ class ComicboxPagesCovers(ComicboxMetadata):
                 bad_cover_paths.add(cover_path)
         return data
 
-    def get_cover_page(self, pdf_format=""):
+    def get_cover_page(self: Any, pdf_format: str = "") -> bytes:
         """Return cover image data."""
         return self._get_cover_page(pdf_format=pdf_format)

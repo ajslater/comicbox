@@ -1,5 +1,6 @@
 """Identifier Fields."""
 
+from typing import Any
 from urllib.parse import urlparse
 
 from loguru import logger
@@ -27,16 +28,18 @@ from comicbox.transforms.spec import MetaSpec
 PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
 
 
-def create_identifier_primary_source(id_source) -> dict:
+def create_identifier_primary_source(
+    id_source: IdSources,
+) -> dict:
     """Create identifier primary source."""
-    ips = {ID_SOURCE_KEY: id_source}
+    ips: dict[str, Any] = {ID_SOURCE_KEY: id_source}
     id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
     if id_parts and (url := id_parts.url_prefix):
         ips[ID_URL_KEY] = url
     return ips
 
 
-def _identifier_to_cb(native_identifier, naked_id_source) -> tuple[str, dict]:
+def _identifier_to_cb(native_identifier: str, naked_id_source: Any) -> tuple[str, dict]:
     """Parse one identifier urn or string."""
     id_source, id_type, id_key = parse_string_identifier(
         native_identifier, naked_id_source
@@ -48,7 +51,9 @@ def _identifier_to_cb(native_identifier, naked_id_source) -> tuple[str, dict]:
     return id_source_str, comicbox_identifier
 
 
-def identifiers_to_cb(native_identifiers, naked_id_source: str) -> dict:
+def identifiers_to_cb(
+    native_identifiers: set[str] | None, naked_id_source: Any
+) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
     if native_identifiers:
@@ -63,10 +68,12 @@ def identifiers_to_cb(native_identifiers, naked_id_source: str) -> dict:
     return comicbox_identifiers
 
 
-def identifiers_transform_to_cb(identifiers_tag, naked_id_source) -> MetaSpec:
+def identifiers_transform_to_cb(
+    identifiers_tag: str, naked_id_source: IdSources
+) -> MetaSpec:
     """Transform identifier tags to comicbox identifiers."""
 
-    def to_cb(native_identifiers):
+    def to_cb(native_identifiers: set[str]) -> dict[str, dict[str, str]]:
         return identifiers_to_cb(native_identifiers, naked_id_source)
 
     return MetaSpec(
@@ -75,7 +82,7 @@ def identifiers_transform_to_cb(identifiers_tag, naked_id_source) -> MetaSpec:
     )
 
 
-def _identifiers_from_cb(comicbox_identifiers) -> set:
+def _identifiers_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> set:
     """Unparse identifier struct to set of strings."""
     urn_strings = set()
     for id_source in IdSources:
@@ -88,7 +95,7 @@ def _identifiers_from_cb(comicbox_identifiers) -> set:
     return urn_strings
 
 
-def identifiers_transform_from_cb(identifiers_tag) -> MetaSpec:
+def identifiers_transform_from_cb(identifiers_tag: str) -> MetaSpec:
     """Transform comicbox identifiers identifier tag."""
     return MetaSpec(
         key_map={identifiers_tag: IDENTIFIERS_KEY},
@@ -143,7 +150,7 @@ def url_to_cb(
     return id_source_str, identifier
 
 
-def urls_to_cb(urls) -> dict:
+def urls_to_cb(urls: Any) -> dict:
     """Parse url tags into identifiers."""
     comicbox_identifiers = {}
     if urls:
@@ -154,7 +161,7 @@ def urls_to_cb(urls) -> dict:
     return comicbox_identifiers
 
 
-def urls_transform_to_cb(urls_tag) -> MetaSpec:
+def urls_transform_to_cb(urls_tag: str) -> MetaSpec:
     """Transform urls tags to comicbox identifiers."""
     return MetaSpec(
         key_map={IDENTIFIERS_KEY: urls_tag},
@@ -174,7 +181,7 @@ def url_from_cb(
     return url
 
 
-def _urls_from_cb(comicbox_identifiers) -> set:
+def _urls_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> set:
     """Unparse urls struct to set of strings."""
     url_strings = set()
     for id_source, comicbox_identifier in comicbox_identifiers.items():
@@ -183,6 +190,6 @@ def _urls_from_cb(comicbox_identifiers) -> set:
     return url_strings
 
 
-def urls_transform_from_cb(urls_tag) -> MetaSpec:
+def urls_transform_from_cb(urls_tag: str) -> MetaSpec:
     """Transform comicbox identifiers to urls tags."""
     return MetaSpec(key_map={urls_tag: IDENTIFIERS_KEY}, spec=_urls_from_cb)

@@ -3,6 +3,7 @@
 from argparse import Namespace
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from types import MappingProxyType
 
 from comicbox import cli
@@ -146,17 +147,17 @@ DELETE_KEYS_MD = MappingProxyType(
 )
 
 
-def _setup(source_path=EMPTY_CBZ_SOURCE_PATH):
+def _setup(source_path: Path = EMPTY_CBZ_SOURCE_PATH) -> None:
     """Set up tmp file."""
     my_setup(TMP_DIR, source_path)
 
 
-def _cleanup():
+def _cleanup() -> None:
     """Clean up tmp dir."""
     my_cleanup(TMP_DIR)
 
 
-def test_cli_action_write():
+def test_cli_action_write() -> None:
     """Test cli metadata write to file."""
     _setup()
     with Comicbox(TMP_PATH) as car:
@@ -175,7 +176,7 @@ def test_cli_action_write():
     _cleanup()
 
 
-def test_cli_action_write_replace():
+def test_cli_action_write_replace() -> None:
     """Test cli metadata write to file."""
     _setup()
     with Comicbox(TMP_PATH) as car:
@@ -206,7 +207,7 @@ def test_cli_action_write_replace():
     _cleanup()
 
 
-def test_cli_action_cbz():
+def test_cli_action_cbz() -> None:
     """Test the cbz and delete-orig options."""
     _setup(CIX_CBI_CBR_SOURCE_PATH)
     with Comicbox(TMP_CBR_PATH, config=CBZ_CONFIG) as car:
@@ -232,7 +233,7 @@ def test_cli_action_cbz():
     _cleanup()
 
 
-def test_cli_action_delete_all_tags():
+def test_cli_action_delete_all_tags() -> None:
     """Test delete_tags action."""
     _setup(CBZ_MULTI_SOURCE_PATH)
     with Comicbox(TMP_MULTI_PATH, config=READ_CONFIG_IGNORE_FN) as car:
@@ -252,7 +253,7 @@ def test_cli_action_delete_all_tags():
     _cleanup()
 
 
-def test_cli_action_delete_tags_add_metadata():
+def test_cli_action_delete_tags_add_metadata() -> None:
     """Test delete_tags action."""
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)
@@ -287,7 +288,7 @@ def test_cli_action_delete_tags_add_metadata():
     _cleanup()
 
 
-def test_cli_action_delete_keys():
+def test_cli_action_delete_keys() -> None:
     """Test delete_tags action."""
     _setup(CBZ_MULTI_SOURCE_PATH)
     config = get_config(READ_CONFIG_IGNORE_FN)

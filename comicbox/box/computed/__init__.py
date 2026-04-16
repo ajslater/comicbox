@@ -32,7 +32,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
     """Computed metadata methods."""
 
     def _get_computed_from_scan_info(
-        self, sub_data, **_kwargs
+        self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, Any] | None:
         """Parse scan_info for original format info."""
         if ORIGINAL_FORMAT_KEY in self._config.delete_keys or not sub_data:
@@ -48,7 +48,9 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         original_format = OriginalFormatField().deserialize(original_format)
         return {ORIGINAL_FORMAT_KEY: match.group(ORIGINAL_FORMAT_KEY)}
 
-    def _get_computed_from_reprints(self, sub_data) -> dict[str, list] | None:
+    def _get_computed_from_reprints(
+        self, sub_data: dict[str, Any]
+    ) -> dict[str, list] | None:
         """Consolidate reprints."""
         if REPRINTS_KEY in self._config.delete_keys or not sub_data:
             return None

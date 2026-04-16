@@ -3,6 +3,7 @@
 import sys
 from io import StringIO
 from types import MappingProxyType
+from typing import Any
 
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarint import ScalarInt
@@ -35,7 +36,7 @@ CLI_DICT = MappingProxyType(
 )
 
 
-def _get_output(args):
+def _get_output(args: tuple[str, ...]) -> str:
     old_stdout = sys.stdout
     try:
         output_buf = StringIO()
@@ -56,7 +57,7 @@ CBZ
 """
 
 
-def test_cli_filetype():
+def test_cli_filetype() -> None:
     """Test filetype action."""
     args = ("comicbox", "-P", "t", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = "\n" + _get_output(args)
@@ -72,7 +73,7 @@ empty.cbz
 """
 
 
-def test_cli_source():
+def test_cli_source() -> None:
     """Test print source action."""
     args = ("comicbox", "-P", "s", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
@@ -91,7 +92,7 @@ comicfn2dict:
 """
 
 
-def test_cli_loaded():
+def test_cli_loaded() -> None:
     """Test print loaded action."""
     args = ("comicbox", "-P", "l", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
@@ -99,7 +100,7 @@ def test_cli_loaded():
     assert_diff_strings(LOADED_OUTPUT, output)
 
 
-def _ruamel_to_dict(yaml_dict):
+def _ruamel_to_dict(yaml_dict: CommentedMap) -> dict[str, Any]:
     """Not a airtight transform but works for these tests."""
     result = {}
     for key in yaml_dict:
@@ -119,7 +120,7 @@ def _ruamel_to_dict(yaml_dict):
     return result
 
 
-def test_cli_print():
+def test_cli_print() -> None:
     """Simple cli metadata print test."""
     args = (*CLI_METADATA_ARGS, "-p", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
     cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
@@ -179,7 +180,7 @@ tests/files/Captain Science #001-cix-cbi.cbr
 """
 
 
-def test_cli_print_contents():
+def test_cli_print_contents() -> None:
     """Test list contents."""
     args = ("comicbox", "-P", "f", "-t", "none", str(CIX_CBI_CBR_SOURCE_PATH))
     output = _get_output(args)
@@ -190,7 +191,7 @@ def test_cli_print_contents():
 LIST_RECURSE_OUTPUT_PATH = TEST_FILES_DIR / "list_recurse_output.txt"
 
 
-def test_cli_print_list_recurse():
+def test_cli_print_list_recurse() -> None:
     """Test recursion."""
     args = ("comicbox", "--recurse", "-l", str(TEST_FILES_DIR))
     output = _get_output(args)

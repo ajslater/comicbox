@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
+from typing import Any
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.identifiers.identifiers import (
@@ -68,7 +69,9 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
                 id_source.value, id_key, id_type=id_type
             )
 
-    def _get_computed_from_tags(self, sub_data) -> dict[str, dict] | None:
+    def _get_computed_from_tags(
+        self, sub_data: dict[str, Any]
+    ) -> dict[str, dict] | None:
         # only look for ids in tags and genres if the format has tags but no designated id field.
         if (
             not sub_data
@@ -102,14 +105,16 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         return all_urls
 
     @classmethod
-    def _add_urls_to_identifiers(cls, sub_data, all_urls) -> None:
+    def _add_urls_to_identifiers(
+        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
+    ) -> None:
         identifiers = sub_data.get(IDENTIFIERS_KEY)
         if urls := cls._add_url_to_tag_identifiers("issue", identifiers):
             all_urls[IDENTIFIERS_KEY] = urls
 
     @classmethod
     def _add_urls_to_tag(
-        cls, key: str, id_type: str, tag: dict, all_urls: dict
+        cls, key: str, id_type: str, tag: dict | None, all_urls: dict
     ) -> None:
         if not tag:
             return
@@ -123,13 +128,17 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
             all_urls[key].extend(urls)
 
     @classmethod
-    def _add_urls_to_single_tags(cls, sub_data, all_urls) -> None:
+    def _add_urls_to_single_tags(
+        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
+    ) -> None:
         for key in _IDENTIFIED_KEYS:
             tag = sub_data.get(key)
             cls._add_urls_to_tag(key, key, tag, all_urls)
 
     @classmethod
-    def _add_urls_to_multiple_tags(cls, sub_data, all_urls) -> None:
+    def _add_urls_to_multiple_tags(
+        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
+    ) -> None:
         for key in _IDENTIFIED_TAG_KEYS:
             all_tags = sub_data.get(key)
             if not all_tags:
@@ -141,7 +150,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
                     for role in roles.values():
                         cls._add_urls_to_tag(ROLES_KEY, id_type, role, all_urls)
 
-    def _add_urls_to_all_identifiers(self, sub_data) -> dict | None:
+    def _add_urls_to_all_identifiers(self, sub_data: dict[str, Any]) -> dict | None:
         """Add missing urls to identifiers."""
         all_urls = {}
         self._add_urls_to_identifiers(sub_data, all_urls)

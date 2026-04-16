@@ -10,6 +10,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import partial, reduce
 from types import MappingProxyType
+from typing import Any
 
 
 class Strategy(Enum):
@@ -21,7 +22,11 @@ class Strategy(Enum):
     ADDITIVE = 1
 
 
-def _handle_merge_replace(dest_parent, source_parent, key) -> None:
+def _handle_merge_replace(
+    dest_parent: MutableMapping[str, Any],
+    source_parent: Mapping[str, Any],
+    key: str,
+) -> None:
     dest = dest_parent[key]
     source = source_parent[key]
 
@@ -44,12 +49,15 @@ def _merge_counter(dest, source) -> None:
     dest.update(deepcopy(source))
 
 
-def _merge_mapping(dest, source) -> None:
+def _merge_mapping(
+    dest: MutableMapping[str, Any],
+    source: Mapping[str, Any],
+) -> None:
     # Recurse on mapping
     _deepmerge(dest, source, Strategy.ADDITIVE)
 
 
-def _merge_list(dest, source) -> None:
+def _merge_list(dest: list[dict[str, str]], source: list[dict[str, str]]) -> None:
     # Extend dest if both dest and source are `list` type.
     dest.extend(deepcopy(source))
 
@@ -75,7 +83,11 @@ _MERGE_MAP: MappingProxyType[tuple, Callable] = MappingProxyType(
 )
 
 
-def _handle_merge_additive(dest_parent, source_parent, key) -> None:
+def _handle_merge_additive(
+    dest_parent: MutableMapping[str, Any],
+    source_parent: Mapping[str, Any],
+    key: str,
+) -> None:
     # Values are combined into one long collection.
     dest = dest_parent[key]
     source = source_parent[key]
@@ -101,7 +113,11 @@ _HANDLE_MERGE: MappingProxyType[Strategy, Callable] = MappingProxyType(
 )
 
 
-def _deepmerge(dest, source, strategy=Strategy.REPLACE):
+def _deepmerge(
+    dest: MutableMapping[str, Any],
+    source: Mapping[str, Any],
+    strategy: Strategy = Strategy.REPLACE,
+) -> MutableMapping[str, Any]:
     for key in source:
         if key in dest:
             if dest[key] is not source[key]:

@@ -1,6 +1,7 @@
 """Comicbox Fields."""
 
 from inspect import isclass
+from typing import Any
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
@@ -32,12 +33,12 @@ class SimpleNamedDictField(Union):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         keys: Field | type[Field] = StringField,
         values: Field | type[Field] | None = None,
         allow_empty_values: bool = True,
         sort: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Create the union."""
         if values is None:
@@ -54,7 +55,12 @@ class SimpleNamedDictField(Union):
         super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> dict:
+    def _deserialize(
+        self,
+        value: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict:
         result: dict = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, set | frozenset):
             dict_value = {}
@@ -69,12 +75,12 @@ class SimpleNamedNestedField(Union):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         schema: type[BaseSubSchema] = IdentifiedNameSchema,
         field: Field | type[Field] = StringField,
         name_key: str = NAME_KEY,
         primitive_type: type = str,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Create the union."""
         self._name_key = name_key
@@ -85,7 +91,12 @@ class SimpleNamedNestedField(Union):
         super().__init__(fields, *args, **kwargs)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> dict:
+    def _deserialize(
+        self,
+        value: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict:
         result = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, self._primitive_type):
             complex_value = {self._name_key: result}
@@ -102,7 +113,7 @@ class RoleField(PrettifiedStringField):
 class PagesField(DictField):  # CIX ONLY, CT
     """ComicInfo Pages."""
 
-    def __init__(self, *args, keys_as_string=False, **kwargs) -> None:
+    def __init__(self, *args: Any, keys_as_string: bool = False, **kwargs: Any) -> None:
         """ComicInfo Pages with keys_as_string option."""
         super().__init__(
             *args,

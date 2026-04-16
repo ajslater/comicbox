@@ -73,7 +73,7 @@ class Archive:
             case SevenZipFile():
                 data = cls._read_7zipfile(archive, factory, filename)
             case PDFFile():  # pyright: ignore[reportGeneralTypeIssues]
-                data = archive.read(filename, fmt=pdf_format, props=props)
+                data = archive.read(filename, fmt=pdf_format, props=props)  # ty: ignore[unknown-argument]
             case _:
                 data = archive.read(filename)
         return data
