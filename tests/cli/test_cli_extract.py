@@ -1,8 +1,7 @@
 """Test CLI extract actions."""
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pathlib
+from collections.abc import Sequence
+from pathlib import Path
 
 from comicbox import cli
 from tests.const import (
@@ -17,7 +16,11 @@ TMP_DIR = get_tmp_dir(__file__)
 TMP_COVER_PATH = TMP_DIR / COVER_FN
 
 
-def _test_cli_action_extract_util(path: "pathlib.PosixPath", args: list[str]|tuple[str, str], test_files: "list[pathlib.PosixPath]|tuple[str, str, str]|tuple[str]") -> None:
+def _test_cli_action_extract_util(
+    path: Path,
+    args: list[str] | tuple[str, str],
+    test_files: Sequence[Path | str],
+) -> None:
     """Test cli metadata write to file."""
     my_setup(TMP_DIR)
 
@@ -39,7 +42,7 @@ def _test_cli_action_extract_util(path: "pathlib.PosixPath", args: list[str]|tup
     my_cleanup(TMP_DIR)
 
 
-def _test_cli_action_extract_cover(path: "pathlib.PosixPath") -> None:
+def _test_cli_action_extract_cover(path: Path) -> None:
     """Test cli metadata write to file."""
     _test_cli_action_extract_util(path, ["-o"], [TMP_COVER_PATH])
 
@@ -59,7 +62,9 @@ def test_cli_action_extract_cover_cbz() -> None:
     _test_cli_action_extract_cover(CIX_CBZ_SOURCE_PATH)
 
 
-def _test_cli_action_extract(path: "pathlib.PosixPath", extract: str, test_files: list[str]|tuple[str, str, str]|tuple[str]) -> None:
+def _test_cli_action_extract(
+    path: Path, extract: str, test_files: list[str] | tuple[str, ...]
+) -> None:
     args = ("-e", extract)
     _test_cli_action_extract_util(path, args, test_files)
 

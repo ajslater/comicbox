@@ -1,12 +1,9 @@
 """Comicbox Computed Issue tags."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import decimal
 
 import re
 from collections.abc import Callable
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
@@ -30,7 +27,11 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
     """Comicbox Computed Issue tags."""
 
     def _parse_issue_match(
-        self: Any, match: re.Match[str], old_issue_number: None, old_issue_suffix: None, issue: dict[str, str]
+        self,
+        match: re.Match[str],
+        old_issue_number: Any,
+        old_issue_suffix: Any,
+        issue: dict[str, Any],
     ) -> None:
         """Use regex match to break the issue into parts."""
         issue_number, issue_suffix = match.groups()
@@ -47,7 +48,9 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 issue_suffix, ISSUE_SUFFIX_KEY, issue
             )
 
-    def _get_computed_from_issue(self: Any, sub_data: "dict[str, dict[str, decimal.Decimal]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|int|list[dict[str, dict[str, str]]]|str]", **_kwargs: None) -> dict[str, Any] | None:
+    def _get_computed_from_issue(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
         """Break parsed issue up into parts."""
         if not sub_data:
             return None
@@ -72,7 +75,9 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
 
         return {ISSUE_KEY: issue}
 
-    def _get_computed_issue(self: Any, sub_data: dict[str, dict[str, dict[str, str]]|dict[str, dict[Any, Any]]|dict[str, str]|int|str], **_kwargs: None) -> dict[str, Any] | None:
+    def _get_computed_issue(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
         """Build issue from parts before dump if issue doesn't already exist."""
         if not sub_data or ISSUE_KEY in self._config.delete_keys:
             return None

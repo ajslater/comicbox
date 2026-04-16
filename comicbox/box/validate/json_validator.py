@@ -1,10 +1,7 @@
 """Custom jsonschema validator."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import comicbox.box.validate.yaml_validator
 
 from pathlib import Path
+from typing import Any
 
 import simplejson
 from jsonschema.validators import Draft202012Validator
@@ -30,7 +27,7 @@ _FILESYSTEM_RESOLVING_REGISTRY = Registry(retrieve=_retrieve_from_filesystem)
 class JsonValidator(BaseValidator):
     """Validate json with jsonchema validator."""
 
-    def __init__(self: "comicbox.box.validate.yaml_validator.JsonValidator", *args: str, **kwargs: None) -> None:
+    def __init__(self, *args: str, **kwargs: Any) -> None:
         """Create jsonchema validator."""
         super().__init__(*args, **kwargs)
         schema_str = self.schema_path.read_text()
@@ -41,7 +38,7 @@ class JsonValidator(BaseValidator):
             format_checker=Draft202012Validator.FORMAT_CHECKER,
         )
 
-    def validate(self: "comicbox.box.validate.yaml_validator.JsonValidator", data: str | bytes | Path) -> None:
+    def validate(self, data: str | bytes | Path) -> None:
         """Validate source."""
         data = self.get_data_str(data)
         data = simplejson.loads(data)

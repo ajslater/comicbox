@@ -1,16 +1,8 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import collections.abc
-    import datetime
-    import types
-
-    import marshmallow
-    import ruamel.yaml
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from marshmallow import Schema
@@ -21,11 +13,16 @@ from typing_extensions import override
 class ClearingErrorStore(ErrorStore):
     """Take over error processing."""
 
-    def _clean_error_list(self: "ClearingErrorStore", key: str, error_list: list[str], cleaned_errors: dict[Any, Any]) -> None:
+    def _clean_error_list(
+        self,
+        key: str,
+        error_list: list[str],
+        cleaned_errors: dict[Any, Any],
+    ) -> None:
         if cleaned_error_list := frozenset(error_list) - self._ignore_errors:
             cleaned_errors[key] = sorted(cleaned_error_list)
 
-    def _clear_errors(self: "ClearingErrorStore") -> None:
+    def _clear_errors(self) -> None:
         if not self.errors:
             return
         cleaned_errors = {}
@@ -38,9 +35,9 @@ class ClearingErrorStore(ErrorStore):
         self.errors = {}
 
     def __init__(
-        self: "ClearingErrorStore",
+        self,
         error_store: ErrorStore,
-        data: "dict[str, None]|dict[str, dict[str, None]]|dict[str, dict[str, dict[str, int]]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|dict[Any, Any]|ruamel.yaml.CommentedMap|types.MappingProxyType[str, dict[str, str]]",
+        data: Mapping[str, Any],
         path: str | None = None,
         ignore_errors: frozenset | None = None,
     ) -> None:
@@ -55,7 +52,7 @@ class ClearingErrorStore(ErrorStore):
         self._clear_errors()
 
     @override
-    def store_error(self: "ClearingErrorStore", *args: list[str]|str, **kwargs: None) -> None:
+    def store_error(self, *args: Any, **kwargs: Any) -> None:
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
         self._clear_errors()
@@ -67,15 +64,15 @@ class ClearingErrorStoreSchema(Schema):
     SUPPRESS_ERRORS: bool = True
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
-    def set_path(self: "ClearingErrorStoreSchema", path: Path | str | None) -> None:
+    def set_path(self, path: Path | str | None) -> None:
         """Set the path for error messages."""
         self._path = str(path) if path else None
 
     def __init__(
-        self: "ClearingErrorStoreSchema|Any",
+        self,
         path: Path | str | None = None,
         ignore_errors: list | tuple | frozenset | set | None = None,
-        **kwargs: bool|list[Any]|set[Any]|None,
+        **kwargs: Any,
     ) -> None:
         """Initialize path and always use partial."""
         self._path = path = str(path) if path else path
@@ -87,7 +84,13 @@ class ClearingErrorStoreSchema(Schema):
         super().__init__(**kwargs)
 
     @override
-    def _deserialize(self: "ClearingErrorStoreSchema|Any", data: "Mapping[str, Any]|collections.abc.Sequence[Mapping[str, Any]]|dict[str, None]|dict[str, dict[str, None]]|dict[str, dict[str, datetime.datetime]]|dict[str, dict[str, dict[str, None]]]|dict[str, dict[str, dict[str, list[dict[str, dict[str, str]]]]]]|dict[str, dict[str, dict[str, str]]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, int]]|dict[str, dict[str, list[int]]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, list[dict[str, str]]]|dict[str, str]|dict[Any, Any]|ruamel.yaml.CommentedMap", *, error_store: ErrorStore, **kwargs: bool|str) -> list | dict:
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+        self,
+        data: Any,
+        *,
+        error_store: ErrorStore,
+        **kwargs: Any,
+    ) -> list | dict:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -97,7 +100,11 @@ class ClearingErrorStoreSchema(Schema):
 
     @override
     def _invoke_field_validators(
-        self: "ClearingErrorStoreSchema|Any", *, error_store: ErrorStore, data: dict[str|Any, int|str|Any], **kwargs: bool
+        self,
+        *,
+        error_store: ErrorStore,
+        data: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
@@ -121,14 +128,14 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_schema_validators(error_store=error_store, **kwargs)
 
-    def _split_list_errors(self: "ClearingErrorStoreSchema", error_list: list) -> tuple:
+    def _split_list_errors(self, error_list: list) -> tuple:
         error_set = frozenset(error_list)
         debug_error_set = error_set & self._ignore_errors
         debug_errors = sorted(debug_error_set)
         warning_errors = sorted(error_set - debug_error_set)
         return debug_errors, warning_errors
 
-    def _split_mapping_errors(self: "ClearingErrorStoreSchema", error: Mapping) -> tuple[dict, dict]:
+    def _split_mapping_errors(self, error: Mapping) -> tuple[dict, dict]:
         debug_errors = {}
         warning_errors = {}
         for key, error_list in error.items():
@@ -140,7 +147,10 @@ class ClearingErrorStoreSchema(Schema):
         return debug_errors, warning_errors
 
     def _log_errors(
-        self: "ClearingErrorStoreSchema", loglevel: str, error_class: type | None, errors: Mapping | list
+        self,
+        loglevel: str,
+        error_class: type | None,
+        errors: Mapping | list,
     ) -> None:
         if not errors:
             return
@@ -150,7 +160,12 @@ class ClearingErrorStoreSchema(Schema):
         logger.log(loglevel, message)
 
     @override
-    def handle_error(self: "ClearingErrorStoreSchema", error: "marshmallow.ValidationError", *_args: str|Any, **_kwargs: bool) -> None:
+    def handle_error(
+        self,
+        error: Any,
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
         """Log errors by severity."""
         if hasattr(error, "normalized_messages"):
             error_class = type(error)

@@ -1,10 +1,7 @@
 """Special file writes."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import pathlib
 
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -17,13 +14,16 @@ class ComicboxDumpToFiles(ComicboxDump):
 
     def to_file(
         self: Any,
-        dest_path: "pathlib.PosixPath|None"=None,
+        dest_path: Path | None = None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
-        **kwargs: None,
+        **kwargs: Any,
     ) -> None:
         """Export metadatat to a file with a schema."""
         if dest_path is None:
             dest_path = self._config.dest_path
+        if dest_path is None:
+            reason = "No destination path specified for export."
+            raise ValueError(reason)
         dest_path = Path(dest_path)
         fn = fmt.value.filename
         path = dest_path / fn
@@ -37,13 +37,17 @@ class ComicboxDumpToFiles(ComicboxDump):
         except Exception:
             logger.exception(f"Could not export {fn}")
 
-    def export_files(self: Any, formats: None=None) -> None:
+    def export_files(
+        self: Any, formats: frozenset[MetadataFormats] | None = None
+    ) -> None:
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             logger.info("Not exporting files.")
             return
         if not formats:
             formats = self._config.export
+        if not formats:
+            return
 
         for fmt in formats:
             self.to_file(fmt=fmt)
@@ -64,5 +68,5 @@ class ComicboxDumpToFiles(ComicboxDump):
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
         self._path.rename(new_path)
-        self._path: Path | None = new_path
+        self._path: Path | None = new_path  # pyright: ignore[reportIncompatibleUnannotatedOverride]
         logger.info(f"Renamed:\n{old_path} ==> {new_path}")

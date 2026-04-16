@@ -25,7 +25,7 @@ _LOG_FORMAT = _log_format()
 _initialized_loglevel: str | None = None
 
 
-def init_logging(loglevel: str = "INFO", logger_: None=None) -> None:
+def init_logging(loglevel: str = "INFO", logger_: Any = None) -> None:
     """Initialize logging."""
     global _initialized_loglevel  # noqa: PLW0603
 

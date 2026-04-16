@@ -1,16 +1,8 @@
 """Marshmallow number fields."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import ruamel.yaml
-    import ruamel.yaml.scalarfloat
-
-    import comicbox.schemas.comet
-    import comicbox.schemas.comicbox.pages
-    import comicbox.schemas.comicbox.publishing
 
 import re
 from decimal import Decimal
+from typing import Any
 
 from loguru import logger
 from marshmallow import fields
@@ -33,7 +25,7 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
     ZERO_FILL: int = 0
 
     def _set_range(
-        self: Any, minimum: NumberType | None, maximum: NumberType | None
+        self, minimum: NumberType | None, maximum: NumberType | None
     ) -> None:
         self._min = minimum
         self._max = maximum
@@ -43,15 +35,14 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
         """Parse numerical string method."""
         raise NotImplementedError
 
-    def _deserialize_pre(self: Any, value: int|str) -> NumberType | None:
-        if isinstance(value, str):
-            value = self.parse_str(value)
-        if is_empty(value):
+    def _deserialize_pre(self, value: Any) -> NumberType | None:
+        result = self.parse_str(value) if isinstance(value, str) else value
+        if is_empty(result):
             return None
-        return value
+        return result
 
-    def _deserialize_post(self: Any, value: int) -> NumberType | None:
-        result = value
+    def _deserialize_post(self, value: NumberType) -> NumberType | None:
+        result: NumberType = value
         if result is not None:
             old_result = result
             if self._min is not None:
@@ -62,10 +53,10 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
                 logger.warning(f"Coerced {old_result} to {result}")
         return result
 
-    def _serialize_post(self: Any, result: int) -> int:
+    def _serialize_post(self, result: Any) -> Any:
         """Zero pad as_string numbers for sorting."""
         if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
-            result = result.zfill(self.ZERO_FILL)
+            result = str(result).zfill(self.ZERO_FILL)
         return result
 
 
@@ -76,7 +67,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
 
     @override
     @classmethod
-    def parse_str(cls: "type[comicbox.schemas.comet.XmlIntegerField]", num_obj: str) -> int | None:
+    def parse_str(cls, num_obj: str) -> int | None:
         """Parse the first number out of volume."""
         num_str: str | None = StringField().deserialize(num_obj)
         if not num_str:
@@ -87,24 +78,24 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         return None
 
     def __init__(
-        self: "comicbox.schemas.comicbox.pages.IntegerField",
-        *args: None,
+        self,
+        *args: Any,
         minimum: int | None = None,
         maximum: int | None = None,
-        **kwargs: None,
+        **kwargs: Any,
     ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self: "comicbox.schemas.comicbox.pages.IntegerField", value: int|str, *args: dict[str, int|str|None]|str, **kwargs: bool) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        value = self._deserialize_pre(value)
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        pre_value = self._deserialize_pre(value)
+        result = super()._deserialize(pre_value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
     @override
-    def _serialize(self: "comicbox.schemas.comicbox.pages.IntegerField", *args: dict[str, int|str]|int|str, **kwargs: None) -> int:
+    def _serialize(self, *args: Any, **kwargs: Any) -> int:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
 
@@ -116,7 +107,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
 
     @override
     @classmethod
-    def parse_str(cls: "type[comicbox.schemas.comicbox.publishing.DecimalField]", num_obj: str) -> Decimal | None:
+    def parse_str(cls, num_obj: str) -> Decimal | None:
         """Fix half glyphs."""
         num_str: str | None = StringField().deserialize(num_obj)
         if not num_str:
@@ -129,24 +120,26 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         return None
 
     def __init__(
-        self: "comicbox.schemas.comicbox.publishing.DecimalField",
-        *args: None,
+        self,
+        *args: Any,
         minimum: Decimal | None = None,
         maximum: Decimal | None = None,
-        **kwargs: None,
+        **kwargs: Any,
     ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self: "comicbox.schemas.comicbox.publishing.DecimalField|Any", value: "Decimal|ruamel.yaml.scalarfloat.ScalarFloat|str", *args: "dict[str, Decimal]|dict[str, str]|ruamel.yaml.CommentedMap|str", **kwargs: bool|None) -> Decimal | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        value = self._deserialize_pre(value)
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+        self, value: Any, *args: Any, **kwargs: Any
+    ) -> Decimal | None:
+        pre_value = self._deserialize_pre(value)
+        result = super()._deserialize(pre_value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
     @override
-    def _serialize(self: "comicbox.schemas.comicbox.publishing.DecimalField", *args: Decimal|dict[str, Decimal]|dict[str, str]|str|None, **kwargs: None) -> Decimal:
+    def _serialize(self, *args: Any, **kwargs: Any) -> Any:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
 

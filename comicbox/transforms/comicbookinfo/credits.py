@@ -1,4 +1,5 @@
 """Comic Book Info Credits Transform Mixin."""
+
 from typing import Any
 
 from loguru import logger
@@ -59,23 +60,30 @@ def cbi_credits_primary_to_cb(credits_tag: str) -> MetaSpec:
 
 
 def _cbi_credit_from_cb(
-    person_name: str, comicbox_credit: dict[str, dict[str, dict[Any, Any]]], cbi_credits: list[Any], credit_primaries: dict[str, str]|None
+    person_name: str,
+    comicbox_credit: dict[str, Any],
+    cbi_credits: list[Any],
+    credit_primaries: Any,
 ) -> None:
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
         return
     comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
     for role_name in comicbox_roles:
-        cbi_credit = {PERSON_TAG: person_name, ROLE_TAG: role_name}
+        cbi_credit: dict[str, Any] = {PERSON_TAG: person_name, ROLE_TAG: role_name}
         if credit_primaries and credit_primaries.get(role_name) == person_name:
             cbi_credit[PRIMARY_TAG] = True
         cbi_credits.append(cbi_credit)
 
 
-def _cbi_credits_from_cb(values: dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]]]) -> list:
+def _cbi_credits_from_cb(
+    values: dict[str, Any],
+) -> list:
     comicbox_credits = values.get(CREDITS_KEY)
     credit_primaries = values.get(CREDIT_PRIMARIES_KEY)
     cbi_credits = []
+    if not comicbox_credits:
+        return cbi_credits
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
             _cbi_credit_from_cb(

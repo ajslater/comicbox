@@ -1,12 +1,9 @@
 """Test CLI metadata parsing."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import ruamel.yaml
 
 import sys
 from io import StringIO
 from types import MappingProxyType
+from typing import Any
 
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarint import ScalarInt
@@ -39,7 +36,7 @@ CLI_DICT = MappingProxyType(
 )
 
 
-def _get_output(args: tuple[str, str, str, str, str, str, str, str, str]|tuple[str, str, str, str, str, str]) -> str:
+def _get_output(args: tuple[str, ...]) -> str:
     old_stdout = sys.stdout
     try:
         output_buf = StringIO()
@@ -103,7 +100,7 @@ def test_cli_loaded() -> None:
     assert_diff_strings(LOADED_OUTPUT, output)
 
 
-def _ruamel_to_dict(yaml_dict: "ruamel.yaml.CommentedMap") -> dict[str, dict[str, dict[str, dict[str, int]]]]:
+def _ruamel_to_dict(yaml_dict: CommentedMap) -> dict[str, Any]:
     """Not a airtight transform but works for these tests."""
     result = {}
     for key in yaml_dict:

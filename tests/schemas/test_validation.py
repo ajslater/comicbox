@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
 import xmltodict
 
@@ -197,7 +198,7 @@ CIX_TESTER = TestParser(
 )
 
 
-def _create_file_read_dict() -> MappingProxyType[str, dict[str, dict[int, dict[str, int]]]]:
+def _create_file_read_dict() -> MappingProxyType[str, Any]:
     x = deepcopy(dict(READ_METADATA))
     x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue], # ty: ignore[invalid-assignment]
     x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue],# ty: ignore[invalid-assignment]

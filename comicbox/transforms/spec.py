@@ -1,15 +1,9 @@
 """Transform maps."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import glom
-    import glom.grouping
-
-    import comicbox.transforms.xml_reprints
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Any
 
 from glom import A, Coalesce, Path, S, T, Val, assign
 
@@ -58,7 +52,7 @@ def _get_multi_values_spec(
 
 
 def _get_spec_source_values(
-    source_root_path_str: str, source_path_strs: tuple[str] | str
+    source_root_path_str: str, source_path_strs: tuple[str, ...] | str
 ) -> dict | Coalesce:
     if isinstance(source_path_strs, tuple | list):
         source_root_path = (
@@ -75,14 +69,16 @@ def _get_spec_source_values(
     return values
 
 
-def _get_tail_spec(metaspec_spec: "tuple[Coalesce, glom.Pipe]|tuple[Coalesce, glom.grouping.Group]|Callable[[Any], dict]") -> filter:
+def _get_tail_spec(
+    metaspec_spec: Any,
+) -> filter:
     tail_spec = metaspec_spec if isinstance(metaspec_spec, tuple) else (metaspec_spec,)
     return filter(bool, tail_spec)
 
 
 def _get_spec(
     source_head: str,
-    source_keypaths: str | tuple[str],
+    source_keypaths: str | tuple[str, ...],
     metaspec: MetaSpec,
     dest_keypath: str,
 ) -> Coalesce:
@@ -106,7 +102,7 @@ def _create_spec(
     source_head: str,
     metaspec: MetaSpec,
     dest_keypath: str,
-    source_keypaths: str | tuple[str],
+    source_keypaths: str | tuple[str, ...],
 ) -> tuple[str, Coalesce] | tuple[str, tuple]:
     full_dest_path = _path_str_from_tuple(dest_head, dest_keypath)
     if not full_dest_path:
@@ -116,9 +112,9 @@ def _create_spec(
 
 
 def _create_specs(
-    *args: "comicbox.transforms.xml_reprints.MetaSpec",
-    dest_root_keypath: str="",
-    source_root_keypath: str="",
+    *args: MetaSpec,
+    dest_root_keypath: str = "",
+    source_root_keypath: str = "",
 ) -> MappingProxyType[str, Any]:
     """Create spec from metaspec map."""
     specs = {}
@@ -146,10 +142,10 @@ def _create_specs(
 
 
 def create_specs_to_comicbox(
-    *metaspecs: "comicbox.transforms.xml_reprints.MetaSpec",
+    *metaspecs: MetaSpec,
     format_root_keypath: str = "",
-    comicbox_root_keypath: str=ComicboxSchemaMixin.ROOT_KEYPATH,
-) -> MappingProxyType[str, dict[str, Coalesce]|Coalesce]:
+    comicbox_root_keypath: str = ComicboxSchemaMixin.ROOT_KEYPATH,
+) -> MappingProxyType[str, dict[str, Coalesce] | Coalesce]:
     """Create to comicbox specs."""
     return _create_specs(
         *metaspecs,
@@ -159,10 +155,12 @@ def create_specs_to_comicbox(
 
 
 def create_specs_from_comicbox(
-    *metaspecs: "comicbox.transforms.xml_reprints.MetaSpec",
+    *metaspecs: MetaSpec,
     format_root_keypath: str = "",
-    comicbox_root_keypath: str=ComicboxSchemaMixin.ROOT_KEYPATH,
-) -> MappingProxyType[str, dict[str, dict[str, Coalesce]]|dict[str, Coalesce]|Coalesce]:
+    comicbox_root_keypath: str = ComicboxSchemaMixin.ROOT_KEYPATH,
+) -> MappingProxyType[
+    str, dict[str, dict[str, Coalesce]] | dict[str, Coalesce] | Coalesce
+]:
     """Create from comicbox specs."""
     return _create_specs(
         *metaspecs,

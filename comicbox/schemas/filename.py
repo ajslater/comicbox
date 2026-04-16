@@ -7,6 +7,8 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
+from typing import Any
+
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
 from typing_extensions import override
@@ -35,7 +37,7 @@ class FilenameRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls: "type[FilenameRenderModule]", obj: dict, *args: None, **kwargs: None) -> str:
+    def dumps(cls, obj: dict, *args: Any, **kwargs: Any) -> str:
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)
@@ -51,7 +53,10 @@ class FilenameRenderModule(BaseRenderModule):
     @override
     @classmethod
     def loads(
-        cls: "type[FilenameRenderModule]", s: str | bytes | bytearray, *args: None, **kwargs: None
+        cls,
+        s: str | bytes | bytearray,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, dict] | None:
         """Load filename to dict."""
         if cls._is_non_filename_format(s):

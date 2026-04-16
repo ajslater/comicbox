@@ -1,10 +1,7 @@
 """Validate yaml with jsonchema."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import ruamel.yaml
 
 from pathlib import Path
+from typing import Any
 
 from glom import glom
 from ruamel.yaml import YAML
@@ -33,7 +30,7 @@ FULL_COVER_DATE_KEYPATH = _KEYPATH_PREFIX + COVER_DATE_KEYPATH
 FULL_STORE_DATE_KEYPATH = _KEYPATH_PREFIX + STORE_DATE_KEYPATH
 
 
-def _stringify_keys(data: "ruamel.yaml.CommentedMap") -> "ruamel.yaml.CommentedMap":
+def _stringify_keys(data: Any) -> Any:
     """JSON requires string keys."""
     if pages := glom(data, PAGES_KEYPATH, default=None):
         pages = {str(key): value for key, value in pages.items()}

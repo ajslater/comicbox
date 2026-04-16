@@ -80,7 +80,9 @@ class IdentifierParts:
         self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
         self.url_path_regex_compiled = re.compile(self.url_path_regex, re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
 
-    def get_type_by_code(self: "IdentifierParts", id_type_code: str, default: str=DEFAULT_ID_TYPE) -> str:
+    def get_type_by_code(
+        self: "IdentifierParts", id_type_code: str, default: str = DEFAULT_ID_TYPE
+    ) -> str:
         """Get identifier type by url fragment or code."""
         return self.id_type.map.inverse.get(id_type_code, default)
 

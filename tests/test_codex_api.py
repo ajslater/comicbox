@@ -1,4 +1,5 @@
 """Test the API surface that Codex uses."""
+
 from argparse import Namespace
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -126,7 +127,7 @@ TEMPLATE_MD = MappingProxyType(
 )
 
 
-def _patch_md(patch: dict[str, dict[str, dict[str, dict[Any, Any]]]]) -> MappingProxyType[str, dict[str, dict[str, str]]]:
+def _patch_md(patch: dict[str, Any]) -> MappingProxyType[str, Any]:
     res = {}
     AdditiveMerger.merge(res, TEMPLATE_MD, patch)
     return MappingProxyType(res)

@@ -1,12 +1,9 @@
 """Test CLI metadata parsing."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pathlib
 
 from argparse import Namespace
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from types import MappingProxyType
 
 from comicbox import cli
@@ -150,7 +147,7 @@ DELETE_KEYS_MD = MappingProxyType(
 )
 
 
-def _setup(source_path: "pathlib.PosixPath"=EMPTY_CBZ_SOURCE_PATH) -> None:
+def _setup(source_path: Path = EMPTY_CBZ_SOURCE_PATH) -> None:
     """Set up tmp file."""
     my_setup(TMP_DIR, source_path)
 

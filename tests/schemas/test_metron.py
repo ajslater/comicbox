@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
 import xmltodict
 from glom import Assign, glom
@@ -360,7 +361,7 @@ WRITE_METRON_DICT = create_write_dict(
 )
 
 
-def unparse_strinfigy_decimals(data: MappingProxyType[str, dict[str, dict[str, list[dict[str, str]]]]]) -> str:
+def unparse_strinfigy_decimals(data: MappingProxyType[str, Any]) -> str:
     """Stringify decimals for xmltodict."""
     stringified_data = deepcopy(dict(data))
     prices = glom(stringified_data, f"{MetronInfoSchema.ROOT_TAG}.Prices.Price")

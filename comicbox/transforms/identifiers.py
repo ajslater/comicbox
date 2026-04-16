@@ -1,5 +1,6 @@
 """Identifier Fields."""
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import comicbox.identifiers
@@ -31,16 +32,18 @@ from comicbox.transforms.spec import MetaSpec
 PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
 
 
-def create_identifier_primary_source(id_source: "comicbox.identifiers.IdSources") -> dict:
+def create_identifier_primary_source(
+    id_source: "comicbox.identifiers.IdSources",
+) -> dict:
     """Create identifier primary source."""
-    ips = {ID_SOURCE_KEY: id_source}
+    ips: dict[str, Any] = {ID_SOURCE_KEY: id_source}
     id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
     if id_parts and (url := id_parts.url_prefix):
         ips[ID_URL_KEY] = url
     return ips
 
 
-def _identifier_to_cb(native_identifier: str, naked_id_source: "comicbox.identifiers.IdSources|str") -> tuple[str, dict]:
+def _identifier_to_cb(native_identifier: str, naked_id_source: Any) -> tuple[str, dict]:
     """Parse one identifier urn or string."""
     id_source, id_type, id_key = parse_string_identifier(
         native_identifier, naked_id_source
@@ -52,7 +55,9 @@ def _identifier_to_cb(native_identifier: str, naked_id_source: "comicbox.identif
     return id_source_str, comicbox_identifier
 
 
-def identifiers_to_cb(native_identifiers: set[str]|None, naked_id_source: str) -> dict:
+def identifiers_to_cb(
+    native_identifiers: set[str] | None, naked_id_source: Any
+) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
     if native_identifiers:
@@ -67,7 +72,9 @@ def identifiers_to_cb(native_identifiers: set[str]|None, naked_id_source: str) -
     return comicbox_identifiers
 
 
-def identifiers_transform_to_cb(identifiers_tag: str, naked_id_source: "comicbox.identifiers.IdSources") -> MetaSpec:
+def identifiers_transform_to_cb(
+    identifiers_tag: str, naked_id_source: "comicbox.identifiers.IdSources"
+) -> MetaSpec:
     """Transform identifier tags to comicbox identifiers."""
 
     def to_cb(native_identifiers: set[str]) -> dict[str, dict[str, str]]:
@@ -147,7 +154,7 @@ def url_to_cb(
     return id_source_str, identifier
 
 
-def urls_to_cb(urls: set[str]|None) -> dict:
+def urls_to_cb(urls: Any) -> dict:
     """Parse url tags into identifiers."""
     comicbox_identifiers = {}
     if urls:

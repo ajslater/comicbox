@@ -1,15 +1,4 @@
 """Utility functions for testing metadata."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import datetime
-    import decimal
-    import pathlib
-
-    import ruamel.yaml
-
-    import comicbox.config
-    import comicbox.schemas.comictagger
 
 import re
 import shutil
@@ -20,6 +9,7 @@ from difflib import ndiff
 from pathlib import Path
 from pprint import pprint
 from types import MappingProxyType
+from typing import Any
 
 import pymupdf
 from deepdiff.diff import DeepDiff
@@ -55,7 +45,7 @@ NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{NOTES_KEY}"
 EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{EXT_KEY}"
 
 
-def get_tmp_dir(filename: str) -> "pathlib.PosixPath":
+def get_tmp_dir(filename: str) -> Path:
     """Get a tmp dir for a test file."""
     dirname = Path(filename).with_suffix("").name
     return TMP_ROOT_DIR / dirname
@@ -97,13 +87,13 @@ def assert_diff_strings(a: str, b: str) -> None:
 
 
 def read_metadata(
-    archive_path: "pathlib.PosixPath",
-    metadata: MappingProxyType[str, dict[str, dict[str, dict[str, str]]|dict[str, dict[Any, Any]]|dict[str, int]|int|str]],
-    read_config: "comicbox.config.AttrDict",
+    archive_path: Path,
+    metadata: Mapping[str, Any],
+    read_config: Any,
     *,
     ignore_updated_at: bool,
     ignore_notes: bool,
-    page_count: int|None=None,
+    page_count: int | None = None,
     ignore_page_count: bool = False,
     ignore_pages: bool = False,
 ) -> None:
@@ -111,24 +101,24 @@ def read_metadata(
     with Comicbox(archive_path, config=read_config) as car:
         disk_md = dict(car.get_internal_metadata())
 
-    metadata = dict(metadata)
+    md: dict[str, Any] = dict(metadata)
     if ignore_page_count:
-        glom(metadata, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
+        glom(md, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(PAGE_COUNT_KEYPATH, ignore_missing=True))
     elif page_count is not None:
-        glom(metadata, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
+        glom(md, Assign(PAGE_COUNT_KEYPATH, page_count, missing=dict))
     if ignore_updated_at:
-        glom(metadata, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
+        glom(md, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(UPDATED_AT_KEYPATH, ignore_missing=True))
     if ignore_notes:
-        glom(metadata, Delete(NOTES_KEYPATH, ignore_missing=True))
+        glom(md, Delete(NOTES_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(NOTES_KEYPATH, ignore_missing=True))
     if ignore_pages:
-        glom(metadata, Delete(PAGES_KEYPATH, ignore_missing=True))
+        glom(md, Delete(PAGES_KEYPATH, ignore_missing=True))
         glom(disk_md, Delete(PAGES_KEYPATH, ignore_missing=True))
-    metadata = MappingProxyType(metadata)
-    disk_md = MappingProxyType(disk_md)
-    assert_diff(metadata, disk_md)
+    frozen_md = MappingProxyType(md)
+    frozen_disk_md = MappingProxyType(disk_md)
+    assert_diff(frozen_md, frozen_disk_md)
 
 
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>", "&lt;Notes&gt;")
@@ -142,11 +132,11 @@ _TAGGER_TAGS = ('"appID":',)
 
 def _prune_lines(
     lines: list[str],
+    *,
     ignore_last_modified: bool,
     ignore_notes: bool,
     ignore_updated_at: bool,
     ignore_mod_date: bool,
-    *,
     ignore_page_count: bool,
     ignore_identifiers: bool,
     ignore_tagger: bool,
@@ -191,20 +181,20 @@ def _prune_same_lines(  # noqa: PLR0913
 ) -> tuple[list[str], list[str]]:
     a_lines = _prune_lines(
         a_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
         ignore_page_count=ignore_page_count,
         ignore_identifiers=ignore_identifiers,
         ignore_tagger=ignore_tagger,
     )
     b_lines = _prune_lines(
         b_lines,
-        ignore_last_modified,
-        ignore_notes,
-        ignore_updated_at,
-        ignore_mod_date,
+        ignore_last_modified=ignore_last_modified,
+        ignore_notes=ignore_notes,
+        ignore_updated_at=ignore_updated_at,
+        ignore_mod_date=ignore_mod_date,
         ignore_page_count=ignore_page_count,
         ignore_identifiers=ignore_identifiers,
         ignore_tagger=ignore_tagger,
@@ -240,8 +230,8 @@ def _prune_strings(
 
 
 def compare_files(  # noqa: PLR0913
-    path_a: "pathlib.PosixPath",
-    path_b: "pathlib.PosixPath",
+    path_a: Path,
+    path_b: Path,
     *,
     ignore_last_modified: bool,
     ignore_notes: bool,
@@ -283,18 +273,18 @@ class TestParser:
     __test__ = False
 
     def __init__(  # noqa: PLR0913
-        self: "TestParser",
+        self,
         fmt: MetadataFormats,
         test_fn: Path | str,
         read_reference_metadata: Mapping,
         read_native_dict: Mapping,
         read_reference_string: str,
-        read_config: "comicbox.config.AttrDict",
-        write_config: "comicbox.config.AttrDict",
+        read_config: Any,
+        write_config: Any,
         write_reference_metadata: Mapping | None = None,
         write_native_dict: Mapping | None = None,
         write_reference_string: str | None = None,
-        export_fn: str|None=None,
+        export_fn: str | None = None,
     ) -> None:
         """Initialize common variables."""
         self.fmt = fmt
@@ -330,15 +320,17 @@ class TestParser:
         self.write_config = write_config
         self.export_path = self.tmp_dir / self.fmt.value.filename
 
-    def setup_method(self: "TestParser") -> None:
+    def setup_method(self) -> None:
         """Create the tmp dir."""
         my_setup(self.tmp_dir)
 
-    def teardown_method(self: "TestParser") -> None:
+    def teardown_method(self) -> None:
         """Remove the tmp dir."""
         my_cleanup(self.tmp_dir)
 
-    def _test_from(self: "TestParser", md: MappingProxyType[str, dict[str, dict[str, int]|list[dict[str, str]]|str]], page_count: None=None) -> None:
+    def _test_from(
+        self, md: MappingProxyType[str, Any], page_count: int | None = None
+    ) -> None:
         if page_count is None:
             read_reference_metadata = self.read_reference_metadata
         else:
@@ -350,7 +342,7 @@ class TestParser:
             read_reference_metadata = MappingProxyType(read_reference_metadata)
         assert_diff(read_reference_metadata, md)
 
-    def test_from_metadata(self: "TestParser") -> None:
+    def test_from_metadata(self) -> None:
         """Test assign metadata."""
         pruned = self.read_reference_metadata
         with Comicbox(
@@ -360,7 +352,7 @@ class TestParser:
             md = car.get_internal_metadata()
         self._test_from(md)
 
-    def test_from_dict(self: "TestParser") -> None:
+    def test_from_dict(self) -> None:
         """Test load from native dict."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
@@ -368,7 +360,7 @@ class TestParser:
             md = car.get_internal_metadata()
         self._test_from(md)
 
-    def test_from_string(self: "TestParser") -> None:
+    def test_from_string(self) -> None:
         """Test load from string."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_string, self.fmt)
@@ -376,7 +368,7 @@ class TestParser:
             md = car.get_internal_metadata()
         self._test_from(md)
 
-    def test_from_file(self: "TestParser", page_count: None=None) -> None:
+    def test_from_file(self, page_count: int | None = None) -> None:
         """Test load from an export file."""
         with Comicbox(config=PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
@@ -384,7 +376,7 @@ class TestParser:
             md = car.get_internal_metadata()
         self._test_from(md, page_count=page_count)
 
-    def compare_dict(self: "TestParser", test_dict: "dict[str, dict[str, decimal.Decimal]|dict[str, str]|str]") -> None:
+    def compare_dict(self, test_dict: dict[str, Any]) -> None:
         """Compare native dicts."""
         from_dict = deepcopy(dict(self.write_reference_native_dict))
         to_dict = dict(test_dict)
@@ -392,7 +384,7 @@ class TestParser:
         to_dict.pop(UPDATED_AT_KEY, None)
         assert_diff(from_dict, to_dict)
 
-    def to_dict(self: "TestParser", **kwargs: None) -> "dict[str, dict[str, decimal.Decimal]|dict[str, dict[str, list[dict[str, str]]]]|str]":
+    def to_dict(self, **kwargs: Any) -> dict[str, Any]:
         """Export metadata to native dict."""
         with Comicbox(
             metadata=self.write_reference_metadata,
@@ -401,12 +393,12 @@ class TestParser:
             # car.print_out() debug
             return car.to_dict(fmt=self.fmt, **kwargs)
 
-    def test_to_dict(self: "TestParser", **kwargs: None) -> None:
+    def test_to_dict(self, **kwargs: Any) -> None:
         """Test export metadata to native dict."""
         test_dict = self.to_dict(**kwargs)
         self.compare_dict(test_dict)
 
-    def to_string(self: "TestParser", **kwargs: None) -> str:
+    def to_string(self, **kwargs: Any) -> str:
         """Export metadata to string."""
         with Comicbox(
             metadata=self.write_reference_metadata, fmt=MetadataFormats.COMICBOX_YAML
@@ -414,7 +406,7 @@ class TestParser:
             # car.print_out() debug
             return car.to_string(fmt=self.fmt, **kwargs)
 
-    def compare_string(self: "TestParser", test_str: str) -> None:
+    def compare_string(self, test_str: str) -> None:
         """Compare strings."""
         from_str, to_str = _prune_strings(
             self.write_reference_string,
@@ -426,12 +418,12 @@ class TestParser:
         )
         assert_diff_strings(from_str, to_str)
 
-    def test_to_string(self: "TestParser", **kwargs: None) -> None:
+    def test_to_string(self, **kwargs: Any) -> None:
         """Test export to string."""
         test_str = self.to_string(**kwargs)
         self.compare_string(test_str)
 
-    def test_to_file(self: "TestParser", export_fn: str|None=None, **kwargs: None) -> None:
+    def test_to_file(self, export_fn: str | None = None, **kwargs: Any) -> None:
         """Test export to a metadata file."""
         self.setup_method()
         with Comicbox(
@@ -460,7 +452,13 @@ class TestParser:
         )
         self.teardown_method()
 
-    def test_md_read(self: "TestParser", archive_path: None=None, page_count: int|None=None, *, ignore_pages: bool=False) -> None:
+    def test_md_read(
+        self,
+        archive_path: Path | None = None,
+        page_count: int | None = None,
+        *,
+        ignore_pages: bool = False,
+    ) -> None:
         """Read metadtata from an archive."""
         if archive_path is None:
             archive_path = self.reference_path
@@ -474,7 +472,7 @@ class TestParser:
             ignore_pages=ignore_pages,
         )
 
-    def test_pdf_read(self: "TestParser") -> None:
+    def test_pdf_read(self) -> None:
         """Ignore stamps for pdf."""
         read_metadata(
             self.reference_path,
@@ -485,7 +483,7 @@ class TestParser:
             ignore_page_count=True,
         )
 
-    def _create_test_cbz(self: "TestParser", new_test_cbz_path: "pathlib.PosixPath") -> None:
+    def _create_test_cbz(self, new_test_cbz_path: Path) -> None:
         """Create a test file and write metadata to it."""
         shutil.copy(EMPTY_CBZ_SOURCE_PATH, new_test_cbz_path)
         with Comicbox(
@@ -498,11 +496,11 @@ class TestParser:
             car.dump()
 
     def write_metadata(
-        self: "TestParser",
-        new_test_cbz_path: "pathlib.PosixPath",
-        page_count: int|None=None,
+        self,
+        new_test_cbz_path: Path,
+        page_count: int | None = None,
         *,
-        ignore_pages: bool=False,
+        ignore_pages: bool = False,
     ) -> None:
         """Create a test metadata file, read it back and compare the original."""
         tmp_path = new_test_cbz_path.parent
@@ -520,10 +518,10 @@ class TestParser:
         shutil.rmtree(tmp_path)
 
     def test_md_write(
-        self: "TestParser",
-        page_count: int|None=None,
+        self,
+        page_count: int | None = None,
         *,
-        ignore_pages: bool=False,
+        ignore_pages: bool = False,
     ) -> None:
         """Write metadtata to an archive."""
         new_fn = self.test_fn.with_suffix(".cbz")
@@ -534,7 +532,7 @@ class TestParser:
             ignore_pages=ignore_pages,
         )
 
-    def _create_test_pdf(self: "TestParser", new_test_pdf_path: "pathlib.PosixPath") -> None:
+    def _create_test_pdf(self, new_test_pdf_path: Path) -> None:
         """Create a new empty PDF file."""
         try:
             doc = pymupdf.Document()
@@ -552,7 +550,9 @@ class TestParser:
             reason = "pymupdf not imported from comicbox-pdffile"
             raise AssertionError(reason) from exc
 
-    def write_metadata_pdf(self: "TestParser", new_test_pdf_path: "pathlib.PosixPath", page_count: int|None=None) -> None:
+    def write_metadata_pdf(
+        self, new_test_pdf_path: Path, page_count: int | None = None
+    ) -> None:
         """Copy the test metadata pdf and write to it."""
         tmp_path = new_test_pdf_path.parent
         tmp_path.mkdir(parents=True, exist_ok=True)
@@ -567,20 +567,27 @@ class TestParser:
         )
         shutil.rmtree(tmp_path)
 
-    def test_pdf_write(self: "TestParser", page_count: int|None=None) -> None:
+    def test_pdf_write(self, page_count: int | None = None) -> None:
         """Special pdf write test."""
         test_pdf_path = self.tmp_dir / self.test_fn
         self.write_metadata_pdf(test_pdf_path, page_count=page_count)
 
 
-def create_write_metadata(read_metadata: MappingProxyType[str, dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, int]|int|str]], notes: str=TEST_WRITE_NOTES) -> MappingProxyType[str, dict[str, dict[str, str]|int|str]]:
+def create_write_metadata(
+    read_metadata: MappingProxyType[str, Any], notes: str = TEST_WRITE_NOTES
+) -> MappingProxyType[str, Any]:
     """Create a write metadata from read metadata."""
     result = deepcopy(dict(read_metadata))
     result[ComicboxSchemaMixin.ROOT_TAG]["notes"] = notes
     return MappingProxyType(result)
 
 
-def create_write_dict(read_dict: "MappingProxyType[str, dict[str, dict[str, list[dict[str, decimal.Decimal]]]]|dict[str, list[str]]|dict[str, str]|str]", schema_class: "type[comicbox.schemas.comictagger.BaseSchema]", notes_tag: str, notes: str=TEST_WRITE_NOTES) -> MappingProxyType[str, dict[str, dict[str, list[dict[str, str]]]]|dict[str, dict[str, str]]|dict[str, str]|str]:
+def create_write_dict(
+    read_dict: MappingProxyType[str, Any],
+    schema_class: Any,
+    notes_tag: str,
+    notes: str = TEST_WRITE_NOTES,
+) -> MappingProxyType[str, Any]:
     """Create a write dict from read dict."""
     write_dict = deepcopy(dict(read_dict))
     write_dict[schema_class.ROOT_TAG][notes_tag] = notes
@@ -588,7 +595,11 @@ def create_write_dict(read_dict: "MappingProxyType[str, dict[str, dict[str, list
 
 
 def load_cli_and_compare_dicts(
-    path_a: "pathlib.PosixPath", path_b: "pathlib.PosixPath", *, ignore_updated_at: bool = True, ignore_notes: bool = True
+    path_a: Path,
+    path_b: Path,
+    *,
+    ignore_updated_at: bool = True,
+    ignore_notes: bool = True,
 ) -> None:
     """Compare cli strings all on one line."""
     yaml = YAML()
@@ -605,7 +616,9 @@ def load_cli_and_compare_dicts(
     assert_diff(dict_a, dict_b)
 
 
-def compare_export(test_dir: Path, fn: Path, test_fn: None=None, *, validate: bool=True) -> None:
+def compare_export(
+    test_dir: Path, fn: Path, test_fn: str | None = None, *, validate: bool = True
+) -> None:
     """Compare exported files."""
     if validate:
         validate_source(fn)
@@ -628,7 +641,7 @@ def compare_export(test_dir: Path, fn: Path, test_fn: None=None, *, validate: bo
         )
 
 
-def assert_diff(old_map: "ruamel.yaml.CommentedMap|MappingProxyType[str, dict[str, datetime.datetime]]|MappingProxyType[str, dict[str, dict[int, dict[str, int]]]]|MappingProxyType[str, dict[str, dict[str, decimal.Decimal]]]|MappingProxyType[str, dict[str, dict[str, dict[str, str]]]]|MappingProxyType[str, dict[str, dict[str, int]]]|MappingProxyType[str, dict[str, dict[str, str]]]|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, str]]", new_map: "ruamel.yaml.CommentedMap|MappingProxyType[str, dict[str, datetime.datetime]]|MappingProxyType[str, dict[str, dict[str, decimal.Decimal]]]|MappingProxyType[str, dict[str, dict[str, dict[str, int]]]]|MappingProxyType[str, dict[str, dict[str, dict[str, str]]]]|MappingProxyType[str, dict[str, dict[str, str]]]|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, str]]") -> None:
+def assert_diff(old_map: Any, new_map: Any) -> None:
     """Assert no diff and print if there is."""
     if diff := DeepDiff(old_map, new_map, ignore_order=True):
         pprint(old_map)

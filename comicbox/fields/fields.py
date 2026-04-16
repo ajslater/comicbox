@@ -1,16 +1,10 @@
 """Custom Marshmallow fields."""
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import types
-
-    import comicbox.fields.xml_fields
 
 import re
 from abc import ABCMeta
 from decimal import Decimal
 from enum import Enum
+from typing import Any
 
 from loguru import logger
 from marshmallow import fields
@@ -45,7 +39,9 @@ class TrapExceptionsMeta(ABCMeta):
 
         return wrapper
 
-    def __new__(cls: "type[TrapExceptionsMeta]", name: str, bases: "tuple|tuple[TrapExceptionsMeta]|tuple[type[fields.String]]|tuple[type[Any], type[fields.Enum]]", attrs: "dict[str, str|tuple|types.CellType|Callable[[Any], dict]]") -> "TrapExceptionsMeta":
+    def __new__(
+        cls, name: str, bases: tuple, attrs: dict[str, Any]
+    ) -> "TrapExceptionsMeta":
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
@@ -61,13 +57,13 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
-    def __init__(self: Any, *args: None, clean_tabs: bool=False, **kwargs: None) -> None:
+    def __init__(self, *args: Any, clean_tabs: bool = False, **kwargs: Any) -> None:
         """Add a clean tabs flag."""
         self.clean_tabs = clean_tabs
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self: Any, value: str, *_args: dict[str, None]|dict[str, str]|str|None, **_kwargs: bool|None) -> str:
+    def _deserialize(self, value: str, *_args: Any, **_kwargs: Any) -> str:
         if value in _STRING_EMPTY_VALUES:
             return ""
 
@@ -76,11 +72,12 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         if isinstance(value, int | float | Decimal):
             value = str(value)
         elif isinstance(value, str):
-            value = value.encode("utf8", "replace")
-        elif isinstance(value, bytearray):
-            value = bytes(value)
-        if isinstance(value, bytes):
-            value = value.decode("utf8", "replace")
+            value_bytes: bytes = value.encode("utf8", "replace")
+            value = value_bytes.decode("utf8", "replace")
+            if self.clean_tabs:
+                value = value.replace("\t", " ")
+        elif isinstance(value, bytearray | bytes):
+            value = bytes(value).decode("utf8", "replace")
             if self.clean_tabs:
                 value = value.replace("\t", " ")
         if not isinstance(value, str):
@@ -109,6 +106,6 @@ class IssueField(StringField):
         return half_replace(num)
 
     @override
-    def _deserialize(self: "comicbox.fields.xml_fields.IssueField", value: str, *args: dict[str, set[str]|str]|str, **kwargs: bool) -> str:
+    def _deserialize(self, value: str, *args: Any, **kwargs: Any) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

@@ -1,4 +1,5 @@
 """Author to Credits transforms."""
+
 from typing import Any
 
 from comicbox.enums.comet import CoMetRoleTagEnum
@@ -35,7 +36,9 @@ def _authors_to_credits(authors: set[str]) -> dict:
     return {author: {ROLES_KEY: {"Writer": {}}} for author in authors if author}
 
 
-def _credits_to_authors(comicbox_credits: dict[str, dict[str, dict[str, dict[Any, Any]]]]) -> set:
+def _credits_to_authors(
+    comicbox_credits: dict[str, dict[str, dict[str, dict[Any, Any]]]],
+) -> set:
     authors = set()
     for person_name, comicbox_credit in comicbox_credits.items():
         if not person_name:

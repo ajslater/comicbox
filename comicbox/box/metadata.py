@@ -1,4 +1,5 @@
 """Get Metadata mixin."""
+
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
@@ -15,7 +16,9 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
-    def _set_computed_merged_metadata_delete(self: Any, merged_md: dict[str, dict[str, dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|str]]) -> None:
+    def _set_computed_merged_metadata_delete(
+        self: Any, merged_md: dict[str, Any]
+    ) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
         for key_path in sorted(self._config.delete_keys):
@@ -79,7 +82,7 @@ class ComicboxMetadata(ComicboxComputed):
     def to_dict(
         self: Any,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs: None,
+        **kwargs: Any,
     ) -> dict:
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt)
@@ -89,7 +92,7 @@ class ComicboxMetadata(ComicboxComputed):
     def to_string(
         self: Any,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs: None,
+        **kwargs: Any,
     ) -> str:
         """Get mergeesized metadata as a string."""
         schema, md = self._to_dict(fmt)

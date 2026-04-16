@@ -1,12 +1,9 @@
 """Getting and storing source metadata."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import comicbox.sources
 
 from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
@@ -134,7 +131,9 @@ class ComicboxSources(ComicboxArchive):
             logger.warning(f"Error reading from PDF header {self._path}: {exc}")
         return source_data_list
 
-    def _store_top_source_archive_files(self: "ComicboxSources", fn: str, files_dict: dict[Any, Any]) -> None:
+    def _store_top_source_archive_files(
+        self: "ComicboxSources", fn: str, files_dict: dict[Any, Any]
+    ) -> None:
         path = Path(fn)
         lower_name = path.name.lower()
         if (fmt := FILENAME_FORMAT_MAP.get(lower_name)) and fmt in self._config.read:
@@ -143,7 +142,12 @@ class ComicboxSources(ComicboxArchive):
             if not old_entry or old_entry[1] > path_level:
                 files_dict[fmt] = (fn, path_level)
 
-    def _add_top_source_archive_file(self: "ComicboxSources", fmt: "comicbox.sources.MetadataFormats", fn: str, source_data_list: list[Any]) -> None:
+    def _add_top_source_archive_file(
+        self: "ComicboxSources",
+        fmt: MetadataFormats,
+        fn: str,
+        source_data_list: list[Any],
+    ) -> None:
         source_string = self._archive_readfile(fn)
         sd = SourceData(source_string, Path(fn), fmt, from_archive=True)
         source_data_list.append(sd)
@@ -202,7 +206,9 @@ class ComicboxSources(ComicboxArchive):
             source_data_list = tuple(source_data_list)
             self._sources[source] = source_data_list
 
-    def get_source_metadata(self: "ComicboxSources", source: MetadataSources) -> None:
+    def get_source_metadata(
+        self: "ComicboxSources", source: MetadataSources
+    ) -> tuple | None:
         """Get source metadata by key."""
         try:
             if source not in self._sources:
@@ -231,7 +237,11 @@ class ComicboxSources(ComicboxArchive):
         self._loaded.pop(source, None)
         self._reset_loaded_forward_caches()
 
-    def add_metadata(self: "ComicboxSources", metadata: str|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, str]]|MappingProxyType[str, str], fmt: MetadataFormats | None = None) -> None:
+    def add_metadata(
+        self: "ComicboxSources",
+        metadata: str | bytes | Mapping,
+        fmt: MetadataFormats | None = None,
+    ) -> None:
         """Add metadata directly to sources cache."""
         self.add_source(MetadataSources.API, metadata, fmt)
 

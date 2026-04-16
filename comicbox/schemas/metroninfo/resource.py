@@ -1,6 +1,7 @@
 """Metron Resource Schemas."""
 
 from types import MappingProxyType
+from typing import Any
 
 from marshmallow.fields import Field
 
@@ -30,6 +31,6 @@ def metron_resource_field() -> Field:
     return xml_polyfield(MetronResourceSchema, StringField())
 
 
-def metron_resource_list_field(**kwargs: bool|None) -> ListField:
+def metron_resource_list_field(**kwargs: Any) -> ListField:
     """Get metron union resource and simple text field."""
     return xml_list_polyfield(MetronResourceSchema, StringField(), **kwargs)

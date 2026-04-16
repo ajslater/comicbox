@@ -1,4 +1,5 @@
 """ComicInfo Pages Transformer creator."""
+
 from collections.abc import Mapping
 from typing import Any
 
@@ -57,7 +58,9 @@ def comicinfo_pages_from_cb(pages_key_path: str, page_key_map: Mapping) -> MetaS
         MetaSpec(key_map=page_key_map, inherit_root_keypath=False)
     )
 
-    def from_cb(values: dict[str, dict[int, dict[str, int]]|None]) -> list[dict[str, None]|Any]:
+    def from_cb(
+        values: dict[str, dict[int, dict[str, int]] | None],
+    ) -> list[dict[str, None] | Any]:
         return _pages_from_cb(values, dict(page_spec))
 
     return MetaSpec(
@@ -71,7 +74,7 @@ def comicinfo_bookmark_to_cb(
 ) -> MetaSpec:
     """Get the bookmark from pages."""
 
-    def get_bookmark(pages: list[dict[str, int]]) -> None:
+    def get_bookmark(pages: list[dict[str, int]]) -> int | None:
         for page in pages:
             if page.get(bookmark_attr):
                 return page.get(image_attr)

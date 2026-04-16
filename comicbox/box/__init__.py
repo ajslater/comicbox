@@ -4,10 +4,6 @@ Comic Archive.
 Reads and writes metadata via marshmallow schemas.
 Reads and writes archive file data.
 """
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import tests.test_writing
 
 from types import MappingProxyType
 
@@ -34,7 +30,7 @@ class Comicbox(
         }
     )
 
-    def _run_complex_actions(self: "tests.test_writing.Comicbox") -> bool:
+    def _run_complex_actions(self) -> bool:
         noop = True
         if (self._config.index_from, self._config.index_to) != (None, None):
             self.extract_pages_config()
@@ -44,7 +40,7 @@ class Comicbox(
             noop = False
         return noop
 
-    def run(self: "tests.test_writing.Comicbox") -> None:
+    def run(self) -> None:
         """Perform archive actions."""
         noop = True
         for attr, method in self._CONFIG_ACTIONS.items():

@@ -1,8 +1,6 @@
 """Test CLI extract actions."""
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pathlib
+from pathlib import Path
 
 from comicbox import cli
 from tests.const import (
@@ -20,7 +18,7 @@ _TMP_DIR = get_tmp_dir(__file__)
 _FORMATS = "comet,comicbookinfo,cli,json,yaml,comicinfo,comictagger,pdf,metroninfo"
 
 
-def _test_cli_action_export_util(path: "pathlib.PosixPath", args: tuple[str, str]) -> None:
+def _test_cli_action_export_util(path: Path, args: tuple[str, str]) -> None:
     """Test cli metadata write to file."""
     my_setup(_TMP_DIR)
 

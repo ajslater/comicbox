@@ -434,7 +434,7 @@ def _add_target_group(parser: ArgumentParser) -> None:
     )
 
 
-def get_args(params: tuple[str, str, str, str, str, str, str, str, str]|tuple[str, str, str, str, str, str, str, str]|tuple[str, str, str, str, str, str]|tuple[str, str, str, str, str]|None=None) -> Namespace:
+def get_args(params: Sequence[str] | None = None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
     if not PDF_ENABLED:
@@ -478,7 +478,7 @@ def post_process_args(cns: Namespace) -> None:
         cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
-def main(params: tuple[str, str, str, str, str, str, str, str, str]|tuple[str, str, str, str, str, str, str, str]|tuple[str, str, str, str, str, str]|tuple[str, str, str, str, str]|None=None) -> None:
+def main(params: Sequence[str] | None = None) -> None:
     """Get CLI arguments and perform the operation on the archive."""
     cns = get_args(params)
     post_process_args(cns)

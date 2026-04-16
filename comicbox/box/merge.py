@@ -1,10 +1,7 @@
 """Merge Metadata Methods."""
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import decimal
 
 from types import MappingProxyType
+from typing import Any
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.merge import AdditiveMerger, Merger, UpdateMerger
@@ -41,7 +38,7 @@ class ComicboxMerge(ComicboxNormalize):
             self._merge_metadata_by_source(source, merged_md, merger)
         self._merged_metadata = MappingProxyType(merged_md)
 
-    def get_merged_metadata(self: Any) -> "MappingProxyType[str, dict[str, dict[int, dict[str, int]]|dict[str, decimal.Decimal]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, int]]|dict[str, int]|dict[str, str]|str]]":
+    def get_merged_metadata(self: Any) -> MappingProxyType:
         """Get merged normalized metadata."""
         if not self._merged_metadata:
             self._set_merged_metadata()

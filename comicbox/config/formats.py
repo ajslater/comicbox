@@ -1,4 +1,5 @@
 """Transform config format keys to MetadataFormats."""
+
 from typing import Any
 
 from confuse import Subview

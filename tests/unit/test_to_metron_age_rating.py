@@ -1,8 +1,4 @@
 """Tests for to_metron_age_rating conversion function."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import comicbox.enums.maps.age_rating
 
 import pytest
 
@@ -85,7 +81,9 @@ NONE_PARAMS = [
     + GENERIC_ENUM_PARAMS
     + STRING_PARAMS,
 )
-def test_to_metron_age_rating(value: "comicbox.enums.maps.age_rating.MetronAgeRatingEnum", expected: "comicbox.enums.maps.age_rating.MetronAgeRatingEnum") -> None:
+def test_to_metron_age_rating(
+    value: MetronAgeRatingEnum | str, expected: MetronAgeRatingEnum
+) -> None:
     """Test conversion of various age ratings to MetronAgeRatingEnum."""
     assert to_metron_age_rating(value) == expected
 

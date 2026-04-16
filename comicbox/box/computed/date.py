@@ -1,4 +1,5 @@
 """Comicbox Computed Date tags."""
+
 from collections.abc import Callable
 from datetime import date
 from types import MappingProxyType
@@ -23,7 +24,7 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
     """Comicbox Computed Date tags."""
 
     def _set_computed_from_date_cover_date(
-        self: Any, old_date: dict, computed_date: dict
+        self, old_date: dict, computed_date: dict
     ) -> str:
         year: int | None = old_date.get(YEAR_KEY)
         month: int | None = old_date.get(MONTH_KEY)
@@ -52,7 +53,7 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
         computed_date[key] = getattr(cover_date, attr)
 
     def _set_computed_from_date_parts(
-        self: Any, old_date: dict, computed_date: dict, msg: str
+        self, old_date: dict, computed_date: dict, msg: str
     ) -> None:
         if COVER_DATE_KEY not in computed_date and (
             cover_date := old_date.get(COVER_DATE_KEY)
@@ -69,7 +70,9 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
             if delete_keypath:
                 self._extra_delete_keys.add(delete_keypath)
 
-    def _get_computed_from_date(self: Any, sub_data: dict[str, dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|int|str], **_kwargs: None) -> dict[str, dict] | None:
+    def _get_computed_from_date(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, dict] | None:
         """Synchronize date parts and cover_date."""
         old_date = sub_data.get(DATE_KEY)
         if not old_date:

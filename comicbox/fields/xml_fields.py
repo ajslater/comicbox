@@ -1,11 +1,7 @@
 """Xml versions of fields."""
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import comicbox.fields.metroninfo
-    import comicbox.schemas.metroninfo.identifiers
 
 from collections.abc import Mapping
+from typing import Any
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
@@ -36,7 +32,7 @@ from comicbox.schemas.base import BaseSubSchema
 CDATA_KEY = "#text"
 
 
-def get_cdata(value: str) -> str:
+def get_cdata(value: Any) -> Any:
     """Return the cdata value if it exists or the whole value."""
     if isinstance(value, Mapping):
         return value.get(CDATA_KEY)
@@ -101,7 +97,11 @@ class XmlBooleanField(BooleanField, CDataFieldMixin):
     """Get value or cdata."""
 
     @override
-    def _serialize(self: "comicbox.schemas.metroninfo.identifiers.XmlBooleanField", *args: "bool|dict[str, bool|comicbox.fields.metroninfo.MetronSourceEnum]|str", **kwargs: None) -> str | None:
+    def _serialize(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str | None:
         # xml booleans are lowercase
         result = super()._serialize(*args, **kwargs)
         return result if result is None else str(result).lower()
@@ -133,7 +133,7 @@ class XmlListFieldMixin:
     """Get value or cdata."""
 
     @staticmethod
-    def get_tag_value(value: dict[str, str]) -> str:
+    def get_tag_value(value: Any) -> Any:
         """Get data for the tag value."""
         return get_cdata(value)
 
@@ -189,7 +189,7 @@ def xml_list_polyfield(
     schema_class: type[BaseSubSchema],
     field: Field,
     sort_keys: tuple[str, ...] = ("#text",),
-    **kwargs: None,
+    **kwargs: Any,
 ) -> ListField:
     """Get a List of unions."""
     union_field = xml_polyfield(schema_class, field)

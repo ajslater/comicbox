@@ -7,7 +7,7 @@ from comicbox.enums.generic import GenericFormatEnum
 from comicbox.enums.metroninfo import MetronFormatEnum
 
 
-def _variants(enum: GenericFormatEnum, *, dashed_canon: bool=False) -> dict:
+def _variants(enum: GenericFormatEnum, *, dashed_canon: bool = False) -> dict:
     space = " " if not dashed_canon else "-"
     dash = "-" if not dashed_canon else " "
     return {
@@ -44,7 +44,9 @@ GENERIC_FORMAT_MAP: MappingProxyType[Enum | str, Enum] = MappingProxyType(
 )
 
 
-def _translate_generic_to(generic_enum: GenericFormatEnum, metron_enum: MetronFormatEnum) -> dict:
+def _translate_generic_to(
+    generic_enum: GenericFormatEnum, metron_enum: MetronFormatEnum
+) -> dict:
     multi_map = {}
     for key, value in GENERIC_FORMAT_MAP.items():
         if value == generic_enum:

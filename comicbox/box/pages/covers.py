@@ -1,4 +1,5 @@
 """Cover Page filename methods."""
+
 from collections.abc import Generator
 from typing import Any
 
@@ -69,6 +70,6 @@ class ComicboxPagesCovers(ComicboxMetadata):
                 bad_cover_paths.add(cover_path)
         return data
 
-    def get_cover_page(self: Any, pdf_format: str="") -> bytes:
+    def get_cover_page(self: Any, pdf_format: str = "") -> bytes:
         """Return cover image data."""
         return self._get_cover_page(pdf_format=pdf_format)
