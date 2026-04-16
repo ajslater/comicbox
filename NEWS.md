@@ -5,6 +5,8 @@
 - Add Age Rating conversion function
   comicbox.enums.maps.age_rating.to_metron_age_rating(value: str | Enum) ->
   MetronAgeRatingEnum | None
+- Security against suspicious archive paths when extracting pages and metadata
+  to the filesystem.
 
 ## v2.2.3
 
