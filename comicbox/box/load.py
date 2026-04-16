@@ -16,6 +16,7 @@ from comicbox.box.init import SourceData
 from comicbox.box.sources import ComicboxSources
 from comicbox.fields.collection_fields import LegacyNestedMDStringSetField
 from comicbox.formats import MetadataFormats
+from comicbox.schemas.cache import get_schema
 from comicbox.sources import MetadataSources
 
 
@@ -54,7 +55,9 @@ class ComicboxLoad(ComicboxSources):
     ) -> Mapping | None:
         """Load string or dict."""
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path, exclude=self._config.delete_keys)
+        schema = get_schema(
+            schema_class, path=self._path, exclude=self._config.delete_keys
+        )
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
 

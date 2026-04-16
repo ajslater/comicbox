@@ -8,6 +8,7 @@ from loguru import logger
 
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
+from comicbox.schemas.cache import get_schema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 
 
@@ -59,10 +60,10 @@ class ComicboxMetadata(ComicboxComputed):
     ) -> tuple:
         # Get schema instance.
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path)
+        schema = get_schema(schema_class, path=self._path)
 
         # Get transformed md
-        transform = fmt.value.transform_class(self._path)
+        transform = self._get_transform(fmt.value.transform_class)
 
         try:
             # dict_format is used to determine whether or not to compute some values

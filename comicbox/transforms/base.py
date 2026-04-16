@@ -8,6 +8,7 @@ from typing import Any
 from glom import glom
 
 from comicbox.schemas.base import BaseSchema
+from comicbox.schemas.cache import get_schema
 from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
@@ -26,7 +27,7 @@ class BaseTransform:
     def __init__(self, path: Path | None = None) -> None:
         """Initialize instances."""
         self._path: Path | None = path
-        self._schema: BaseSchema = self.SCHEMA_CLASS(path=path)
+        self._schema: BaseSchema = get_schema(self.SCHEMA_CLASS, path=path)
 
     @staticmethod
     def _swap_data_key(schema: BaseSchema, transformed_data: dict) -> None:
@@ -38,15 +39,15 @@ class BaseTransform:
 
     def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
-        schema = ComicboxYamlSchema(path=self._path)
-        transformed_data = glom(dict(data), dict(self.SPECS_TO), glom_debug=True)
+        schema = get_schema(ComicboxYamlSchema, path=self._path)
+        transformed_data = glom(dict(data), dict(self.SPECS_TO))
         loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
         return MappingProxyType(loaded_data)
 
     def from_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data from the comicbox schema to this schema."""
         schema = self._schema
-        transformed_data = glom(dict(data), dict(self.SPECS_FROM), glom_debug=True)
+        transformed_data = glom(dict(data), dict(self.SPECS_FROM))
         self._swap_data_key(schema, transformed_data)
         loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
         return MappingProxyType(loaded_data)

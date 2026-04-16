@@ -10,7 +10,7 @@ from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
@@ -84,9 +84,10 @@ class ComicboxInit:
             from the path.
         """
         self._path = self._validate_path(path)
-        self._config: FrozenAttrDict = FrozenAttrDict(
-            get_config(config, path=self._path, box=True)
-        )
+        if isinstance(config, FrozenAttrDict):
+            self._config: FrozenAttrDict = config
+        else:
+            self._config = FrozenAttrDict(get_config(config, path=self._path, box=True))
         init_logging(self._config.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
@@ -108,6 +109,7 @@ class ComicboxInit:
         self._infolist: tuple[InfoType, ...] | None = None
         self._7zfactory: BytesIOFactory | None = None
 
+        self._transform_cache: dict = {}
         self._page_filenames: tuple[str, ...] | None = None
         self._cover_paths: tuple[str, ...] | None = None
         self._page_count: int | None = None
@@ -136,32 +138,86 @@ class ComicboxInit:
                 self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
         return self._archive_is_pdf
 
+    def _try_detect_pdf(self, _path: Path) -> bool:
+        if self._set_archive_cls_pdf():
+            self._file_type = FileTypeEnum.PDF
+            return True
+        return False
+
+    def _try_detect_7z(self, path: Path) -> bool:
+        if is_7zfile(path):
+            self._archive_cls = SevenZipFile
+            self._file_type = FileTypeEnum.CB7
+            return True
+        return False
+
+    def _try_detect_zip(self, path: Path) -> bool:
+        if is_zipfile(path):
+            self._archive_cls = ZipFile
+            self._file_type = FileTypeEnum.CBZ
+            return True
+        return False
+
+    def _try_detect_rar(self, path: Path) -> bool:
+        if is_rarfile(path):
+            self._archive_cls = RarFile
+            self._file_type = FileTypeEnum.CBR
+            return True
+        return False
+
+    def _try_detect_tar(self, path: Path) -> bool:
+        if is_tarfile(path):
+            self._archive_cls = tarfile_open
+            self._file_type = FileTypeEnum.CBT
+            return True
+        return False
+
+    # Full detection order (default when no extension hint)
+    _FULL_DETECT_ORDER: tuple[str, ...] = ("pdf", "7z", "zip", "rar", "tar")
+
+    # Extension → which types to try first (saves disk reads)
+    _EXTENSION_HINT: ClassVar[dict[str, tuple[str, ...]]] = {
+        ".cbz": ("zip",),
+        ".cbr": ("rar",),
+        ".cb7": ("7z",),
+        ".cbt": ("tar",),
+        ".pdf": ("pdf",),
+    }
+
+    def _try_detect(self, key: str, path: Path) -> bool:
+        """Try a single archive type detection."""
+        detectors = {
+            "pdf": self._try_detect_pdf,
+            "7z": self._try_detect_7z,
+            "zip": self._try_detect_zip,
+            "rar": self._try_detect_rar,
+            "tar": self._try_detect_tar,
+        }
+        return detectors[key](path)
+
     def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
         if not self._path:
             return
+        path = self._path
 
         self._archive_is_pdf: bool = False
         self._pdf_suffix: str = ""
 
-        if self._set_archive_cls_pdf():
-            # Important to have PDFile before zipfile
-            self._file_type = FileTypeEnum.PDF
-        elif is_7zfile(self._path):
-            self._archive_cls = SevenZipFile
-            self._file_type = FileTypeEnum.CB7
-        elif is_zipfile(self._path):
-            self._archive_cls = ZipFile
-            self._file_type = FileTypeEnum.CBZ
-        elif is_rarfile(self._path):
-            self._archive_cls = RarFile
-            self._file_type = FileTypeEnum.CBR
-        elif is_tarfile(self._path):
-            self._archive_cls = tarfile_open
-            self._file_type = FileTypeEnum.CBT
+        # Try extension-hinted type first to avoid unnecessary disk reads
+        suffix = path.suffix.lower()
+        hinted = self._EXTENSION_HINT.get(suffix, ())
+        for key in hinted:
+            if self._try_detect(key, path):
+                break
         else:
-            reason = f"Unsupported archive type: {self._path}"
-            raise UnsupportedArchiveTypeError(reason)
+            # Extension didn't match or was missing — fall back to full scan
+            for key in self._FULL_DETECT_ORDER:
+                if key not in hinted and self._try_detect(key, path):
+                    break
+            else:
+                reason = f"Unsupported archive type: {path}"
+                raise UnsupportedArchiveTypeError(reason)
 
         self._info_size_attr = (  # pyright: ignore[reportUninitializedInstanceVariable]
             "size" if self._archive_cls == tarfile_open else "file_size"

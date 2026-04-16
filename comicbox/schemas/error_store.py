@@ -58,6 +58,10 @@ class ClearingErrorStoreSchema(Schema):
     SUPPRESS_ERRORS: bool = True
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
+    def set_path(self, path: Path | str | None) -> None:
+        """Set the path for error messages."""
+        self._path = str(path) if path else None
+
     def __init__(
         self,
         path: Path | str | None = None,

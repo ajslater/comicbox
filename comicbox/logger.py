@@ -22,13 +22,20 @@ def _log_format() -> str:
 
 
 _LOG_FORMAT = _log_format()
+_initialized_loglevel: str | None = None
 
 
 def init_logging(loglevel: str = "INFO", logger_=None) -> None:
     """Initialize logging."""
+    global _initialized_loglevel  # noqa: PLW0603
+
     if logger_:
         global logger  # noqa: PLW0603
         logger = logger_
+        _initialized_loglevel = loglevel
+        return
+
+    if _initialized_loglevel == loglevel:
         return
 
     logger.level("DEBUG", color="<light-black>")
@@ -45,3 +52,4 @@ def init_logging(loglevel: str = "INFO", logger_=None) -> None:
 
     logger.remove()  # Default "sys.stderr" sink is not picklable
     logger.add(sys.stdout, **kwargs)
+    _initialized_loglevel = loglevel
