@@ -1,13 +1,13 @@
-__pycache__
+*Dockerfile
 .*cache/
 .circleci
 .claude
 .git
 .venv
-*Dockerfile
+Dockerfile
+__pycache__
 comicbox/schema_definitions/*Info*.xsd
 dist
-Dockerfile
 node_modules
 package-lock.json
 schemas/*Info*.xsd
