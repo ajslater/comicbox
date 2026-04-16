@@ -170,7 +170,9 @@ class ComicboxLoad(ComicboxSources):
                 self._loaded[source] = ()
             self._loaded[source] += tuple(loaded_list)
 
-    def get_loaded_metadata(self, source: MetadataSources) -> None:
+    def get_loaded_metadata(
+        self, source: MetadataSources
+    ) -> tuple[Mapping[str, Any], ...] | None:
         """Get loaded metadata by key."""
         try:
             if source not in self._loaded:

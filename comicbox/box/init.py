@@ -113,12 +113,14 @@ class ComicboxInit:
         self._cover_paths: tuple[str, ...] | None = None
         self._page_count: int | None = None
 
-        self._sources: dict = {}
+        self._sources: dict[
+            MetadataSources, list[SourceData] | tuple[SourceData] | None
+        ] = {}
         if metadata:
             self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
-        self._parsed: dict = {}
-        self._loaded: dict = {}
-        self._normalized: dict = {}
+        self._parsed: dict[MetadataSources, tuple[Mapping[str, Any]]] = {}
+        self._loaded: dict[MetadataSources, tuple[Mapping[str, Any], ...]] = {}
+        self._normalized: dict[MetadataSources, tuple[Mapping[str, Any], ...]] = {}
         self._path_mtime_dttm: datetime | None = None
         self._dict_formats: frozenset[MetadataFormats] = frozenset()
         self._reset_loaded_forward_caches()
