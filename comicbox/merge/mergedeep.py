@@ -93,10 +93,12 @@ def _handle_merge_additive(dest_parent, source_parent, key) -> None:
 # END ADDITIVE #
 ################
 
-_HANDLE_MERGE = {
-    Strategy.REPLACE: _handle_merge_replace,
-    Strategy.ADDITIVE: _handle_merge_additive,
-}
+_HANDLE_MERGE: MappingProxyType[Strategy, Callable] = MappingProxyType(
+    {
+        Strategy.REPLACE: _handle_merge_replace,
+        Strategy.ADDITIVE: _handle_merge_additive,
+    }
+)
 
 
 def _deepmerge(dest, source, strategy=Strategy.REPLACE):
