@@ -160,9 +160,12 @@ class ComicboxLoad(ComicboxSources):
         for source_data in source_metadata:
             md, fmt = self._load_metadata(source, source_data)
             if md:
-                loaded_md = LoadedMetadata(
-                    md, source_data.path, fmt, source_data.from_archive
+                path = (
+                    Path(source_data.path)
+                    if isinstance(source_data.path, str)
+                    else source_data.path
                 )
+                loaded_md = LoadedMetadata(md, path, fmt, source_data.from_archive)
                 loaded_list.append(loaded_md)
 
         if loaded_list:
@@ -172,7 +175,7 @@ class ComicboxLoad(ComicboxSources):
 
     def get_loaded_metadata(
         self, source: MetadataSources
-    ) -> tuple[Mapping[str, Any], ...] | None:
+    ) -> tuple[LoadedMetadata, ...] | None:
         """Get loaded metadata by key."""
         try:
             if source not in self._loaded:

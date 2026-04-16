@@ -98,7 +98,7 @@ class ComicboxInit:
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def _reset_archive(
-        self, fmt: MetadataFormats | None, metadata: Mapping | None
+        self, fmt: MetadataFormats | None, metadata: Mapping | str | bytes | None
     ) -> None:
         self._archive_cls: Callable | None = None
         self._file_type: FileTypeEnum | None = None
@@ -114,13 +114,12 @@ class ComicboxInit:
         self._page_count: int | None = None
 
         self._sources: dict[
-            MetadataSources, list[SourceData] | tuple[SourceData] | None
+            MetadataSources, list[SourceData] | tuple[SourceData, ...]
         ] = {}
         if metadata:
             self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
-        self._parsed: dict[MetadataSources, tuple[Mapping[str, Any]]] = {}
-        self._loaded: dict[MetadataSources, tuple[Mapping[str, Any], ...]] = {}
-        self._normalized: dict[MetadataSources, tuple[Mapping[str, Any], ...]] = {}
+        self._loaded: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
+        self._normalized: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
         self._path_mtime_dttm: datetime | None = None
         self._dict_formats: frozenset[MetadataFormats] = frozenset()
         self._reset_loaded_forward_caches()

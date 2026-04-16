@@ -54,7 +54,9 @@ class ComicboxNormalize(ComicboxLoad):
                 self._normalized[source] = ()
             self._normalized[source] = (*self._normalized[source], *normalized_list)
 
-    def get_normalized_metadata(self, source: MetadataSources) -> None:
+    def get_normalized_metadata(
+        self, source: MetadataSources
+    ) -> tuple[LoadedMetadata, ...] | None:
         """Get normalized metadata by source key."""
         try:
             if source not in self._normalized:

@@ -266,7 +266,7 @@ class ComicboxPrint(ComicboxValidate):
             if not normalized_md:
                 continue
             schema = ComicboxYamlSchema(path=normalized_md.path)
-            str_data = schema.dumps(normalized_md.metadata)
+            str_data = schema.dumps(dict(normalized_md.metadata))
             str_data = str_data.removesuffix("\n")
             syntax = self._syntax(str_data, "yaml")
             title = self._add_source_to_title(

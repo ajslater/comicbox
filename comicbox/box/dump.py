@@ -18,7 +18,7 @@ class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
     def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
-        formats = frozenset()
+        formats: frozenset[MetadataFormats] | None = frozenset()
         if self._config.write:
             formats = self._config.write
         elif self._config.cbz:
@@ -30,7 +30,7 @@ class ComicboxDump(ComicboxPages):
                 for loaded_data_list in loaded_data_lists
                 if loaded_data_list
                 for loaded_data in loaded_data_list
-                if loaded_data
+                if loaded_data and loaded_data.fmt is not None
             )
         elif not self._config.delete_all_tags:
             reason = "No formats specified to write"
