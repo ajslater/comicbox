@@ -7,6 +7,9 @@
   MetronAgeRatingEnum | None
 - Security against suspicious archive paths when extracting pages and metadata
   to the filesystem.
+- Performance improvements for reading metadata from many files.
+- comicbox.process.process_files() and comicbox.process.aread_metadata() for
+  reading many files at once.
 
 ## v2.2.3
 
