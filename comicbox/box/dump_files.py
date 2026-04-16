@@ -23,6 +23,9 @@ class ComicboxDumpToFiles(ComicboxDump):
         dest_path = Path(dest_path)
         fn = fmt.value.filename
         path = dest_path / fn
+        if not path.resolve().is_relative_to(dest_path.resolve()):
+            reason = f"Unsafe path escapes destination: {path}"
+            raise ValueError(reason)
         try:
             schema, denormalized_metadata = self._to_dict(fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
