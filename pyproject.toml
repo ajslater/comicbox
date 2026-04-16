@@ -71,6 +71,7 @@ dev = [
   "icecream~=2.1",
   "infer-types~=1.0.0",
   "neovim~=0.3",
+  "packaging>=26.1",
   "pyclean~=3.1",
   "semver~=3.0.4",
   "toml-cli~=0.7",
@@ -119,6 +120,7 @@ source-include = [
   "Makefile",
   "NEWS.md",
   "bin/**",
+  "bun.lock",
   "ci/**",
   "compose.yaml",
   "docs/DOCKER.md",
@@ -183,7 +185,7 @@ reportUntypedBaseClass = false
 builtin = "clear,code,rare"
 check-hidden = true
 ignore-words-list = "coverd,falsy,jupyter,ro,searchd,thead,versio,ws"
-skip = "*~,.*,./.venv/*,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,comicbox/zipfile_remove"
+skip = "*~,.*,./.venv/*,./bun.lock,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,comicbox/zipfile_remove"
 
 [tool.complexipy]
 failed = true
