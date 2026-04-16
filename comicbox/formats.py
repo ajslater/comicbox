@@ -48,7 +48,7 @@ class MetadataFormat:
     lexer: str = "yaml"
     enabled: bool = True
 
-    def __post_init__(self: Any) -> None:
+    def __post_init__(self) -> None:
         """Hoist the schema class."""
         self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
 

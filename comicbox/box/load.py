@@ -35,7 +35,7 @@ class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
     def _load_cli_yaml(
-        self: Any, fmt: MetadataFormats, schema: Any, source_md: str
+        self, fmt: MetadataFormats, schema: Any, source_md: str
     ) -> dict:
         result = {}
         try:
@@ -54,7 +54,7 @@ class ComicboxLoad(ComicboxSources):
         return result
 
     def _call_load(
-        self: Any,
+        self,
         source: MetadataSources,
         fmt: MetadataFormats,
         source_md: bytes | str | Mapping,
@@ -84,7 +84,7 @@ class ComicboxLoad(ComicboxSources):
         )
 
     def _except_on_load(
-        self: Any,
+        self,
         source: MetadataSources,
         fmt: MetadataFormats | None,
         exc: Exception,
@@ -105,7 +105,7 @@ class ComicboxLoad(ComicboxSources):
         logger.opt(lazy=True).trace(format_exc())
 
     def _load_unknown_metadata(
-        self: Any, source: MetadataSources, data: str | bytes | Mapping
+        self, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
@@ -127,7 +127,7 @@ class ComicboxLoad(ComicboxSources):
         return success_md, fmt
 
     def _load_metadata(
-        self: Any, source: MetadataSources, source_data: SourceData | None
+        self, source: MetadataSources, source_data: SourceData | None
     ) -> tuple[MappingProxyType | None, MetadataFormats | None]:
         if not source_data:
             return None, None
@@ -151,7 +151,7 @@ class ComicboxLoad(ComicboxSources):
             self._except_on_load(source, fmt, exc)
         return None, None
 
-    def _set_loaded_metadata(self: Any, source: MetadataSources) -> None:
+    def _set_loaded_metadata(self, source: MetadataSources) -> None:
         source_metadata = self.get_source_metadata(source)
         if not source_metadata:
             return
@@ -170,7 +170,7 @@ class ComicboxLoad(ComicboxSources):
                 self._loaded[source] = ()
             self._loaded[source] += tuple(loaded_list)
 
-    def get_loaded_metadata(self: Any, source: MetadataSources) -> None:
+    def get_loaded_metadata(self, source: MetadataSources) -> None:
         """Get loaded metadata by key."""
         try:
             if source not in self._loaded:

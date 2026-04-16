@@ -13,7 +13,7 @@ class ComicboxDumpToFiles(ComicboxDump):
     """Special file writes."""
 
     def to_file(
-        self: Any,
+        self,
         dest_path: Path | None = None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
         **kwargs: Any,
@@ -38,7 +38,7 @@ class ComicboxDumpToFiles(ComicboxDump):
             logger.exception(f"Could not export {fn}")
 
     def export_files(
-        self: Any, formats: frozenset[MetadataFormats] | None = None
+        self, formats: frozenset[MetadataFormats] | None = None
     ) -> None:
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
@@ -52,7 +52,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         for fmt in formats:
             self.to_file(fmt=fmt)
 
-    def rename_file(self: Any) -> None:
+    def rename_file(self) -> None:
         """Rename the archive."""
         if not self._path:
             reason = "Cannot rename archive without a path."

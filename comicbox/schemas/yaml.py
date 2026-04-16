@@ -103,7 +103,7 @@ class YamlSchema(BaseSchema):
 
     @override
     def dumps(
-        self: Any,
+        self,
         obj: dict[str, Any] | MappingProxyType[str, Any],
         *args: Any,
         dfs: bool = False,

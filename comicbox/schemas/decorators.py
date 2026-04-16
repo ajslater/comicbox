@@ -12,7 +12,7 @@ def trap_error(decorator: Callable) -> Callable[[Callable], Callable]:
 
     def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
-        def wrapped(self: Any, data: Any, **kwargs: Any) -> Any:
+        def wrapped(self, data: Any, **kwargs: Any) -> Any:
             try:
                 return func(self, data, **kwargs)
             except Exception:

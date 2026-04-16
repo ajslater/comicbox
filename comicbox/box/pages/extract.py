@@ -19,13 +19,13 @@ def _validate_extract_path(path: Path, dest_dir: Path) -> None:
 class ComicboxExtractPages(ComicboxPagesCovers):
     """Methods for extracting files from the archive."""
 
-    def _extract_page_get_path(self: Any, path: Path, fn: str) -> Path:
+    def _extract_page_get_path(self, path: Path, fn: str) -> Path:
         path = path / Path(fn).name if path.is_dir() else path
         if self._archive_is_pdf:
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _extract_page(self: Any, dest_path: Path, fn: str) -> None:
+    def _extract_page(self, dest_path: Path, fn: str) -> None:
         path = self._extract_page_get_path(dest_path, fn)
         props = {}
         data = self._archive_readfile(fn, props=props)
@@ -35,7 +35,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         _validate_extract_path(path, dest_dir)
         path.write_bytes(data)
 
-    def _extract_all_pagenames(self: Any, pagenames: Iterable[str], path: Path) -> None:
+    def _extract_all_pagenames(self, pagenames: Iterable[str], path: Path) -> None:
         success_page_count = 0
         try:
             for fn in pagenames:
@@ -53,7 +53,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             logger.warning(f"No pages extracted: {exc}")
 
     def _extract_pagenames_get_path(
-        self: Any, pagenames: Sequence[str] | Generator[str], path: Path | str | None
+        self, pagenames: Sequence[str] | Generator[str], path: Path | str | None
     ) -> Path | None:
         if not pagenames:
             logger.warning("No pages to extract.")
@@ -71,7 +71,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         return Path(resolved_path)
 
     def _extract_pagenames_to_dir(
-        self: Any, pagenames: tuple[str, ...], path: Path | str | None = None
+        self, pagenames: tuple[str, ...], path: Path | str | None = None
     ) -> None:
         resolved_path = self._extract_pagenames_get_path(pagenames, path)
         if resolved_path:
@@ -84,13 +84,13 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             self._extract_all_pagenames(pagenames, resolved_path)
 
     def _extract_pagenames(
-        self: Any, pagenames: Generator[str], path: Path | None = None
+        self, pagenames: Generator[str], path: Path | None = None
     ) -> None:
         if path := self._extract_pagenames_get_path(pagenames, path):
             self._extract_all_pagenames(pagenames, path)
 
     def extract_pages(
-        self: Any,
+        self,
         page_from: int | None = None,
         page_to: int | None = None,
         path: Path | str | None = None,
@@ -99,13 +99,13 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         pagenames = self.get_pagenames_from(page_from, page_to)
         self._extract_pagenames_to_dir(pagenames, path=path)
 
-    def extract_pages_config(self: Any) -> None:
+    def extract_pages_config(self) -> None:
         """Extract pages from archive as configured and write to a path."""
         return self.extract_pages(
             self._config.index_from, self._config.index_to, self._config.dest_path
         )
 
-    def extract_covers(self: Any, path: Path | None = None) -> None:
+    def extract_covers(self, path: Path | None = None) -> None:
         """Extract the cover image to a destination file."""
         cover_paths_generator = self.generate_cover_paths()
         self._extract_pagenames(cover_paths_generator, path=path)
