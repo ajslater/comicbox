@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform

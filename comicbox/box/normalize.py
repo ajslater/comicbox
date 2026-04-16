@@ -18,9 +18,7 @@ class ComicboxNormalize(ComicboxLoad):
             self._transform_cache[transform_class] = transform_class(self._path)
         return self._transform_cache[transform_class]
 
-    def _normalize_metadata(
-        self, source: MetadataSources, loaded_data: Any
-    ) -> None:
+    def _normalize_metadata(self, source: MetadataSources, loaded_data: Any) -> None:
         if not loaded_data.metadata:
             return None
         transform_class = loaded_data.fmt.value.transform_class

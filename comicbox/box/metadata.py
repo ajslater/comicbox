@@ -16,9 +16,7 @@ from comicbox.schemas.comicbox import ComicboxSchemaMixin
 class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
-    def _set_computed_merged_metadata_delete(
-        self, merged_md: dict[str, Any]
-    ) -> None:
+    def _set_computed_merged_metadata_delete(self, merged_md: dict[str, Any]) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
         for key_path in sorted(self._config.delete_keys):

@@ -1,7 +1,6 @@
 """Cover Page filename methods."""
 
 from collections.abc import Generator
-from typing import Any
 
 from glom import glom
 from loguru import logger
@@ -52,11 +51,11 @@ class ComicboxPagesCovers(ComicboxMetadata):
         """Get filename of most likely coverpage."""
         # This could be a generator?
         if self._cover_paths is None:
-            self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
-        return self._cover_paths
+            self._cover_paths = self._get_cover_paths()
+        return self._cover_paths  # pyright: ignore[reportReturnType], #ty: ignore[invalid-return-type]
 
-    def _get_cover_page(self, pdf_format: str = "") -> bytes | None:
-        data = None
+    def _get_cover_page(self, pdf_format: str = "") -> bytes:
+        data = b""
         cover_paths = self.generate_cover_paths()
         bad_cover_paths = set()
         for cover_path in cover_paths:

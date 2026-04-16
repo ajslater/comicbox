@@ -35,7 +35,7 @@ class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
     def _load_cli_yaml(
-        self, fmt: MetadataFormats, schema: Any, source_md: str
+        self, fmt: MetadataFormats, schema: Any, source_md: str | bytes | Mapping
     ) -> dict:
         result = {}
         try:

@@ -1,7 +1,6 @@
 """Merge Metadata Methods."""
 
 from types import MappingProxyType
-from typing import Any
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.merge import AdditiveMerger, Merger, UpdateMerger

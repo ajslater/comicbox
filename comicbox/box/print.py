@@ -108,7 +108,7 @@ class ComicboxPrint(ComicboxValidate):
             else code
         )
 
-    def _print(self, renderable: Syntax | str) -> None:
+    def _print(self, renderable: Pretty | Syntax | str) -> None:
         if self._pygments_style_name:
             self._CONSOLE.print(renderable)
         else:
@@ -215,7 +215,9 @@ class ComicboxPrint(ComicboxValidate):
             return
         md = source_data.data
         if isinstance(md, Mapping):
-            renderable = Pretty(dict(md)) if self._pygments_style_name else md
+            renderable = (
+                Pretty(dict(md)) if self._pygments_style_name else str(dict(md))
+            )
         else:
             print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
             lexer = fmt.value.lexer if (fmt := source_data.fmt) else ""

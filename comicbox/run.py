@@ -2,7 +2,6 @@
 
 from argparse import Namespace
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 
@@ -17,12 +16,12 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(, config: Namespace) -> None:
+    def __init__(self, config: Namespace) -> None:
         """Initialize actions and config."""
         self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
         init_logging(self._config.loglevel)
 
-    def run_on_file(, path: Path | str) -> None:
+    def run_on_file(self, path: Path | str) -> None:
         """Run operations on one file."""
         if path:
             path = Path(path)
@@ -37,7 +36,7 @@ class Runner:
             car.print_file_header()
             car.run()
 
-    def recurse(, path: Path) -> None:
+    def recurse(self, path: Path) -> None:
         """Perform operations recursively on files."""
         if not path.is_dir():
             logger.error(f"{path} is not a directory")
@@ -56,7 +55,7 @@ class Runner:
             except Exception:
                 logger.exception(full_path)
 
-    def run() -> None:
+    def run(self) -> None:
         """Run actions with config."""
         paths = self._config.paths
         for path in paths:

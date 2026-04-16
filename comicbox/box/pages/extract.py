@@ -2,7 +2,6 @@
 
 from collections.abc import Generator, Iterable, Sequence
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 

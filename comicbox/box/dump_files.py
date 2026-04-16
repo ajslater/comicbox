@@ -37,9 +37,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         except Exception:
             logger.exception(f"Could not export {fn}")
 
-    def export_files(
-        self, formats: frozenset[MetadataFormats] | None = None
-    ) -> None:
+    def export_files(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             logger.info("Not exporting files.")
