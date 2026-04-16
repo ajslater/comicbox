@@ -17,15 +17,17 @@ class ArchiveInfo:
     def datetime(info: InfoType) -> datetime | None:
         """Return mtime as a datetime."""
         dttm = None
-        if isinstance(info, ZipInfo):
-            if date_time := info.date_time:
-                dttm = datetime(*date_time)  # noqa: DTZ001
-        elif isinstance(info, TarInfo):
-            dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
-        elif isinstance(info, SevenZipInfo):
-            dttm = info.creationtime
-        elif mtime := info.mtime:  # RarInfo
-            dttm = mtime
+        match info:
+            case ZipInfo():
+                if date_time := info.date_time:
+                    dttm = datetime(*date_time)  # noqa: DTZ001
+            case TarInfo():
+                dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
+            case SevenZipInfo():
+                dttm = info.creationtime
+            case _:  # RarInfo
+                if mtime := info.mtime:
+                    dttm = mtime
         if dttm and not dttm.tzinfo:
             dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
@@ -33,12 +35,13 @@ class ArchiveInfo:
     @staticmethod
     def is_dir(info: InfoType) -> bool:
         """Is a directory."""
-        if isinstance(info, ZipInfo | RarInfo):
-            is_dir = info.is_dir()
-        elif isinstance(info, TarInfo):
-            is_dir = info.isdir()
-        else:  # SevenZipInfo):
-            is_dir = bool(info.is_directory)
+        match info:
+            case ZipInfo() | RarInfo():
+                is_dir = info.is_dir()
+            case TarInfo():
+                is_dir = info.isdir()
+            case _:  # SevenZipInfo
+                is_dir = bool(info.is_directory)
         return is_dir
 
     @staticmethod

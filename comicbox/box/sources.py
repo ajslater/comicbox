@@ -81,10 +81,10 @@ class ComicboxSources(ComicboxArchive):
         if not self._path:
             return source_data_list
         try:
-            for fmt in self._config.computed.read_filename_formats:
-                source_data_list += [
-                    SourceData(self._path.name, fmt=fmt, from_archive=True)
-                ]
+            source_data_list.extend(
+                SourceData(self._path.name, fmt=fmt, from_archive=True)
+                for fmt in self._config.computed.read_filename_formats
+            )
         except Exception as exc:
             logger.warning(
                 f"Error reading metadata from archive filename {self._path}: {exc}"

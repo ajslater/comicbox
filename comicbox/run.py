@@ -1,6 +1,5 @@
 """Run comicbox on files."""
 
-import os
 from pathlib import Path
 
 from loguru import logger
@@ -45,20 +44,15 @@ class Runner:
             logger.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
-        for root, dirnames, filenames in os.walk(path):
-            root_path = Path(root)
-            for dirname in dirnames:
-                full_path = root_path / dirname
-                self.recurse(full_path)
-            for filename in sorted(filenames):
-                path = Path(str(filename))
-                if path.suffix.lower() not in self._RECURSE_SUFFIXES:
-                    continue
-                full_path = root_path / path
-                try:
-                    self.run_on_file(full_path)
-                except Exception:
-                    logger.exception(full_path)
+        for full_path in sorted(path.rglob("*")):
+            if not full_path.is_file():
+                continue
+            if full_path.suffix.lower() not in self._RECURSE_SUFFIXES:
+                continue
+            try:
+                self.run_on_file(full_path)
+            except Exception:
+                logger.exception(full_path)
 
     def run(self) -> None:
         """Run actions with config."""

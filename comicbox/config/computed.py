@@ -26,12 +26,7 @@ def _ensure_cli_yaml(config) -> None:
     mds = config["metadata_cli"].get()
     if not mds:
         return
-    wrapped_md_list = []
-    for md in mds:
-        if not md:
-            continue
-        wrapped_md = "{" + md + "}" if md[0] != "{" else md
-        wrapped_md_list.append(wrapped_md)
+    wrapped_md_list = [("{" + md + "}" if md[0] != "{" else md) for md in mds if md]
 
     config["metadata_cli"].set(tuple(wrapped_md_list))
 

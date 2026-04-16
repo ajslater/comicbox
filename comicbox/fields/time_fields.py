@@ -67,27 +67,28 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     def _deserialize(self, value, *args, **kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse datetimes from strings and datetime-like structures."""
         dttm = None
-        if isinstance(value, TimeStamp):
-            dttm = datetime(
-                value.year,
-                value.month,
-                value.day,
-                value.hour,
-                value.minute,
-                value.second,
-                value.microsecond,
-                value.tzinfo,
-            )
-        elif isinstance(value, datetime):
-            dttm = value
-        elif isinstance(value, date):
-            dttm = datetime.combine(value, datetime.min.time())
-        else:
-            try:
-                if value_str := StringField().deserialize(value):
-                    dttm = parser.parse(value_str)
-            except Exception:
-                logger.warning(f"Cannot parse datetime: {value}")
+        match value:
+            case TimeStamp():
+                dttm = datetime(
+                    value.year,
+                    value.month,
+                    value.day,
+                    value.hour,
+                    value.minute,
+                    value.second,
+                    value.microsecond,
+                    value.tzinfo,
+                )
+            case datetime():
+                dttm = value
+            case date():
+                dttm = datetime.combine(value, datetime.min.time())
+            case _:
+                try:
+                    if value_str := StringField().deserialize(value):
+                        dttm = parser.parse(value_str)
+                except Exception:
+                    logger.warning(f"Cannot parse datetime: {value}")
         if dttm is not None:
             dttm = self._ensure_aware(dttm)
         return dttm
