@@ -22,6 +22,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         data = self._archive_readfile(fn, props=props)
         if ext := props.get("ext", ""):
             path = path.with_suffix("." + ext)
+        path = path.absolute()
         with path.open("wb") as page_file:
             page_file.write(data)
 
