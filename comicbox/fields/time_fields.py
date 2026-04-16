@@ -23,10 +23,11 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     def _deserialize(self, value, *args, **kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse dates from strings and date-like structures."""
         dt = None
-        if isinstance(value, date):
-            dt = value
-        elif isinstance(value, datetime):
+        if isinstance(value, datetime):
+            # datetime is a subclass of date. order like this.
             dt = value.date()
+        elif isinstance(value, date):
+            dt = value
         else:
             try:
                 if value_str := StringField().deserialize(value):
