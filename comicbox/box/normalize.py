@@ -10,12 +10,18 @@ from comicbox.box.load import ComicboxLoad, LoadedMetadata
 class ComicboxNormalize(ComicboxLoad):
     """Normalize schemas to Comicbox Schema."""
 
+    def _get_transform(self, transform_class):
+        """Get or create a cached transform instance."""
+        if transform_class not in self._transform_cache:
+            self._transform_cache[transform_class] = transform_class(self._path)
+        return self._transform_cache[transform_class]
+
     def _normalize_metadata(self, source, loaded_data) -> None:
         if not loaded_data.metadata:
             return None
         transform_class = loaded_data.fmt.value.transform_class
         try:
-            transform = transform_class(self._path)
+            transform = self._get_transform(transform_class)
             return transform.to_comicbox(loaded_data.metadata)
         except Exception:
             reason = (
