@@ -16,8 +16,8 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _extract_page(self, path, fn) -> None:
-        path = self._extract_page_get_path(path, fn)
+    def _extract_page(self, dest_path, fn) -> None:
+        path = self._extract_page_get_path(dest_path, fn)
         props = {}
         data = self._archive_readfile(fn, props=props)
         if ext := props.get("ext", ""):
