@@ -37,7 +37,6 @@ CLI_DICT = MappingProxyType(
 
 def _get_output(args):
     old_stdout = sys.stdout
-    output = ""
     try:
         output_buf = StringIO()
         sys.stdout = output_buf
@@ -188,12 +187,12 @@ def test_cli_print_contents():
     assert_diff_strings(LIST_OUTPUT, output)
 
 
-LIST_RECURSE_OUPUT_PATH = TEST_FILES_DIR / "list_recurse_output.txt"
+LIST_RECURSE_OUTPUT_PATH = TEST_FILES_DIR / "list_recurse_output.txt"
 
 
 def test_cli_print_list_recurse():
     """Test recursion."""
     args = ("comicbox", "--recurse", "-l", str(TEST_FILES_DIR))
     output = _get_output(args)
-    check_output = LIST_RECURSE_OUPUT_PATH.read_text()
+    check_output = LIST_RECURSE_OUTPUT_PATH.read_text()
     assert_diff_strings(check_output, output)
