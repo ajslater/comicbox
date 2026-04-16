@@ -3,6 +3,8 @@
 from enum import Enum
 from types import MappingProxyType
 
+from caseconverter import snakecase
+
 from comicbox.enums.comicinfo import (
     ComicInfoAgeRatingEnum,
 )
@@ -116,3 +118,51 @@ AGE_RATING_ENUM_MAP = MappingProxyType(
         **{enum: enum for enum in MetronAgeRatingEnum},
     }
 )
+
+
+def _get_key_variations(key: str | Enum) -> set[str]:
+    """Get fuzzy lookup key variations for an age rating."""
+    value = key.value if isinstance(key, Enum) else key
+    value = value.lower()
+    spaceless = value.replace(" ", "")
+    snake = snakecase(value).replace("_", "")
+    return {value, spaceless, snake}
+
+
+def _build_metron_age_rating_lookup() -> MappingProxyType[str, MetronAgeRatingEnum]:
+    """Build a fuzzy lookup map from any age rating string to MetronAgeRatingEnum."""
+    lookup: dict[str, MetronAgeRatingEnum] = {}
+    for source_enum, metron_enum in METRON_AGE_RATING_MAP.items():
+        if not isinstance(metron_enum, MetronAgeRatingEnum):
+            continue
+        for variation in _get_key_variations(source_enum):
+            lookup[variation] = metron_enum
+    for metron_enum in MetronAgeRatingEnum:
+        for variation in _get_key_variations(metron_enum):
+            lookup[variation] = metron_enum
+    return MappingProxyType(lookup)
+
+
+_METRON_AGE_RATING_LOOKUP: MappingProxyType[str, MetronAgeRatingEnum] = (
+    _build_metron_age_rating_lookup()
+)
+
+
+def to_metron_age_rating(value: str | Enum) -> MetronAgeRatingEnum | None:
+    """
+    Convert any age rating string or enum to a MetronAgeRatingEnum.
+
+    Accepts any age rating enum (Marvel, DC, Generic, ComicInfo, Metron)
+    or a string representation. Uses fuzzy matching (case-insensitive,
+    space-insensitive) for strings.
+
+    Returns None if the value cannot be matched to a known age rating.
+    """
+    if isinstance(value, MetronAgeRatingEnum):
+        return value
+    if isinstance(value, Enum):
+        result = METRON_AGE_RATING_MAP.get(value)
+        if isinstance(result, MetronAgeRatingEnum):
+            return result
+        return None
+    return _METRON_AGE_RATING_LOOKUP.get(value.lower())
