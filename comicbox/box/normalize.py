@@ -5,7 +5,8 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.load import ComicboxLoad, LoadedMetadata
+from comicbox.box.init import LoadedMetadata
+from comicbox.box.load import ComicboxLoad
 from comicbox.sources import MetadataSources
 
 

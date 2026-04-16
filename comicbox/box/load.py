@@ -2,7 +2,6 @@
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
@@ -13,22 +12,12 @@ from loguru import logger
 from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
-from comicbox.box.init import SourceData
+from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
 from comicbox.fields.collection_fields import LegacyNestedMDStringSetField
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.cache import get_schema
 from comicbox.sources import MetadataSources
-
-
-@dataclass
-class LoadedMetadata:
-    """Loaded Metadata."""
-
-    metadata: Mapping
-    path: Path | None = None
-    fmt: MetadataFormats | None = None
-    from_archive: bool = False
 
 
 class ComicboxLoad(ComicboxSources):

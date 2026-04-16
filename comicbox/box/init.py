@@ -48,6 +48,16 @@ class SourceData:
     from_archive: bool = False
 
 
+@dataclass
+class LoadedMetadata:
+    """Loaded Metadata."""
+
+    metadata: Mapping
+    path: Path | None = None
+    fmt: MetadataFormats | None = None
+    from_archive: bool = False
+
+
 class ComicboxInit:
     """Initialization mixin."""
 
