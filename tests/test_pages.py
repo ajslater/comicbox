@@ -14,7 +14,7 @@ RESOURCE_FORK_ARCHIVE = TEST_FILES_DIR / "macos_resource_fork.cbz"
 RESOURCE_FORK_ARCHIVE_PAGE_COUNT = 2
 
 
-def test_get_covers():
+def test_get_covers() -> None:
     """Test getting the cover image."""
     with COVER_IMAGE.open("rb") as cif:
         image = cif.read()
@@ -23,7 +23,7 @@ def test_get_covers():
     assert image == page
 
 
-def test_get_random_page():
+def test_get_random_page() -> None:
     """Test getting page 5."""
     with Comicbox(ARCHIVE_PATH) as car:
         page = car.get_page_by_index(4)
@@ -33,7 +33,7 @@ def test_get_random_page():
     assert image == page
 
 
-def test_get_pages_after():
+def test_get_pages_after() -> None:
     """Test getting many pages."""
     page_num = 33
     with Comicbox(ARCHIVE_PATH) as car:
@@ -46,7 +46,7 @@ def test_get_pages_after():
         page_num += 1
 
 
-def test_ignore_macos_resource_forks():
+def test_ignore_macos_resource_forks() -> None:
     """Test ignoring macos resource forks."""
     with Comicbox(RESOURCE_FORK_ARCHIVE) as car:
         page_count = car.get_page_count()

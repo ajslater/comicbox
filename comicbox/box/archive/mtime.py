@@ -1,4 +1,9 @@
 """Calculate page filenames."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import comicbox.box.archive.filenames
+    import comicbox.box.types
 
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,14 +17,14 @@ _BRACKETS = ("{", b"{")
 class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
 
-    def _is_comment_json(self, archive) -> bool:
+    def _is_comment_json(self: "comicbox.box.archive.filenames.ComicboxArchiveMtime", archive: "comicbox.box.types.RarFile") -> bool:
         return (
             self._config.computed.is_read_comments
             and bool(comment := getattr(archive, "comment", ""))
             and (comment[0] in _BRACKETS)
         )
 
-    def get_path_mtime_dttm(self) -> datetime | None:
+    def get_path_mtime_dttm(self: "comicbox.box.archive.filenames.ComicboxArchiveMtime") -> datetime | None:
         """Get the path mtime as datetime."""
         if not self._path_mtime_dttm and self._path:
             self._path_mtime_dttm: datetime | None = datetime.fromtimestamp(
@@ -27,7 +32,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
             )
         return self._path_mtime_dttm
 
-    def get_metadata_files_mtime(self) -> datetime | None:
+    def get_metadata_files_mtime(self: "comicbox.box.archive.filenames.ComicboxArchiveMtime") -> datetime | None:
         """Get the latest metadata archive file mtime according to the read config."""
         max_mtime: None | datetime = None
         for info in self.infolist():
@@ -53,7 +58,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
                 max_mtime = mtime
         return max_mtime
 
-    def get_metadata_mtime(self) -> datetime | None:
+    def get_metadata_mtime(self: "comicbox.box.archive.filenames.ComicboxArchiveMtime") -> datetime | None:
         """Get the latest metadata mtime according to the read config."""
         # Ensure the archive is ready.
         archive = self._get_archive()

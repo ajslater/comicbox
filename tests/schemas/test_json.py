@@ -201,46 +201,46 @@ COMICBOX_TESTER = TestParser(
 )
 
 
-def test_comicbox_from_metadata():
+def test_comicbox_from_metadata() -> None:
     """Test assign metadata."""
     COMICBOX_TESTER.test_from_metadata()
 
 
-def test_comicbox_from_dict():
+def test_comicbox_from_dict() -> None:
     """Test native dict import from comicbox.schemas."""
     COMICBOX_TESTER.test_from_dict()
 
 
-def test_comicbox_from_string():
+def test_comicbox_from_string() -> None:
     """Test metadata import from string."""
     COMICBOX_TESTER.test_from_string()
 
 
-def test_comicbox_from_file():
+def test_comicbox_from_file() -> None:
     """Test metadata import from file."""
     COMICBOX_TESTER.test_from_file()
 
 
-def test_comicbox_to_dict():
+def test_comicbox_to_dict() -> None:
     """Test metadata export to dict."""
     COMICBOX_TESTER.test_to_dict()
 
 
-def test_comicbox_to_string():
+def test_comicbox_to_string() -> None:
     """Test metadata export to string."""
     COMICBOX_TESTER.test_to_string()
 
 
-def test_comicbox_to_file():
+def test_comicbox_to_file() -> None:
     """Test metadata export to file."""
     COMICBOX_TESTER.test_to_file(export_fn="comicbox-write.json")
 
 
-def test_comicbox_read():
+def test_comicbox_read() -> None:
     """Test read from file."""
     COMICBOX_TESTER.test_md_read()
 
 
-def test_comicbox_write():
+def test_comicbox_write() -> None:
     """Test write to file."""
     COMICBOX_TESTER.test_md_write(page_count=0)

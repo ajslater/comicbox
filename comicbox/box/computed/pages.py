@@ -30,7 +30,7 @@ _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
 class ComicboxComputedPages(ComicboxComputedNotes):
     """Comicbox Computed Pages."""
 
-    def _enable_page_compute_attribute(self, key: str, sub_md: Mapping) -> bool:
+    def _enable_page_compute_attribute(self: Any, key: str, sub_md: Mapping) -> bool:
         """Determine if we should compute this attribute."""
         if key in self._config.delete_keys or not sub_md or not self._path:
             return False
@@ -42,7 +42,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)
         )
 
-    def _get_computed_page_count_metadata(self, sub_md) -> dict[str, Any] | None:
+    def _get_computed_page_count_metadata(self: Any, sub_md: dict[str, dict[int, dict[str, int]]|dict[str, dict[str, str]]|dict[str, dict[Any, Any]]|dict[str, str]|int|str]) -> dict[str, Any] | None:
         """
         Compute page_count from page_filenames.
 
@@ -56,7 +56,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             return {PAGE_COUNT_KEY: real_page_count}
         return None
 
-    def _ensure_pages_front_cover_metadata(self, pages) -> None:
+    def _ensure_pages_front_cover_metadata(self: Any, pages: dict[int, dict[str, int]]) -> None:
         """Ensure there is a FrontCover page type in pages."""
         for page in pages.values():
             if page.get(PAGE_TYPE_KEY) == ComicInfoPageTypeEnum.FRONT_COVER:
@@ -64,7 +64,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
 
         pages[0][PAGE_TYPE_KEY] = ComicInfoPageTypeEnum.FRONT_COVER
 
-    def _get_max_page_index(self):
+    def _get_max_page_index(self: Any) -> int:
         if self._path:
             max_page_index = self.get_page_count() - 1
         else:
@@ -73,7 +73,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             max_page_index = maxsize
         return max_page_index
 
-    def _get_computed_merged_pages_metadata(self, md, pages):
+    def _get_computed_merged_pages_metadata(self: Any, md: dict[str, str], pages: dict[int, dict[str, int]]) -> dict[int, dict[str, int]]:
         old_pages = md.get(PAGES_KEY, {})
         max_page_index = self._get_max_page_index()
         trimmed_old_pages = {k: v for k, v in old_pages.items() if k <= max_page_index}
@@ -81,7 +81,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         self._ensure_pages_front_cover_metadata(computed_pages)
         return computed_pages
 
-    def _get_computed_pages_metadata(self, sub_md) -> dict[str, MutableMapping] | None:
+    def _get_computed_pages_metadata(self: Any, sub_md: dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|list[dict[str, str]]|str]) -> dict[str, MutableMapping] | None:
         """Recompute the tag image sizes for the ComicRack PageInfo list."""
         if not self._enable_page_compute_attribute(PAGES_KEY, sub_md):
             return None

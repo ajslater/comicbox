@@ -1,4 +1,10 @@
 """Marshmallow Enum Fields."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import comicbox.schemas.comet
+    import comicbox.schemas.comicbox.pages
+    import comicbox.schemas.metroninfo.credits
 
 from enum import Enum
 from types import MappingProxyType
@@ -33,20 +39,20 @@ class FuzzyEnumMixin:
         return key_variations
 
     @classmethod
-    def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict) -> None:
+    def add_enum_map_item(cls: "type[comicbox.schemas.comet.XmlReadingDirectionField|comicbox.schemas.comicbox.pages.PageTypeField|comicbox.schemas.metroninfo.credits.MetronRoleEnumField|Any]", key: str | Enum, enum: Enum, enum_map: dict) -> None:
         """Add an enum or string to the lookup table with lowercase spaceless and spaced variations."""
         key_variations = cls.get_key_variations(key)
         for key_variation in key_variations:
             enum_map[key_variation] = enum
 
-    def get_enum_alias_map(self) -> dict:
+    def get_enum_alias_map(self: Any) -> dict:
         """Transform the ENUM_ALIAS_MAP into the enum lookup map."""
         enum_map = {}
         for key, enum in self.ENUM_ALIAS_MAP.items():
             self.add_enum_map_item(key, enum, enum_map)
         return enum_map
 
-    def get_enum(self, value: str | Enum) -> Enum | None:
+    def get_enum(self: Any, value: str | Enum) -> Enum | None:
         """Get an enum from the fuzzy lookup map."""
         key: str = value.value if isinstance(value, Enum) else str(value)
         key = key.lower()
@@ -58,27 +64,27 @@ class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
 
     ENUM = Enum
 
-    def get_enum_map(self) -> dict:
+    def get_enum_map(self: Any) -> dict:
         """Transform the ENUM_ALIAS_MAP into the enum lookup map and add the field enum to it as well."""
         enum_map = self.get_enum_alias_map()
         for enum in self.ENUM:
             self.add_enum_map_item(enum, enum, enum_map)
         return enum_map
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self: Any, *args: None, **kwargs: None) -> None:
         """Use the enum."""
         super().__init__(self.ENUM, *args, by_value=StringField, **kwargs)
         enum_map = self.get_enum_map()
         self._enum_map = MappingProxyType(enum_map)
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
+    def _deserialize(self: Any, value: Enum|str, attr: str, data: dict[str, ComicInfoPageTypeEnum|int|str|None], *args: None, **kwargs: bool) -> Enum:
         enum = self.get_enum(value)
         enum = enum or value
         return super()._deserialize(enum, attr, data, *args, **kwargs)
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | None:
+    def _serialize(self: Any, value: Enum|fields._EnumT|Any|None, *args: dict[str, ComicInfoPageTypeEnum|dict[str, dict[str, int]]|int|set[str]|str|Any]|str|None, **kwargs: Any|None) -> str | None:
         enum = self.get_enum(value)
         enum = enum or value
         return super()._serialize(enum, *args, **kwargs)
@@ -167,12 +173,12 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
 
     ENUM_ALIAS_MAP = MappingProxyType({})
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self: Any, *args: None, **kwargs: None) -> None:
         """Use the enum."""
         super().__init__(*args, **kwargs)
         self._enum_map = MappingProxyType(self.get_enum_alias_map())
 
-    def _prettify(self, value) -> str:
+    def _prettify(self: Any, value: str) -> str:
         """Conform a value to a known enum or titlecase."""
         enum = self.get_enum(value)
         if enum:
@@ -183,7 +189,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         return value
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> str:
+    def _deserialize(self: Any, value: Enum|str, *args: dict[str, None]|dict[str, dict[int, dict[str, None]]]|dict[str, dict[str, str]]|dict[str, str]|str|None, **kwargs: bool) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self._prettify(value)
 

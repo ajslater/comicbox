@@ -1,6 +1,6 @@
 """Writing Methods."""
-
 from collections.abc import Mapping
+from typing import Any
 
 from loguru import logger
 
@@ -17,7 +17,7 @@ ARCHIVE_FORMATS = frozenset(
 class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
-    def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
+    def _get_dump_formats(self: Any) -> frozenset[MetadataFormats] | None:
         formats = frozenset()
         if self._config.write:
             formats = self._config.write
@@ -43,7 +43,7 @@ class ComicboxDump(ComicboxPages):
         return formats
 
     def _ensure_pdf_to_cbz_default_format(
-        self, formats: frozenset[MetadataFormats]
+        self: Any, formats: frozenset[MetadataFormats]
     ) -> frozenset[MetadataFormats]:
         """If no formats given to PDF -> CBZ convert default to ComicInfo."""
         if self._config.cbz:
@@ -53,7 +53,7 @@ class ComicboxDump(ComicboxPages):
         return formats
 
     def _dump_format_to_archive(
-        self,
+        self: Any,
         fmt: MetadataFormats,
         files: dict[str, Mapping],
         pdf_md: dict,
@@ -80,7 +80,7 @@ class ComicboxDump(ComicboxPages):
             cmnt = cmnt.encode(errors="replace")
             comment["c"] = cmnt
 
-    def _dump_to_archive(self, formats: frozenset[MetadataFormats]):
+    def _dump_to_archive(self: Any, formats: frozenset[MetadataFormats]) -> None:
         """Prepare archive files and comment and write to archive."""
         # Get files and comment.
         files = {}
@@ -94,7 +94,7 @@ class ComicboxDump(ComicboxPages):
         # write to the archive.
         return self.write_archive_metadata(files, comment["c"], pdf_md)
 
-    def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
+    def dump(self: Any, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
         if self._config.dry_run or not (
             self._config.write or self._config.cbz or self._config.delete_all_tags

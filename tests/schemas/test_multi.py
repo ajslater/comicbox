@@ -277,21 +277,21 @@ MULTI_TESTER = TestParser(
 )
 
 
-def test_multi_from_metadata():
+def test_multi_from_metadata() -> None:
     """Test assign metadata."""
     MULTI_TESTER.test_from_metadata()
 
 
-def test_multi_to_dict():
+def test_multi_to_dict() -> None:
     """Test metadata export to dict."""
     MULTI_TESTER.test_to_dict()
 
 
-def test_multi_read():
+def test_multi_read() -> None:
     """Test read from file."""
     MULTI_TESTER.test_md_read(ignore_pages=True, page_count=36)
 
 
-def test_multi_write():
+def test_multi_write() -> None:
     """Test write to file."""
     MULTI_TESTER.test_md_write(ignore_pages=True)

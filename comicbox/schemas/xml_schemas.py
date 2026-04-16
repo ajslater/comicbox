@@ -26,7 +26,7 @@ class XmlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: dict, *args, **kwargs) -> str:
+    def dumps(cls: "type[XmlRenderModule]", obj: dict, *args: None, **kwargs: None) -> str:
         """Dump dict to XML string."""
         return xmltodict.unparse(  # ty: ignore[no-matching-overload]
             obj,
@@ -37,7 +37,7 @@ class XmlRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
+    def loads(cls: "type[XmlRenderModule]", s: str | bytes | bytearray, *args: None, **kwargs: None) -> Any:
         """Load XML string into a dict."""
         if cleaned_s := cls.clean_string(s):
             return xmltodict.parse(cleaned_s, *args, **kwargs)

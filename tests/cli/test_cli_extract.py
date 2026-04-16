@@ -1,4 +1,8 @@
 """Test CLI extract actions."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pathlib
 
 from comicbox import cli
 from tests.const import (
@@ -13,7 +17,7 @@ TMP_DIR = get_tmp_dir(__file__)
 TMP_COVER_PATH = TMP_DIR / COVER_FN
 
 
-def _test_cli_action_extract_util(path, args, test_files):
+def _test_cli_action_extract_util(path: "pathlib.PosixPath", args: list[str]|tuple[str, str], test_files: "list[pathlib.PosixPath]|tuple[str, str, str]|tuple[str]") -> None:
     """Test cli metadata write to file."""
     my_setup(TMP_DIR)
 
@@ -35,38 +39,38 @@ def _test_cli_action_extract_util(path, args, test_files):
     my_cleanup(TMP_DIR)
 
 
-def _test_cli_action_extract_cover(path):
+def _test_cli_action_extract_cover(path: "pathlib.PosixPath") -> None:
     """Test cli metadata write to file."""
     _test_cli_action_extract_util(path, ["-o"], [TMP_COVER_PATH])
 
 
-def test_cli_action_extract_cover_cbr():
+def test_cli_action_extract_cover_cbr() -> None:
     """Test cli cover extract."""
     _test_cli_action_extract_cover(CBI_CBR_SOURCE_PATH)
 
 
-def test_cli_action_extract_cover_cbt():
+def test_cli_action_extract_cover_cbt() -> None:
     """Test cli cover extract."""
     _test_cli_action_extract_cover(CIX_CBT_SOURCE_PATH)
 
 
-def test_cli_action_extract_cover_cbz():
+def test_cli_action_extract_cover_cbz() -> None:
     """Test cli cover extract."""
     _test_cli_action_extract_cover(CIX_CBZ_SOURCE_PATH)
 
 
-def _test_cli_action_extract(path, extract, test_files):
+def _test_cli_action_extract(path: "pathlib.PosixPath", extract: str, test_files: list[str]|tuple[str, str, str]|tuple[str]) -> None:
     args = ("-e", extract)
     _test_cli_action_extract_util(path, args, test_files)
 
 
-def test_cli_action_extract_from():
+def test_cli_action_extract_from() -> None:
     """Test extract files."""
     test_files = ("CaptainScience#1_03.jpg",)
     _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "2", test_files)
 
 
-def test_cli_action_extract_from_forward():
+def test_cli_action_extract_from_forward() -> None:
     """Test extract files."""
     test_files = (
         "CaptainScience#1_34.jpg",
@@ -76,7 +80,7 @@ def test_cli_action_extract_from_forward():
     _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "33:", test_files)
 
 
-def test_cli_action_extract_to_backward():
+def test_cli_action_extract_to_backward() -> None:
     """Test extract files."""
     test_files = (
         "CaptainScience#1_01.jpg",
@@ -86,7 +90,7 @@ def test_cli_action_extract_to_backward():
     _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, ":2", test_files)
 
 
-def test_cli_action_extract_from_to():
+def test_cli_action_extract_from_to() -> None:
     """Test extract files."""
     test_files = [
         "CaptainScience#1_17.jpg",

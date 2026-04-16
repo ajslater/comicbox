@@ -1,4 +1,8 @@
 """Date & Time fields."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import ruamel.yaml
 
 from datetime import date, datetime, timezone
 
@@ -14,13 +18,13 @@ from comicbox.fields.fields import StringField, TrapExceptionsMeta
 class DateField(fields.Date, metaclass=TrapExceptionsMeta):
     """A date only field."""
 
-    def __init__(self, *args, serialize_to_str=True, **kwargs) -> None:
+    def __init__(self: Any, *args: None, serialize_to_str: bool=True, **kwargs: None) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_str = serialize_to_str
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self: Any, value: date|str, *args: "dict[str, date]|dict[str, int]|dict[str, str]|ruamel.yaml.CommentedMap|str", **kwargs: bool) -> date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse dates from strings and date-like structures."""
         dt = None
         if isinstance(value, datetime):
@@ -38,7 +42,7 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
         return dt
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | float | date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self: Any, value: date|fields._D|None, *args: dict[str, date] | dict[str, int] | str | None, **kwargs: None) -> str | float | date | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if value is None:
             return None
         if self._serialize_to_str:
@@ -52,19 +56,19 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
 class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
     """A Datetime field."""
 
-    def __init__(self, *args, serialize_to_iso=True, **kwargs) -> None:
+    def __init__(self: Any, *args: None, serialize_to_iso: bool=True, **kwargs: None) -> None:
         """Configure serialization."""
         super().__init__(*args, **kwargs)
         self._serialize_to_iso = serialize_to_iso
 
     @staticmethod
-    def _ensure_aware(dttm: datetime):
+    def _ensure_aware(dttm: datetime) -> datetime:
         if not dttm.tzinfo:
             dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self: Any, value: datetime|str, *args: "dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|ruamel.yaml.CommentedMap|str|None", **kwargs: bool|None) -> datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Liberally parse datetimes from strings and datetime-like structures."""
         dttm = None
         match value:
@@ -94,7 +98,7 @@ class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
         return dttm
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> str | float | datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self: Any, value: datetime|fields._D|None, *args: dict[str, dict[str, dict[str, int]]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, str]]|dict[str, str]|str|None, **kwargs: None) -> str | float | datetime | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if value is None:
             return None
         if isinstance(value, datetime):

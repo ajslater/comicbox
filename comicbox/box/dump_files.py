@@ -1,4 +1,8 @@
 """Special file writes."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import pathlib
 
 from pathlib import Path
 
@@ -12,10 +16,10 @@ class ComicboxDumpToFiles(ComicboxDump):
     """Special file writes."""
 
     def to_file(
-        self,
-        dest_path=None,
+        self: Any,
+        dest_path: "pathlib.PosixPath|None"=None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
-        **kwargs,
+        **kwargs: None,
     ) -> None:
         """Export metadatat to a file with a schema."""
         if dest_path is None:
@@ -33,7 +37,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         except Exception:
             logger.exception(f"Could not export {fn}")
 
-    def export_files(self, formats=None) -> None:
+    def export_files(self: Any, formats: None=None) -> None:
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             logger.info("Not exporting files.")
@@ -44,7 +48,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         for fmt in formats:
             self.to_file(fmt=fmt)
 
-    def rename_file(self) -> None:
+    def rename_file(self: Any) -> None:
         """Rename the archive."""
         if not self._path:
             reason = "Cannot rename archive without a path."

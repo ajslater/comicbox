@@ -1,4 +1,5 @@
 """Comic Book Info Credits Transform Mixin."""
+from typing import Any
 
 from loguru import logger
 
@@ -16,13 +17,13 @@ from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_cre
 from comicbox.transforms.spec import MetaSpec
 
 
-def _get_cbi_credit_parts(cbi_credit) -> tuple:
+def _get_cbi_credit_parts(cbi_credit: dict[str, str]) -> tuple:
     cbi_person = cbi_credit.get(PERSON_TAG, "")
     cbi_role = cbi_credit.get(ROLE_TAG, "")
     return cbi_person, cbi_role
 
 
-def _cbi_credits_to_cb(cbi_credits) -> dict:
+def _cbi_credits_to_cb(cbi_credits: list[dict[str, str]]) -> dict:
     comicbox_credits = {}
     for cbi_credit in cbi_credits:
         try:
@@ -33,7 +34,7 @@ def _cbi_credits_to_cb(cbi_credits) -> dict:
     return comicbox_credits
 
 
-def cbi_credits_transform_to_cb(credits_tag) -> MetaSpec:
+def cbi_credits_transform_to_cb(credits_tag: str) -> MetaSpec:
     """Transform for CBI credits."""
     return MetaSpec(
         key_map={CREDITS_KEY: credits_tag},
@@ -41,7 +42,7 @@ def cbi_credits_transform_to_cb(credits_tag) -> MetaSpec:
     )
 
 
-def _cbi_credits_primary_to_cb(cbi_credits) -> dict:
+def _cbi_credits_primary_to_cb(cbi_credits: list[dict[str, str]]) -> dict:
     credit_primaries = {}
     for cbi_credit in cbi_credits:
         if cbi_credit.get(PRIMARY_TAG):
@@ -50,7 +51,7 @@ def _cbi_credits_primary_to_cb(cbi_credits) -> dict:
     return credit_primaries
 
 
-def cbi_credits_primary_to_cb(credits_tag) -> MetaSpec:
+def cbi_credits_primary_to_cb(credits_tag: str) -> MetaSpec:
     """Transform the credit primaries key from cbi credits."""
     return MetaSpec(
         key_map={CREDIT_PRIMARIES_KEY: credits_tag}, spec=_cbi_credits_primary_to_cb
@@ -58,7 +59,7 @@ def cbi_credits_primary_to_cb(credits_tag) -> MetaSpec:
 
 
 def _cbi_credit_from_cb(
-    person_name, comicbox_credit, cbi_credits, credit_primaries
+    person_name: str, comicbox_credit: dict[str, dict[str, dict[Any, Any]]], cbi_credits: list[Any], credit_primaries: dict[str, str]|None
 ) -> None:
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
@@ -71,7 +72,7 @@ def _cbi_credit_from_cb(
         cbi_credits.append(cbi_credit)
 
 
-def _cbi_credits_from_cb(values) -> list:
+def _cbi_credits_from_cb(values: dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]]]) -> list:
     comicbox_credits = values.get(CREDITS_KEY)
     credit_primaries = values.get(CREDIT_PRIMARIES_KEY)
     cbi_credits = []
@@ -86,7 +87,7 @@ def _cbi_credits_from_cb(values) -> list:
     return cbi_credits
 
 
-def cbi_credits_transform_from_cb(credits_tag) -> MetaSpec:
+def cbi_credits_transform_from_cb(credits_tag: str) -> MetaSpec:
     """Transform for CBI credits."""
     return MetaSpec(
         key_map={credits_tag: (CREDITS_KEY, CREDIT_PRIMARIES_KEY)},

@@ -1,4 +1,8 @@
 """Comicbox methods on the archive itself."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import comicbox.box.archive.read
 
 import re
 
@@ -14,15 +18,15 @@ class ComicboxArchiveInit(ComicboxInit):
 
     IMAGE_EXT_RE = re.compile(r"\.(jxl|jpe?g|webp|png|gif)$", re.IGNORECASE)
 
-    def __enter__(self) -> Self:
+    def __enter__(self: "comicbox.box.archive.read.ComicboxArchiveInit") -> Self:
         """Context enter."""
         return self
 
-    def __exit__(self, *_exc) -> bool | None:
+    def __exit__(self: "comicbox.box.archive.read.ComicboxArchiveInit", *_exc: object) -> bool | None:
         """Context close."""
         self.close()
 
-    def close(self) -> None:
+    def close(self: "comicbox.box.archive.read.ComicboxArchiveInit") -> None:
         """Close the open archive."""
         try:
             if self._archive and hasattr(self._archive, "close"):
@@ -32,7 +36,7 @@ class ComicboxArchiveInit(ComicboxInit):
         finally:
             self._archive = None
 
-    def _get_archive(self) -> ArchiveType:
+    def _get_archive(self: "comicbox.box.archive.read.ComicboxArchiveInit") -> ArchiveType:
         """Set archive instance open for reading."""
         if not self._archive and self._archive_cls:
             self._archive = self._archive_cls(self._path)

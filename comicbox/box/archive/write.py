@@ -1,4 +1,13 @@
 """Comicboxs methods for writing to the archive."""
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    import pathlib
+
+    import rarfile
+
+    import comicbox.box.archive.mtime
+    import comicbox.box.types
 
 from collections.abc import Mapping
 from pathlib import Path
@@ -24,7 +33,7 @@ _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
 class ComicboxArchiveWrite(ComicboxArchiveRead):
     """Comicboxs methods for writing to the archive."""
 
-    def _get_new_archive_path(self) -> Path:
+    def _get_new_archive_path(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite") -> Path:
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
             raise ValueError(reason)
@@ -34,7 +43,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ValueError(reason)
         return new_path
 
-    def _cleanup_tmp_archive(self, tmp_path, new_path) -> None:
+    def _cleanup_tmp_archive(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", tmp_path: "pathlib.PosixPath", new_path: "pathlib.PosixPath") -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
             raise ValueError(reason)
@@ -47,7 +56,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 old_path.unlink()
                 logger.info(f"Removed: {old_path}")
 
-    def _archive_remove_metadata_files(self, zf) -> None:
+    def _archive_remove_metadata_files(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", zf: "comicbox.box.types.ZipFile") -> None:
         """Remove metadata files from archive."""
         for path in self.namelist():
             fn = Path(path).name.lower()
@@ -55,7 +64,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 zf.remove(path)
         zf.repack()
 
-    def _archive_write_metadata_files(self, zf, files: Mapping[str, bytes]) -> None:
+    def _archive_write_metadata_files(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", zf: "comicbox.box.types.ZipFile", files: Mapping[str, bytes]) -> None:
         # Write metadata files.
         for path, data in files.items():
             compress = (
@@ -69,7 +78,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             )
 
     @staticmethod
-    def _get_filename_from_info(info) -> str | None:
+    def _get_filename_from_info(info: "rarfile.Rar5FileInfo") -> str | None:
         """Get the filename to write."""
         # Do not write dirs.
         # Prevents empty dirs. Files write implicit parents.
@@ -94,7 +103,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             filename += suffix
         return filename
 
-    def _copy_archive_files_to_new_archive(self, zf) -> None:
+    def _copy_archive_files_to_new_archive(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", zf: "comicbox.box.types.ZipFile") -> None:
         # copy all files that are *not* metadata files into new archive.
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
@@ -121,8 +130,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compress_type=compress,
                 compresslevel=9,
             )
+    rt_T1 = TypeVar("rt_T1", str, Any)
 
-    def _patch_zipfile(self, files, comment) -> None:
+    def _patch_zipfile(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", files: dict[rt_T1, rt_T1], comment: bytes) -> None:
         """In place remove and append to existing zipfile."""
         if not self._path:
             reason = "No zipfile path to write to."
@@ -133,7 +143,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             self._archive_write_metadata_files(zf, files)
             zf.comment = comment
 
-    def _create_zipfile(self, files: Mapping, comment: bytes) -> None:
+    def _create_zipfile(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", files: Mapping, comment: bytes) -> None:
         """Create new zipfile."""
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
@@ -151,7 +161,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self.close()
         self._cleanup_tmp_archive(tmp_path, new_path)
 
-    def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
+    def _update_pdffile(self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:
             reason = "No pdfile path to write to."
             raise ValueError(reason)
@@ -167,7 +177,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 self._archive_write_metadata_files(pf, files)
 
     def write_archive_metadata(
-        self, files: Mapping, comment: bytes, mupdf_metadata: Mapping
+        self: "comicbox.box.archive.mtime.ComicboxArchiveWrite", files: Mapping, comment: bytes, mupdf_metadata: Mapping
     ) -> None:
         """Write the metadata files and comment to an archive."""
         if self._archive_cls == ZipFile:

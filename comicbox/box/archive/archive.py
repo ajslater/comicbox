@@ -1,4 +1,8 @@
 """Get ZipInfo like attributes from all archive info types."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import comicbox.box.archive.read
 
 from tarfile import TarFile
 
@@ -59,7 +63,7 @@ class Archive:
 
     @classmethod
     def read(
-        cls,
+        cls: "type[comicbox.box.archive.read.Archive]",
         archive: ArchiveType,
         filename: str,
         factory: None | BytesIOFactory,

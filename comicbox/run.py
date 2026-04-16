@@ -1,4 +1,9 @@
 """Run comicbox on files."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import argparse
+    import pathlib
 
 from pathlib import Path
 
@@ -15,12 +20,12 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(self, config) -> None:
+    def __init__(self: Any, config: "argparse.Namespace") -> None:
         """Initialize actions and config."""
         self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
         init_logging(self._config.loglevel)
 
-    def run_on_file(self, path) -> None:
+    def run_on_file(self: Any, path: "pathlib.PosixPath|str") -> None:
         """Run operations on one file."""
         if path:
             path = Path(path)
@@ -35,7 +40,7 @@ class Runner:
             car.print_file_header()
             car.run()
 
-    def recurse(self, path) -> None:
+    def recurse(self: Any, path: "pathlib.PosixPath") -> None:
         """Perform operations recursively on files."""
         if not path.is_dir():
             logger.error(f"{path} is not a directory")
@@ -54,7 +59,7 @@ class Runner:
             except Exception:
                 logger.exception(full_path)
 
-    def run(self) -> None:
+    def run(self: Any) -> None:
         """Run actions with config."""
         paths = self._config.paths
         for path in paths:

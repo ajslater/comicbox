@@ -1,11 +1,11 @@
 """Test the API surface that Codex uses."""
-
 from argparse import Namespace
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
+from typing import Any
 
 import pytest
 
@@ -126,7 +126,7 @@ TEMPLATE_MD = MappingProxyType(
 )
 
 
-def _patch_md(patch):
+def _patch_md(patch: dict[str, dict[str, dict[str, dict[Any, Any]]]]) -> MappingProxyType[str, dict[str, dict[str, str]]]:
     res = {}
     AdditiveMerger.merge(res, TEMPLATE_MD, patch)
     return MappingProxyType(res)
@@ -263,14 +263,14 @@ FIXTURES = MappingProxyType(
 INDEXES = (2, 0, 1, 3)
 
 
-def test_check_unrar():
+def test_check_unrar() -> None:
     """Test the check unrar exec method."""
     Comicbox.check_unrar_executable()
     assert True
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
-def test_codex_import(ft):
+def test_codex_import(ft: str) -> None:
     """Test codex import methods."""
     fixture = FIXTURES[ft]
     with Comicbox(fixture.path, config=CONFIG) as car:
@@ -284,7 +284,7 @@ def test_codex_import(ft):
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
-def test_cover_page(ft):
+def test_cover_page(ft: str) -> None:
     """Test codex cover extraction methods."""
     fixture = FIXTURES[ft]
     cover_path = Path(TEST_FILES_DIR / fixture.cover_path)
@@ -308,7 +308,7 @@ _COVER_PATH_LIST_IMPORTS = (
 )
 
 
-def test_cover_paths():
+def test_cover_paths() -> None:
     """Test codex cover path lists."""
     config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
@@ -317,7 +317,7 @@ def test_cover_paths():
 
 
 @pytest.mark.parametrize("ft", FIXTURES)
-def test_random_access_page(ft):
+def test_random_access_page(ft: str) -> None:
     """Test codex get page image methods."""
     fixture = FIXTURES[ft]
     files = sorted(Path(TEST_FILES_DIR / fixture.files_path).iterdir())

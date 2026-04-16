@@ -3,6 +3,13 @@ A deep merge function for 🐍.
 
 Modified from https://github.com/clarketm/mergedeep
 """
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import datetime
+    import decimal
+
+    import comicbox.merge
 
 from collections import Counter
 from collections.abc import Callable, Mapping, MutableMapping
@@ -21,7 +28,7 @@ class Strategy(Enum):
     ADDITIVE = 1
 
 
-def _handle_merge_replace(dest_parent, source_parent, key) -> None:
+def _handle_merge_replace(dest_parent: dict[str, dict[str, dict[str, str]]|int|str], source_parent: "dict[str, datetime.date|dict[str, int]|int|str]", key: str) -> None:
     dest = dest_parent[key]
     source = source_parent[key]
 
@@ -44,12 +51,12 @@ def _merge_counter(dest, source) -> None:
     dest.update(deepcopy(source))
 
 
-def _merge_mapping(dest, source) -> None:
+def _merge_mapping(dest: dict[str|Any, dict[str, dict[Any, Any]]|dict[str, str]|str|Any], source: "dict[str, dict[str, decimal.Decimal]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|int|str]") -> None:
     # Recurse on mapping
     _deepmerge(dest, source, Strategy.ADDITIVE)
 
 
-def _merge_list(dest, source) -> None:
+def _merge_list(dest: list[dict[str, str]], source: list[dict[str, str]]) -> None:
     # Extend dest if both dest and source are `list` type.
     dest.extend(deepcopy(source))
 
@@ -75,7 +82,7 @@ _MERGE_MAP: MappingProxyType[tuple, Callable] = MappingProxyType(
 )
 
 
-def _handle_merge_additive(dest_parent, source_parent, key) -> None:
+def _handle_merge_additive(dest_parent: dict[str, dict[str|Any, dict[str, dict[str, int]]|dict[str, str]|str|Any]], source_parent: "dict[str, dict[str, datetime.datetime]]|dict[str, dict[str, dict[str, datetime.date]]]|dict[str, dict[str, dict[str, decimal.Decimal]]]|dict[str, dict[str, dict[str, str]]]|dict[str, dict[str, str]]|MappingProxyType[str, dict[str, dict[int, dict[str, int]]]]|MappingProxyType[str, dict[str, dict[str, dict[str, int]]]]|MappingProxyType[str, dict[str, dict[str, dict[str, str]]]]|MappingProxyType[str, dict[str, dict[str, dict[Any, Any]]]]|MappingProxyType[str, dict[str, dict[str, int]]]|MappingProxyType[str, dict[str, dict[str, str]]]|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, str]]", key: str) -> None:
     # Values are combined into one long collection.
     dest = dest_parent[key]
     source = source_parent[key]
@@ -101,7 +108,7 @@ _HANDLE_MERGE: MappingProxyType[Strategy, Callable] = MappingProxyType(
 )
 
 
-def _deepmerge(dest, source, strategy=Strategy.REPLACE):
+def _deepmerge(dest: "dict[str|Any, dict[str, datetime.datetime]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|dict[Any, Any]|str|Any]", source: "dict[str, dict[str, datetime.datetime]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, str]|dict[Any, Any]|MappingProxyType[str, dict[str, dict[str, int]]]|MappingProxyType[str, dict[str, dict[str, str]]]|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, list[dict[str, str]]]]|MappingProxyType[str, dict[str, str]]", strategy: "comicbox.merge.Strategy"=Strategy.REPLACE) -> "dict[str|Any, dict[str, datetime.datetime]|dict[str, dict[int, dict[str, int]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|str|Any]":
     for key in source:
         if key in dest:
             if dest[key] is not source[key]:

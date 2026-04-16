@@ -1,9 +1,15 @@
 """Transform maps."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import glom
+    import glom.grouping
+
+    import comicbox.transforms.xml_reprints
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
 
 from glom import A, Coalesce, Path, S, T, Val, assign
 
@@ -69,7 +75,7 @@ def _get_spec_source_values(
     return values
 
 
-def _get_tail_spec(metaspec_spec) -> filter:
+def _get_tail_spec(metaspec_spec: "tuple[Coalesce, glom.Pipe]|tuple[Coalesce, glom.grouping.Group]|Callable[[Any], dict]") -> filter:
     tail_spec = metaspec_spec if isinstance(metaspec_spec, tuple) else (metaspec_spec,)
     return filter(bool, tail_spec)
 
@@ -110,9 +116,9 @@ def _create_spec(
 
 
 def _create_specs(
-    *args,
-    dest_root_keypath="",
-    source_root_keypath="",
+    *args: "comicbox.transforms.xml_reprints.MetaSpec",
+    dest_root_keypath: str="",
+    source_root_keypath: str="",
 ) -> MappingProxyType[str, Any]:
     """Create spec from metaspec map."""
     specs = {}
@@ -140,10 +146,10 @@ def _create_specs(
 
 
 def create_specs_to_comicbox(
-    *metaspecs,
+    *metaspecs: "comicbox.transforms.xml_reprints.MetaSpec",
     format_root_keypath: str = "",
-    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEYPATH,
-):
+    comicbox_root_keypath: str=ComicboxSchemaMixin.ROOT_KEYPATH,
+) -> MappingProxyType[str, dict[str, Coalesce]|Coalesce]:
     """Create to comicbox specs."""
     return _create_specs(
         *metaspecs,
@@ -153,10 +159,10 @@ def create_specs_to_comicbox(
 
 
 def create_specs_from_comicbox(
-    *metaspecs,
+    *metaspecs: "comicbox.transforms.xml_reprints.MetaSpec",
     format_root_keypath: str = "",
-    comicbox_root_keypath=ComicboxSchemaMixin.ROOT_KEYPATH,
-):
+    comicbox_root_keypath: str=ComicboxSchemaMixin.ROOT_KEYPATH,
+) -> MappingProxyType[str, dict[str, dict[str, Coalesce]]|dict[str, Coalesce]|Coalesce]:
     """Create from comicbox specs."""
     return _create_specs(
         *metaspecs,

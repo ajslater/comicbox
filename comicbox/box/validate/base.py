@@ -1,4 +1,8 @@
 """Base validator."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import comicbox.box.validate.xml_validator
 
 from pathlib import Path
 
@@ -8,7 +12,7 @@ SCHEMA_PATH = Path(__file__).parent.parent.parent / "schema_definitions"
 class BaseValidator:
     """Base validator."""
 
-    def __init__(self, schema_path: Path | str):
+    def __init__(self: "comicbox.box.validate.xml_validator.BaseValidator", schema_path: Path | str) -> None:
         """Set the full schema path."""
         self.schema_path = SCHEMA_PATH / schema_path
 

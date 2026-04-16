@@ -21,7 +21,7 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
 )
 
 
-def _ensure_cli_yaml(config) -> None:
+def _ensure_cli_yaml(config: Subview) -> None:
     """Wrap all cli yaml in brackets if its bare."""
     mds = config["metadata_cli"].get()
     if not mds:

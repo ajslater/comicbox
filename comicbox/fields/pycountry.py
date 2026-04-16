@@ -1,4 +1,10 @@
 """Marshmallow pycountry fields."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import datetime
+
+    import ruamel.yaml
 
 from abc import ABC
 
@@ -19,7 +25,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     EMPTY_CODE = ""
 
     def __init__(
-        self, *args, serialize_name=False, allow_empty=False, **kwargs
+        self: "PyCountryField|Any", *args: None, serialize_name: bool=False, allow_empty: bool=False, **kwargs: None
     ) -> None:
         """Optionally serialize with full names."""
         self._serialize_name = serialize_name
@@ -27,7 +33,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def _clean_name(name_obj) -> str | None:
+    def _clean_name(name_obj: str) -> str | None:
         if not name_obj:
             return None
         name: str | None = StringField().deserialize(name_obj)
@@ -36,7 +42,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return name.strip()
 
     @classmethod
-    def _get_pycountry(cls, tag, name) -> Data | None:
+    def _get_pycountry(cls: "type[LanguageField|Any]", tag: str, name: str) -> Data | None:
         """Get pycountry object for a country or language tag."""
         try:
             name = cls._clean_name(name)
@@ -57,7 +63,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return obj
 
     @classmethod
-    def _to_alpha_code(cls, pc_obj):
+    def _to_alpha_code(cls: "type[LanguageField|Any]", pc_obj: Any) -> str:
         code = cls.EMPTY_CODE
         for attr in _ALPHA_CODES:
             if code := getattr(pc_obj, attr, cls.EMPTY_CODE):
@@ -65,7 +71,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs) -> str:
+    def _deserialize(self: "PyCountryField|Any", value: str, attr: str, *args: "dict[str, None]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, list[str]]|dict[str, set[str]]|dict[str, str]|ruamel.yaml.CommentedMap", **kwargs: bool) -> str:
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE
@@ -74,7 +80,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _serialize(self, value, attr, *args, **kwargs) -> str:
+    def _serialize(self: "PyCountryField|Any", value: str, attr: str, *args: "dict[str, datetime.date|dict[str, dict[Any, Any]]|dict[str, str]|int|list[str]|set[str]|str]", **kwargs: None) -> str:
         """Return the long name."""
         value = super()._serialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE

@@ -32,7 +32,7 @@ class JsonRenderModule(BaseRenderModule):
     @override
     @classmethod
     def dumps(
-        cls, obj: Mapping, *args, compact=False, sort_keys=False, **kwargs
+        cls: "type[JsonRenderModule]", obj: Mapping, *args: None, compact: bool=False, sort_keys: bool=False, **kwargs: None
     ) -> str:
         """Dump dict to JSON string with formatting."""
         extra_kwargs = cls.COMPACT_DUMPS_ARGS if compact else cls.NORMAL_DUMPS_ARGS
@@ -49,7 +49,7 @@ class JsonRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def loads(cls, s: str | bytes | bytearray, *args, **kwargs) -> Any:
+    def loads(cls: "type[JsonRenderModule]", s: str | bytes | bytearray, *args: None, **kwargs: None) -> Any:
         """Load JSON string to dict."""
         if cleaned_s := cls.clean_string(s):
             return json.loads(

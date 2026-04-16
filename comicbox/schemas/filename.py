@@ -35,7 +35,7 @@ class FilenameRenderModule(BaseRenderModule):
 
     @override
     @classmethod
-    def dumps(cls, obj: dict, *args, **kwargs) -> str:
+    def dumps(cls: "type[FilenameRenderModule]", obj: dict, *args: None, **kwargs: None) -> str:
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         return dict2comicfn(data, *args, **kwargs)
@@ -51,7 +51,7 @@ class FilenameRenderModule(BaseRenderModule):
     @override
     @classmethod
     def loads(
-        cls, s: str | bytes | bytearray, *args, **kwargs
+        cls: "type[FilenameRenderModule]", s: str | bytes | bytearray, *args: None, **kwargs: None
     ) -> dict[str, dict] | None:
         """Load filename to dict."""
         if cls._is_non_filename_format(s):

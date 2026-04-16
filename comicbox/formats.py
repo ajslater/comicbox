@@ -1,7 +1,7 @@
 """Metadata sources definitions."""
-
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
@@ -47,7 +47,7 @@ class MetadataFormat:
     lexer: str = "yaml"
     enabled: bool = True
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Any) -> None:
         """Hoist the schema class."""
         self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
 

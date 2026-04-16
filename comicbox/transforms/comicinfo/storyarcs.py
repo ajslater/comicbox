@@ -1,7 +1,7 @@
 """A class to encapsulate ComicRack's ComicInfo.xml data."""
-
 from collections.abc import Mapping
 from itertools import zip_longest
+from typing import Any
 
 from glom import Coalesce, Iter, T
 
@@ -9,7 +9,7 @@ from comicbox.schemas.comicbox import ARCS_KEY, NUMBER_KEY
 from comicbox.transforms.spec import MetaSpec
 
 
-def _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values: Mapping) -> dict:
+def _story_arcs_to_arcs(story_arc_tag: str, story_arc_number_tag: str, values: Mapping) -> dict:
     comicbox_arcs = {}
     ci_story_arcs = values.get(story_arc_tag)
     if not ci_story_arcs:
@@ -28,17 +28,17 @@ def _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values: Mapping) ->
     return comicbox_arcs
 
 
-def story_arcs_to_cb(story_arc_tag, story_arc_number_tag) -> MetaSpec:
+def story_arcs_to_cb(story_arc_tag: str, story_arc_number_tag: str) -> MetaSpec:
     """Aggregate and dissagregate ComicInfo StoryArcs & StoryArcNumbers to arcs."""
 
-    def to_cb(values):
+    def to_cb(values: dict[str, list[int]|list[str]|None]) -> dict[str|Any, dict[str, int]|Any]:
         return _story_arcs_to_arcs(story_arc_tag, story_arc_number_tag, values)
 
     source_tags = tuple(tag for tag in (story_arc_tag, story_arc_number_tag) if tag)
     return MetaSpec(key_map={ARCS_KEY: source_tags}, spec=to_cb)
 
 
-def story_arcs_from_cb(story_arc_tag, story_arc_number_tag) -> tuple:
+def story_arcs_from_cb(story_arc_tag: str, story_arc_number_tag: str) -> tuple:
     """Transform comicbox arcs to comicinfo story arc and story arc number."""
     metaspecs = []
     if story_arc_tag:

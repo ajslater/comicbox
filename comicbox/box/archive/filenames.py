@@ -1,4 +1,8 @@
 """Calculate page filenames."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import comicbox.box.archive.pages
 
 import re
 from contextlib import suppress
@@ -16,7 +20,7 @@ EPOCH_START = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 class ComicboxArchiveFilenames(ComicboxArchiveMtime):
     """Calculate page filenames."""
 
-    def _set_page_filenames(self) -> None:
+    def _set_page_filenames(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames") -> None:
         """Parse the filenames that are comic pages."""
         archive_filenames = self.namelist()
         if self._archive_is_pdf:
@@ -30,13 +34,13 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
             ]
             self._page_filenames: tuple[str, ...] | None = tuple(page_filenames)
 
-    def get_page_filenames(self) -> tuple[str, ...]:
+    def get_page_filenames(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames") -> tuple[str, ...]:
         """Get all page filenames."""
         if self._page_filenames is None:
             self._set_page_filenames()
         return self._page_filenames  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
-    def get_pagenames_from(self, index_from=None, index_to=None) -> tuple[str, ...]:
+    def get_pagenames_from(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames", index_from: int|None=None, index_to: int|None=None) -> tuple[str, ...]:
         """Return a list of page filenames from the given index onward."""
         page_filenames = ()
         with suppress(IndexError):
@@ -51,7 +55,7 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
                 return tuple(page_filenames[index_from:index_to])
         return page_filenames
 
-    def get_pagename(self, index) -> str | None:
+    def get_pagename(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames", index: int) -> str | None:
         """Get the filename of the page by index."""
         pagenames = self.get_pagenames_from(index, index)
         if pagenames:
@@ -62,11 +66,11 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
     # PAGE COUNT #
     ##############
 
-    def _get_page_count(self) -> int:
+    def _get_page_count(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames") -> int:
         page_filenames = self.get_page_filenames()
         return len(page_filenames)
 
-    def get_page_count(self):
+    def get_page_count(self: "comicbox.box.archive.pages.ComicboxArchiveFilenames") -> int:
         """Get the page count."""
         if self._page_count is None:
             self._page_count: int | None = self._get_page_count()

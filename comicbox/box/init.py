@@ -29,12 +29,12 @@ try:
     from pdffile import PDFFile
 except ImportError:
     from comicbox.pdffile_stub import PDFFile
-
 if TYPE_CHECKING:
     from datetime import datetime
 
     from py7zr.io import BytesIOFactory
 
+    import comicbox.box.archive.init
     from comicbox.box.archive.archiveinfo import InfoType
     from comicbox.box.types import ArchiveType
 
@@ -54,7 +54,7 @@ class ComicboxInit:
 
     _MODE_EXECUTABLE = stat.S_IXUSR ^ stat.S_IXGRP ^ stat.S_IXOTH
 
-    def _validate_path(self, path: Path | str | None) -> Path | None:
+    def _validate_path(self: "comicbox.box.archive.init.ComicboxInit", path: Path | str | None) -> Path | None:
         path = Path(path) if path else None
         if not path:
             return path
@@ -67,12 +67,12 @@ class ComicboxInit:
         return path
 
     def __init__(
-        self,
+        self: "comicbox.box.archive.init.ComicboxInit",
         path: Path | str | None = None,
         config: AttrDict | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
-        logger=None,
+        logger: None=None,
     ) -> None:
         """
         Initialize the archive with a path to the archive.
@@ -91,7 +91,7 @@ class ComicboxInit:
         init_logging(self._config.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
-    def _reset_loaded_forward_caches(self) -> None:
+    def _reset_loaded_forward_caches(self: "comicbox.box.archive.init.ComicboxInit") -> None:
         self._merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -99,7 +99,7 @@ class ComicboxInit:
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def _reset_archive(
-        self, fmt: MetadataFormats | None, metadata: Mapping | None
+        self: "comicbox.box.archive.init.ComicboxInit", fmt: MetadataFormats | None, metadata: Mapping | None
     ) -> None:
         self._archive_cls: Callable | None = None
         self._file_type: FileTypeEnum | None = None
@@ -129,7 +129,7 @@ class ComicboxInit:
         """Are PDFs supported."""
         return "pdffile" in sys.modules
 
-    def _set_archive_cls_pdf(self) -> bool:
+    def _set_archive_cls_pdf(self: "comicbox.box.archive.init.ComicboxInit") -> bool:
         """PDFFile is only optionally installed."""
         with suppress(NameError, OSError):
             if PDFFile.is_pdffile(str(self._path)):
@@ -138,34 +138,34 @@ class ComicboxInit:
                 self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
         return self._archive_is_pdf
 
-    def _try_detect_pdf(self, _path: Path) -> bool:
+    def _try_detect_pdf(self: "comicbox.box.archive.init.ComicboxInit", _path: Path) -> bool:
         if self._set_archive_cls_pdf():
             self._file_type = FileTypeEnum.PDF
             return True
         return False
 
-    def _try_detect_7z(self, path: Path) -> bool:
+    def _try_detect_7z(self: "comicbox.box.archive.init.ComicboxInit", path: Path) -> bool:
         if is_7zfile(path):
             self._archive_cls = SevenZipFile
             self._file_type = FileTypeEnum.CB7
             return True
         return False
 
-    def _try_detect_zip(self, path: Path) -> bool:
+    def _try_detect_zip(self: "comicbox.box.archive.init.ComicboxInit", path: Path) -> bool:
         if is_zipfile(path):
             self._archive_cls = ZipFile
             self._file_type = FileTypeEnum.CBZ
             return True
         return False
 
-    def _try_detect_rar(self, path: Path) -> bool:
+    def _try_detect_rar(self: "comicbox.box.archive.init.ComicboxInit", path: Path) -> bool:
         if is_rarfile(path):
             self._archive_cls = RarFile
             self._file_type = FileTypeEnum.CBR
             return True
         return False
 
-    def _try_detect_tar(self, path: Path) -> bool:
+    def _try_detect_tar(self: "comicbox.box.archive.init.ComicboxInit", path: Path) -> bool:
         if is_tarfile(path):
             self._archive_cls = tarfile_open
             self._file_type = FileTypeEnum.CBT
@@ -184,7 +184,7 @@ class ComicboxInit:
         ".pdf": ("pdf",),
     }
 
-    def _try_detect(self, key: str, path: Path) -> bool:
+    def _try_detect(self: "comicbox.box.archive.init.ComicboxInit", key: str, path: Path) -> bool:
         """Try a single archive type detection."""
         detectors = {
             "pdf": self._try_detect_pdf,
@@ -195,7 +195,7 @@ class ComicboxInit:
         }
         return detectors[key](path)
 
-    def _set_archive_cls(self) -> None:
+    def _set_archive_cls(self: "comicbox.box.archive.init.ComicboxInit") -> None:
         """Set the path and determine the archive type."""
         if not self._path:
             return
@@ -228,6 +228,6 @@ class ComicboxInit:
         """Get the path for the archive."""
         return self._path
 
-    def get_file_type(self) -> str:
+    def get_file_type(self: "comicbox.box.archive.init.ComicboxInit") -> str:
         """Return archive type string."""
         return self._file_type.value if self._file_type else ""

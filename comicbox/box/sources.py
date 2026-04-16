@@ -1,4 +1,8 @@
 """Getting and storing source metadata."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import comicbox.sources
 
 from collections.abc import Mapping
 from pathlib import Path
@@ -23,7 +27,7 @@ FILENAME_FORMAT_MAP = MappingProxyType(
 class ComicboxSources(ComicboxArchive):
     """Getting and storing source metadata."""
 
-    def _get_source_config_metadata(self) -> list:
+    def _get_source_config_metadata(self: "ComicboxSources") -> list:
         source_data_list = []
         if not self._config.metadata:
             return source_data_list
@@ -39,7 +43,7 @@ class ComicboxSources(ComicboxArchive):
             logger.warning(f"Error reading metadata from config: {exc}")
         return source_data_list
 
-    def _get_source_cli_metadata(self) -> list:
+    def _get_source_cli_metadata(self: "ComicboxSources") -> list:
         """Get metadatas from cli."""
         source_data_list = []
         if not self._config.metadata_cli:
@@ -54,7 +58,7 @@ class ComicboxSources(ComicboxArchive):
                 )
         return source_data_list
 
-    def _get_source_import_metadata(self) -> list:
+    def _get_source_import_metadata(self: "ComicboxSources") -> list:
         """Read multiple import paths into strings."""
         source_data_list = []
         paths = self._config.import_paths
@@ -76,7 +80,7 @@ class ComicboxSources(ComicboxArchive):
                 logger.exception("")
         return source_data_list
 
-    def _get_source_filename_metadata(self) -> list:
+    def _get_source_filename_metadata(self: "ComicboxSources") -> list:
         source_data_list = []
         if not self._path:
             return source_data_list
@@ -91,7 +95,7 @@ class ComicboxSources(ComicboxArchive):
             )
         return source_data_list
 
-    def _get_source_comment_metadata(self) -> list:
+    def _get_source_comment_metadata(self: "ComicboxSources") -> list:
         source_data_list = []
         if not self._path:
             return source_data_list
@@ -108,7 +112,7 @@ class ComicboxSources(ComicboxArchive):
             logger.warning(f"Error reading archive comment from {self._path}: {exc}")
         return source_data_list
 
-    def _get_source_pdf_metadata(self) -> list:
+    def _get_source_pdf_metadata(self: "ComicboxSources") -> list:
         source_data_list = []
         if not self._path:
             return source_data_list
@@ -130,7 +134,7 @@ class ComicboxSources(ComicboxArchive):
             logger.warning(f"Error reading from PDF header {self._path}: {exc}")
         return source_data_list
 
-    def _store_top_source_archive_files(self, fn, files_dict) -> None:
+    def _store_top_source_archive_files(self: "ComicboxSources", fn: str, files_dict: dict[Any, Any]) -> None:
         path = Path(fn)
         lower_name = path.name.lower()
         if (fmt := FILENAME_FORMAT_MAP.get(lower_name)) and fmt in self._config.read:
@@ -139,12 +143,12 @@ class ComicboxSources(ComicboxArchive):
             if not old_entry or old_entry[1] > path_level:
                 files_dict[fmt] = (fn, path_level)
 
-    def _add_top_source_archive_file(self, fmt, fn, source_data_list) -> None:
+    def _add_top_source_archive_file(self: "ComicboxSources", fmt: "comicbox.sources.MetadataFormats", fn: str, source_data_list: list[Any]) -> None:
         source_string = self._archive_readfile(fn)
         sd = SourceData(source_string, Path(fn), fmt, from_archive=True)
         source_data_list.append(sd)
 
-    def _get_source_archive_files_metadata(self) -> list:
+    def _get_source_archive_files_metadata(self: "ComicboxSources") -> list:
         """Get source metadata from files in the archive."""
         # search filenames for metadata files and read.
         source_data_list = []
@@ -180,7 +184,7 @@ class ComicboxSources(ComicboxArchive):
         {MetadataSources.API, MetadataSources.LEGACY_NESTED}
     )
 
-    def _set_source_metadata(self, source) -> None:
+    def _set_source_metadata(self: "ComicboxSources", source: MetadataSources) -> None:
         """Set source metadata by source."""
         if self._config.delete_all_tags:
             return
@@ -198,7 +202,7 @@ class ComicboxSources(ComicboxArchive):
             source_data_list = tuple(source_data_list)
             self._sources[source] = source_data_list
 
-    def get_source_metadata(self, source):
+    def get_source_metadata(self: "ComicboxSources", source: MetadataSources) -> None:
         """Get source metadata by key."""
         try:
             if source not in self._sources:
@@ -210,7 +214,7 @@ class ComicboxSources(ComicboxArchive):
             )
 
     def add_source(
-        self,
+        self: "ComicboxSources",
         source: MetadataSources,
         metadata: str | bytes | Mapping,
         fmt: MetadataFormats | None = None,
@@ -227,12 +231,12 @@ class ComicboxSources(ComicboxArchive):
         self._loaded.pop(source, None)
         self._reset_loaded_forward_caches()
 
-    def add_metadata(self, metadata, fmt: MetadataFormats | None = None) -> None:
+    def add_metadata(self: "ComicboxSources", metadata: str|MappingProxyType[str, dict[str, int]]|MappingProxyType[str, dict[str, str]]|MappingProxyType[str, str], fmt: MetadataFormats | None = None) -> None:
         """Add metadata directly to sources cache."""
         self.add_source(MetadataSources.API, metadata, fmt)
 
     def add_metadata_file(
-        self, path: Path | str, fmt: MetadataFormats | None = None
+        self: "ComicboxSources", path: Path | str, fmt: MetadataFormats | None = None
     ) -> None:
         """Add file contents to added sources."""
         path = Path(path)

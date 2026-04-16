@@ -1,4 +1,10 @@
 """Comicbox Fields."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import datetime
+
+    import ruamel.yaml
 
 from inspect import isclass
 
@@ -31,13 +37,13 @@ class SimpleNamedDictField(Union):
     """A dict that also accepts a simple string set and builds a dict from that."""
 
     def __init__(
-        self,
-        *args,
+        self: Any,
+        *args: None,
         keys: Field | type[Field] = StringField,
         values: Field | type[Field] | None = None,
         allow_empty_values: bool = True,
         sort: bool = True,
-        **kwargs,
+        **kwargs: None,
     ) -> None:
         """Create the union."""
         if values is None:
@@ -54,7 +60,7 @@ class SimpleNamedDictField(Union):
         super().__init__(fields, *args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> dict:
+    def _deserialize(self: Any, value: "dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[Any, Any]|ruamel.yaml.CommentedMap", *args: "dict[str, None]|dict[str, datetime.datetime]|dict[str, dict[str, None]]|dict[str, dict[str, dict[str, dict[str, dict[Any, Any]]]]]|dict[str, dict[str, dict[str, int]]]|dict[str, dict[str, dict[str, str]]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|ruamel.yaml.CommentedMap|str", **kwargs: bool) -> dict:
         result: dict = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, set | frozenset):
             dict_value = {}
@@ -68,13 +74,13 @@ class SimpleNamedNestedField(Union):
     """Return a union of a nested schema and an alternate field."""
 
     def __init__(
-        self,
-        *args,
+        self: Any,
+        *args: None,
         schema: type[BaseSubSchema] = IdentifiedNameSchema,
         field: Field | type[Field] = StringField,
         name_key: str = NAME_KEY,
         primitive_type: type = str,
-        **kwargs,
+        **kwargs: None,
     ) -> None:
         """Create the union."""
         self._name_key = name_key
@@ -85,7 +91,7 @@ class SimpleNamedNestedField(Union):
         super().__init__(fields, *args, **kwargs)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> dict:
+    def _deserialize(self: Any, value: "dict[str, None]|dict[str, str]|ruamel.yaml.CommentedMap", *args: "dict[str, None]|dict[str, dict[str, None]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|ruamel.yaml.CommentedMap|str", **kwargs: bool) -> dict:
         result = super()._deserialize(value, *args, **kwargs)
         if isinstance(result, self._primitive_type):
             complex_value = {self._name_key: result}
@@ -102,7 +108,7 @@ class RoleField(PrettifiedStringField):
 class PagesField(DictField):  # CIX ONLY, CT
     """ComicInfo Pages."""
 
-    def __init__(self, *args, keys_as_string=False, **kwargs) -> None:
+    def __init__(self: Any, *args: None, keys_as_string: bool=False, **kwargs: None) -> None:
         """ComicInfo Pages with keys_as_string option."""
         super().__init__(
             *args,

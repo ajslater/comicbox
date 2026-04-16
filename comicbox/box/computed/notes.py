@@ -1,4 +1,9 @@
 """Computed metadata methods."""
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    import datetime
+    import decimal
 
 import re
 from collections.abc import Callable
@@ -64,7 +69,7 @@ _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 class ComicboxComputedNotes(ComicboxMerge):
     """Computed metadata methods for notes field."""
 
-    def _set_computed_notes_key(self, sub_data, key, match, md) -> None:
+    def _set_computed_notes_key(self: Any, sub_data: dict[str, dict[int, dict[str, int]]|dict[str, date]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, dict[str, str]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|int|str], key: str, match: re.Match[str], md: "dict[str|Any, datetime.datetime|str|Any]") -> None:
         schema = ComicboxYamlSubSchema(path=self._path)
         if not sub_data.get(key) and (new_value := match.group(key)):
             field = schema.fields.get(key)
@@ -73,7 +78,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             new_value = field.deserialize(new_value)
             md[key] = new_value
 
-    def _get_computed_notes_keys_comictagger(self, notes, sub_data, md) -> dict:
+    def _get_computed_notes_keys_comictagger(self: Any, notes: str, sub_data: "dict[str, dict[int, dict[str, int]]|dict[str, date]|dict[str, decimal.Decimal]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, int]]|dict[str, str]|str]", md: "dict[str|Any, datetime.datetime|str|Any]") -> dict:
         identifiers = {}
         match = _NOTES_RE.search(notes)
         if not match:
@@ -90,7 +95,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         return identifiers
 
     @staticmethod
-    def _get_computed_notes_urn_identifiers(notes) -> dict:
+    def _get_computed_notes_urn_identifiers(notes: str) -> dict:
         identifiers = {}
         match = _URN_RE.search(notes)
         if not match:
@@ -103,7 +108,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         return identifiers
 
     @staticmethod
-    def _get_computed_notes_extra_identifiers(notes) -> dict:
+    def _get_computed_notes_extra_identifiers(notes: str) -> dict:
         identifiers = {}
         matches = _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes)
         if not matches:
@@ -118,7 +123,7 @@ class ComicboxComputedNotes(ComicboxMerge):
                 identifiers[id_source.value] = identifier
         return identifiers
 
-    def _set_computed_notes_identifiers(self, sub_data, notes, sub_md) -> None:
+    def _set_computed_notes_identifiers(self: Any, sub_data: "dict[str, dict[str, decimal.Decimal]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|int|str]", notes: str, sub_md: "dict[str|Any, datetime.datetime|str|Any]") -> None:
         extra_identifiers = self._get_computed_notes_extra_identifiers(notes)
         comictagger_identifiers = self._get_computed_notes_keys_comictagger(
             notes, sub_data, sub_md
@@ -141,7 +146,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             sub_md[IDENTIFIERS_KEY] = pruned_notes_identifiers
 
     @staticmethod
-    def _get_computed_notes_date(notes) -> None | date:
+    def _get_computed_notes_date(notes: str) -> None | date:
         """Parse the date from the notes."""
         match = _NOTES_RELDATE_RE.search(notes)
         if not match:
@@ -153,7 +158,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             logger.debug(f"Unparsable RELDATE {date_str}")
         return None
 
-    def _set_computed_notes_date(self, sub_data, notes, sub_md) -> None:
+    def _set_computed_notes_date(self: Any, sub_data: dict[str, dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|int|list[dict[str, dict[str, str]]]|str], notes: str, sub_md: "dict[str|Any, datetime.datetime|str|Any]") -> None:
         if (old_date := sub_data.get(DATE_KEY, {})) and _DATE_KEYS & frozenset(
             old_date.keys()
         ):
@@ -169,7 +174,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             new_date.update(old_date)
             sub_md[DATE_KEY] = new_date
 
-    def _set_computed_notes_tagger(self, sub_data, notes, sub_md) -> None:
+    def _set_computed_notes_tagger(self: Any, sub_data: dict[str, dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, dict[Any, Any]]|dict[str, str]|int|str], notes: str, sub_md: dict[Any, Any]) -> None:
         if sub_data.get(TAGGER_KEY):
             # Do not overwrite an explicit tagger
             return
@@ -181,8 +186,9 @@ class ComicboxComputedNotes(ComicboxMerge):
             return
         tagger = match.group("tagger").strip()
         sub_md[TAGGER_KEY] = tagger
+    rt_T1 = TypeVar("rt_T1", str, Any)
 
-    def _set_computed_notes_updated_at(self, sub_data, notes, sub_md) -> None:
+    def _set_computed_notes_updated_at(self: Any, sub_data: dict[str, dict[int, dict[str, int]]|dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, str]|int|str], notes: str, sub_md: dict[rt_T1, rt_T1]) -> None:
         if sub_data.get(UPDATED_AT_KEY):
             # Do not overwrite an explicit updated_at
             return
@@ -196,7 +202,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         updated_at = DateTimeField()._deserialize(dttm_str)  # noqa: SLF001
         sub_md[UPDATED_AT_KEY] = updated_at
 
-    def get_computed_from_notes(self, sub_data) -> dict | None:
+    def get_computed_from_notes(self: Any, sub_data: "dict[str, datetime.datetime|dict[int, dict[str, int]]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, int]]|dict[str, dict[Any, Any]]|dict[str, int]|dict[str, str]|int|str]") -> dict | None:
         """Parse the tagger, updated_at & identifier from notes if not already set."""
         if not sub_data:
             return None

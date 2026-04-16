@@ -1,4 +1,12 @@
 """Comic archive read methods."""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import zipfile
+
+    import rarfile
+
+    import comicbox.box.archive.write
 
 import shutil
 from pathlib import Path
@@ -20,12 +28,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
 
     _COMMENT_ARCHIVE_TYPES = (ZipFile, RarFile)
 
-    def _ensure_read_archive(self) -> None:
+    def _ensure_read_archive(self: "comicbox.box.archive.write.ComicboxArchiveRead") -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot read archive without a path."
             raise ValueError(reason)
 
-    def namelist(self) -> tuple[str, ...]:
+    def namelist(self: "comicbox.box.archive.write.ComicboxArchiveRead") -> tuple[str, ...]:
         """Get list of files in the archive."""
         self._ensure_read_archive()
         if self._namelist is None:
@@ -36,13 +44,13 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._namelist: tuple[str, ...] | None = namelist
         return self._namelist
 
-    def _get_info_fn(self, info) -> str:
+    def _get_info_fn(self: "comicbox.box.archive.write.ComicboxArchiveRead", info: "rarfile.Rar5FileInfo|zipfile.ZipInfo") -> str:
         return getattr(info, self._info_fn_attr)
 
-    def _get_info_size(self, info) -> int | None:
+    def _get_info_size(self: "comicbox.box.archive.write.ComicboxArchiveRead", info: "rarfile.Rar5FileInfo") -> int | None:
         return getattr(info, self._info_size_attr) if self._info_size_attr else None
 
-    def infolist(self) -> tuple[InfoType, ...]:
+    def infolist(self: "comicbox.box.archive.write.ComicboxArchiveRead") -> tuple[InfoType, ...]:
         """Get info list of members from the archive."""
         self._ensure_read_archive()
         if not self._infolist:
@@ -56,7 +64,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         return self._infolist
 
     @classmethod
-    def check_unrar_executable(cls) -> bool:
+    def check_unrar_executable(cls: "type[comicbox.box.archive.write.ComicboxArchiveRead]") -> bool:
         """Check for the unrar executable."""
         unrar_path = shutil.which("unrar")
         if not unrar_path:
@@ -76,16 +84,16 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         except UnsupportedArchiveTypeError:
             return False
 
-    def _get_7zfactory(self) -> BytesIOFactory | None:
+    def _get_7zfactory(self: "comicbox.box.archive.write.ComicboxArchiveRead") -> BytesIOFactory | None:
         if not self._7zfactory and self._archive_cls == SevenZipFile:
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
 
-    def _get_pdf_format(self, pdf_format: str = "", default: str = ""):
+    def _get_pdf_format(self: "comicbox.box.archive.write.ComicboxArchiveRead", pdf_format: str = "", default: str = "") -> str:
         return pdf_format or (self._config.pdf_page_format or default)
 
     def _archive_readfile(
-        self, filename: str, pdf_format: str = "", props: dict | None = None
+        self: "comicbox.box.archive.write.ComicboxArchiveRead", filename: str, pdf_format: str = "", props: dict | None = None
     ) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
@@ -105,7 +113,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             raise
         return data
 
-    def _get_comment(self) -> bytes:
+    def _get_comment(self: "comicbox.box.archive.write.ComicboxArchiveRead") -> bytes:
         """Get the comment from the archive."""
         archive = self._get_archive()
         comment = getattr(archive, "comment", b"")

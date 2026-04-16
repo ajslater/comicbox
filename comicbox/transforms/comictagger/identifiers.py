@@ -37,7 +37,7 @@ from comicbox.transforms.spec import MetaSpec
 DATA_ORIGIN_NAME_KEYPATH = f"{DATA_ORIGIN_TAG}.name"
 
 
-def _identifiers_primary_source_key_to_cb(data_origin) -> dict | None:
+def _identifiers_primary_source_key_to_cb(data_origin: dict[str, str]) -> dict | None:
     if (data_origin_id := data_origin.get("id")) and (
         id_source := get_id_source_by_alias(data_origin_id)
     ):
@@ -54,7 +54,7 @@ COMICTAGGER_IDENTIFIER_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB = MetaSpec(
 )
 
 
-def _identifiers_primary_source_key_from_cb(primary_source_key) -> dict | None:
+def _identifiers_primary_source_key_from_cb(primary_source_key: dict[str, str]) -> dict | None:
     data_origin = None
     if id_source_str := primary_source_key.get(ID_SOURCE_KEY):
         data_origin = {"id": id_source_str}
@@ -85,7 +85,7 @@ COMICTAGGER_ISSUE_ID_TRANSFORM_TO_CB = MetaSpec(
 )
 
 
-def _issue_id_from_cb(values) -> None:
+def _issue_id_from_cb(values: dict[str, dict[str, dict[str, str]]]) -> None:
     identifiers = values.get(IDENTIFIERS_KEY)
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH)
     for id_source in (primary_id_source, *ID_SOURCE_VALUES):
@@ -103,7 +103,7 @@ SERIES_ID_TAG = "series_id"
 SERIES_IDS_KEYPATH = f"{SERIES_KEY}.{IDENTIFIERS_KEY}"
 
 
-def _series_id_to_cb(values) -> dict[str, dict] | None:
+def _series_id_to_cb(values: dict[str, str|None]) -> dict[str, dict] | None:
     series_id = values.get(SERIES_ID_TAG)
     if not series_id:
         return None
@@ -120,7 +120,7 @@ COMICTAGGER_SERIES_ID_TRANSFORM_TO_CB = MetaSpec(
 )
 
 
-def _series_id_from_cb(values) -> None:
+def _series_id_from_cb(values: dict[str, dict[str, dict[str, str]]|str]) -> None:
     series_identifiers = values.get(SERIES_IDS_KEYPATH)
     if not series_identifiers:
         return None

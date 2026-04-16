@@ -65,41 +65,41 @@ FN_TESTER = TestParser(
 )
 
 
-def test_filename_from_metadata():
+def test_filename_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     FN_TESTER.test_from_metadata()
 
 
-def test_filename_from_dict():
+def test_filename_from_dict() -> None:
     """Test metadata import from string."""
     FN_TESTER.test_from_dict()
 
 
-def test_filename_from_string():
+def test_filename_from_string() -> None:
     """Test metadata import from string."""
     FN_TESTER.test_from_string()
 
 
-def test_filename_from_file():
+def test_filename_from_file() -> None:
     """Test metadata import from file."""
     FN_TESTER.test_from_file()
 
 
-def test_filename_to_dict():
+def test_filename_to_dict() -> None:
     """Test metadata export to dict."""
     FN_TESTER.test_to_dict()
 
 
-def test_filename_to_string():
+def test_filename_to_string() -> None:
     """Test metadata export to string."""
     FN_TESTER.test_to_string()
 
 
-def test_filename_to_file():
+def test_filename_to_file() -> None:
     """Test metadata export to file."""
     FN_TESTER.test_to_file()
 
 
-def test_filename_read():
+def test_filename_read() -> None:
     """Read comet metadata."""
     FN_TESTER.test_md_read()

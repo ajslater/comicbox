@@ -197,7 +197,7 @@ CIX_TESTER = TestParser(
 )
 
 
-def _create_file_read_dict():
+def _create_file_read_dict() -> MappingProxyType[str, dict[str, dict[int, dict[str, int]]]]:
     x = deepcopy(dict(READ_METADATA))
     x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue], # ty: ignore[invalid-assignment]
     x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue],# ty: ignore[invalid-assignment]
@@ -222,16 +222,16 @@ CIX_FILE_TESTER = TestParser(
 )
 
 
-def test_cix_validation_from_metadata():
+def test_cix_validation_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     CIX_TESTER.test_from_metadata()
 
 
-def test_cix_validation_from_string():
+def test_cix_validation_from_string() -> None:
     """Test metadata import from string."""
     CIX_FILE_TESTER.test_from_string()
 
 
-def test_cix_validation_from_file():
+def test_cix_validation_from_file() -> None:
     """Test metadata import from file."""
     CIX_FILE_TESTER.test_from_file()

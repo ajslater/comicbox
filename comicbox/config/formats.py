@@ -1,4 +1,5 @@
 """Transform config format keys to MetadataFormats."""
+from typing import Any
 
 from confuse import Subview
 from loguru import logger
@@ -6,7 +7,7 @@ from loguru import logger
 from comicbox.formats import MetadataFormats
 
 
-def _get_formats_from_keys(keys, ignore_keys) -> tuple:
+def _get_formats_from_keys(keys: frozenset[str], ignore_keys: frozenset[Any]) -> tuple:
     """Get sources from keys."""
     fmts = []
     for fmt in MetadataFormats:
@@ -18,7 +19,7 @@ def _get_formats_from_keys(keys, ignore_keys) -> tuple:
     return fmts, keys
 
 
-def _get_config_formats_from_keys(config, key) -> frozenset:
+def _get_config_formats_from_keys(config: Subview, key: str) -> frozenset:
     """Return a set of schemas from a sequence of config keys."""
     # Keys to set
     keys = config[key] or ()

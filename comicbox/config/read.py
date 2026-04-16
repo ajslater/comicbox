@@ -9,7 +9,7 @@ from confuse.templates import AttrDict
 from loguru import logger
 
 
-def _add_config_file(args, config) -> None:
+def _add_config_file(args: Namespace, config: Configuration) -> None:
     with contextlib.suppress(AttributeError, KeyError):
         if config_fn := (
             args.comicbox.config

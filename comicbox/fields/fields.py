@@ -1,4 +1,11 @@
 """Custom Marshmallow fields."""
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import types
+
+    import comicbox.fields.xml_fields
 
 import re
 from abc import ABCMeta
@@ -38,7 +45,7 @@ class TrapExceptionsMeta(ABCMeta):
 
         return wrapper
 
-    def __new__(cls, name, bases, attrs) -> "TrapExceptionsMeta":
+    def __new__(cls: "type[TrapExceptionsMeta]", name: str, bases: "tuple|tuple[TrapExceptionsMeta]|tuple[type[fields.String]]|tuple[type[Any], type[fields.Enum]]", attrs: "dict[str, str|tuple|types.CellType|Callable[[Any], dict]]") -> "TrapExceptionsMeta":
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
@@ -54,13 +61,13 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
-    def __init__(self, *args, clean_tabs=False, **kwargs) -> None:
+    def __init__(self: Any, *args: None, clean_tabs: bool=False, **kwargs: None) -> None:
         """Add a clean tabs flag."""
         self.clean_tabs = clean_tabs
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> str:
+    def _deserialize(self: Any, value: str, *_args: dict[str, None]|dict[str, str]|str|None, **_kwargs: bool|None) -> str:
         if value in _STRING_EMPTY_VALUES:
             return ""
 
@@ -82,7 +89,7 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         return str(value).strip()
 
 
-def half_replace(num):
+def half_replace(num: str) -> str:
     """Replace half notation with decimal notation."""
     return _HALF_RE.sub(".5", num)
 
@@ -91,7 +98,7 @@ class IssueField(StringField):
     """Issue Field."""
 
     @staticmethod
-    def parse_issue(num) -> str:
+    def parse_issue(num: str) -> str:
         """Parse issues."""
         if not num:
             return ""
@@ -102,6 +109,6 @@ class IssueField(StringField):
         return half_replace(num)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> str:
+    def _deserialize(self: "comicbox.fields.xml_fields.IssueField", value: str, *args: dict[str, set[str]|str]|str, **kwargs: bool) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

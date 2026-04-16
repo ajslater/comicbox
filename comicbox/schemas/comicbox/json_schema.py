@@ -1,7 +1,10 @@
 """Json Schema."""
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import tests.schemas.test_json
 
 from math import ceil, log10
-from typing import Any
 
 from marshmallow.fields import Constant, Nested
 from typing_extensions import override
@@ -46,7 +49,7 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     )
 
     @override
-    def dump(self, obj: dict, *args, **kwargs) -> dict[str, Any]:
+    def dump(self: "tests.schemas.test_json.ComicboxJsonSchema", obj: dict, *args: None, **kwargs: None) -> dict[str, Any]:
         """Inject zero fill for page string numbers."""
         if (
             obj

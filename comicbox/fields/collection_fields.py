@@ -1,8 +1,20 @@
 """Marshmallow collection fields."""
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    import datetime
+    import decimal
+
+    import marshmallow.schema
+    import ruamel.yaml
+
+    import comicbox.fields.metroninfo
+    import comicbox.fields.xml_fields
+    import comicbox.schemas.comicbox.identifiers
+    import comicbox.schemas.pdf
 
 import re
 from collections.abc import Mapping
-from typing import Any
 
 from glom import glom
 from marshmallow import fields
@@ -27,13 +39,13 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
     """List that guarauntees no empty values."""
 
     def __init__(
-        self,
-        *args,
+        self: Any,
+        *args: "comicbox.fields.xml_fields.Union|fields.Nested",
         # Sorting also does deduplication
         sort: bool = True,
         sort_keys: tuple[str, ...] | list[str] = (),
         allow_empty: bool = False,
-        **kwargs,
+        **kwargs: None,
     ) -> None:
         """Add instance variables."""
         self._sort = sort
@@ -43,7 +55,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> list:
+    def _deserialize(self: Any, value: "list[dict[str, None]|dict[str, comicbox.fields.metroninfo.MetronSourceEnum]|dict[str, dict[str, None]]|dict[str, dict[str, str]]|dict[str, str]|Any]", *args: dict[str, dict[str, int]|dict[str, str]|int|list[dict[str, None]]|list[dict[str, str]]|list[Any]|str|None]|str, **kwargs: bool) -> list:
         """Remove empty values."""
         if value is None:
             return []
@@ -54,13 +66,14 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         if not values:
             return []
         return values
+    rt_T1 = TypeVar("rt_T1", int, str, None)
 
     @staticmethod
-    def get_tag_value(value):
+    def get_tag_value(value: rt_T1) -> rt_T1:
         """Override in XmlListField."""
         return value
 
-    def _sort_value(self, value, sort_dict) -> None:
+    def _sort_value(self: Any, value: dict[str, dict[str, str]|int|str], sort_dict: dict[Any, Any]) -> None:
         if is_empty(value):
             return
         key = []
@@ -82,7 +95,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
 
         sort_dict[key] = new_value
 
-    def _sorted(self, values) -> list:
+    def _sorted(self: Any, values: list[dict[str, int|str]]) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
             return values
@@ -94,7 +107,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         return [item[1] for item in sorted(sort_dict.items())]
 
     @override
-    def _serialize(self, value: Any, *args, **kwargs) -> list | None:
+    def _serialize(self: Any, value: Any, *args: "dict[str, dict[str, dict[str, int]]|dict[str, str]|int|list[dict[str, comicbox.fields.metroninfo.MetronSourceEnum]]|list[dict[str, int]]|list[dict[str, str]]|str]|str", **kwargs: None) -> list | None:
         if value is None:
             return []
         values = value if isinstance(value, list) else [value]
@@ -113,14 +126,14 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
     """Dict field for nested schemas with case insensitive keys and sorting."""
 
     def __init__(
-        self,
-        *args,
+        self: "comicbox.schemas.comicbox.identifiers.DictField|Any",
+        *args: None,
         keys: type[fields.Field] | fields.Field = StringField,
-        case_insensitive=True,
-        sort=True,
-        allow_empty_keys=False,
-        allow_empty_values=False,
-        **kwargs,
+        case_insensitive: bool=True,
+        sort: bool=True,
+        allow_empty_keys: bool=False,
+        allow_empty_values: bool=False,
+        **kwargs: fields.Nested,
     ) -> None:
         """Set flags."""
         self._case_insensitive = case_insensitive
@@ -130,7 +143,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         super().__init__(*args, keys=keys, **kwargs)
 
     @override
-    def _deserialize(self, *args, **kwargs) -> dict:
+    def _deserialize(self: "comicbox.schemas.comicbox.identifiers.DictField", *args: "dict[str, None]|dict[str, datetime.datetime]|dict[str, dict[int, dict[str, None]]]|dict[str, dict[str, None]]|dict[str, dict[str, decimal.Decimal]]|dict[str, dict[str, dict[str, dict[Any, Any]]]]|dict[str, dict[str, dict[str, int]]]|dict[str, dict[str, dict[str, str]]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, int]|dict[str, str]|dict[Any, Any]|ruamel.yaml.CommentedMap|str", **kwargs: bool) -> dict:
         """Apply flag conditions."""
         result_dict = super()._deserialize(*args, **kwargs)
         result_dict.pop(None, None)
@@ -143,7 +156,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         return result_dict
 
     @override
-    def _serialize(self, *args, **kwargs) -> dict | None:
+    def _serialize(self: "comicbox.schemas.comicbox.identifiers.DictField", *args: dict[str, dict[str, dict[str, int]]]|dict[str, dict[str, dict[Any, Any]]]|dict[str, dict[str, int]]|dict[str, dict[str, str]]|dict[str, dict[Any, Any]]|dict[str, str]|str, **kwargs: "marshmallow.schema.ErrorStore|None") -> dict | None:
         result_dict = super()._serialize(*args, **kwargs)
         if result_dict is None:
             return None
@@ -168,7 +181,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
     DEFAULT_SEPARATOR_RE: re.Pattern = re.compile(rf"[{DEFAULT_SEPARATORS}]")
 
     def __init__(
-        self, *args, as_string=False, sort=True, separators="", **kwargs
+        self: Any, *args: None, as_string: bool=False, sort: bool=True, separators: str="", **kwargs: None
     ) -> None:
         """Initialize as a string list."""
         # The first character in separators is used to join on serialize
@@ -184,11 +197,11 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
             self._join_separator = self.DEFAULT_SEPARATORS[0]
 
     @staticmethod
-    def _seq_to_str_seq(seq) -> list[str]:
+    def _seq_to_str_seq(seq: list[str]) -> list[str]:
         return [str(item) for item in seq if not is_empty(item)]
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> list[str | None]:
+    def _deserialize(self: Any, value: list[str]|set[str]|str, *args: dict[str, int|str|None]|str, **kwargs: bool) -> list[str | None]:
         """Deserialize CSV encodings of lists."""
         result = []
         if not value:
@@ -203,7 +216,7 @@ class StringListField(fields.List, metaclass=TrapExceptionsMeta):
         return result
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> list[str | None] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _serialize(self: Any, value: set[str], *args: dict[str, int|set[str]|str]|str, **kwargs: None) -> list[str | None] | str | None:  # pyright:ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         if not value:
             return None
         value = self._seq_to_str_seq(value)
@@ -220,7 +233,7 @@ class StringSetField(StringListField):
     """A set of non-empty strings."""
 
     @override
-    def _deserialize(self, *args, **kwargs) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self: Any, *args: "dict[str, None]|dict[str, int]|dict[str, str]|list[str]|ruamel.yaml.CommentedMap|set[str]|str", **kwargs: bool) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:
@@ -228,7 +241,7 @@ class StringSetField(StringListField):
         return set(str_list)
 
     @override
-    def _serialize(self, value, *args, **kwargs) -> list[str | None] | str | None:
+    def _serialize(self: Any, value: set[str], *args: dict[str, int|list[str]|set[str]|str]|str, **kwargs: None) -> list[str | None] | str | None:
         if not value:
             return None
         value = set(value)
@@ -241,7 +254,7 @@ class IntegerListField(StringListField):
 
     FIELD = IntegerField
 
-    def __init__(self, *args, sort: bool = False, **kwargs) -> None:
+    def __init__(self: Any, *args: None, sort: bool = False, **kwargs: bool) -> None:
         """Use not sorting as the default."""
         super().__init__(*args, sort=sort, **kwargs)
 
@@ -252,7 +265,7 @@ class LegacyNestedMDStringSetField(StringSetField):
     JSON_XML_START_CHARS = frozenset({"<", "{"})
 
     @classmethod
-    def is_nested_metadata(cls, value) -> bool:
+    def is_nested_metadata(cls: "type[comicbox.schemas.pdf.LegacyNestedMDStringSetField]", value: None) -> bool:
         """Return if this looks like a json or xml string."""
         return (
             isinstance(value, str)
@@ -262,7 +275,7 @@ class LegacyNestedMDStringSetField(StringSetField):
 
     @override
     def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        self, value, attr, data, *args, **kwargs
+        self: "comicbox.schemas.pdf.LegacyNestedMDStringSetField", value: list[str]|str, attr: str, data: dict[str, list[str]|str], *args: None, **kwargs: bool
     ) -> set[str | None] | list[str | None] | str | None:
         if self.is_nested_metadata(value):
             return StringField().deserialize(value)

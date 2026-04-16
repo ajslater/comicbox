@@ -48,7 +48,7 @@ DATE_FROM_NOTES_MD = MappingProxyType(
 )
 
 
-def test_compute_date_from_notes():
+def test_compute_date_from_notes() -> None:
     """Test getting the cover image."""
     config = Namespace(comicbox=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
     with Comicbox(config=config) as car:
@@ -76,7 +76,7 @@ IDS_FROM_TAGS_MD = MappingProxyType(
 )
 
 
-def test_compute_ids_from_tags():
+def test_compute_ids_from_tags() -> None:
     """Test computing identifiers from tags."""
     config = Namespace(
         comicbox=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,), print="snmcp")
@@ -99,7 +99,7 @@ ISSUE_WITH_PARTS = MappingProxyType(
 )
 
 
-def test_compute_issue_suffix():
+def test_compute_issue_suffix() -> None:
     """Test computing identifiers from tags."""
     with Comicbox(
         metadata=ISSUE_NAME_ONLY_MD,
@@ -120,7 +120,7 @@ ISSUE_PARTS_ONLY_MD = MappingProxyType(
 )
 
 
-def test_compute_issue_name():
+def test_compute_issue_name() -> None:
     """Test computing identifiers from tags."""
     with Comicbox(
         metadata=ISSUE_PARTS_ONLY_MD,
@@ -156,7 +156,7 @@ IDENTIFIERS_FROM_URLS = MappingProxyType(
 )
 
 
-def test_other_urls():
+def test_other_urls() -> None:
     """Test non known source urls."""
     with Comicbox(
         metadata=UNKNOWN_URLS,
