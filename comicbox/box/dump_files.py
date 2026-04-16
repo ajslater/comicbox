@@ -68,5 +68,5 @@ class ComicboxDumpToFiles(ComicboxDump):
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
         self._path.rename(new_path)
-        self._path: Path | None = new_path  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+        self._path: Path | None = new_path
         logger.info(f"Renamed:\n{old_path} ==> {new_path}")

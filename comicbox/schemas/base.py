@@ -60,15 +60,17 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         super().__init__(*args, exclude=exclude, **kwargs)
 
     @classmethod
-    def pre_load_validate(cls, data: dict[str, Any]) -> dict[str, Any]:
+    def pre_load_validate(cls, data: dict[str, Any] | None) -> dict[str, Any] | None:
         """Validate schema type first thing to fail as early as possible."""
         # Meant to be overridden in BaseSchema
         return data
 
     @trap_error(pre_load)
-    def pre_load(self, data: dict[str, Any] | None, **_kwargs: Any) -> dict[str, Any]:
+    def pre_load(
+        self, data: dict[str, Any] | None, **_kwargs: Any
+    ) -> dict[str, Any] | None:
         """Singular pre_load hook."""
-        return self.pre_load_validate(data)  # pyright: ignore[reportArgumentType]
+        return self.pre_load_validate(data)
 
     @classmethod
     def clean_empties(cls, data: dict) -> dict:

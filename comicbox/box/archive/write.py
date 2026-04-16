@@ -40,7 +40,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ValueError(reason)
         old_path = self._path
         tmp_path.replace(new_path)
-        self._path: Path | None = new_path  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+        self._path: Path | None = new_path
         if old_path.suffix != new_path.suffix:
             logger.info(f"Converted to: {new_path}")
             if self._config.delete_orig and old_path != new_path and new_path.is_file():

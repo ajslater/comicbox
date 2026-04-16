@@ -213,11 +213,11 @@ def _credits_from_cb(
     values: dict[str, Any],
     role_map: dict[str, set[Any]],
 ) -> list:
-    comicbox_credits = values.get(CREDITS_KEY)
+    comicbox_credits = values.get(CREDITS_KEY, {})
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return [
         metron_credit
-        for person_name, comicbox_credit in comicbox_credits.items()  # pyright: ignore[reportOptionalMemberAccess]
+        for person_name, comicbox_credit in comicbox_credits.items()
         if (
             metron_credit := _credit_from_cb(
                 person_name, comicbox_credit, primary_id_source, role_map

@@ -49,5 +49,5 @@ class BaseTransform:
         schema = self._schema
         transformed_data = glom(dict(data), dict(self.SPECS_FROM))
         self._swap_data_key(schema, transformed_data)
-        loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]
+        loaded_data: dict = schema.load(transformed_data)
         return MappingProxyType(loaded_data)

@@ -1,17 +1,13 @@
 """Comic yaml superclass."""
 
 from collections.abc import Mapping
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import ruamel.yaml
-
 from decimal import Decimal
 from enum import Enum
 from sys import maxsize
+from types import MappingProxyType
+from typing import Any
 
-from ruamel.yaml import YAML, StringIO
+from ruamel.yaml import YAML, MappingNode, RoundTripRepresenter, ScalarNode, StringIO
 from typing_extensions import override
 
 from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
@@ -28,16 +24,14 @@ class YamlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""
 
     @staticmethod
-    def _decimal_representer(
-        dumper: "ruamel.yaml.RoundTripRepresenter", data: Decimal
-    ) -> "ruamel.yaml.ScalarNode":
+    def _decimal_representer(dumper: RoundTripRepresenter, data: Decimal) -> ScalarNode:
         """Represent decimals as a naked 2 precision float."""
         return dumper.represent_scalar(_FLOAT_TAG, format(data, ".2f"))
 
     @staticmethod
     def _dict_flow_representer(
-        dumper: "ruamel.yaml.RoundTripRepresenter", data: dict[str, Any]
-    ) -> "ruamel.yaml.MappingNode":
+        dumper: RoundTripRepresenter, data: dict[str, Any]
+    ) -> MappingNode:
         """Represent page dict as a single line."""
         if _FLOW_KEYS & data.keys():
             return dumper.represent_mapping(_MAP_TAG, data, flow_style=True)
@@ -45,15 +39,11 @@ class YamlRenderModule(BaseRenderModule):
         return dumper.represent_dict(data)
 
     @staticmethod
-    def _none_representer(
-        dumper: "ruamel.yaml.RoundTripRepresenter", data: None
-    ) -> "ruamel.yaml.ScalarNode":
+    def _none_representer(dumper: RoundTripRepresenter, data: None) -> ScalarNode:
         return dumper.represent_none(data)
 
     @staticmethod
-    def _enum_representer(
-        dumper: "ruamel.yaml.RoundTripRepresenter", data: Enum
-    ) -> "ruamel.yaml.ScalarNode":
+    def _enum_representer(dumper: RoundTripRepresenter, data: Enum) -> ScalarNode:
         """Represent enums as their value."""
         return dumper.represent_str(data.value)
 

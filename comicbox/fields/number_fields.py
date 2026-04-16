@@ -41,8 +41,8 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
             return None
         return result
 
-    def _deserialize_post(self, value: NumberType) -> NumberType | None:
-        result: NumberType = value
+    def _deserialize_post(self, value: NumberType | None) -> NumberType | None:
+        result: NumberType | None = value
         if result is not None:
             old_result = result
             if self._min is not None:

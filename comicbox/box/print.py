@@ -1,11 +1,7 @@
 """Print Methods."""
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from pygments.token import _TokenType
-
 from collections.abc import Mapping
+from typing import Any
 
 from loguru import logger
 from pygments.styles import get_style_by_name
@@ -14,6 +10,7 @@ from pygments.token import (
     Generic,
     Name,
     String,
+    _TokenType,
 )
 from pygments.util import ClassNotFound
 from rich.console import Console
@@ -39,7 +36,7 @@ DEFAULT_STYLE_NAME = "gruvbox-dark"
 MASK_STYLE = Style(bgcolor="default")
 
 
-def _make_style(theme: PygmentsSyntaxTheme, token: "_TokenType") -> Style:
+def _make_style(theme: PygmentsSyntaxTheme, token: _TokenType) -> Style:
     return theme.get_style_for_token(token) + MASK_STYLE
 
 

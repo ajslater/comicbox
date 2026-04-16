@@ -122,11 +122,13 @@ class EnumBooleanField(EnumField):
     )
 
     @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
-        result = super()._deserialize(value, attr, data, *args, **kwargs)
-        if not isinstance(result, self.ENUM) and str(value).lower() in self.TRUTHY:
-            result = super()._deserialize(self.YES, attr, data, *args, **kwargs)
-        return result
+    def _deserialize(self, value: Enum | str | bool, attr, data, *args, **kwargs):
+        if not isinstance(value, self.ENUM):
+            if value is True or (str(value).lower() in self.TRUTHY):
+                value = self.YES
+            else:
+                value = str(value)
+        return super()._deserialize(value, attr, data, *args, **kwargs)
 
     @override
     def _serialize(self, value, *args, **kwargs) -> str | None:

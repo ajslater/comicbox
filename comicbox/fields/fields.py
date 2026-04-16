@@ -63,7 +63,9 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value: str, *_args: Any, **_kwargs: Any) -> str:
+    def _deserialize(
+        self, value: str | float | Decimal | Enum, *_args: Any, **_kwargs: Any
+    ) -> str:
         if value in _STRING_EMPTY_VALUES:
             return ""
 

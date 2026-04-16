@@ -16,7 +16,7 @@ def trap_error(decorator: Callable) -> Callable[[Callable], Callable]:
             try:
                 return func(self, data, **kwargs)
             except Exception:
-                logger.exception(func.__name__)
+                logger.exception(getattr(func, "__name__", func))
                 return data
 
         return decorator(wrapped)

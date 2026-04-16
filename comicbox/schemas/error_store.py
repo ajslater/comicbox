@@ -84,7 +84,7 @@ class ClearingErrorStoreSchema(Schema):
         super().__init__(**kwargs)
 
     @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _deserialize(
         self,
         data: Any,
         *,

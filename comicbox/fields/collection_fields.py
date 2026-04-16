@@ -1,7 +1,7 @@
 """Marshmallow collection fields."""
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import Any
 
 from glom import glom
@@ -43,7 +43,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value: list[Any], *args: Any, **kwargs: Any) -> list:
+    def _deserialize(self, value: list[Any] | Any, *args: Any, **kwargs: Any) -> list:
         """Remove empty values."""
         if value is None:
             return []
@@ -75,7 +75,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         key = tuple(key)
 
         # combine elements by key
-        if isinstance(value, Mapping) and (old_value := sort_dict.get(key)):
+        if old_value := sort_dict.get(key):
             new_value = old_value.update(value)
         else:
             new_value = value

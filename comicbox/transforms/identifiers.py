@@ -1,10 +1,6 @@
 """Identifier Fields."""
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import comicbox.identifiers
-
+from typing import Any
 from urllib.parse import urlparse
 
 from loguru import logger
@@ -33,7 +29,7 @@ PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
 
 
 def create_identifier_primary_source(
-    id_source: "comicbox.identifiers.IdSources",
+    id_source: IdSources,
 ) -> dict:
     """Create identifier primary source."""
     ips: dict[str, Any] = {ID_SOURCE_KEY: id_source}
@@ -73,7 +69,7 @@ def identifiers_to_cb(
 
 
 def identifiers_transform_to_cb(
-    identifiers_tag: str, naked_id_source: "comicbox.identifiers.IdSources"
+    identifiers_tag: str, naked_id_source: IdSources
 ) -> MetaSpec:
     """Transform identifier tags to comicbox identifiers."""
 

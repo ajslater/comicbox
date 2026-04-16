@@ -59,7 +59,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         return None
 
     def _ensure_pages_front_cover_metadata(
-        self, pages: dict[int, dict[str, Any]]
+        self, pages: MutableMapping[int, dict[str, Any]]
     ) -> None:
         """Ensure there is a FrontCover page type in pages."""
         for page in pages.values():
@@ -79,13 +79,13 @@ class ComicboxComputedPages(ComicboxComputedNotes):
 
     def _get_computed_merged_pages_metadata(
         self, md: dict[str, Any], pages: dict[int, dict[str, Any]]
-    ) -> dict[int, dict[str, Any]]:
+    ) -> MutableMapping[int, dict[str, Any]]:
         old_pages: dict[int, dict[str, Any]] = md.get(PAGES_KEY, {})
         max_page_index = self._get_max_page_index()
         trimmed_old_pages = {k: v for k, v in old_pages.items() if k <= max_page_index}
-        computed_pages: dict[int, dict[str, Any]] = AdditiveMerger.merge(
+        computed_pages: MutableMapping[int, dict[str, Any]] = AdditiveMerger.merge(
             trimmed_old_pages, pages
-        )  # pyright: ignore[reportAssignmentType]
+        )
         self._ensure_pages_front_cover_metadata(computed_pages)
         return computed_pages
 

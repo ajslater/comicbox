@@ -39,7 +39,7 @@ class ComicboxLoad(ComicboxSources):
     ) -> dict:
         result = {}
         try:
-            md = YAML().load(source_md) if isinstance(source_md, str) else source_md
+            md = YAML().load(source_md)
             result = schema.load(md)
             if not result:
                 # try a wrapped version
