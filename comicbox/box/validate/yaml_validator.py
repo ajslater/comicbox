@@ -59,7 +59,7 @@ class YamlValidator(JsonValidator):
     """Yaml Validator."""
 
     @override
-    def validate(self: "YamlValidator", data: str | bytes | Path) -> None:
+    def validate(self, data: str | bytes | Path) -> None:
         """Validate source."""
         data = self.get_data_str(data)
         data = YAML().load(data)

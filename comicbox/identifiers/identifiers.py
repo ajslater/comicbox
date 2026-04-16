@@ -46,7 +46,7 @@ class IdentifierTypes:
     _map: frozenbidict[str, str] | None = None
 
     @property
-    def map(self: "IdentifierTypes") -> frozenbidict:
+    def map(self) -> frozenbidict:
         """Initialize reverse dict."""
         if not self._map:
             trimmed_dict = {key: value for key, value in asdict(self).items() if value}
@@ -54,7 +54,7 @@ class IdentifierTypes:
         return self._map
 
     @property
-    def default_slug_type(self: "IdentifierTypes") -> str:
+    def default_slug_type(self) -> str:
         """Return the first allocated slug type."""
         if not self._default_type:
             for key, value in self.map.items():
@@ -74,19 +74,19 @@ class IdentifierParts:
     url_path_template: str
     https: bool = True
 
-    def __post_init__(self: "IdentifierParts") -> None:
+    def __post_init__(self) -> None:
         """Initialize url_regex & template prefix."""
         scheme = "https" if self.https else "http"
         self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
         self.url_path_regex_compiled = re.compile(self.url_path_regex, re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def get_type_by_code(
-        self: "IdentifierParts", id_type_code: str, default: str = DEFAULT_ID_TYPE
+        self, id_type_code: str, default: str = DEFAULT_ID_TYPE
     ) -> str:
         """Get identifier type by url fragment or code."""
         return self.id_type.map.inverse.get(id_type_code, default)
 
-    def parse_url_path(self: "IdentifierParts", url: str) -> tuple[str, str]:
+    def parse_url_path(self, url: str) -> tuple[str, str]:
         """Parse URL path with regex."""
         obj = urlparse(url)
         match = self.url_path_regex_compiled.search(obj.path[1:])
@@ -100,7 +100,7 @@ class IdentifierParts:
         id_key = match.group("id_key") or ""
         return id_type, id_key
 
-    def unparse_url(self: "IdentifierParts", id_type: str, id_key: str) -> str:
+    def unparse_url(self, id_type: str, id_key: str) -> str:
         """Create url from identifier parts."""
         url = ""
         if type_value := getattr(self.id_type, id_type, None):

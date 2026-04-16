@@ -1,11 +1,8 @@
 """Run comicbox on files."""
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import argparse
-
+from argparse import Namespace
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -20,7 +17,7 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(self: Any, config: "argparse.Namespace") -> None:
+    def __init__(self: Any, config: Namespace) -> None:
         """Initialize actions and config."""
         self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
         init_logging(self._config.loglevel)
