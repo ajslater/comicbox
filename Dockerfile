@@ -24,4 +24,5 @@ RUN bun install
 COPY . .
 RUN mkdir -p test-results dist
 
+# hadolint ignore=DL3059
 RUN PYMUPDF_SETUP_PY_LIMITED_API=0 make install
