@@ -18,7 +18,7 @@ COPY --from=bun-source /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=bun-source /usr/local/bin/bunx /usr/local/bin/bunx
 
 WORKDIR /app
-COPY bun.lock package.json pyproject.toml uv.lock ./
+COPY bun.lock package.json ./
 RUN bun install
 
 COPY . .
