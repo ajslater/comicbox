@@ -640,7 +640,7 @@ dependencies = [
     { name = "jsonschema", extra = ["format"] },
     { name = "loguru" },
     { name = "marshmallow" },
-    { name = "marshmallow-jsonschema-2" },
+    { name = "marshmallow-jsonschema" },
     { name = "marshmallow-union" },
     { name = "py7zr" },
     { name = "pycountry" },
@@ -717,7 +717,7 @@ requires-dist = [
     { name = "jsonschema", extras = ["format"], specifier = "~=4.20" },
     { name = "loguru", specifier = "~=0.7" },
     { name = "marshmallow", specifier = "~=4.3" },
-    { name = "marshmallow-jsonschema-2", specifier = ">=0.1.0" },
+    { name = "marshmallow-jsonschema", specifier = ">=0.15.0" },
     { name = "marshmallow-union", specifier = ">=0.1.15.post1" },
     { name = "py7zr", specifier = "~=1.1.0" },
     { name = "pycountry", specifier = "~=26.2" },
@@ -1619,15 +1619,15 @@ wheels = [
 ]
 
 [[package]]
-name = "marshmallow-jsonschema-2"
-version = "0.1.0"
+name = "marshmallow-jsonschema"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "marshmallow" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/90/29bc200f8caf1c890c5424c051ef760830886f1ca76e5161c65f418712f5/marshmallow_jsonschema_2-0.1.0.tar.gz", hash = "sha256:2905e560fbbecbb2deed36a5daf6ff66de2e428375cc4a8104a442fc3bfda3c3", size = 18395, upload-time = "2026-02-11T08:12:19.579Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/c5/1eae50293abfd049b6a10468bdfed7c1a0bf1d9faaca76543fb115d2e069/marshmallow_jsonschema-0.15.0.tar.gz", hash = "sha256:70af42e341094047b8dcf866bc845559f286109cd20a1818e28cd3dea127547d", size = 36327, upload-time = "2026-04-19T21:55:40.159Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/71/06ebdb422fea80ae5dedc0896b9e59ccc16c9e9c55cab1cea0115adc3f96/marshmallow_jsonschema_2-0.1.0-py3-none-any.whl", hash = "sha256:b1b16b68e478f52b1b373c81927559a000b355ed68a866748a2266fb4933cddf", size = 12803, upload-time = "2026-02-11T08:12:17.938Z" },
+    { url = "https://files.pythonhosted.org/packages/19/c0/274da65f0b5f41a8845b3d533a75223dd7da401a6bba59ebd34282d590c0/marshmallow_jsonschema-0.15.0-py3-none-any.whl", hash = "sha256:4ca49f49aca1ddbe0cd8f6a307495b8381da86f9dfa66108ffdd9fcd524e4356", size = 16744, upload-time = "2026-04-19T21:55:39.305Z" },
 ]
 
 [[package]]
