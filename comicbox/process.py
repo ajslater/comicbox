@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import BrokenExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from tarfile import TarError
 from typing import TYPE_CHECKING, Any
@@ -23,19 +23,28 @@ if TYPE_CHECKING:
 
     from confuse.templates import AttrDict
 
+_ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
+    UnsupportedArchiveTypeError,
+    BadZipFile,
+    LargeZipFile,
+    RarError,
+    Py7zError,
+    TarError,
+    OSError,
+)
+
 
 def _read_one(
     path: Path | str,
     config: Mapping | None = None,
-    logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     old_mtime: datetime.datetime | None = None,
     *,
     full_metadata: bool = True,
 ) -> dict[str, Any]:
-    """Read metadata from a single comic file."""
+    """Read metadata from a single comic file (runs in a worker process)."""
     md: dict[str, Any] = {}
-    with Comicbox(path, config=config, logger=logger, fmt=fmt) as cb:
+    with Comicbox(path, config=config, fmt=fmt) as cb:
         if full_metadata:
             if not old_mtime:
                 md = cb.to_dict()
@@ -45,6 +54,7 @@ def _read_one(
                 if not new_md_mtime or new_md_mtime > old_mtime:
                     md = cb.to_dict()
                     md = md.get("comicbox", {})
+                md["metadata_mtime"] = new_md_mtime
         if "page_count" not in md:
             md["page_count"] = cb.get_page_count()
         md["file_type"] = cb.get_file_type()
@@ -60,26 +70,13 @@ def iter_process_files(
     old_mtime_map: Mapping[str, datetime.datetime] | None = None,
     *,
     full_metadata: bool = True,
-) -> Generator[tuple[Path, tuple[dict, Exception | None]], None, None]:
+) -> Generator[tuple[Path, tuple[dict, BaseException | None]], None, None]:
     """
-    Yield (path, metadata_dict) as each file completes processing.
+    Yield (path, (metadata_dict, exception_or_None)) as each file completes.
 
-    Uses ProcessPoolExecutor with as_completed() so results stream back
-    as fast as workers finish, regardless of submission order. Callers
-    can track progress, abort with break, or batch updates as needed.
-
-    Args:
-        paths: Iterable of comic archive paths.
-        config: Pre-built config (AttrDict or dict). Passed to each worker.
-        logger: external logger for comicbox to use.
-        fmt: Output metadata format.
-        max_workers: Max worker processes. Defaults to CPU count.
-        old_mtime_map: Map of paths to old mtimes for skipping full metadata extraction.
-        full_metadata: Whether to extract full metadata or just page_count and file_type.
-
-    Yields:
-        (Path, dict) tuples — path and its metadata (empty dict on failure).
-
+    All per-path failures — submit-time, worker-raised, or pool-broken —
+    are delivered as the second element of the tuple rather than raised,
+    so a single bad path cannot abort the whole run.
     """
     if not logger:
         from loguru import logger
@@ -90,34 +87,39 @@ def iter_process_files(
 
     executor = ProcessPoolExecutor(max_workers=max_workers)
     try:
-        futures = {}
+        futures: dict = {}
         for path in path_list:
             old_mtime = old_mtime_map.get(str(path), EPOCH_START)
-            future = executor.submit(
-                _read_one,
-                path,
-                config_dict,
-                logger,
-                fmt,
-                full_metadata=full_metadata,
-                old_mtime=old_mtime,
-            )
+            try:
+                future = executor.submit(
+                    _read_one,
+                    path,
+                    config_dict,
+                    fmt,
+                    old_mtime,
+                    full_metadata=full_metadata,
+                )
+            except Exception as exc:
+                logger.exception(f"Failed to submit {path}")
+                yield path, ({}, exc)
+                continue
             futures[future] = path
+
+        pool_broken = False
         for future in as_completed(futures):
             path = futures[future]
+            if pool_broken:
+                yield path, ({}, BrokenExecutor("Worker pool broken"))
+                continue
             try:
                 yield path, (future.result(), None)
-            except (
-                UnsupportedArchiveTypeError,
-                BadZipFile,
-                LargeZipFile,
-                RarError,
-                Py7zError,
-                TarError,
-                OSError,
-            ) as exc:
+            except _ARCHIVE_ERRORS as exc:
                 logger.warning(f"Failed to import {path}: {exc}")
                 yield path, ({}, exc)
+            except BrokenExecutor as exc:
+                logger.exception(f"Worker pool broken while processing {path}")
+                yield path, ({}, exc)
+                pool_broken = True
             except Exception as exc:
                 logger.exception(f"Failed to import: {path}")
                 yield path, ({}, exc)
@@ -131,21 +133,8 @@ def process_files(
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
-) -> dict[Path, tuple[dict, Exception | None]]:
-    """
-    Process multiple comic files in parallel with ProcessPoolExecutor.
-
-    Args:
-        paths: Iterable of comic archive paths.
-        config: Pre-built config (AttrDict or dict). Passed to each worker.
-        logger: external logger for comicbox to use.
-        fmt: Output metadata format.
-        max_workers: Max worker processes. Defaults to CPU count.
-
-    Returns:
-        Dict mapping each Path to its metadata dict.
-
-    """
+) -> dict[Path, tuple[dict, BaseException | None]]:
+    """Process multiple comic files in parallel via ProcessPoolExecutor."""
     return dict(iter_process_files(paths, config, logger, fmt, max_workers))
 
 
@@ -154,11 +143,6 @@ async def aread_metadata(
     config: AttrDict | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
 ) -> dict:
-    """
-    Read metadata from a single comic file in a thread executor.
-
-    For async integration (e.g., Django/Codex). Runs the synchronous
-    Comicbox read in the default thread pool executor.
-    """
+    """Read metadata from a single comic file in a thread executor."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _read_one, path, config, fmt)
