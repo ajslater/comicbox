@@ -89,6 +89,7 @@ def iter_process_files(
     try:
         futures: dict = {}
         for path in path_list:
+            # Dispatch read job
             old_mtime = old_mtime_map.get(str(path), EPOCH_START)
             try:
                 future = executor.submit(
@@ -107,6 +108,7 @@ def iter_process_files(
 
         pool_broken = False
         for future in as_completed(futures):
+            # Collect result of read job
             path = futures[future]
             if pool_broken:
                 yield path, ({}, BrokenExecutor("Worker pool broken"))
