@@ -5,8 +5,10 @@
 - Performance
     - Reducing startup time for new instances of comicbox.
     - General performance improvements for reading metadata from many files.
-    - Special methods comicbox.process.iter_process_files() and
-      comicbox.process.aread_metadata() for reading many files at once.
+    - Special multiprocessing and async methods
+      comicbox.process.iter_process_files() and
+      comicbox.process.aread_metadata() for reading large batches of files at
+      once.
 - Security against suspicious archive paths when extracting pages and metadata
   to the filesystem.
 - Add Age Rating conversion function
