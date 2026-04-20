@@ -61,6 +61,42 @@ def _read_one(
     return md
 
 
+def _collect_result(
+    future: Any,
+    path: Path,
+    logger: Any,
+) -> tuple[dict, BaseException | None, bool]:
+    """Collect one completed future; return (metadata, exception, pool_broken)."""
+    try:
+        return future.result(), None, False
+    except _ARCHIVE_ERRORS as exc:
+        logger.warning(f"Failed to import {path}: {exc}")
+        return {}, exc, False
+    except BrokenExecutor as exc:
+        logger.exception(f"Worker pool broken while processing {path}")
+        return {}, exc, True
+    except Exception as exc:
+        logger.exception(f"Failed to import: {path}")
+        return {}, exc, False
+
+
+def _iter_completed(
+    futures: Mapping[Any, Path],
+    logger: Any,
+) -> Generator[tuple[Path, tuple[dict, BaseException | None]], None, None]:
+    """Yield results as futures complete; mark subsequent paths broken once the pool fails."""
+    pool_broken = False
+    for future in as_completed(futures):
+        path = futures[future]
+        if pool_broken:
+            yield path, ({}, BrokenExecutor("Worker pool broken"))
+            continue
+        md, exc, broken = _collect_result(future, path, logger)
+        if broken:
+            pool_broken = True
+        yield path, (md, exc)
+
+
 def iter_process_files(
     paths: Iterable[Path | str],
     config: AttrDict | Mapping | None = None,
@@ -89,7 +125,6 @@ def iter_process_files(
     try:
         futures: dict = {}
         for path in path_list:
-            # Dispatch read job
             old_mtime = old_mtime_map.get(str(path), EPOCH_START)
             try:
                 future = executor.submit(
@@ -106,25 +141,7 @@ def iter_process_files(
                 continue
             futures[future] = path
 
-        pool_broken = False
-        for future in as_completed(futures):
-            # Collect result of read job
-            path = futures[future]
-            if pool_broken:
-                yield path, ({}, BrokenExecutor("Worker pool broken"))
-                continue
-            try:
-                yield path, (future.result(), None)
-            except _ARCHIVE_ERRORS as exc:
-                logger.warning(f"Failed to import {path}: {exc}")
-                yield path, ({}, exc)
-            except BrokenExecutor as exc:
-                logger.exception(f"Worker pool broken while processing {path}")
-                yield path, ({}, exc)
-                pool_broken = True
-            except Exception as exc:
-                logger.exception(f"Failed to import: {path}")
-                yield path, ({}, exc)
+        yield from _iter_completed(futures, logger)
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 
