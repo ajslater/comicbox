@@ -205,6 +205,17 @@ class ComicboxInit:
         }
         return detectors[key](path)
 
+    def _detect_archive_cls(self, path: Path) -> None:
+        """Try each detector in hint-first priority order; raise if none match."""
+        suffix = path.suffix.lower()
+        hinted = self._EXTENSION_HINT.get(suffix, ())
+        remaining = tuple(k for k in self._FULL_DETECT_ORDER if k not in hinted)
+        for key in hinted + remaining:
+            if self._try_detect(key, path):
+                return
+        reason = f"Unsupported archive type: {path}"
+        raise UnsupportedArchiveTypeError(reason)
+
     def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
         if not self._path:
@@ -214,20 +225,7 @@ class ComicboxInit:
         self._archive_is_pdf: bool = False
         self._pdf_suffix: str = ""
 
-        # Try extension-hinted type first to avoid unnecessary disk reads
-        suffix = path.suffix.lower()
-        hinted = self._EXTENSION_HINT.get(suffix, ())
-        for key in hinted:
-            if self._try_detect(key, path):
-                break
-        else:
-            # Extension didn't match or was missing — fall back to full scan
-            for key in self._FULL_DETECT_ORDER:
-                if key not in hinted and self._try_detect(key, path):
-                    break
-            else:
-                reason = f"Unsupported archive type: {path}"
-                raise UnsupportedArchiveTypeError(reason)
+        self._detect_archive_cls(path)
 
         self._info_size_attr = (  # pyright: ignore[reportUninitializedInstanceVariable]
             "size" if self._archive_cls == tarfile_open else "file_size"
