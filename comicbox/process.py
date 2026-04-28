@@ -80,6 +80,21 @@ def _collect_result(
         return {}, exc, False
 
 
+def _worker_log_init(log_config: Mapping) -> None:
+    """
+    Re-initialize loguru in a worker process from a picklable config dict.
+
+    Recognized keys: "level", "format", "sink" ("stdout"|"stderr"|path string).
+    """
+    from comicbox.logger import init_logging
+
+    init_logging(
+        loglevel=log_config.get("level", "INFO"),
+        log_format=log_config.get("format"),
+        sink=log_config.get("sink"),
+    )
+
+
 def _iter_completed(
     futures: Mapping[Any, Path],
     logger: Any,
@@ -104,6 +119,7 @@ def iter_process_files(
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
     old_mtime_map: Mapping[str, datetime.datetime] | None = None,
+    worker_log_config: Mapping | None = None,
     *,
     full_metadata: bool = True,
 ) -> Generator[tuple[Path, tuple[dict, BaseException | None]], None, None]:
@@ -113,6 +129,11 @@ def iter_process_files(
     All per-path failures — submit-time, worker-raised, or pool-broken —
     are delivered as the second element of the tuple rather than raised,
     so a single bad path cannot abort the whole run.
+
+    worker_log_config: optional dict of {"level", "format", "sink"} used to
+        re-initialize loguru inside each worker so subprocess log output
+        matches the caller's format. The dict must be picklable; pass sink as
+        "stdout"/"stderr"/path string rather than a file object.
     """
     if not logger:
         from loguru import logger
@@ -121,7 +142,11 @@ def iter_process_files(
     config_dict: dict | None = dict(config) if config else None
     path_list = [Path(p) for p in paths]
 
-    executor = ProcessPoolExecutor(max_workers=max_workers)
+    executor_kwargs: dict[str, Any] = {"max_workers": max_workers}
+    if worker_log_config:
+        executor_kwargs["initializer"] = _worker_log_init
+        executor_kwargs["initargs"] = (dict(worker_log_config),)
+    executor = ProcessPoolExecutor(**executor_kwargs)
     try:
         futures: dict = {}
         for path in path_list:
@@ -152,9 +177,19 @@ def process_files(
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
+    worker_log_config: Mapping | None = None,
 ) -> dict[Path, tuple[dict, BaseException | None]]:
     """Process multiple comic files in parallel via ProcessPoolExecutor."""
-    return dict(iter_process_files(paths, config, logger, fmt, max_workers))
+    return dict(
+        iter_process_files(
+            paths,
+            config,
+            logger,
+            fmt,
+            max_workers,
+            worker_log_config=worker_log_config,
+        )
+    )
 
 
 async def aread_metadata(
