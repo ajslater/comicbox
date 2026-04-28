@@ -178,6 +178,25 @@ def test_iter_process_files_accepts_str_paths() -> None:
     assert Path(CIX_CBZ_SOURCE_PATH) in results
 
 
+def test_iter_process_files_with_worker_log_config() -> None:
+    """A picklable log config dict is accepted and workers still produce results."""
+    log_config = {
+        "level": "WARNING",
+        "format": "{time} | {level} | {message}",
+        "sink": "stderr",
+    }
+    paths = [CIX_CBZ_SOURCE_PATH, CB7_SOURCE_PATH]
+    results = dict(
+        iter_process_files(
+            paths, config=CONFIG, max_workers=2, worker_log_config=log_config
+        )
+    )
+    assert set(results) == {Path(p) for p in paths}
+    for md, exc in results.values():
+        assert exc is None
+        assert md["file_type"] in {"CBZ", "CB7"}
+
+
 # --- process_files ----------------------------------------------------------
 
 
