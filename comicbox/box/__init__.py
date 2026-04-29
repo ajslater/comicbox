@@ -44,7 +44,7 @@ class Comicbox(
         """Perform archive actions."""
         noop = True
         for attr, method in self._CONFIG_ACTIONS.items():
-            if self._config[attr]:
+            if getattr(self._config, attr):
                 method(self)
                 noop = False
         noop &= self._run_complex_actions()

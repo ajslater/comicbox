@@ -65,8 +65,6 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             return None
 
         resolved_path = path or self._config.dest_path
-        if resolved_path is None:
-            return None
         return Path(resolved_path)
 
     def _extract_pagenames_to_dir(
