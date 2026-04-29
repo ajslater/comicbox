@@ -16,18 +16,6 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class ComputedSettings:
-    """Computed settings derived from raw config in compute_config()."""
-
-    all_write_formats: "frozenset[MetadataFormats]"
-    read_filename_formats: "frozenset[MetadataFormats]"
-    read_file_formats: "frozenset[MetadataFormats]"
-    read_metadata_lower_filenames: frozenset[str]
-    is_read_comments: bool
-    is_skip_computed_from_tags: bool
-
-
-@dataclass(frozen=True, slots=True)
 class ComicboxSettings:
     """Typed runtime config for comicbox."""
 
@@ -66,5 +54,11 @@ class ComicboxSettings:
     write: "frozenset[MetadataFormats]"
     # Targets
     paths: tuple[str | Path | None, ...]
-    # Computed
-    computed: ComputedSettings
+    # Computed (derived in compute_config(); nested under "computed" in the
+    # confuse template as an implementation convenience, but flat here).
+    all_write_formats: "frozenset[MetadataFormats]"
+    read_filename_formats: "frozenset[MetadataFormats]"
+    read_file_formats: "frozenset[MetadataFormats]"
+    read_metadata_lower_filenames: frozenset[str]
+    is_read_comments: bool
+    is_skip_computed_from_tags: bool

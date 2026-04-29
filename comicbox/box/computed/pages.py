@@ -34,9 +34,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
         """Determine if we should compute this attribute."""
         if key in self._config.delete_keys or not sub_md or not self._path:
             return False
-        formats = frozenset(
-            self._config.computed.all_write_formats | self._dict_formats
-        )
+        formats = frozenset(self._config.all_write_formats | self._dict_formats)
         config_attr, schema_attr = _ENABLE_PAGE_COMPUTE_ATTRS[key]
         return getattr(self._config, config_attr, False) and (
             any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)

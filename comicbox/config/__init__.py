@@ -22,7 +22,7 @@ from comicbox.config.paths import (
     post_process_set_for_path,
 )
 from comicbox.config.read import read_config_sources
-from comicbox.config.settings import ComicboxSettings, ComputedSettings
+from comicbox.config.settings import ComicboxSettings
 from comicbox.version import PACKAGE_NAME
 
 try:
@@ -89,21 +89,11 @@ _TEMPLATE = MappingTemplate(
 )
 
 
-def _build_computed_settings(computed: Any) -> ComputedSettings:
-    return ComputedSettings(
-        all_write_formats=frozenset(computed.all_write_formats),
-        read_filename_formats=frozenset(computed.read_filename_formats),
-        read_file_formats=frozenset(computed.read_file_formats),
-        read_metadata_lower_filenames=frozenset(computed.read_metadata_lower_filenames),
-        is_read_comments=bool(computed.is_read_comments),
-        is_skip_computed_from_tags=bool(computed.is_skip_computed_from_tags),
-    )
-
-
 def _build_settings(ad: Any) -> ComicboxSettings:
     """Convert a validated, computed confuse AttrDict into a ComicboxSettings dataclass."""
     inner: Any = ad.comicbox
     metadata_cli = inner.metadata_cli
+    computed: Any = inner.computed
     return ComicboxSettings(
         # Options
         compute_pages=bool(inner.compute_pages),
@@ -141,7 +131,12 @@ def _build_settings(ad: Any) -> ComicboxSettings:
         # Targets
         paths=tuple(inner.paths or ()),
         # Computed
-        computed=_build_computed_settings(inner.computed),
+        all_write_formats=frozenset(computed.all_write_formats),
+        read_filename_formats=frozenset(computed.read_filename_formats),
+        read_file_formats=frozenset(computed.read_file_formats),
+        read_metadata_lower_filenames=frozenset(computed.read_metadata_lower_filenames),
+        is_read_comments=bool(computed.is_read_comments),
+        is_skip_computed_from_tags=bool(computed.is_skip_computed_from_tags),
     )
 
 
