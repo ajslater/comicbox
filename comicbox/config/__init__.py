@@ -22,7 +22,7 @@ from comicbox.config.paths import (
     post_process_set_for_path,
 )
 from comicbox.config.read import read_config_sources
-from comicbox.config.settings import ComputedSettings, Settings
+from comicbox.config.settings import ComicboxSettings, ComputedSettings
 from comicbox.version import PACKAGE_NAME
 
 try:
@@ -100,11 +100,11 @@ def _build_computed_settings(computed: Any) -> ComputedSettings:
     )
 
 
-def _build_settings(ad: Any) -> Settings:
-    """Convert a validated, computed confuse AttrDict into a Settings dataclass."""
+def _build_settings(ad: Any) -> ComicboxSettings:
+    """Convert a validated, computed confuse AttrDict into a ComicboxSettings dataclass."""
     inner: Any = ad.comicbox
     metadata_cli = inner.metadata_cli
-    return Settings(
+    return ComicboxSettings(
         # Options
         compute_pages=bool(inner.compute_pages),
         compute_page_count=bool(inner.compute_page_count),
@@ -146,18 +146,18 @@ def _build_settings(ad: Any) -> Settings:
 
 
 def get_config(
-    args: Namespace | Mapping | Settings | None = None,
+    args: Namespace | Mapping | ComicboxSettings | None = None,
     *,
     modname: str = PACKAGE_NAME,
     path: str | Path | None = None,
     box: bool = False,
-) -> Settings:
+) -> ComicboxSettings:
     """
     Get the config dict, layering env and args over defaults.
 
     Setting the box arg to True reconfigures attributes based on path or no path.
     """
-    if isinstance(args, Settings):
+    if isinstance(args, ComicboxSettings):
         # Already a config
         return post_process_set_for_path(args, path, box=box)
     if isinstance(args, Mapping):

@@ -17,7 +17,7 @@ from rarfile import RarFile, is_rarfile
 from zipremove import ZipFile, is_zipfile
 
 from comicbox.config import get_config
-from comicbox.config.settings import Settings
+from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
@@ -77,7 +77,7 @@ class ComicboxInit:
     def __init__(
         self,
         path: Path | str | None = None,
-        config: Settings | Namespace | Mapping | None = None,
+        config: ComicboxSettings | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
         logger: Any = None,
@@ -86,14 +86,14 @@ class ComicboxInit:
         Initialize the archive with a path to the archive.
 
         path: the path to the comic archive
-        config: a Settings dataclass. If None, Comicbox generates its own from the
+        config: a ComicboxSettings dataclass. If None, Comicbox generates its own from the
             environment.
         metadata: a comicbox.schemas dict to use instead of gathering the metadata
             from the path.
         """
         self._path = self._validate_path(path)
-        if isinstance(config, Settings):
-            self._config: Settings = config
+        if isinstance(config, ComicboxSettings):
+            self._config: ComicboxSettings = config
         else:
             self._config = get_config(config, path=self._path, box=True)
         init_logging(self._config.loglevel, logger)

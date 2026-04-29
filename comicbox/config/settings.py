@@ -2,7 +2,7 @@
 Typed runtime config for comicbox.
 
 Built once by ``get_config()`` from the validated confuse AttrDict; every
-downstream module takes ``Settings`` instead of ``AttrDict``.
+downstream module takes ``ComicboxSettings`` instead of ``AttrDict``.
 """
 
 from collections.abc import Mapping
@@ -28,7 +28,7 @@ class ComputedSettings:
 
 
 @dataclass(frozen=True, slots=True)
-class Settings:
+class ComicboxSettings:
     """Typed runtime config for comicbox."""
 
     # Options

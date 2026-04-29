@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from confuse import Subview
 from loguru import logger
 
-from comicbox.config.settings import Settings
+from comicbox.config.settings import ComicboxSettings
 from comicbox.print import PrintPhases
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ def clean_paths(config: Subview) -> None:
 
 
 def _no_path_changes(
-    settings: Settings,
+    settings: ComicboxSettings,
 ) -> tuple[dict[str, object], list[str]]:
     """Compute the per-field overrides that apply when no archive path is set."""
     changes: dict[str, object] = {}
@@ -74,8 +74,8 @@ def _no_path_changes(
 
 
 def post_process_set_for_path(
-    settings: Settings, path: str | Path | None, *, box: bool
-) -> Settings:
+    settings: ComicboxSettings, path: str | Path | None, *, box: bool
+) -> ComicboxSettings:
     """Turn off options and warn if no path."""
     if path or not box:
         return settings

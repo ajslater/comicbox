@@ -14,7 +14,7 @@ from comicbox.logger import init_logging
 if TYPE_CHECKING:
     from argparse import Namespace
 
-    from comicbox.config.settings import Settings
+    from comicbox.config.settings import ComicboxSettings
 
 
 class Runner:
@@ -24,7 +24,7 @@ class Runner:
 
     def __init__(self, config: Namespace) -> None:
         """Initialize actions and config."""
-        self._config: Settings = get_config(config)
+        self._config: ComicboxSettings = get_config(config)
         init_logging(self._config.loglevel)
 
     def run_on_file(self, path: Path | str | None) -> None:

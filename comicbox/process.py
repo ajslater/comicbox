@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     import datetime
     from collections.abc import Generator, Iterable, Mapping
 
-    from comicbox.config.settings import Settings
+    from comicbox.config.settings import ComicboxSettings
 
 _ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
     UnsupportedArchiveTypeError,
@@ -36,7 +36,7 @@ _ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
 
 def _read_one(
     path: Path | str,
-    config: Settings | Mapping | None = None,
+    config: ComicboxSettings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     old_mtime: datetime.datetime | None = None,
     *,
@@ -114,7 +114,7 @@ def _iter_completed(
 
 def iter_process_files(
     paths: Iterable[Path | str],
-    config: Settings | Mapping | None = None,
+    config: ComicboxSettings | Mapping | None = None,
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
@@ -172,7 +172,7 @@ def iter_process_files(
 
 def process_files(
     paths: Iterable[Path | str],
-    config: Settings | Mapping | None = None,
+    config: ComicboxSettings | Mapping | None = None,
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
@@ -193,7 +193,7 @@ def process_files(
 
 async def aread_metadata(
     path: Path | str,
-    config: Settings | Mapping | None = None,
+    config: ComicboxSettings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
 ) -> dict:
     """Read metadata from a single comic file in a thread executor."""
