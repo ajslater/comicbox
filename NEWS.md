@@ -1,7 +1,12 @@
 # 📰 News
 
-## v2.3.0
+## v3.0.0
 
+- Breaking Changes
+    - Update to confuse 2.2.0
+    - get_config() now returns a ComicboxSettings dataclass, not a Confuse
+      AttrDict.
+    - Comicbox constructor now accepts this dataclass instead of an AttrDict
 - Performance
     - Reducing startup time for new instances of comicbox.
     - General performance improvements for reading metadata from many files.
