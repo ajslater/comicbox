@@ -23,7 +23,7 @@ def _log_format() -> str:
 
 
 _LOG_FORMAT = _log_format()
-_initialized_key: tuple[str, str | None, Any] | None = None
+_initialized_key: tuple[str | int, str | None, Any] | None = None
 
 
 def _resolve_sink(sink: Any) -> Any:
@@ -38,7 +38,7 @@ def _resolve_sink(sink: Any) -> Any:
 
 
 def init_logging(
-    loglevel: str = "INFO",
+    loglevel: str | int = "INFO",
     logger_: Any = None,
     log_format: str | None = None,
     sink: Any = None,

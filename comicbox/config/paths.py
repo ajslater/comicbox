@@ -1,24 +1,24 @@
 """Configure for paths."""
 
 from collections.abc import Sequence
-from copy import copy
+from dataclasses import replace
 from glob import glob
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from confuse import Subview
-from confuse.templates import AttrDict
 from loguru import logger
 
+from comicbox.config.settings import Settings
 from comicbox.print import PrintPhases
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-_SINGLE_NO_PATH = (None,)
-_NO_PATH_ATTRS = MappingProxyType(
+_SINGLE_NO_PATH: tuple[str | Path | None, ...] = (None,)
+_NO_PATH_ATTRS: MappingProxyType[str, object] = MappingProxyType(
     {
         "index_from": None,
         "index_to": None,
@@ -56,38 +56,43 @@ def clean_paths(config: Subview) -> None:
     config["paths"].set(final_paths)
 
 
+def _no_path_changes(
+    settings: Settings,
+) -> tuple[dict[str, object], list[str]]:
+    """Compute the per-field overrides that apply when no archive path is set."""
+    changes: dict[str, object] = {}
+    need_file_opts: list[str] = []
+    blocked_print = frozenset(_NO_PATH_PRINT_PHASES) & settings.print
+    if blocked_print:
+        need_file_opts.extend(f"print {p.name.lower()}" for p in blocked_print)
+        changes["print"] = settings.print - blocked_print
+    for attr, val in _NO_PATH_ATTRS.items():
+        if getattr(settings, attr):
+            need_file_opts.append(attr)
+            changes[attr] = val
+    return changes, need_file_opts
+
+
 def post_process_set_for_path(
-    config: AttrDict, path: str | Path | None, *, box: bool
-) -> AttrDict:
+    settings: Settings, path: str | Path | None, *, box: bool
+) -> Settings:
     """Turn off options and warn if no path."""
     if path or not box:
-        return config
-    need_file_opts = []
-
-    # Alterations in this method are shallow, no need for deepcopy
-    config = copy(AttrDict(config))
-
-    for phase in _NO_PATH_PRINT_PHASES:
-        if phase in config.print:
-            need_file_opts.append(f"print {phase.name.lower()}")
-            config.print = frozenset(config.print - {phase})
-
-    for attr, val in _NO_PATH_ATTRS.items():
-        if config[attr]:
-            need_file_opts.append(attr)
-            config[attr] = val
-
+        return settings
+    changes, need_file_opts = _no_path_changes(settings)
     if need_file_opts:
         plural = "s" if len(need_file_opts) > 1 else ""
         opts = ", ".join(need_file_opts)
         logger.warning(
             f"Cannot perform action{plural} '{opts}' without an archive path."
         )
-    return config
+    return replace(settings, **changes) if changes else settings
 
 
-def expand_glob_paths(paths: Sequence[str | Path]) -> tuple[Path, ...]:
+def expand_glob_paths(paths: Sequence[str | Path] | None) -> tuple[Path, ...]:
     """Expand glob paths into a tuple of real paths."""
+    if not paths:
+        return ()
     expanded_paths: set[Path] = set()
     for path in paths:
         path_str = str(path)

@@ -12,13 +12,12 @@ from tarfile import open as tarfile_open
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from confuse import AttrDict
 from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 from zipremove import ZipFile, is_zipfile
 
 from comicbox.config import get_config
-from comicbox.config.frozenattrdict import FrozenAttrDict
+from comicbox.config.settings import Settings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
@@ -78,7 +77,7 @@ class ComicboxInit:
     def __init__(
         self,
         path: Path | str | None = None,
-        config: AttrDict | Namespace | Mapping | None = None,
+        config: Settings | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
         logger: Any = None,
@@ -87,16 +86,16 @@ class ComicboxInit:
         Initialize the archive with a path to the archive.
 
         path: the path to the comic archive
-        config: a confuse AttrDict. If None, Comicbox generates its own from the
+        config: a Settings dataclass. If None, Comicbox generates its own from the
             environment.
         metadata: a comicbox.schemas dict to use instead of gathering the metadata
             from the path.
         """
         self._path = self._validate_path(path)
-        if isinstance(config, FrozenAttrDict):
-            self._config: FrozenAttrDict = config
+        if isinstance(config, Settings):
+            self._config: Settings = config
         else:
-            self._config = FrozenAttrDict(get_config(config, path=self._path, box=True))
+            self._config = get_config(config, path=self._path, box=True)
         init_logging(self._config.loglevel, logger)
         self._reset_archive(fmt, metadata)
 

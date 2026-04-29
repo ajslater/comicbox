@@ -14,16 +14,13 @@ class ComicboxDumpToFiles(ComicboxDump):
 
     def to_file(
         self,
-        dest_path: Path | None = None,
+        dest_path: Path | str | None = None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
         **kwargs: Any,
     ) -> None:
         """Export metadatat to a file with a schema."""
         if dest_path is None:
             dest_path = self._config.dest_path
-        if dest_path is None:
-            reason = "No destination path specified for export."
-            raise ValueError(reason)
         dest_path = Path(dest_path)
         fn = fmt.value.filename
         path = dest_path / fn

@@ -3,10 +3,10 @@
 from argparse import Namespace
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from confuse import Configuration
 from confuse.templates import (
-    AttrDict,
     Choice,
     Integer,
     MappingTemplate,
@@ -17,8 +17,12 @@ from confuse.templates import (
 )
 
 from comicbox.config.computed import compute_config
-from comicbox.config.paths import expand_glob_paths, post_process_set_for_path
+from comicbox.config.paths import (
+    expand_glob_paths,
+    post_process_set_for_path,
+)
 from comicbox.config.read import read_config_sources
+from comicbox.config.settings import ComputedSettings, Settings
 from comicbox.version import PACKAGE_NAME
 
 try:
@@ -85,19 +89,75 @@ _TEMPLATE = MappingTemplate(
 )
 
 
+def _build_computed_settings(computed: Any) -> ComputedSettings:
+    return ComputedSettings(
+        all_write_formats=frozenset(computed.all_write_formats),
+        read_filename_formats=frozenset(computed.read_filename_formats),
+        read_file_formats=frozenset(computed.read_file_formats),
+        read_metadata_lower_filenames=frozenset(computed.read_metadata_lower_filenames),
+        is_read_comments=bool(computed.is_read_comments),
+        is_skip_computed_from_tags=bool(computed.is_skip_computed_from_tags),
+    )
+
+
+def _build_settings(ad: Any) -> Settings:
+    """Convert a validated, computed confuse AttrDict into a Settings dataclass."""
+    inner: Any = ad.comicbox
+    metadata_cli = inner.metadata_cli
+    return Settings(
+        # Options
+        compute_pages=bool(inner.compute_pages),
+        compute_page_count=bool(inner.compute_page_count),
+        config=inner.config,
+        delete_all_tags=bool(inner.delete_all_tags),
+        delete_keys=frozenset(inner.delete_keys or ()),
+        delete_orig=bool(inner.delete_orig),
+        dest_path=inner.dest_path,
+        dry_run=bool(inner.dry_run),
+        loglevel=inner.loglevel,
+        metadata=inner.metadata,
+        metadata_format=inner.metadata_format,
+        metadata_cli=tuple(metadata_cli) if metadata_cli else None,
+        pdf_page_format=inner.pdf_page_format,
+        read=frozenset(inner.read or ()),
+        read_ignore=frozenset(inner.read_ignore) if inner.read_ignore else None,
+        recurse=bool(inner.recurse),
+        replace_metadata=bool(inner.replace_metadata),
+        stamp=bool(inner.stamp),
+        stamp_notes=bool(inner.stamp_notes),
+        tagger=inner.tagger,
+        theme=inner.theme,
+        # Actions
+        cbz=inner.cbz,
+        covers=inner.covers,
+        export=frozenset(inner.export or ()),
+        import_paths=expand_glob_paths(inner.import_paths),
+        index_from=inner.index_from,
+        index_to=inner.index_to,
+        print=frozenset(inner.print or ()),
+        rename=inner.rename,
+        validate=inner.validate,
+        write=frozenset(inner.write or ()),
+        # Targets
+        paths=tuple(inner.paths or ()),
+        # Computed
+        computed=_build_computed_settings(inner.computed),
+    )
+
+
 def get_config(
-    args: Namespace | Mapping | AttrDict | None = None,
+    args: Namespace | Mapping | Settings | None = None,
     *,
     modname: str = PACKAGE_NAME,
     path: str | Path | None = None,
     box: bool = False,
-) -> AttrDict:
+) -> Settings:
     """
     Get the config dict, layering env and args over defaults.
 
     Setting the box arg to True reconfigures attributes based on path or no path.
     """
-    if isinstance(args, AttrDict):
+    if isinstance(args, Settings):
         # Already a config
         return post_process_set_for_path(args, path, box=box)
     if isinstance(args, Mapping):
@@ -112,6 +172,5 @@ def get_config(
     compute_config(config_program)
 
     ad = config.get(_TEMPLATE)
-    ad.comicbox.import_paths = expand_glob_paths(ad.comicbox.import_paths)
-
-    return post_process_set_for_path(ad.comicbox, path, box=box)
+    settings = _build_settings(ad)
+    return post_process_set_for_path(settings, path, box=box)

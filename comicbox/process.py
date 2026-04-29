@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     import datetime
     from collections.abc import Generator, Iterable, Mapping
 
-    from confuse.templates import AttrDict
+    from comicbox.config.settings import Settings
 
 _ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
     UnsupportedArchiveTypeError,
@@ -36,7 +36,7 @@ _ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
 
 def _read_one(
     path: Path | str,
-    config: Mapping | None = None,
+    config: Settings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     old_mtime: datetime.datetime | None = None,
     *,
@@ -114,7 +114,7 @@ def _iter_completed(
 
 def iter_process_files(
     paths: Iterable[Path | str],
-    config: AttrDict | Mapping | None = None,
+    config: Settings | Mapping | None = None,
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
@@ -139,7 +139,6 @@ def iter_process_files(
         from loguru import logger
     if not old_mtime_map:
         old_mtime_map = {}
-    config_dict: dict | None = dict(config) if config else None
     path_list = [Path(p) for p in paths]
 
     executor_kwargs: dict[str, Any] = {"max_workers": max_workers}
@@ -155,7 +154,7 @@ def iter_process_files(
                 future = executor.submit(
                     _read_one,
                     path,
-                    config_dict,
+                    config,
                     fmt,
                     old_mtime,
                     full_metadata=full_metadata,
@@ -173,7 +172,7 @@ def iter_process_files(
 
 def process_files(
     paths: Iterable[Path | str],
-    config: AttrDict | Mapping | None = None,
+    config: Settings | Mapping | None = None,
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
@@ -194,7 +193,7 @@ def process_files(
 
 async def aread_metadata(
     path: Path | str,
-    config: AttrDict | Mapping | None = None,
+    config: Settings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
 ) -> dict:
     """Read metadata from a single comic file in a thread executor."""
