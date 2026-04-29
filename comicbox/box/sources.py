@@ -29,8 +29,6 @@ class ComicboxSources(ComicboxArchive):
         if not self._config.metadata:
             return source_data_list
         fmt = self._config.metadata_format
-        if fmt and fmt not in self._config.read:
-            return source_data_list
         try:
             if isinstance(fmt, str):
                 fmt = MetadataFormats[fmt.upper()]
