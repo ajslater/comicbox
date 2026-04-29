@@ -75,7 +75,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         # only look for ids in tags and genres if the format has tags but no designated id field.
         if (
             not sub_data
-            or self._config.computed.is_skip_computed_from_tags
+            or self._config.is_skip_computed_from_tags
             or _PARSE_AS_IDENTIFIERS.issubset(self._config.delete_keys)
         ):
             return None

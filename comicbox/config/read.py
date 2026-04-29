@@ -5,7 +5,6 @@ from argparse import Namespace
 from collections.abc import Mapping
 
 from confuse import Configuration
-from confuse.templates import AttrDict
 from loguru import logger
 
 
@@ -38,7 +37,7 @@ def read_config_sources(
 
     # Args
     if args:
-        if isinstance(args, Mapping | AttrDict):
+        if isinstance(args, Mapping):
             config.add(args)
         elif isinstance(args, Namespace):  # pyright: ignore[reportUnnecessaryIsInstance]
             config.set_args(args)

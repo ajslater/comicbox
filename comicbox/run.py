@@ -1,14 +1,20 @@
 """Run comicbox on files."""
 
-from argparse import Namespace
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.frozenattrdict import FrozenAttrDict
 from comicbox.logger import init_logging
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+
+    from comicbox.config.settings import ComicboxSettings
 
 
 class Runner:
@@ -18,10 +24,10 @@ class Runner:
 
     def __init__(self, config: Namespace) -> None:
         """Initialize actions and config."""
-        self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
+        self._config: ComicboxSettings = get_config(config)
         init_logging(self._config.loglevel)
 
-    def run_on_file(self, path: Path | str) -> None:
+    def run_on_file(self, path: Path | str | None) -> None:
         """Run operations on one file."""
         if path:
             path = Path(path)
@@ -57,6 +63,5 @@ class Runner:
 
     def run(self) -> None:
         """Run actions with config."""
-        paths = self._config.paths
-        for path in paths:
+        for path in self._config.paths:
             self.run_on_file(path)
