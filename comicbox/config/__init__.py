@@ -35,7 +35,8 @@ except ImportError:
 # `_build_settings` normalizes the validated value into the right immutable
 # type for the dataclass (frozenset for set-like fields, tuple for sequences),
 # so the template intentionally doesn't pin element types here.
-_NON_MAPPING_CONTAINER = OneOf((set, frozenset, tuple, list))
+_NON_MAPPING_TYPES = (set, frozenset, tuple, list)
+_NON_MAPPING_CONTAINER = OneOf(_NON_MAPPING_TYPES)
 
 _TEMPLATE = MappingTemplate(
     {
@@ -70,7 +71,7 @@ _TEMPLATE = MappingTemplate(
                 "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
                 "index_to": Optional(int),
-                "print": Optional(OneOf((set, frozenset, tuple, list, str))),
+                "print": Optional(OneOf((*_NON_MAPPING_TYPES, str))),
                 "rename": Optional(bool),
                 "validate": Optional(bool),
                 "write": Optional(_NON_MAPPING_CONTAINER),
