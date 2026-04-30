@@ -1,11 +1,43 @@
 """Transform config format keys to MetadataFormats."""
 
+import contextlib
+from collections.abc import Iterable, Mapping
 from typing import Any
 
-from confuse import Subview
+from confuse import Subview, exceptions
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
+
+
+def _raw_or_empty(view: Subview) -> Iterable[Any]:
+    """
+    Return the view's raw Python value, or () when missing/None.
+
+    Used in lieu of iterating Subviews directly (which only supports
+    dict/list source values) so that user-supplied set/frozenset/tuple
+    inputs survive compute_config.
+
+    Mappings are rejected explicitly: dict/Mapping iteration yields keys,
+    which would silently accept dict input on fields that should only
+    take a non-mapping container of values. Strings are returned as-is
+    (Iterable[str] yielding chars) — that's the existing print-field
+    contract; other consumers either treat str as a one-char-iterable
+    or check isinstance(..., str) themselves.
+    """
+    with contextlib.suppress(exceptions.NotFoundError):
+        value = view.get()
+        if isinstance(value, Mapping):
+            reason = (
+                f"{view.name} must be a non-mapping container "
+                f"(set/frozenset/tuple/list), not a mapping"
+            )
+            raise exceptions.ConfigTypeError(reason)
+        if not value:
+            return ()
+        if isinstance(value, Iterable):
+            return value
+    return ()
 
 
 def _get_formats_from_keys(keys: frozenset[str], ignore_keys: frozenset[Any]) -> tuple:
@@ -22,14 +54,14 @@ def _get_formats_from_keys(keys: frozenset[str], ignore_keys: frozenset[Any]) ->
 
 def _get_config_formats_from_keys(config: Subview, key: str) -> frozenset:
     """Return a set of schemas from a sequence of config keys."""
-    # Keys to set
-    keys = config[key] or ()
-    keys = frozenset({str(key).strip() for key in keys})
+    # Keys to set — pull raw value to support set/frozenset/tuple/list inputs.
+    raw_keys = _raw_or_empty(config[key])
+    keys = frozenset({str(k).strip() for k in raw_keys})
 
     # Ignore list to set
     attr = f"{key}_ignore"
     ignore_list = getattr(config, attr, ())
-    ignore_keys = frozenset({str(key).strip() for key in ignore_list})
+    ignore_keys = frozenset({str(k).strip() for k in ignore_list})
     fmts, keys = _get_formats_from_keys(keys, ignore_keys)
 
     # Report on invalid formats.

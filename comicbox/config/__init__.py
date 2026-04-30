@@ -31,6 +31,12 @@ except ImportError:
     from comicbox.pdffile_stub import PageFormat
 
 
+# Any non-Mapping container type — set/frozenset/tuple/list all pass.
+# `_build_settings` normalizes the validated value into the right immutable
+# type for the dataclass (frozenset for set-like fields, tuple for sequences),
+# so the template intentionally doesn't pin element types here.
+_NON_MAPPING_CONTAINER = OneOf((set, frozenset, tuple, list))
+
 _TEMPLATE = MappingTemplate(
     {
         PACKAGE_NAME: MappingTemplate(
@@ -40,7 +46,7 @@ _TEMPLATE = MappingTemplate(
                 "compute_page_count": bool,
                 "config": Optional(OneOf((str, Path))),
                 "delete_all_tags": bool,
-                "delete_keys": Optional(OneOf((frozenset, Sequence(str)))),
+                "delete_keys": Optional(_NON_MAPPING_CONTAINER),
                 "delete_orig": bool,
                 "dest_path": OneOf((str, Path)),
                 "dry_run": bool,
@@ -49,8 +55,8 @@ _TEMPLATE = MappingTemplate(
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
                 "pdf_page_format": Choice(("", *(e.value for e in PageFormat))),
-                "read": Optional(frozenset, Sequence(str)),
-                "read_ignore": Optional(OneOf((frozenset, Sequence(str)))),
+                "read": Optional(_NON_MAPPING_CONTAINER),
+                "read_ignore": Optional(_NON_MAPPING_CONTAINER),
                 "recurse": bool,
                 "replace_metadata": bool,
                 "stamp": bool,
@@ -60,14 +66,14 @@ _TEMPLATE = MappingTemplate(
                 # Actions
                 "cbz": Optional(bool),
                 "covers": Optional(bool),
-                "export": Optional(OneOf((frozenset, Sequence(str)))),
+                "export": Optional(_NON_MAPPING_CONTAINER),
                 "import_paths": Optional(Sequence(OneOf((str, Path)))),
                 "index_from": Optional(int),
                 "index_to": Optional(int),
-                "print": Optional(OneOf((frozenset, str))),
+                "print": Optional(OneOf((set, frozenset, tuple, list, str))),
                 "rename": Optional(bool),
                 "validate": Optional(bool),
-                "write": Optional(OneOf((frozenset, Sequence(str)))),
+                "write": Optional(_NON_MAPPING_CONTAINER),
                 # Targets
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 # Computed
