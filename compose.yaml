@@ -1,15 +1,12 @@
 services:
   ci:
-    build:
-      context: .
-      target: comicbox-ci
-    container_name: comicbox-ci
+    container_name: $CI_CONTAINER
     entrypoint:
       - sleep
       - infinity
     environment:
       - PYTHONUNBUFFERED=1
-    image: comicbox-ci:ci
+    image: $CI_IMAGE
     volumes:
       - ./test-results:/app/test-results
       - ./dist:/app/dist
