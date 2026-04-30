@@ -35,9 +35,12 @@ def read_config_sources(
     # Env vars
     config.set_env()
 
-    # Args
+    # Args (highest priority — must override config files and env vars).
+    # Mapping uses .set() so it lands on top of the source stack like
+    # set_args() does for Namespace; .add() would put it BELOW the
+    # config_default.yaml loaded by .read() above.
     if args:
         if isinstance(args, Mapping):
-            config.add(args)
+            config.set(args)
         elif isinstance(args, Namespace):  # pyright: ignore[reportUnnecessaryIsInstance]
             config.set_args(args)
