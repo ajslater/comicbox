@@ -6,7 +6,7 @@ import asyncio
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from tarfile import TarError
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 from zipfile import BadZipFile, LargeZipFile
 
 from py7zr.exceptions import ArchiveError as Py7zError
@@ -34,6 +34,39 @@ _ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
 )
 
 
+class ReadResult(TypedDict):
+    """
+    Result of reading metadata from a single comic archive.
+
+    The envelope fields (``metadata_mtime``, ``page_count``, ``file_type``)
+    are populated cheaply on every successful read and are the source of
+    truth for archive-level state tracking. ``tags`` carries the parsed
+    metadata payload and is ``None`` when extraction was skipped — either
+    because the embedded metadata mtime hadn't advanced past ``old_mtime``
+    or because the caller passed ``full_metadata=False``.
+
+    Distinguishing "skip" from "extracted-but-empty" is the contract that
+    lets callers preserve existing tag links when the archive's tags
+    haven't changed; an empty ``{}`` would mean "extracted, no tags
+    found", which would force the caller to clear those links.
+    """
+
+    metadata_mtime: datetime.datetime | None
+    page_count: int | None
+    file_type: str | None
+    tags: dict[str, Any] | None
+
+
+def _empty_read_result() -> ReadResult:
+    """Sentinel returned for archives that failed to open at all."""
+    return ReadResult(
+        metadata_mtime=None,
+        page_count=None,
+        file_type=None,
+        tags=None,
+    )
+
+
 def _read_one(
     path: Path | str,
     config: ComicboxSettings | Mapping | None = None,
@@ -41,43 +74,49 @@ def _read_one(
     old_mtime: datetime.datetime | None = None,
     *,
     full_metadata: bool = True,
-) -> dict[str, Any]:
+) -> ReadResult:
     """Read metadata from a single comic file (runs in a worker process)."""
-    md: dict[str, Any] = {}
+    tags: dict[str, Any] | None = None
+    metadata_mtime: datetime.datetime | None = None
     with Comicbox(path, config=config, fmt=fmt) as cb:
         if full_metadata:
-            if not old_mtime:
-                md = cb.to_dict()
-                md = md.get("comicbox", {})
-            else:
-                new_md_mtime = cb.get_metadata_mtime()
-                if not new_md_mtime or new_md_mtime > old_mtime:
-                    md = cb.to_dict()
-                    md = md.get("comicbox", {})
-                md["metadata_mtime"] = new_md_mtime
-        if "page_count" not in md:
-            md["page_count"] = cb.get_page_count()
-        md["file_type"] = cb.get_file_type()
-    return md
+            metadata_mtime = cb.get_metadata_mtime()
+            if not old_mtime or not metadata_mtime or metadata_mtime > old_mtime:
+                tags = cb.to_dict().get("comicbox", {})
+                # Envelope fields are returned out-of-band; strip any
+                # duplicates from the tag payload so callers see one
+                # source of truth.
+                if tags:
+                    tags.pop("metadata_mtime", None)
+                    tags.pop("page_count", None)
+                    tags.pop("file_type", None)
+        page_count = cb.get_page_count()
+        file_type = cb.get_file_type()
+    return ReadResult(
+        metadata_mtime=metadata_mtime,
+        page_count=page_count,
+        file_type=file_type,
+        tags=tags,
+    )
 
 
 def _collect_result(
     future: Any,
     path: Path,
     logger: Any,
-) -> tuple[dict, BaseException | None, bool]:
-    """Collect one completed future; return (metadata, exception, pool_broken)."""
+) -> tuple[ReadResult, BaseException | None, bool]:
+    """Collect one completed future; return (result, exception, pool_broken)."""
     try:
         return future.result(), None, False
     except _ARCHIVE_ERRORS as exc:
         logger.warning(f"Failed to import {path}: {exc}")
-        return {}, exc, False
+        return _empty_read_result(), exc, False
     except BrokenExecutor as exc:
         logger.exception(f"Worker pool broken while processing {path}")
-        return {}, exc, True
+        return _empty_read_result(), exc, True
     except Exception as exc:
         logger.exception(f"Failed to import: {path}")
-        return {}, exc, False
+        return _empty_read_result(), exc, False
 
 
 def _worker_log_init(log_config: Mapping) -> None:
@@ -98,18 +137,18 @@ def _worker_log_init(log_config: Mapping) -> None:
 def _iter_completed(
     futures: Mapping[Any, Path],
     logger: Any,
-) -> Generator[tuple[Path, tuple[dict, BaseException | None]], None, None]:
+) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
     """Yield results as futures complete; mark subsequent paths broken once the pool fails."""
     pool_broken = False
     for future in as_completed(futures):
         path = futures[future]
         if pool_broken:
-            yield path, ({}, BrokenExecutor("Worker pool broken"))
+            yield path, (_empty_read_result(), BrokenExecutor("Worker pool broken"))
             continue
-        md, exc, broken = _collect_result(future, path, logger)
+        result, exc, broken = _collect_result(future, path, logger)
         if broken:
             pool_broken = True
-        yield path, (md, exc)
+        yield path, (result, exc)
 
 
 def iter_process_files(
@@ -122,13 +161,15 @@ def iter_process_files(
     worker_log_config: Mapping | None = None,
     *,
     full_metadata: bool = True,
-) -> Generator[tuple[Path, tuple[dict, BaseException | None]], None, None]:
+) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
     """
-    Yield (path, (metadata_dict, exception_or_None)) as each file completes.
+    Yield (path, (ReadResult, exception_or_None)) as each file completes.
 
     All per-path failures — submit-time, worker-raised, or pool-broken —
     are delivered as the second element of the tuple rather than raised,
-    so a single bad path cannot abort the whole run.
+    so a single bad path cannot abort the whole run. On failure the
+    ReadResult is the empty sentinel (all fields ``None``); inspect the
+    exception, not the result, to detect failure.
 
     worker_log_config: optional dict of {"level", "format", "sink"} used to
         re-initialize loguru inside each worker so subprocess log output
@@ -161,7 +202,7 @@ def iter_process_files(
                 )
             except Exception as exc:
                 logger.exception(f"Failed to submit {path}")
-                yield path, ({}, exc)
+                yield path, (_empty_read_result(), exc)
                 continue
             futures[future] = path
 
@@ -177,7 +218,7 @@ def process_files(
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
     worker_log_config: Mapping | None = None,
-) -> dict[Path, tuple[dict, BaseException | None]]:
+) -> dict[Path, tuple[ReadResult, BaseException | None]]:
     """Process multiple comic files in parallel via ProcessPoolExecutor."""
     return dict(
         iter_process_files(
@@ -195,7 +236,7 @@ async def aread_metadata(
     path: Path | str,
     config: ComicboxSettings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-) -> dict:
+) -> ReadResult:
     """Read metadata from a single comic file in a thread executor."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _read_one, path, config, fmt)

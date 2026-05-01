@@ -46,58 +46,69 @@ FIXTURES = (
 
 @pytest.mark.parametrize(("path", "file_type", "page_count"), FIXTURES)
 def test_read_one_full_metadata(path: Path, file_type: str, page_count: int) -> None:
-    """Full metadata read returns file_type, page_count, and comicbox fields."""
-    md = _read_one(path, config=CONFIG)
-    assert md["file_type"] == file_type
-    assert md["page_count"] == page_count
+    """Full metadata read returns envelope fields and a populated tags dict."""
+    result = _read_one(path, config=CONFIG)
+    assert result["file_type"] == file_type
+    assert result["page_count"] == page_count
     # Full reads of Captain Science archives surface series info.
+    assert result["tags"] is not None
     if file_type != "PDF":
-        assert "series" in md
+        assert "series" in result["tags"]
 
 
 def test_read_one_mtime_skip() -> None:
-    """old_mtime in the future => skip full read, only return minimal fields."""
-    md = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, old_mtime=FUTURE)
-    assert md["file_type"] == "CBZ"
-    assert "page_count" in md
-    assert "series" not in md
+    """old_mtime in the future => tags=None but envelope still populated."""
+    result = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, old_mtime=FUTURE)
+    assert result["file_type"] == "CBZ"
+    assert result["page_count"] is not None
+    assert result["tags"] is None
 
 
 def test_read_one_mtime_stale() -> None:
     """old_mtime at epoch => archive is newer, do a full read."""
-    md = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, old_mtime=EPOCH)
-    assert md["file_type"] == "CBZ"
-    assert "series" in md
+    result = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, old_mtime=EPOCH)
+    assert result["file_type"] == "CBZ"
+    assert result["tags"] is not None
+    assert "series" in result["tags"]
 
 
 def test_read_one_no_full_metadata() -> None:
-    """full_metadata=False => only page_count + file_type."""
-    md = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, full_metadata=False)
-    assert md["file_type"] == "CBZ"
-    assert md["page_count"] == _CIX_CBZ_PAGES
-    assert "series" not in md
-    assert "notes" not in md
+    """full_metadata=False => tags=None, envelope still populated."""
+    result = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG, full_metadata=False)
+    assert result["file_type"] == "CBZ"
+    assert result["page_count"] == _CIX_CBZ_PAGES
+    assert result["tags"] is None
 
 
 def test_read_one_empty_archive() -> None:
-    """Empty cbz still returns a file_type and zero pages."""
-    md = _read_one(EMPTY_CBZ_SOURCE_PATH, config=CONFIG)
-    assert md["file_type"] == "CBZ"
-    assert md["page_count"] == 0
+    """Empty cbz still returns envelope fields and a tags dict."""
+    result = _read_one(EMPTY_CBZ_SOURCE_PATH, config=CONFIG)
+    assert result["file_type"] == "CBZ"
+    assert result["page_count"] == 0
+    assert result["tags"] is not None
+
+
+def test_read_one_envelope_strips_dupes_from_tags() -> None:
+    """Envelope keys are removed from the tags dict so callers see one source."""
+    result = _read_one(CIX_CBZ_SOURCE_PATH, config=CONFIG)
+    assert result["tags"] is not None
+    assert "metadata_mtime" not in result["tags"]
+    assert "page_count" not in result["tags"]
+    assert "file_type" not in result["tags"]
 
 
 # --- iter_process_files -----------------------------------------------------
 
 
 def test_iter_process_files_basic() -> None:
-    """Each path yields (path, (dict, None))."""
+    """Each path yields (path, (ReadResult, None))."""
     paths = [p for p, _, _ in FIXTURES]
     results = dict(iter_process_files(paths, config=CONFIG, max_workers=2))
     assert set(results) == set(paths)
     for path, _, page_count in FIXTURES:
-        md, exc = results[path]
+        result, exc = results[path]
         assert exc is None
-        assert md["page_count"] == page_count
+        assert result["page_count"] == page_count
 
 
 def test_iter_process_files_bad_path_is_yielded_not_raised(
@@ -110,12 +121,15 @@ def test_iter_process_files_bad_path_is_yielded_not_raised(
 
     results = dict(iter_process_files(paths, config=CONFIG, max_workers=2))
 
-    good_md, good_exc = results[CIX_CBZ_SOURCE_PATH]
+    good_result, good_exc = results[CIX_CBZ_SOURCE_PATH]
     assert good_exc is None
-    assert good_md["file_type"] == "CBZ"
+    assert good_result["file_type"] == "CBZ"
 
-    bad_md, bad_exc = results[bad]
-    assert bad_md == {}
+    bad_result, bad_exc = results[bad]
+    # Empty sentinel: every field is None on failure.
+    assert bad_result["tags"] is None
+    assert bad_result["file_type"] is None
+    assert bad_result["page_count"] is None
     assert isinstance(bad_exc, (BadZipFile, OSError, Exception))
 
 
@@ -123,8 +137,9 @@ def test_iter_process_files_missing_file(tmp_path: Path) -> None:
     """A nonexistent path yields an OSError rather than raising."""
     missing = tmp_path / "does_not_exist.cbz"
     results = dict(iter_process_files([missing], config=CONFIG, max_workers=1))
-    md, exc = results[missing]
-    assert md == {}
+    result, exc = results[missing]
+    assert result["tags"] is None
+    assert result["file_type"] is None
     assert exc is not None
 
 
@@ -144,7 +159,7 @@ def test_iter_process_files_early_break_shuts_down() -> None:
 
 
 def test_iter_process_files_mtime_map_skips_full_read() -> None:
-    """old_mtime_map entry in the future => minimal metadata only."""
+    """old_mtime_map entry in the future => tags=None, envelope populated."""
     path = CIX_CBZ_SOURCE_PATH
     mtime_map = {str(path): FUTURE}
     results = dict(
@@ -152,22 +167,22 @@ def test_iter_process_files_mtime_map_skips_full_read() -> None:
             [path], config=CONFIG, max_workers=1, old_mtime_map=mtime_map
         )
     )
-    md, exc = results[path]
+    result, exc = results[path]
     assert exc is None
-    assert md["file_type"] == "CBZ"
-    assert "series" not in md
+    assert result["file_type"] == "CBZ"
+    assert result["tags"] is None
 
 
 def test_iter_process_files_full_metadata_false() -> None:
-    """full_metadata=False keyword => only page_count + file_type per path."""
+    """full_metadata=False => tags=None, envelope populated."""
     paths = [CIX_CBZ_SOURCE_PATH]
     results = dict(
         iter_process_files(paths, config=CONFIG, max_workers=1, full_metadata=False)
     )
-    md, exc = results[CIX_CBZ_SOURCE_PATH]
+    result, exc = results[CIX_CBZ_SOURCE_PATH]
     assert exc is None
-    assert md["file_type"] == "CBZ"
-    assert "series" not in md
+    assert result["file_type"] == "CBZ"
+    assert result["tags"] is None
 
 
 def test_iter_process_files_accepts_str_paths() -> None:
@@ -192,9 +207,9 @@ def test_iter_process_files_with_worker_log_config() -> None:
         )
     )
     assert set(results) == {Path(p) for p in paths}
-    for md, exc in results.values():
+    for result, exc in results.values():
         assert exc is None
-        assert md["file_type"] in {"CBZ", "CB7"}
+        assert result["file_type"] in {"CBZ", "CB7"}
 
 
 # --- process_files ----------------------------------------------------------
@@ -206,9 +221,9 @@ def test_process_files_returns_dict() -> None:
     results = process_files(paths, config=CONFIG, max_workers=2)
     assert isinstance(results, dict)
     assert set(results) == {Path(p) for p in paths}
-    for md, exc in results.values():
+    for result, exc in results.values():
         assert exc is None
-        assert md["file_type"] in {"CBZ", "CB7"}
+        assert result["file_type"] in {"CBZ", "CB7"}
 
 
 def test_process_files_empty() -> None:
@@ -220,17 +235,17 @@ def test_process_files_empty() -> None:
 
 
 def test_aread_metadata_returns_metadata() -> None:
-    """Async read returns a populated metadata dict."""
-    md = asyncio.run(aread_metadata(CIX_CBZ_SOURCE_PATH, config=CONFIG))
-    assert md["file_type"] == "CBZ"
-    assert md["page_count"] == _CIX_CBZ_PAGES
+    """Async read returns a populated ReadResult."""
+    result = asyncio.run(aread_metadata(CIX_CBZ_SOURCE_PATH, config=CONFIG))
+    assert result["file_type"] == "CBZ"
+    assert result["page_count"] == _CIX_CBZ_PAGES
 
 
 def test_aread_metadata_passes_fmt() -> None:
     """Fmt is forwarded positionally without being confused with logger."""
-    md = asyncio.run(
+    result = asyncio.run(
         aread_metadata(
             CIX_CBZ_SOURCE_PATH, config=CONFIG, fmt=MetadataFormats.COMICBOX_YAML
         )
     )
-    assert md["file_type"] == "CBZ"
+    assert result["file_type"] == "CBZ"
