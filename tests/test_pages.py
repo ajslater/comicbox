@@ -1,6 +1,7 @@
 """Test getting pages."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 from comicbox.box import Comicbox
 from tests.const import TEST_FILES_DIR
@@ -21,6 +22,28 @@ def test_get_covers() -> None:
     with Comicbox(ARCHIVE_PATH) as car:
         page = car.get_cover_page()
     assert image == page
+
+
+def test_get_cover_skip_metadata() -> None:
+    """Skip-metadata path returns the first archive image."""
+    with COVER_IMAGE.open("rb") as cif:
+        image = cif.read()
+    with Comicbox(ARCHIVE_PATH) as car:
+        page = car.get_cover_page(skip_metadata=True)
+    assert image == page
+
+
+def test_get_cover_skip_metadata_does_not_read_metadata() -> None:
+    """Skip-metadata path must not call get_internal_metadata."""
+    with (
+        Comicbox(ARCHIVE_PATH) as car,
+        patch.object(
+            car, "get_internal_metadata", wraps=car.get_internal_metadata
+        ) as spy,
+    ):
+        page = car.get_cover_page(skip_metadata=True)
+    assert page
+    assert spy.call_count == 0
 
 
 def test_get_random_page() -> None:

@@ -13,6 +13,9 @@
       comicbox.process.iter_process_files() and
       comicbox.process.aread_metadata() for reading large batches of files at
       once.
+    - `Comicbox.get_cover_page(skip_metadata=True)` skips metadata parsing for
+      callers that just need the first archive image as a thumbnail. Removes
+      per-call schema instantiation and Union resolution overhead.
 - Security against suspicious archive paths when extracting pages and metadata
   to the filesystem.
 - Add Age Rating conversion function
