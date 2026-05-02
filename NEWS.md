@@ -16,6 +16,11 @@
     - `Comicbox.get_cover_page(skip_metadata=True)` skips metadata parsing for
       callers that just need the first archive image as a thumbnail. Removes
       per-call schema instantiation and Union resolution overhead.
+    - Drop the DEBUG-level emission of intentionally-ignored Marshmallow
+      validation errors (`Invalid input type.` from Union variant misses,
+      `Field may not be null.` from sparse fields). These were context-free
+      noise — ~50 lines per archive at DEBUG that read like real failures. Real
+      schema errors still log at WARNING with full context.
 - Security against suspicious archive paths when extracting pages and metadata
   to the filesystem.
 - Add Age Rating conversion function

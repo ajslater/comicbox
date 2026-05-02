@@ -128,27 +128,18 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_schema_validators(error_store=error_store, **kwargs)
 
-    def _split_list_errors(self, error_list: list) -> tuple:
-        error_set = frozenset(error_list)
-        debug_error_set = error_set & self._ignore_errors
-        debug_errors = sorted(debug_error_set)
-        warning_errors = sorted(error_set - debug_error_set)
-        return debug_errors, warning_errors
+    def _filter_list(self, error_list: list) -> list:
+        return sorted(frozenset(error_list) - self._ignore_errors)
 
-    def _split_mapping_errors(self, error: Mapping) -> tuple[dict, dict]:
-        debug_errors = {}
-        warning_errors = {}
-        for key, error_list in error.items():
-            debug_error_list, warning_error_list = self._split_list_errors(error_list)
-            if debug_error_list:
-                debug_errors[key] = debug_error_list
-            if warning_error_list:
-                warning_errors[key] = warning_error_list
-        return debug_errors, warning_errors
+    def _filter_mapping(self, error: Mapping) -> dict:
+        return {
+            key: filtered
+            for key, error_list in error.items()
+            if (filtered := self._filter_list(error_list))
+        }
 
-    def _log_errors(
+    def _log_warnings(
         self,
-        loglevel: str,
         error_class: type | None,
         errors: Mapping | list,
     ) -> None:
@@ -157,7 +148,7 @@ class ClearingErrorStoreSchema(Schema):
         path = f"{self._path}: " if self._path else ""
         error_name = f"{error_class.__name__} - " if error_class else ""
         message = f"{path}{error_name}{errors}"
-        logger.log(loglevel, message)
+        logger.warning(message)
 
     @override
     def handle_error(
@@ -166,7 +157,7 @@ class ClearingErrorStoreSchema(Schema):
         *_args: Any,
         **_kwargs: Any,
     ) -> None:
-        """Log errors by severity."""
+        """Log unignored errors at WARNING; ignored errors are dropped."""
         if hasattr(error, "normalized_messages"):
             error_class = type(error)
             error = error.normalized_messages()
@@ -177,12 +168,9 @@ class ClearingErrorStoreSchema(Schema):
             error_class = None
 
         if isinstance(error, Mapping):
-            debug_errors, warning_errors = self._split_mapping_errors(error)
+            warning_errors = self._filter_mapping(error)
         else:
             error_list = error if isinstance(error, list) else [error]
-            debug_errors, warning_errors = self._split_list_errors(error_list)
+            warning_errors = self._filter_list(error_list)
 
-        logs = {"WARNING": warning_errors, "DEBUG": debug_errors}
-
-        for loglevel, errors in logs.items():
-            self._log_errors(loglevel, error_class, errors)
+        self._log_warnings(error_class, warning_errors)
