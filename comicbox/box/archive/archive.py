@@ -70,7 +70,7 @@ class Archive:
     ) -> bytes:
         """Read one file in the archive's data."""
         if PDF_ENABLED and isinstance(archive, PDFFile):
-            return archive.read(filename, fmt=pdf_format, props=props)  # ty: ignore[unknown-argument]
+            return archive.read(filename, fmt=pdf_format, props=props)
         match archive:
             case TarFile():
                 data = cls._read_tarfile(archive, filename)
