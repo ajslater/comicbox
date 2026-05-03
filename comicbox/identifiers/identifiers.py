@@ -199,21 +199,18 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             # Metron uses the slug for an id in most urls
             #   but can also use the numeric metron id which redirects to the slug
             # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
+            # Genre, location, reprint, role, story, and tag have no public web
+            #   pages on metron.cloud (only API endpoints), so they're omitted
+            #   here — emitting URLs for them produces 404s.
             domain="metron.cloud",
             id_type=IdentifierTypes(
                 arc="arc",
                 character="character",
                 creator="creator",
-                genre="genre",  # Not Yet Implemented on API
                 imprint="imprint",
                 issue="issue",
-                location="location",  # Not Yet Implemented on API
                 publisher="publisher",
-                reprint="reprint",  # Not Yet Implemented on API
-                role="role",
                 series="series",
-                story="story",  # Not Yet Implemented on API
-                tag="tag",
                 team="team",
                 universe="universe",
             ),
