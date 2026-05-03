@@ -16,6 +16,7 @@ from py7zr import SevenZipFile, is_7zfile
 from rarfile import RarFile, is_rarfile
 from zipremove import ZipFile, is_zipfile
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.config import get_config
 from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
@@ -24,17 +25,16 @@ from comicbox.formats import MetadataFormats
 from comicbox.logger import init_logging
 from comicbox.sources import MetadataSources
 
-try:
-    from pdffile import PDFFile
-except ImportError:
-    from comicbox.pdffile_stub import PDFFile
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from pdffile import PDFFile
     from py7zr.io import BytesIOFactory
 
     from comicbox.box.archive.archiveinfo import InfoType
     from comicbox.box.types import ArchiveType
+else:
+    from comicbox._pdf import PDFFile
 
 
 @dataclass
@@ -140,7 +140,9 @@ class ComicboxInit:
 
     def _set_archive_cls_pdf(self) -> bool:
         """PDFFile is only optionally installed."""
-        with suppress(NameError, OSError):
+        if not PDF_ENABLED:
+            return self._archive_is_pdf
+        with suppress(OSError):
             if PDFFile.is_pdffile(str(self._path)):
                 self._archive_is_pdf = True  # pyright: ignore[reportUninitializedInstanceVariable]
                 self._archive_cls = PDFFile

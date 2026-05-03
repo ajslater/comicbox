@@ -1,18 +1,20 @@
 """Get ZipInfo like attributes from all archive info types."""
 
 from tarfile import TarFile
+from typing import TYPE_CHECKING
 
 from py7zr import SevenZipFile
 from py7zr.io import BytesIOFactory
 from rarfile import RarFile
 from zipremove import ZipFile
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.box.archive.archiveinfo import InfoType
 
-try:
+if TYPE_CHECKING:
     from pdffile import PDFFile
-except ImportError:
-    from comicbox.pdffile_stub import PDFFile
+else:
+    from comicbox._pdf import PDFFile
 
 ArchiveType = ZipFile | SevenZipFile | RarFile | TarFile | PDFFile
 
@@ -67,13 +69,13 @@ class Archive:
         props: dict | None = None,
     ) -> bytes:
         """Read one file in the archive's data."""
+        if PDF_ENABLED and isinstance(archive, PDFFile):
+            return archive.read(filename, fmt=pdf_format, props=props)
         match archive:
             case TarFile():
                 data = cls._read_tarfile(archive, filename)
             case SevenZipFile():
                 data = cls._read_7zipfile(archive, factory, filename)
-            case PDFFile():  # pyright: ignore[reportGeneralTypeIssues]
-                data = archive.read(filename, fmt=pdf_format, props=props)  # ty: ignore[unknown-argument]
             case _:
                 data = archive.read(filename)
         return data

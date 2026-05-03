@@ -22,7 +22,6 @@ def _log_format() -> str:
     return fmt
 
 
-_LOG_FORMAT = _log_format()
 _initialized_key: tuple[str | int, str | None, Any] | None = None
 
 

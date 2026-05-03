@@ -16,8 +16,9 @@ from rich.text import Text
 from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.formats import PDF_ENABLED, MetadataFormats
+from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
 

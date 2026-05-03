@@ -24,7 +24,7 @@ from comicbox.fields.enum_fields import (
 from comicbox.fields.fields import IssueField, StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pdf import PdfDateTimeField
-from comicbox.fields.pycountry import CountryField, LanguageField
+from comicbox.fields.pycountry import LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
 from comicbox.schemas.base import BaseSubSchema
@@ -116,10 +116,6 @@ class XmlDecimalField(DecimalField, CDataFieldMixin):
 
 
 # PYCOUNTRY
-
-
-class XmlCountryField(CountryField, CDataFieldMixin):
-    """Get value or cdata."""
 
 
 class XmlLanguageField(LanguageField, CDataFieldMixin):
