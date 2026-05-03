@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comet import CoMetTransform
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
@@ -14,17 +15,6 @@ from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
-
-
-def _get_pdf_enabled() -> bool:
-    try:
-        import pdffile  # noqa: F401 # pyright: ignore[reportUnusedImport]
-    except ImportError:
-        return False
-    return True
-
-
-PDF_ENABLED = _get_pdf_enabled()
 
 
 @dataclass
