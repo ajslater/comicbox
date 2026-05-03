@@ -30,7 +30,7 @@
       schema errors still log at WARNING with full context.
 - Features
     - Add Age Rating conversion function
-      comicbox.enums.maps.age_rating.to_metron_age_rating(value: str | Enum) ->
+      comicbox.enums.maps.to_metron_age_rating(value: str | Enum) ->
       MetronAgeRatingEnum | None
 
 ## v2.2.3
