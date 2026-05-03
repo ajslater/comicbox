@@ -2,6 +2,11 @@
 
 ## v3.0.0
 
+- Bugfixes
+    - Stop emitting `metron.cloud/{genre,location,reprint,role,story,tag}/...`
+      URLs for Metron identifiers — those paths 404 because Metron has no
+      public web pages for those types (only API endpoints). The numeric Metron
+      ID is still preserved on the identifier.
 - Breaking Changes
     - get_config() now returns a ComicboxSettings dataclass, not a Confuse
       AttrDict. Comicbox constructor now accepts this dataclass instead of an
