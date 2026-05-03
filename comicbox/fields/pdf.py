@@ -2,16 +2,17 @@
 
 from contextlib import suppress
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import override
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.fields.time_fields import DateTimeField
 
-try:
+if TYPE_CHECKING:
     from pdffile import PDFFile
-except ImportError:
-    from comicbox.pdffile_stub import PDFFile
+else:
+    from comicbox._pdf import PDFFile
 
 
 class PdfDateTimeField(DateTimeField):
@@ -24,9 +25,10 @@ class PdfDateTimeField(DateTimeField):
         *args: Any,
         **kwargs: Any,
     ) -> datetime | None:
-        with suppress(NameError, OSError):
-            if isinstance(value, str) and (pdf_dttm := PDFFile.to_datetime(value)):
-                return pdf_dttm
+        if PDF_ENABLED and isinstance(value, str):
+            with suppress(OSError):
+                if pdf_dttm := PDFFile.to_datetime(value):
+                    return pdf_dttm
         return super()._deserialize(value, *args, **kwargs)
 
     @override
@@ -36,6 +38,7 @@ class PdfDateTimeField(DateTimeField):
         *args: Any,
         **kwargs: Any,
     ) -> str | float | datetime | None:
-        with suppress(NameError, OSError):
-            return PDFFile.to_pdf_date(value)
+        if PDF_ENABLED:
+            with suppress(OSError):
+                return PDFFile.to_pdf_date(value)
         return super()._serialize(value, *args, **kwargs)

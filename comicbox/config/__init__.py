@@ -16,6 +16,7 @@ from confuse.templates import (
     String,
 )
 
+from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.paths import (
     expand_glob_paths,
@@ -24,12 +25,6 @@ from comicbox.config.paths import (
 from comicbox.config.read import read_config_sources
 from comicbox.config.settings import ComicboxSettings
 from comicbox.version import PACKAGE_NAME
-
-try:
-    from pdffile import PageFormat
-except ImportError:
-    from comicbox.pdffile_stub import PageFormat
-
 
 # Any non-Mapping container type — set/frozenset/tuple/list all pass.
 # `_build_settings` normalizes the validated value into the right immutable
@@ -55,7 +50,7 @@ _TEMPLATE = MappingTemplate(
                 "metadata": Optional(dict),
                 "metadata_format": Optional(str),
                 "metadata_cli": Optional(Sequence(str)),
-                "pdf_page_format": Choice(("", *(e.value for e in PageFormat))),
+                "pdf_page_format": Choice(("", *PAGE_FORMAT_VALUES)),
                 "read": Optional(_NON_MAPPING_CONTAINER),
                 "read_ignore": Optional(_NON_MAPPING_CONTAINER),
                 "recurse": bool,
