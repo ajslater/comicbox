@@ -568,7 +568,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "5555",
-                            "url": "https://metron.cloud/story/5555",
                         }
                     },
                 },
@@ -634,7 +633,7 @@ FNS = MappingProxyType(
                             "identifiers": {
                                 "metron": {
                                     "key": "32165",
-                                    "url": "https://metron.cloud/role/32165",
+                                    "url": "https://metron.cloud/creator/32165",
                                 }
                             }
                         }
@@ -660,7 +659,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "98745",
-                            "url": "https://metron.cloud/genre/98745",
                         }
                     }
                 },
@@ -712,7 +710,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "12389",
-                            "url": "https://metron.cloud/location/12389",
                         }
                     }
                 },
@@ -737,7 +734,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "65498",
-                            "url": "https://metron.cloud/reprint/65498",
                         }
                     },
                     "issue": "001",
@@ -763,7 +759,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "12",
-                            "url": "https://metron.cloud/story/12",
                         }
                     }
                 },
@@ -776,7 +771,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "78945",
-                            "url": "https://metron.cloud/tag/78945",
                         }
                     }
                 },

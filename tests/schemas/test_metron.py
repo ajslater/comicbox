@@ -128,7 +128,6 @@ READ_METADATA = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "5555",
-                            "url": "https://metron.cloud/story/5555",
                         }
                     },
                 },
