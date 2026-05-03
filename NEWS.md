@@ -2,15 +2,17 @@
 
 ## v3.0.0
 
-- Bugfixes
-    - Stop emitting `metron.cloud/{genre,location,reprint,role,story,tag}/...`
-      URLs for Metron identifiers — those paths 404 because Metron has no
-      public web pages for those types (only API endpoints). The numeric Metron
-      ID is still preserved on the identifier.
 - Breaking Changes
     - get_config() now returns a ComicboxSettings dataclass, not a Confuse
       AttrDict. Comicbox constructor now accepts this dataclass instead of an
       AttrDict
+- Fixes
+    - Stop emitting `metron.cloud/{genre,location,reprint,role,story,tag}/...`
+      URLs for Metron identifiers — those paths 404 because Metron has no public
+      web pages for those types (only API endpoints). The numeric Metron ID is
+      still preserved on the identifier.
+    - Security against suspicious archive paths when extracting pages and
+      metadata to the filesystem.
 - Performance
     - Reducing startup time for new instances of comicbox.
     - General performance improvements for reading metadata from many files.
@@ -24,13 +26,12 @@
     - Drop the DEBUG-level emission of intentionally-ignored Marshmallow
       validation errors (`Invalid input type.` from Union variant misses,
       `Field may not be null.` from sparse fields). These were context-free
-      noise — ~50 lines per archive at DEBUG that read like real failures. Real
+      noise — \~50 lines per archive at DEBUG that read like real failures. Real
       schema errors still log at WARNING with full context.
-- Security against suspicious archive paths when extracting pages and metadata
-  to the filesystem.
-- Add Age Rating conversion function
-  comicbox.enums.maps.age_rating.to_metron_age_rating(value: str | Enum) ->
-  MetronAgeRatingEnum | None
+- Features
+    - Add Age Rating conversion function
+      comicbox.enums.maps.age_rating.to_metron_age_rating(value: str | Enum) ->
+      MetronAgeRatingEnum | None
 
 ## v2.2.3
 
