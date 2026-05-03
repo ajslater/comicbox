@@ -45,7 +45,7 @@ class TrapExceptionsMeta(ABCMeta):
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
-            if attr_name in "deserialize" and callable(attr_value):
+            if attr_name in cls._WRAP_METHODS and callable(attr_value):
                 # Override the deserialize method with exception handling and logging
                 new_attr_value = cls.wrap_method(attr_value)
             else:

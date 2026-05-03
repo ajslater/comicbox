@@ -18,18 +18,10 @@ from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
 def _get_pdf_enabled() -> bool:
     try:
-        from pdffile import (
-            PDFFile,  # pyright: ignore[reportUnusedImport]
-        )
-
-        result = True
+        import pdffile  # noqa: F401 # pyright: ignore[reportUnusedImport]
     except ImportError:
-        from comicbox.pdffile_stub import (
-            PDFFile,  # noqa: F401 # pyright: ignore[reportUnusedImport]
-        )
-
-        result = False
-    return result
+        return False
+    return True
 
 
 PDF_ENABLED = _get_pdf_enabled()

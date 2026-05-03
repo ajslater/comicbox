@@ -6,8 +6,7 @@ from sys import maxsize
 
 from py7zr import SevenZipFile
 from py7zr.io import BytesIOFactory
-from rarfile import BadRarFile, RarFile
-from zipremove import ZipFile
+from rarfile import BadRarFile
 
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.archiveinfo import InfoType
@@ -17,8 +16,6 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 
 class ComicboxArchiveRead(ComicboxArchiveInit):
     """Comic archive read methods."""
-
-    _COMMENT_ARCHIVE_TYPES = (ZipFile, RarFile)
 
     def _ensure_read_archive(self) -> None:
         if not self._archive_cls or not self._path:
