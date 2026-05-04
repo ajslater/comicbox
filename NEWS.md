@@ -1,6 +1,6 @@
 # 📰 News
 
-## v3.0.0
+## v3.0.0 - Config Dataclass & Parallel Reads
 
 - Breaking Changes
     - get_config() now returns a ComicboxSettings dataclass, not a Confuse
@@ -23,11 +23,6 @@
     - `Comicbox.get_cover_page(skip_metadata=True)` skips metadata parsing for
       callers that just need the first archive image as a thumbnail. Removes
       per-call schema instantiation and Union resolution overhead.
-    - Drop the DEBUG-level emission of intentionally-ignored Marshmallow
-      validation errors (`Invalid input type.` from Union variant misses,
-      `Field may not be null.` from sparse fields). These were context-free
-      noise — \~50 lines per archive at DEBUG that read like real failures. Real
-      schema errors still log at WARNING with full context.
 - Features
     - Add Age Rating conversion function
       comicbox.enums.maps.to_metron_age_rating(value: str | Enum) ->
