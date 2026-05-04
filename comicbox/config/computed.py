@@ -3,7 +3,7 @@
 from confuse import Subview
 from loguru import logger
 
-from comicbox.config.formats import transform_keys_to_formats
+from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
 from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
@@ -21,42 +21,38 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
 )
 
 
-def _ensure_cli_yaml(config) -> None:
+def _ensure_cli_yaml(config: Subview) -> None:
     """Wrap all cli yaml in brackets if its bare."""
     mds = config["metadata_cli"].get()
     if not mds:
         return
-    wrapped_md_list = []
-    for md in mds:
-        if not md:
-            continue
-        wrapped_md = "{" + md + "}" if md[0] != "{" else md
-        wrapped_md_list.append(wrapped_md)
+    wrapped_md_list = [("{" + md + "}" if md[0] != "{" else md) for md in mds if md]
 
     config["metadata_cli"].set(tuple(wrapped_md_list))
 
 
 def _deduplicate_delete_keys(config: Subview) -> None:
     """Transform delete keys to a set."""
-    delete_keys: list | set | tuple | frozenset = config["delete_keys"].get(list)
-    delete_keys = frozenset({kp.removeprefix("comicbox.") for kp in delete_keys})
+    raw = _raw_or_empty(config["delete_keys"])
+    delete_keys = frozenset(str(kp).removeprefix("comicbox.") for kp in raw)
     config["delete_keys"].set(delete_keys)
 
 
 def _parse_print(config: Subview) -> None:
-    print_fmts: str | None = config["print"].get()
-    if not print_fmts:
-        print_fmts = ""
-    print_phases = print_fmts.lower()
-    enum_print_phases = set()
-    for phase in print_phases:
+    raw = _raw_or_empty(config["print"])
+    if not raw:
+        config["print"].set(frozenset())
+        return
+    # Accept a string ("snmcp") or any iterable of strings (["s", "n", ...])
+    # — concatenate into a single phase-char string.
+    chars = raw if isinstance(raw, str) else "".join(str(p) for p in raw)
+    enum_print_phases: set[PrintPhases] = set()
+    for phase in chars.lower():
         try:
-            enum = PrintPhases(phase)
-            enum_print_phases.add(enum)
+            enum_print_phases.add(PrintPhases(phase))
         except ValueError as exc:
             logger.warning(exc)
-    print_fmts_set = frozenset(enum_print_phases)
-    config["print"].set(print_fmts_set)
+    config["print"].set(frozenset(enum_print_phases))
 
 
 def _set_tagger(config: Subview) -> None:

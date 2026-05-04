@@ -8,7 +8,7 @@ SCHEMA_PATH = Path(__file__).parent.parent.parent / "schema_definitions"
 class BaseValidator:
     """Base validator."""
 
-    def __init__(self, schema_path: Path | str):
+    def __init__(self, schema_path: Path | str) -> None:
         """Set the full schema path."""
         self.schema_path = SCHEMA_PATH / schema_path
 

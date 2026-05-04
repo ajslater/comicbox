@@ -16,8 +16,9 @@ from rich.text import Text
 from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
+from comicbox._pdf import PDF_ENABLED
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.formats import PDF_ENABLED, MetadataFormats
+from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
 
@@ -172,7 +173,7 @@ def _get_help_format_table() -> Table:
     return table
 
 
-def _add_option_group(parser) -> None:
+def _add_option_group(parser: ArgumentParser) -> None:
     option_group = parser.add_argument_group("Options")
     option_group.add_argument(
         "-c",
@@ -318,7 +319,7 @@ def _add_option_group(parser) -> None:
     )
 
 
-def _add_action_group(parser) -> None:
+def _add_action_group(parser: ArgumentParser) -> None:
     action_group = parser.add_argument_group("Actions")
     action_group.add_argument(
         "-P",
@@ -425,7 +426,7 @@ def _add_action_group(parser) -> None:
     )
 
 
-def _add_target_group(parser) -> None:
+def _add_target_group(parser: ArgumentParser) -> None:
     target_group = parser.add_argument_group("Targets")
     target_group.add_argument(
         "paths",
@@ -434,7 +435,7 @@ def _add_target_group(parser) -> None:
     )
 
 
-def get_args(params=None) -> Namespace:
+def get_args(params: Sequence[str] | None = None) -> Namespace:
     """Get arguments and options."""
     description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
     if not PDF_ENABLED:
@@ -463,7 +464,7 @@ def get_args(params=None) -> Namespace:
     return parser.parse_args(params)
 
 
-def post_process_args(cns) -> None:
+def post_process_args(cns: Namespace) -> None:
     """Adjust CLI config."""
     # Print options
     if cns.version:
@@ -478,7 +479,7 @@ def post_process_args(cns) -> None:
         cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
 
 
-def main(params=None) -> None:
+def main(params: Sequence[str] | None = None) -> None:
     """Get CLI arguments and perform the operation on the archive."""
     cns = get_args(params)
     post_process_args(cns)

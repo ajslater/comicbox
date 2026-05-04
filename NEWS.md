@@ -1,5 +1,33 @@
 # 📰 News
 
+## v3.0.0 - Config Dataclass & Parallel Reads
+
+- Breaking Changes
+    - get_config() now returns a ComicboxSettings dataclass, not a Confuse
+      AttrDict. Comicbox constructor now accepts this dataclass instead of an
+      AttrDict
+- Fixes
+    - Stop emitting `metron.cloud/{genre,location,reprint,role,story,tag}/...`
+      URLs for Metron identifiers — those paths 404 because Metron has no public
+      web pages for those types (only API endpoints). The numeric Metron ID is
+      still preserved on the identifier.
+    - Security against suspicious archive paths when extracting pages and
+      metadata to the filesystem.
+- Performance
+    - Reducing startup time for new instances of comicbox.
+    - General performance improvements for reading metadata from many files.
+    - Special multiprocessing and async methods
+      comicbox.process.iter_process_files() and
+      comicbox.process.aread_metadata() for reading large batches of files at
+      once.
+    - `Comicbox.get_cover_page(skip_metadata=True)` skips metadata parsing for
+      callers that just need the first archive image as a thumbnail. Removes
+      per-call schema instantiation and Union resolution overhead.
+- Features
+    - Add Age Rating conversion function
+      comicbox.enums.maps.to_metron_age_rating(value: str | Enum) ->
+      MetronAgeRatingEnum | None
+
 ## v2.2.3
 
 - Update marshmallow & rich

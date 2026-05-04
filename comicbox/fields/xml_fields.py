@@ -1,6 +1,7 @@
 """Xml versions of fields."""
 
 from collections.abc import Mapping
+from typing import Any
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
@@ -23,7 +24,7 @@ from comicbox.fields.enum_fields import (
 from comicbox.fields.fields import IssueField, StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pdf import PdfDateTimeField
-from comicbox.fields.pycountry import CountryField, LanguageField
+from comicbox.fields.pycountry import LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
 from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
 from comicbox.schemas.base import BaseSubSchema
@@ -31,7 +32,7 @@ from comicbox.schemas.base import BaseSubSchema
 CDATA_KEY = "#text"
 
 
-def get_cdata(value):
+def get_cdata(value: Any) -> Any:
     """Return the cdata value if it exists or the whole value."""
     if isinstance(value, Mapping):
         return value.get(CDATA_KEY)
@@ -96,7 +97,11 @@ class XmlBooleanField(BooleanField, CDataFieldMixin):
     """Get value or cdata."""
 
     @override
-    def _serialize(self, *args, **kwargs) -> str | None:
+    def _serialize(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str | None:
         # xml booleans are lowercase
         result = super()._serialize(*args, **kwargs)
         return result if result is None else str(result).lower()
@@ -113,10 +118,6 @@ class XmlDecimalField(DecimalField, CDataFieldMixin):
 # PYCOUNTRY
 
 
-class XmlCountryField(CountryField, CDataFieldMixin):
-    """Get value or cdata."""
-
-
 class XmlLanguageField(LanguageField, CDataFieldMixin):
     """Get value or cdata."""
 
@@ -128,7 +129,7 @@ class XmlListFieldMixin:
     """Get value or cdata."""
 
     @staticmethod
-    def get_tag_value(value):
+    def get_tag_value(value: Any) -> Any:
         """Get data for the tag value."""
         return get_cdata(value)
 
@@ -184,7 +185,7 @@ def xml_list_polyfield(
     schema_class: type[BaseSubSchema],
     field: Field,
     sort_keys: tuple[str, ...] = ("#text",),
-    **kwargs,
+    **kwargs: Any,
 ) -> ListField:
     """Get a List of unions."""
     union_field = xml_polyfield(schema_class, field)

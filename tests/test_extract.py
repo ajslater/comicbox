@@ -27,7 +27,7 @@ PAGES_CONFIG = get_config(
 )
 
 
-def _compare_extract_pages():
+def _compare_extract_pages() -> None:
     for fn in EXTRACTED_PAGE_FNS:
         good_path = TEST_CS_DIR / fn
         test_path = TMP_DIR / fn
@@ -37,7 +37,7 @@ def _compare_extract_pages():
     my_cleanup(TMP_DIR)
 
 
-def test_extract_pages():
+def test_extract_pages() -> None:
     """Test extracting pages."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(CIX_CBZ_SOURCE_PATH) as car:
@@ -46,7 +46,7 @@ def test_extract_pages():
     _compare_extract_pages()
 
 
-def test_extract_pages_config():
+def test_extract_pages_config() -> None:
     """Test extracting pages with config."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=PAGES_CONFIG) as car:
@@ -55,7 +55,7 @@ def test_extract_pages_config():
     _compare_extract_pages()
 
 
-def test_extract_covers():
+def test_extract_covers() -> None:
     """Test extract cover."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(CIX_CBZ_SOURCE_PATH) as car:
@@ -64,7 +64,7 @@ def test_extract_covers():
     assert cmp(COVER_PATH_SOURCE, COVER_PATH_DEST)
 
 
-def test_extract_cover_pdf():
+def test_extract_cover_pdf() -> None:
     """Test extract cover from pdf."""
     TMP_DIR.mkdir(exist_ok=True)
     with Comicbox(PDF_SOURCE_PATH) as car:

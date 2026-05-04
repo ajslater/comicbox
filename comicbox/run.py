@@ -1,14 +1,20 @@
 """Run comicbox on files."""
 
-import os
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.frozenattrdict import FrozenAttrDict
 from comicbox.logger import init_logging
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+
+    from comicbox.config.settings import ComicboxSettings
 
 
 class Runner:
@@ -16,12 +22,12 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: Namespace) -> None:
         """Initialize actions and config."""
-        self._config: FrozenAttrDict = FrozenAttrDict(get_config(config))
+        self._config: ComicboxSettings = get_config(config)
         init_logging(self._config.loglevel)
 
-    def run_on_file(self, path) -> None:
+    def run_on_file(self, path: Path | str | None) -> None:
         """Run operations on one file."""
         if path:
             path = Path(path)
@@ -36,7 +42,7 @@ class Runner:
             car.print_file_header()
             car.run()
 
-    def recurse(self, path) -> None:
+    def recurse(self, path: Path) -> None:
         """Perform operations recursively on files."""
         if not path.is_dir():
             logger.error(f"{path} is not a directory")
@@ -45,23 +51,17 @@ class Runner:
             logger.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
-        for root, dirnames, filenames in os.walk(path):
-            root_path = Path(root)
-            for dirname in dirnames:
-                full_path = root_path / dirname
-                self.recurse(full_path)
-            for filename in sorted(filenames):
-                path = Path(str(filename))
-                if path.suffix.lower() not in self._RECURSE_SUFFIXES:
-                    continue
-                full_path = root_path / path
-                try:
-                    self.run_on_file(full_path)
-                except Exception:
-                    logger.exception(full_path)
+        for full_path in sorted(path.rglob("*")):
+            if not full_path.is_file():
+                continue
+            if full_path.suffix.lower() not in self._RECURSE_SUFFIXES:
+                continue
+            try:
+                self.run_on_file(full_path)
+            except Exception:
+                logger.exception(full_path)
 
     def run(self) -> None:
         """Run actions with config."""
-        paths = self._config.paths
-        for path in paths:
+        for path in self._config.paths:
             self.run_on_file(path)

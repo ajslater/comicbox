@@ -2,40 +2,33 @@
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
+from typing import Any
 
 from glom import Assign, glom
 from loguru import logger
 from ruamel.yaml import YAML
 from simplejson.errors import JSONDecodeError
 
-from comicbox.box.init import SourceData
+from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
 from comicbox.fields.collection_fields import LegacyNestedMDStringSetField
 from comicbox.formats import MetadataFormats
+from comicbox.schemas.cache import get_schema
 from comicbox.sources import MetadataSources
-
-
-@dataclass
-class LoadedMetadata:
-    """Loaded Metadata."""
-
-    metadata: Mapping
-    path: Path | None = None
-    fmt: MetadataFormats | None = None
-    from_archive: bool = False
 
 
 class ComicboxLoad(ComicboxSources):
     """Parsing methods."""
 
-    def _load_cli_yaml(self, fmt, schema, source_md) -> dict:
+    def _load_cli_yaml(
+        self, fmt: MetadataFormats, schema: Any, source_md: str | bytes | Mapping
+    ) -> dict:
         result = {}
         try:
-            md = YAML().load(source_md) if isinstance(source_md, str) else source_md
+            md = YAML().load(source_md)
             result = schema.load(md)
             if not result:
                 # try a wrapped version
@@ -50,11 +43,16 @@ class ComicboxLoad(ComicboxSources):
         return result
 
     def _call_load(
-        self, source: MetadataSources, fmt: MetadataFormats, source_md
+        self,
+        source: MetadataSources,
+        fmt: MetadataFormats,
+        source_md: bytes | str | Mapping,
     ) -> Mapping | None:
         """Load string or dict."""
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path, exclude=self._config.delete_keys)
+        schema = get_schema(
+            schema_class, path=self._path, exclude=self._config.delete_keys
+        )
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
 
@@ -64,7 +62,7 @@ class ComicboxLoad(ComicboxSources):
         return schema.load(source_md)  # pyright: ignore[reportReturnType]
 
     @staticmethod
-    def _is_comment_not_json(source, exc) -> bool:
+    def _is_comment_not_json(source: MetadataSources, exc: Exception) -> bool:
         """Is this an archive comment and not JSON."""
         return (
             source == MetadataSources.ARCHIVE_COMMENT
@@ -79,7 +77,7 @@ class ComicboxLoad(ComicboxSources):
         source: MetadataSources,
         fmt: MetadataFormats | None,
         exc: Exception,
-        level="WARNING",
+        level: str = "WARNING",
     ) -> None:
         """When loading fails warn or give stack trace in debug."""
         name = fmt.value.schema_class.__name__ if fmt else "Unknown Schema"
@@ -96,7 +94,7 @@ class ComicboxLoad(ComicboxSources):
         logger.opt(lazy=True).trace(format_exc())
 
     def _load_unknown_metadata(
-        self, source: MetadataSources, data
+        self, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
         """Parse import data string from file trying many different file schemas."""
         success_md = None
@@ -142,7 +140,7 @@ class ComicboxLoad(ComicboxSources):
             self._except_on_load(source, fmt, exc)
         return None, None
 
-    def _set_loaded_metadata(self, source) -> None:
+    def _set_loaded_metadata(self, source: MetadataSources) -> None:
         source_metadata = self.get_source_metadata(source)
         if not source_metadata:
             return
@@ -151,9 +149,12 @@ class ComicboxLoad(ComicboxSources):
         for source_data in source_metadata:
             md, fmt = self._load_metadata(source, source_data)
             if md:
-                loaded_md = LoadedMetadata(
-                    md, source_data.path, fmt, source_data.from_archive
+                path = (
+                    Path(source_data.path)
+                    if isinstance(source_data.path, str)
+                    else source_data.path
                 )
+                loaded_md = LoadedMetadata(md, path, fmt, source_data.from_archive)
                 loaded_list.append(loaded_md)
 
         if loaded_list:
@@ -161,7 +162,9 @@ class ComicboxLoad(ComicboxSources):
                 self._loaded[source] = ()
             self._loaded[source] += tuple(loaded_list)
 
-    def get_loaded_metadata(self, source):
+    def get_loaded_metadata(
+        self, source: MetadataSources
+    ) -> tuple[LoadedMetadata, ...] | None:
         """Get loaded metadata by key."""
         try:
             if source not in self._loaded:

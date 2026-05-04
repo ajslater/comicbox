@@ -109,46 +109,46 @@ COMET_TESTER = TestParser(
 )
 
 
-def test_comet_from_metadata():
+def test_comet_from_metadata() -> None:
     """Test metadata import from comicbox.schemas."""
     COMET_TESTER.test_from_metadata()
 
 
-def test_comet_from_dict():
+def test_comet_from_dict() -> None:
     """Test native dict import from comicbox.schemas."""
     COMET_TESTER.test_from_dict()
 
 
-def test_comet_from_string():
+def test_comet_from_string() -> None:
     """Test metadata import from string."""
     COMET_TESTER.test_from_string()
 
 
-def test_comet_from_file():
+def test_comet_from_file() -> None:
     """Test metadata import from file."""
     COMET_TESTER.test_from_file()
 
 
-def test_comet_to_dict():
+def test_comet_to_dict() -> None:
     """Test metadata export to dict."""
     COMET_TESTER.test_to_dict()
 
 
-def test_comet_to_string():
+def test_comet_to_string() -> None:
     """Test metadata export to string."""
     COMET_TESTER.to_string()
 
 
-def test_comet_to_file():
+def test_comet_to_file() -> None:
     """Test metadata export to file."""
     COMET_TESTER.test_to_file(export_fn="comet-write.xml")
 
 
-def test_comet_read():
+def test_comet_read() -> None:
     """Read comet metadata."""
     COMET_TESTER.test_md_read()
 
 
-def test_comet_write():
+def test_comet_write() -> None:
     """Write comet metadata."""
     COMET_TESTER.test_md_write(page_count=0)

@@ -6,8 +6,7 @@ from sys import maxsize
 
 from py7zr import SevenZipFile
 from py7zr.io import BytesIOFactory
-from rarfile import BadRarFile, RarFile
-from zipremove import ZipFile
+from rarfile import BadRarFile
 
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.archiveinfo import InfoType
@@ -17,8 +16,6 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 
 class ComicboxArchiveRead(ComicboxArchiveInit):
     """Comic archive read methods."""
-
-    _COMMENT_ARCHIVE_TYPES = (ZipFile, RarFile)
 
     def _ensure_read_archive(self) -> None:
         if not self._archive_cls or not self._path:
@@ -36,10 +33,10 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._namelist: tuple[str, ...] | None = namelist
         return self._namelist
 
-    def _get_info_fn(self, info) -> str:
+    def _get_info_fn(self, info: InfoType) -> str:
         return getattr(info, self._info_fn_attr)
 
-    def _get_info_size(self, info) -> int | None:
+    def _get_info_size(self, info: InfoType) -> int | None:
         return getattr(info, self._info_size_attr) if self._info_size_attr else None
 
     def infolist(self) -> tuple[InfoType, ...]:
@@ -81,7 +78,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
 
-    def _get_pdf_format(self, pdf_format: str = "", default: str = ""):
+    def _get_pdf_format(self, pdf_format: str = "", default: str = "") -> str:
         return pdf_format or (self._config.pdf_page_format or default)
 
     def _archive_readfile(

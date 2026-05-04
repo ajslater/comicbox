@@ -1,6 +1,7 @@
 """Identifier maps."""
 
 from types import MappingProxyType
+from typing import Any
 
 from bidict import frozenbidict
 
@@ -95,7 +96,9 @@ def get_id_source_by_alias(
     return _ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source_alias.lower(), default)
 
 
-def _build_source_alias_tree(node, source: IdSources, parts) -> None:
+def _build_source_alias_tree(
+    node: dict[Any, Any], source: IdSources, parts: list[str]
+) -> None:
     if isinstance(node, IdSources):
         return
     part = parts[0]

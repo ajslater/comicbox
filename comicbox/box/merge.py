@@ -37,7 +37,7 @@ class ComicboxMerge(ComicboxNormalize):
             self._merge_metadata_by_source(source, merged_md, merger)
         self._merged_metadata = MappingProxyType(merged_md)
 
-    def get_merged_metadata(self):
+    def get_merged_metadata(self) -> MappingProxyType:
         """Get merged normalized metadata."""
         if not self._merged_metadata:
             self._set_merged_metadata()

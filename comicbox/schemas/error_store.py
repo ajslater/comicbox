@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from marshmallow import Schema
@@ -12,7 +13,12 @@ from typing_extensions import override
 class ClearingErrorStore(ErrorStore):
     """Take over error processing."""
 
-    def _clean_error_list(self, key, error_list, cleaned_errors) -> None:
+    def _clean_error_list(
+        self,
+        key: str,
+        error_list: list[str],
+        cleaned_errors: dict[Any, Any],
+    ) -> None:
         if cleaned_error_list := frozenset(error_list) - self._ignore_errors:
             cleaned_errors[key] = sorted(cleaned_error_list)
 
@@ -31,7 +37,7 @@ class ClearingErrorStore(ErrorStore):
     def __init__(
         self,
         error_store: ErrorStore,
-        data,
+        data: Mapping[str, Any],
         path: str | None = None,
         ignore_errors: frozenset | None = None,
     ) -> None:
@@ -46,7 +52,7 @@ class ClearingErrorStore(ErrorStore):
         self._clear_errors()
 
     @override
-    def store_error(self, *args, **kwargs) -> None:
+    def store_error(self, *args: Any, **kwargs: Any) -> None:
         """Store error, but process and clear it."""
         super().store_error(*args, **kwargs)
         self._clear_errors()
@@ -58,11 +64,15 @@ class ClearingErrorStoreSchema(Schema):
     SUPPRESS_ERRORS: bool = True
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
+    def set_path(self, path: Path | str | None) -> None:
+        """Set the path for error messages."""
+        self._path = str(path) if path else None
+
     def __init__(
         self,
         path: Path | str | None = None,
         ignore_errors: list | tuple | frozenset | set | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Initialize path and always use partial."""
         self._path = path = str(path) if path else path
@@ -74,7 +84,13 @@ class ClearingErrorStoreSchema(Schema):
         super().__init__(**kwargs)
 
     @override
-    def _deserialize(self, data, *, error_store: ErrorStore, **kwargs) -> list | dict:
+    def _deserialize(
+        self,
+        data: Any,
+        *,
+        error_store: ErrorStore,
+        **kwargs: Any,
+    ) -> list | dict:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
             error_store = ClearingErrorStore(
@@ -84,7 +100,11 @@ class ClearingErrorStoreSchema(Schema):
 
     @override
     def _invoke_field_validators(
-        self, *, error_store: ErrorStore, data, **kwargs
+        self,
+        *,
+        error_store: ErrorStore,
+        data: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Skip keys and log warnings instead of throwing validation or type errors."""
         if self.SUPPRESS_ERRORS:
@@ -108,37 +128,36 @@ class ClearingErrorStoreSchema(Schema):
             )
         super()._invoke_schema_validators(error_store=error_store, **kwargs)
 
-    def _split_list_errors(self, error_list: list) -> tuple:
-        error_set = frozenset(error_list)
-        debug_error_set = error_set & self._ignore_errors
-        debug_errors = sorted(debug_error_set)
-        warning_errors = sorted(error_set - debug_error_set)
-        return debug_errors, warning_errors
+    def _filter_list(self, error_list: list) -> list:
+        return sorted(frozenset(error_list) - self._ignore_errors)
 
-    def _split_mapping_errors(self, error: Mapping) -> tuple[dict, dict]:
-        debug_errors = {}
-        warning_errors = {}
-        for key, error_list in error.items():
-            debug_error_list, warning_error_list = self._split_list_errors(error_list)
-            if debug_error_list:
-                debug_errors[key] = debug_error_list
-            if warning_error_list:
-                warning_errors[key] = warning_error_list
-        return debug_errors, warning_errors
+    def _filter_mapping(self, error: Mapping) -> dict:
+        return {
+            key: filtered
+            for key, error_list in error.items()
+            if (filtered := self._filter_list(error_list))
+        }
 
-    def _log_errors(
-        self, loglevel: str, error_class: type | None, errors: Mapping | list
+    def _log_warnings(
+        self,
+        error_class: type | None,
+        errors: Mapping | list,
     ) -> None:
         if not errors:
             return
         path = f"{self._path}: " if self._path else ""
         error_name = f"{error_class.__name__} - " if error_class else ""
         message = f"{path}{error_name}{errors}"
-        logger.log(loglevel, message)
+        logger.warning(message)
 
     @override
-    def handle_error(self, error, *_args, **_kwargs) -> None:
-        """Log errors by severity."""
+    def handle_error(
+        self,
+        error: Any,
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
+        """Log unignored errors at WARNING; ignored errors are dropped."""
         if hasattr(error, "normalized_messages"):
             error_class = type(error)
             error = error.normalized_messages()
@@ -149,12 +168,9 @@ class ClearingErrorStoreSchema(Schema):
             error_class = None
 
         if isinstance(error, Mapping):
-            debug_errors, warning_errors = self._split_mapping_errors(error)
+            warning_errors = self._filter_mapping(error)
         else:
             error_list = error if isinstance(error, list) else [error]
-            debug_errors, warning_errors = self._split_list_errors(error_list)
+            warning_errors = self._filter_list(error_list)
 
-        logs = {"WARNING": warning_errors, "DEBUG": debug_errors}
-
-        for loglevel, errors in logs.items():
-            self._log_errors(loglevel, error_class, errors)
+        self._log_warnings(error_class, warning_errors)

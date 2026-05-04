@@ -165,46 +165,46 @@ YAML_TESTER = TestParser(
 )
 
 
-def test_yaml_from_metadata():
+def test_yaml_from_metadata() -> None:
     """Test assign metadata."""
     YAML_TESTER.test_from_metadata()
 
 
-def test_yaml_from_dict():
+def test_yaml_from_dict() -> None:
     """Test native dict import from comicbox.schemas."""
     YAML_TESTER.test_from_dict()
 
 
-def test_yaml_from_string():
+def test_yaml_from_string() -> None:
     """Test metadata import from string."""
     YAML_TESTER.test_from_string()
 
 
-def test_yaml_from_file():
+def test_yaml_from_file() -> None:
     """Test metadata import from file."""
     YAML_TESTER.test_from_file(page_count=0)
 
 
-def test_yaml_to_dict():
+def test_yaml_to_dict() -> None:
     """Test metadata export to dict."""
     YAML_TESTER.test_to_dict()
 
 
-def test_yaml_to_string():
+def test_yaml_to_string() -> None:
     """Test metadata export to string."""
     YAML_TESTER.test_to_string()
 
 
-def test_yaml_to_file():
+def test_yaml_to_file() -> None:
     """Test metadata export to file."""
     YAML_TESTER.test_to_file(export_fn="comicbox-write.yaml")
 
 
-def test_yaml_read():
+def test_yaml_read() -> None:
     """Test read from file."""
     YAML_TESTER.test_md_read(page_count=0)
 
 
-def test_yaml_write():
+def test_yaml_write() -> None:
     """Test write to file."""
     YAML_TESTER.test_md_write(page_count=0)

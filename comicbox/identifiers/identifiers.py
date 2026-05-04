@@ -80,11 +80,13 @@ class IdentifierParts:
         self.url_prefix = f"{scheme}://{self.domain}/"  # pyright: ignore[reportUninitializedInstanceVariable]
         self.url_path_regex_compiled = re.compile(self.url_path_regex, re.IGNORECASE)  # pyright: ignore[reportUninitializedInstanceVariable]
 
-    def get_type_by_code(self, id_type_code: str, default=DEFAULT_ID_TYPE):
+    def get_type_by_code(
+        self, id_type_code: str, default: str = DEFAULT_ID_TYPE
+    ) -> str:
         """Get identifier type by url fragment or code."""
         return self.id_type.map.inverse.get(id_type_code, default)
 
-    def parse_url_path(self, url) -> tuple[str, str]:
+    def parse_url_path(self, url: str) -> tuple[str, str]:
         """Parse URL path with regex."""
         obj = urlparse(url)
         match = self.url_path_regex_compiled.search(obj.path[1:])
@@ -197,21 +199,18 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             # Metron uses the slug for an id in most urls
             #   but can also use the numeric metron id which redirects to the slug
             # https://github.com/Metron-Project/metron/blob/master/metron/urls.py
+            # Genre, location, reprint, role, story, and tag have no public web
+            #   pages on metron.cloud (only API endpoints), so they're omitted
+            #   here — emitting URLs for them produces 404s.
             domain="metron.cloud",
             id_type=IdentifierTypes(
                 arc="arc",
                 character="character",
                 creator="creator",
-                genre="genre",  # Not Yet Implemented on API
                 imprint="imprint",
                 issue="issue",
-                location="location",  # Not Yet Implemented on API
                 publisher="publisher",
-                reprint="reprint",  # Not Yet Implemented on API
-                role="role",
                 series="series",
-                story="story",  # Not Yet Implemented on API
-                tag="tag",
                 team="team",
                 universe="universe",
             ),
@@ -241,7 +240,7 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
 )
 
 
-def _normalize_comicvine_id_key(id_type, id_key) -> tuple:
+def _normalize_comicvine_id_key(id_type: str, id_key: str) -> tuple:
     """I expect its quite common to list the full comicvine code in situations where only the id is necessary."""
     match = PARSE_COMICVINE_RE.match(id_key)
     if not match:
@@ -294,7 +293,7 @@ def create_identifier(
     return identifier
 
 
-def get_id_source_from_url(url) -> str:
+def get_id_source_from_url(url: str) -> str:
     """Parse the id source for a url."""
     obj = urlparse(url)
     parts = obj.netloc.split(".")

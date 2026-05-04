@@ -47,15 +47,29 @@ class ComicboxPagesCovers(ComicboxMetadata):
             logger.warning(f"{self._path} could not find cover filename")
         return cover_paths
 
-    def get_cover_paths(self):
+    def get_cover_paths(self) -> tuple[str, str, str]:
         """Get filename of most likely coverpage."""
         # This could be a generator?
         if self._cover_paths is None:
-            self._cover_paths: tuple[str, ...] | None = self._get_cover_paths()
-        return self._cover_paths
+            self._cover_paths = self._get_cover_paths()
+        return self._cover_paths  # pyright: ignore[reportReturnType], #ty: ignore[invalid-return-type]
 
-    def _get_cover_page(self, pdf_format: str = "") -> bytes | None:
-        data = None
+    def _get_cover_page_skip_metadata(self, pdf_format: str = "") -> bytes:
+        first_pagename = self.get_pagename(0)
+        if not first_pagename:
+            return b""
+        try:
+            return self._archive_readfile(first_pagename, pdf_format=pdf_format)
+        except Exception as exc:
+            logger.warning(f"{self._path} reading first page: {first_pagename}: {exc}")
+            return b""
+
+    def _get_cover_page(
+        self, pdf_format: str = "", *, skip_metadata: bool = False
+    ) -> bytes:
+        if skip_metadata:
+            return self._get_cover_page_skip_metadata(pdf_format=pdf_format)
+        data = b""
         cover_paths = self.generate_cover_paths()
         bad_cover_paths = set()
         for cover_path in cover_paths:
@@ -69,6 +83,15 @@ class ComicboxPagesCovers(ComicboxMetadata):
                 bad_cover_paths.add(cover_path)
         return data
 
-    def get_cover_page(self, pdf_format=""):
-        """Return cover image data."""
-        return self._get_cover_page(pdf_format=pdf_format)
+    def get_cover_page(
+        self, pdf_format: str = "", *, skip_metadata: bool = False
+    ) -> bytes:
+        """
+        Return cover image data.
+
+        When skip_metadata is True, bypass cover-hint metadata parsing and
+        return the bytes of the first archive page directly. Useful for
+        callers that only need a thumbnail and want to avoid the cost of
+        schema instantiation and Union resolution.
+        """
+        return self._get_cover_page(pdf_format=pdf_format, skip_metadata=skip_metadata)

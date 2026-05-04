@@ -1,6 +1,7 @@
 """Print Methods."""
 
 from collections.abc import Mapping
+from typing import Any
 
 from loguru import logger
 from pygments.styles import get_style_by_name
@@ -9,6 +10,7 @@ from pygments.token import (
     Generic,
     Name,
     String,
+    _TokenType,
 )
 from pygments.util import ClassNotFound
 from rich.console import Console
@@ -34,7 +36,7 @@ DEFAULT_STYLE_NAME = "gruvbox-dark"
 MASK_STYLE = Style(bgcolor="default")
 
 
-def _make_style(theme, token):
+def _make_style(theme: PygmentsSyntaxTheme, token: _TokenType) -> Style:
     return theme.get_style_for_token(token) + MASK_STYLE
 
 
@@ -86,13 +88,13 @@ class ComicboxPrint(ComicboxValidate):
             style_name = DEFAULT_STYLE_NAME
         self._pygments_style_name = style_name
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Set print variables."""
         super().__init__(*args, **kwargs)
         self._set_pygments_style()
         self._style = ComicboxStyle(self._pygments_style_name)
 
-    def _syntax(self, code: str, lexer: str):
+    def _syntax(self, code: str, lexer: str) -> Syntax | str:
         """Apply rich syntax highlighting to code."""
         return (
             Syntax(
@@ -106,16 +108,25 @@ class ComicboxPrint(ComicboxValidate):
             else code
         )
 
-    def _print(self, renderable) -> None:
+    def _print(self, renderable: Pretty | Syntax | str) -> None:
         if self._pygments_style_name:
             self._CONSOLE.print(renderable)
         else:
             print(renderable)  # noqa: T201
 
-    def print_section(self, title, renderable, subtitle="") -> None:
+    def print_section(
+        self,
+        title: Text | str,
+        renderable: Pretty | Syntax | str,
+        subtitle: str = "",
+    ) -> None:
         """Pretty print a titled rule over a renderable."""
         if subtitle:
-            title += Text(": ") + Text(subtitle, style=self._style.subtitle)
+            title = (
+                Text(str(title))
+                + Text(": ")
+                + Text(subtitle, style=self._style.subtitle)
+            )
 
         self._CONSOLE.print(Rule(style=self._style.section_header))
         self._CONSOLE.print(title)
@@ -163,7 +174,11 @@ class ComicboxPrint(ComicboxValidate):
         self._CONSOLE.print(table)
 
     def _add_source_to_title(
-        self, title, source, source_data, format_preposition="as"
+        self,
+        title: str,
+        source: MetadataSources,
+        source_data: Any,
+        format_preposition: str = "as",
     ) -> Text:
         path = str(self._path) if source.value.from_archive else ""
         path = Text(path, style=self._style.path)
@@ -186,21 +201,23 @@ class ComicboxPrint(ComicboxValidate):
                     Text(source_data.fmt.value.label, style=self._style.format),
                 ]
             )
-        title = Text("")
+        result = Text("")
         first = True
         for part in title_parts:
             if not first:
-                title += Text(" ")
-            title += part
+                result += Text(" ")
+            result += part
             first = False
-        return title
+        return result
 
-    def _print_source(self, source, source_data) -> None:
+    def _print_source(self, source: MetadataSources, source_data: Any) -> None:
         if not source_data or not source_data.data:
             return
         md = source_data.data
         if isinstance(md, Mapping):
-            renderable = Pretty(dict(md)) if self._pygments_style_name else md
+            renderable = (
+                Pretty(dict(md)) if self._pygments_style_name else str(dict(md))
+            )
         else:
             print_md = md.decode(errors="replace") if isinstance(md, bytes) else md
             lexer = fmt.value.lexer if (fmt := source_data.fmt) else ""
@@ -210,7 +227,7 @@ class ComicboxPrint(ComicboxValidate):
         )
         self.print_section(title, renderable)
 
-    def _print_sources(self, source) -> None:
+    def _print_sources(self, source: MetadataSources) -> None:
         """Print source metadtata."""
         source_data_list = self.get_source_metadata(source)
 
@@ -219,7 +236,7 @@ class ComicboxPrint(ComicboxValidate):
         for source_data in source_data_list:
             self._print_source(source, source_data)
 
-    def _print_loaded(self, source) -> None:
+    def _print_loaded(self, source: MetadataSources) -> None:
         """Print loaded metadata."""
         if PrintPhases.LOADED not in self._config.print:
             return
@@ -238,7 +255,7 @@ class ComicboxPrint(ComicboxValidate):
 
             self.print_section(title, syntax)
 
-    def _print_normalized(self, source) -> None:
+    def _print_normalized(self, source: MetadataSources) -> None:
         """Print normalized metadata."""
         if PrintPhases.NORMALIZED not in self._config.print:
             return
@@ -249,7 +266,7 @@ class ComicboxPrint(ComicboxValidate):
             if not normalized_md:
                 continue
             schema = ComicboxYamlSchema(path=normalized_md.path)
-            str_data = schema.dumps(normalized_md.metadata)
+            str_data = schema.dumps(dict(normalized_md.metadata))
             str_data = str_data.removesuffix("\n")
             syntax = self._syntax(str_data, "yaml")
             title = self._add_source_to_title(
@@ -273,7 +290,7 @@ class ComicboxPrint(ComicboxValidate):
             if PrintPhases.NORMALIZED in self._config.print:
                 self._print_normalized(source)
 
-    def _print_merged(self, schema) -> None:
+    def _print_merged(self, schema: ComicboxYamlSchema) -> None:
         if PrintPhases.MERGED not in self._config.print:
             return
         md = self.get_merged_metadata()
@@ -282,7 +299,7 @@ class ComicboxPrint(ComicboxValidate):
         title = Text("Merged for Compute")
         self.print_section(title, syntax)
 
-    def _print_computed(self, schema) -> None:
+    def _print_computed(self, schema: ComicboxYamlSchema) -> None:
         """Print computed metadata."""
         if PrintPhases.COMPUTED not in self._config.print:
             return

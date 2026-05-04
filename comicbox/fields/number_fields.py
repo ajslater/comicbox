@@ -2,6 +2,7 @@
 
 import re
 from decimal import Decimal
+from typing import Any
 
 from loguru import logger
 from marshmallow import fields
@@ -34,15 +35,14 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
         """Parse numerical string method."""
         raise NotImplementedError
 
-    def _deserialize_pre(self, value) -> NumberType | None:
-        if isinstance(value, str):
-            value = self.parse_str(value)
-        if is_empty(value):
+    def _deserialize_pre(self, value: Any) -> NumberType | None:
+        result = self.parse_str(value) if isinstance(value, str) else value
+        if is_empty(result):
             return None
-        return value
+        return result
 
-    def _deserialize_post(self, value) -> NumberType | None:
-        result = value
+    def _deserialize_post(self, value: NumberType | None) -> NumberType | None:
+        result: NumberType | None = value
         if result is not None:
             old_result = result
             if self._min is not None:
@@ -53,10 +53,10 @@ class RangedNumberMixin(metaclass=TrapExceptionsMeta):
                 logger.warning(f"Coerced {old_result} to {result}")
         return result
 
-    def _serialize_post(self, result):
+    def _serialize_post(self, result: Any) -> Any:
         """Zero pad as_string numbers for sorting."""
         if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
-            result = result.zfill(self.ZERO_FILL)
+            result = str(result).zfill(self.ZERO_FILL)
         return result
 
 
@@ -67,7 +67,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
 
     @override
     @classmethod
-    def parse_str(cls, num_obj) -> int | None:
+    def parse_str(cls, num_obj: str) -> int | None:
         """Parse the first number out of volume."""
         num_str: str | None = StringField().deserialize(num_obj)
         if not num_str:
@@ -79,23 +79,23 @@ class IntegerField(fields.Integer, RangedNumberMixin):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         minimum: int | None = None,
         maximum: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        value = self._deserialize_pre(value)
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+        pre_value = self._deserialize_pre(value)
+        result = super()._deserialize(pre_value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
     @override
-    def _serialize(self, *args, **kwargs):
+    def _serialize(self, *args: Any, **kwargs: Any) -> int:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
 
@@ -107,7 +107,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
 
     @override
     @classmethod
-    def parse_str(cls, num_obj) -> Decimal | None:
+    def parse_str(cls, num_obj: str) -> Decimal | None:
         """Fix half glyphs."""
         num_str: str | None = StringField().deserialize(num_obj)
         if not num_str:
@@ -121,23 +121,25 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
 
     def __init__(
         self,
-        *args,
+        *args: Any,
         minimum: Decimal | None = None,
         maximum: Decimal | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Set the min and max value."""
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> Decimal | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        value = self._deserialize_pre(value)
-        result = super()._deserialize(value, *args, **kwargs)
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+        self, value: Any, *args: Any, **kwargs: Any
+    ) -> Decimal | None:
+        pre_value = self._deserialize_pre(value)
+        result = super()._deserialize(pre_value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
 
     @override
-    def _serialize(self, *args, **kwargs):
+    def _serialize(self, *args: Any, **kwargs: Any) -> Any:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
 

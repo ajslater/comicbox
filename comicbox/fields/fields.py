@@ -4,6 +4,7 @@ import re
 from abc import ABCMeta
 from decimal import Decimal
 from enum import Enum
+from typing import Any
 
 from loguru import logger
 from marshmallow import fields
@@ -38,11 +39,13 @@ class TrapExceptionsMeta(ABCMeta):
 
         return wrapper
 
-    def __new__(cls, name, bases, attrs) -> "TrapExceptionsMeta":
+    def __new__(
+        cls, name: str, bases: tuple, attrs: dict[str, Any]
+    ) -> "TrapExceptionsMeta":
         """Wrap the deserialize method."""
         new_attrs = {}
         for attr_name, attr_value in attrs.items():
-            if attr_name in "deserialize" and callable(attr_value):
+            if attr_name in cls._WRAP_METHODS and callable(attr_value):
                 # Override the deserialize method with exception handling and logging
                 new_attr_value = cls.wrap_method(attr_value)
             else:
@@ -54,13 +57,15 @@ class TrapExceptionsMeta(ABCMeta):
 class StringField(fields.String, metaclass=TrapExceptionsMeta):
     """Durable Stripping String Field."""
 
-    def __init__(self, *args, clean_tabs=False, **kwargs) -> None:
+    def __init__(self, *args: Any, clean_tabs: bool = False, **kwargs: Any) -> None:
         """Add a clean tabs flag."""
         self.clean_tabs = clean_tabs
         super().__init__(*args, **kwargs)
 
     @override
-    def _deserialize(self, value, *_args, **_kwargs) -> str:
+    def _deserialize(
+        self, value: str | float | Decimal | Enum, *_args: Any, **_kwargs: Any
+    ) -> str:
         if value in _STRING_EMPTY_VALUES:
             return ""
 
@@ -69,11 +74,12 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         if isinstance(value, int | float | Decimal):
             value = str(value)
         elif isinstance(value, str):
-            value = value.encode("utf8", "replace")
-        elif isinstance(value, bytearray):
-            value = bytes(value)
-        if isinstance(value, bytes):
-            value = value.decode("utf8", "replace")
+            value_bytes: bytes = value.encode("utf8", "replace")
+            value = value_bytes.decode("utf8", "replace")
+            if self.clean_tabs:
+                value = value.replace("\t", " ")
+        elif isinstance(value, bytearray | bytes):
+            value = bytes(value).decode("utf8", "replace")
             if self.clean_tabs:
                 value = value.replace("\t", " ")
         if not isinstance(value, str):
@@ -82,7 +88,7 @@ class StringField(fields.String, metaclass=TrapExceptionsMeta):
         return str(value).strip()
 
 
-def half_replace(num):
+def half_replace(num: str) -> str:
     """Replace half notation with decimal notation."""
     return _HALF_RE.sub(".5", num)
 
@@ -91,7 +97,7 @@ class IssueField(StringField):
     """Issue Field."""
 
     @staticmethod
-    def parse_issue(num) -> str:
+    def parse_issue(num: str) -> str:
         """Parse issues."""
         if not num:
             return ""
@@ -102,6 +108,6 @@ class IssueField(StringField):
         return half_replace(num)
 
     @override
-    def _deserialize(self, value, *args, **kwargs) -> str:
+    def _deserialize(self, value: str, *args: Any, **kwargs: Any) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

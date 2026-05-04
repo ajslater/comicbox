@@ -22,9 +22,6 @@ from comicbox.schemas.xml_schemas import (
     create_xml_headers,
 )
 
-IDENTIFIER_TAG = "identifier"
-IS_VERSION_OF_TAG = "isVersionOf"
-
 
 class CoMetSubSchema(XmlSubHeadSchema):
     """CoMet Sub Schema."""

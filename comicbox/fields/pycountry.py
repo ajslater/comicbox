@@ -1,6 +1,7 @@
 """Marshmallow pycountry fields."""
 
 from abc import ABC
+from typing import Any
 
 import pycountry
 from loguru import logger
@@ -19,7 +20,11 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
     EMPTY_CODE = ""
 
     def __init__(
-        self, *args, serialize_name=False, allow_empty=False, **kwargs
+        self,
+        *args: Any,
+        serialize_name: bool = False,
+        allow_empty: bool = False,
+        **kwargs: Any,
     ) -> None:
         """Optionally serialize with full names."""
         self._serialize_name = serialize_name
@@ -27,7 +32,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def _clean_name(name_obj) -> str | None:
+    def _clean_name(name_obj: str) -> str | None:
         if not name_obj:
             return None
         name: str | None = StringField().deserialize(name_obj)
@@ -36,13 +41,14 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return name.strip()
 
     @classmethod
-    def _get_pycountry(cls, tag, name) -> Data | None:
+    def _get_pycountry(cls, tag: str, name: str) -> Data | None:
         """Get pycountry object for a country or language tag."""
         try:
-            name = cls._clean_name(name)
-            if not name:
+            cleaned = cls._clean_name(name)
+            if not cleaned:
                 return None
 
+            name = cleaned
             # Language lookup fails for 'en' unless alpha_2 is specified.
             obj: Data | None = (
                 cls.DB.get(alpha_2=name) if len(name) == 2 else cls.DB.lookup(name)  # noqa: PLR2004
@@ -57,7 +63,7 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return obj
 
     @classmethod
-    def _to_alpha_code(cls, pc_obj):
+    def _to_alpha_code(cls, pc_obj: Any) -> str:
         code = cls.EMPTY_CODE
         for attr in _ALPHA_CODES:
             if code := getattr(pc_obj, attr, cls.EMPTY_CODE):
@@ -65,7 +71,13 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _deserialize(self, value, attr, *args, **kwargs) -> str:
+    def _deserialize(
+        self,
+        value: str,
+        attr: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
         code = self.EMPTY_CODE
@@ -74,11 +86,19 @@ class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
         return code
 
     @override
-    def _serialize(self, value, attr, *args, **kwargs) -> str:
+    def _serialize(
+        self,
+        value: str,
+        attr: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
         """Return the long name."""
-        value = super()._serialize(value, attr, *args, **kwargs)
+        serialized = super()._serialize(value, attr, *args, **kwargs)
+        if not serialized:
+            return self.EMPTY_CODE
         code = self.EMPTY_CODE
-        if pc_obj := self._get_pycountry(attr, value):
+        if pc_obj := self._get_pycountry(attr, serialized):
             code = pc_obj.name if self._serialize_name else self._to_alpha_code(pc_obj)
         return code
 

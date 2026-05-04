@@ -1,6 +1,7 @@
 """Special file writes."""
 
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -13,9 +14,9 @@ class ComicboxDumpToFiles(ComicboxDump):
 
     def to_file(
         self,
-        dest_path=None,
+        dest_path: Path | str | None = None,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_JSON,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Export metadatat to a file with a schema."""
         if dest_path is None:
@@ -23,6 +24,9 @@ class ComicboxDumpToFiles(ComicboxDump):
         dest_path = Path(dest_path)
         fn = fmt.value.filename
         path = dest_path / fn
+        if not path.resolve().is_relative_to(dest_path.resolve()):
+            reason = f"Unsafe path escapes destination: {path}"
+            raise ValueError(reason)
         try:
             schema, denormalized_metadata = self._to_dict(fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
@@ -30,13 +34,15 @@ class ComicboxDumpToFiles(ComicboxDump):
         except Exception:
             logger.exception(f"Could not export {fn}")
 
-    def export_files(self, formats=None) -> None:
+    def export_files(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Export metadata to all supported file formats."""
         if self._config.dry_run:
             logger.info("Not exporting files.")
             return
         if not formats:
             formats = self._config.export
+        if not formats:
+            return
 
         for fmt in formats:
             self.to_file(fmt=fmt)

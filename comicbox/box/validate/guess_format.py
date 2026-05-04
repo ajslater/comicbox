@@ -5,7 +5,6 @@ from types import MappingProxyType
 
 from comicbox.formats import MetadataFormats
 
-SUFFIXES = frozenset({"txt", "xml", "json", "yaml", "yml"})
 _CBI_STEMS = tuple(
     variation
     for substring in ("comic-book-info", "comic-book-lover")

@@ -6,7 +6,7 @@ from pathlib import Path
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
-from comicbox.box.archive.archiveinfo import ArchiveInfo
+from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.sources import MetadataSources
 
@@ -34,20 +34,20 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ValueError(reason)
         return new_path
 
-    def _cleanup_tmp_archive(self, tmp_path, new_path) -> None:
+    def _cleanup_tmp_archive(self, tmp_path: Path, new_path: Path) -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
             raise ValueError(reason)
         old_path = self._path
         tmp_path.replace(new_path)
-        self._path = new_path
+        self._path: Path | None = new_path
         if old_path.suffix != new_path.suffix:
             logger.info(f"Converted to: {new_path}")
             if self._config.delete_orig and old_path != new_path and new_path.is_file():
                 old_path.unlink()
                 logger.info(f"Removed: {old_path}")
 
-    def _archive_remove_metadata_files(self, zf) -> None:
+    def _archive_remove_metadata_files(self, zf: ZipFile) -> None:
         """Remove metadata files from archive."""
         for path in self.namelist():
             fn = Path(path).name.lower()
@@ -55,7 +55,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 zf.remove(path)
         zf.repack()
 
-    def _archive_write_metadata_files(self, zf, files: Mapping[str, bytes]) -> None:
+    def _archive_write_metadata_files(
+        self, zf: ZipFile, files: Mapping[str, bytes]
+    ) -> None:
         # Write metadata files.
         for path, data in files.items():
             compress = (
@@ -69,7 +71,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             )
 
     @staticmethod
-    def _get_filename_from_info(info) -> str | None:
+    def _get_filename_from_info(info: InfoType) -> str | None:
         """Get the filename to write."""
         # Do not write dirs.
         # Prevents empty dirs. Files write implicit parents.
@@ -94,7 +96,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             filename += suffix
         return filename
 
-    def _copy_archive_files_to_new_archive(self, zf) -> None:
+    def _copy_archive_files_to_new_archive(self, zf: ZipFile) -> None:
         # copy all files that are *not* metadata files into new archive.
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
@@ -122,7 +124,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compresslevel=9,
             )
 
-    def _patch_zipfile(self, files, comment) -> None:
+    def _patch_zipfile(self, files: Mapping[str, bytes], comment: bytes) -> None:
         """In place remove and append to existing zipfile."""
         if not self._path:
             reason = "No zipfile path to write to."

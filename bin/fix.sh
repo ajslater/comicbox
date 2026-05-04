@@ -15,9 +15,9 @@ bin/sort-ignore.sh
 ############################################
 ##### Javascript, JSON, Markdown, YAML #####
 ############################################
-npm run fix
+bun run fix
 
 ###################
 ###### Shell ######
 ###################
-shellharden --replace ./**/*.sh
+bin/fix-sh.sh

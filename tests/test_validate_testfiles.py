@@ -10,7 +10,7 @@ _NUM_TEST_FILES = 16
 _SUFFIXES = frozenset({"." + ext for ext in ("txt", "xml", "json", "yaml", "yml")})
 
 
-def _test_dir(root_dir, substring=""):
+def _test_dir(root_dir: Path, substring: str = "") -> set[Path]:
     validated = set()
     for root, _, fns in os.walk(root_dir):
         root_path = Path(root)
@@ -25,7 +25,7 @@ def _test_dir(root_dir, substring=""):
     return validated
 
 
-def test_testfiles():
+def test_testfiles() -> None:
     """Validate test metadata files used for comparing writes."""
     validated = _test_dir(TEST_EXPORT_DIR)
     validated |= _test_dir(TEST_METADATA_DIR, substring="write")

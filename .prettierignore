@@ -5,11 +5,11 @@ __pycache__
 .git
 .venv
 *Dockerfile
+bun.lock
 comicbox/schema_definitions/*Info*.xsd
 dist
 Dockerfile
 node_modules
-package-lock.json
 schemas/*Info*.xsd
 test-results
 tests/**/*.json

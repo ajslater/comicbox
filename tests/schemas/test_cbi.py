@@ -93,46 +93,46 @@ CBI_TESTER = TestParser(
 )
 
 
-def test_cbi_from_metadata():
+def test_cbi_from_metadata() -> None:
     """Test assign metadata."""
     CBI_TESTER.test_from_metadata()
 
 
-def test_cbi_from_dict():
+def test_cbi_from_dict() -> None:
     """Test native dict import from comicbox.schemas."""
     CBI_TESTER.test_from_dict()
 
 
-def test_cbi_from_string():
+def test_cbi_from_string() -> None:
     """Test metadata import from string."""
     CBI_TESTER.test_from_string()
 
 
-def test_cbi_from_file():
+def test_cbi_from_file() -> None:
     """Test metadata import from file."""
     CBI_TESTER.test_from_file()
 
 
-def test_cbi_to_dict():
+def test_cbi_to_dict() -> None:
     """Test metadata export to dict."""
     CBI_TESTER.test_to_dict()
 
 
-def test_cbi_to_string():
+def test_cbi_to_string() -> None:
     """Test metadata export to string."""
     CBI_TESTER.test_to_string()
 
 
-def test_cbi_to_file():
+def test_cbi_to_file() -> None:
     """Test metadata export to file."""
     CBI_TESTER.test_to_file()
 
 
-def test_cbi_read():
+def test_cbi_read() -> None:
     """Test read from file."""
     CBI_TESTER.test_md_read()
 
 
-def test_cbi_write():
+def test_cbi_write() -> None:
     """Test write to file."""
     CBI_TESTER.test_md_write(page_count=0)

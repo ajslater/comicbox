@@ -48,7 +48,7 @@ PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="snmcp")))
 
 
 @pytest.mark.parametrize("label", FIXTURES)
-def test_story_title_combo(label):
+def test_story_title_combo(label: str) -> None:
     """Test metadata mtime."""
     row = FIXTURES[label]
     values, md_out = row

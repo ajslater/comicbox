@@ -9,7 +9,7 @@ from comicbox.box import Comicbox
 from tests.const import TEST_FILES_DIR
 
 
-def _get_stat_mtime(fn):
+def _get_stat_mtime(fn: str) -> datetime:
     return datetime.fromtimestamp(
         (TEST_FILES_DIR / fn).stat().st_mtime, tz=timezone.utc
     )
@@ -33,7 +33,7 @@ FIXTURES = MappingProxyType(
 
 
 @pytest.mark.parametrize("fn", FIXTURES)
-def test_get_mtime(fn):
+def test_get_mtime(fn: str) -> None:
     """Test metadata mtime."""
     path = TEST_FILES_DIR / fn
     with Comicbox(path) as car:

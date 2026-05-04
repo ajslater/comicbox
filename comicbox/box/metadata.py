@@ -2,19 +2,21 @@
 
 from collections.abc import Mapping
 from types import MappingProxyType
+from typing import Any
 
 from glom import Delete, glom
 from loguru import logger
 
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
+from comicbox.schemas.cache import get_schema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 
 
 class ComicboxMetadata(ComicboxComputed):
     """Get Metadata mixin."""
 
-    def _set_computed_merged_metadata_delete(self, merged_md) -> None:
+    def _set_computed_merged_metadata_delete(self, merged_md: dict[str, Any]) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
         for key_path in sorted(self._config.delete_keys):
@@ -59,10 +61,10 @@ class ComicboxMetadata(ComicboxComputed):
     ) -> tuple:
         # Get schema instance.
         schema_class = fmt.value.schema_class
-        schema = schema_class(path=self._path)
+        schema = get_schema(schema_class, path=self._path)
 
         # Get transformed md
-        transform = fmt.value.transform_class(self._path)
+        transform = self._get_transform(fmt.value.transform_class)
 
         try:
             # dict_format is used to determine whether or not to compute some values
@@ -78,7 +80,7 @@ class ComicboxMetadata(ComicboxComputed):
     def to_dict(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict:
         """Get merged metadata as a dict."""
         schema, md = self._to_dict(fmt)
@@ -88,7 +90,7 @@ class ComicboxMetadata(ComicboxComputed):
     def to_string(
         self,
         fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Get mergeesized metadata as a string."""
         schema, md = self._to_dict(fmt)

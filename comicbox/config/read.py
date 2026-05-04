@@ -5,11 +5,10 @@ from argparse import Namespace
 from collections.abc import Mapping
 
 from confuse import Configuration
-from confuse.templates import AttrDict
 from loguru import logger
 
 
-def _add_config_file(args, config) -> None:
+def _add_config_file(args: Namespace | Mapping, config: Configuration) -> None:
     with contextlib.suppress(AttributeError, KeyError):
         if config_fn := (
             args.comicbox.config
@@ -36,9 +35,12 @@ def read_config_sources(
     # Env vars
     config.set_env()
 
-    # Args
+    # Args (highest priority — must override config files and env vars).
+    # Mapping uses .set() so it lands on top of the source stack like
+    # set_args() does for Namespace; .add() would put it BELOW the
+    # config_default.yaml loaded by .read() above.
     if args:
-        if isinstance(args, Mapping | AttrDict):
-            config.add(args)
+        if isinstance(args, Mapping):
+            config.set(args)
         elif isinstance(args, Namespace):  # pyright: ignore[reportUnnecessaryIsInstance]
             config.set_args(args)

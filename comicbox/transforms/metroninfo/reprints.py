@@ -1,5 +1,7 @@
 """MetronInfo.xml Reprints Transform."""
 
+from typing import Any
+
 from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.unparse import dict2comicfn
 from glom import glom
@@ -28,7 +30,9 @@ from comicbox.transforms.xml_reprints import (
 REPRINTS_TAGPATH = "Reprints.Reprint"
 
 
-def _reprint_to_cb(metron_reprint, primary_id_source) -> dict:
+def _reprint_to_cb(
+    metron_reprint: dict[str, str] | str, primary_id_source: str
+) -> dict:
     """Parse a metron Reprint."""
     comicbox_reprint = {}
     if name := get_cdata(metron_reprint):
@@ -40,7 +44,9 @@ def _reprint_to_cb(metron_reprint, primary_id_source) -> dict:
     return comicbox_reprint
 
 
-def _alternative_name_to_cb(metron_alternative_name, primary_id_source) -> dict:
+def _alternative_name_to_cb(
+    metron_alternative_name: dict[str, str], primary_id_source: str
+) -> dict:
     comicbox_reprint = {}
     if not metron_alternative_name:
         return comicbox_reprint
@@ -55,7 +61,7 @@ def _alternative_name_to_cb(metron_alternative_name, primary_id_source) -> dict:
     return comicbox_reprint
 
 
-def _reprints_to_cb(values) -> list:
+def _reprints_to_cb(values: dict[str, Any]) -> list:
     primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
     if metron_reprints := values.get(REPRINTS_TAGPATH):
         comicbox_reprints = [
@@ -79,7 +85,7 @@ def _reprints_to_cb(values) -> list:
     return comicbox_reprints
 
 
-def _reprint_from_cb(comicbox_reprint, primary_id_source) -> dict:
+def _reprint_from_cb(comicbox_reprint: dict[str, str], primary_id_source: str) -> dict:
     """Unparse a structured comicbox reprints into metron reprint."""
     filename_dict = glom(comicbox_reprint, dict(REPRINT_TO_FILENAME_SPECS))
     name = dict2comicfn(filename_dict, ext=False)
@@ -91,7 +97,7 @@ def _reprint_from_cb(comicbox_reprint, primary_id_source) -> dict:
     return metron_reprint
 
 
-def _reprints_from_cb(values) -> list:
+def _reprints_from_cb(values: dict[str, Any]) -> list:
     comicbox_reprints = values.get(REPRINTS_KEY)
     if not comicbox_reprints:
         return []

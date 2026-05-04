@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from datetime import date
 from types import MappingProxyType
+from typing import Any
 
 from loguru import logger
 
@@ -69,7 +70,9 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
             if delete_keypath:
                 self._extra_delete_keys.add(delete_keypath)
 
-    def _get_computed_from_date(self, sub_data, **_kwargs) -> dict[str, dict] | None:
+    def _get_computed_from_date(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, dict] | None:
         """Synchronize date parts and cover_date."""
         old_date = sub_data.get(DATE_KEY)
         if not old_date:
