@@ -30,7 +30,12 @@ from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
-from comicbox.online.profile import ComicProfile, parse_issue_int, parse_year
+from comicbox.online.profile import (
+    ComicProfile,
+    parse_issue_int,
+    parse_year,
+    strip_issue_leading_zeros,
+)
 from comicbox.online.prompt import cli_selector
 from comicbox.online.selector import SelectorContext
 from comicbox.online.sources.comicvine import ComicVineOnlineSource
@@ -342,8 +347,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"filename. Use --id {source.name}:<issue_id> to tag by id."
             )
             return
+        # Show what's actually sent: leading zeros stripped from issue#.
+        search_issue = strip_issue_leading_zeros(profile.issue)
         criteria_summary = (
-            f"series={profile.series!r} issue={profile.issue!r} "
+            f"series={profile.series!r} issue={search_issue!r} "
             f"year={profile.year}"
         )
         logger.info(f"online {source.name}: searching with {criteria_summary}")

@@ -5,11 +5,18 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING
 
-from comicbox.online.sources.comicvine import CoverHashUrlCache
+from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.online.profile import ComicProfile
+from comicbox.online.sources.comicvine import (
+    ComicVineOnlineSource,
+    CoverHashUrlCache,
+)
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def _sample_issue_dict() -> dict:
@@ -145,3 +152,119 @@ def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
     # the policy may skip hashing. The test asserts the fetcher is wired:
     # if invoked, it received our URL.
     assert all(call == "http://example.com/x.jpg" for call in fetcher_calls)
+
+
+# ------------------------------------------ two-step volume → issues search
+
+
+class _FakeBasicVolume:
+    def __init__(self, vid: int, name: str) -> None:
+        self.id = vid
+        self.name = name
+
+
+class _FakeImage:
+    thumb_url = "http://example.com/thumb.jpg"
+
+
+class _FakeBasicIssue:
+    def __init__(
+        self,
+        iid: int,
+        number: str,
+        volume_name: str,
+        cover_year: int = 1952,
+    ) -> None:
+        from datetime import date
+
+        self.id = iid
+        self.number = number
+        self.cover_date = date(cover_year, 1, 1)
+        self.image = _FakeImage()
+        self.site_url = f"http://example.com/issue/{iid}"
+        self.volume = _FakeBasicVolume(vid=999, name=volume_name)
+
+
+class _FakeCV:
+    """Mock simyan.Comicvine that records filter calls."""
+
+    def __init__(
+        self,
+        volumes: list[_FakeBasicVolume],
+        issues_by_volume: dict[int, list[_FakeBasicIssue]],
+    ) -> None:
+        self._volumes = volumes
+        self._issues_by_volume = issues_by_volume
+        self.list_volumes_calls: list[dict] = []
+        self.list_issues_calls: list[dict] = []
+
+    def list_volumes(self, params=None, max_results=500):
+        self.list_volumes_calls.append(params or {})
+        return list(self._volumes)
+
+    def list_issues(self, params=None, max_results=500):
+        self.list_issues_calls.append(params or {})
+        # Trivial: parse `volume:VOL_ID` out of the filter and return that
+        # volume's issues. The issue_number filter is not enforced — that's
+        # CV's job, not ours to mock perfectly.
+        filter_str = (params or {}).get("filter", "")
+        for clause in filter_str.split(","):
+            if clause.startswith("volume:"):
+                vid = int(clause.split(":", 1)[1])
+                return list(self._issues_by_volume.get(vid, []))
+        return []
+
+
+def _make_cv_source(monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV) -> ComicVineOnlineSource:
+    creds = OnlineSourceCredentials(api_key="test-key")
+    settings = OnlineSettings()
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src
+
+
+def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_cv = _FakeCV(volumes=[], issues_by_volume={})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(issue="7", issue_int=7, year=1952)
+    assert src.search(profile) == []
+    # No volume search either — there's nothing to search by.
+    assert fake_cv.list_volumes_calls == []
+
+
+def test_search_filters_volumes_by_name_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Year goes into matcher scoring, not the volume filter."""
+    fake_cv = _FakeCV(volumes=[], issues_by_volume={})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=1952)
+    src.search(profile)
+    assert fake_cv.list_volumes_calls == [{"filter": "name:GI Joe"}]
+
+
+def test_search_two_step_returns_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vol1 = _FakeBasicVolume(vid=100, name="GI Joe")
+    vol2 = _FakeBasicVolume(vid=101, name="GI Joe Vol. 2")
+    issues = {
+        100: [_FakeBasicIssue(iid=5001, number="7", volume_name="GI Joe")],
+        101: [_FakeBasicIssue(iid=5002, number="7", volume_name="GI Joe Vol. 2")],
+    }
+    fake_cv = _FakeCV(volumes=[vol1, vol2], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+    candidates = src.search(profile)
+    assert len(candidates) == 2
+    assert {c.issue_id for c in candidates} == {5001, 5002}
+    # Issue number was leading-zero-stripped.
+    issue_filters = [
+        c.get("filter", "") for c in fake_cv.list_issues_calls
+    ]
+    assert all("issue_number:7" in f for f in issue_filters)
+    # Volume id flowed through.
+    assert any("volume:100" in f for f in issue_filters)
+    assert any("volume:101" in f for f in issue_filters)
+    # Series name on candidates comes from the volume, not basic_issue.volume.
+    assert {c.summary.series for c in candidates} == {"GI Joe", "GI Joe Vol. 2"}

@@ -78,30 +78,26 @@ class ComicVineOnlineSource(OnlineSource):
         issue = session.get_issue(issue_id)
         return issue.model_dump(mode="json")
 
-    def _build_search_params(self, profile: ComicProfile) -> dict[str, Any]:
-        """Build a CV `filter` string from the profile."""
-        clauses: list[str] = []
-        if profile.series:
-            clauses.append(f"name:{profile.series}")
-        # Strip leading zeros — CV stores issue_number without padding.
-        if number := strip_issue_leading_zeros(profile.issue):
-            clauses.append(f"issue_number:{number}")
-        # CV uses a date range filter; cover_date single value isn't supported.
-        if profile.year is not None:
-            clauses.append(f"cover_date:{profile.year}-01-01|{profile.year}-12-31")
-        if not clauses:
-            return {}
-        return {"filter": ",".join(clauses)}
+    # Limit how many candidate volumes to expand into issue queries; each
+    # volume → one extra `list_issues` API call under CV's 1/sec rate limit.
+    _MAX_VOLUMES_PER_SEARCH: ClassVar[int] = 20
 
-    def _to_candidate(self, basic_issue: Any) -> Candidate:
-        """Map simyan's `BasicIssue` to a Candidate."""
-        volume = basic_issue.volume
+    def _to_candidate(self, basic_issue: Any, volume_name: str | None = None) -> Candidate:
+        """
+        Map simyan's `BasicIssue` to a Candidate.
+
+        ``volume_name`` overrides the series field when supplied — the
+        two-step search has already resolved the volume so we use its
+        canonical name even if `basic_issue.volume.name` is sparse.
+        """
+        bi_volume = basic_issue.volume
+        series = volume_name or (bi_volume.name if bi_volume else "") or ""
         image = basic_issue.image
         cover_year = basic_issue.cover_date.year if basic_issue.cover_date else None
         thumb = str(image.thumb_url) if image and image.thumb_url else None
         site_url = str(basic_issue.site_url) if basic_issue.site_url else ""
         summary = CandidateSummary(
-            series=volume.name or "" if volume else "",
+            series=series,
             issue=basic_issue.number or "",
             year=cover_year,
             publisher=None,  # BasicIssue from search doesn't include publisher
@@ -121,20 +117,57 @@ class ComicVineOnlineSource(OnlineSource):
 
     @with_retry()
     def search(self, profile: ComicProfile) -> list[Candidate]:
-        """Search ComicVine and return ranked-stage candidates."""
-        params = self._build_search_params(profile)
-        if not params:
+        """
+        Search ComicVine for candidate issues matching the profile.
+
+        ComicVine's `list_issues` filter has no series/volume-name field —
+        its `name:` filter matches the *issue's* title, which is rarely
+        useful. So we do the canonical two-step:
+
+        1. ``list_volumes`` filtered by series name → candidate volumes.
+        2. For each volume, ``list_issues`` filtered by ``volume:VOL_ID``
+           and ``issue_number:N`` → candidate issues for that volume.
+
+        Year is intentionally NOT used as a volume `start_year` filter —
+        a comic dated 2020 can be issue #100 of a series that started in
+        1963. Year ranking is left to the matcher's metadata score.
+        """
+        if not profile.series:
             logger.debug(
-                f"online {self.name}: no search criteria from profile, skipping"
+                f"online {self.name}: no series in profile; cannot search CV "
+                "(use --id comicvine:<id> for direct lookup)"
             )
             return []
         session = self._get_session()
         try:
-            results = session.list_issues(params=params)
+            volumes = session.list_volumes(
+                params={"filter": f"name:{profile.series}"},
+                max_results=self._MAX_VOLUMES_PER_SEARCH,
+            )
         except Exception as exc:
-            logger.warning(f"online {self.name}: search failed: {exc}")
+            logger.warning(f"online {self.name}: volume search failed: {exc}")
             raise
-        return [self._to_candidate(r) for r in results]
+        if not volumes:
+            return []
+
+        issue_number = strip_issue_leading_zeros(profile.issue)
+        candidates: list[Candidate] = []
+        for vol in volumes:
+            issue_filter = [f"volume:{vol.id}"]
+            if issue_number:
+                issue_filter.append(f"issue_number:{issue_number}")
+            try:
+                issues = session.list_issues(
+                    params={"filter": ",".join(issue_filter)},
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for volume {vol.id} "
+                    f"({vol.name!r}) failed: {exc}"
+                )
+                continue
+            candidates.extend(self._to_candidate(i, vol.name) for i in issues)
+        return candidates
 
 
 # ----------------------------------------------------- cover-hash URL cache
