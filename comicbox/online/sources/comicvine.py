@@ -120,11 +120,14 @@ class ComicVineOnlineSource(OnlineSource):
         """
         Search ComicVine for candidate issues matching the profile.
 
-        ComicVine's `list_issues` filter has no series/volume-name field —
+        ComicVine's ``list_issues`` filter has no series/volume-name field —
         its `name:` filter matches the *issue's* title, which is rarely
         useful. So we do the canonical two-step:
 
-        1. ``list_volumes`` filtered by series name → candidate volumes.
+        1. Full-text-search for volumes matching the series name. (The
+           ``list_volumes`` filter `name:` is strict and trips on
+           punctuation: "GI Joe" vs "G.I. Joe". Full-text search is
+           more permissive.)
         2. For each volume, ``list_issues`` filtered by ``volume:VOL_ID``
            and ``issue_number:N`` → candidate issues for that volume.
 
@@ -138,17 +141,31 @@ class ComicVineOnlineSource(OnlineSource):
                 "(use --id comicvine:<id> for direct lookup)"
             )
             return []
+        from simyan.comicvine import ComicvineResource
+
         session = self._get_session()
         try:
-            volumes = session.list_volumes(
-                params={"filter": f"name:{profile.series}"},
+            volumes = session.search(
+                resource=ComicvineResource.VOLUME,
+                query=profile.series,
                 max_results=self._MAX_VOLUMES_PER_SEARCH,
             )
         except Exception as exc:
             logger.warning(f"online {self.name}: volume search failed: {exc}")
             raise
         if not volumes:
+            logger.info(
+                f"online {self.name}: no volumes match series {profile.series!r}"
+            )
             return []
+        sample_size = 5
+        sample = ", ".join(f"{v.name} ({v.id})" for v in volumes[:sample_size])
+        if len(volumes) > sample_size:
+            sample += " ..."
+        logger.debug(
+            f"online {self.name}: {len(volumes)} candidate volumes for "
+            f"series={profile.series!r}: {sample}"
+        )
 
         issue_number = strip_issue_leading_zeros(profile.issue)
         candidates: list[Candidate] = []

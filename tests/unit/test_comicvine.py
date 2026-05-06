@@ -186,7 +186,7 @@ class _FakeBasicIssue:
 
 
 class _FakeCV:
-    """Mock simyan.Comicvine that records filter calls."""
+    """Mock simyan.Comicvine that records the calls it receives."""
 
     def __init__(
         self,
@@ -195,11 +195,13 @@ class _FakeCV:
     ) -> None:
         self._volumes = volumes
         self._issues_by_volume = issues_by_volume
-        self.list_volumes_calls: list[dict] = []
+        self.search_calls: list[dict] = []
         self.list_issues_calls: list[dict] = []
 
-    def list_volumes(self, params=None, max_results=500):
-        self.list_volumes_calls.append(params or {})
+    def search(self, resource, query, max_results=500):
+        self.search_calls.append(
+            {"resource": resource, "query": query, "max_results": max_results}
+        )
         return list(self._volumes)
 
     def list_issues(self, params=None, max_results=500):
@@ -229,18 +231,23 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     profile = ComicProfile(issue="7", issue_int=7, year=1952)
     assert src.search(profile) == []
     # No volume search either — there's nothing to search by.
-    assert fake_cv.list_volumes_calls == []
+    assert fake_cv.search_calls == []
 
 
-def test_search_filters_volumes_by_name_only(
+def test_search_volumes_via_full_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Year goes into matcher scoring, not the volume filter."""
+    """Volume discovery uses CV full-text search (more punctuation-tolerant)."""
+    from simyan.comicvine import ComicvineResource
+
     fake_cv = _FakeCV(volumes=[], issues_by_volume={})
     src = _make_cv_source(monkeypatch, fake_cv)
     profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=1952)
     src.search(profile)
-    assert fake_cv.list_volumes_calls == [{"filter": "name:GI Joe"}]
+    assert len(fake_cv.search_calls) == 1
+    call = fake_cv.search_calls[0]
+    assert call["resource"] == ComicvineResource.VOLUME
+    assert call["query"] == "GI Joe"
 
 
 def test_search_two_step_returns_candidates(
