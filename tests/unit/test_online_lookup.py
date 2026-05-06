@@ -104,7 +104,7 @@ def test_explicit_id_triggers_get(patched_metron) -> None:
 
 
 def test_explicit_id_payload_appears_as_metron_api_source(
-    patched_metron,  # noqa: ARG001 — fixture patches the factory
+    patched_metron,
 ) -> None:
     args = Namespace(
         comicbox=Namespace(

@@ -27,6 +27,7 @@ dependencies = [
   "py7zr~=1.1.0",
   "pycountry~=26.2",
   "python-dateutil~=2.8",
+  "questionary>=2.1.1",
   "rapidfuzz>=3.14.5",
   "rarfile~=4.0",
   "rich-argparse~=1.7",
@@ -349,6 +350,8 @@ ignore-overlong-task-comments = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
+  "ARG001",
+  "ARG002",
   "D101",
   "D102",
   "D103",

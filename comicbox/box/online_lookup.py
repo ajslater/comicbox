@@ -31,13 +31,20 @@ from loguru import logger
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
 from comicbox.online.profile import ComicProfile, parse_issue_int, parse_year
+from comicbox.online.prompt import cli_selector
+from comicbox.online.selector import SelectorContext
 from comicbox.online.sources.metron import MetronOnlineSource
 from comicbox.sources import MetadataSources
 
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
     from comicbox.online.profile import Candidate
+    from comicbox.online.selector import SelectorCallback
     from comicbox.online.sources.base import OnlineSource
+
+
+class OnlineLookupAbortedError(Exception):
+    """Raised when the selector callback returns ('abort', None)."""
 
 
 # Source factories let tests substitute mocks without monkey-patching imports.
@@ -65,6 +72,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     _ONLINE_SOURCE_FACTORIES: ClassVar[MappingProxyType[str, Any]] = (
         _DEFAULT_SOURCE_FACTORIES
     )
+
+    # Per-instance selector override; falls back to the default CLI prompt.
+    _online_selector: SelectorCallback | None = None
+
+    def set_online_selector(self, selector: SelectorCallback | None) -> None:
+        """Register a programmatic selector callback (codex / library users)."""
+        self._online_selector = selector
 
     def _online_lookup_already_done(self) -> bool:
         return getattr(self, "_online_lookup_done_flag", False)
@@ -205,6 +219,49 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         )
         return matcher.resolve(ranked, self._config.online)
 
+    def _selector_for_run(self) -> SelectorCallback:
+        return self._online_selector or cli_selector
+
+    def _handle_prompt(
+        self, source: OnlineSource, candidates: tuple[Candidate, ...]
+    ) -> None:
+        """Drive the selector callback for the PROMPT case."""
+        selector = self._selector_for_run()
+        ctx = SelectorContext(
+            file_path=getattr(self, "_path", None),
+            source=source.name,
+            settings=self._config,
+            triggered_hashing=any(c.cover_score is not None for c in candidates),
+        )
+        result = selector(self._build_profile(), candidates, ctx)
+        action, payload = result
+        if action == "choose" and isinstance(payload, int):
+            chosen = candidates[payload]
+            logger.info(
+                f"online {source.name}: prompt-chose id={chosen.issue_id}"
+            )
+            self._accept_candidate(source, chosen)
+            return
+        if action == "manual" and isinstance(payload, str):
+            try:
+                src_name, _, raw_id = payload.partition(":")
+                issue_id = int(raw_id)
+            except ValueError:
+                logger.warning(f"online: manual id {payload!r} is not <source>:<int>")
+                return
+            if src_name.strip().lower() != source.name:
+                logger.warning(
+                    f"online {source.name}: manual id {payload!r} routes to "
+                    f"a different source; skipping"
+                )
+                return
+            self._fetch_explicit_id(source, issue_id)
+            return
+        if action == "abort":
+            reason = "online: aborted by user from prompt"
+            raise OnlineLookupAbortedError(reason)
+        logger.info(f"online {source.name}: skipped via prompt")
+
     def _search_path(self, source: OnlineSource) -> None:
         """Search → rank → resolve → fetch on accept."""
         profile = self._build_profile()
@@ -234,12 +291,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"online {source.name}: skip-multiple, top={top_score:.2f}"
             )
             return
-        # ResolutionKind.PROMPT — interactive UX lands in M5.
-        reason = (
-            f"online {source.name}: ambiguous match (top_score="
-            f"{resolution.candidates[0].score:.2f}); interactive prompt is M5"
-        )
-        raise NotImplementedError(reason)
+        # ResolutionKind.PROMPT — invoke the selector callback.
+        self._handle_prompt(source, resolution.candidates)
 
     def _lookup_one_source(self, source: OnlineSource) -> None:
         if self._config.online.ignore_existing and self._has_existing_identifier(
