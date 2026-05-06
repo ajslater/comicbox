@@ -19,7 +19,11 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
-from comicbox.online.profile import Candidate, CandidateSummary
+from comicbox.online.profile import (
+    Candidate,
+    CandidateSummary,
+    strip_issue_leading_zeros,
+)
 from comicbox.online.retry import with_retry
 from comicbox.online.sources.base import OnlineSource
 from comicbox.sources import MetadataSources
@@ -79,8 +83,9 @@ class ComicVineOnlineSource(OnlineSource):
         clauses: list[str] = []
         if profile.series:
             clauses.append(f"name:{profile.series}")
-        if profile.issue:
-            clauses.append(f"issue_number:{profile.issue}")
+        # Strip leading zeros — CV stores issue_number without padding.
+        if number := strip_issue_leading_zeros(profile.issue):
+            clauses.append(f"issue_number:{number}")
         # CV uses a date range filter; cover_date single value isn't supported.
         if profile.year is not None:
             clauses.append(f"cover_date:{profile.year}-01-01|{profile.year}-12-31")

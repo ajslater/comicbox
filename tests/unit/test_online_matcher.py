@@ -16,6 +16,7 @@ from comicbox.online.profile import (
     ComicProfile,
     parse_issue_int,
     parse_year,
+    strip_issue_leading_zeros,
 )
 from comicbox.online.signals import (
     s_issue,
@@ -86,6 +87,27 @@ def test_parse_year_extracts_4_digit() -> None:
     assert parse_year("Spring 2020") == 2020
     assert parse_year("no year here") is None
     assert parse_year(None) is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("007", "7"),
+        ("01", "1"),
+        ("1", "1"),
+        ("0", "0"),
+        ("000", "0"),
+        ("001a", "1a"),
+        ("0a", "0a"),
+        ("1.5", "1.5"),
+        ("1/2", "1/2"),
+        ("Special", "Special"),
+        ("", ""),
+        (None, None),
+    ],
+)
+def test_strip_issue_leading_zeros(raw: str | None, expected: str | None) -> None:
+    assert strip_issue_leading_zeros(raw) == expected
 
 
 # --------------------------------------------------------- signals

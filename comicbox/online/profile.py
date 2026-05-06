@@ -58,6 +58,7 @@ class Candidate:
 
 
 _INT_RE = re.compile(r"^\d+$")
+_LEADING_DIGITS_RE = re.compile(r"^(\d+)(.*)$")
 
 
 def parse_issue_int(raw: Any) -> int | None:
@@ -73,6 +74,35 @@ def parse_issue_int(raw: Any) -> int | None:
     if not s or not _INT_RE.match(s):
         return None
     return int(s)
+
+
+def strip_issue_leading_zeros(raw: str | None) -> str | None:
+    """
+    Strip leading zeros from an issue number string, preserving any suffix.
+
+    Used when building API search params: comicvine, metron, etc. expect
+    `7` not `007`. Variant suffixes (`a`, `.5`) survive unchanged.
+
+    Examples:
+        "007" → "7"
+        "001a" → "1a"
+        "0" → "0"
+        "1.5" → "1.5"
+        "Special" → "Special"
+        None → None
+
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return s
+    m = _LEADING_DIGITS_RE.match(s)
+    if not m:
+        return s
+    digits, rest = m.groups()
+    stripped = digits.lstrip("0") or "0"
+    return stripped + rest
 
 
 def parse_year(raw: Any) -> int | None:

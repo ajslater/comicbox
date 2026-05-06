@@ -14,7 +14,11 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
-from comicbox.online.profile import Candidate, CandidateSummary
+from comicbox.online.profile import (
+    Candidate,
+    CandidateSummary,
+    strip_issue_leading_zeros,
+)
 from comicbox.online.retry import with_retry
 from comicbox.online.sources.base import OnlineSource
 from comicbox.sources import MetadataSources
@@ -71,8 +75,9 @@ class MetronOnlineSource(OnlineSource):
         params: dict[str, Any] = {}
         if profile.series:
             params["series_name"] = profile.series
-        if profile.issue:
-            params["number"] = profile.issue
+        # Strip leading zeros — Metron stores `number` without padding.
+        if number := strip_issue_leading_zeros(profile.issue):
+            params["number"] = number
         if profile.year is not None:
             params["cover_year"] = profile.year
         return params
