@@ -16,6 +16,7 @@ from platformdirs import user_cache_path
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
+    from comicbox.online.profile import Candidate, ComicProfile
     from comicbox.sources import MetadataSources
 
 
@@ -52,6 +53,16 @@ class OnlineSource(ABC):
         The shape is whatever the upstream library returns post-`model_dump`
         (or equivalent). Comicbox's per-source transform converts it to the
         internal schema.
+        """
+
+    @abstractmethod
+    def search(self, profile: ComicProfile) -> list[Candidate]:
+        """
+        Build search criteria from a comic profile and return candidates.
+
+        Each candidate carries display fields, the upstream id, and any
+        precomputed cover hash. The matcher scores them; the lookup mixin
+        decides AUTO_WRITE / PROMPT / SKIP / NO_MATCH.
         """
 
     def cache_db_path(self, suffix: str = "cache") -> Path:

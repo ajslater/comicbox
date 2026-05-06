@@ -29,11 +29,14 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
+from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
+from comicbox.online.profile import ComicProfile, parse_issue_int, parse_year
 from comicbox.online.sources.metron import MetronOnlineSource
 from comicbox.sources import MetadataSources
 
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
+    from comicbox.online.profile import Candidate
     from comicbox.online.sources.base import OnlineSource
 
 
@@ -123,12 +126,94 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         )
         logger.debug(f"online {source.name}: added id={issue_id}")
 
-    def _lookup_one_source(self, source: OnlineSource) -> None:
-        explicit_ids = self._config.online.explicit_ids
-        issue_id = explicit_ids.get(source.name)
-        if issue_id is None:
-            # M2 only runs the explicit-id path. M3 adds search.
+    def _build_profile(self) -> ComicProfile:
+        """Read the non-online merged-so-far metadata into a ComicProfile."""
+        # Collect from non-online normalized sources, first-wins.
+        series: str | None = None
+        issue: str | None = None
+        year: int | None = None
+        publisher: str | None = None
+        page_count: int | None = None
+        for src in MetadataSources:
+            if src in _ONLINE_SOURCE_ENUMS:
+                continue
+            normalized = self.get_normalized_metadata(src)
+            if not normalized:
+                continue
+            for loaded in normalized:
+                md = dict(loaded.metadata)
+                if series is None:
+                    series = glom(md, "comicbox.series.name", default=None)
+                if issue is None:
+                    issue = glom(md, "comicbox.issue.name", default=None)
+                if year is None:
+                    raw_year = glom(md, "comicbox.date.year", default=None) or glom(
+                        md, "comicbox.date.cover_date", default=None
+                    )
+                    year = parse_year(raw_year)
+                if publisher is None:
+                    publisher = glom(md, "comicbox.publisher.name", default=None)
+                if page_count is None:
+                    page_count = glom(md, "comicbox.page_count", default=None)
+        return ComicProfile(
+            series=series,
+            issue=issue,
+            issue_int=parse_issue_int(issue),
+            year=year,
+            publisher=publisher,
+            page_count=page_count,
+        )
+
+    def _accept_candidate(
+        self, source: OnlineSource, candidate: Candidate
+    ) -> None:
+        """Fetch the full record for an accepted candidate and inject it."""
+        self._fetch_explicit_id(source, candidate.issue_id)
+
+    def _resolve_with_matcher(
+        self, candidates: list[Candidate]
+    ) -> Resolution:
+        matcher = OnlineMatcher()
+        ranked = matcher.rank(self._build_profile(), candidates)
+        return matcher.resolve(ranked, self._config.online)
+
+    def _search_path(self, source: OnlineSource) -> None:
+        """Search → rank → resolve → fetch on accept."""
+        profile = self._build_profile()
+        try:
+            candidates = source.search(profile)
+        except Exception as exc:
+            logger.warning(f"online {source.name}: search failed: {exc}")
             return
+        if not candidates:
+            logger.info(f"online {source.name}: no candidates returned for profile")
+            return
+        resolution = self._resolve_with_matcher(candidates)
+        if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
+            logger.info(
+                f"online {source.name}: auto-writing "
+                f"id={resolution.chosen.issue_id} "
+                f"(score={resolution.chosen.score:.2f})"
+            )
+            self._accept_candidate(source, resolution.chosen)
+            return
+        if resolution.kind is ResolutionKind.NO_MATCH:
+            logger.info(f"online {source.name}: no match cleared min_confidence")
+            return
+        if resolution.kind is ResolutionKind.SKIP:
+            top_score = resolution.candidates[0].score if resolution.candidates else 0
+            logger.info(
+                f"online {source.name}: skip-multiple, top={top_score:.2f}"
+            )
+            return
+        # ResolutionKind.PROMPT — interactive UX lands in M5.
+        reason = (
+            f"online {source.name}: ambiguous match (top_score="
+            f"{resolution.candidates[0].score:.2f}); interactive prompt is M5"
+        )
+        raise NotImplementedError(reason)
+
+    def _lookup_one_source(self, source: OnlineSource) -> None:
         if self._config.online.ignore_existing and self._has_existing_identifier(
             source.name
         ):
@@ -137,7 +222,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"(already has {source.name} id)"
             )
             return
-        self._fetch_explicit_id(source, issue_id)
+        explicit_ids = self._config.online.explicit_ids
+        issue_id = explicit_ids.get(source.name)
+        if issue_id is not None:
+            self._fetch_explicit_id(source, issue_id)
+            return
+        self._search_path(source)
 
     def run_online_lookup(self) -> None:
         """Idempotent: populate online MetadataSources once per box instance."""

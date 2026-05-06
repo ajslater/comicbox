@@ -4,7 +4,7 @@ Metron API source via mokkari.
 M2 wires the `--id metron:N` path: instantiate a session with credentials
 from the resolution chain, fetch one issue by id, dump the Pydantic model
 to a plain dict, and hand it back to `ComicboxOnlineLookup` for transform
-and merge. Search and ranking land in M3.
+and merge. M3 adds search.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
+from comicbox.online.profile import Candidate, CandidateSummary
 from comicbox.online.retry import with_retry
 from comicbox.online.sources.base import OnlineSource
 from comicbox.sources import MetadataSources
@@ -21,6 +22,8 @@ from comicbox.version import PACKAGE_NAME, VERSION
 
 if TYPE_CHECKING:
     from mokkari.session import Session
+
+    from comicbox.online.profile import ComicProfile
 
 
 class MetronOnlineSource(OnlineSource):
@@ -63,3 +66,52 @@ class MetronOnlineSource(OnlineSource):
         session = self._get_session()
         issue = session.issue(issue_id)
         return issue.model_dump(mode="json")
+
+    def _build_search_params(self, profile: ComicProfile) -> dict[str, Any]:
+        params: dict[str, Any] = {}
+        if profile.series:
+            params["series_name"] = profile.series
+        if profile.issue:
+            params["number"] = profile.issue
+        if profile.year is not None:
+            params["cover_year"] = profile.year
+        return params
+
+    def _to_candidate(self, base_issue: Any) -> Candidate:
+        """Map a mokkari `BaseIssue` to a Candidate."""
+        series = base_issue.series
+        cover_year = base_issue.cover_date.year if base_issue.cover_date else None
+        image_url = str(base_issue.image) if base_issue.image else None
+        summary = CandidateSummary(
+            series=series.name,
+            issue=base_issue.number,
+            year=cover_year,
+            publisher=None,  # BaseIssue from search omits publisher
+            page_count=None,
+            cover_url=image_url,
+            variant_label=None,
+        )
+        return Candidate(
+            source=self.name,
+            issue_id=base_issue.id,
+            summary=summary,
+            url=str(base_issue.resource_url) if hasattr(base_issue, "resource_url") and base_issue.resource_url else "",
+            precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
+        )
+
+    @with_retry()
+    def search(self, profile: ComicProfile) -> list[Candidate]:
+        """Search Metron for candidates matching the profile."""
+        params = self._build_search_params(profile)
+        if not params:
+            logger.debug(
+                f"online {self.name}: no search criteria from profile, skipping"
+            )
+            return []
+        session = self._get_session()
+        try:
+            results = session.issues_list(params=params)
+        except Exception as exc:
+            logger.warning(f"online {self.name}: search failed: {exc}")
+            raise
+        return [self._to_candidate(r) for r in results]
