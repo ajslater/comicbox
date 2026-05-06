@@ -82,4 +82,4 @@ class CliOverrides:
             flag_suffix = _FIELD_TO_FLAG_SUFFIX[cred_field]
             for source, value in _parse_pairs(values, flag_suffix).items():
                 per_source.setdefault(source, {})[cred_field] = value
-        return cls(per_source={k: dict(v) for k, v in per_source.items()})
+        return cls(per_source=dict(per_source.items()))

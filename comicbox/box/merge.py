@@ -2,13 +2,13 @@
 
 from types import MappingProxyType
 
-from comicbox.box.normalize import ComicboxNormalize
+from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.merge import AdditiveMerger, Merger, UpdateMerger
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.sources import MetadataSources
 
 
-class ComicboxMerge(ComicboxNormalize):
+class ComicboxMerge(ComicboxOnlineLookup):
     """Merge Metadata Methods."""
 
     def _merge_metadata_by_source(
@@ -42,5 +42,6 @@ class ComicboxMerge(ComicboxNormalize):
     def get_merged_metadata(self) -> MappingProxyType:
         """Get merged normalized metadata."""
         if not self._merged_metadata:
+            self.run_online_lookup()
             self._set_merged_metadata()
         return self._merged_metadata
