@@ -199,8 +199,8 @@ Test strategy:
   transforms, source registration, and format registration. No dynamic
   discovery — just better internal organisation. Plan to be drafted after
   online tagging lands, with the integration experience as input.
-- **`MetadataSources.LEGACY_NESTED` review.** Investigate whether
-  `LEGACY_NESTED` is still load-bearing; if so, reconsider its position in
-  `MetadataSources` (proposed: just after `ARCHIVE_FILE`); if not, remove it.
-  Out of scope for the online-tagging feature; tracked as a separate
-  follow-up project.
+- **`LegacyNestedMDStringSetField` cleanup.** After `LEGACY_NESTED` is
+  removed in M1, the `LegacyNestedMDStringSetField` /
+  `XmlLegacyNestedMDStringSetField` classes (which still handle PDF
+  `keywords` deserialization sanely) may be simplifiable. Investigate
+  post-feature; out of scope for online tagging.
