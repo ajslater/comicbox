@@ -37,6 +37,10 @@ if TYPE_CHECKING:
 # Callable that returns the local comic's pHash hex (or None if unavailable).
 LocalHashProvider = Callable[[], str | None]
 
+# Callable that fetches and hashes a candidate cover URL, with caching.
+# Returns the hex hash string or None if unavailable.
+CandidateHashFetcher = Callable[[str], str | None]
+
 
 # Metadata-signal weights. Sum to 0.80; the remaining 0.20 is reserved
 # for the cover-hash signal (M4). When hashing isn't invoked we
@@ -171,9 +175,32 @@ def _should_invoke_hashing(
     return not (top.metadata_score >= threshold and gap >= _DISAMBIGUATION_MARGIN)
 
 
+def _resolve_candidate_hash(
+    candidate: Candidate,
+    candidate_hash_fetcher: CandidateHashFetcher | None,
+) -> str | None:
+    """Get a candidate's pHash, preferring precomputed value."""
+    if candidate.precomputed_cover_hash:
+        return candidate.precomputed_cover_hash
+    if candidate_hash_fetcher is None:
+        return None
+    cover_url = candidate.summary.cover_url
+    if not cover_url:
+        return None
+    try:
+        return candidate_hash_fetcher(cover_url)
+    except Exception as exc:
+        logger.warning(
+            f"online: cover-hash fetcher failed for {candidate.source}:"
+            f"{candidate.issue_id} (url={cover_url}): {exc}"
+        )
+        return None
+
+
 def _apply_cover_hashing(
     ranked: list[Candidate],
     local_hash: str,
+    candidate_hash_fetcher: CandidateHashFetcher | None,
 ) -> list[Candidate]:
     """Hash the top K candidates and re-rank by blended score."""
     rescored: list[Candidate] = []
@@ -181,11 +208,12 @@ def _apply_cover_hashing(
         if i >= _TOP_K_FOR_HASHING:
             rescored.append(c)
             continue
-        if not c.precomputed_cover_hash:
+        cand_hash = _resolve_candidate_hash(c, candidate_hash_fetcher)
+        if not cand_hash:
             rescored.append(c)
             continue
         try:
-            cs = _cover_score(local_hash, c.precomputed_cover_hash)
+            cs = _cover_score(local_hash, cand_hash)
         except Exception as exc:
             logger.warning(
                 f"online: cover hash failed for {c.source}:{c.issue_id}: {exc}"
@@ -207,6 +235,7 @@ class OnlineMatcher:
         candidates: list[Candidate],
         *,
         local_hash_provider: LocalHashProvider | None = None,
+        candidate_hash_fetcher: CandidateHashFetcher | None = None,
         threshold: float = 0.85,
     ) -> list[Candidate]:
         """
@@ -215,9 +244,9 @@ class OnlineMatcher:
         When `local_hash_provider` is provided and the metadata-only
         ranking is ambiguous (top below threshold or close call), invokes
         cover hashing on the top K candidates and re-ranks. Metron
-        candidates carry a `precomputed_cover_hash` so no fetch is needed
-        for them; ComicVine/GCD candidates without a precomputed hash are
-        left at metadata-only scores.
+        candidates carry a `precomputed_cover_hash` (string-compare); other
+        sources fall through to ``candidate_hash_fetcher`` for
+        download-and-hash with caching. Both kinds mix in the same ranking.
         """
         scored: list[Candidate] = []
         for c in candidates:
@@ -232,7 +261,7 @@ class OnlineMatcher:
         local_hash = local_hash_provider()
         if not local_hash:
             return scored
-        return _apply_cover_hashing(scored, local_hash)
+        return _apply_cover_hashing(scored, local_hash, candidate_hash_fetcher)
 
     def resolve(
         self,

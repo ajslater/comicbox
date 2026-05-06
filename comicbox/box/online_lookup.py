@@ -33,6 +33,7 @@ from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
 from comicbox.online.profile import ComicProfile, parse_issue_int, parse_year
 from comicbox.online.prompt import cli_selector
 from comicbox.online.selector import SelectorContext
+from comicbox.online.sources.comicvine import ComicVineOnlineSource
 from comicbox.online.sources.metron import MetronOnlineSource
 from comicbox.sources import MetadataSources
 
@@ -54,7 +55,7 @@ OnlineSourceFactory = "Callable[[Any, OnlineSettings], OnlineSource]"
 _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
     {
         "metron": MetronOnlineSource,
-        # M6 adds: "comicvine": ComicVineOnlineSource,
+        "comicvine": ComicVineOnlineSource,
     }
 )
 
@@ -184,6 +185,57 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """Fetch the full record for an accepted candidate and inject it."""
         self._fetch_explicit_id(source, candidate.issue_id)
 
+    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
+        """
+        Download a candidate cover from URL and return its pHash, with caching.
+
+        Used by the matcher for sources that don't ship a precomputed hash
+        (ComicVine, GCD). Local writes go through the shared
+        cover-hashes sqlite cache.
+        """
+        from comicbox.online.cover_hash import compute_phash
+        from comicbox.online.sources.comicvine import (
+            CoverHashUrlCache,
+        )
+
+        if not url:
+            return None
+
+        cache = getattr(self, "_cover_hash_url_cache", None)
+        if cache is None:
+            cache_dir = self._config.online.cache_dir
+            if cache_dir is None:
+                from platformdirs import user_cache_path
+
+                cache_dir = user_cache_path("comicbox") / "online"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache = CoverHashUrlCache(cache_dir / "cover_hashes.sqlite")
+            self._cover_hash_url_cache = cache
+
+        if not self._config.online.cache_enabled:
+            cache = None
+        if cache is not None and (cached := cache.get(url)):
+            return cached
+
+        try:
+            import httpx
+
+            response = httpx.get(url, timeout=15.0, follow_redirects=True)
+            response.raise_for_status()
+        except Exception as exc:
+            logger.warning(f"online: cover download failed ({url}): {exc}")
+            return None
+
+        try:
+            phash = compute_phash(response.content)
+        except Exception as exc:
+            logger.warning(f"online: cover pHash failed ({url}): {exc}")
+            return None
+
+        if cache is not None:
+            cache.set(url, phash)
+        return phash
+
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""
         cached = getattr(self, "_local_cover_phash_value", "<unset>")
@@ -215,6 +267,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._build_profile(),
             candidates,
             local_hash_provider=self._local_cover_phash,
+            candidate_hash_fetcher=self._candidate_cover_hash_fetcher,
             threshold=self._config.online.confidence_threshold,
         )
         return matcher.resolve(ranked, self._config.online)
