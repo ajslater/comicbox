@@ -335,13 +335,28 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _search_path(self, source: OnlineSource) -> None:
         """Search → rank → resolve → fetch on accept."""
         profile = self._build_profile()
+        if not (profile.series or profile.issue or profile.year):
+            logger.warning(
+                f"online {source.name}: no search criteria — couldn't extract "
+                "series, issue#, or year from the comic's metadata or "
+                f"filename. Use --id {source.name}:<issue_id> to tag by id."
+            )
+            return
+        criteria_summary = (
+            f"series={profile.series!r} issue={profile.issue!r} "
+            f"year={profile.year}"
+        )
+        logger.info(f"online {source.name}: searching with {criteria_summary}")
         try:
             candidates = source.search(profile)
         except Exception as exc:
             logger.warning(f"online {source.name}: search failed: {exc}")
             return
         if not candidates:
-            logger.info(f"online {source.name}: no candidates returned for profile")
+            logger.info(
+                f"online {source.name}: 0 candidates for {criteria_summary} "
+                "(no matching issues in the database)"
+            )
             return
         resolution = self._resolve_with_matcher(candidates)
         if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
