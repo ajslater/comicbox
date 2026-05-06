@@ -42,6 +42,12 @@ class Comicbox(
 
     def run(self) -> None:
         """Perform archive actions."""
+        # Run online lookup before any action runs so all phases (print,
+        # validate, export, write, …) see a consistent post-online state.
+        # Lookup is gated on `online.enabled` and idempotent, so this is a
+        # no-op when --online wasn't passed.
+        self.run_online_lookup()
+
         noop = True
         for attr, method in self._CONFIG_ACTIONS.items():
             if getattr(self._config, attr):
