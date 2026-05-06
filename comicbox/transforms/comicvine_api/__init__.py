@@ -40,11 +40,15 @@ from comicbox.transforms.spec import (
 )
 
 # Map comicvine-api source keypath → comicbox internal keypath.
+# Note: simyan's Images model uses `thumbnail` / `small_url` / `medium_url`
+# / etc. — there's no `thumb_url`. We prefer `medium_url` for the stored
+# cover_image (better quality than thumbnail) and fall back to thumbnail
+# in code when needed for hashing.
 SIMPLE_KEYMAP = frozenbidict(
     {
         # Core fields
         "number": ISSUE_NAME_KEYPATH,
-        "image.thumb_url": COVER_IMAGE_KEY,
+        "image.medium_url": COVER_IMAGE_KEY,
         "description": SUMMARY_KEY,
         "date_last_updated": UPDATED_AT_KEY,
         # Page count is missing on the search response but present on

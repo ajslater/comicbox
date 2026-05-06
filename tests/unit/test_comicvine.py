@@ -30,7 +30,9 @@ def _sample_issue_dict() -> dict:
             "description": "<p>Some description.</p>",
             "page_count": 24,
             "image": {
-                "thumb_url": "http://example.com/thumb.jpg",
+                "thumbnail": "http://example.com/thumbnail.jpg",
+                "small_url": "http://example.com/small.jpg",
+                "medium_url": "http://example.com/medium.jpg",
                 "original_url": "http://example.com/original.jpg",
             },
             "volume": {"id": 100, "name": "Foo Comics"},
@@ -62,7 +64,7 @@ def test_transform_handles_missing_fields() -> None:
             "number": "1",
             "cover_date": "2025-01-01",
             "date_last_updated": "2025-01-01T00:00:00Z",
-            "image": {"thumb_url": "http://example.com/x.jpg"},
+            "image": {"medium_url": "http://example.com/x.jpg"},
             "volume": {"id": 1, "name": "S"},
         }
     }
@@ -164,7 +166,12 @@ class _FakeBasicVolume:
 
 
 class _FakeImage:
-    thumb_url = "http://example.com/thumb.jpg"
+    thumbnail = "http://example.com/thumbnail.jpg"
+    small_url = None
+    medium_url = "http://example.com/medium.jpg"
+    screen_url = None
+    super_url = None
+    original_url = "http://example.com/original.jpg"
 
 
 class _FakeBasicIssue:
@@ -253,10 +260,10 @@ def test_search_volumes_via_full_text(
 def test_search_two_step_returns_candidates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    vol1 = _FakeBasicVolume(vid=100, name="GI Joe")
+    vol1 = _FakeBasicVolume(vid=100, name="G.I. Joe")
     vol2 = _FakeBasicVolume(vid=101, name="GI Joe Vol. 2")
     issues = {
-        100: [_FakeBasicIssue(iid=5001, number="7", volume_name="GI Joe")],
+        100: [_FakeBasicIssue(iid=5001, number="7", volume_name="G.I. Joe")],
         101: [_FakeBasicIssue(iid=5002, number="7", volume_name="GI Joe Vol. 2")],
     }
     fake_cv = _FakeCV(volumes=[vol1, vol2], issues_by_volume=issues)
@@ -266,12 +273,13 @@ def test_search_two_step_returns_candidates(
     assert len(candidates) == 2
     assert {c.issue_id for c in candidates} == {5001, 5002}
     # Issue number was leading-zero-stripped.
-    issue_filters = [
-        c.get("filter", "") for c in fake_cv.list_issues_calls
-    ]
+    issue_filters = [c.get("filter", "") for c in fake_cv.list_issues_calls]
     assert all("issue_number:7" in f for f in issue_filters)
     # Volume id flowed through.
     assert any("volume:100" in f for f in issue_filters)
     assert any("volume:101" in f for f in issue_filters)
-    # Series name on candidates comes from the volume, not basic_issue.volume.
-    assert {c.summary.series for c in candidates} == {"GI Joe", "GI Joe Vol. 2"}
+    # Series name on candidates comes from the (CV-canonical) volume name,
+    # not the user's punctuation-thin profile.series.
+    assert {c.summary.series for c in candidates} == {"G.I. Joe", "GI Joe Vol. 2"}
+    # Cover URL fell through to the first available preference (`thumbnail`).
+    assert all(c.summary.cover_url == _FakeImage.thumbnail for c in candidates)

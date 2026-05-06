@@ -82,6 +82,28 @@ class ComicVineOnlineSource(OnlineSource):
     # volume → one extra `list_issues` API call under CV's 1/sec rate limit.
     _MAX_VOLUMES_PER_SEARCH: ClassVar[int] = 20
 
+    # ComicVine `Images` field names from smallest to largest.
+    # `thumbnail` is sufficient for pHash; the rest are fallbacks for
+    # records where a particular size is missing.
+    _COVER_URL_PREFERENCE: ClassVar[tuple[str, ...]] = (
+        "thumbnail",
+        "small_url",
+        "medium_url",
+        "screen_url",
+        "super_url",
+        "original_url",
+    )
+
+    @classmethod
+    def _pick_cover_url(cls, image: Any) -> str | None:
+        if image is None:
+            return None
+        for attr in cls._COVER_URL_PREFERENCE:
+            url = getattr(image, attr, None)
+            if url:
+                return str(url)
+        return None
+
     def _to_candidate(self, basic_issue: Any, volume_name: str | None = None) -> Candidate:
         """
         Map simyan's `BasicIssue` to a Candidate.
@@ -92,9 +114,8 @@ class ComicVineOnlineSource(OnlineSource):
         """
         bi_volume = basic_issue.volume
         series = volume_name or (bi_volume.name if bi_volume else "") or ""
-        image = basic_issue.image
         cover_year = basic_issue.cover_date.year if basic_issue.cover_date else None
-        thumb = str(image.thumb_url) if image and image.thumb_url else None
+        cover_url = self._pick_cover_url(basic_issue.image)
         site_url = str(basic_issue.site_url) if basic_issue.site_url else ""
         summary = CandidateSummary(
             series=series,
@@ -102,7 +123,7 @@ class ComicVineOnlineSource(OnlineSource):
             year=cover_year,
             publisher=None,  # BasicIssue from search doesn't include publisher
             page_count=None,
-            cover_url=thumb,
+            cover_url=cover_url,
             variant_label=None,
         )
         return Candidate(
