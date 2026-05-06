@@ -71,10 +71,15 @@ class MetronOnlineSource(OnlineSource):
         issue = session.issue(issue_id)
         return issue.model_dump(mode="json")
 
-    def _build_search_params(self, profile: ComicProfile) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-        if profile.series:
-            params["series_name"] = profile.series
+    # Limit how many candidate series to expand into issue queries; each
+    # series → one extra `issues_list` API call.
+    _MAX_SERIES_PER_SEARCH: ClassVar[int] = 20
+
+    def _build_issue_params(
+        self, profile: ComicProfile, series_id: int
+    ) -> dict[str, Any]:
+        """Build the `issues_list` params filtering on a resolved series id."""
+        params: dict[str, Any] = {"series": series_id}
         # Strip leading zeros — Metron stores `number` without padding.
         if number := strip_issue_leading_zeros(profile.issue):
             params["number"] = number
@@ -82,13 +87,28 @@ class MetronOnlineSource(OnlineSource):
             params["cover_year"] = profile.year
         return params
 
-    def _to_candidate(self, base_issue: Any) -> Candidate:
-        """Map a mokkari `BaseIssue` to a Candidate."""
-        series = base_issue.series
+    def _to_candidate(
+        self, base_issue: Any, series_name: str | None = None
+    ) -> Candidate:
+        """
+        Map a mokkari `BaseIssue` to a Candidate.
+
+        ``series_name`` overrides the issue's series field when supplied — the
+        two-step search has already resolved the series so we use its
+        canonical name, since `BaseIssue.series` is sparse.
+        """
         cover_year = base_issue.cover_date.year if base_issue.cover_date else None
         image_url = str(base_issue.image) if base_issue.image else None
+        # `BaseIssue.series` may be a nested object or absent depending on
+        # the endpoint. Prefer the resolved name passed in by `search`.
+        bi_series = getattr(base_issue, "series", None)
+        series = (
+            series_name
+            or (getattr(bi_series, "name", None) if bi_series is not None else None)
+            or ""
+        )
         summary = CandidateSummary(
-            series=series.name,
+            series=series,
             issue=base_issue.number,
             year=cover_year,
             publisher=None,  # BaseIssue from search omits publisher
@@ -108,17 +128,62 @@ class MetronOnlineSource(OnlineSource):
 
     @with_retry()
     def search(self, profile: ComicProfile) -> list[Candidate]:
-        """Search Metron for candidates matching the profile."""
-        params = self._build_search_params(profile)
-        if not params:
+        """
+        Search Metron for candidate issues matching the profile.
+
+        The canonical two-step:
+
+        1. ``series_list({"name": profile.series})`` — Metron's name filter
+           is icontains+unaccent and splits on whitespace (AND-of-terms),
+           so it tolerates case, accents, and word-order quirks.
+        2. For each matched series, ``issues_list({"series": id, "number":
+           N, "cover_year": Y})`` — issue lookup constrained by the
+           resolved series id. Metron's `issue.number` is unpadded, so we
+           strip leading zeros on the way in.
+
+        The earlier single-call form passed `series_name` directly to
+        ``issues_list``, which Metron does accept (icontains too) but it's
+        an undocumented mokkari parameter and the two-step is what
+        metron-tagger uses.
+        """
+        if not profile.series:
             logger.debug(
-                f"online {self.name}: no search criteria from profile, skipping"
+                f"online {self.name}: no series in profile; cannot search Metron "
+                "(use --id metron:<id> for direct lookup)"
             )
             return []
         session = self._get_session()
         try:
-            results = session.issues_list(params=params)
+            series_results = session.series_list(params={"name": profile.series})
         except Exception as exc:
-            logger.warning(f"online {self.name}: search failed: {exc}")
+            logger.warning(f"online {self.name}: series search failed: {exc}")
             raise
-        return [self._to_candidate(r) for r in results]
+        if not series_results:
+            logger.info(f"online {self.name}: no series match {profile.series!r}")
+            return []
+        series_results = list(series_results)[: self._MAX_SERIES_PER_SEARCH]
+        sample_size = 5
+        sample = ", ".join(
+            f"{getattr(s, 'display_name', None) or s.name} ({s.id})"
+            for s in series_results[:sample_size]
+        )
+        if len(series_results) > sample_size:
+            sample += " ..."
+        logger.debug(
+            f"online {self.name}: {len(series_results)} candidate series for "
+            f"{profile.series!r}: {sample}"
+        )
+
+        candidates: list[Candidate] = []
+        for series in series_results:
+            params = self._build_issue_params(profile, series.id)
+            try:
+                issues = session.issues_list(params=params)
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for series {series.id} "
+                    f"({series.name!r}) failed: {exc}"
+                )
+                continue
+            candidates.extend(self._to_candidate(i, series.name) for i in issues)
+        return candidates

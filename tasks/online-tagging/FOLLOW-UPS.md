@@ -12,14 +12,6 @@ Marker conventions:
 
 ## A. Search quality
 
-- ⭐ **Verify Metron does fuzzy series-name search.** mokkari's
-  `series_name` filter behaviour isn't documented as fuzzy. If it's
-  exact-match, "GI Joe" won't find "G.I. Joe" the same way CV's
-  full-text search does, and Metron searches will silently miss
-  records. Test with a known case (e.g. a series whose Metron name
-  has punctuation our filename parse strips). If Metron's filter is
-  exact, we may need to use mokkari's series-list endpoint as a
-  full-text discovery step (mirror of the CV two-step rework).
 - ⭐ **±1 year retry on miss.** When the year-exact search returns
   zero candidates, retry with a relaxed year filter (`year ± 1`
   for Metron, `cover_date:Y-1-01-01|Y+1-12-31` for CV). Cover-date
