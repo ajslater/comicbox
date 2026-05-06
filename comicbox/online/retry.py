@@ -35,6 +35,30 @@ def _is_auth_error(exc: BaseException) -> bool:
     )
 
 
+# Exceptions that signal programmer errors / bad config — NOT retriable. The
+# retry decorator should pass these through unchanged so the user sees a stack
+# trace immediately rather than a noisy retry loop.
+_NON_RETRIABLE: tuple[type[BaseException], ...] = (
+    ImportError,  # incl. ModuleNotFoundError
+    TypeError,
+    AttributeError,
+    NameError,
+    SyntaxError,
+    ValueError,  # bad URL, bad arg, etc.
+)
+
+
+def _is_retriable(exc: BaseException) -> bool:
+    """
+    Return True for transient errors worth retrying.
+
+    Auth errors and programmer/config errors raise immediately without retry.
+    """
+    if _is_auth_error(exc):
+        return False
+    return not isinstance(exc, _NON_RETRIABLE)
+
+
 def _retry_after(exc: BaseException) -> float | None:
     """Pull a `retry_after` hint from the exception, if available."""
     hint = getattr(exc, "retry_after", None)
@@ -66,8 +90,8 @@ def with_retry(
                 try:
                     return func(*args, **kwargs)
                 except Exception as exc:
-                    if _is_auth_error(exc):
-                        # Auth errors are non-retriable; surface them.
+                    if not _is_retriable(exc):
+                        # Programmer errors, auth errors, etc.: surface immediately.
                         raise
                     last_exc = exc
                     if attempt == max_retries:

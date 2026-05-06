@@ -190,3 +190,34 @@ def test_confidence_threshold_cli_override() -> None:
     cli = Namespace(online_sources=["all"], confidence_threshold=0.95)
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.confidence_threshold == 0.95
+
+
+def test_explicit_id_implicitly_activates_online() -> None:
+    """`--id comicvine:42` alone should enable online for ComicVine."""
+    cli = Namespace(explicit_ids=["comicvine:42"])
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.enabled is True
+    assert cfg.online.selected_sources == frozenset({"comicvine"})
+    assert cfg.online.explicit_ids == {"comicvine": 42}
+
+
+def test_explicit_id_union_with_online_filter() -> None:
+    """--id comicvine:42 --online metron → both sources active."""
+    cli = Namespace(
+        online_sources=["metron"],
+        explicit_ids=["comicvine:42"],
+    )
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.enabled is True
+    assert cfg.online.selected_sources == frozenset({"metron", "comicvine"})
+
+
+def test_explicit_id_with_online_all_keeps_all() -> None:
+    """--id comicvine:42 --online all keeps `all` (None) sentinel."""
+    cli = Namespace(
+        online_sources=["all"],
+        explicit_ids=["comicvine:42"],
+    )
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.enabled is True
+    assert cfg.online.selected_sources is None

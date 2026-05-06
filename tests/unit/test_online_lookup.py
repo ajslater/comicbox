@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from argparse import Namespace
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -11,6 +12,9 @@ from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.formats import MetadataFormats
 from comicbox.sources import MetadataSources
+
+if TYPE_CHECKING:
+    from comicbox.online.profile import Candidate
 
 _SAMPLE_ISSUE = {
     "id": 42,
@@ -153,11 +157,58 @@ def test_filter_excludes_unselected_source(patched_metron) -> None:
     args = Namespace(
         comicbox=Namespace(
             online_sources=["comicvine"],  # filter excludes metron
-            explicit_ids=["metron:42"],
             online={"metron": {"username": "u", "password": "p"}},
         )
     )
     cb = Comicbox(config=args)
     cb.run_online_lookup()
-    # No factory invocations because metron isn't in selected_sources.
+    # No factory invocations because metron isn't in selected_sources
+    # (and no `--id metron:...` to force-include it).
     assert patched_metron == []
+
+
+def test_explicit_id_for_unconfigured_source_warns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`--id comicvine:42` without CV creds should warn loudly."""
+
+    class _UnconfiguredCV:
+        name = "comicvine"
+        metadata_source = MetadataSources.COMICVINE_API
+        metadata_format = MetadataFormats.COMICVINE_API
+
+        def __init__(self, credentials, settings) -> None:
+            self._credentials = credentials
+
+        def is_configured(self) -> bool:
+            return False  # No api_key configured.
+
+        def get(self, issue_id: int) -> dict:
+            return {}
+
+        def search(self, profile) -> list[Candidate]:
+            return []
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"comicvine": _UnconfiguredCV}),
+    )
+
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        "comicbox.box.online_lookup.logger.warning",
+        warnings.append,
+    )
+
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["comicvine:42"],
+            # No comicvine creds.
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert any("--id comicvine:42" in m for m in warnings), (
+        f"expected warning about --id comicvine:42; got {warnings}"
+    )

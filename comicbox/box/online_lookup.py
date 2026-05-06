@@ -87,6 +87,29 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _mark_online_lookup_done(self) -> None:
         self._online_lookup_done_flag = True
 
+    def _warn_unconfigured_source(self, name: str) -> None:
+        """
+        Loud warning when a user-requested source can't run for credential reasons.
+
+        Quiet skip when the source was only included via the `all` sentinel
+        — in that case we don't know the user wanted this specific source.
+        """
+        online = self._config.online
+        explicit_id = online.explicit_ids.get(name)
+        if explicit_id is not None:
+            logger.warning(
+                f"online: --id {name}:{explicit_id} requested but {name} is "
+                f"not configured (missing credentials); skipping"
+            )
+            return
+        # Was the source named explicitly via `--online <list>`? selected
+        # is None for the `all` sentinel; only warn for explicit lists.
+        if online.selected_sources is not None and name in online.selected_sources:
+            logger.warning(
+                f"online: --online {name} requested but {name} is not "
+                f"configured (missing credentials); skipping"
+            )
+
     def _build_active_online_sources(self) -> list[OnlineSource]:
         """Resolve which configured online sources participate in this run."""
         online: OnlineSettings = self._config.online
@@ -96,10 +119,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if selected is not None and name not in selected:
                 continue
             creds = online.sources.get(name)
-            if not creds:
+            if creds is None:
+                self._warn_unconfigured_source(name)
                 continue
             source = factory(creds, online)
             if not source.is_configured():
+                self._warn_unconfigured_source(name)
                 continue
             active.append(source)
         return active

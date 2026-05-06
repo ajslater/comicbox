@@ -342,16 +342,6 @@ def _runtime_online_inputs(
         cns = args
 
     online_arg: Any = getattr(cns, "online_sources", None)
-    if online_arg is None:
-        runtime_enabled = False
-        selected: frozenset[str] | None = None
-    else:
-        runtime_enabled = True
-        normalized = frozenset(
-            str(s).strip().lower() for s in online_arg if str(s).strip()
-        )
-        # `all` (or an empty list) is the "every configured source" sentinel.
-        selected = None if not normalized or "all" in normalized else normalized
 
     explicit_raw: list[str] = list(getattr(cns, "explicit_ids", None) or ())
     explicit_ids: dict[str, int] = {}
@@ -372,6 +362,31 @@ def _runtime_online_inputs(
             reason = f"--id: non-numeric id {value!r} for {source}"
             raise ValueError(reason) from exc
         explicit_ids[source] = issue_id
+
+    explicit_id_sources = frozenset(explicit_ids.keys())
+
+    selected: frozenset[str] | None
+    if online_arg is None:
+        # `--id <source>:<id>` implicitly activates online for that source,
+        # even without `--online`.
+        if explicit_id_sources:
+            runtime_enabled = True
+            selected = explicit_id_sources
+        else:
+            runtime_enabled = False
+            selected = None
+    else:
+        runtime_enabled = True
+        normalized = frozenset(
+            str(s).strip().lower() for s in online_arg if str(s).strip()
+        )
+        # `all` (or an empty list) is the "every configured source" sentinel.
+        if not normalized or "all" in normalized:
+            selected = None
+        else:
+            # Always include explicit-id sources so a user `--id`
+            # never gets silently filtered out by the `--online <list>` filter.
+            selected = normalized | explicit_id_sources
 
     cli_overrides = CliOverrides.from_cli(
         api_keys=getattr(cns, "api_keys", None) or (),

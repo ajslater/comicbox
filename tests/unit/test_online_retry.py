@@ -132,3 +132,38 @@ def test_delay_caps_at_60s() -> None:
         fn()
     # Schedule: 1, 2, 4, 8, 16, 32, 60, 60, 60, 60.
     assert max(sleeps) <= 60.0
+
+
+def test_module_not_found_does_not_retry() -> None:
+    """Programmer errors (incl. bad imports) should raise immediately."""
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+    msg = "No module named 'nonexistent'"
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise ModuleNotFoundError(msg)
+
+    with pytest.raises(ModuleNotFoundError):
+        fn()
+    assert calls == 1
+    assert sleeps == []
+
+
+def test_type_error_does_not_retry() -> None:
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "bad arg"
+        raise TypeError(msg)
+
+    with pytest.raises(TypeError):
+        fn()
+    assert calls == 1
+    assert sleeps == []

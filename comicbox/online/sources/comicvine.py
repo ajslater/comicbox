@@ -45,15 +45,15 @@ class ComicVineOnlineSource(OnlineSource):
     def _get_cache(self) -> Any:
         if not self._settings.cache_enabled:
             return None
-        from simyan.sqlite_cache import SQLiteCache
+        from simyan.cache.sqlite_cache import SQLiteCache
 
         cache_path = self.cache_db_path()
         if self._settings.refresh_cache and cache_path.exists():
             cache_path.unlink()
             logger.debug(f"refresh-cache: removed {cache_path}")
         ttl = self._settings.cache_ttl
-        expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
-        return SQLiteCache(path=cache_path, expiry=expire)
+        expiry = ttl if ttl.total_seconds() > 0 else None
+        return SQLiteCache(path=cache_path, expiry=expiry)
 
     def _get_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
