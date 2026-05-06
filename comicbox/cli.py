@@ -86,6 +86,22 @@ _MATCH_POLICY_ROWS = (
     ("--skip-multiple", "auto-write", "prompt", "skip"),
     ("both flags", "auto-write", "accept solo", "skip"),
 )
+
+# (name, required credentials, accepted --id forms, website)
+_ONLINE_SOURCES_INFO = (
+    (
+        "metron",
+        "username + password",
+        "metron:NNN",
+        "https://metron.cloud",
+    ),
+    (
+        "comicvine",
+        "api_key",
+        "comicvine:NNN  or  comicvine:4000-NNN",
+        "https://comicvine.gamespot.com",
+    ),
+)
 _MATCH_POLICY_INTRO = Styled(
     """
 [bold]Online tagging — Match Resolution Policy[/bold]
@@ -238,6 +254,24 @@ def _get_match_policy_table() -> Table:
     return table
 
 
+def _get_online_sources_table() -> Table:
+    table = Table(
+        title=(
+            "[dark_cyan]Online sources[/dark_cyan] for "
+            "[cyan]--online[/cyan], [cyan]--id[/cyan], and "
+            "[cyan]--api-*[/cyan]"
+        ),
+        **_TABLE_ARGS,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    )
+    table.add_column("Source", style="green")
+    table.add_column("Required credentials")
+    table.add_column("--id form")
+    table.add_column("Website")
+    for row in _ONLINE_SOURCES_INFO:
+        table.add_row(*row)
+    return table
+
+
 FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
 
@@ -269,8 +303,9 @@ def _add_online_options(option_group: Any) -> None:
         metavar="SOURCES",
         help=(
             "Enable online metadata lookup. Pass [green]all[/green] to use "
-            "every configured source, or a comma-separated list to filter "
-            "(e.g. [green]--online metron,comicvine[/green])."
+            "every configured source, or a comma-separated list of sources "
+            "to filter (e.g. [green]--online metron,comicvine[/green]). See "
+            "the [cyan]Online sources[/cyan] table below."
         ),
     )
     option_group.add_argument(
@@ -281,8 +316,12 @@ def _add_online_options(option_group: Any) -> None:
         metavar="DB:ID",
         help=(
             "Skip search; tag by exact issue id from named source. "
-            "Repeatable for cross-source confirmation (first non-error wins). "
-            "Errors out if more than one input comic is submitted."
+            "Implicitly enables online for that source. "
+            "ComicVine accepts both [green]comicvine:NNN[/green] and "
+            "[green]comicvine:4000-NNN[/green]. Repeatable for cross-source "
+            "confirmation (first non-error wins). Errors out if more than "
+            "one input comic is submitted. Sources listed in the "
+            "[cyan]Online sources[/cyan] table below."
         ),
     )
     option_group.add_argument(
@@ -348,7 +387,11 @@ def _add_online_options(option_group: Any) -> None:
         dest="api_keys",
         default=None,
         metavar="DB:KEY",
-        help="Override API key for source (e.g. [green]--api-key comicvine:abcd1234[/green]).",
+        help=(
+            "Override API key for an api-key source "
+            "(e.g. [green]--api-key comicvine:abcd1234[/green]). See the "
+            "[cyan]Online sources[/cyan] table below for valid DB names."
+        ),
     )
     option_group.add_argument(
         "--api-user",
@@ -356,7 +399,10 @@ def _add_online_options(option_group: Any) -> None:
         dest="api_users",
         default=None,
         metavar="DB:USER",
-        help="Override username for user-auth source (Metron, GCD).",
+        help=(
+            "Override username for a user-auth source. See the "
+            "[cyan]Online sources[/cyan] table below for valid DB names."
+        ),
     )
     option_group.add_argument(
         "--api-password",
@@ -365,8 +411,8 @@ def _add_online_options(option_group: Any) -> None:
         default=None,
         metavar="DB:PASS",
         help=(
-            "Override password for user-auth source. Discouraged on the CLI "
-            "(shell history); prefer env var or keyring."
+            "Override password for a user-auth source. Discouraged on the "
+            "CLI (shell history); prefer env var or keyring."
         ),
     )
     option_group.add_argument(
@@ -375,7 +421,10 @@ def _add_online_options(option_group: Any) -> None:
         dest="api_urls",
         default=None,
         metavar="DB:URL",
-        help="Override base URL for source (e.g. self-hosted Metron mirror).",
+        help=(
+            "Override base URL for a source (e.g. self-hosted Metron mirror). "
+            "See the [cyan]Online sources[/cyan] table below for valid DB names."
+        ),
     )
     option_group.add_argument(
         "-j",
@@ -672,6 +721,7 @@ def get_args(params: Sequence[str] | None = None) -> Namespace:
         _get_help_print_phases_table(),
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
+        _get_online_sources_table(),
         _MATCH_POLICY_INTRO,
         _get_match_policy_table(),
         _get_help_format_table(),

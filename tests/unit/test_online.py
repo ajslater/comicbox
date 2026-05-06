@@ -221,3 +221,24 @@ def test_explicit_id_with_online_all_keeps_all() -> None:
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.enabled is True
     assert cfg.online.selected_sources is None
+
+
+def test_explicit_id_comicvine_accepts_4000_prefix() -> None:
+    """--id comicvine:4000-12345 normalizes to bare integer 12345."""
+    cli = Namespace(explicit_ids=["comicvine:4000-12345"])
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.explicit_ids == {"comicvine": 12345}
+
+
+def test_explicit_id_comicvine_rejects_other_resource_types() -> None:
+    """--id comicvine:4005-N (volume) errors; we only support issues."""
+    cli = Namespace(explicit_ids=["comicvine:4005-12345"])
+    with pytest.raises(ValueError, match="resource type 4005"):
+        get_config(Namespace(comicbox=cli))
+
+
+def test_explicit_id_metron_does_not_strip_prefix() -> None:
+    """`metron:12-345` should still error since metron uses bare ints."""
+    cli = Namespace(explicit_ids=["metron:12-345"])
+    with pytest.raises(ValueError, match="non-numeric"):
+        get_config(Namespace(comicbox=cli))

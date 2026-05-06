@@ -32,12 +32,17 @@ from comicbox.config.settings import (
     ComicboxSettings,
     OnlineSettings,
 )
+from comicbox.identifiers import PARSE_COMICVINE_RE
 from comicbox.online import SOURCE_NAMES
 from comicbox.online.cli_overrides import CliOverrides
 from comicbox.online.credentials import resolve_credentials
 from comicbox.online.env import read_policy_env
 from comicbox.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME
+
+# ComicVine resource-type prefix for issues. CV ids are sometimes shown
+# with a 4-digit type prefix; for our purposes we only accept issue ids.
+_CV_ISSUE_RESOURCE_TYPE = 4000
 
 # Any non-Mapping container type — set/frozenset/tuple/list all pass.
 # `_build_settings` normalizes the validated value into the right immutable
@@ -328,6 +333,35 @@ def _build_online_settings(
     )
 
 
+def _parse_explicit_id(source: str, raw: str) -> int:
+    """
+    Normalize the raw `--id` value for a source into a numeric issue id.
+
+    ComicVine ids are sometimes shown with a 4-digit resource-type prefix
+    (e.g. `4000-12345` where `4000` = issue). This accepts both
+    `--id comicvine:12345` and `--id comicvine:4000-12345`. Other resource
+    types (e.g. 4005 volume) are rejected since the ID flag is for tagging
+    a comic by issue id.
+
+    All other sources expect a bare integer.
+    """
+    raw = raw.strip()
+    if source == "comicvine" and (m := PARSE_COMICVINE_RE.fullmatch(raw)):
+        id_type = int(m.group("id_type"))
+        if id_type != _CV_ISSUE_RESOURCE_TYPE:
+            reason = (
+                f"--id comicvine:{raw}: resource type {id_type} is not "
+                f"supported (expected {_CV_ISSUE_RESOURCE_TYPE} = issue)"
+            )
+            raise ValueError(reason)
+        return int(m.group("id_key"))
+    try:
+        return int(raw)
+    except ValueError as exc:
+        reason = f"--id: non-numeric id {raw!r} for {source}"
+        raise ValueError(reason) from exc
+
+
 def _runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
@@ -356,12 +390,7 @@ def _runtime_online_inputs(
                 f"--id: unknown source {source!r}; known: {', '.join(SOURCE_NAMES)}"
             )
             raise ValueError(reason)
-        try:
-            issue_id = int(value)
-        except ValueError as exc:
-            reason = f"--id: non-numeric id {value!r} for {source}"
-            raise ValueError(reason) from exc
-        explicit_ids[source] = issue_id
+        explicit_ids[source] = _parse_explicit_id(source, value)
 
     explicit_id_sources = frozenset(explicit_ids.keys())
 
