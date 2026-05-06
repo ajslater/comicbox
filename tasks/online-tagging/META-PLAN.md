@@ -191,6 +191,11 @@ Test strategy:
 
 ## Follow-up work (after this feature ships)
 
+> The full follow-up checklist lives in
+> [FOLLOW-UPS.md](FOLLOW-UPS.md). The high-level entries below are
+> kept here for context.
+
+
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo, MetronInfo,
   ComicBookInfo, CoMet, ComicTagger, PDF, plus the new Metron and ComicVine
   online sources) into self-contained modules that own their schema, transforms,
