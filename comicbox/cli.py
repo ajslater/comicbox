@@ -17,6 +17,7 @@ from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PDF_ENABLED
+from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
@@ -30,7 +31,7 @@ _TABLE_ARGS = MappingProxyType(
         "title_justify": "left",
     }
 )
-_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError,)
+_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError, OnlineLookupAbortedError)
 _PRINT_PHASES_DESC = MappingProxyType(
     {
         "v": ("Software version", "v"),

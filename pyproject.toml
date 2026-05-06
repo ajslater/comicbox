@@ -14,6 +14,7 @@ dependencies = [
   "confuse~=2.2.0",
   "deepdiff~=9.0",
   "glom~=25.12",
+  "httpx~=0.28",
   "imagehash>=4.3.2",
   "jsonschema[format]~=4.20",
   "keyring~=25.6",

@@ -201,3 +201,14 @@ Test strategy:
   in M1, the `LegacyNestedMDStringSetField` / `XmlLegacyNestedMDStringSetField`
   classes (which still handle PDF `keywords` deserialization sanely) may be
   simplifiable. Investigate post-feature; out of scope for online tagging.
+- **CV `description` HTML sanitization.** ComicVine's `description` field
+  carries HTML markup (`<p>`, `<a>`, etc.). The M6 transform passes it
+  through to `comicbox.summary` as-is. Decide whether to strip/escape on
+  read; could live in the transform itself or as a computed-step pass.
+  Touches: `comicbox/transforms/comicvine_api/`.
+- **Richer Metron + ComicVine field mappings.** M2/M6 ship a focused subset
+  (issue, series, dates, summary, page count, cover, publisher, collection
+  title, modified). Add characters, teams, story arcs, credits with roles,
+  identifiers (cross-source), prices, story_titles → stories, reprints,
+  variants. Touches the per-format key maps and may need new `MetaSpec`
+  builders for collections.
