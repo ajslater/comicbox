@@ -10,7 +10,7 @@ _MD = {"series": {"name": "Test"}, "issue": {"number": 1}}
 
 def _sources(**comicbox_kwargs):
     cb = Comicbox(config=Namespace(comicbox=Namespace(**comicbox_kwargs)))
-    return cb._get_source_config_metadata()  # noqa: SLF001
+    return cb._get_source_config_metadata()
 
 
 def test_format_in_read_returns_source() -> None:

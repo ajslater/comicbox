@@ -119,6 +119,8 @@ _TEMPLATE = MappingTemplate(
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 # Merge precedence (None = MetadataSources enum order).
                 "merge_order": Optional(_NON_MAPPING_CONTAINER),
+                # Parallel workers across files (1 = serial).
+                "jobs": Integer(),
                 # Online metadata tagging.
                 "online": _ONLINE_TEMPLATE,
                 # Computed
@@ -504,6 +506,8 @@ def _build_settings(
         is_skip_computed_from_tags=bool(computed.is_skip_computed_from_tags),
         # Merge ordering
         merge_order=_resolve_merge_order(inner.merge_order),
+        # Parallel workers (clamped to >= 1).
+        jobs=max(1, int(inner.jobs)),
         # Online tagging
         online=online,
     )

@@ -50,6 +50,10 @@ comicbox:
   # Merge precedence (null → use MetadataSources enum order).
   merge_order: null
 
+  # Parallel workers across files (1 = serial). Useful with --online for
+  # batch tagging; respects per-API rate limits via process-wide token bucket.
+  jobs: 1
+
   # Online metadata tagging
   online:
     # Match policy

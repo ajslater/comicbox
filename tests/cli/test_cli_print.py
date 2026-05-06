@@ -126,7 +126,7 @@ def test_cli_print() -> None:
     cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
     output = _get_output(args)
     output = output.split("\n", 4)[4]  # remove first four lines
-    yaml = YamlRenderModule._get_write_yaml()  # noqa: SLF001
+    yaml = YamlRenderModule._get_write_yaml()
     loaded = yaml.load(output)
     output_dict = _ruamel_to_dict(loaded)
     output_dict = MappingProxyType(output_dict)

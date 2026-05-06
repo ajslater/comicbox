@@ -22,6 +22,7 @@ required credentials resolve and whose name is in
 
 from __future__ import annotations
 
+import threading
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -78,6 +79,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     _ONLINE_SOURCE_FACTORIES: ClassVar[MappingProxyType[str, Any]] = (
         _DEFAULT_SOURCE_FACTORIES
     )
+
+    # Process-wide lock around the selector callback. Under `-j N` parallel
+    # batch runs we serialise prompts so output stays readable and the user
+    # can see which file is being asked about.
+    _PROMPT_LOCK: ClassVar[threading.Lock] = threading.Lock()
 
     # Per-instance selector override; falls back to the default CLI prompt.
     _online_selector: SelectorCallback | None = None
@@ -302,7 +308,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
     ) -> None:
-        """Drive the selector callback for the PROMPT case."""
+        """
+        Drive the selector callback for the PROMPT case.
+
+        Acquires the class-level `_PROMPT_LOCK` around the selector call
+        so concurrent worker threads (when `-j N > 1`) don't garble each
+        other's prompts.
+        """
         selector = self._selector_for_run()
         ctx = SelectorContext(
             file_path=getattr(self, "_path", None),
@@ -310,7 +322,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             settings=self._config,
             triggered_hashing=any(c.cover_score is not None for c in candidates),
         )
-        result = selector(self._build_profile(), candidates, ctx)
+        with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
+            result = selector(self._build_profile(), candidates, ctx)
         action, payload = result
         if action == "choose" and isinstance(payload, int):
             chosen = candidates[payload]

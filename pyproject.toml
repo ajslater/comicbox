@@ -362,6 +362,7 @@ ignore-overlong-task-comments = true
   "S105",
   "S106",
   "S108",
+  "SLF001",
   "T203",
 ]
 "comicbox/run.py" = ["T201", "T203"]

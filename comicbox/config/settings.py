@@ -107,5 +107,7 @@ class ComicboxSettings:
     is_skip_computed_from_tags: bool
     # Merge ordering (None = use MetadataSources enum order).
     merge_order: "tuple[MetadataSources, ...] | None"
+    # Parallel workers across files (1 = serial, no thread pool).
+    jobs: int
     # Online metadata-tagging settings (always present).
     online: OnlineSettings
