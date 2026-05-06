@@ -117,8 +117,13 @@ Output: `tasks/online-tagging/04-match-resolution-spec.md`
   issue#, year, publisher).
 - Ranking signals: title similarity, year, issue#, page count, cover hash
   distance.
-- Cover hash: algorithm choice (pHash via `imagehash`?), when to fetch the
-  cover (only when ambiguous, to avoid load), threshold.
+- Cover hash: **pHash via `imagehash` (8×8 = 64 bits), Hamming threshold 10**
+  — matches metron-tagger's choice and Metron's server-side precomputed
+  `cover_hash`, so Metron candidates string-compare without an extra
+  download. Hashing runs only when metadata is ambiguous (precision-optimised
+  disambiguator, not always-on primary matcher). Hash distance blends with
+  title-similarity / year / issue# / page-count into a unified confidence
+  score (unlike comictagger's filter-then-hash approach).
 - Confidence threshold for auto-write: default conservative, configurable.
 - CLI prompt UX for ambiguous matches: numbered list, "skip", "manual ID",
   "open URL".
@@ -137,8 +142,12 @@ PR-sized milestones in dependency order:
 4. Cover-hash matcher: cover extraction + pHash + scoring weight integration.
 5. Interactive ambiguity prompt + programmatic callback API.
 6. ComicVine `MetadataSource` (reuse pipeline).
-7. GCD `MetadataSource` — conditional on Grayven readiness; may slip past v1.0.
-8. Parallel batch processing.
+7. Parallel batch processing.
+
+**Out of initial scope but architected for:** GCD `MetadataSource` via Grayven
+— deferred until Grayven hits v1.0 or user need is concrete. The pluggable
+sources design from Phase 3 ensures GCD lands as a focused follow-up PR
+without rework.
 
 Test strategy:
 
@@ -159,25 +168,34 @@ Test strategy:
 5. Marvel / esak dropped from scope (Marvel API discontinued).
 6. Online sources get **new** `MetadataSources` + `MetadataFormats` entries
    with their own priorities. `MetadataSources.API` is **not** repurposed.
+7. Cover hash → pHash via `imagehash` (64-bit, Hamming threshold 10),
+   matching metron-tagger and Metron's server-side precomputed `cover_hash`.
+   Hash distance blends with metadata signals into a unified confidence score.
+8. GCD / Grayven → deferred from initial implementation; pluggable
+   architecture keeps the door open. Add when Grayven reaches v1.0 or when
+   user need is concrete.
+9. Plugin refactor → **defer until after online tagging ships.** Flavor A
+   (self-contained format modules, no dynamic loading) is the planned next
+   chapter, informed by integration pain surfaced during this feature.
+   Flavor B (entry_points / third-party plugin packages) is not on the roadmap.
 
 ## Open questions deferred to later phases
 
 - Where should the on-disk cache live by default? (Phase 3)
 - Should we reuse each library's built-in cache (mokkari `SqliteCache`, simyan
   `SQLiteCache`, Grayven `SQLiteCache`) or layer our own on top? (Phase 3)
-- What's our cover-hash algorithm and similarity threshold? Reference
-  implementations disagree (comictagger: aHash 8x8, threshold 16, no
-  blending; metron-tagger: pHash, threshold 10, Metron precomputes server-side
-  pHash). (Phase 4)
 - What's the default auto-write confidence threshold? (Phase 4)
 - How do we handle conflicting issue IDs from different databases for the same
   archive? (Phase 3)
 - Do we expose per-source merge weights, or fixed priority? (Phase 3)
-- **Should comicbox refactor to a plugin architecture before starting this
-  feature?** Each format (ComicInfo, MetronInfo, etc.) becomes a self-contained
-  plugin owning schema + transform + source + format registration. If yes, this
-  plan is shelved until that refactor lands. (Cross-cutting; under discussion.)
-- Should we ship GCD/Grayven now (pre-1.0, may break) or defer until v1.0?
-  (Phase 5)
 - `--id` semantics: issue-id, series-id, or both with explicit prefix? Note
   metron-tagger's `--id` is series-id. (Phase 2)
+
+## Follow-up work (after this feature ships)
+
+- **Flavor A plugin refactor.** Consolidate each format (ComicInfo, MetronInfo,
+  ComicBookInfo, CoMet, ComicTagger, PDF, plus the new Metron and ComicVine
+  online sources) into self-contained modules that own their schema,
+  transforms, source registration, and format registration. No dynamic
+  discovery — just better internal organisation. Plan to be drafted after
+  online tagging lands, with the integration experience as input.
