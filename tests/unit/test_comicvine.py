@@ -44,16 +44,16 @@ def test_transform_maps_core_fields() -> None:
     transform = ComicVineApiTransform()
     result = dict(transform.to_comicbox(_sample_issue_dict()))
     cb = result["comicbox"]
-    assert cb["page_count"] == 24
-    assert cb["summary"] == "<p>Some description.</p>"
+    # description was HTML; nh3 strips tags.
+    assert cb["summary"] == "Some description."
     assert cb["issue"]["name"] == "5"
     # CV's `volume` becomes comicbox's `series`.
     assert cb["series"]["name"] == "Foo Comics"
-    # `image.thumb_url` flattens to cover_image.
     assert cb["cover_image"]
-    # Dates wired.
     assert "cover_date" in cb["date"]
     assert "store_date" in cb["date"]
+    # CV doesn't expose page_count on Issue; not mapped (page_count
+    # comes from comicbox's own archive scan, not CV).
 
 
 def test_transform_handles_missing_fields() -> None:

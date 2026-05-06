@@ -2,76 +2,145 @@
 ComicVine API transform.
 
 Converts a simyan `Issue.model_dump(mode="json")` dict into the
-comicbox internal schema. Like `MetronApiTransform`, the field set
-here is intentionally a focused subset for v1; richer collection
-mappings (characters, teams, story_arcs, creators) follow.
-
-ComicVine quirks vs Metron:
-
-- ``volume`` is what comicbox calls ``series`` (CV's "volume" is what
-  the rest of the comic ecosystem calls a series); the transform
-  renames.
-- ``image`` is a dict of nine sized URLs; we pull ``thumb_url`` for
-  the cover (smallest practical size for hashing).
-- ``description`` contains HTML; we pass it through and let downstream
-  code strip if needed.
+comicbox internal schema. Same explicit-Python style as
+`MetronApiTransform` — the source dict has shapes that don't fit the
+key-rename ``MetaSpec`` pattern (creators with comma-string roles,
+volume that means series, HTML in description).
 """
 
-from bidict import frozenbidict
+from __future__ import annotations
 
-from comicbox.schemas.comicbox import (
-    COVER_IMAGE_KEY,
-    PAGE_COUNT_KEY,
-    SUMMARY_KEY,
-    UPDATED_AT_KEY,
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any
+
+from typing_extensions import override
+
+from comicbox.online.sanitize import strip_html
+from comicbox.online.transform_helpers import (
+    build_identifier,
+    credits_to_cb,
+    named_dict_with_id,
 )
+from comicbox.schemas.cache import get_schema
+from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.comicvine_api import ComicVineApiSchema
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import (
-    COVER_DATE_KEYPATH,
-    ISSUE_NAME_KEYPATH,
-    STORE_DATE_KEYPATH,
-)
-from comicbox.transforms.publishing_tags import SERIES_NAME_KEYPATH
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+_CV = "comicvine"
+
+# `image` order of preference for the stored cover_image (largest →
+# smallest, picking the first available). Hashing uses thumbnail
+# elsewhere; here we pick a higher-quality URL for archival.
+_COVER_IMAGE_PREFERENCE = (
+    "medium_url",
+    "screen_url",
+    "super_url",
+    "original_url",
+    "small_url",
+    "thumbnail",
 )
 
-# Map comicvine-api source keypath → comicbox internal keypath.
-# Note: simyan's Images model uses `thumbnail` / `small_url` / `medium_url`
-# / etc. — there's no `thumb_url`. We prefer `medium_url` for the stored
-# cover_image (better quality than thumbnail) and fall back to thumbnail
-# in code when needed for hashing.
-SIMPLE_KEYMAP = frozenbidict(
-    {
-        # Core fields
-        "number": ISSUE_NAME_KEYPATH,
-        "image.medium_url": COVER_IMAGE_KEY,
-        "description": SUMMARY_KEY,
-        "date_last_updated": UPDATED_AT_KEY,
-        # Page count is missing on the search response but present on
-        # the full Issue. Keep the slot so we can fill it from get().
-        "page_count": PAGE_COUNT_KEY,
-        # Dates
-        "cover_date": COVER_DATE_KEYPATH,
-        "store_date": STORE_DATE_KEYPATH,
-        # CV's `volume` is comicbox's `series`.
-        "volume.name": SERIES_NAME_KEYPATH,
-    }
-)
+
+def _pick_cover_image(image: Mapping[str, Any] | None) -> str | None:
+    if not image:
+        return None
+    for key in _COVER_IMAGE_PREFERENCE:
+        if url := image.get(key):
+            return str(url)
+    return None
+
+
+def _build_identifiers(issue: Mapping[str, Any]) -> dict[str, dict]:
+    identifiers: dict[str, dict] = {}
+    if (cv_id := issue.get("id")) is not None:
+        identifiers[_CV] = build_identifier(_CV, "issue", cv_id)
+    return identifiers
+
+
+def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
+    """ComicVine's `volume` is what comicbox calls a series."""
+    vol = issue.get("volume") or {}
+    out: dict[str, Any] = {}
+    if name := vol.get("name"):
+        out["name"] = name
+    if (vid := vol.get("id")) is not None:
+        out["identifiers"] = {_CV: build_identifier(_CV, "series", vid)}
+    return out
+
+
+def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key in ("cover_date", "store_date"):
+        if val := issue.get(key):
+            out[key] = val
+    return out
+
+
+def _build_issue_block(issue: Mapping[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    if number := issue.get("number"):
+        out["name"] = str(number)
+    return out
+
+
+def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
+    """
+    Build the comicbox internal dict from a simyan Issue dict.
+
+    Each entry in `blocks` is `(target_key, value)`. Empty values
+    (None, "", {}, [], 0) are skipped so the resulting dict carries
+    only fields the upstream actually provided.
+    """
+    blocks: tuple[tuple[str, Any], ...] = (
+        ("issue", _build_issue_block(issue)),
+        ("title", issue.get("name")),
+        ("date", _build_date(issue)),
+        ("cover_image", _pick_cover_image(issue.get("image"))),
+        ("updated_at", issue.get("date_last_updated")),
+        ("summary", strip_html(issue.get("description"))),
+        # Publishing — CV's `volume` is comicbox's `series`.
+        ("series", _build_series(issue)),
+        # Collections
+        ("characters", named_dict_with_id(issue.get("characters"), _CV, "character")),
+        ("teams", named_dict_with_id(issue.get("teams"), _CV, "team")),
+        ("arcs", named_dict_with_id(issue.get("story_arcs"), _CV, "story_arc")),
+        ("locations", named_dict_with_id(issue.get("locations"), _CV, "location")),
+        # Credits — CV stores roles as a comma-separated string per creator.
+        (
+            "credits",
+            credits_to_cb(
+                issue.get("creators"),
+                creator_key="name",
+                role_key="roles",
+                role_is_string=True,
+                source=_CV,
+            ),
+        ),
+        # Top-level identifiers (just the CV issue id; volume id lives on series).
+        ("identifiers", _build_identifiers(issue)),
+    )
+    return {key: value for key, value in blocks if value}
 
 
 class ComicVineApiTransform(BaseTransform):
-    """ComicVine API → comicbox internal schema (and back, minimally)."""
+    """Simyan `Issue` → comicbox internal schema."""
 
     SCHEMA_CLASS = ComicVineApiSchema
-    SPECS_TO = create_specs_to_comicbox(
-        MetaSpec(key_map=SIMPLE_KEYMAP.inverse),
-        format_root_keypath=ComicVineApiSchema.ROOT_KEYPATH,
-    )
-    SPECS_FROM = create_specs_from_comicbox(
-        MetaSpec(key_map=SIMPLE_KEYMAP),
-        format_root_keypath=ComicVineApiSchema.ROOT_KEYPATH,
-    )
+    SPECS_TO = MappingProxyType({})  # not used; we override to_comicbox
+    SPECS_FROM = MappingProxyType({})
+
+    @override
+    def to_comicbox(self, data: Mapping) -> MappingProxyType:
+        """Convert a simyan Issue dict into a validated comicbox dict."""
+        issue_data = data.get(ComicVineApiSchema.ROOT_TAG) or data
+        if not issue_data:
+            return MappingProxyType({})
+
+        wrapped = {ComicboxSchemaMixin.ROOT_TAG: _to_comicbox_dict(issue_data)}
+        schema = get_schema(ComicboxYamlSchema, path=self._path)
+        loaded: dict = schema.load(wrapped)  # pyright: ignore[reportAssignmentType]
+        return MappingProxyType(loaded)

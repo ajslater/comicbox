@@ -23,6 +23,7 @@ dependencies = [
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
   "mokkari>=3.25.4",
+  "nh3>=0.3.5",
   "pillow>=12.2.0",
   "platformdirs>=4.9.6",
   "py7zr~=1.1.0",
