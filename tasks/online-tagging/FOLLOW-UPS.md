@@ -22,6 +22,20 @@ Marker conventions:
   suffixes before sending), title-substring fallback, "what if the
   user has a typo." Worth listing what we *could* try and which
   ones are worth the API budget.
+    - **Punctuation gap (real, observed).** Both Metron and CV use
+      icontains-style filters that treat punctuation literally —
+      "GI Joe" extracted from a filename will NOT match a stored
+      "G.I. Joe" because "GI" is not a substring of "G.I.". Our
+      filename parse strips dots in initialisms; the canonical
+      stored name keeps them. Options to consider: (a) keep dots in
+      the filename parse (changes parser behavior across the
+      codebase); (b) on zero-result series_list, retry with a
+      dot-injected variant of the query (heuristic, e.g. single
+      letters get trailing dots); (c) per-source punctuation
+      normalization in the search step. The reverse failure exists
+      too — a filename "G.I. Joe" against a stored "GI Joe" —
+      though it's less common. Pick a strategy that doesn't
+      explode the API call count.
 - **Volume number for search.** Phase 2 noted volume isn't in
   `ComicProfile` today. mokkari's `issues_list` accepts a `volume`
   filter; CV doesn't have a clean per-issue volume filter (we'd
@@ -67,26 +81,23 @@ Marker conventions:
 
 ## C. Field coverage
 
-- ⭐ **Richer `MetronApiTransform`.** M2 ships a focused subset:
-  series.name, issue, dates, summary, page count, cover image,
-  publisher.name, collection_title, modified. Add: characters,
-  teams, story arcs, credits with roles, identifiers (cross-source
-  from Metron's `cv_id`/`gcd_id` fields), prices, `story_titles` →
-  stories, reprints, variants, imprint, age_rating, universes.
-  Touches `comicbox/transforms/metron_api/__init__.py`; some
-  collections need new `MetaSpec` builders.
-- ⭐ **Richer `ComicVineApiTransform`.** M6 ships the same minimal
-  subset. Add: characters, teams, story_arcs, creators (with role
-  parsing from CV's comma-string format), publisher (full Issue
-  has it; we currently leave it None), associated_images for
-  variant covers.
-- ⭐ **Sanitize HTML in long text fields from online sources.**
-  ComicVine's `description` is HTML (`<p>`, `<a>`, `<i>`, etc.).
-  Currently passes through to `comicbox.summary` raw. Decide:
-  strip-tags-only, html-to-markdown, or full sanitization
-  (defang URLs etc.). Likely lives in the transform itself or
-  as a computed-step pass that runs on any field declared as
-  long-form text. Metron may have similar HTML in `desc`; verify.
+The bulk of the rich-transform work landed in commit `c4c867a`:
+characters, teams, arcs, locations, universes, genres, credits with
+roles, prices, stories, reprints, cross-source identifiers, plus
+nh3-backed HTML sanitization for description fields. What remains:
+
+- **Metron variants.** `Issue.variants` (list of `{id, name, sku,
+  upc, image}`) is not mapped. Comicbox has no first-class variant
+  schema today — decide whether to attach as a sub-collection on
+  the issue, surface as alternate cover URLs, or ignore.
+- **ComicVine `publisher` field.** Full `Issue.publisher` (with
+  id+name) exists on the CV Issue model but the rich transform
+  doesn't map it. Trivial add to `comicvine_api/__init__.py`'s
+  blocks tuple.
+- **ComicVine `associated_images` (variant covers).** CV exposes
+  variant covers via `associated_images`; we currently take only
+  the primary `image`. See also "Variant cover fallback for
+  hashing" under section D — these are likely paired work.
 
 ## D. Source coverage
 
