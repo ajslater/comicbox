@@ -170,11 +170,39 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """Fetch the full record for an accepted candidate and inject it."""
         self._fetch_explicit_id(source, candidate.issue_id)
 
+    def _local_cover_phash(self) -> str | None:
+        """Compute the comic's pHash on demand, cached on the box instance."""
+        cached = getattr(self, "_local_cover_phash_value", "<unset>")
+        if cached != "<unset>":
+            return cached
+        try:
+            cover_bytes = self.get_cover_page(skip_metadata=True)
+        except Exception as exc:
+            logger.debug(f"local cover: fetch failed: {exc}")
+            self._local_cover_phash_value = None
+            return None
+        if not cover_bytes:
+            self._local_cover_phash_value = None
+            return None
+        try:
+            from comicbox.online.cover_hash import compute_phash
+
+            self._local_cover_phash_value = compute_phash(cover_bytes)
+        except Exception as exc:
+            logger.warning(f"local cover: pHash failed: {exc}")
+            self._local_cover_phash_value = None
+        return self._local_cover_phash_value
+
     def _resolve_with_matcher(
         self, candidates: list[Candidate]
     ) -> Resolution:
         matcher = OnlineMatcher()
-        ranked = matcher.rank(self._build_profile(), candidates)
+        ranked = matcher.rank(
+            self._build_profile(),
+            candidates,
+            local_hash_provider=self._local_cover_phash,
+            threshold=self._config.online.confidence_threshold,
+        )
         return matcher.resolve(ranked, self._config.online)
 
     def _search_path(self, source: OnlineSource) -> None:

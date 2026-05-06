@@ -13,12 +13,14 @@ Public surface:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from comicbox.online.cover_hash import cover_score as _cover_score
 from comicbox.online.signals import (
     s_issue,
     s_pages,
@@ -30,6 +32,10 @@ from comicbox.online.signals import (
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
     from comicbox.online.profile import Candidate, ComicProfile
+
+
+# Callable that returns the local comic's pHash hex (or None if unavailable).
+LocalHashProvider = Callable[[], str | None]
 
 
 # Metadata-signal weights. Sum to 0.80; the remaining 0.20 is reserved
@@ -142,28 +148,91 @@ def _resolve_policy(
     return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
 
 
-class OnlineMatcher:
-    """
-    Stateless ranker + policy resolver.
+_TOP_K_FOR_HASHING = 5
 
-    M3 only consumes metadata signals. The `_invoke_cover_hash` hook
-    returns False so M3 ranking is metadata-only. M4 swaps the hook for
-    real pHash logic.
+
+def _should_invoke_hashing(
+    metadata_ranked: list[Candidate],
+    threshold: float,
+) -> bool:
     """
+    Decide whether to invoke cover hashing on the top candidates.
+
+    Skip when the top is unambiguous (above threshold AND well-separated)
+    or when nothing clears `min_confidence`.
+    """
+    if not metadata_ranked:
+        return False
+    top = metadata_ranked[0]
+    if top.metadata_score < _MIN_CONFIDENCE:
+        return False
+    runner_up = metadata_ranked[1] if len(metadata_ranked) > 1 else None
+    gap = (top.metadata_score - runner_up.metadata_score) if runner_up else 1.0
+    return not (top.metadata_score >= threshold and gap >= _DISAMBIGUATION_MARGIN)
+
+
+def _apply_cover_hashing(
+    ranked: list[Candidate],
+    local_hash: str,
+) -> list[Candidate]:
+    """Hash the top K candidates and re-rank by blended score."""
+    rescored: list[Candidate] = []
+    for i, c in enumerate(ranked):
+        if i >= _TOP_K_FOR_HASHING:
+            rescored.append(c)
+            continue
+        if not c.precomputed_cover_hash:
+            rescored.append(c)
+            continue
+        try:
+            cs = _cover_score(local_hash, c.precomputed_cover_hash)
+        except Exception as exc:
+            logger.warning(
+                f"online: cover hash failed for {c.source}:{c.issue_id}: {exc}"
+            )
+            rescored.append(c)
+            continue
+        with_cover = replace(c, cover_score=cs)
+        rescored.append(replace(with_cover, score=final_score(with_cover, hash_used=True)))
+    rescored.sort(key=lambda c: c.score, reverse=True)
+    return rescored
+
+
+class OnlineMatcher:
+    """Stateless ranker + policy resolver."""
 
     def rank(
         self,
         profile: ComicProfile,
         candidates: list[Candidate],
+        *,
+        local_hash_provider: LocalHashProvider | None = None,
+        threshold: float = 0.85,
     ) -> list[Candidate]:
-        """Score every candidate and return them sorted descending by score."""
+        """
+        Score every candidate and return them sorted descending by score.
+
+        When `local_hash_provider` is provided and the metadata-only
+        ranking is ambiguous (top below threshold or close call), invokes
+        cover hashing on the top K candidates and re-ranks. Metron
+        candidates carry a `precomputed_cover_hash` so no fetch is needed
+        for them; ComicVine/GCD candidates without a precomputed hash are
+        left at metadata-only scores.
+        """
         scored: list[Candidate] = []
         for c in candidates:
             md = metadata_score(profile, c)
             with_md = replace(c, metadata_score=md)
             scored.append(replace(with_md, score=final_score(with_md, hash_used=False)))
         scored.sort(key=lambda c: c.score, reverse=True)
-        return scored
+
+        if local_hash_provider is None or not _should_invoke_hashing(scored, threshold):
+            return scored
+
+        local_hash = local_hash_provider()
+        if not local_hash:
+            return scored
+        return _apply_cover_hashing(scored, local_hash)
 
     def resolve(
         self,
