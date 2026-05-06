@@ -83,9 +83,7 @@ class ComicVineOnlineSource(OnlineSource):
             clauses.append(f"issue_number:{profile.issue}")
         # CV uses a date range filter; cover_date single value isn't supported.
         if profile.year is not None:
-            clauses.append(
-                f"cover_date:{profile.year}-01-01|{profile.year}-12-31"
-            )
+            clauses.append(f"cover_date:{profile.year}-01-01|{profile.year}-12-31")
         if not clauses:
             return {}
         return {"filter": ",".join(clauses)}

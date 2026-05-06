@@ -64,6 +64,7 @@ class _AmbiguousMetron:
                     variant_label=None,
                 ),
             )
+
         # Year off-by-one differentiates them slightly but both clear min_confidence.
         return [_make(101, 2020), _make(102, 2021)]
 

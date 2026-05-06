@@ -40,4 +40,6 @@ class SelectorContext:
     triggered_hashing: bool
 
 
-SelectorCallback = "Callable[[ComicProfile, Sequence[Candidate], SelectorContext], SelectorResult]"
+SelectorCallback = (
+    "Callable[[ComicProfile, Sequence[Candidate], SelectorContext], SelectorResult]"
+)

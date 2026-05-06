@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 
 import re
 
-_VOLUME_SUFFIX_RE = re.compile(r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE)
+_VOLUME_SUFFIX_RE = re.compile(
+    r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
+)
 _PUBLISHER_NOISE_RE = re.compile(
     r"\b(?:inc|incorporated|comics?|publishing|press|llc|ltd|publications?)\b\.?",
     re.IGNORECASE,
@@ -70,7 +72,11 @@ def s_issue(profile: ComicProfile, candidate: Candidate) -> float:
     if not profile.issue or not candidate.summary.issue:
         return 0.5
 
-    return 1.0 if profile.issue.strip().lower() == candidate.summary.issue.strip().lower() else 0.0
+    return (
+        1.0
+        if profile.issue.strip().lower() == candidate.summary.issue.strip().lower()
+        else 0.0
+    )
 
 
 def s_year(profile: ComicProfile, candidate: Candidate) -> float:

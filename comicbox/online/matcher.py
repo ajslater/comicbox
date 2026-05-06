@@ -92,7 +92,10 @@ def final_score(candidate: Candidate, *, hash_used: bool) -> float:
     """Blend metadata and cover scores. Cover-only-when-hashing case."""
     if not hash_used or candidate.cover_score is None:
         return candidate.metadata_score
-    return _METADATA_WEIGHT_SUM * candidate.metadata_score + W_COVER * candidate.cover_score
+    return (
+        _METADATA_WEIGHT_SUM * candidate.metadata_score
+        + W_COVER * candidate.cover_score
+    )
 
 
 def _is_unambiguous_top(top_score: float, gap: float, threshold: float) -> bool:
@@ -124,14 +127,11 @@ def _resolve_skip_multiple(
     return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
 
 
-def _resolve_policy(
-    ranked: list[Candidate], settings: OnlineSettings
-) -> Resolution:
+def _resolve_policy(ranked: list[Candidate], settings: OnlineSettings) -> Resolution:
     if not ranked or ranked[0].score < _MIN_CONFIDENCE:
         if ranked:
             logger.info(
-                f"online: no match cleared min_confidence "
-                f"(top={ranked[0].score:.2f})"
+                f"online: no match cleared min_confidence (top={ranked[0].score:.2f})"
             )
         return Resolution(ResolutionKind.NO_MATCH, None, tuple(ranked))
 
@@ -221,7 +221,9 @@ def _apply_cover_hashing(
             rescored.append(c)
             continue
         with_cover = replace(c, cover_score=cs)
-        rescored.append(replace(with_cover, score=final_score(with_cover, hash_used=True)))
+        rescored.append(
+            replace(with_cover, score=final_score(with_cover, hash_used=True))
+        )
     rescored.sort(key=lambda c: c.score, reverse=True)
     return rescored
 

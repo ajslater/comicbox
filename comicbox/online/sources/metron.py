@@ -95,7 +95,9 @@ class MetronOnlineSource(OnlineSource):
             source=self.name,
             issue_id=base_issue.id,
             summary=summary,
-            url=str(base_issue.resource_url) if hasattr(base_issue, "resource_url") and base_issue.resource_url else "",
+            url=str(base_issue.resource_url)
+            if hasattr(base_issue, "resource_url") and base_issue.resource_url
+            else "",
             precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
         )
 

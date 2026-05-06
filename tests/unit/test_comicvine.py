@@ -111,15 +111,23 @@ def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
         return "0000000000000000"
 
     profile = ComicProfile(
-        series="Foo", issue="5", issue_int=5, year=2020,
-        publisher="P", page_count=24,
+        series="Foo",
+        issue="5",
+        issue_int=5,
+        year=2020,
+        publisher="P",
+        page_count=24,
     )
     cand = Candidate(
         source="comicvine",
         issue_id=42,
         summary=CandidateSummary(
-            series="Foo", issue="5", year=2020, publisher="P",
-            page_count=24, cover_url="http://example.com/x.jpg",
+            series="Foo",
+            issue="5",
+            year=2020,
+            publisher="P",
+            page_count=24,
+            cover_url="http://example.com/x.jpg",
             variant_label=None,
         ),
     )

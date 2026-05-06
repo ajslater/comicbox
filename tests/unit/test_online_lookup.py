@@ -61,9 +61,7 @@ def patched_metron(monkeypatch: pytest.MonkeyPatch) -> list[_FakeMetronSource]:
         return src
 
     factories = MappingProxyType({"metron": factory})
-    monkeypatch.setattr(
-        ComicboxOnlineLookup, "_ONLINE_SOURCE_FACTORIES", factories
-    )
+    monkeypatch.setattr(ComicboxOnlineLookup, "_ONLINE_SOURCE_FACTORIES", factories)
     return instances
 
 

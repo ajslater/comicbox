@@ -8,7 +8,9 @@ from comicbox.online.retry import with_retry
 
 
 class _FakeRateLimitError(Exception):
-    def __init__(self, msg: str = "rate limited", retry_after: float | None = None) -> None:
+    def __init__(
+        self, msg: str = "rate limited", retry_after: float | None = None
+    ) -> None:
         super().__init__(msg)
         self.retry_after = retry_after
 

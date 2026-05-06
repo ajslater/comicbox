@@ -123,9 +123,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         schema_class = source.metadata_format.value.schema_class
         return {schema_class.ROOT_TAG: payload}
 
-    def _fetch_explicit_id(
-        self, source: OnlineSource, issue_id: int
-    ) -> None:
+    def _fetch_explicit_id(self, source: OnlineSource, issue_id: int) -> None:
         try:
             payload = source.get(issue_id)
         except Exception as exc:
@@ -179,9 +177,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             page_count=page_count,
         )
 
-    def _accept_candidate(
-        self, source: OnlineSource, candidate: Candidate
-    ) -> None:
+    def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> None:
         """Fetch the full record for an accepted candidate and inject it."""
         self._fetch_explicit_id(source, candidate.issue_id)
 
@@ -259,9 +255,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._local_cover_phash_value = None
         return self._local_cover_phash_value
 
-    def _resolve_with_matcher(
-        self, candidates: list[Candidate]
-    ) -> Resolution:
+    def _resolve_with_matcher(self, candidates: list[Candidate]) -> Resolution:
         matcher = OnlineMatcher()
         ranked = matcher.rank(
             self._build_profile(),
@@ -290,9 +284,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         action, payload = result
         if action == "choose" and isinstance(payload, int):
             chosen = candidates[payload]
-            logger.info(
-                f"online {source.name}: prompt-chose id={chosen.issue_id}"
-            )
+            logger.info(f"online {source.name}: prompt-chose id={chosen.issue_id}")
             self._accept_candidate(source, chosen)
             return
         if action == "manual" and isinstance(payload, str):
@@ -340,9 +332,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         if resolution.kind is ResolutionKind.SKIP:
             top_score = resolution.candidates[0].score if resolution.candidates else 0
-            logger.info(
-                f"online {source.name}: skip-multiple, top={top_score:.2f}"
-            )
+            logger.info(f"online {source.name}: skip-multiple, top={top_score:.2f}")
             return
         # ResolutionKind.PROMPT — invoke the selector callback.
         self._handle_prompt(source, resolution.candidates)

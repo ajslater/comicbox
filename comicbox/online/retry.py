@@ -48,7 +48,7 @@ def _retry_after(exc: BaseException) -> float | None:
 
 def _delay_for(attempt: int) -> float:
     """Exponential schedule: 1, 2, 4, 8, 16, 32, capped at 60s."""
-    return min(_BASE_DELAY_S * (2 ** attempt), _MAX_DELAY_S)
+    return min(_BASE_DELAY_S * (2**attempt), _MAX_DELAY_S)
 
 
 def with_retry(

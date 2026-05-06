@@ -127,7 +127,9 @@ def _read_input(message: str) -> str:
 
 
 def _ask_manual_id(default_source: str) -> str | None:
-    raw = _read_input(f"Enter <source>:<id> (default source={default_source}): ").strip()
+    raw = _read_input(
+        f"Enter <source>:<id> (default source={default_source}): "
+    ).strip()
     if not raw:
         return None
     return raw if ":" in raw else f"{default_source}:{raw}"

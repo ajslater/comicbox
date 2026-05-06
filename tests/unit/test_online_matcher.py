@@ -124,8 +124,7 @@ class TestIssueSignal:
 
     def test_string_match_is_one(self) -> None:
         assert (
-            s_issue(_profile(issue_int=None, issue="1a"), _candidate(issue="1a"))
-            == 1.0
+            s_issue(_profile(issue_int=None, issue="1a"), _candidate(issue="1a")) == 1.0
         )
 
     def test_missing_one_side_returns_partial_credit(self) -> None:
@@ -273,7 +272,9 @@ def test_skip_multiple_skips_when_close() -> None:
         _candidate(issue_id=2, page_count=22),
     ]
     ranked = matcher.rank(_profile(), candidates)
-    res = matcher.resolve(ranked, _settings(confidence_threshold=0.99, skip_multiple=True))
+    res = matcher.resolve(
+        ranked, _settings(confidence_threshold=0.99, skip_multiple=True)
+    )
     assert res.kind is ResolutionKind.SKIP
 
 
@@ -284,6 +285,8 @@ def test_accept_only_accepts_solo_below_threshold() -> None:
         _candidate(issue_id=1, page_count=22),  # 0.7 weight on pages
     ]
     ranked = matcher.rank(_profile(), candidates)
-    res = matcher.resolve(ranked, _settings(confidence_threshold=0.99, accept_only=True))
+    res = matcher.resolve(
+        ranked, _settings(confidence_threshold=0.99, accept_only=True)
+    )
     assert res.kind is ResolutionKind.AUTO_WRITE
     assert res.chosen.issue_id == 1
