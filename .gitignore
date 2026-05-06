@@ -88,3 +88,8 @@ var/
 venv.bak/
 venv/
 wheels/
+
+# Personal smoke-test comic archives at the repo root. Anchored to root
+# only — fixture archives under tests/ stay tracked.
+/*.cbz
+/*.cbr
