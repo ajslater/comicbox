@@ -1,5 +1,15 @@
 # 📰 News
 
+## v4.0.0 - Online Metadata Tagging
+
+- Online metadata lookup from Metron and ComicVine, with interactive
+  disambiguation and confidence-based auto-write. (In progress.)
+- Breaking changes
+    - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
+      alias through 4.x and is removed in 5.0.
+    - PDFs that hid comicbox metadata as JSON or XML inside their `keywords`
+      field are no longer auto-decoded.
+
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
 - Breaking Changes

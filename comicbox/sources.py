@@ -11,7 +11,6 @@ class MetadataSource:
     """Metadata source attributes."""
 
     label: str
-    path: bool = False
     formats: tuple[MetadataFormats, ...] = tuple(
         fmt for fmt in MetadataFormats if fmt.value.enabled
     )
@@ -38,20 +37,18 @@ class MetadataSources(Enum):
         ),
     )
     ARCHIVE_FILENAME = MetadataSource(
-        "Filename", path=True, formats=(MetadataFormats.FILENAME,), from_archive=True
+        "Filename", formats=(MetadataFormats.FILENAME,), from_archive=True
     )
     ARCHIVE_PDF = MetadataSource(
-        "Archive Header", path=True, formats=(MetadataFormats.PDF,), from_archive=True
+        "Archive Header", formats=(MetadataFormats.PDF,), from_archive=True
     )
     ARCHIVE_COMMENT = MetadataSource(
         "Archive Comment",
-        path=True,
         formats=(MetadataFormats.COMIC_BOOK_INFO,),
         from_archive=True,
     )
     ARCHIVE_FILE = MetadataSource(
         "Archive File",
-        path=True,
         formats=(
             MetadataFormats.COMICBOX_YAML,
             MetadataFormats.COMICBOX_JSON,
@@ -64,7 +61,15 @@ class MetadataSources(Enum):
         ),
         from_archive=True,
     )
-    IMPORT_FILE = MetadataSource("Imported File", path=True)
+    METRON_API = MetadataSource(
+        "Metron API",
+        formats=(MetadataFormats.METRON_API,),
+    )
+    COMICVINE_API = MetadataSource(
+        "ComicVine API",
+        formats=(MetadataFormats.COMICVINE_API,),
+    )
+    IMPORT_FILE = MetadataSource("Imported File")
     CLI = MetadataSource(
         "Comicbox CLI",
         formats=(
@@ -92,16 +97,4 @@ class MetadataSources(Enum):
             MetadataFormats.COMICTAGGER,
             MetadataFormats.FILENAME,
         ),
-    )
-    LEGACY_NESTED = MetadataSource(
-        "Nested in Other Metadata",
-        path=True,
-        formats=(
-            MetadataFormats.COMICBOX_CLI_YAML,
-            MetadataFormats.COMICBOX_JSON,
-            MetadataFormats.METRON_INFO,
-            MetadataFormats.COMIC_INFO,
-            MetadataFormats.FILENAME,
-        ),
-        from_archive=True,
     )

@@ -6,13 +6,56 @@ downstream module takes ``ComicboxSettings`` instead of ``AttrDict``.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
     from comicbox.print import PrintPhases
+    from comicbox.sources import MetadataSources
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSourceCredentials:
+    """
+    Resolved credentials for one online source.
+
+    A source is "configured" iff its required fields resolve to non-null.
+    Each source decides which fields are required.
+    """
+
+    api_key: str | None = None
+    username: str | None = None
+    password: str | None = None
+    url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSettings:
+    """Online metadata-tagging settings."""
+
+    # Runtime-only (CLI-derived; never lives in the config file)
+    enabled: bool = False
+    selected_sources: frozenset[str] | None = None
+    explicit_ids: Mapping[str, int] = field(default_factory=dict)
+
+    # Persistent (config file + env var; CLI flag may override)
+    confidence_threshold: float = 0.85
+    skip_multiple: bool = False
+    accept_only: bool = False
+    ignore_existing: bool = False
+
+    cache_enabled: bool = True
+    cache_dir: Path | None = None
+    cache_ttl: timedelta = field(default_factory=lambda: timedelta(days=7))
+    refresh_cache: bool = False
+
+    retry_budget: int = 5
+
+    # Per-source credentials and config (keyed by source name).
+    sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,3 +105,7 @@ class ComicboxSettings:
     read_metadata_lower_filenames: frozenset[str]
     is_read_comments: bool
     is_skip_computed_from_tags: bool
+    # Merge ordering (None = use MetadataSources enum order).
+    merge_order: "tuple[MetadataSources, ...] | None"
+    # Online metadata-tagging settings (always present).
+    online: OnlineSettings

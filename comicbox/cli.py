@@ -76,6 +76,26 @@ _PDF_PAGE_FORMAT_DESC = MappingProxyType(
 )
 _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
 
+# Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
+_WARNED_FLAGS: set[str] = set()
+
+_MATCH_POLICY_ROWS = (
+    ("(default)", "auto-write", "prompt", "prompt"),
+    ("--accept-only", "auto-write", "accept solo", "prompt"),
+    ("--skip-multiple", "auto-write", "prompt", "skip"),
+    ("both flags", "auto-write", "accept solo", "skip"),
+)
+_MATCH_POLICY_INTRO = Styled(
+    """
+[bold]Online tagging — Match Resolution Policy[/bold]
+
+[cyan]--confidence-threshold[/cyan] governs auto-write. The two opt-out flags
+control unattended behavior for below-threshold cases. Combine for fully
+unattended bulk mode.
+""",
+    style="argparse.text",
+)
+
 
 class CSVAction(Action):
     """Parse comma delimited sequences."""
@@ -90,9 +110,9 @@ class CSVAction(Action):
     ) -> None:
         """Parse comma delimited sequences."""
         if isinstance(values, str):
-            values_array = values.split(",")
+            values_array = [v.strip() for v in values.split(",") if v.strip()]
         elif isinstance(values, Sequence):
-            values_array = values
+            values_array = list(values)
         else:
             return
         setattr(namespace, self.dest, values_array)
@@ -130,6 +150,57 @@ class PageRangeAction(Action):
             namespace.index_to = index_to
 
 
+def _warn_once(key: str, message: str) -> None:
+    if key in _WARNED_FLAGS:
+        return
+    _WARNED_FLAGS.add(key)
+    sys.stderr.write(message + "\n")
+
+
+class DeprecatedDryRunAction(Action):
+    """Set dry_run=True with a deprecation warning. -y is gone in 5.0."""
+
+    @override
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        _warn_once(
+            "dry_run_y",
+            "warning: -y is deprecated, use -n/--dry-run instead (removed in 5.0)",
+        )
+        namespace.dry_run = True
+
+
+class ApiPasswordAction(Action):
+    """Append --api-password values; warn that CLI passwords leak into shell history."""
+
+    @override
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        _warn_once(
+            "api_password",
+            (
+                "warning: --api-password leaks into shell history; "
+                "prefer COMICBOX_<SOURCE>_PASSWORD env var or keyring"
+            ),
+        )
+        items = list(getattr(namespace, self.dest, None) or [])
+        if isinstance(values, str):
+            items.append(values)
+        elif isinstance(values, Sequence):
+            items.extend(values)
+        setattr(namespace, self.dest, items)
+
+
 def _get_help_print_phases_table() -> Table:
     table = Table(title="[dark_cyan]PRINT_PHASE[/dark_cyan] characters", **_TABLE_ARGS)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     table.add_column("Phase", style="green")
@@ -152,6 +223,20 @@ def _get_pdf_page_format_phases_table() -> Table:
     return table
 
 
+def _get_match_policy_table() -> Table:
+    table = Table(
+        title="[dark_cyan]Online — Match Resolution Policy[/dark_cyan]",
+        **_TABLE_ARGS,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    )
+    table.add_column("Flags", style="green")
+    table.add_column("conf ≥ threshold")
+    table.add_column("1 cand below")
+    table.add_column(">1 cand below")
+    for row in _MATCH_POLICY_ROWS:
+        table.add_row(*row)
+    return table
+
+
 FORMAT_TITLE = """Format keys for [cyan]--ignore-read[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not indented for distribution and are provided as convenience to developers."""
 
@@ -171,6 +256,138 @@ def _get_help_format_table() -> Table:
         table.add_row(label, keys)
 
     return table
+
+
+def _add_online_options(option_group: Any) -> None:
+    """Online metadata tagging flags."""
+    option_group.add_argument(
+        "--online",
+        action=CSVAction,
+        dest="online_sources",
+        default=None,
+        metavar="SOURCES",
+        help=(
+            "Enable online metadata lookup. Pass [green]all[/green] to use "
+            "every configured source, or a comma-separated list to filter "
+            "(e.g. [green]--online metron,comicvine[/green])."
+        ),
+    )
+    option_group.add_argument(
+        "--id",
+        action="append",
+        dest="explicit_ids",
+        default=None,
+        metavar="DB:ID",
+        help=(
+            "Skip search; tag by exact issue id from named source. "
+            "Repeatable for cross-source confirmation (first non-error wins). "
+            "Errors out if more than one input comic is submitted."
+        ),
+    )
+    option_group.add_argument(
+        "--accept-only",
+        dest="accept_only",
+        action="store_true",
+        default=None,
+        help="Auto-accept solo matches without prompting. See Match Resolution Policy table below.",
+    )
+    option_group.add_argument(
+        "--skip-multiple",
+        dest="skip_multiple",
+        action="store_true",
+        default=None,
+        help="Skip files with >1 candidate without prompting. See Match Resolution Policy table below.",
+    )
+    option_group.add_argument(
+        "--ignore-existing",
+        dest="ignore_existing",
+        action="store_true",
+        default=None,
+        help="Skip files already tagged from this run's selected online sources.",
+    )
+    option_group.add_argument(
+        "--confidence-threshold",
+        dest="confidence_threshold",
+        type=float,
+        default=None,
+        metavar="FLOAT",
+        help="Confidence (0-1) at or above auto-writes; below requires prompt or skip.",
+    )
+    option_group.add_argument(
+        "--cache-dir",
+        dest="cache_dir",
+        default=None,
+        metavar="PATH",
+        help="Override the on-disk cache directory for online responses.",
+    )
+    option_group.add_argument(
+        "--cache-ttl",
+        dest="cache_ttl",
+        default=None,
+        metavar="DURATION",
+        help="Cache entry TTL ([green]7d[/green], [green]24h[/green], [green]60m[/green], [green]0[/green] for no expiry).",
+    )
+    option_group.add_argument(
+        "--no-cache",
+        dest="no_cache",
+        action="store_true",
+        default=False,
+        help="Disable cache for this invocation (no read, no write).",
+    )
+    option_group.add_argument(
+        "--refresh-cache",
+        dest="refresh_cache",
+        action="store_true",
+        default=False,
+        help="Skip cache reads but write fresh results back.",
+    )
+    option_group.add_argument(
+        "--api-key",
+        action="append",
+        dest="api_keys",
+        default=None,
+        metavar="DB:KEY",
+        help="Override API key for source (e.g. [green]--api-key comicvine:abcd1234[/green]).",
+    )
+    option_group.add_argument(
+        "--api-user",
+        action="append",
+        dest="api_users",
+        default=None,
+        metavar="DB:USER",
+        help="Override username for user-auth source (Metron, GCD).",
+    )
+    option_group.add_argument(
+        "--api-password",
+        action=ApiPasswordAction,
+        dest="api_passwords",
+        default=None,
+        metavar="DB:PASS",
+        help=(
+            "Override password for user-auth source. Discouraged on the CLI "
+            "(shell history); prefer env var or keyring."
+        ),
+    )
+    option_group.add_argument(
+        "--api-url",
+        action="append",
+        dest="api_urls",
+        default=None,
+        metavar="DB:URL",
+        help="Override base URL for source (e.g. self-hosted Metron mirror).",
+    )
+    option_group.add_argument(
+        "-j",
+        "--jobs",
+        dest="jobs",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Parallel workers across files (no-op until parallelism milestone; "
+            "accepted now for forward compatibility)."
+        ),
+    )
 
 
 def _add_option_group(parser: ArgumentParser) -> None:
@@ -237,10 +454,18 @@ def _add_option_group(parser: ArgumentParser) -> None:
         help="Perform selected actions recursively on a directory.",
     )
     option_group.add_argument(
-        "-y",
+        "-n",
         "--dry-run",
         action="store_true",
         help="Do not write anything to the filesystem. Report on what would be done.",
+    )
+    option_group.add_argument(
+        "-y",
+        action=DeprecatedDryRunAction,
+        nargs=0,
+        dest="dry_run",
+        default=False,
+        help="[dim]Deprecated alias for [cyan]-n[/cyan]; removed in 5.0.[/dim]",
     )
     option_group.add_argument(
         "-g",
@@ -317,6 +542,7 @@ def _add_option_group(parser: ArgumentParser) -> None:
             "[green]'none'[/green] will stop highlighting."
         ),
     )
+    _add_online_options(option_group)
 
 
 def _add_action_group(parser: ArgumentParser) -> None:
@@ -445,6 +671,8 @@ def get_args(params: Sequence[str] | None = None) -> Namespace:
         _get_help_print_phases_table(),
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
+        _MATCH_POLICY_INTRO,
+        _get_match_policy_table(),
         _get_help_format_table(),
         _get_pdf_page_format_phases_table(),
     )
@@ -477,6 +705,13 @@ def post_process_args(cns: Namespace) -> None:
     # Loglevel
     if cns.quiet:
         cns.loglevel = _QUIET_LOGLEVEL.get(cns.quiet, "CRITICAL")
+
+    # --id is single-comic only; mass-tagging would mistag
+    explicit_ids = getattr(cns, "explicit_ids", None) or ()
+    paths = cns.paths or ()
+    if explicit_ids and len(paths) > 1:
+        sys.stderr.write("error: --id requires exactly one input path\n")
+        sys.exit(2)
 
 
 def main(params: Sequence[str] | None = None) -> None:

@@ -12,7 +12,9 @@ from comicbox.transforms.comicbox.json import ComicboxJsonTransform
 from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comictagger import ComictaggerTransform
+from comicbox.transforms.comicvine_api import ComicVineApiTransform
 from comicbox.transforms.filename import FilenameTransform
+from comicbox.transforms.metron_api import MetronApiTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
@@ -99,6 +101,22 @@ class MetadataFormats(Enum):
         MetronInfoTransform,
         has_pages=True,
         lexer="xml",
+    )
+    METRON_API = MetadataFormat(
+        "Metron API",
+        frozenset({"metron-api", "metronapi"}),
+        "metron-api.json",
+        MetronApiTransform,
+        lexer="json",
+        enabled=False,
+    )
+    COMICVINE_API = MetadataFormat(
+        "ComicVine API",
+        frozenset({"comicvine-api", "cv-api", "comicvineapi"}),
+        "comicvine-api.json",
+        ComicVineApiTransform,
+        lexer="json",
+        enabled=False,
     )
     COMICBOX_YAML = MetadataFormat(
         "Comicbox YAML",

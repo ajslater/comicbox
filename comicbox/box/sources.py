@@ -185,7 +185,11 @@ class ComicboxSources(ComicboxArchive):
         }
     )
     SOURCES_SET_ELSEWHERE = frozenset(
-        {MetadataSources.API, MetadataSources.LEGACY_NESTED}
+        {
+            MetadataSources.API,
+            MetadataSources.METRON_API,
+            MetadataSources.COMICVINE_API,
+        }
     )
 
     def _set_source_metadata(

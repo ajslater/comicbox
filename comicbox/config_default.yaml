@@ -46,3 +46,35 @@ comicbox:
 
   # Targets
   paths: null
+
+  # Merge precedence (null → use MetadataSources enum order).
+  merge_order: null
+
+  # Online metadata tagging
+  online:
+    # Match policy
+    confidence_threshold: 0.85
+    skip_multiple: False
+    accept_only: False
+    ignore_existing: False
+
+    # Cache
+    cache_enabled: True
+    cache_dir: null
+    cache_ttl: 7d
+    refresh_cache: False
+
+    # Retry budget for transient API failures.
+    retry_budget: 5
+
+    # Per-source credentials and endpoints. A source is "configured" iff
+    # its required fields have non-null values (after the resolution chain
+    # CLI > env > config > keyring).
+    metron:
+      username: null
+      password: null
+      url: null
+
+    comicvine:
+      api_key: null
+      url: null

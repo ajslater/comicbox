@@ -14,7 +14,7 @@ TEST_FILES_DIR = Path("tests/files")
 TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
 TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"
-TMP_ROOT_DIR = Path("/tmp")  # noqa: S108
+TMP_ROOT_DIR = Path("/tmp")
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 # SOURCE PATHS

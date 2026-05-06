@@ -140,7 +140,6 @@ class BaseSchema(BaseSubSchema, ABC):
     ROOT_TAG: str = ""
     ROOT_DATA_KEY: str = ""
     ROOT_KEYPATH: str = ""
-    LEGACY_NESTED_MD_KEYPATH: str = ""
     HAS_PAGE_COUNT: bool = False
     HAS_PAGES: bool = False
 

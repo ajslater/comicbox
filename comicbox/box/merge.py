@@ -30,10 +30,12 @@ class ComicboxMerge(ComicboxNormalize):
 
     def _set_merged_metadata(self) -> None:
         """Overlay the metadatas in precedence order."""
-        # Order the md list by source precedence
+        # Order the md list by source precedence (config-overridable;
+        # falls back to the MetadataSources enum order when unset).
         merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
         merger = UpdateMerger if self._config.replace_metadata else AdditiveMerger
-        for source in MetadataSources:
+        sources = self._config.merge_order or MetadataSources
+        for source in sources:
             self._merge_metadata_by_source(source, merged_md, merger)
         self._merged_metadata = MappingProxyType(merged_md)
 
