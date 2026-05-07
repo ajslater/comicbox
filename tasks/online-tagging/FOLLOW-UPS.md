@@ -31,11 +31,38 @@ Marker conventions:
       too — a filename "G.I. Joe" against a stored "GI Joe" —
       though it's less common. Pick a strategy that doesn't
       explode the API call count.
-- **Volume number for search.** Phase 2 noted volume isn't in
-  `ComicProfile` today. mokkari's `issues_list` accepts a `volume`
-  filter; CV doesn't have a clean per-issue volume filter (we'd
-  fold it into the volume search). Useful when a user has multiple
-  series sharing a name (e.g. multiple "Spider-Man" volumes).
+- **Volume ordinal for search (Metron only).** `ComicProfile` has
+  no `volume` field today, even though `comicfn2dict` extracts one
+  from filenames (e.g. "Spider-Man Vol. 2 #1" → 2). Worth threading
+  through *as a soft signal* — not a hard filter — for Metron only:
+
+    - **Metron**: backend exposes `series_volume` on `/issue/` and
+      `volume` on `/series/` (both `NumberFilter`, exact-match —
+      see `comicsdb/filters/issue.py` / `series.py`). mokkari's
+      generic `issues_list({...params})` forwards anything we put in
+      the dict. Trivial wiring once `ComicProfile.volume` exists.
+      Could also be passed to `series_list` to narrow the candidate
+      set before fan-out.
+    - **ComicVine**: skip — CV's `/issues/` filter only accepts
+      `volume:<DB-ID>`, which is the *volume's CV ID*, not the
+      ordinal. Our two-step (volume search → list_issues per
+      volume) already filters by that ID. Filename-parsed ordinals
+      have no place to go in CV's API.
+    - **metron-tagger** does **not** currently use volume in its
+      queries (`metrontagger/utils.py:create_query_params` ignores
+      it). **comictagger** uses CV volume *ID*, never the ordinal.
+      So no upstream prior art to mirror; we'd be ahead.
+    - **Reliability**: filename-parsed `Vol. N` is moderately
+      reliable but inconsistent — some scanners drop it, some put
+      the wrong number. Recommend treating volume as a relaxable
+      filter: use it on the first pass; on zero-results, retry
+      without it. This composes with the year ±1 retry already in
+      place. Hard-filtering would lose tags more often than help.
+
+  Path: add `volume: int | None` to `ComicProfile`, populate it in
+  the profile builder, and pass `series_volume` to Metron when set.
+  Defer the `series_list` use until we have data on whether
+  multi-volume series are actually a problem in practice.
 - **Cross-source confirmation logging.** When Metron's stored
   `cv_id` field disagrees with our independent ComicVine match,
   log at WARNING with both ids visible. Phase 3 declared this; M6
