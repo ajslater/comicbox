@@ -31,6 +31,16 @@ Marker conventions:
       too — a filename "G.I. Joe" against a stored "GI Joe" —
       though it's less common. Pick a strategy that doesn't
       explode the API call count.
+- 🔍 **Retry-relaxation order: volume vs year.** Current order is
+  `(year, volume) → year ±1 → drop volume → drop volume + year ±1`.
+  This treats volume as more reliable than year — but for an
+  undertagged comic the opposite might be true: scanners often
+  drop or guess volume entirely, while cover-date drift is a
+  ±1 thing that doesn't make the year *wrong*, just adjacent.
+  Worth A/B-ing with real-world miss data: try `(year, volume) →
+  drop volume → year ±1 → drop both` and see which order finds
+  more correct matches with fewer API calls. Decision needs
+  miss-rate telemetry from a calibration set, not a guess.
 - **Series-list volume narrowing (Metron, deferred).** When
   `profile.volume` is set, we *could* also pass it to `series_list`
   to pre-filter the candidate-series set before fan-out (Metron
