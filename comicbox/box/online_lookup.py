@@ -72,6 +72,41 @@ _ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = frozenset(
 )
 
 
+def _resolve_volume(md: dict) -> int | None:
+    """Extract `comicbox.volume.number` as an int, defensively."""
+    raw = glom(md, "comicbox.volume.number", default=None)
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
+    """First-wins accumulation of profile fields across normalized sources."""
+    if "series" not in fields and (v := glom(md, "comicbox.series.name", default=None)):
+        fields["series"] = v
+    if "issue" not in fields and (v := glom(md, "comicbox.issue.name", default=None)):
+        fields["issue"] = v
+    if "year" not in fields:
+        raw_year = glom(md, "comicbox.date.year", default=None) or glom(
+            md, "comicbox.date.cover_date", default=None
+        )
+        if (parsed := parse_year(raw_year)) is not None:
+            fields["year"] = parsed
+    if "publisher" not in fields and (
+        v := glom(md, "comicbox.publisher.name", default=None)
+    ):
+        fields["publisher"] = v
+    if "page_count" not in fields and (
+        v := glom(md, "comicbox.page_count", default=None)
+    ):
+        fields["page_count"] = v
+    if "volume" not in fields and (v := _resolve_volume(md)) is not None:
+        fields["volume"] = v
+
+
 class ComicboxOnlineLookup(ComicboxNormalize):
     """Pulls online metadata into the source pool before merge runs."""
 
@@ -185,11 +220,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _build_profile(self) -> ComicProfile:
         """Read the non-online merged-so-far metadata into a ComicProfile."""
         # Collect from non-online normalized sources, first-wins.
-        series: str | None = None
-        issue: str | None = None
-        year: int | None = None
-        publisher: str | None = None
-        page_count: int | None = None
+        fields: dict[str, Any] = {}
         for src in MetadataSources:
             if src in _ONLINE_SOURCE_ENUMS:
                 continue
@@ -197,27 +228,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if not normalized:
                 continue
             for loaded in normalized:
-                md = dict(loaded.metadata)
-                if series is None:
-                    series = glom(md, "comicbox.series.name", default=None)
-                if issue is None:
-                    issue = glom(md, "comicbox.issue.name", default=None)
-                if year is None:
-                    raw_year = glom(md, "comicbox.date.year", default=None) or glom(
-                        md, "comicbox.date.cover_date", default=None
-                    )
-                    year = parse_year(raw_year)
-                if publisher is None:
-                    publisher = glom(md, "comicbox.publisher.name", default=None)
-                if page_count is None:
-                    page_count = glom(md, "comicbox.page_count", default=None)
+                _accumulate_profile_fields(fields, dict(loaded.metadata))
         return ComicProfile(
-            series=series,
-            issue=issue,
-            issue_int=parse_issue_int(issue),
-            year=year,
-            publisher=publisher,
-            page_count=page_count,
+            series=fields.get("series"),
+            issue=fields.get("issue"),
+            issue_int=parse_issue_int(fields.get("issue")),
+            year=fields.get("year"),
+            publisher=fields.get("publisher"),
+            page_count=fields.get("page_count"),
+            volume=fields.get("volume"),
         )
 
     def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> None:

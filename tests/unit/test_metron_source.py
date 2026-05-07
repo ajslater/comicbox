@@ -314,3 +314,163 @@ def test_no_year_means_no_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     # there's no year to relax.
     assert len(fake.issues_list_calls) == 1
     assert "cover_year" not in fake.issues_list_calls[0]
+
+
+# ---------------------------------------------------------- volume filter
+
+
+class _VolumeAwareMokkari(_FakeMokkari):
+    """
+    `issues_list` honors `series_volume` and `cover_year` filters.
+
+    Used to test both the volume soft-filter and the drop-volume retry.
+    """
+
+    def __init__(
+        self,
+        series: list[_FakeBaseSeries],
+        # Keyed by (series_id, cover_year, series_volume_or_None).
+        # `dict[tuple, ...]` is intentionally loose so test fixtures don't
+        # need matching `int | None` annotations on every literal tuple.
+        issues_by_match: dict[tuple, list[_FakeBaseIssue]],
+    ) -> None:
+        super().__init__(series=series, issues_by_series={})
+        self._issues_by_match = issues_by_match
+
+    def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
+        params = dict(params or {})
+        self.issues_list_calls.append(params)
+        sid = params.get("series")
+        if sid is None:
+            return []
+        year = params.get("cover_year")
+        vol = params.get("series_volume")
+        key = (
+            int(sid),
+            int(year) if year is not None else None,
+            int(vol) if vol is not None else None,
+        )
+        return list(self._issues_by_match.get(key, []))
+
+
+def test_volume_filter_passed_to_metron(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`profile.volume` is passed as `series_volume` on the first pass."""
+    s = _FakeBaseSeries(sid=100, name="Spider-Man")
+    issues = {
+        (100, 2020, 2): [
+            _FakeBaseIssue(
+                iid=400, number="1", series_name="Spider-Man", cover_year=2020
+            )
+        ],
+    }
+    fake = _VolumeAwareMokkari(series=[s], issues_by_match=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(
+        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+    )
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [400]
+    # First (and only) call carried both filters.
+    assert len(fake.issues_list_calls) == 1
+    call = fake.issues_list_calls[0]
+    assert call["series_volume"] == 2
+    assert call["cover_year"] == 2020
+
+
+def test_volume_filter_drop_retry_finds_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Drop-volume retry path.
+
+    Wrong volume in the filename → year-cycle with volume returns 0 →
+    retry without volume succeeds.
+    """
+    s = _FakeBaseSeries(sid=100, name="Spider-Man")
+    # Match exists at series_volume=1, NOT 2.
+    issues = {
+        (100, 2020, None): [
+            _FakeBaseIssue(
+                iid=500, number="1", series_name="Spider-Man", cover_year=2020
+            )
+        ],
+    }
+    fake = _VolumeAwareMokkari(series=[s], issues_by_match=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(
+        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+    )
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [500]
+    # Call sequence: year-exact w/ volume (miss), Y-1 w/ volume (miss),
+    # Y+1 w/ volume (miss), THEN drop-volume year-exact (hit).
+    series_volumes = [c.get("series_volume") for c in fake.issues_list_calls]
+    assert series_volumes[0] == 2  # first pass had volume
+    # The drop-volume retry pass omits series_volume entirely.
+    assert any(sv is None for sv in series_volumes)
+
+
+def test_no_volume_in_profile_no_drop_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Profile without volume skips the drop-volume retry path entirely."""
+    s = _FakeBaseSeries(sid=100, name="Foo")
+    fake = _VolumeAwareMokkari(series=[s], issues_by_match={})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)  # no volume
+    candidates = src.search(profile)
+
+    assert candidates == []
+    # No call ever included series_volume, and there was no second cycle.
+    assert all("series_volume" not in c for c in fake.issues_list_calls)
+    # Three calls (year-exact + ±1 retry); no fourth-and-beyond drop pass.
+    assert len(fake.issues_list_calls) == 3
+
+
+def test_volume_match_does_not_trigger_drop_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Year-exact + volume hits → no drop-volume retry needed."""
+    s = _FakeBaseSeries(sid=100, name="Spider-Man")
+    issues = {
+        (100, 2020, 2): [
+            _FakeBaseIssue(
+                iid=600, number="1", series_name="Spider-Man", cover_year=2020
+            )
+        ],
+    }
+    fake = _VolumeAwareMokkari(series=[s], issues_by_match=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(
+        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+    )
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [600]
+    # Only the first call ran — no year retry, no volume drop.
+    assert len(fake.issues_list_calls) == 1
+
+
+def test_series_id_path_omits_volume_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--series-id trumps volume; the filter is skipped on that fast path."""
+    issues = {
+        (200, 2020, None): [
+            _FakeBaseIssue(iid=700, number="1", series_name="Bypassed", cover_year=2020)
+        ],
+    }
+    fake = _VolumeAwareMokkari(series=[], issues_by_match=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=200)
+    profile = ComicProfile(
+        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=99
+    )
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [700]
+    assert len(fake.issues_list_calls) == 1
+    assert "series_volume" not in fake.issues_list_calls[0]

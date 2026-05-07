@@ -27,6 +27,10 @@ class ComicProfile:
     year: int | None = None
     publisher: str | None = None
     page_count: int | None = None
+    # Series volume ordinal (e.g. "Spider-Man Vol. 2 #1" → 2). When set,
+    # used as a soft search filter for sources that support it (Metron's
+    # `series_volume`); CV's API has no ordinal-volume filter.
+    volume: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

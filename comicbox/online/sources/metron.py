@@ -90,12 +90,17 @@ class MetronOnlineSource(OnlineSource):
         series_id: int,
         *,
         cover_year_override: int | None = None,
+        include_volume: bool = True,
     ) -> dict[str, Any]:
         """
         Build the `issues_list` params filtering on a resolved series id.
 
         ``cover_year_override`` lets the ±1 retry-on-miss path supply a
         neighboring year. When None, ``profile.year`` is used as-is.
+
+        ``include_volume`` is the toggle for the drop-volume retry path:
+        passing False omits Metron's ``series_volume`` filter even when
+        ``profile.volume`` is set.
         """
         params: dict[str, Any] = {"series": series_id}
         # Strip leading zeros — Metron stores `number` without padding.
@@ -106,6 +111,8 @@ class MetronOnlineSource(OnlineSource):
         )
         if cover_year is not None:
             params["cover_year"] = cover_year
+        if include_volume and profile.volume is not None:
+            params["series_volume"] = profile.volume
         return params
 
     def _to_candidate(
@@ -175,7 +182,11 @@ class MetronOnlineSource(OnlineSource):
         # just saved.
         explicit_sid = self._settings.explicit_series_ids.get(self.name)
         if explicit_sid is not None:
-            params = self._build_issue_params(profile, explicit_sid)
+            # The user has been explicit about the series id; the soft volume
+            # filter would just risk false-zero. Trust the supplied id.
+            params = self._build_issue_params(
+                profile, explicit_sid, include_volume=False
+            )
             try:
                 issues = session.issues_list(params=params)
             except Exception as exc:
@@ -212,14 +223,48 @@ class MetronOnlineSource(OnlineSource):
             f"{profile.series!r}: {sample}"
         )
 
-        candidates = self._fetch_candidates_across_series(
-            session, profile, series_results, cover_year_override=None
+        candidates = self._search_with_year_retry(
+            session, profile, series_results, include_volume=True
         )
 
-        # ±1 year retry on miss. Cover-date drift is real: a comic
-        # published in late 2019 can be cover-dated 2020-01. If the
-        # year-exact search came back empty, try Y-1 and Y+1 before
-        # giving up. Skipped if there's no year to relax.
+        # Drop-volume retry on miss. Filename-parsed `Vol. N` is moderately
+        # reliable but inconsistent — some scanners drop it, some get the
+        # number wrong. If the volume-filtered cycle (year-exact + Y±1)
+        # returned nothing, retry the whole cycle without the volume
+        # filter. Skipped if no volume was filtering in the first place.
+        if not candidates and profile.volume is not None:
+            logger.info(
+                f"online {self.name}: 0 candidates with series_volume="
+                f"{profile.volume}, retrying without the volume filter"
+            )
+            candidates = self._search_with_year_retry(
+                session, profile, series_results, include_volume=False
+            )
+
+        return candidates
+
+    def _search_with_year_retry(
+        self,
+        session: Session,
+        profile: ComicProfile,
+        series_results: list[Any],
+        *,
+        include_volume: bool,
+    ) -> list[Candidate]:
+        """
+        Year-exact pass plus ±1 retry on miss; volume filter is optional.
+
+        Cover-date drift is real: a comic published in late 2019 can be
+        cover-dated 2020-01. When the year-exact pass returns zero, retry
+        with Y-1 then Y+1. Skipped if there's no year to relax.
+        """
+        candidates = self._fetch_candidates_across_series(
+            session,
+            profile,
+            series_results,
+            cover_year_override=None,
+            include_volume=include_volume,
+        )
         if not candidates and profile.year is not None:
             for delta in (-1, 1):
                 retry_year = profile.year + delta
@@ -228,10 +273,13 @@ class MetronOnlineSource(OnlineSource):
                     f"retrying with cover_year={retry_year}"
                 )
                 retry = self._fetch_candidates_across_series(
-                    session, profile, series_results, cover_year_override=retry_year
+                    session,
+                    profile,
+                    series_results,
+                    cover_year_override=retry_year,
+                    include_volume=include_volume,
                 )
                 candidates.extend(retry)
-
         return candidates
 
     def _fetch_candidates_across_series(
@@ -241,13 +289,17 @@ class MetronOnlineSource(OnlineSource):
         series_results: list[Any],
         *,
         cover_year_override: int | None,
+        include_volume: bool = True,
     ) -> list[Candidate]:
         """Run `issues_list` once per series, accumulating candidates."""
         candidates: list[Candidate] = []
         for series in series_results:
             display = _series_display_name(series)
             params = self._build_issue_params(
-                profile, series.id, cover_year_override=cover_year_override
+                profile,
+                series.id,
+                cover_year_override=cover_year_override,
+                include_volume=include_volume,
             )
             try:
                 issues = session.issues_list(params=params)
