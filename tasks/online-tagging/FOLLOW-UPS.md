@@ -50,11 +50,6 @@ Marker conventions:
   `series_volume` filter (already wired on the issue lookup pass)
   takes care of disambiguation downstream. Revisit if real-world
   data shows series_list returns >1 same-named series often.
-- **Cross-source confirmation logging.** When Metron's stored
-  `cv_id` field disagrees with our independent ComicVine match,
-  log at WARNING with both ids visible. Phase 3 declared this; M6
-  punted because the cross-validation needs a place to live in
-  the pipeline (probably a post-merge computed step).
 
 ## B. Match resolution UX (dialogue topic)
 

@@ -83,6 +83,34 @@ def _resolve_volume(md: dict) -> int | None:
         return None
 
 
+def _detect_cv_id_disagreement(
+    metron_md: dict | None, cv_md: dict | None
+) -> tuple[str, str] | None:
+    """
+    Compare the ComicVine identifier each source contributed.
+
+    Metron's `cv_id` field flows into its merged metadata as
+    `comicbox.identifiers.comicvine.key`; CV's own issue id flows in
+    under the same path from the CV-sourced data. When both are set and
+    disagree, one of them is wrong (Metron's `cv_id` field is a
+    cross-reference that goes stale; our CV match could also have hit
+    the wrong volume). Return ``(metron_cv_id, cv_cv_id)`` so the
+    caller can log it; return None for "no disagreement to report"
+    (either source missing, either id missing, or they match).
+    """
+    if not metron_md or not cv_md:
+        return None
+    metron_key = glom(metron_md, "comicbox.identifiers.comicvine.key", default=None)
+    cv_key = glom(cv_md, "comicbox.identifiers.comicvine.key", default=None)
+    if metron_key is None or cv_key is None:
+        return None
+    metron_str = str(metron_key)
+    cv_str = str(cv_key)
+    if metron_str == cv_str:
+        return None
+    return (metron_str, cv_str)
+
+
 def _accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
     """First-wins accumulation of profile fields across normalized sources."""
     if "series" not in fields and (v := glom(md, "comicbox.series.name", default=None)):
@@ -438,6 +466,41 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         self._search_path(source)
 
+    def _first_normalized(self, src: MetadataSources) -> dict | None:
+        """First normalized metadata dict from `src`, or None if unset."""
+        normalized = self.get_normalized_metadata(src)
+        if not normalized:
+            return None
+        for loaded in normalized:
+            md = dict(loaded.metadata)
+            if md:
+                return md
+        return None
+
+    def _cross_source_cv_id_check(self) -> None:
+        """
+        Warn when Metron's stored `cv_id` and our CV match disagree.
+
+        Runs once per box after both online sources have been queried.
+        The check looks at the per-source normalized metadata (still
+        distinguishable here, before the box-level merge collapses the
+        two `comicbox.identifiers.comicvine.key` values into one). We
+        don't decide which is right — just surface the disagreement so
+        the user sees it before accepting.
+        """
+        metron_md = self._first_normalized(MetadataSources.METRON_API)
+        cv_md = self._first_normalized(MetadataSources.COMICVINE_API)
+        disagreement = _detect_cv_id_disagreement(metron_md, cv_md)
+        if disagreement is None:
+            return
+        metron_id, cv_id = disagreement
+        logger.warning(
+            f"online: cross-source ComicVine id disagreement — Metron "
+            f"stored cv_id={metron_id} but our independent ComicVine "
+            f"match returned id={cv_id}. One of the two sources has the "
+            f"wrong identifier; review before accepting."
+        )
+
     def run_online_lookup(self) -> None:
         """Idempotent: populate online MetadataSources once per box instance."""
         if self._online_lookup_already_done():
@@ -447,3 +510,4 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         for source in self._build_active_online_sources():
             self._lookup_one_source(source)
+        self._cross_source_cv_id_check()

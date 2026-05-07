@@ -212,3 +212,173 @@ def test_explicit_id_for_unconfigured_source_warns(
     assert any("--id comicvine:42" in m for m in warnings), (
         f"expected warning about --id comicvine:42; got {warnings}"
     )
+
+
+# ----------------------------------------- cross-source cv_id disagreement
+
+
+def test_detect_cv_id_disagreement_returns_pair_when_different() -> None:
+    from comicbox.box.online_lookup import _detect_cv_id_disagreement
+
+    metron = {"comicbox": {"identifiers": {"comicvine": {"key": "999"}}}}
+    cv = {"comicbox": {"identifiers": {"comicvine": {"key": "1234"}}}}
+    assert _detect_cv_id_disagreement(metron, cv) == ("999", "1234")
+
+
+def test_detect_cv_id_disagreement_returns_none_when_matching() -> None:
+    from comicbox.box.online_lookup import _detect_cv_id_disagreement
+
+    metron = {"comicbox": {"identifiers": {"comicvine": {"key": "999"}}}}
+    cv = {"comicbox": {"identifiers": {"comicvine": {"key": "999"}}}}
+    assert _detect_cv_id_disagreement(metron, cv) is None
+
+
+def test_detect_cv_id_disagreement_returns_none_when_one_missing() -> None:
+    from comicbox.box.online_lookup import _detect_cv_id_disagreement
+
+    metron = {"comicbox": {"identifiers": {"comicvine": {"key": "999"}}}}
+    # CV missing → cannot compare.
+    assert _detect_cv_id_disagreement(metron, None) is None
+    # Metron missing → cannot compare.
+    assert _detect_cv_id_disagreement(None, metron) is None
+    # CV has no comicvine identifier (e.g. CV source didn't run) → skip.
+    cv_no_key: dict = {"comicbox": {"identifiers": {}}}
+    assert _detect_cv_id_disagreement(metron, cv_no_key) is None
+
+
+def test_detect_cv_id_disagreement_coerces_int_keys() -> None:
+    """Identifiers can come through as int or str; comparison normalizes."""
+    from comicbox.box.online_lookup import _detect_cv_id_disagreement
+
+    metron = {"comicbox": {"identifiers": {"comicvine": {"key": 999}}}}
+    cv = {"comicbox": {"identifiers": {"comicvine": {"key": "999"}}}}
+    assert _detect_cv_id_disagreement(metron, cv) is None
+
+
+# Integration: cross-source warning fires when both sources contribute
+# disagreeing comicvine identifiers. We patch both factories and assert
+# the warning logger received the expected message.
+
+
+_METRON_PAYLOAD_CV_ID_999 = {
+    "id": 42,
+    "number": "5",
+    "cover_date": "2020-04-01",
+    "modified": "2020-04-02T12:00:00Z",
+    "page_count": 24,
+    "publisher": {"id": 1, "name": "Quality Comics"},
+    "series": {
+        "id": 100,
+        "name": "Foo Comics",
+        "year_began": 2018,
+        "volume": 1,
+    },
+    "cv_id": 999,  # Metron's stored cross-reference to ComicVine
+}
+
+
+_CV_PAYLOAD_ID_1234 = {
+    "id": 1234,
+    "number": "5",
+    "cover_date": "2020-04-01",
+    "date_last_updated": "2020-04-02T12:00:00Z",
+    "image": {"medium_url": "http://t.example.com/m.jpg"},
+    "volume": {"id": 50, "name": "Foo Comics"},
+}
+
+
+def _make_dual_factories(metron_payload: dict, cv_payload: dict) -> dict:
+    """Two source factories returning fixed payloads — for cross-source tests."""
+
+    class _FakeCV:
+        name = "comicvine"
+        metadata_source = MetadataSources.COMICVINE_API
+        metadata_format = MetadataFormats.COMICVINE_API
+
+        def __init__(self, credentials, settings) -> None:
+            self._credentials = credentials
+
+        def is_configured(self) -> bool:
+            return bool(self._credentials.api_key)
+
+        def get(self, issue_id: int) -> dict:
+            return dict(cv_payload)
+
+        def search(self, profile) -> list[Candidate]:
+            return []
+
+    def metron_factory(creds, settings):
+        return _FakeMetronSource(creds, settings, payload=metron_payload)
+
+    return {"metron": metron_factory, "comicvine": _FakeCV}
+
+
+def test_cross_source_warning_fires_on_cv_id_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metron's cv_id=999 vs CV's id=1234 → warning logged."""
+    factories = _make_dual_factories(_METRON_PAYLOAD_CV_ID_999, _CV_PAYLOAD_ID_1234)
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        "comicbox.box.online_lookup.logger.warning",
+        warnings.append,
+    )
+
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["metron:42", "comicvine:1234"],
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+
+    cross_warnings = [m for m in warnings if "cross-source" in m]
+    assert cross_warnings, f"expected cross-source warning; got {warnings}"
+    assert "999" in cross_warnings[0]
+    assert "1234" in cross_warnings[0]
+
+
+def test_cross_source_no_warning_when_cv_ids_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metron cv_id == CV id → no warning."""
+    metron_payload_match = dict(_METRON_PAYLOAD_CV_ID_999, cv_id=1234)
+    factories = _make_dual_factories(metron_payload_match, _CV_PAYLOAD_ID_1234)
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        "comicbox.box.online_lookup.logger.warning",
+        warnings.append,
+    )
+
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["metron:42", "comicvine:1234"],
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+
+    cross_warnings = [m for m in warnings if "cross-source" in m]
+    assert cross_warnings == [], (
+        f"unexpected cross-source warning when ids agree: {cross_warnings}"
+    )
