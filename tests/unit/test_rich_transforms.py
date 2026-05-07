@@ -264,6 +264,9 @@ _CV_FIXTURE = {
             "original_url": "http://t.example.com/o.jpg",
         },
         "volume": {"id": 12345, "name": "G.I. Joe"},
+        # Publisher is injected by `ComicVineOnlineSource.get()` after a
+        # secondary `get_volume(volume.id)` call.
+        "publisher": {"id": 31, "name": "Ziff-Davis"},
         "characters": [{"id": 1, "name": "G.I. Joe"}],
         "story_arcs": [{"id": 9, "name": "Yarn Patrol"}],
         "creators": [
@@ -287,6 +290,11 @@ def test_comicvine_issue_and_title() -> None:
 def test_comicvine_volume_renamed_to_series() -> None:
     assert _CV_CB["series"]["name"] == "G.I. Joe"
     assert _CV_CB["series"]["identifiers"]["comicvine"]["key"] == "12345"
+
+
+def test_comicvine_publisher_mapped() -> None:
+    """`publisher` injected by get(volume) flows through to the comicbox dict."""
+    assert _CV_CB["publisher"]["name"] == "Ziff-Davis"
 
 
 def test_comicvine_summary_sanitized() -> None:

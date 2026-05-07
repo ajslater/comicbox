@@ -73,10 +73,37 @@ class ComicVineOnlineSource(OnlineSource):
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:
-        """Fetch one ComicVine issue by id; return its model dump."""
+        """
+        Fetch one ComicVine issue by id; return its model dump.
+
+        CV's issue endpoint does NOT include the publisher inline —
+        `Issue.volume` is a bare `GenericEntry`. We chase one extra
+        request to ``get_volume(volume.id)`` to pull
+        ``Volume.publisher`` and inject it under a top-level ``publisher``
+        key for the transform to pick up. simyan's response cache is
+        URL-keyed, so this is "+1 API call per unique volume" rather
+        than per issue — successive issues from the same volume are free.
+        """
         session = self._get_session()
         issue = session.get_issue(issue_id)
-        return issue.model_dump(mode="json")
+        dump: dict[str, Any] = issue.model_dump(mode="json")
+        # `issue.volume` is a GenericEntry with id; fetch the full volume
+        # to get its publisher. Best-effort — log and continue on failure.
+        volume_id = (issue.volume.id if issue.volume else None) or (
+            (dump.get("volume") or {}).get("id")
+        )
+        if volume_id is not None:
+            try:
+                volume = session.get_volume(int(volume_id))
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: get_volume({volume_id}) failed; "
+                    f"publisher will be missing from this issue: {exc}"
+                )
+            else:
+                if volume.publisher is not None:
+                    dump["publisher"] = volume.publisher.model_dump(mode="json")
+        return dump
 
     # Limit how many candidate volumes to expand into issue queries; each
     # volume → one extra `list_issues` API call under CV's 1/sec rate limit.

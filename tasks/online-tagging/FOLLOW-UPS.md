@@ -90,10 +90,6 @@ nh3-backed HTML sanitization for description fields. What remains:
   upc, image}`) is not mapped. Comicbox has no first-class variant
   schema today — decide whether to attach as a sub-collection on
   the issue, surface as alternate cover URLs, or ignore.
-- **ComicVine `publisher` field.** Full `Issue.publisher` (with
-  id+name) exists on the CV Issue model but the rich transform
-  doesn't map it. Trivial add to `comicvine_api/__init__.py`'s
-  blocks tuple.
 - **ComicVine `associated_images` (variant covers).** CV exposes
   variant covers via `associated_images`; we currently take only
   the primary `image`. See also "Variant cover fallback for

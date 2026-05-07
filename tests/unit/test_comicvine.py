@@ -315,3 +315,123 @@ def test_search_two_step_returns_candidates(
     assert {c.summary.series for c in candidates} == {"G.I. Joe", "GI Joe Vol. 2"}
     # Cover URL fell through to the first available preference (`thumbnail`).
     assert all(c.summary.cover_url == _FakeImage.thumbnail for c in candidates)
+
+
+# -------------------------------------------- get(issue_id) → volume publisher
+
+
+class _FakeGenericEntry:
+    """Mock simyan GenericEntry (publisher / volume sub-object)."""
+
+    def __init__(self, eid: int, name: str) -> None:
+        self.id = eid
+        self.name = name
+
+    def model_dump(self, mode: str = "json") -> dict:
+        return {"id": self.id, "name": self.name}
+
+
+class _FakeFullIssue:
+    """Mock simyan Issue returned by get_issue (richer than BasicIssue)."""
+
+    def __init__(self, iid: int, volume: _FakeGenericEntry) -> None:
+        self.id = iid
+        self.volume = volume
+
+    def model_dump(self, mode: str = "json") -> dict:
+        return {
+            "id": self.id,
+            "volume": {"id": self.volume.id, "name": self.volume.name},
+        }
+
+
+class _FakeFullVolume:
+    """Mock simyan Volume returned by get_volume (carries publisher)."""
+
+    def __init__(
+        self, vid: int, name: str, publisher: _FakeGenericEntry | None
+    ) -> None:
+        self.id = vid
+        self.name = name
+        self.publisher = publisher
+
+
+class _FakeCVForGet:
+    """Mock simyan.Comicvine for the get(issue_id) path."""
+
+    def __init__(
+        self,
+        issue: _FakeFullIssue,
+        volume: _FakeFullVolume | None,
+    ) -> None:
+        self._issue = issue
+        self._volume = volume
+        self.get_issue_calls: list[int] = []
+        self.get_volume_calls: list[int] = []
+
+    def get_issue(self, issue_id: int) -> _FakeFullIssue:
+        self.get_issue_calls.append(issue_id)
+        return self._issue
+
+    def get_volume(self, volume_id: int) -> _FakeFullVolume:
+        self.get_volume_calls.append(volume_id)
+        if self._volume is None:
+            msg = f"no fake volume for {volume_id}"
+            raise RuntimeError(msg)
+        return self._volume
+
+
+def _make_cv_source_for_get(
+    monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCVForGet
+) -> ComicVineOnlineSource:
+    creds = OnlineSourceCredentials(api_key="test-key")
+    settings = OnlineSettings()
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src
+
+
+def test_get_injects_publisher_from_volume(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """get() augments the issue dump with publisher fetched via get_volume."""
+    publisher = _FakeGenericEntry(eid=10, name="Marvel")
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=publisher)
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+
+    assert fake_cv.get_issue_calls == [42]
+    assert fake_cv.get_volume_calls == [999]
+    assert payload["publisher"] == {"id": 10, "name": "Marvel"}
+
+
+def test_get_omits_publisher_when_volume_has_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A volume without a publisher leaves the dump unchanged."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=None)
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+    assert "publisher" not in payload
+
+
+def test_get_handles_get_volume_failure_gracefully(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If get_volume raises, the issue dump still comes back (sans publisher)."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    fake_cv = _FakeCVForGet(issue=issue, volume=None)  # → get_volume raises
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+    assert payload["id"] == 42
+    assert "publisher" not in payload
+    # The issue fetch itself wasn't disrupted.
+    assert fake_cv.get_issue_calls == [42]
+    assert fake_cv.get_volume_calls == [999]

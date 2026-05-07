@@ -157,6 +157,20 @@ def credits_to_cb(
     return out
 
 
+def named_block(parent: Mapping[str, Any], key: str) -> dict[str, str] | None:
+    """
+    Pull `{key: {name: <name>}}` out of a nested {id, name} dict, or None.
+
+    Used for publisher / imprint / similar single-named blocks where the
+    upstream returns a small `{id, name}` object but comicbox stores it
+    as `{name: ...}` only.
+    """
+    nested = parent.get(key) or {}
+    if name := nested.get("name"):
+        return {"name": name}
+    return None
+
+
 def reprints_to_cb(
     reprints: Iterable[Mapping[str, Any]] | None,
     *,

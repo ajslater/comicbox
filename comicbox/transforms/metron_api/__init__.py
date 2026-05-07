@@ -21,6 +21,7 @@ from comicbox.online.sanitize import strip_html
 from comicbox.online.transform_helpers import (
     build_identifier,
     credits_to_cb,
+    named_block,
     named_dict,
     named_dict_with_id,
     reprints_to_cb,
@@ -127,14 +128,6 @@ def _build_age_rating(issue: Mapping[str, Any]) -> str | None:
     return rating.get("name")
 
 
-def _build_named_block(issue: Mapping[str, Any], key: str) -> dict[str, str] | None:
-    """Pull `{key: {name: <name>}}` out of a nested {id, name} dict, or None."""
-    nested = issue.get(key) or {}
-    if name := nested.get("name"):
-        return {"name": name}
-    return None
-
-
 def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
     """
     Build the comicbox internal dict from a mokkari Issue dict.
@@ -157,8 +150,8 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         # Publishing
         ("series", _build_series(issue)),
         ("volume", _build_volume(issue)),
-        ("publisher", _build_named_block(issue, "publisher")),
-        ("imprint", _build_named_block(issue, "imprint")),
+        ("publisher", named_block(issue, "publisher")),
+        ("imprint", named_block(issue, "imprint")),
         # Prices / Stories
         ("prices", _build_prices(issue)),
         ("stories", _build_stories(issue)),

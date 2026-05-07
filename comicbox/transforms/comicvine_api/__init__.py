@@ -19,6 +19,7 @@ from comicbox.online.sanitize import strip_html
 from comicbox.online.transform_helpers import (
     build_identifier,
     credits_to_cb,
+    named_block,
     named_dict_with_id,
 )
 from comicbox.schemas.cache import get_schema
@@ -104,6 +105,10 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("summary", strip_html(issue.get("description"))),
         # Publishing — CV's `volume` is comicbox's `series`.
         ("series", _build_series(issue)),
+        # `publisher` is injected by `ComicVineOnlineSource.get()` after a
+        # secondary `get_volume(volume.id)` call — CV's issue endpoint
+        # doesn't include publisher inline.
+        ("publisher", named_block(issue, "publisher")),
         # Collections
         ("characters", named_dict_with_id(issue.get("characters"), _CV, "character")),
         ("teams", named_dict_with_id(issue.get("teams"), _CV, "team")),
