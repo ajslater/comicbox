@@ -12,25 +12,23 @@ Marker conventions:
 
 ## A. Search quality
 
-- 🔍 **Possible fuzzy-search expansion.** Beyond series/issue/year:
-  publisher hints, series-name normalization (strip "vol. N"
-  suffixes before sending), title-substring fallback, "what if the
-  user has a typo." Worth listing what we *could* try and which
-  ones are worth the API budget.
-    - **Punctuation gap (real, observed).** Both Metron and CV use
-      icontains-style filters that treat punctuation literally —
-      "GI Joe" extracted from a filename will NOT match a stored
-      "G.I. Joe" because "GI" is not a substring of "G.I.". Our
-      filename parse strips dots in initialisms; the canonical
-      stored name keeps them. Options to consider: (a) keep dots in
-      the filename parse (changes parser behavior across the
-      codebase); (b) on zero-result series_list, retry with a
-      dot-injected variant of the query (heuristic, e.g. single
-      letters get trailing dots); (c) per-source punctuation
-      normalization in the search step. The reverse failure exists
-      too — a filename "G.I. Joe" against a stored "GI Joe" —
-      though it's less common. Pick a strategy that doesn't
-      explode the API call count.
+- 🚫 **Client-side fuzzy-search expansion (declined).** Stance:
+  rely on the online databases' own search fuzziness. Don't try to
+  patch around DB limitations with client-side query rewrites
+  (publisher hints, "vol. N" suffix stripping, title-substring
+  fallback, typo-tolerant variants, etc.) unless we have a strong
+  signal that a particular technique is profitable. Neither
+  metron-tagger nor comictagger does this; both rely on the DB's
+  search behavior and ship. We should follow suit.
+
+  Known limitation worth documenting (not fixing client-side):
+  **the punctuation gap.** Both Metron and CV use icontains-style
+  filters that treat punctuation literally — "GI Joe" from a
+  filename will NOT match a stored "G.I. Joe" because "GI" is not
+  a substring of "G.I.". Our filename parse strips dots in
+  initialisms; the canonical stored name keeps them. The right fix
+  for this lives upstream (DB fuzz) or in the filename parser
+  (don't strip dots), not in client-side query expansion.
 - 🔍 **Retry-relaxation order: volume vs year.** Current order is
   `(year, volume) → year ±1 → drop volume → drop volume + year ±1`.
   This treats volume as more reliable than year — but for an
