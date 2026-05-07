@@ -1,4 +1,4 @@
-# Online Tagging — Follow-ups
+# Online Tagging — To Do
 
 Single source of truth for everything that came up during M1–M7
 implementation but was deferred from the v1 scope. Grouped so review
@@ -12,11 +12,6 @@ Marker conventions:
 
 ## A. Search quality
 
-- ⭐ **±1 year retry on miss.** When the year-exact search returns
-  zero candidates, retry with a relaxed year filter (`year ± 1`
-  for Metron, `cover_date:Y-1-01-01|Y+1-12-31` for CV). Cover-date
-  drift (cover dated the month after publication) is real and
-  trivially excludes valid hits.
 - 🔍 **Possible fuzzy-search expansion.** Beyond series/issue/year:
   publisher hints, series-name normalization (strip "vol. N"
   suffixes before sending), title-substring fallback, "what if the
@@ -79,33 +74,6 @@ Marker conventions:
   unattended bulk runs that hit a non-`--skip-multiple` ambiguous
   match and would otherwise hang.
 
-## C. Field coverage
-
-The bulk of the rich-transform work landed in commit `c4c867a`:
-characters, teams, arcs, locations, universes, genres, credits with
-roles, prices, stories, reprints, cross-source identifiers, plus
-nh3-backed HTML sanitization for description fields. What remains:
-
-- **Metron variants.** `Issue.variants` (list of `{id, name, sku,
-  upc, image}`) is not mapped. Comicbox has no first-class variant
-  schema today — decide whether to attach as a sub-collection on
-  the issue, surface as alternate cover URLs, or ignore.
-- **ComicVine `associated_images` (variant covers).** CV exposes
-  variant covers via `associated_images`; we currently take only
-  the primary `image`. See also "Variant cover fallback for
-  hashing" under section D — these are likely paired work.
-
-## D. Source coverage
-
-- **GCD via Grayven.** Architected for inclusion; ships as a
-  focused PR when Grayven hits v1.0 (currently 0.5.0, pre-1.0).
-  Loose-string fields (`publication_str`, `on_sale_str`, etc.)
-  need caller-side parsing.
-- **Variant cover fallback for hashing.** Phase 4 deferred. When
-  the primary cover hash misses for an otherwise-strong candidate,
-  fetch known variant covers (CV `associated_images`, GCD's
-  `variant_of` chain) and re-hash. Cost-bounded — only kicks in on
-  primary-hash miss for high-metadata candidates.
 
 ## E. Calibration & defaults
 
@@ -123,10 +91,65 @@ nh3-backed HTML sanitization for description fields. What remains:
   real credentials, replayed in CI. Currently every test mocks
   the upstream client directly.
 
-## F. Internals
 
-Most of section F landed; what remains is upstream-coordination work
-and explicitly-declined exposure of internal knobs.
+## G. Stress Test Jobs
+
+- **Real-load stress test.** The unit test verifies the prompt
+  lock holds; we haven't actually run `-j 8` against 1000 files
+  with live API access. Validate rate-limiter compliance and
+  prompt UX under load before declaring M7 production-ready.
+- **`-j` documentation.** CLI help mentions the flag exists but
+  doesn't yet recommend a sensible value or warn about thrashing
+  the rate limiter. Add notes after stress-testing.
+  
+## H. Architecture (post-feature)
+
+- **Flavor A plugin refactor.** Consolidate each format
+  (ComicInfo, MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF,
+  Metron API, ComicVine API) into self-contained modules owning
+  schema + transforms + source registration + format
+  registration. No dynamic discovery — just better internal
+  organisation. Plan to be drafted post-online-tagging with the
+  M2/M6 integration experience as input.
+
+---
+
+## Maintenance reminder
+
+When any item lands, move its bullet point out of this file and
+into a NEWS.md entry under the version that ships it. Don't let the list rot.
+
+---
+
+# Deferred Indefinately
+
+## Field coverage - Variants
+
+- **Metron variants.** `Issue.variants` (list of `{id, name, sku,
+  upc, image}`) is not mapped. Comicbox has no first-class variant
+  schema today — decide whether to attach as a sub-collection on
+  the issue, surface as alternate cover URLs, or ignore.
+- **ComicVine `associated_images` (variant covers).** CV exposes
+  variant covers via `associated_images`; we currently take only
+  the primary `image`. See also "Variant cover fallback for
+  hashing" under section D — these are likely paired work.
+  
+- **Variant cover fallback for hashing.** Phase 4 deferred. When
+  the primary cover hash misses for an otherwise-strong candidate,
+  fetch known variant covers (CV `associated_images`, GCD's
+  `variant_of` chain) and re-hash. Cost-bounded — only kicks in on
+  primary-hash miss for high-metadata candidates.
+
+## Other Online Databases
+
+- **GCD via Grayven.** Architected for inclusion; ships as a
+  focused PR when Grayven hits v1.0 (currently 0.5.0, pre-1.0).
+  Loose-string fields (`publication_str`, `on_sale_str`, etc.)
+  need caller-side parsing.
+
+## Internals
+
+Mostly explicitly-declined exposure of internal knobs.
 
 - ⚙️ **mokkari `base_url` upstream feature request.** `--api-url
   metron:<url>` is now documented as a no-op in CLI help and warns
@@ -140,31 +163,3 @@ and explicitly-declined exposure of internal knobs.
   `top_k_for_hashing`.** Same rationale — power-user knobs without
   calibration data behind them. Revisit if calibration (E) shows
   a clearly-better value.
-
-## G. Architecture (post-feature)
-
-- **Flavor A plugin refactor.** Consolidate each format
-  (ComicInfo, MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF,
-  Metron API, ComicVine API) into self-contained modules owning
-  schema + transforms + source registration + format
-  registration. No dynamic discovery — just better internal
-  organisation. Plan to be drafted post-online-tagging with the
-  M2/M6 integration experience as input.
-
-## H. M7 / parallelism
-
-- **Real-load stress test.** The unit test verifies the prompt
-  lock holds; we haven't actually run `-j 8` against 1000 files
-  with live API access. Validate rate-limiter compliance and
-  prompt UX under load before declaring M7 production-ready.
-- **`-j` documentation.** CLI help mentions the flag exists but
-  doesn't yet recommend a sensible value or warn about thrashing
-  the rate limiter. Add notes after stress-testing.
-
----
-
-## Maintenance reminder
-
-When any item lands, move its bullet point out of this file and
-into a NEWS.md entry under the version that ships it. Don't let the
-list rot.

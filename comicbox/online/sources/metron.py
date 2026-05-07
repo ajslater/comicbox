@@ -85,15 +85,27 @@ class MetronOnlineSource(OnlineSource):
     _MAX_SERIES_PER_SEARCH: ClassVar[int] = 20
 
     def _build_issue_params(
-        self, profile: ComicProfile, series_id: int
+        self,
+        profile: ComicProfile,
+        series_id: int,
+        *,
+        cover_year_override: int | None = None,
     ) -> dict[str, Any]:
-        """Build the `issues_list` params filtering on a resolved series id."""
+        """
+        Build the `issues_list` params filtering on a resolved series id.
+
+        ``cover_year_override`` lets the ±1 retry-on-miss path supply a
+        neighboring year. When None, ``profile.year`` is used as-is.
+        """
         params: dict[str, Any] = {"series": series_id}
         # Strip leading zeros — Metron stores `number` without padding.
         if number := strip_issue_leading_zeros(profile.issue):
             params["number"] = number
-        if profile.year is not None:
-            params["cover_year"] = profile.year
+        cover_year = (
+            cover_year_override if cover_year_override is not None else profile.year
+        )
+        if cover_year is not None:
+            params["cover_year"] = cover_year
         return params
 
     def _to_candidate(
@@ -200,10 +212,43 @@ class MetronOnlineSource(OnlineSource):
             f"{profile.series!r}: {sample}"
         )
 
+        candidates = self._fetch_candidates_across_series(
+            session, profile, series_results, cover_year_override=None
+        )
+
+        # ±1 year retry on miss. Cover-date drift is real: a comic
+        # published in late 2019 can be cover-dated 2020-01. If the
+        # year-exact search came back empty, try Y-1 and Y+1 before
+        # giving up. Skipped if there's no year to relax.
+        if not candidates and profile.year is not None:
+            for delta in (-1, 1):
+                retry_year = profile.year + delta
+                logger.info(
+                    f"online {self.name}: 0 candidates at year={profile.year}, "
+                    f"retrying with cover_year={retry_year}"
+                )
+                retry = self._fetch_candidates_across_series(
+                    session, profile, series_results, cover_year_override=retry_year
+                )
+                candidates.extend(retry)
+
+        return candidates
+
+    def _fetch_candidates_across_series(
+        self,
+        session: Session,
+        profile: ComicProfile,
+        series_results: list[Any],
+        *,
+        cover_year_override: int | None,
+    ) -> list[Candidate]:
+        """Run `issues_list` once per series, accumulating candidates."""
         candidates: list[Candidate] = []
         for series in series_results:
             display = _series_display_name(series)
-            params = self._build_issue_params(profile, series.id)
+            params = self._build_issue_params(
+                profile, series.id, cover_year_override=cover_year_override
+            )
             try:
                 issues = session.issues_list(params=params)
             except Exception as exc:

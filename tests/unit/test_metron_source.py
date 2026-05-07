@@ -215,3 +215,102 @@ def test_series_id_works_without_profile_series(
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [9002]
     assert fake.series_list_calls == []
+
+
+# ---------------------------------------------------------- ±1 year retry
+
+
+class _YearAwareMokkari(_FakeMokkari):
+    """`issues_list` honors `cover_year` so we can exercise retry-on-miss."""
+
+    def __init__(
+        self,
+        series: list[_FakeBaseSeries],
+        issues_by_series_and_year: dict[tuple[int, int], list[_FakeBaseIssue]],
+    ) -> None:
+        super().__init__(series=series, issues_by_series={})
+        self._issues_by_series_and_year = issues_by_series_and_year
+
+    def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
+        params = dict(params or {})
+        self.issues_list_calls.append(params)
+        sid = params.get("series")
+        year = params.get("cover_year")
+        if sid is None or year is None:
+            return []
+        return list(self._issues_by_series_and_year.get((int(sid), int(year)), []))
+
+
+def test_year_retry_on_miss_finds_at_year_minus_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Year-exact returns nothing → retry at Y-1 succeeds."""
+    s = _FakeBaseSeries(sid=100, name="Foo")
+    issues_by_year = {
+        (100, 2019): [
+            _FakeBaseIssue(iid=900, number="1", series_name="Foo", cover_year=2019)
+        ],
+    }
+    fake = _YearAwareMokkari(series=[s], issues_by_series_and_year=issues_by_year)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [900]
+    # Three issues_list calls: the year-exact (2020), then Y-1 (2019)
+    # which hit, then Y+1 (2021) which the implementation runs eagerly.
+    years_tried = [c.get("cover_year") for c in fake.issues_list_calls]
+    assert years_tried == [2020, 2019, 2021]
+
+
+def test_year_retry_on_miss_finds_at_year_plus_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Year-exact returns nothing → retry at Y+1 succeeds."""
+    s = _FakeBaseSeries(sid=100, name="Foo")
+    issues_by_year = {
+        (100, 2021): [
+            _FakeBaseIssue(iid=901, number="1", series_name="Foo", cover_year=2021)
+        ],
+    }
+    fake = _YearAwareMokkari(series=[s], issues_by_series_and_year=issues_by_year)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [901]
+
+
+def test_year_exact_hit_does_not_trigger_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When year-exact returns candidates, no Y±1 calls are made."""
+    s = _FakeBaseSeries(sid=100, name="Foo")
+    issues_by_year = {
+        (100, 2020): [
+            _FakeBaseIssue(iid=900, number="1", series_name="Foo", cover_year=2020)
+        ],
+    }
+    fake = _YearAwareMokkari(series=[s], issues_by_series_and_year=issues_by_year)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [900]
+    years_tried = [c.get("cover_year") for c in fake.issues_list_calls]
+    assert years_tried == [2020]  # no retries
+
+
+def test_no_year_means_no_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Profile without a year skips the year filter and the retry path."""
+    s = _FakeBaseSeries(sid=100, name="Foo")
+    fake = _YearAwareMokkari(series=[s], issues_by_series_and_year={})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1)  # no year
+    candidates = src.search(profile)
+
+    assert candidates == []
+    # Exactly one issues_list call (the original) — no Y-1 / Y+1 because
+    # there's no year to relax.
+    assert len(fake.issues_list_calls) == 1
+    assert "cover_year" not in fake.issues_list_calls[0]
