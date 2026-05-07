@@ -129,25 +129,21 @@ nh3-backed HTML sanitization for description fields. What remains:
 
 ## F. Internals
 
-- ⚙️ **`--api-url metron:<url>` is currently a no-op.** mokkari's
-  `api()` factory has no URL-override parameter (only `dev_mode`
-  for the dev API). Either upstream a feature request to mokkari
-  or document the limitation in CLI help.
-- ⚙️ **Expose `min_confidence` as a CLI flag.** Currently internal;
-  power users tuning thresholds may want it. Argument against:
-  two thresholds confuse users, especially given (B) above.
-- ⚙️ **Expose `disambiguation_margin` and `top_k_for_hashing`.**
-  Internal constants today (0.10 and 5). Defer until calibration
-  data justifies user-facing knobs.
-- ⚙️ **`--id` series-id form.** metron-tagger's `--id` is a series
-  id (constrains search). Ours is issue-id. If users want
-  series-constrained search, add `--series-id <db>:<id>` later.
-- ⚙️ **Cleanup of `LegacyNestedMDStringSetField` /
-  `XmlLegacyNestedMDStringSetField`.** Now that
-  `MetadataSources.LEGACY_NESTED` is removed (M1), these field
-  classes' `is_nested_metadata` detection is unused. The fields
-  still serialize PDF `keywords` sanely; check whether the
-  detection branch can be deleted.
+Most of section F landed; what remains is upstream-coordination work
+and explicitly-declined exposure of internal knobs.
+
+- ⚙️ **mokkari `base_url` upstream feature request.** `--api-url
+  metron:<url>` is now documented as a no-op in CLI help and warns
+  loudly at runtime; the long-term fix is upstreaming a `base_url`
+  override into mokkari's `api()` factory. No comicbox-side work
+  beyond raising the issue.
+- 🚫 **Decided not to expose `min_confidence`.** Two thresholds
+  would confuse users, especially given (B). Stays internal until
+  the policy story in (B) settles.
+- 🚫 **Decided not to expose `disambiguation_margin` /
+  `top_k_for_hashing`.** Same rationale — power-user knobs without
+  calibration data behind them. Revisit if calibration (E) shows
+  a clearly-better value.
 
 ## G. Architecture (post-feature)
 

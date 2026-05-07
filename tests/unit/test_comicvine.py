@@ -224,7 +224,9 @@ class _FakeCV:
         return []
 
 
-def _make_cv_source(monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV) -> ComicVineOnlineSource:
+def _make_cv_source(
+    monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV
+) -> ComicVineOnlineSource:
     creds = OnlineSourceCredentials(api_key="test-key")
     settings = OnlineSettings()
     src = ComicVineOnlineSource(creds, settings)
@@ -255,6 +257,36 @@ def test_search_volumes_via_full_text(
     call = fake_cv.search_calls[0]
     assert call["resource"] == ComicvineResource.VOLUME
     assert call["query"] == "GI Joe"
+
+
+def _make_cv_source_with_series_id(
+    monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV, series_id: int
+) -> ComicVineOnlineSource:
+    creds = OnlineSourceCredentials(api_key="test-key")
+    settings = OnlineSettings(explicit_series_ids={"comicvine": series_id})
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src
+
+
+def test_search_series_id_skips_volume_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--series-id comicvine:NNN skips the volume search call entirely."""
+    issues = {500: [_FakeBasicIssue(iid=9001, number="7", volume_name="Direct")]}
+    fake_cv = _FakeCV(volumes=[], issues_by_volume=issues)
+    src = _make_cv_source_with_series_id(monkeypatch, fake_cv, series_id=500)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+    candidates = src.search(profile)
+
+    # The volume-search step was skipped.
+    assert fake_cv.search_calls == []
+    # list_issues ran exactly once with the explicit volume id in the filter.
+    assert len(fake_cv.list_issues_calls) == 1
+    filter_str = fake_cv.list_issues_calls[0].get("filter", "")
+    assert "volume:500" in filter_str
+    assert "issue_number:7" in filter_str  # leading zeros stripped
+    assert [c.issue_id for c in candidates] == [9001]
 
 
 def test_search_two_step_returns_candidates(

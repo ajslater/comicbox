@@ -168,3 +168,50 @@ def test_search_continues_on_per_series_issue_failure(
     profile = ComicProfile(series="X", issue="1", issue_int=1)
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [5001]
+
+
+# ---------------------------------------------------------- --series-id
+
+
+def _make_metron_source_with_series_id(
+    monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari, series_id: int
+) -> MetronOnlineSource:
+    creds = OnlineSourceCredentials(username="u", password="p")
+    settings = OnlineSettings(explicit_series_ids={"metron": series_id})
+    src = MetronOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake)
+    return src
+
+
+def test_series_id_skips_series_list_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--series-id metron:NNN goes straight to issues_list, no series_list."""
+    issues = {200: [_FakeBaseIssue(iid=9001, number="7", series_name="Bypassed")]}
+    fake = _FakeMokkari(series=[], issues_by_series=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=200)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+    candidates = src.search(profile)
+
+    # Step 1 (series_list) was skipped entirely.
+    assert fake.series_list_calls == []
+    # Step 2 ran exactly once with the explicit series id.
+    assert len(fake.issues_list_calls) == 1
+    call = fake.issues_list_calls[0]
+    assert call["series"] == 200
+    assert call["number"] == "7"  # leading zeros stripped
+    assert call["cover_year"] == 1952
+    assert [c.issue_id for c in candidates] == [9001]
+
+
+def test_series_id_works_without_profile_series(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When --series-id is set, missing profile.series is fine."""
+    issues = {300: [_FakeBaseIssue(iid=9002, number="1", series_name="Direct")]}
+    fake = _FakeMokkari(series=[], issues_by_series=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=300)
+    profile = ComicProfile(issue="1", issue_int=1)  # no series at all
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [9002]
+    assert fake.series_list_calls == []

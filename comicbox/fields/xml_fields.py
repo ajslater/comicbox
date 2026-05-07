@@ -9,7 +9,6 @@ from typing_extensions import override
 
 from comicbox.fields.collection_fields import (
     IntegerListField,
-    LegacyNestedMDStringSetField,
     ListField,
     StringListField,
     StringSetField,
@@ -144,12 +143,6 @@ class XmlStringListField(XmlListFieldMixin, StringListField):
 
 class XmlStringSetField(XmlListFieldMixin, StringSetField):
     """XML String Set Field."""
-
-    FIELD = XmlStringField
-
-
-class XmlLegacyNestedMDStringSetField(XmlListFieldMixin, LegacyNestedMDStringSetField):
-    """XML Legacy Nested String Set Field."""
 
     FIELD = XmlStringField
 

@@ -113,6 +113,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"not configured (missing credentials); skipping"
             )
             return
+        explicit_sid = online.explicit_series_ids.get(name)
+        if explicit_sid is not None:
+            logger.warning(
+                f"online: --series-id {name}:{explicit_sid} requested but "
+                f"{name} is not configured (missing credentials); skipping"
+            )
+            return
         # Was the source named explicitly via `--online <list>`? selected
         # is None for the `all` sentinel; only warn for explicit lists.
         if online.selected_sources is not None and name in online.selected_sources:
@@ -363,8 +370,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         # Show what's actually sent: leading zeros stripped from issue#.
         search_issue = strip_issue_leading_zeros(profile.issue)
         criteria_summary = (
-            f"series={profile.series!r} issue={search_issue!r} "
-            f"year={profile.year}"
+            f"series={profile.series!r} issue={search_issue!r} year={profile.year}"
         )
         logger.info(f"online {source.name}: searching with {criteria_summary}")
         try:

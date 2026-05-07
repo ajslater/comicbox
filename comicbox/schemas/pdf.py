@@ -4,14 +4,10 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collection_fields import (
-    LegacyNestedMDStringSetField,
-    StringSetField,
-)
+from comicbox.fields.collection_fields import StringSetField
 from comicbox.fields.fields import StringField
 from comicbox.fields.pdf import PdfDateTimeField
 from comicbox.fields.xml_fields import (
-    XmlLegacyNestedMDStringSetField,
     XmlPdfDateTimeField,
     XmlStringField,
     XmlStringSetField,
@@ -33,7 +29,7 @@ class MuPDFSubSchema(JsonSubSchema):
 
     author = StringSetField(as_string=True)
     creator = StringField()
-    keywords = LegacyNestedMDStringSetField(as_string=True)
+    keywords = StringSetField(as_string=True)
     modDate = PdfDateTimeField()  # noqa: N815
     producer = StringField()
     subject = StringSetField(as_string=True)
@@ -60,7 +56,7 @@ class PDFSubSchema(BaseSubSchema):
                 "@xmlns:pdf": Constant("http://ns.adobe.com/pdf/1.3/"),
                 "pdf:Author": XmlStringSetField(as_string=True),
                 "pdf:Creator": XmlStringField(),
-                "pdf:Keywords": XmlLegacyNestedMDStringSetField(as_string=True),
+                "pdf:Keywords": XmlStringSetField(as_string=True),
                 "pdf:ModDate": XmlPdfDateTimeField(),
                 "pdf:Producer": XmlStringField(),
                 "pdf:Subject": XmlStringSetField(as_string=True),

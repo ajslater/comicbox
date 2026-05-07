@@ -325,6 +325,21 @@ def _add_online_options(option_group: Any) -> None:
         ),
     )
     option_group.add_argument(
+        "--series-id",
+        action="append",
+        dest="explicit_series_ids",
+        default=None,
+        metavar="DB:ID",
+        help=(
+            "Constrain search to a specific series id from named source — "
+            "skips the per-source series-discovery API call (saves up to "
+            "[green]20[/green] requests). Filename-extracted issue number "
+            "and year still apply. Implicitly enables online for that "
+            "source. ComicVine accepts both [green]comicvine:NNN[/green] "
+            "and [green]comicvine:4050-NNN[/green] (volume resource type)."
+        ),
+    )
+    option_group.add_argument(
         "--accept-only",
         dest="accept_only",
         action="store_true",
@@ -422,7 +437,9 @@ def _add_online_options(option_group: Any) -> None:
         default=None,
         metavar="DB:URL",
         help=(
-            "Override base URL for a source (e.g. self-hosted Metron mirror). "
+            "Override base URL for a source (e.g. self-hosted ComicVine mirror). "
+            "Note: [yellow]metron[/yellow] is a no-op — mokkari's api() factory "
+            "has no URL-override parameter. "
             "See the [cyan]Online sources[/cyan] table below for valid DB names."
         ),
     )

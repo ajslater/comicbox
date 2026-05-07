@@ -104,7 +104,9 @@ class ComicVineOnlineSource(OnlineSource):
                 return str(url)
         return None
 
-    def _to_candidate(self, basic_issue: Any, volume_name: str | None = None) -> Candidate:
+    def _to_candidate(
+        self, basic_issue: Any, volume_name: str | None = None
+    ) -> Candidate:
         """
         Map simyan's `BasicIssue` to a Candidate.
 
@@ -136,6 +138,26 @@ class ComicVineOnlineSource(OnlineSource):
             precomputed_cover_hash=None,
         )
 
+    def _list_issues_by_volume(
+        self,
+        session: Any,
+        volume_id: int,
+        issue_number: str | None,
+        volume_name: str | None = None,
+    ) -> list[Candidate]:
+        """
+        Run a single ``list_issues`` call constrained by volume id.
+
+        Used both by the fast path (`--series-id comicvine:<id>`) and by
+        each iteration of the discovery two-step. ``volume_name`` is set
+        on the returned candidates' summary when available.
+        """
+        issue_filter = [f"volume:{volume_id}"]
+        if issue_number:
+            issue_filter.append(f"issue_number:{issue_number}")
+        issues = session.list_issues(params={"filter": ",".join(issue_filter)})
+        return [self._to_candidate(i, volume_name) for i in issues]
+
     @with_retry()
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
@@ -152,19 +174,38 @@ class ComicVineOnlineSource(OnlineSource):
         2. For each volume, ``list_issues`` filtered by ``volume:VOL_ID``
            and ``issue_number:N`` → candidate issues for that volume.
 
+        ``--series-id comicvine:<id>`` short-circuits step 1 and runs
+        only step 2 against the supplied volume id.
+
         Year is intentionally NOT used as a volume `start_year` filter —
         a comic dated 2020 can be issue #100 of a series that started in
         1963. Year ranking is left to the matcher's metadata score.
         """
+        session = self._get_session()
+        issue_number = strip_issue_leading_zeros(profile.issue)
+        # Fast path: --series-id comicvine:<id> skips the volume search and
+        # goes straight to a single list_issues call constrained by that
+        # volume id, saving the discovery API call.
+        explicit_sid = self._settings.explicit_series_ids.get(self.name)
+        if explicit_sid is not None:
+            try:
+                return self._list_issues_by_volume(session, explicit_sid, issue_number)
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for volume {explicit_sid} "
+                    f"failed: {exc}"
+                )
+                raise
+
         if not profile.series:
             logger.debug(
                 f"online {self.name}: no series in profile; cannot search CV "
-                "(use --id comicvine:<id> for direct lookup)"
+                "(use --id comicvine:<id> for direct lookup, or "
+                "--series-id comicvine:<id>)"
             )
             return []
         from simyan.comicvine import ComicvineResource
 
-        session = self._get_session()
         try:
             volumes = session.search(
                 resource=ComicvineResource.VOLUME,
@@ -188,15 +229,11 @@ class ComicVineOnlineSource(OnlineSource):
             f"series={profile.series!r}: {sample}"
         )
 
-        issue_number = strip_issue_leading_zeros(profile.issue)
         candidates: list[Candidate] = []
         for vol in volumes:
-            issue_filter = [f"volume:{vol.id}"]
-            if issue_number:
-                issue_filter.append(f"issue_number:{issue_number}")
             try:
-                issues = session.list_issues(
-                    params={"filter": ",".join(issue_filter)},
+                candidates.extend(
+                    self._list_issues_by_volume(session, vol.id, issue_number, vol.name)
                 )
             except Exception as exc:
                 logger.warning(
@@ -204,7 +241,6 @@ class ComicVineOnlineSource(OnlineSource):
                     f"({vol.name!r}) failed: {exc}"
                 )
                 continue
-            candidates.extend(self._to_candidate(i, vol.name) for i in issues)
         return candidates
 
 

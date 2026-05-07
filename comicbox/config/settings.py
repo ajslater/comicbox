@@ -40,6 +40,9 @@ class OnlineSettings:
     enabled: bool = False
     selected_sources: frozenset[str] | None = None
     explicit_ids: Mapping[str, int] = field(default_factory=dict)
+    # Optional `--series-id <db>:<id>`: skips the per-source series-discovery
+    # step and constrains issue lookup to the named series id directly.
+    explicit_series_ids: Mapping[str, int] = field(default_factory=dict)
 
     # Persistent (config file + env var; CLI flag may override)
     confidence_threshold: float = 0.85

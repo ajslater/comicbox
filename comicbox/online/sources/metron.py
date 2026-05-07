@@ -57,6 +57,15 @@ class MetronOnlineSource(OnlineSource):
     def _get_session(self) -> Session:
         from mokkari import api
 
+        if self._credentials.url:
+            # mokkari's api() factory has no URL-override parameter (only
+            # dev_mode for the dev API), so --api-url metron:<url> can't
+            # actually be honored. Warn so the user notices.
+            logger.warning(
+                f"online {self.name}: --api-url is a no-op for metron "
+                f"(mokkari has no base_url override); ignoring "
+                f"{self._credentials.url!r}"
+            )
         return api(
             username=self._credentials.username,
             passwd=self._credentials.password,
@@ -146,13 +155,31 @@ class MetronOnlineSource(OnlineSource):
         an undocumented mokkari parameter and the two-step is what
         metron-tagger uses.
         """
+        session = self._get_session()
+        # Fast path: --series-id metron:<id> skips the discovery call and goes
+        # straight to issue lookup against the supplied series id. The series
+        # name on candidates falls back to whatever `BaseIssue.series.name` we
+        # get back; we don't pre-resolve it because that'd cost the call we
+        # just saved.
+        explicit_sid = self._settings.explicit_series_ids.get(self.name)
+        if explicit_sid is not None:
+            params = self._build_issue_params(profile, explicit_sid)
+            try:
+                issues = session.issues_list(params=params)
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for series id "
+                    f"{explicit_sid} failed: {exc}"
+                )
+                raise
+            return [self._to_candidate(i) for i in issues]
+
         if not profile.series:
             logger.debug(
                 f"online {self.name}: no series in profile; cannot search Metron "
-                "(use --id metron:<id> for direct lookup)"
+                "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
             )
             return []
-        session = self._get_session()
         try:
             series_results = session.series_list(params={"name": profile.series})
         except Exception as exc:
@@ -164,8 +191,7 @@ class MetronOnlineSource(OnlineSource):
         series_results = list(series_results)[: self._MAX_SERIES_PER_SEARCH]
         sample_size = 5
         sample = ", ".join(
-            f"{getattr(s, 'display_name', None) or s.name} ({s.id})"
-            for s in series_results[:sample_size]
+            f"{_series_display_name(s)} ({s.id})" for s in series_results[:sample_size]
         )
         if len(series_results) > sample_size:
             sample += " ..."
@@ -176,14 +202,27 @@ class MetronOnlineSource(OnlineSource):
 
         candidates: list[Candidate] = []
         for series in series_results:
+            display = _series_display_name(series)
             params = self._build_issue_params(profile, series.id)
             try:
                 issues = session.issues_list(params=params)
             except Exception as exc:
                 logger.warning(
                     f"online {self.name}: issue-list for series {series.id} "
-                    f"({series.name!r}) failed: {exc}"
+                    f"({display!r}) failed: {exc}"
                 )
                 continue
-            candidates.extend(self._to_candidate(i, series.name) for i in issues)
+            candidates.extend(self._to_candidate(i, display) for i in issues)
         return candidates
+
+
+def _series_display_name(series: Any) -> str:
+    """
+    Pull the human-readable name out of a mokkari series-shaped object.
+
+    `BaseSeries` exposes `display_name` (alias from `series` in the JSON);
+    full `Series` and our test fakes expose `name`. Prefer `display_name`
+    so this works against the real `series_list` response while still
+    accommodating either shape.
+    """
+    return getattr(series, "display_name", None) or getattr(series, "name", None) or ""

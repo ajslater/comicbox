@@ -2,7 +2,7 @@
 
 import os
 from argparse import Namespace
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -223,6 +223,7 @@ class _RuntimeOnlineInputs:
     enabled: bool = False
     selected_sources: frozenset[str] | None = None
     explicit_ids: Mapping[str, int] = field(default_factory=dict)
+    explicit_series_ids: Mapping[str, int] = field(default_factory=dict)
     no_cache: bool = False
     refresh_cache: bool = False
 
@@ -322,6 +323,7 @@ def _build_online_settings(
         enabled=runtime.enabled,
         selected_sources=runtime.selected_sources,
         explicit_ids=dict(runtime.explicit_ids),
+        explicit_series_ids=dict(runtime.explicit_series_ids),
         confidence_threshold=confidence_threshold,
         skip_multiple=skip_multiple,
         accept_only=accept_only,
@@ -335,6 +337,9 @@ def _build_online_settings(
     )
 
 
+_CV_VOLUME_RESOURCE_TYPE = 4050
+
+
 def _parse_explicit_id(source: str, raw: str) -> int:
     """
     Normalize the raw `--id` value for a source into a numeric issue id.
@@ -342,7 +347,7 @@ def _parse_explicit_id(source: str, raw: str) -> int:
     ComicVine ids are sometimes shown with a 4-digit resource-type prefix
     (e.g. `4000-12345` where `4000` = issue). This accepts both
     `--id comicvine:12345` and `--id comicvine:4000-12345`. Other resource
-    types (e.g. 4005 volume) are rejected since the ID flag is for tagging
+    types (e.g. 4050 volume) are rejected since the ID flag is for tagging
     a comic by issue id.
 
     All other sources expect a bare integer.
@@ -364,6 +369,59 @@ def _parse_explicit_id(source: str, raw: str) -> int:
         raise ValueError(reason) from exc
 
 
+def _parse_db_id_list(
+    raw_list: Iterable[str] | None,
+    flag_name: str,
+    parse_value: Callable[[str, str], int],
+) -> dict[str, int]:
+    """
+    Parse a list of `DB:ID` strings (from `--id` or `--series-id`).
+
+    `parse_value(source, value)` converts each value to an int (with
+    source-specific normalization, e.g. CV's `4000-NNN` form).
+    """
+    out: dict[str, int] = {}
+    for raw in raw_list or ():
+        if ":" not in raw:
+            reason = f"{flag_name} expects DB:ID, got {raw!r}"
+            raise ValueError(reason)
+        source, _, value = raw.partition(":")
+        source = source.strip().lower()
+        if source not in SOURCE_NAMES:
+            reason = (
+                f"{flag_name}: unknown source {source!r}; "
+                f"known: {', '.join(SOURCE_NAMES)}"
+            )
+            raise ValueError(reason)
+        out[source] = parse_value(source, value)
+    return out
+
+
+def _parse_explicit_series_id(source: str, raw: str) -> int:
+    """
+    Normalize the raw `--series-id` value into a numeric series/volume id.
+
+    For ComicVine, accepts both `comicvine:NNN` and `comicvine:4050-NNN`
+    (volume resource type). Other resource types are rejected. All other
+    sources expect a bare integer (Metron series id, etc.).
+    """
+    raw = raw.strip()
+    if source == "comicvine" and (m := PARSE_COMICVINE_RE.fullmatch(raw)):
+        id_type = int(m.group("id_type"))
+        if id_type != _CV_VOLUME_RESOURCE_TYPE:
+            reason = (
+                f"--series-id comicvine:{raw}: resource type {id_type} is "
+                f"not supported (expected {_CV_VOLUME_RESOURCE_TYPE} = volume)"
+            )
+            raise ValueError(reason)
+        return int(m.group("id_key"))
+    try:
+        return int(raw)
+    except ValueError as exc:
+        reason = f"--series-id: non-numeric id {raw!r} for {source}"
+        raise ValueError(reason) from exc
+
+
 def _runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
@@ -379,22 +437,18 @@ def _runtime_online_inputs(
 
     online_arg: Any = getattr(cns, "online_sources", None)
 
-    explicit_raw: list[str] = list(getattr(cns, "explicit_ids", None) or ())
-    explicit_ids: dict[str, int] = {}
-    for raw in explicit_raw:
-        if ":" not in raw:
-            reason = f"--id expects DB:ID, got {raw!r}"
-            raise ValueError(reason)
-        source, _, value = raw.partition(":")
-        source = source.strip().lower()
-        if source not in SOURCE_NAMES:
-            reason = (
-                f"--id: unknown source {source!r}; known: {', '.join(SOURCE_NAMES)}"
-            )
-            raise ValueError(reason)
-        explicit_ids[source] = _parse_explicit_id(source, value)
+    explicit_ids = _parse_db_id_list(
+        getattr(cns, "explicit_ids", None), "--id", _parse_explicit_id
+    )
+    explicit_series_ids = _parse_db_id_list(
+        getattr(cns, "explicit_series_ids", None),
+        "--series-id",
+        _parse_explicit_series_id,
+    )
 
-    explicit_id_sources = frozenset(explicit_ids.keys())
+    explicit_id_sources = frozenset(explicit_ids.keys()) | frozenset(
+        explicit_series_ids.keys()
+    )
 
     selected: frozenset[str] | None
     if online_arg is None:
@@ -434,6 +488,7 @@ def _runtime_online_inputs(
         enabled=runtime_enabled,
         selected_sources=selected,
         explicit_ids=explicit_ids,
+        explicit_series_ids=explicit_series_ids,
         no_cache=no_cache,
         refresh_cache=refresh_cache,
     )

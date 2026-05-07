@@ -255,31 +255,3 @@ class IntegerListField(StringListField):
     def __init__(self, *args: Any, sort: bool = False, **kwargs: Any) -> None:
         """Use not sorting as the default."""
         super().__init__(*args, sort=sort, **kwargs)
-
-
-class LegacyNestedMDStringSetField(StringSetField):
-    """Copy data from the legacy special nested field."""
-
-    JSON_XML_START_CHARS = frozenset({"<", "{"})
-
-    @classmethod
-    def is_nested_metadata(cls, value: Any) -> bool:
-        """Return if this looks like a json or xml string."""
-        return (
-            isinstance(value, str)
-            and bool(stripped_value := value.lstrip())
-            and (stripped_value[0] in cls.JSON_XML_START_CHARS)
-        )
-
-    @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
-        self,
-        value: list[str] | str,
-        attr: str,
-        data: dict[str, Any],
-        *args: Any,
-        **kwargs: Any,
-    ) -> set[str | None] | list[str | None] | str | None:
-        if self.is_nested_metadata(value):
-            return StringField().deserialize(value)
-        return super()._deserialize(value, attr, data, *args, **kwargs)
