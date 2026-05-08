@@ -19,3 +19,11 @@ include cfg/help.mk
 ## @category Test
 calibrate:
 	uv run python -m tests.calibration.run
+
+## Bootstrap a calibration fixtures.json from already-tagged comics.
+## Use CALIBRATE_PATHS=... to override paths; defaults to a Milliways layout.
+## @category Test
+CALIBRATE_PATHS ?= ~/Milliways/Comics/Test ~/Milliways/Comics/full/demo
+.PHONY: calibrate-bootstrap
+calibrate-bootstrap:
+	uv run python -m tests.calibration.bootstrap $(CALIBRATE_PATHS)

@@ -27,7 +27,30 @@ defaults against your own comic library.
 
    Or set env vars (`COMICBOX_METRON_USERNAME`, etc.).
 
-2. **Build a fixtures.json.** Copy the example and edit:
+2. **Build a fixtures.json.**
+
+   **Easy mode** — if your library is already tagged with metron / cv ids
+   (from previous metron-tagger / comictagger / comicbox runs), bootstrap
+   the fixture set automatically:
+
+   ```sh
+   # Walk a directory, extract existing tags, write fixtures.json:
+   uv run python -m tests.calibration.bootstrap ~/Milliways/Comics/Test
+
+   # Mark all entries as thumbnail-quality (e.g. for slimlib):
+   uv run python -m tests.calibration.bootstrap ~/Milliways/slimlib \
+       --cover-quality thumbnail \
+       --output tests/calibration/fixtures-slim.json
+
+   # Cross-source calibration only — both ids required:
+   uv run python -m tests.calibration.bootstrap \
+       ~/Milliways/Comics/Test --require-both
+   ```
+
+   See `make calibrate-bootstrap` for the default invocation.
+
+   **Manual mode** — if your library is mostly untagged, copy the
+   example and edit by hand:
 
    ```sh
    cp tests/calibration/fixtures.example.json tests/calibration/fixtures.json
