@@ -15,64 +15,17 @@ Marker conventions:
 
 ## 1. Match resolution UX
 
-The full design has been signed off and lives in
-[match-resolution-user-doc.md](match-resolution-user-doc.md). What's
-left is implementation, polish, and user-facing documentation.
-
-### Implement the new policy scheme
-
-- ⭐ **`--unattended` and `--policy <name>` flags.** Replace the current
-  `--accept-only` / `--skip-multiple` flags. `--policy` accepts
-  `always-prompt|strict|normal|eager`, default `normal`. `--unattended`
-  is a boolean: when set, prompts become SKIPs.
-- ⭐ **Per-source override syntax** for both `--policy` and
-  `--confidence-threshold` (mirrors the existing `--id <db>:<id>` and
-  `--api-url <db>:<url>` pattern). Resolution: per-source > global >
-  built-in default. Internal thresholds (`min_confidence`,
-  `disambiguation_margin`) get the same per-source machinery internally
-  even though they're not user-exposed yet.
-- ⭐ **Algorithm change: redefine `eager`** as `top.score ≥ 0.85 OR
-  solo_viable` so `strict ⊂ normal ⊂ eager` containment holds.
-  Currently `eager` would fail to auto-write a sole 0.65 candidate that
-  `normal` happily takes — wart documented in scenarios 3 and 5 of the
-  user-doc.
-- **Reject `--policy always-prompt --unattended`** at config-validation
-  time. Nonsensical (every comic skips, no work is done) and almost
-  certainly a user error.
-- **No-TTY hint at startup** when interactive mode runs without a TTY
-  and no programmatic prompt callback is registered. One-time log:
-  *"no TTY detected; pass `--unattended` if you don't expect to see
-  prompts."*
-- **Distinct SKIP vs NO_MATCH counts in the end-of-run summary.**
-  Currently collapsed; users can't tell "comicbox declined to choose"
-  from "the database didn't know."
-- **Deprecation path for legacy flags.** `--accept-only` and
-  `--skip-multiple` warn-and-translate during a transition period,
-  then are removed.
-
-### User-facing documentation
-
-- ⭐ **Clear CLI `--help` and README docs for match-resolution
-  parameters.** This stuff is dense — the user shouldn't need to read
-  the design doc to use it. `--help` should at minimum:
-    - Spell out what each `--policy` value means in one line each.
-    - Show what `--unattended` actually does (prompt → skip).
-    - Include a 1-paragraph worked example or table of "you'll see
-      auto-write / prompt / skip in case X."
-
-  README should walk through one or two practical recipes
-  (interactive single comic, unattended cron, library-as-codex) so
-  users can copy-paste a working incantation.
-
-### Pre-existing item
+The new policy/unattended scheme has shipped (commits 2a4e4a5 and
+3895be7). Design doc: [match-resolution-user-doc.md](match-resolution-user-doc.md).
+What remains here is one deferred polish item.
 
 - **5-minute prompt timeout.** Spec'd in
   [04-match-resolution-spec.md](04-match-resolution-spec.md) but not
-  implemented in M5. `signal.SIGALRM` is platform-conditional;
+  implemented. `signal.SIGALRM` is platform-conditional;
   `select.select` on stdin would work cross-platform. Useful when an
   interactive run starts and the user walks away — prompt times out
-  and SKIPs rather than hanging forever. Less urgent post-`--unattended`
-  (the cron-job case is now covered by the explicit flag).
+  and SKIPs rather than hanging forever. Less urgent now that
+  `--unattended` covers the cron-job case explicitly.
 
 
 ## 2. Calibration & defaults

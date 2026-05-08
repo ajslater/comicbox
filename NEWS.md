@@ -2,13 +2,29 @@
 
 ## v4.0.0 - Online Metadata Tagging
 
-- Online metadata lookup from Metron and ComicVine, with interactive
-  disambiguation and confidence-based auto-write. (In progress.)
+- Online metadata lookup from Metron and ComicVine, with confidence-based
+  auto-write, interactive disambiguation, and unattended bulk modes.
+    - `--online <sources>` enables lookup. `--id <db>:<id>` and
+      `--series-id <db>:<id>` for direct fetch / search constraint.
+    - `--policy {always-prompt | strict | normal | eager}` controls how
+      aggressively comicbox writes a match without asking. Default `normal`
+      auto-writes obvious wins and sole plausible matches, prompts on close
+      calls. Per-source overrides via `--policy metron:eager`.
+    - `--unattended` turns prompts into skips for cron / batch use.
+    - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally
+      or per source.
+    - End-of-run summary shows distinct AUTO_WRITE / PROMPT / SKIP /
+      NO_MATCH counts.
+    - Cross-source disagreement: when Metron's stored `cv_id` and our
+      independent ComicVine match disagree, comicbox logs a WARNING.
 - Breaking changes
     - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
       alias through 4.x and is removed in 5.0.
     - PDFs that hid comicbox metadata as JSON or XML inside their `keywords`
       field are no longer auto-decoded.
+    - `--accept-only` and `--skip-multiple` are deprecated in favor of
+      `--policy` and `--unattended`. The legacy flags still work but emit a
+      deprecation warning and translate to the new flags. Removed in 5.0.
 
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
