@@ -2,7 +2,7 @@
 
 Single source of truth for everything that came up during M1–M7
 implementation but was deferred from the v1 scope. Sections are roughly
-in order of priority: section 1 is the next thing to ship, section 4 is
+in order of priority: section 1 is the next thing to ship, section 3 is
 the most distant.
 
 Marker conventions:
@@ -13,22 +13,7 @@ Marker conventions:
 - 🚫 — explicitly declined / deferred indefinitely; here for the record.
 
 
-## 1. Match resolution UX
-
-The new policy/unattended scheme has shipped (commits 2a4e4a5 and
-3895be7). Design doc: [match-resolution-user-doc.md](match-resolution-user-doc.md).
-What remains here is one deferred polish item.
-
-- **5-minute prompt timeout.** Spec'd in
-  [04-match-resolution-spec.md](04-match-resolution-spec.md) but not
-  implemented. `signal.SIGALRM` is platform-conditional;
-  `select.select` on stdin would work cross-platform. Useful when an
-  interactive run starts and the user walks away — prompt times out
-  and SKIPs rather than hanging forever. Less urgent now that
-  `--unattended` covers the cron-job case explicitly.
-
-
-## 2. Calibration & defaults
+## 1. Calibration & defaults
 
 - **Default `--confidence-threshold` and `min_confidence`.** Currently
   placeholders (0.85 and 0.50). Calibrate against a curated fixture
@@ -48,7 +33,7 @@ What remains here is one deferred polish item.
   belongs with the calibration harness, not a guess.
 
 
-## 3. Stress test & parallelism
+## 2. Stress test & parallelism
 
 - **Real-load stress test.** The unit test verifies the prompt lock
   holds; we haven't actually run `-j 8` against 1000 files with live
@@ -59,7 +44,7 @@ What remains here is one deferred polish item.
   rate limiter. Add notes after stress-testing.
 
 
-## 4. Architecture (post-feature)
+## 3. Architecture (post-feature)
 
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo,
   MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF, Metron API,
