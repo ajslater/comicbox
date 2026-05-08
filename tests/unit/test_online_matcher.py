@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comicbox.config.settings import OnlineSettings
+from comicbox.config.settings import OnlineSettings, Policy
 from comicbox.online.matcher import (
     OnlineMatcher,
     ResolutionKind,
@@ -247,12 +247,11 @@ def test_partial_match_above_min_confidence() -> None:
 def _settings(**overrides) -> OnlineSettings:
     return OnlineSettings(
         confidence_threshold=overrides.pop("confidence_threshold", 0.85),
-        skip_multiple=overrides.pop("skip_multiple", False),
-        accept_only=overrides.pop("accept_only", False),
         **overrides,
     )
 
 
+# Default policy is `normal`, default unattended is False.
 def test_auto_write_when_top_clears_threshold_with_gap() -> None:
     matcher = OnlineMatcher()
     ranked = [
@@ -260,7 +259,7 @@ def test_auto_write_when_top_clears_threshold_with_gap() -> None:
         _candidate(issue_id=2, year=2010),  # far off year
     ]
     ranked = matcher.rank(_profile(), ranked)
-    res = matcher.resolve(ranked, _settings())
+    res = matcher.resolve(ranked, _settings(), source_name="metron")
     assert res.kind is ResolutionKind.AUTO_WRITE
     assert res.chosen is not None
     assert res.chosen.issue_id == 1
@@ -271,7 +270,7 @@ def test_no_match_when_all_below_min_confidence() -> None:
     # All candidates are wildly wrong.
     bad = [_candidate(series="Totally Different Series", issue="999", year=1900)]
     ranked = matcher.rank(_profile(), bad)
-    res = matcher.resolve(ranked, _settings())
+    res = matcher.resolve(ranked, _settings(), source_name="metron")
     assert res.kind is ResolutionKind.NO_MATCH
 
 
@@ -283,11 +282,14 @@ def test_prompt_when_close_call_default_policy() -> None:
         _candidate(issue_id=2, page_count=22),  # tiny ding
     ]
     ranked = matcher.rank(_profile(), candidates)
-    res = matcher.resolve(ranked, _settings(confidence_threshold=0.99))
+    res = matcher.resolve(
+        ranked, _settings(confidence_threshold=0.99), source_name="metron"
+    )
     assert res.kind is ResolutionKind.PROMPT
 
 
-def test_skip_multiple_skips_when_close() -> None:
+def test_strict_unattended_skips_when_close() -> None:
+    """`--unattended --policy strict` skips ambiguous → SKIP."""
     matcher = OnlineMatcher()
     candidates = [
         _candidate(issue_id=1),
@@ -295,20 +297,108 @@ def test_skip_multiple_skips_when_close() -> None:
     ]
     ranked = matcher.rank(_profile(), candidates)
     res = matcher.resolve(
-        ranked, _settings(confidence_threshold=0.99, skip_multiple=True)
+        ranked,
+        _settings(confidence_threshold=0.99, policy=Policy.STRICT, unattended=True),
+        source_name="metron",
     )
     assert res.kind is ResolutionKind.SKIP
 
 
-def test_accept_only_accepts_solo_below_threshold() -> None:
+def test_normal_accepts_solo_below_threshold() -> None:
+    """`--policy normal` (default) takes a sole viable candidate even below auto-write bar."""
     matcher = OnlineMatcher()
-    # One viable candidate only, but score is below the high threshold.
     candidates = [
         _candidate(issue_id=1, page_count=22),  # 0.7 weight on pages
     ]
     ranked = matcher.rank(_profile(), candidates)
     res = matcher.resolve(
-        ranked, _settings(confidence_threshold=0.99, accept_only=True)
+        ranked, _settings(confidence_threshold=0.99), source_name="metron"
     )
     assert res.kind is ResolutionKind.AUTO_WRITE
+    assert res.chosen is not None
     assert res.chosen.issue_id == 1
+
+
+def test_strict_prompts_solo_below_threshold() -> None:
+    """`--policy strict` requires unambig — solo viable below threshold prompts."""
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, page_count=22)]
+    ranked = matcher.rank(_profile(), candidates)
+    res = matcher.resolve(
+        ranked,
+        _settings(confidence_threshold=0.99, policy=Policy.STRICT),
+        source_name="metron",
+    )
+    assert res.kind is ResolutionKind.PROMPT
+
+
+def test_eager_waives_gap_rule() -> None:
+    """`--policy eager` auto-writes top above threshold even with narrow gap."""
+    matcher = OnlineMatcher()
+    candidates = [
+        _candidate(issue_id=1),
+        _candidate(issue_id=2, page_count=22),  # similar score
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    # Pick a threshold that the top clears but the runner-up nearly does too.
+    res = matcher.resolve(
+        ranked,
+        _settings(confidence_threshold=0.50, policy=Policy.EAGER),
+        source_name="metron",
+    )
+    assert res.kind is ResolutionKind.AUTO_WRITE
+
+
+def test_always_prompt_never_auto_writes() -> None:
+    """`always-prompt` defers every viable case to the user."""
+    matcher = OnlineMatcher()
+    ranked = [
+        _candidate(issue_id=1),  # perfect match
+        _candidate(issue_id=2, year=2010),
+    ]
+    ranked = matcher.rank(_profile(), ranked)
+    res = matcher.resolve(
+        ranked, _settings(policy=Policy.ALWAYS_PROMPT), source_name="metron"
+    )
+    assert res.kind is ResolutionKind.PROMPT
+
+
+def test_per_source_policy_override() -> None:
+    """`policy_per_source['comicvine'] = strict` overrides the global policy."""
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, page_count=22)]
+    ranked = matcher.rank(_profile(), candidates)
+    settings = _settings(
+        confidence_threshold=0.99,
+        policy=Policy.NORMAL,
+        policy_per_source={"comicvine": Policy.STRICT},
+    )
+    # Metron uses global = normal → AUTO_WRITE solo.
+    res_metron = matcher.resolve(ranked, settings, source_name="metron")
+    assert res_metron.kind is ResolutionKind.AUTO_WRITE
+    # ComicVine uses override = strict → PROMPT.
+    res_cv = matcher.resolve(ranked, settings, source_name="comicvine")
+    assert res_cv.kind is ResolutionKind.PROMPT
+
+
+def test_per_source_confidence_threshold_override() -> None:
+    """`confidence_threshold_per_source` lets one source use a different bar."""
+    matcher = OnlineMatcher()
+    # Two candidates, both viable, top ~0.875 with small gap (year way off
+    # docks ~0.125; page_count off docks a small extra). `eager` policy
+    # depends only on threshold — neither solo_viable nor unambig fire here,
+    # so the per-source threshold is the deciding knob.
+    candidates = [
+        _candidate(issue_id=1, year=2010),
+        _candidate(issue_id=2, year=2010, page_count=22),
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    settings = _settings(
+        confidence_threshold=0.99,
+        confidence_threshold_per_source={"metron": 0.50},
+        policy=Policy.EAGER,
+    )
+    res_metron = matcher.resolve(ranked, settings, source_name="metron")
+    assert res_metron.kind is ResolutionKind.AUTO_WRITE
+    res_cv = matcher.resolve(ranked, settings, source_name="comicvine")
+    assert res_cv.kind is ResolutionKind.PROMPT

@@ -192,6 +192,120 @@ def test_confidence_threshold_cli_override() -> None:
     assert cfg.online.confidence_threshold == 0.95
 
 
+# --------------------------------------- new policy/unattended scheme
+
+
+def test_policy_default_is_normal() -> None:
+    cli = Namespace(online_sources=["all"])
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.policy is Policy.NORMAL
+    assert cfg.online.unattended is False
+
+
+def test_policy_global_cli_override() -> None:
+    cli = Namespace(online_sources=["all"], policy=["eager"])
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.policy is Policy.EAGER
+
+
+def test_policy_per_source_cli_override() -> None:
+    cli = Namespace(
+        online_sources=["all"],
+        policy=["strict", "metron:eager"],
+    )
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.policy is Policy.STRICT
+    assert cfg.online.policy_per_source == {"metron": Policy.EAGER}
+
+
+def test_policy_unknown_name_errors() -> None:
+    import pytest
+
+    cli = Namespace(online_sources=["all"], policy=["bogus"])
+    with pytest.raises(ValueError, match="--policy: unknown name"):
+        get_config(Namespace(comicbox=cli))
+
+
+def test_policy_unknown_source_errors() -> None:
+    import pytest
+
+    cli = Namespace(online_sources=["all"], policy=["bogus_source:eager"])
+    with pytest.raises(ValueError, match="--policy: unknown source"):
+        get_config(Namespace(comicbox=cli))
+
+
+def test_unattended_cli_flag() -> None:
+    cli = Namespace(online_sources=["all"], unattended=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.unattended is True
+
+
+def test_always_prompt_with_unattended_rejects() -> None:
+    import pytest
+
+    cli = Namespace(online_sources=["all"], policy=["always-prompt"], unattended=True)
+    with pytest.raises(ValueError, match="always-prompt with --unattended is invalid"):
+        get_config(Namespace(comicbox=cli))
+
+
+def test_per_source_confidence_threshold_cli() -> None:
+    cli = Namespace(
+        online_sources=["all"],
+        confidence_threshold=["0.85", "metron:0.75", "comicvine:0.95"],
+    )
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.confidence_threshold == 0.85
+    assert cfg.online.confidence_threshold_per_source == {
+        "metron": 0.75,
+        "comicvine": 0.95,
+    }
+
+
+def test_legacy_skip_multiple_translates_with_warning() -> None:
+    """Legacy `--skip-multiple` → `--unattended --policy strict`."""
+    cli = Namespace(online_sources=["all"], skip_multiple=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.unattended is True
+    assert cfg.online.policy is Policy.STRICT
+
+
+def test_legacy_accept_only_translates_with_warning() -> None:
+    """Legacy `--accept-only` → `--policy normal` (covers solo-viable)."""
+    cli = Namespace(online_sources=["all"], accept_only=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.policy is Policy.NORMAL
+
+
+def test_legacy_both_flags_translate() -> None:
+    """`--accept-only --skip-multiple` → `--unattended --policy normal`."""
+    cli = Namespace(online_sources=["all"], accept_only=True, skip_multiple=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.unattended is True
+    # accept_only forces normal even though skip_multiple set strict first.
+    assert cfg.online.policy is Policy.NORMAL
+
+
+def test_new_flags_take_precedence_over_legacy() -> None:
+    """Explicit `--policy eager` wins over `--accept-only` translation."""
+    cli = Namespace(online_sources=["all"], policy=["eager"], accept_only=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    from comicbox.config.settings import Policy
+
+    assert cfg.online.policy is Policy.EAGER
+
+
 def test_explicit_id_implicitly_activates_online() -> None:
     """`--id comicvine:42` alone should enable online for ComicVine."""
     cli = Namespace(explicit_ids=["comicvine:42"])

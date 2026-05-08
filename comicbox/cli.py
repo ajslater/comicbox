@@ -340,18 +340,50 @@ def _add_online_options(option_group: Any) -> None:
         ),
     )
     option_group.add_argument(
+        "--policy",
+        action="append",
+        dest="policy",
+        default=None,
+        metavar="[DB:]NAME",
+        help=(
+            "Match-resolution policy: one of "
+            "[green]always-prompt[/green], [green]strict[/green], "
+            "[green]normal[/green] (default), [green]eager[/green]. "
+            "Repeatable for per-source overrides "
+            "([green]--policy metron:eager[/green])."
+        ),
+    )
+    option_group.add_argument(
+        "--unattended",
+        dest="unattended",
+        action="store_true",
+        default=None,
+        help=(
+            "Never prompt. Decisions that would have prompted become "
+            "[yellow]SKIP[/yellow]. Required for cron / batch runs."
+        ),
+    )
+    option_group.add_argument(
         "--accept-only",
         dest="accept_only",
         action="store_true",
         default=None,
-        help="Auto-accept solo matches without prompting. See Match Resolution Policy table below.",
+        help=(
+            "[deprecated] Auto-accept solo matches. Translates to "
+            "[green]--policy normal[/green]. Will be removed in a future "
+            "release."
+        ),
     )
     option_group.add_argument(
         "--skip-multiple",
         dest="skip_multiple",
         action="store_true",
         default=None,
-        help="Skip files with >1 candidate without prompting. See Match Resolution Policy table below.",
+        help=(
+            "[deprecated] Skip files with >1 candidate. Translates to "
+            "[green]--unattended --policy strict[/green]. Will be removed "
+            "in a future release."
+        ),
     )
     option_group.add_argument(
         "--ignore-existing",
@@ -362,11 +394,14 @@ def _add_online_options(option_group: Any) -> None:
     )
     option_group.add_argument(
         "--confidence-threshold",
+        action="append",
         dest="confidence_threshold",
-        type=float,
         default=None,
-        metavar="FLOAT",
-        help="Confidence (0-1) at or above auto-writes; below requires prompt or skip.",
+        metavar="[DB:]FLOAT",
+        help=(
+            "Auto-write threshold (0-1). Repeatable for per-source "
+            "overrides ([green]--confidence-threshold metron:0.75[/green])."
+        ),
     )
     option_group.add_argument(
         "--cache-dir",

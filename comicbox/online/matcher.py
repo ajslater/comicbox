@@ -20,6 +20,13 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from comicbox.config.settings import (
+    Policy,
+    resolve_confidence_threshold,
+    resolve_disambiguation_margin,
+    resolve_min_confidence,
+    resolve_policy,
+)
 from comicbox.online.cover_hash import cover_score as _cover_score
 from comicbox.online.signals import (
     s_issue,
@@ -53,9 +60,10 @@ W_PAGES = 0.05
 _METADATA_WEIGHT_SUM = W_SERIES + W_ISSUE + W_YEAR + W_PUBLISHER + W_PAGES  # 0.80
 W_COVER = 0.20
 
-# Internal constants (not user-exposed for now per Phase 4 review).
-_MIN_CONFIDENCE = 0.50
-_DISAMBIGUATION_MARGIN = 0.10
+# Default constant kept here for the rank() default-arg signature; the
+# matcher reads per-source values via `resolve_*` helpers in `_resolve_policy`
+# and `_should_invoke_hashing` so per-source overrides take effect.
+_DEFAULT_CONFIDENCE_THRESHOLD = 0.85
 
 
 class ResolutionKind(str, Enum):
@@ -98,57 +106,77 @@ def final_score(candidate: Candidate, *, hash_used: bool) -> float:
     )
 
 
-def _is_unambiguous_top(top_score: float, gap: float, threshold: float) -> bool:
-    return top_score >= threshold and gap >= _DISAMBIGUATION_MARGIN
+def _policy_auto_writes(
+    policy: Policy,
+    *,
+    top_score: float,
+    gap: float,
+    confidence_threshold: float,
+    disambiguation_margin: float,
+    solo_viable: bool,
+) -> bool:
+    """
+    Encode the four policy levels' auto-write rules.
+
+    Containment holds: `strict ⊂ normal ⊂ eager`. `always-prompt` never
+    auto-writes (the deferred path falls to PROMPT or SKIP).
+    """
+    unambig = top_score >= confidence_threshold and gap >= disambiguation_margin
+    match policy:
+        case Policy.ALWAYS_PROMPT:
+            return False
+        case Policy.STRICT:
+            return unambig
+        case Policy.NORMAL:
+            return unambig or solo_viable
+        case Policy.EAGER:
+            return top_score >= confidence_threshold or solo_viable
 
 
-def _resolve_unattended_combined(
-    viable: list[Candidate], ranked: list[Candidate]
+def _resolve_policy(
+    ranked: list[Candidate],
+    settings: OnlineSettings,
+    source_name: str,
 ) -> Resolution:
-    """Both --accept-only and --skip-multiple set."""
-    if len(viable) == 1:
-        return Resolution(ResolutionKind.AUTO_WRITE, viable[0], tuple(ranked))
-    return Resolution(ResolutionKind.SKIP, None, tuple(ranked))
+    """
+    Apply the Match Resolution Policy.
 
+    Per-source overrides for `policy`, `confidence_threshold`,
+    `min_confidence`, and `disambiguation_margin` are resolved here so the
+    same matcher can serve multiple sources with different settings.
+    """
+    policy = resolve_policy(settings, source_name)
+    threshold = resolve_confidence_threshold(settings, source_name)
+    min_confidence = resolve_min_confidence(settings, source_name)
+    margin = resolve_disambiguation_margin(settings, source_name)
 
-def _resolve_accept_only(
-    viable: list[Candidate], ranked: list[Candidate]
-) -> Resolution:
-    if len(viable) == 1:
-        return Resolution(ResolutionKind.AUTO_WRITE, viable[0], tuple(ranked))
-    return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
-
-
-def _resolve_skip_multiple(
-    viable: list[Candidate], ranked: list[Candidate]
-) -> Resolution:
-    if len(viable) > 1:
-        return Resolution(ResolutionKind.SKIP, None, tuple(ranked))
-    return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
-
-
-def _resolve_policy(ranked: list[Candidate], settings: OnlineSettings) -> Resolution:
-    if not ranked or ranked[0].score < _MIN_CONFIDENCE:
+    if not ranked or ranked[0].score < min_confidence:
         if ranked:
             logger.info(
-                f"online: no match cleared min_confidence (top={ranked[0].score:.2f})"
+                f"online: no match cleared min_confidence "
+                f"(top={ranked[0].score:.2f}, threshold={min_confidence:.2f})"
             )
         return Resolution(ResolutionKind.NO_MATCH, None, tuple(ranked))
 
     top = ranked[0]
     runner_up = ranked[1] if len(ranked) > 1 else None
     gap = (top.score - runner_up.score) if runner_up else 1.0
+    viable = [c for c in ranked if c.score >= min_confidence]
+    solo_viable = len(viable) == 1
 
-    if _is_unambiguous_top(top.score, gap, settings.confidence_threshold):
+    if _policy_auto_writes(
+        policy,
+        top_score=top.score,
+        gap=gap,
+        confidence_threshold=threshold,
+        disambiguation_margin=margin,
+        solo_viable=solo_viable,
+    ):
         return Resolution(ResolutionKind.AUTO_WRITE, top, tuple(ranked))
 
-    viable = [c for c in ranked if c.score >= _MIN_CONFIDENCE]
-    if settings.skip_multiple and settings.accept_only:
-        return _resolve_unattended_combined(viable, ranked)
-    if settings.accept_only:
-        return _resolve_accept_only(viable, ranked)
-    if settings.skip_multiple:
-        return _resolve_skip_multiple(viable, ranked)
+    # Couldn't auto-write under this policy — defer to interactive/unattended.
+    if settings.unattended:
+        return Resolution(ResolutionKind.SKIP, None, tuple(ranked))
     return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
 
 
@@ -158,6 +186,9 @@ _TOP_K_FOR_HASHING = 5
 def _should_invoke_hashing(
     metadata_ranked: list[Candidate],
     threshold: float,
+    *,
+    min_confidence: float,
+    disambiguation_margin: float,
 ) -> bool:
     """
     Decide whether to invoke cover hashing on the top candidates.
@@ -168,11 +199,11 @@ def _should_invoke_hashing(
     if not metadata_ranked:
         return False
     top = metadata_ranked[0]
-    if top.metadata_score < _MIN_CONFIDENCE:
+    if top.metadata_score < min_confidence:
         return False
     runner_up = metadata_ranked[1] if len(metadata_ranked) > 1 else None
     gap = (top.metadata_score - runner_up.metadata_score) if runner_up else 1.0
-    return not (top.metadata_score >= threshold and gap >= _DISAMBIGUATION_MARGIN)
+    return not (top.metadata_score >= threshold and gap >= disambiguation_margin)
 
 
 def _resolve_candidate_hash(
@@ -238,7 +269,9 @@ class OnlineMatcher:
         *,
         local_hash_provider: LocalHashProvider | None = None,
         candidate_hash_fetcher: CandidateHashFetcher | None = None,
-        threshold: float = 0.85,
+        threshold: float = _DEFAULT_CONFIDENCE_THRESHOLD,
+        min_confidence: float = 0.50,
+        disambiguation_margin: float = 0.10,
     ) -> list[Candidate]:
         """
         Score every candidate and return them sorted descending by score.
@@ -257,7 +290,12 @@ class OnlineMatcher:
             scored.append(replace(with_md, score=final_score(with_md, hash_used=False)))
         scored.sort(key=lambda c: c.score, reverse=True)
 
-        if local_hash_provider is None or not _should_invoke_hashing(scored, threshold):
+        if local_hash_provider is None or not _should_invoke_hashing(
+            scored,
+            threshold,
+            min_confidence=min_confidence,
+            disambiguation_margin=disambiguation_margin,
+        ):
             return scored
 
         local_hash = local_hash_provider()
@@ -269,6 +307,14 @@ class OnlineMatcher:
         self,
         ranked: list[Candidate],
         settings: OnlineSettings,
+        source_name: str,
     ) -> Resolution:
-        """Apply the Match Resolution Policy from Phase 2."""
-        return _resolve_policy(ranked, settings)
+        """
+        Apply the Match Resolution Policy.
+
+        ``source_name`` selects per-source overrides for `policy`,
+        `confidence_threshold`, `min_confidence`, and
+        `disambiguation_margin` (all fall back to the global setting if
+        no per-source override is set).
+        """
+        return _resolve_policy(ranked, settings, source_name)

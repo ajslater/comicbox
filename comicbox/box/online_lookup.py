@@ -345,16 +345,30 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._local_cover_phash_value = None
         return self._local_cover_phash_value
 
-    def _resolve_with_matcher(self, candidates: list[Candidate]) -> Resolution:
+    def _resolve_with_matcher(
+        self, source_name: str, candidates: list[Candidate]
+    ) -> Resolution:
+        from comicbox.config.settings import (
+            resolve_confidence_threshold,
+            resolve_disambiguation_margin,
+            resolve_min_confidence,
+        )
+
+        online = self._config.online
+        threshold = resolve_confidence_threshold(online, source_name)
+        min_conf = resolve_min_confidence(online, source_name)
+        margin = resolve_disambiguation_margin(online, source_name)
         matcher = OnlineMatcher()
         ranked = matcher.rank(
             self._build_profile(),
             candidates,
             local_hash_provider=self._local_cover_phash,
             candidate_hash_fetcher=self._candidate_cover_hash_fetcher,
-            threshold=self._config.online.confidence_threshold,
+            threshold=threshold,
+            min_confidence=min_conf,
+            disambiguation_margin=margin,
         )
-        return matcher.resolve(ranked, self._config.online)
+        return matcher.resolve(ranked, online, source_name)
 
     def _selector_for_run(self) -> SelectorCallback:
         return self._online_selector or cli_selector
@@ -431,7 +445,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 "(no matching issues in the database)"
             )
             return
-        resolution = self._resolve_with_matcher(candidates)
+        resolution = self._resolve_with_matcher(source.name, candidates)
         if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
             logger.info(
                 f"online {source.name}: auto-writing "

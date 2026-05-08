@@ -80,7 +80,31 @@ def test_jobs_flag() -> None:
 
 def test_confidence_threshold_flag() -> None:
     args = _parse("--confidence-threshold", "0.9")
-    assert args.confidence_threshold == 0.9
+    # `action=append` parses each occurrence as a string; the config
+    # builder converts to float and supports per-source overrides.
+    assert args.confidence_threshold == ["0.9"]
+
+
+def test_confidence_threshold_per_source() -> None:
+    args = _parse(
+        "--confidence-threshold", "metron:0.75", "--confidence-threshold", "0.90"
+    )
+    assert args.confidence_threshold == ["metron:0.75", "0.90"]
+
+
+def test_policy_flag() -> None:
+    args = _parse("--policy", "eager")
+    assert args.policy == ["eager"]
+
+
+def test_policy_per_source() -> None:
+    args = _parse("--policy", "metron:eager", "--policy", "comicvine:strict")
+    assert args.policy == ["metron:eager", "comicvine:strict"]
+
+
+def test_unattended_flag() -> None:
+    args = _parse("--unattended")
+    assert args.unattended is True
 
 
 def test_no_cache_flag() -> None:

@@ -31,6 +31,7 @@ from comicbox.config.read import read_config_sources
 from comicbox.config.settings import (
     ComicboxSettings,
     OnlineSettings,
+    Policy,
 )
 from comicbox.identifiers import PARSE_COMICVINE_RE
 from comicbox.online import SOURCE_NAMES
@@ -63,7 +64,12 @@ _ONLINE_SOURCE_TEMPLATE = MappingTemplate(
 
 _ONLINE_TEMPLATE = MappingTemplate(
     {
+        "policy": Optional(str),
+        "unattended": bool,
         "confidence_threshold": Number(),
+        # Legacy flags — still accepted for backward compat; the CLI
+        # parser translates them to `policy` / `unattended` with a
+        # deprecation warning.
         "skip_multiple": bool,
         "accept_only": bool,
         "ignore_existing": bool,
@@ -251,30 +257,29 @@ def _build_online_settings(
     def _cli(field: str) -> Any:
         return getattr(cns, field, None) if cns is not None else None
 
-    accept_only = bool(
-        _coalesce(
-            _cli("accept_only"), policy_env.get("accept_only"), online.accept_only
-        )
-    )
-    skip_multiple = bool(
-        _coalesce(
-            _cli("skip_multiple"),
-            policy_env.get("skip_multiple"),
-            online.skip_multiple,
-        )
+    # `--confidence-threshold` is action=append (list of strings) on the
+    # CLI; programmatic callers may still pass a single float for backward
+    # compat. Same for `--policy` (list[str]) vs a single string.
+    threshold_cli_raw = _cli("confidence_threshold")
+    if threshold_cli_raw is not None and not isinstance(threshold_cli_raw, list):
+        threshold_cli_raw = [str(threshold_cli_raw)]
+    policy_cli_raw = _cli("policy")
+    if policy_cli_raw is not None and not isinstance(policy_cli_raw, list):
+        policy_cli_raw = [str(policy_cli_raw)]
+    resolved_policy = _resolve_match_policy(
+        policy_cli=policy_cli_raw,
+        unattended_cli=_cli("unattended"),
+        threshold_cli=threshold_cli_raw,
+        accept_only_cli=_cli("accept_only"),
+        skip_multiple_cli=_cli("skip_multiple"),
+        online_block=online,
+        policy_env=policy_env,
     )
     ignore_existing = bool(
         _coalesce(
             _cli("ignore_existing"),
             policy_env.get("ignore_existing"),
             online.ignore_existing,
-        )
-    )
-    confidence_threshold = float(
-        _coalesce(
-            _cli("confidence_threshold"),
-            policy_env.get("confidence_threshold"),
-            online.confidence_threshold,
         )
     )
 
@@ -324,9 +329,11 @@ def _build_online_settings(
         selected_sources=runtime.selected_sources,
         explicit_ids=dict(runtime.explicit_ids),
         explicit_series_ids=dict(runtime.explicit_series_ids),
-        confidence_threshold=confidence_threshold,
-        skip_multiple=skip_multiple,
-        accept_only=accept_only,
+        policy=resolved_policy.policy,
+        unattended=resolved_policy.unattended,
+        policy_per_source=resolved_policy.policy_per_source,
+        confidence_threshold=resolved_policy.confidence_threshold,
+        confidence_threshold_per_source=resolved_policy.confidence_threshold_per_source,
         ignore_existing=ignore_existing,
         cache_enabled=cache_enabled,
         cache_dir=cache_dir,
@@ -395,6 +402,157 @@ def _parse_db_id_list(
             raise ValueError(reason)
         out[source] = parse_value(source, value)
     return out
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedMatchPolicy:
+    """Output of resolving CLI / env / config / legacy flags into the new policy fields."""
+
+    policy: Policy
+    unattended: bool
+    policy_per_source: dict[str, Policy]
+    confidence_threshold: float
+    confidence_threshold_per_source: dict[str, float]
+
+
+def _resolve_match_policy(
+    *,
+    policy_cli: list[str] | None,
+    unattended_cli: bool | None,
+    threshold_cli: list[str] | None,
+    accept_only_cli: bool | None,
+    skip_multiple_cli: bool | None,
+    online_block: Any,
+    policy_env: Mapping[str, Any],
+) -> _ResolvedMatchPolicy:
+    """
+    Resolve match-resolution policy from CLI / env / config / legacy flags.
+
+    New flags (`--policy`, `--unattended`, per-source
+    `--confidence-threshold`) take precedence. Legacy flags
+    (`--accept-only`, `--skip-multiple`) translate into the new fields
+    with deprecation warnings when the new flags weren't supplied.
+    """
+    policy_global, policy_per_source = _parse_global_or_per_source_list(
+        policy_cli, "--policy", _parse_policy_value
+    )
+    threshold_global, threshold_per_source = _parse_global_or_per_source_list(
+        threshold_cli, "--confidence-threshold", _parse_confidence_threshold_value
+    )
+
+    unattended = bool(_coalesce(unattended_cli, policy_env.get("unattended")) or False)
+
+    # Translate legacy --accept-only and --skip-multiple when the new
+    # flags are absent. Process skip_multiple first (sets STRICT), then
+    # accept_only (overrides to NORMAL) so the both-flags-set case maps
+    # to "unattended + auto-write solo viable" — matching old behavior.
+    legacy_skip = bool(
+        skip_multiple_cli
+        or _coalesce(policy_env.get("skip_multiple"), online_block.skip_multiple)
+    )
+    legacy_accept = bool(
+        accept_only_cli
+        or _coalesce(policy_env.get("accept_only"), online_block.accept_only)
+    )
+    if legacy_skip:
+        logger.warning(
+            "--skip-multiple is deprecated; use --unattended --policy strict"
+        )
+        if unattended_cli is None:
+            unattended = True
+        if policy_global is None:
+            policy_global = Policy.STRICT
+    if legacy_accept:
+        logger.warning(
+            "--accept-only is deprecated; the new default --policy normal "
+            "covers its behavior"
+        )
+        # accept_only's solo-viable rule supersedes skip_multiple's strict;
+        # only override if the user didn't pass --policy explicitly.
+        if policy_cli is None:
+            policy_global = Policy.NORMAL
+
+    if policy_global is None:
+        policy_global = Policy.NORMAL  # default
+
+    if policy_global is Policy.ALWAYS_PROMPT and unattended:
+        reason = (
+            "--policy always-prompt with --unattended is invalid: every "
+            "comic would skip and no work would be done. Drop one."
+        )
+        raise ValueError(reason)
+
+    threshold_value = float(
+        _coalesce(
+            threshold_global,
+            policy_env.get("confidence_threshold"),
+            online_block.confidence_threshold,
+        )
+    )
+
+    return _ResolvedMatchPolicy(
+        policy=policy_global,
+        unattended=unattended,
+        policy_per_source=policy_per_source,
+        confidence_threshold=threshold_value,
+        confidence_threshold_per_source=threshold_per_source,
+    )
+
+
+def _parse_global_or_per_source_list(
+    raw_list: Iterable[str] | None,
+    flag_name: str,
+    parse_value: Callable[[str], Any],
+) -> tuple[Any | None, dict[str, Any]]:
+    """
+    Parse a `--policy` / `--confidence-threshold` style flag.
+
+    Each occurrence is either a bare value (sets the global default)
+    or `<source>:<value>` (per-source override). Returns
+    `(global_value_or_None, per_source_dict)`. Last-wins for duplicates.
+
+    Validates source names against `SOURCE_NAMES` and lets `parse_value`
+    raise on bad values.
+    """
+    if not raw_list:
+        return None, {}
+    global_value: Any | None = None
+    per_source: dict[str, Any] = {}
+    for raw in raw_list:
+        if ":" in raw:
+            src, _, value = raw.partition(":")
+            src = src.strip().lower()
+            if src not in SOURCE_NAMES:
+                reason = (
+                    f"{flag_name}: unknown source {src!r}; "
+                    f"known: {', '.join(SOURCE_NAMES)}"
+                )
+                raise ValueError(reason)
+            per_source[src] = parse_value(value.strip())
+        else:
+            global_value = parse_value(raw.strip())
+    return global_value, per_source
+
+
+def _parse_policy_value(raw: str) -> Policy:
+    try:
+        return Policy(raw.strip().lower())
+    except ValueError as exc:
+        valid = ", ".join(p.value for p in Policy)
+        reason = f"--policy: unknown name {raw!r}; valid: {valid}"
+        raise ValueError(reason) from exc
+
+
+def _parse_confidence_threshold_value(raw: str) -> float:
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        reason = f"--confidence-threshold: non-numeric value {raw!r}"
+        raise ValueError(reason) from exc
+    if not 0.0 <= value <= 1.0:
+        reason = f"--confidence-threshold must be in [0, 1], got {value}"
+        raise ValueError(reason)
+    return value
 
 
 def _parse_explicit_series_id(source: str, raw: str) -> int:

@@ -8,6 +8,7 @@ downstream module takes ``ComicboxSettings`` instead of ``AttrDict``.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,22 @@ if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
     from comicbox.print import PrintPhases
     from comicbox.sources import MetadataSources
+
+
+class Policy(StrEnum):
+    """
+    Match-resolution policy.
+
+    Strictly increasing aggressiveness: each level auto-writes a
+    superset of what the previous one does (always-prompt ⊂ strict ⊂
+    normal ⊂ eager). See `match-resolution-user-doc.md` for the full
+    decision algorithm.
+    """
+
+    ALWAYS_PROMPT = "always-prompt"
+    STRICT = "strict"
+    NORMAL = "normal"
+    EAGER = "eager"
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +49,11 @@ class OnlineSourceCredentials:
     url: str | None = None
 
 
+# Calibration defaults — internal, not exposed as user-facing knobs.
+DEFAULT_MIN_CONFIDENCE = 0.50
+DEFAULT_DISAMBIGUATION_MARGIN = 0.10
+
+
 @dataclass(frozen=True, slots=True)
 class OnlineSettings:
     """Online metadata-tagging settings."""
@@ -44,8 +66,23 @@ class OnlineSettings:
     # step and constrains issue lookup to the named series id directly.
     explicit_series_ids: Mapping[str, int] = field(default_factory=dict)
 
+    # Match-resolution policy (the new scheme; see match-resolution-user-doc.md).
+    policy: Policy = Policy.NORMAL
+    unattended: bool = False
+    # Per-source overrides for `policy` and `confidence_threshold`. Resolution:
+    # per-source > global > built-in default. Empty dict means "use global".
+    policy_per_source: Mapping[str, Policy] = field(default_factory=dict)
+    confidence_threshold_per_source: Mapping[str, float] = field(default_factory=dict)
+    # Internal-only per-source overrides (no CLI today; ready for when
+    # calibration data justifies surfacing them).
+    min_confidence_per_source: Mapping[str, float] = field(default_factory=dict)
+    disambiguation_margin_per_source: Mapping[str, float] = field(default_factory=dict)
+
     # Persistent (config file + env var; CLI flag may override)
     confidence_threshold: float = 0.85
+    # Legacy flags (deprecated; matcher no longer reads these directly post-M-policy).
+    # Kept for translation-layer compatibility — the CLI parser maps them to
+    # the new `policy` / `unattended` fields with deprecation warnings.
     skip_multiple: bool = False
     accept_only: bool = False
     ignore_existing: bool = False
@@ -59,6 +96,30 @@ class OnlineSettings:
 
     # Per-source credentials and config (keyed by source name).
     sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
+
+
+def resolve_policy(settings: OnlineSettings, source_name: str) -> Policy:
+    """Per-source override > global default."""
+    return settings.policy_per_source.get(source_name, settings.policy)
+
+
+def resolve_confidence_threshold(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source override > global default."""
+    return settings.confidence_threshold_per_source.get(
+        source_name, settings.confidence_threshold
+    )
+
+
+def resolve_min_confidence(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source override > built-in default. Not user-exposed today."""
+    return settings.min_confidence_per_source.get(source_name, DEFAULT_MIN_CONFIDENCE)
+
+
+def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source override > built-in default. Not user-exposed today."""
+    return settings.disambiguation_margin_per_source.get(
+        source_name, DEFAULT_DISAMBIGUATION_MARGIN
+    )
 
 
 @dataclass(frozen=True, slots=True)

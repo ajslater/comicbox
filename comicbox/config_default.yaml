@@ -56,8 +56,12 @@ comicbox:
 
   # Online metadata tagging
   online:
-    # Match policy
+    # Match resolution policy. One of: always-prompt, strict, normal, eager.
+    policy: normal
+    unattended: False
     confidence_threshold: 0.85
+    # Legacy flags — translated to `policy`/`unattended` at run time with
+    # a deprecation warning. Will be removed in a future release.
     skip_multiple: False
     accept_only: False
     ignore_existing: False
