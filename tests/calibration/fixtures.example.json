@@ -1,0 +1,22 @@
+[
+  {
+    "file": "~/Milliways/Comics/Test/G.I. Joe #007 (1952).cbz",
+    "metron": null,
+    "comicvine": 92734,
+    "cover_quality": "full",
+    "notes": "Ziff-Davis 1952 G.I. Joe — Metron's DB doesn't carry this issue."
+  },
+  {
+    "file": "~/Milliways/Comics/full/demo/X-Men #1 (1963).cbz",
+    "metron": 12345,
+    "comicvine": 67890,
+    "cover_quality": "full"
+  },
+  {
+    "file": "~/Milliways/slimlib/Spider-Man Vol. 2 #1 (2010).cbz",
+    "metron": 22222,
+    "comicvine": 33333,
+    "cover_quality": "thumbnail",
+    "notes": "Cover is a degraded thumbnail; metadata-only signal expected."
+  }
+]

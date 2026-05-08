@@ -15,22 +15,26 @@ Marker conventions:
 
 ## 1. Calibration & defaults
 
-- **Default `--confidence-threshold` and `min_confidence`.** Currently
-  placeholders (0.85 and 0.50). Calibrate against a curated fixture
-  set of known-correct matches and tune so ≥95% of correct matches
-  clear `confidence_threshold` and ≥99% clear `min_confidence`.
-- **Calibration harness.** `tests/calibration/run.py` was specced in
-  Phase 5 but not built. Loads a `fixtures.json` (gitignored,
-  per-developer), runs the matcher against each, reports
-  matched / wrong / no-match grouped by score band. `make calibrate`
-  target.
+- **Run calibration against a real fixture set.** The harness is
+  built (`tests/calibration/run.py`, `make calibrate`) but no
+  fixtures.json has been populated yet. Need ~100–300 known-correct
+  comics across the score-band distribution.
+- **Tune `--confidence-threshold` and `min_confidence` from data.**
+  Currently 0.85 and 0.50 — placeholders. After running the harness,
+  shift the defaults so ≥95% of correct matches clear
+  `confidence_threshold` and ≥99% clear `min_confidence`.
 - **VCR cassettes for integration tests.** Recorded once with real
   credentials, replayed in CI. Currently every test mocks the upstream
-  client directly.
+  client directly. (Optional — the calibration harness covers most of
+  what VCR cassettes would.)
 - **Default policy choice.** New default is `normal`, slightly more
   eager than today. If real-world calibration shows it produces a high
-  false-positive write rate, retreat the default to `strict`. Decision
-  belongs with the calibration harness, not a guess.
+  false-positive write rate, retreat the default to `strict`.
+  Decision belongs with the calibration harness output.
+- **Cover-hash calibration.** The current harness runs metadata-only
+  ranking. A separate mode that exercises the cover-hash path on
+  full-cover fixtures (not slimlib's degraded thumbnails) would tune
+  the hashing weights.
 
 
 ## 2. Stress test & parallelism

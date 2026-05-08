@@ -13,3 +13,9 @@ include cfg/common.mk
 include cfg/help.mk
 
 .PHONY: all
+
+.PHONY: calibrate
+## Run the online-tagging calibration harness against tests/calibration/fixtures.json
+## @category Test
+calibrate:
+	uv run python -m tests.calibration.run

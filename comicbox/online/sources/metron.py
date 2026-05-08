@@ -80,10 +80,14 @@ class MetronOnlineSource(OnlineSource):
                 user_agent=f"{PACKAGE_NAME}/{VERSION}",
             )
         # Override: mokkari's `api()` factory doesn't expose `bucket`, so
-        # construct the Session directly and pass our custom bucket.
+        # construct the Session directly and pass our custom bucket. The
+        # username / password are guaranteed non-None on this path —
+        # `is_configured()` is checked before any source is used.
+        username = self._credentials.username or ""
+        password = self._credentials.password or ""
         return _MokkariSession(
-            username=self._credentials.username,
-            passwd=self._credentials.password,
+            username=username,
+            passwd=password,
             cache=self._get_cache(),
             user_agent=f"{PACKAGE_NAME}/{VERSION}",
             bucket=bucket,

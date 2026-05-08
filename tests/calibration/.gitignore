@@ -1,0 +1,4 @@
+# Per-developer fixture set. Lives outside git because it's pointing
+# at the developer's local comic library, contains personal file paths,
+# and may include API ids of comics that aren't in the public tree.
+fixtures.json
