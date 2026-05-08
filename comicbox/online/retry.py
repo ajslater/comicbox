@@ -21,7 +21,15 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 _BASE_DELAY_S = 1.0
+# Cap our own exponential-backoff schedule at 60s. Server-supplied
+# retry_after hints are honored beyond this — see _MAX_RETRY_AFTER_S —
+# because hitting an hourly cap (CV: 200/hr) can legitimately require
+# a multi-minute wait, and hammering at 60s intervals would be rude.
 _MAX_DELAY_S = 60.0
+# Hard cap on honored server retry_after. 1 hour matches CV's window;
+# anything longer than that and we'd rather error out so the user can
+# decide whether to wait or come back later.
+_MAX_RETRY_AFTER_S = 3600.0
 
 
 def _is_rate_limit(exc: BaseException) -> bool:
@@ -96,10 +104,14 @@ def with_retry(
                     last_exc = exc
                     if attempt == max_retries:
                         break
-                    delay = _retry_after(exc)
-                    if delay is None:
-                        delay = _delay_for(attempt)
-                    delay = min(delay, _MAX_DELAY_S)
+                    server_hint = _retry_after(exc)
+                    if server_hint is not None:
+                        # Server told us when to come back — honor it up to
+                        # the hourly-cap-sized ceiling. Don't squeeze it
+                        # down to our own short backoff schedule.
+                        delay = min(server_hint, _MAX_RETRY_AFTER_S)
+                    else:
+                        delay = min(_delay_for(attempt), _MAX_DELAY_S)
                     cause = "rate-limit" if _is_rate_limit(exc) else type(exc).__name__
                     logger.info(
                         f"{func.__name__}: {cause}, retrying in {delay:.1f}s "

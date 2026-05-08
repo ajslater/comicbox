@@ -53,6 +53,28 @@ class OnlineSourceCredentials:
     url: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class OnlineSourceLimits:
+    """
+    Per-source rate-limit overrides.
+
+    All fields default to None, in which case comicbox lets the upstream
+    library (mokkari / simyan) apply its own documented rate limits. Set
+    any field to override that source's bucket — useful when the user has
+    a higher API tier or wants to be more conservative.
+
+    Documented defaults (as of 2026-05) live in
+    `comicbox.online.rate_limits` for citation / audit.
+    """
+
+    # Used by Metron (mokkari).
+    per_minute: int | None = None
+    per_day: int | None = None
+    # Used by ComicVine (simyan).
+    per_second: int | None = None
+    per_hour: int | None = None
+
+
 # Calibration defaults — internal, not exposed as user-facing knobs.
 DEFAULT_MIN_CONFIDENCE = 0.50
 DEFAULT_DISAMBIGUATION_MARGIN = 0.10
@@ -100,6 +122,9 @@ class OnlineSettings:
 
     # Per-source credentials and config (keyed by source name).
     sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
+    # Per-source rate-limit overrides (keyed by source name). Empty dict
+    # for any source means "use upstream library default."
+    source_limits: Mapping[str, OnlineSourceLimits] = field(default_factory=dict)
 
 
 def resolve_policy(settings: OnlineSettings, source_name: str) -> Policy:

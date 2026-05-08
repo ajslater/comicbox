@@ -62,6 +62,8 @@ class ComicVineOnlineSource(OnlineSource):
     def _get_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
+        from comicbox.online.rate_limits import build_comicvine_limiter
+
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.api_key,
             "cache": self._get_cache(),
@@ -69,6 +71,9 @@ class ComicVineOnlineSource(OnlineSource):
         }
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
+        limiter = build_comicvine_limiter(self._settings.source_limits.get(self.name))
+        if limiter is not None:
+            kwargs["limiter"] = limiter
         return Comicvine(**kwargs)
 
     @with_retry()

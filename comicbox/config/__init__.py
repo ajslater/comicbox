@@ -31,6 +31,7 @@ from comicbox.config.read import read_config_sources
 from comicbox.config.settings import (
     ComicboxSettings,
     OnlineSettings,
+    OnlineSourceLimits,
     Policy,
 )
 from comicbox.identifiers import PARSE_COMICVINE_RE
@@ -53,12 +54,24 @@ _NON_MAPPING_TYPES = (set, frozenset, tuple, list)
 _NON_MAPPING_CONTAINER = OneOf(_NON_MAPPING_TYPES)
 
 
+_RATE_LIMIT_TEMPLATE = MappingTemplate(
+    {
+        "per_minute": Optional(Integer()),
+        "per_day": Optional(Integer()),
+        "per_second": Optional(Integer()),
+        "per_hour": Optional(Integer()),
+    }
+)
+
 _ONLINE_SOURCE_TEMPLATE = MappingTemplate(
     {
         "api_key": Optional(str),
         "username": Optional(str),
         "password": Optional(str),
         "url": Optional(str),
+        # Optional per-source rate-limit overrides. None / unset = use the
+        # upstream library's documented default (see comicbox.online.rate_limits).
+        "rate_limit": Optional(_RATE_LIMIT_TEMPLATE),
     }
 )
 
@@ -324,6 +337,8 @@ def _build_online_settings(
         env=env,
     )
 
+    source_limits = _resolve_source_limits(online)
+
     return OnlineSettings(
         enabled=runtime.enabled,
         selected_sources=runtime.selected_sources,
@@ -341,6 +356,7 @@ def _build_online_settings(
         refresh_cache=refresh_cache,
         retry_budget=retry_budget,
         sources=sources_creds,
+        source_limits=source_limits,
     )
 
 
@@ -413,6 +429,41 @@ class _ResolvedMatchPolicy:
     policy_per_source: dict[str, Policy]
     confidence_threshold: float
     confidence_threshold_per_source: dict[str, float]
+
+
+def _resolve_source_limits(online: Any) -> dict[str, OnlineSourceLimits]:
+    """
+    Read per-source `rate_limit` blocks into `OnlineSourceLimits` objects.
+
+    Config-file / env only — there's no CLI flag because this is a
+    "I have a higher API tier" knob, not a per-run one. Sources with no
+    overrides set are omitted from the returned dict (which means the
+    source code falls through to the upstream library's default).
+    """
+    out: dict[str, OnlineSourceLimits] = {}
+    for source in SOURCE_NAMES:
+        block: Any = getattr(online, source, None)
+        rl: Any = getattr(block, "rate_limit", None) if block is not None else None
+        if rl is None:
+            continue
+        limits = OnlineSourceLimits(
+            per_minute=getattr(rl, "per_minute", None),
+            per_day=getattr(rl, "per_day", None),
+            per_second=getattr(rl, "per_second", None),
+            per_hour=getattr(rl, "per_hour", None),
+        )
+        # Skip the entry if every field is None — equivalent to upstream default.
+        if any(
+            v is not None
+            for v in (
+                limits.per_minute,
+                limits.per_day,
+                limits.per_second,
+                limits.per_hour,
+            )
+        ):
+            out[source] = limits
+    return out
 
 
 def _resolve_match_policy(

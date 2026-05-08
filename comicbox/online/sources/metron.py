@@ -56,6 +56,9 @@ class MetronOnlineSource(OnlineSource):
 
     def _get_session(self) -> Session:
         from mokkari import api
+        from mokkari.session import Session as _MokkariSession
+
+        from comicbox.online.rate_limits import build_metron_bucket
 
         if self._credentials.url:
             # mokkari's api() factory has no URL-override parameter (only
@@ -66,11 +69,24 @@ class MetronOnlineSource(OnlineSource):
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}"
             )
-        return api(
+        bucket = build_metron_bucket(self._settings.source_limits.get(self.name))
+        if bucket is None:
+            # No override: defer to mokkari's default (a process-wide SQLite
+            # bucket at the documented 20/min and 5,000/day limits).
+            return api(
+                username=self._credentials.username,
+                passwd=self._credentials.password,
+                cache=self._get_cache(),
+                user_agent=f"{PACKAGE_NAME}/{VERSION}",
+            )
+        # Override: mokkari's `api()` factory doesn't expose `bucket`, so
+        # construct the Session directly and pass our custom bucket.
+        return _MokkariSession(
             username=self._credentials.username,
             passwd=self._credentials.password,
             cache=self._get_cache(),
             user_agent=f"{PACKAGE_NAME}/{VERSION}",
+            bucket=bucket,
         )
 
     @with_retry()
