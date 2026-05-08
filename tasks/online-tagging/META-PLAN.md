@@ -191,9 +191,8 @@ Test strategy:
 
 ## Follow-up work (after this feature ships)
 
-> The full follow-up checklist lives in
-> [FOLLOW-UPS.md](FOLLOW-UPS.md). The high-level entries below are
-> kept here for context.
+> The full follow-up checklist lives in [TODO.md](TODO.md). The
+> high-level entries below are kept here for context.
 
 
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo, MetronInfo,
