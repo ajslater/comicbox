@@ -22,6 +22,7 @@ required credentials resolve and whose name is in
 
 from __future__ import annotations
 
+import sys
 import threading
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -30,6 +31,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
+from comicbox.online import outcome_stats
 from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
 from comicbox.online.profile import (
     ComicProfile,
@@ -70,6 +72,45 @@ _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
 _ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = frozenset(
     {MetadataSources.METRON_API, MetadataSources.COMICVINE_API}
 )
+
+
+class _NoTtyHintGuard:
+    """One-shot guard for the no-TTY hint, lock-protected for `-j N` runs."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._shown = False
+
+    def maybe_log(self, *, has_callback: bool) -> None:
+        """
+        Log the hint at most once per process if conditions warrant.
+
+        Programmatic library callers (codex, etc.) typically register a
+        selector callback before invoking the lookup; their presence
+        silences the hint because they have a way to handle prompts.
+        """
+        if has_callback:
+            return
+        try:
+            is_tty = sys.stdin.isatty()
+        except (AttributeError, ValueError):
+            # Closed stdin or unusual stream — treat as no TTY.
+            is_tty = False
+        if is_tty:
+            return
+        with self._lock:
+            if self._shown:
+                return
+            self._shown = True
+        logger.info(
+            "online: no TTY detected and no prompt callback registered; "
+            "pass --unattended if you don't expect to see prompts "
+            "(interactive mode without a TTY will hang on the first "
+            "PROMPT decision)."
+        )
+
+
+_no_tty_hint = _NoTtyHintGuard()
 
 
 def _resolve_volume(md: dict) -> int | None:
@@ -396,6 +437,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if action == "choose" and isinstance(payload, int):
             chosen = candidates[payload]
             logger.info(f"online {source.name}: prompt-chose id={chosen.issue_id}")
+            outcome_stats.record_prompt_accepted(source.name)
             self._accept_candidate(source, chosen)
             return
         if action == "manual" and isinstance(payload, str):
@@ -404,19 +446,23 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 issue_id = int(raw_id)
             except ValueError:
                 logger.warning(f"online: manual id {payload!r} is not <source>:<int>")
+                outcome_stats.record_prompt_declined(source.name)
                 return
             if src_name.strip().lower() != source.name:
                 logger.warning(
                     f"online {source.name}: manual id {payload!r} routes to "
                     f"a different source; skipping"
                 )
+                outcome_stats.record_prompt_declined(source.name)
                 return
+            outcome_stats.record_prompt_accepted(source.name)
             self._fetch_explicit_id(source, issue_id)
             return
         if action == "abort":
             reason = "online: aborted by user from prompt"
             raise OnlineLookupAbortedError(reason)
         logger.info(f"online {source.name}: skipped via prompt")
+        outcome_stats.record_prompt_declined(source.name)
 
     def _search_path(self, source: OnlineSource) -> None:
         """Search → rank → resolve → fetch on accept."""
@@ -452,14 +498,19 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"id={resolution.chosen.issue_id} "
                 f"(score={resolution.chosen.score:.2f})"
             )
+            outcome_stats.record_auto_write(source.name)
             self._accept_candidate(source, resolution.chosen)
             return
         if resolution.kind is ResolutionKind.NO_MATCH:
             logger.info(f"online {source.name}: no match cleared min_confidence")
+            outcome_stats.record_no_match(source.name)
             return
         if resolution.kind is ResolutionKind.SKIP:
             top_score = resolution.candidates[0].score if resolution.candidates else 0
-            logger.info(f"online {source.name}: skip-multiple, top={top_score:.2f}")
+            logger.info(
+                f"online {source.name}: skipped (matcher declined; top={top_score:.2f})"
+            )
+            outcome_stats.record_skip(source.name)
             return
         # ResolutionKind.PROMPT — invoke the selector callback.
         self._handle_prompt(source, resolution.candidates)
@@ -476,6 +527,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         explicit_ids = self._config.online.explicit_ids
         issue_id = explicit_ids.get(source.name)
         if issue_id is not None:
+            outcome_stats.record_explicit_id(source.name)
             self._fetch_explicit_id(source, issue_id)
             return
         self._search_path(source)
@@ -522,6 +574,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         self._mark_online_lookup_done()
         if not self._config.online.enabled:
             return
+        if not self._config.online.unattended:
+            _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
         for source in self._build_active_online_sources():
             self._lookup_one_source(source)
         self._cross_source_cv_id_check()

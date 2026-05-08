@@ -177,6 +177,85 @@ comicbox --delete-all-tags "My Overtagged Comic.cbz"
 comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
 ```
 
+#### Online Tagging
+
+Comicbox can fetch metadata from online comic databases (Metron and
+ComicVine), match it against the comic at hand, and write the result.
+
+```sh
+# One comic, interactive — comicbox prompts when the match isn't obvious.
+comicbox --online metron "GI Joe #007 (1952).cbz"
+
+# Bulk run, unattended — never prompts; ambiguous matches are skipped.
+comicbox --online metron,comicvine --unattended ./comics/ --recurse
+
+# Tag by exact id (skips search entirely).
+comicbox --id metron:42 "comic.cbz"
+
+# Constrain a search to a known series id (skips series-discovery API call).
+comicbox --online metron --series-id metron:100 "comic.cbz"
+```
+
+##### Credentials
+
+Each source needs credentials before it can run. Resolution order is
+**CLI > env > config file > keyring**:
+
+| Source    | Required          | Env vars                                                  |
+|-----------|-------------------|-----------------------------------------------------------|
+| metron    | username + password | `COMICBOX_METRON_USERNAME`, `COMICBOX_METRON_PASSWORD`   |
+| comicvine | api_key           | `COMICBOX_COMICVINE_API_KEY`                              |
+
+Or set them in `~/.config/comicbox/config.yaml`:
+
+```yaml
+comicbox:
+  online:
+    metron:
+      username: alice
+      password: secret
+    comicvine:
+      api_key: xyz123
+```
+
+##### Match-resolution policy
+
+When the match is unambiguous, comicbox writes silently. When it isn't,
+the policy decides whether to prompt, skip, or write anyway.
+
+```sh
+# --policy: how aggressively to auto-write
+#   always-prompt — never auto-write; prompt on every viable candidate
+#   strict        — auto-write only when top is unambiguous (clear winner)
+#   normal        — strict + auto-write a sole plausible match (default)
+#   eager         — auto-write any top above threshold, even with close runner-up
+
+# --unattended: never prompt; turn would-be prompts into skips
+comicbox --online metron --unattended --policy strict ./comics/  # cautious cron
+comicbox --online metron --unattended --policy eager ./comics/   # trust the matcher
+
+# Per-source overrides (mirrors the --id <db>:<id> pattern):
+comicbox --online all --policy metron:eager --policy comicvine:strict ...
+comicbox --online all --confidence-threshold 0.85 --confidence-threshold metron:0.75 ...
+```
+
+End-of-run summary distinguishes outcomes:
+
+```
+Online tagging summary (24 comics × sources):
+  16 auto-written
+   3 prompted (chose 2, declined 1)
+   3 skipped (matcher declined)
+   2 no-match (nothing scored above min_confidence)
+```
+
+The legacy flags `--accept-only` and `--skip-multiple` still work but
+emit a deprecation warning and translate to `--policy normal` and
+`--unattended --policy strict` respectively.
+
+For the full algorithm and worked examples, see
+[tasks/online-tagging/match-resolution-user-doc.md](tasks/online-tagging/match-resolution-user-doc.md).
+
 #### Quirks
 
 ##### --metadata parses all formats.

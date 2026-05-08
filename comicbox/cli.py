@@ -80,11 +80,16 @@ _QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "E
 # Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
 _WARNED_FLAGS: set[str] = set()
 
+# (policy, behavior on unambiguous top, on solo viable, on close call near top)
 _MATCH_POLICY_ROWS = (
-    ("(default)", "auto-write", "prompt", "prompt"),
-    ("--accept-only", "auto-write", "accept solo", "prompt"),
-    ("--skip-multiple", "auto-write", "prompt", "skip"),
-    ("both flags", "auto-write", "accept solo", "skip"),
+    ("always-prompt", "prompt", "prompt", "prompt"),
+    ("strict", "auto-write", "prompt", "prompt"),
+    ("normal (default)", "auto-write", "auto-write", "prompt"),
+    ("eager", "auto-write", "auto-write", "auto-write"),
+)
+_MATCH_POLICY_UNATTENDED_NOTE = (
+    "With [cyan]--unattended[/cyan]: every 'prompt' above becomes 'skip'. "
+    "[yellow]always-prompt --unattended[/yellow] is rejected (no work)."
 )
 
 # (name, required credentials, accepted --id forms, website)
@@ -106,9 +111,16 @@ _MATCH_POLICY_INTRO = Styled(
     """
 [bold]Online tagging — Match Resolution Policy[/bold]
 
-[cyan]--confidence-threshold[/cyan] governs auto-write. The two opt-out flags
-control unattended behavior for below-threshold cases. Combine for fully
-unattended bulk mode.
+Two knobs:
+
+  [cyan]--policy <name>[/cyan]   how aggressively to auto-write a match:
+                       [green]always-prompt[/green] · [green]strict[/green] · [green]normal[/green] (default) · [green]eager[/green]
+  [cyan]--unattended[/cyan]      never prompt — turn 'prompt' decisions into 'skip'
+
+Repeatable per source: [cyan]--policy metron:eager[/cyan]
+[cyan]--confidence-threshold[/cyan] is also repeatable per source.
+
+Each policy row below shows what happens to three kinds of candidate sets.
 """,
     style="argparse.text",
 )
@@ -245,10 +257,13 @@ def _get_match_policy_table() -> Table:
         title="[dark_cyan]Online — Match Resolution Policy[/dark_cyan]",
         **_TABLE_ARGS,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     )
-    table.add_column("Flags", style="green")
-    table.add_column("conf ≥ threshold")
-    table.add_column("1 cand below")
-    table.add_column(">1 cand below")
+    table.add_column("--policy", style="green")
+    # "Unambiguous" = top above threshold AND clear gap to runner-up.
+    # "Solo viable" = exactly one candidate above min_confidence.
+    # "Close call"  = top above threshold but runner-up close (gap < 0.10).
+    table.add_column("unambiguous top")
+    table.add_column("solo viable")
+    table.add_column("close call")
     for row in _MATCH_POLICY_ROWS:
         table.add_row(*row)
     return table

@@ -11,6 +11,7 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.logger import init_logging
+from comicbox.online import outcome_stats
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -51,9 +52,7 @@ class Runner:
                 if self._config.recurse:
                     out.extend(self._iter_recurse(path))
                 else:
-                    logger.warning(
-                        f"Recurse option not set. Ignoring directory {path}"
-                    )
+                    logger.warning(f"Recurse option not set. Ignoring directory {path}")
                 continue
             out.append(path)
         return out
@@ -118,6 +117,15 @@ class Runner:
 
     def run(self) -> None:
         """Run actions with config."""
+        outcome_stats.reset()
+        try:
+            self._run_inner()
+        finally:
+            for line in outcome_stats.summary_lines():
+                logger.info(line)
+
+    def _run_inner(self) -> None:
+        """Dispatch to serial or parallel processing based on `--jobs`."""
         jobs = max(1, self._config.jobs)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.

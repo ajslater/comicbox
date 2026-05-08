@@ -8,7 +8,7 @@ downstream module takes ``ComicboxSettings`` instead of ``AttrDict``.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from comicbox.sources import MetadataSources
 
 
-class Policy(StrEnum):
+class Policy(str, Enum):
     """
     Match-resolution policy.
 
@@ -26,6 +26,10 @@ class Policy(StrEnum):
     superset of what the previous one does (always-prompt ⊂ strict ⊂
     normal ⊂ eager). See `match-resolution-user-doc.md` for the full
     decision algorithm.
+
+    Inherits from str so dataclass equality, dict keys, and JSON
+    serialization all "just work" without StrEnum (ty's stdlib stubs
+    don't recognize StrEnum yet).
     """
 
     ALWAYS_PROMPT = "always-prompt"
