@@ -61,7 +61,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile>=0.5.1,<0.6"]
+pdf = ["comicbox-pdffile>=0.6,<0.7"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
@@ -106,6 +106,12 @@ ci = ["requests~=2.32"]
 [build-system]
 requires = ["uv_build~=0.11.2"]
 build-backend = "uv_build"
+
+# Track the in-flight ``comicbox-pdffile`` 0.6 PR
+# (https://github.com/ajslater/pdffile/pull/22). Drop this block once
+# 0.6.x lands on PyPI.
+[tool.uv.sources]
+comicbox-pdffile = { git = "https://github.com/ajslater/pdffile.git", branch = "pdf-image-detection" }
 
 [tool.uv.build-backend]
 module-root = ""

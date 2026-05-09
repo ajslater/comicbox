@@ -2,7 +2,10 @@
 
 ## v3.0.1
 
-- Require new comicbox-pdffile that doesn't corrupt PDF pages.
+- Require new comicbox-pdffile that doesn't corrupt PDF pages. Includes
+  image-dominant page detection (`PDFFile.classify_page`,
+  `PDFFile.read_image_if_dominant`, `PDFFile.read_full_pixmap_jpeg`) used by
+  browser readers to serve scanned-comic PDF pages as plain `<img>`.
 
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
