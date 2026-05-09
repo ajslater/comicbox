@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from comicbox.box import Comicbox
-from tests.const import TEST_FILES_DIR
+from tests.const import PDF_SOURCE_PATH, TEST_FILES_DIR
 
 ARCHIVE_PATH = TEST_FILES_DIR / "Captain Science #001.cbz"
 IMAGE_DIR = TEST_FILES_DIR / "Captain Science 001"
@@ -74,3 +74,31 @@ def test_ignore_macos_resource_forks() -> None:
     with Comicbox(RESOURCE_FORK_ARCHIVE) as car:
         page_count = car.get_page_count()
     assert page_count == RESOURCE_FORK_ARCHIVE_PAGE_COUNT
+
+
+def test_pdf_hide_text_forwards_to_backend() -> None:
+    """``hide_text`` reaches the PDF backend and changes the rendered page."""
+    # Page 0 of the fixture is intentionally blank — use page 1 which
+    # has text.
+    with Comicbox(PDF_SOURCE_PATH) as car:
+        baseline = car.get_page_by_index(1, pdf_format="pixmap")
+        hidden = car.get_page_by_index(1, pdf_format="pixmap", hide_text=True)
+    assert baseline is not None
+    assert hidden is not None
+    assert baseline != hidden
+
+
+def test_pdf_hide_text_default_off() -> None:
+    """Default ``hide_text=False`` matches the legacy behavior."""
+    with Comicbox(PDF_SOURCE_PATH) as car:
+        default = car.get_page_by_index(1, pdf_format="pixmap")
+        explicit_off = car.get_page_by_index(1, pdf_format="pixmap", hide_text=False)
+    assert default == explicit_off
+
+
+def test_non_pdf_archive_ignores_hide_text() -> None:
+    """Non-PDF archives must accept ``hide_text`` and silently ignore it."""
+    with Comicbox(ARCHIVE_PATH) as car:
+        baseline = car.get_page_by_index(0)
+        with_kwarg = car.get_page_by_index(0, hide_text=True)
+    assert baseline == with_kwarg

@@ -67,10 +67,19 @@ class Archive:
         factory: None | BytesIOFactory,
         pdf_format: str = "",
         props: dict | None = None,
+        *,
+        hide_text: bool = False,
     ) -> bytes:
-        """Read one file in the archive's data."""
+        """
+        Read one file in the archive's data.
+
+        ``hide_text`` only applies to ``PDFFile`` archives; on every
+        other archive type it's silently ignored.
+        """
         if PDF_ENABLED and isinstance(archive, PDFFile):
-            return archive.read(filename, fmt=pdf_format, props=props)
+            return archive.read(
+                filename, fmt=pdf_format, props=props, hide_text=hide_text
+            )
         match archive:
             case TarFile():
                 data = cls._read_tarfile(archive, filename)

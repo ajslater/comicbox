@@ -82,7 +82,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         return pdf_format or (self._config.pdf_page_format or default)
 
     def _archive_readfile(
-        self, filename: str, pdf_format: str = "", props: dict | None = None
+        self,
+        filename: str,
+        pdf_format: str = "",
+        props: dict | None = None,
+        *,
+        hide_text: bool = False,
     ) -> bytes:
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
@@ -95,7 +100,12 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         pdf_format = self._get_pdf_format(pdf_format)
         try:
             data = Archive.read(
-                archive, filename, factory, pdf_format=pdf_format, props=props
+                archive,
+                filename,
+                factory,
+                pdf_format=pdf_format,
+                props=props,
+                hide_text=hide_text,
             )
         except BadRarFile:
             self.check_unrar_executable()
