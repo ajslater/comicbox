@@ -1,5 +1,9 @@
 # 📰 News
 
+## v3.0.1
+
+- Require new comicbox-pdffile that doesn't corrupt PDF pages.
+
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
 - Breaking Changes
