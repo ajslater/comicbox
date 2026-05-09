@@ -696,7 +696,7 @@ requires-dist = [
     { name = "ansicolors", specifier = "~=1.1.8" },
     { name = "bidict", specifier = "~=0.23" },
     { name = "case-converter", specifier = "~=1.2" },
-    { name = "comicbox-pdffile", marker = "extra == 'pdf'", git = "https://github.com/ajslater/pdffile.git?branch=pdf-image-detection" },
+    { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.6,<0.7" },
     { name = "comicfn2dict", specifier = ">=0.2.4,<1.0.0" },
     { name = "confuse", specifier = "~=2.2.0" },
     { name = "deepdiff", specifier = "~=9.0" },
@@ -766,12 +766,16 @@ test = [
 [[package]]
 name = "comicbox-pdffile"
 version = "0.6.0"
-source = { git = "https://github.com/ajslater/pdffile.git?branch=pdf-image-detection#83c05f2e7ccc5c65f00ea974d636b0d300124bcb" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filetype" },
     { name = "pymupdf" },
     { name = "python-dateutil" },
     { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/33/65/d27148373083f57ef0c402a3c352b08b632bc60ec9993971f15bb78d3a15/comicbox_pdffile-0.6.0.tar.gz", hash = "sha256:edfeac38425efdbc5cfa58746594b7c57bc8b7772e357eea33df6a65f7f5fb4e", size = 192019, upload-time = "2026-05-09T03:29:48.298Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/c0/5fb151026ff4b4fda2daebbd25d2ed6ea94b355f30deaf95a5007d3d260c/comicbox_pdffile-0.6.0-py3-none-any.whl", hash = "sha256:a11e1809957c064e6088f114ce7da483a504b82700fbec1974deefa8a6a9c75a", size = 12009, upload-time = "2026-05-09T03:29:47.089Z" },
 ]
 
 [[package]]
