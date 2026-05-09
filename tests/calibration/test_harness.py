@@ -166,3 +166,73 @@ def test_format_report_renders_per_source() -> None:
     assert "=== metron ===" in text
     assert "=== comicvine ===" in text
     assert "accuracy on labeled fixtures" in text
+
+
+# ----------------------------------------------------------- _Heartbeat
+
+
+def test_heartbeat_prints_periodically(capsys: pytest.CaptureFixture[str]) -> None:
+    """Inside the context, the heartbeat fires at the configured interval."""
+    import time
+
+    from tests.calibration.run import _Heartbeat
+
+    with _Heartbeat("test:label", interval=0.05):
+        time.sleep(0.18)  # enough for ~3 ticks
+    captured = capsys.readouterr().out
+    # At least one tick fired before exit.
+    assert "still working on test:label" in captured
+
+
+def test_heartbeat_silent_when_quick(capsys: pytest.CaptureFixture[str]) -> None:
+    """A fixture finishing within one tick produces no heartbeat output."""
+    from tests.calibration.run import _Heartbeat
+
+    with _Heartbeat("test:label", interval=10.0):
+        pass  # immediate exit
+    captured = capsys.readouterr().out
+    assert "still working" not in captured
+
+
+# ----------------------------------------------------- _print_cost_estimate
+
+
+class _FakeSource:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+def test_cost_estimate_warns_above_cv_hourly_cap(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Worst-case CV cost > 200 calls triggers an hours-long warning."""
+    from tests.calibration.run import _print_cost_estimate
+
+    # 50 fixtures x 21 calls = 1,050 CV calls = ~5.25 hours worst case.
+    _print_cost_estimate(50, [_FakeSource("comicvine")])  # type: ignore[arg-type]
+    out = capsys.readouterr().out
+    assert "ComicVine" in out
+    assert "wall time" in out
+
+
+def test_cost_estimate_quiet_for_small_runs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Small CV runs get pacing-time note, not hours-long warning."""
+    from tests.calibration.run import _print_cost_estimate
+
+    # 5 fixtures x 21 = 105 calls < 200 cap.
+    _print_cost_estimate(5, [_FakeSource("comicvine")])  # type: ignore[arg-type]
+    out = capsys.readouterr().out
+    assert "ComicVine" in out
+    # Pacing message, not the wall-time warning.
+    assert "1-req/sec floor" in out
+
+
+def test_cost_estimate_skips_when_no_sources(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from tests.calibration.run import _print_cost_estimate
+
+    _print_cost_estimate(50, [])
+    assert capsys.readouterr().out == ""

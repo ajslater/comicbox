@@ -1,4 +1,6 @@
-# Per-developer fixture set. Lives outside git because it's pointing
-# at the developer's local comic library, contains personal file paths,
+# Per-developer fixture sets. Live outside git because they point at
+# the developer's local comic library, contain personal file paths,
 # and may include API ids of comics that aren't in the public tree.
-fixtures.json
+# `fixtures.example.json` is the public template and is checked in.
+fixtures*.json
+!fixtures.example.json

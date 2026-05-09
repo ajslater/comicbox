@@ -32,11 +32,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
+import time
 import traceback
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -158,6 +160,40 @@ def _build_profile(comic_path: Path) -> ComicProfile:
     with Comicbox(comic_path) as cb:
         cb.get_merged_metadata()
         return cb._build_profile()
+
+
+class _Heartbeat:
+    """
+    Background thread that prints a "still working" hint at intervals.
+
+    The pyrate_limiter buckets in mokkari/simyan can park a single API
+    call for up to an hour when an hourly cap is hit. Without this hint,
+    the user sees a stalled-looking line and has no idea whether the
+    process is wedged or just being polite.
+    """
+
+    def __init__(self, label: str, *, interval: float = 15.0) -> None:
+        self._label = label
+        self._interval = interval
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._start = time.monotonic()
+
+    def __enter__(self) -> Self:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._thread.join(timeout=self._interval + 1.0)
+
+    def _run(self) -> None:
+        while not self._stop.wait(self._interval):
+            elapsed = time.monotonic() - self._start
+            print(  # noqa: T201
+                f"\n      [..still working on {self._label}, {elapsed:.0f}s elapsed]",
+                flush=True,
+            )
 
 
 def _score_one(
@@ -312,7 +348,8 @@ def _calibrate_loop(
                 flush=True,
             )
             try:
-                outcome = _score_one(source, fixture)
+                with _Heartbeat(f"{source.name}:{fixture.file_path.name}"):
+                    outcome = _score_one(source, fixture)
             except Exception:  # pragma: no cover — defensive
                 print("ERROR")  # noqa: T201
                 traceback.print_exc()
@@ -320,6 +357,65 @@ def _calibrate_loop(
             _print_progress(outcome, fixture)
             outcomes.append(outcome)
     return outcomes
+
+
+def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
+    """
+    Warn upfront about API budget and estimated wall time.
+
+    Per fixture, each source's two-step search costs up to:
+
+      Metron: 1 series_list + N issues_list (N ≤ _MAX_SERIES_PER_SEARCH = 20)
+      CV:     1 search       + N list_issues (N ≤ _MAX_VOLUMES_PER_SEARCH = 20)
+
+    Documented per-IP rate limits: Metron 20/min and 5,000/day, CV 1/sec
+    and 200/hour. The hourly cap on CV is the binding constraint for
+    multi-fixture runs; this prints the wall-time estimate so the user
+    isn't surprised.
+    """
+    if not sources:
+        return
+    source_names = {s.name for s in sources}
+    msgs: list[str] = []
+    if "comicvine" in source_names:
+        from comicbox.online.sources.comicvine import ComicVineOnlineSource
+
+        per = 1 + ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH
+        total = n_fixtures * per
+        if total > 200:
+            est_hours = total / 200
+            msgs.append(
+                f"  ComicVine: ~{total} calls worst case "
+                f"(at {per}/fixture x {n_fixtures} fixtures), "
+                f"vs. 200/hr cap → up to {est_hours:.1f}h wall time."
+            )
+        else:
+            msgs.append(
+                f"  ComicVine: ~{total} calls worst case "
+                f"(at {per}/fixture x {n_fixtures} fixtures); 1-req/sec floor "
+                f"means at least {total}s pacing."
+            )
+    if "metron" in source_names:
+        from comicbox.online.sources.metron import MetronOnlineSource
+
+        per = 1 + MetronOnlineSource._MAX_SERIES_PER_SEARCH
+        total = n_fixtures * per
+        # Metron's 20/min is the binding constraint at typical fixture counts.
+        est_min = max(1.0, total / 20)
+        msgs.append(
+            f"  Metron: ~{total} calls worst case "
+            f"(at {per}/fixture x {n_fixtures} fixtures); 20/min cap → "
+            f"at least {est_min:.1f}min wall time."
+        )
+    if not msgs:
+        return
+    print("Estimated cost (worst case; cached fixtures replay free):")  # noqa: T201
+    for m in msgs:
+        print(m)  # noqa: T201
+    print(  # noqa: T201
+        "  Tip: --max-per-search N reduces per-fixture cost during smoke runs.\n"
+        "       Re-running with the same fixtures replays from cache."
+    )
 
 
 def _resolve_sources(args_sources: str) -> list[OnlineSource]:
@@ -354,7 +450,30 @@ def main() -> int:
         default=None,
         help="Process at most N fixtures (useful for smoke tests).",
     )
+    parser.add_argument(
+        "--max-per-search",
+        type=int,
+        default=None,
+        help=(
+            "Override the per-fixture API-call cap for both sources "
+            "(default 20 each; total cost per fixture is N+1). Lowering "
+            "this dramatically reduces smoke-test cost — but it also "
+            "narrows what's calibrated, since correct matches outside "
+            "the top-N volume search will look like 'no candidates.' "
+            "Use 5 for fast iteration; leave at default for production "
+            "calibration."
+        ),
+    )
     args = parser.parse_args()
+
+    # Honor --max-per-search by patching the class-level caps. Affects all
+    # sources constructed below.
+    if args.max_per_search is not None:
+        from comicbox.online.sources.comicvine import ComicVineOnlineSource
+        from comicbox.online.sources.metron import MetronOnlineSource
+
+        ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH = args.max_per_search
+        MetronOnlineSource._MAX_SERIES_PER_SEARCH = args.max_per_search
 
     fixtures_path: Path = args.fixtures
     if not fixtures_path.exists():
@@ -374,6 +493,7 @@ def main() -> int:
         sys.stderr.write("no usable sources; aborting\n")
         return 1
     print(f"Calibrating against: {', '.join(s.name for s in sources)}")  # noqa: T201
+    _print_cost_estimate(len(fixtures), sources)
 
     outcomes = _calibrate_loop(fixtures, sources)
     reports = _aggregate(outcomes)

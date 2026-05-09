@@ -129,7 +129,11 @@ def test_unconfigured_source_skipped(patched_metron) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            # No metron creds → is_configured returns False → source skipped.
+            # Explicitly set blank creds so the test isolates from
+            # ~/.config/comicbox/config.yaml or env vars on the developer's
+            # machine — otherwise is_configured() returns True and the
+            # "skip unconfigured" branch we're testing never fires.
+            online={"metron": {"username": "", "password": ""}},
         )
     )
     cb = Comicbox(config=args)
