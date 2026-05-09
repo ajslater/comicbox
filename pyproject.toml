@@ -107,12 +107,6 @@ ci = ["requests~=2.32"]
 requires = ["uv_build~=0.11.2"]
 build-backend = "uv_build"
 
-# Track the in-flight ``comicbox-pdffile`` 0.6 PR
-# (https://github.com/ajslater/pdffile/pull/22). Drop this block once
-# 0.6.x lands on PyPI.
-[tool.uv.sources]
-comicbox-pdffile = { git = "https://github.com/ajslater/pdffile.git", branch = "pdf-image-detection" }
-
 [tool.uv.build-backend]
 module-root = ""
 source-include = [
