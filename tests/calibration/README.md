@@ -83,6 +83,61 @@ defaults against your own comic library.
    uv run python -m tests.calibration.run --sources metron --limit 30
    ```
 
+   Each full run writes its outcomes to a sibling
+   `fixtures.outcomes.json` for use by `--retry-misses` (see below).
+
+---
+
+## Iterating against a subset (recommended)
+
+A full run against 300+ fixtures can take **hours** — CV's 200/hour
+cap is the binding constraint. When you've made a code change and
+want to verify it without burning a full run's budget:
+
+### `make calibrate-retry` (or `--retry-misses`)
+
+Re-runs only the fixtures that previously failed (wrong / no
+candidates / error). Reads the saved `fixtures.outcomes.json`:
+
+```sh
+make calibrate-retry
+```
+
+Typical iteration loop:
+1. `make calibrate` once on the full set — slow, but caches results.
+2. Make a code change.
+3. `make calibrate-retry` — runs only what previously broke. Often
+   1/10th the wall time.
+4. Inspect, repeat.
+
+The retry run does NOT overwrite the main outcomes.json; it writes
+to `fixtures.outcomes.partial.json` so you can compare before/after.
+
+### `--filter REGEX`
+
+Run only fixtures whose filename matches a regex:
+
+```sh
+# Verify the smoking-gun cases after a scoring fix:
+uv run python -m tests.calibration.run --filter 'Lois Lane|Watchmen \(1987\)'
+
+# Just the AfterShock indie titles:
+uv run python -m tests.calibration.run --filter 'Wrong Earth|Penultiman|Snow Angels'
+```
+
+Combines with `--sources` and `--limit`. Doesn't overwrite the main
+outcomes.json (writes to `.partial.json`).
+
+### Per-source iteration
+
+Metron's 20/min cap is much more forgiving than CV's 200/hr.
+For most scoring-tweak iterations, calibrating just Metron first
+is faster:
+
+```sh
+uv run python -m tests.calibration.run --sources metron
+```
+
 ---
 
 ## Rate-limit cost

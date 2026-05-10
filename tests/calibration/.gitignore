@@ -4,3 +4,7 @@
 # `fixtures.example.json` is the public template and is checked in.
 fixtures*.json
 !fixtures.example.json
+# Outcome files written next to each run's fixtures.json — used by
+# `--retry-misses` and post-hoc analysis. Per-developer, never tracked.
+*.outcomes.json
+*.outcomes.partial.json

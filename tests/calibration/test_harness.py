@@ -236,3 +236,127 @@ def test_cost_estimate_skips_when_no_sources(
 
     _print_cost_estimate(50, [])
     assert capsys.readouterr().out == ""
+
+
+# --------------------------------------------- outcomes serialize / retry-misses
+
+
+def _make_fixture(file_path: Path, **expected: int) -> _Fixture:
+    return _Fixture(file_path=file_path, expected=expected, cover_quality="full")
+
+
+def test_classify_outcome_correct() -> None:
+    from tests.calibration.run import _classify_outcome
+
+    assert _classify_outcome(_outcome(correct=True)) == "correct"
+
+
+def test_classify_outcome_wrong() -> None:
+    from tests.calibration.run import _classify_outcome
+
+    assert _classify_outcome(_outcome(correct=False)) == "wrong"
+
+
+def test_classify_outcome_no_candidates() -> None:
+    from tests.calibration.run import _classify_outcome
+
+    assert _classify_outcome(_outcome(correct=None, n=0)) == "no_candidates"
+
+
+def test_classify_outcome_error() -> None:
+    from tests.calibration.run import _classify_outcome
+
+    assert _classify_outcome(_outcome(error="boom")) == "error"
+
+
+def test_classify_outcome_no_expected_id() -> None:
+    """Candidates returned but the fixture didn't list an expected id for this source."""
+    from tests.calibration.run import _classify_outcome
+
+    o = _Outcome(
+        fixture=_Fixture(Path("/x.cbz"), {}, "full"),
+        source_name="metron",
+        top_score=0.9,
+        top_issue_id=42,
+        top_correct=None,
+        n_candidates=3,
+    )
+    assert _classify_outcome(o) == "no_expected_id"
+
+
+def test_serialize_and_load_round_trip(tmp_path: Path) -> None:
+    """Outcomes serialize → deserialize back into the miss-files set we expect."""
+    import json as _json
+
+    from tests.calibration.run import _load_miss_files, _serialize_outcomes
+
+    outcomes = [
+        _Outcome(
+            fixture=_make_fixture(Path("/a.cbz"), metron=1),
+            source_name="metron",
+            top_score=0.99,
+            top_issue_id=1,
+            top_correct=True,
+            n_candidates=3,
+        ),
+        _Outcome(
+            fixture=_make_fixture(Path("/b.cbz"), metron=2),
+            source_name="metron",
+            top_score=0.0,
+            top_issue_id=None,
+            top_correct=None,
+            n_candidates=0,
+        ),
+        _Outcome(
+            fixture=_make_fixture(Path("/c.cbz"), comicvine=3),
+            source_name="comicvine",
+            top_score=0.86,
+            top_issue_id=999,
+            top_correct=False,
+            n_candidates=5,
+        ),
+    ]
+    out_path = tmp_path / "fixtures.outcomes.json"
+    _serialize_outcomes(outcomes, out_path)
+
+    payload = _json.loads(out_path.read_text())
+    assert {entry["outcome"] for entry in payload} == {
+        "correct",
+        "no_candidates",
+        "wrong",
+    }
+
+    misses = _load_miss_files(out_path)
+    # /a was correct → omitted. /b (no_candidates) and /c (wrong) → kept.
+    assert misses == {"/b.cbz", "/c.cbz"}
+
+
+def test_filter_to_misses_keeps_only_listed_files(tmp_path: Path) -> None:
+    from tests.calibration.run import _filter_to_misses
+
+    f_a = _make_fixture(tmp_path / "a.cbz")
+    f_b = _make_fixture(tmp_path / "b.cbz")
+    f_c = _make_fixture(tmp_path / "c.cbz")
+    miss_files = {str(tmp_path / "a.cbz"), str(tmp_path / "c.cbz")}
+    out = _filter_to_misses([f_a, f_b, f_c], miss_files)
+    assert out == [f_a, f_c]
+
+
+def test_load_miss_files_handles_a_comic_with_one_correct_one_wrong(
+    tmp_path: Path,
+) -> None:
+    """A comic where metron correct + cv wrong → kept (we want to retry the cv side)."""
+    import json as _json
+
+    out_path = tmp_path / "outcomes.json"
+    out_path.write_text(
+        _json.dumps(
+            [
+                {"file": "/x.cbz", "source": "metron", "outcome": "correct"},
+                {"file": "/x.cbz", "source": "comicvine", "outcome": "wrong"},
+            ]
+        )
+    )
+    from tests.calibration.run import _load_miss_files
+
+    assert _load_miss_files(out_path) == {"/x.cbz"}

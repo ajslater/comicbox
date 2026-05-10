@@ -20,6 +20,13 @@ include cfg/help.mk
 calibrate:
 	uv run python -m tests.calibration.run
 
+## Re-run only the fixtures that previously failed (wrong / no-candidates / error).
+## Reads tests/calibration/fixtures.outcomes.json from the last full run.
+## @category Test
+.PHONY: calibrate-retry
+calibrate-retry:
+	uv run python -m tests.calibration.run --retry-misses
+
 ## Bootstrap a calibration fixtures.json from already-tagged comics.
 ## Use CALIBRATE_PATHS=... to override paths; defaults to a Milliways layout.
 ## @category Test

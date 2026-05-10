@@ -94,6 +94,59 @@ class _SourceReport:
     by_band: dict[str, dict[str, int]] = field(default_factory=dict)
 
 
+# Outcome tags written to outcomes.json — also what `--retry-misses` looks for.
+_MISS_TAGS: frozenset[str] = frozenset({"wrong", "no_candidates", "error"})
+
+
+def _classify_outcome(o: _Outcome) -> str:
+    """Map an _Outcome to a short tag for serialization / retry-misses filtering."""
+    if o.error:
+        return "error"
+    if o.n_candidates == 0:
+        return "no_candidates"
+    if o.top_correct is None:
+        return "no_expected_id"
+    return "correct" if o.top_correct else "wrong"
+
+
+def _serialize_outcomes(outcomes: list[_Outcome], path: Path) -> None:
+    """Write outcomes to JSON for `--retry-misses` and post-hoc analysis."""
+    payload = [
+        {
+            "file": str(o.fixture.file_path),
+            "source": o.source_name,
+            "outcome": _classify_outcome(o),
+            "top_score": o.top_score,
+            "top_issue_id": o.top_issue_id,
+            "expected": o.fixture.expected.get(o.source_name),
+            "n_candidates": o.n_candidates,
+            "error": o.error,
+        }
+        for o in outcomes
+    ]
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _load_miss_files(outcomes_path: Path) -> set[str]:
+    """
+    From a previous run's outcomes.json, return file paths that had any miss.
+
+    A "miss" is wrong / no_candidates / error on at least one source. Comics
+    where every queried source was correct (or no_expected_id) are dropped
+    — we don't need to re-burn API budget on them.
+    """
+    raw = json.loads(outcomes_path.read_text())
+    miss_files: set[str] = set()
+    for entry in raw:
+        if entry.get("outcome") in _MISS_TAGS:
+            miss_files.add(str(entry["file"]))
+    return miss_files
+
+
+def _filter_to_misses(fixtures: list[_Fixture], miss_files: set[str]) -> list[_Fixture]:
+    return [f for f in fixtures if str(f.file_path) in miss_files]
+
+
 def _load_fixtures(path: Path) -> list[_Fixture]:
     """Parse fixtures.json into typed entries."""
     raw = json.loads(path.read_text())
@@ -418,6 +471,46 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
     )
 
 
+def _apply_filters(
+    fixtures: list[_Fixture],
+    *,
+    outcomes_path: Path,
+    retry_misses: bool,
+    name_filter: str | None,
+    limit: int | None,
+) -> list[_Fixture]:
+    """
+    Apply --retry-misses, --filter, and --limit in that order.
+
+    Raises FileNotFoundError when --retry-misses requires an outcomes
+    file that doesn't exist (caller catches and reports).
+    """
+    if retry_misses:
+        if not outcomes_path.exists():
+            msg = (
+                f"--retry-misses needs a previous run's outcomes at "
+                f"{outcomes_path}; run a full calibration first."
+            )
+            raise FileNotFoundError(msg)
+        miss_files = _load_miss_files(outcomes_path)
+        before = len(fixtures)
+        fixtures = _filter_to_misses(fixtures, miss_files)
+        print(  # noqa: T201
+            f"--retry-misses: filtered {before} → {len(fixtures)} fixtures "
+            f"(loaded misses from {outcomes_path.name})"
+        )
+    if name_filter:
+        import re
+
+        pattern = re.compile(name_filter)
+        before = len(fixtures)
+        fixtures = [f for f in fixtures if pattern.search(f.file_path.name)]
+        print(f"--filter {name_filter!r}: {before} → {len(fixtures)} fixtures")  # noqa: T201
+    if limit:
+        fixtures = fixtures[:limit]
+    return fixtures
+
+
 def _resolve_sources(args_sources: str) -> list[OnlineSource]:
     """Build configured sources from the comicbox config; skip + warn on misconfigured."""
     cfg = get_config(None)
@@ -464,6 +557,28 @@ def main() -> int:
             "calibration."
         ),
     )
+    parser.add_argument(
+        "--retry-misses",
+        action="store_true",
+        help=(
+            "Run only the fixtures that previously failed (wrong / no "
+            "candidates / error) per the saved outcomes.json. Looks for "
+            "<fixtures-dir>/<fixtures-stem>.outcomes.json. Useful when "
+            "verifying a scoring or filter change against just the "
+            "regression set rather than re-running the full fixture set "
+            "(which can take hours against CV's hourly cap)."
+        ),
+    )
+    parser.add_argument(
+        "--filter",
+        dest="name_filter",
+        default=None,
+        metavar="REGEX",
+        help=(
+            "Run only fixtures whose file basename matches this regex. "
+            "E.g. --filter 'Lois Lane|Watchmen' for a focused smoke run."
+        ),
+    )
     args = parser.parse_args()
 
     # Honor --max-per-search by patching the class-level caps. Affects all
@@ -484,9 +599,24 @@ def main() -> int:
         )
         return 1
     fixtures = _load_fixtures(fixtures_path)
-    if args.limit:
-        fixtures = fixtures[: args.limit]
+    outcomes_path = fixtures_path.with_suffix(".outcomes.json")
+
+    try:
+        fixtures = _apply_filters(
+            fixtures,
+            outcomes_path=outcomes_path,
+            retry_misses=args.retry_misses,
+            name_filter=args.name_filter,
+            limit=args.limit,
+        )
+    except FileNotFoundError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 1
+
     print(f"Loaded {len(fixtures)} fixtures from {fixtures_path}")  # noqa: T201
+    if not fixtures:
+        sys.stderr.write("no fixtures to process after filtering; aborting\n")
+        return 1
 
     sources = _resolve_sources(args.sources)
     if not sources:
@@ -499,6 +629,17 @@ def main() -> int:
     reports = _aggregate(outcomes)
     print(_format_report(reports))  # noqa: T201
     _print_failed_outcomes(outcomes)
+
+    # Save outcomes for future --retry-misses runs. Don't overwrite when
+    # we ourselves were a filtered run — that'd lose the wider context.
+    if not args.retry_misses and not args.name_filter and not args.limit:
+        _serialize_outcomes(outcomes, outcomes_path)
+        print(f"\nSaved outcomes to {outcomes_path}")  # noqa: T201
+    elif outcomes:
+        # Filtered runs save to a sibling file so we can compare.
+        side = fixtures_path.with_suffix(".outcomes.partial.json")
+        _serialize_outcomes(outcomes, side)
+        print(f"\nSaved partial outcomes to {side}")  # noqa: T201
     return 0
 
 
