@@ -1,5 +1,9 @@
 # 📰 News
 
+## v3.0.2
+
+- Use new comicfn2dict. Parses more comic filename variations.
+
 ## v3.0.1
 
 - Require new comicbox-pdffile that doesn't corrupt PDF pages. Includes
