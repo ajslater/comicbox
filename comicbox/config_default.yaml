@@ -59,7 +59,7 @@ comicbox:
     # Match resolution policy. One of: always-prompt, strict, normal, eager.
     policy: normal
     unattended: False
-    confidence_threshold: 0.85
+    confidence_threshold: 0.95
     # Legacy flags — translated to `policy`/`unattended` at run time with
     # a deprecation warning. Will be removed in a future release.
     skip_multiple: False

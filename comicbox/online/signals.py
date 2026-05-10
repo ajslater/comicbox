@@ -80,9 +80,25 @@ def s_issue(profile: ComicProfile, candidate: Candidate) -> float:
 
 
 def s_year(profile: ComicProfile, candidate: Candidate) -> float:
-    """Year match: 1 if equal, 0.7 if ±1, 0.4 if ±2, 0 otherwise. 0.6 if missing."""
+    """
+    Year match: 1 if equal, 0.7 if ±1, 0.4 if ±2, 0 otherwise.
+
+    Missing-data handling distinguishes two cases:
+      - both missing: 0.5 (weak agnostic prior — we have no signal)
+      - asymmetric (one side has year, other doesn't): 0.3
+        (the previous 0.6 over-credited unknown candidates and let
+        wrong-volume picks coast through the auto-write band when CV's
+        BasicIssue lacked a cover_date)
+
+    The asymmetric value is intentionally lower than any partial-match
+    bracket: even ±2 years gets 0.4, beating a candidate that "just
+    doesn't have a year." Tighter than a real diff penalty would be —
+    we keep diff==0 → 1.0 to reward exact matches strongly.
+    """
+    if profile.year is None and candidate.summary.year is None:
+        return 0.5
     if profile.year is None or candidate.summary.year is None:
-        return 0.6
+        return 0.3
     diff = abs(profile.year - candidate.summary.year)
     if diff == 0:
         return 1.0

@@ -114,14 +114,32 @@ _no_tty_hint = _NoTtyHintGuard()
 
 
 def _resolve_volume(md: dict) -> int | None:
-    """Extract `comicbox.volume.number` as an int, defensively."""
+    """
+    Extract `comicbox.volume.number` as an int, defensively.
+
+    Rejects 4-digit year-shaped values (1900-2100). The
+    [ComicInfo.xml convention](https://anansi-project.github.io/docs/comicinfo/documentation#volume)
+    of using the year-of-first-issue as the volume number is widespread
+    (comictagger writes it that way), but Metron's `series_volume`
+    filter expects an ordinal (1, 2, 3 — "Vol. N of M"). Sending the
+    year as `series_volume` matches no issues and wastes API budget on
+    the drop-volume retry.
+
+    A real volume "Vol. 2019 of 9999" doesn't exist in the wild —
+    real ordinal volumes are well under 50 in practice. Treating
+    1900-2100 as "year masquerading as volume" is safe and matches the
+    failure mode we actually see.
+    """
     raw = glom(md, "comicbox.volume.number", default=None)
     if raw is None:
         return None
     try:
-        return int(raw)
+        v = int(raw)
     except (TypeError, ValueError):
         return None
+    if 1900 <= v <= 2100:  # noqa: PLR2004 — year range, not a magic threshold
+        return None
+    return v
 
 
 def _detect_cv_id_disagreement(

@@ -170,12 +170,20 @@ class ComicVineOnlineSource(OnlineSource):
             precomputed_cover_hash=None,
         )
 
+    # Cover-date window applied around `profile.year` when filtering
+    # CV's per-volume issue lookup. ±2 years gives the year-only matcher
+    # a small slop budget without admitting wholly-wrong-volume matches
+    # that score well on every other signal.
+    _COVER_DATE_WINDOW_YEARS: ClassVar[int] = 2
+
     def _list_issues_by_volume(
         self,
         session: Any,
         volume_id: int,
         issue_number: str | None,
         volume_name: str | None = None,
+        *,
+        year: int | None = None,
     ) -> list[Candidate]:
         """
         Run a single ``list_issues`` call constrained by volume id.
@@ -183,10 +191,22 @@ class ComicVineOnlineSource(OnlineSource):
         Used both by the fast path (`--series-id comicvine:<id>`) and by
         each iteration of the discovery two-step. ``volume_name`` is set
         on the returned candidates' summary when available.
+
+        ``year``, when supplied, narrows results to a ±_COVER_DATE_WINDOW_YEARS
+        window around it via CV's ``cover_date:Y0-01-01|Y1-12-31``
+        filter syntax. Cover-date drift is rarely more than ±1 year so a
+        2-year slop is generous; this prevents wrong-volume picks (e.g.
+        a 1986 series matching a 2005 collected edition with the same
+        issue number) from polluting the candidate set in the first place.
         """
         issue_filter = [f"volume:{volume_id}"]
         if issue_number:
             issue_filter.append(f"issue_number:{issue_number}")
+        if year is not None:
+            window = self._COVER_DATE_WINDOW_YEARS
+            issue_filter.append(
+                f"cover_date:{year - window}-01-01|{year + window}-12-31"
+            )
         issues = session.list_issues(params={"filter": ",".join(issue_filter)})
         return [self._to_candidate(i, volume_name) for i in issues]
 
@@ -209,19 +229,26 @@ class ComicVineOnlineSource(OnlineSource):
         ``--series-id comicvine:<id>`` short-circuits step 1 and runs
         only step 2 against the supplied volume id.
 
-        Year is intentionally NOT used as a volume `start_year` filter —
-        a comic dated 2020 can be issue #100 of a series that started in
-        1963. Year ranking is left to the matcher's metadata score.
+        Volume `start_year` is intentionally NOT used as a filter — a
+        comic dated 2020 can be issue #100 of a series that started in
+        1963. But ``profile.year`` IS used as a per-issue ``cover_date``
+        window (±2 years), to keep wrong-volume candidates with the
+        same issue number out of the candidate set entirely. If the
+        year filter returns empty (CV has issues with missing
+        cover_date), we retry once without the year filter.
         """
         session = self._get_session()
         issue_number = strip_issue_leading_zeros(profile.issue)
+        year = profile.year
         # Fast path: --series-id comicvine:<id> skips the volume search and
         # goes straight to a single list_issues call constrained by that
         # volume id, saving the discovery API call.
         explicit_sid = self._settings.explicit_series_ids.get(self.name)
         if explicit_sid is not None:
             try:
-                return self._list_issues_by_volume(session, explicit_sid, issue_number)
+                return self._list_with_year_retry(
+                    session, explicit_sid, issue_number, None, year=year
+                )
             except Exception as exc:
                 logger.warning(
                     f"online {self.name}: issue-list for volume {explicit_sid} "
@@ -265,7 +292,9 @@ class ComicVineOnlineSource(OnlineSource):
         for vol in volumes:
             try:
                 candidates.extend(
-                    self._list_issues_by_volume(session, vol.id, issue_number, vol.name)
+                    self._list_with_year_retry(
+                        session, vol.id, issue_number, vol.name, year=year
+                    )
                 )
             except Exception as exc:
                 logger.warning(
@@ -274,6 +303,33 @@ class ComicVineOnlineSource(OnlineSource):
                 )
                 continue
         return candidates
+
+    def _list_with_year_retry(
+        self,
+        session: Any,
+        volume_id: int,
+        issue_number: str | None,
+        volume_name: str | None,
+        *,
+        year: int | None,
+    ) -> list[Candidate]:
+        """
+        Per-volume issue lookup with a year-window filter and one fallback.
+
+        Tries `cover_date:Y±2` first (cuts out wrong-volume candidates).
+        If that returns empty AND a year was supplied, retries without
+        the year filter — cover_date can be missing on CV issues, and
+        we'd rather see *something* and let the matcher score it than
+        wrongly drop the right answer.
+        """
+        candidates = self._list_issues_by_volume(
+            session, volume_id, issue_number, volume_name, year=year
+        )
+        if candidates or year is None:
+            return candidates
+        return self._list_issues_by_volume(
+            session, volume_id, issue_number, volume_name, year=None
+        )
 
 
 # ----------------------------------------------------- cover-hash URL cache

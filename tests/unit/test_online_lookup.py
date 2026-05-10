@@ -386,3 +386,53 @@ def test_cross_source_no_warning_when_cv_ids_match(
     assert cross_warnings == [], (
         f"unexpected cross-source warning when ids agree: {cross_warnings}"
     )
+
+
+# ----------------------------------------- _resolve_volume year-as-volume guard
+
+
+def test_resolve_volume_extracts_real_ordinal() -> None:
+    from comicbox.box.online_lookup import _resolve_volume
+
+    assert _resolve_volume({"comicbox": {"volume": {"number": 2}}}) == 2
+    assert _resolve_volume({"comicbox": {"volume": {"number": "5"}}}) == 5
+
+
+def test_resolve_volume_rejects_year_shape() -> None:
+    """
+    ComicInfo.xml convention uses year-of-first-issue as volume.
+
+    Metron's `series_volume` filter expects an ordinal — sending 2019
+    matches no issues. We drop year-shaped values (1900-2100) so they
+    don't poison the search.
+    """
+    from comicbox.box.online_lookup import _resolve_volume
+
+    assert _resolve_volume({"comicbox": {"volume": {"number": 2019}}}) is None
+    assert _resolve_volume({"comicbox": {"volume": {"number": "1986"}}}) is None
+    assert _resolve_volume({"comicbox": {"volume": {"number": 2100}}}) is None
+    assert _resolve_volume({"comicbox": {"volume": {"number": 1900}}}) is None
+
+
+def test_resolve_volume_keeps_pre_1900_values() -> None:
+    """Pre-1900 volume numbers can't be year-shaped; keep them."""
+    from comicbox.box.online_lookup import _resolve_volume
+
+    assert _resolve_volume({"comicbox": {"volume": {"number": 1899}}}) == 1899
+    assert _resolve_volume({"comicbox": {"volume": {"number": 50}}}) == 50
+
+
+def test_resolve_volume_keeps_post_2100_values() -> None:
+    """Post-2100 volume numbers can't be year-shaped (sci-fi aside); keep them."""
+    from comicbox.box.online_lookup import _resolve_volume
+
+    assert _resolve_volume({"comicbox": {"volume": {"number": 2101}}}) == 2101
+
+
+def test_resolve_volume_handles_missing_or_garbage() -> None:
+    from comicbox.box.online_lookup import _resolve_volume
+
+    assert _resolve_volume({}) is None
+    assert _resolve_volume({"comicbox": {}}) is None
+    assert _resolve_volume({"comicbox": {"volume": {"number": "abc"}}}) is None
+    assert _resolve_volume({"comicbox": {"volume": {"number": None}}}) is None

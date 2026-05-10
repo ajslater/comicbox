@@ -167,9 +167,20 @@ class TestYearSignal:
     def test_far_off_zero(self) -> None:
         assert s_year(_profile(year=2020), _candidate(year=2010)) == 0.0
 
-    def test_missing_partial_credit(self) -> None:
-        assert s_year(_profile(year=None), _candidate(year=2020)) == 0.6
-        assert s_year(_profile(), _candidate(year=None)) == 0.6
+    def test_both_missing_weak_prior(self) -> None:
+        """Symmetric missing (no info on either side) → 0.5 prior."""
+        assert s_year(_profile(year=None), _candidate(year=None)) == 0.5
+
+    def test_asymmetric_missing_partial(self) -> None:
+        """
+        One side has year, the other doesn't → 0.3.
+
+        Lower than any real-match bracket (even ±2 → 0.4) to avoid
+        over-crediting wrong-volume candidates whose BasicIssue search
+        result happens to lack a cover_date.
+        """
+        assert s_year(_profile(year=2020), _candidate(year=None)) == 0.3
+        assert s_year(_profile(year=None), _candidate(year=2020)) == 0.3
 
 
 class TestPublisherSignal:

@@ -65,7 +65,7 @@ top and runner-up is small. This avoids burning API/IO on already-clear cases.
 
 | Constant                  | Value | Role                                              |
 |---------------------------|-------|---------------------------------------------------|
-| `confidence_threshold`    | 0.85  | Above this, top is "auto-write worthy"            |
+| `confidence_threshold`    | 0.95  | Above this, top is "auto-write worthy" (was 0.85; bumped post-calibration to suppress wrong-volume false positives) |
 | `min_confidence`          | 0.50  | Below this, candidate is "not viable"             |
 | `disambiguation_margin`   | 0.10  | Required gap between top and runner-up for unambiguous |
 

@@ -63,7 +63,7 @@ W_COVER = 0.20
 # Default constant kept here for the rank() default-arg signature; the
 # matcher reads per-source values via `resolve_*` helpers in `_resolve_policy`
 # and `_should_invoke_hashing` so per-source overrides take effect.
-_DEFAULT_CONFIDENCE_THRESHOLD = 0.85
+_DEFAULT_CONFIDENCE_THRESHOLD = 0.95
 
 
 class ResolutionKind(str, Enum):

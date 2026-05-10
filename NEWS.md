@@ -12,7 +12,8 @@
       calls. Per-source overrides via `--policy metron:eager`.
     - `--unattended` turns prompts into skips for cron / batch use.
     - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally
-      or per source.
+      or per source. Default 0.95 (calibrated against a real fixture set;
+      lower values produced too many wrong-volume false positives).
     - End-of-run summary shows distinct AUTO_WRITE / PROMPT / SKIP /
       NO_MATCH counts.
     - Cross-source disagreement: when Metron's stored `cv_id` and our

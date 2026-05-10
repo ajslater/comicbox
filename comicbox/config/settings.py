@@ -105,7 +105,12 @@ class OnlineSettings:
     disambiguation_margin_per_source: Mapping[str, float] = field(default_factory=dict)
 
     # Persistent (config file + env var; CLI flag may override)
-    confidence_threshold: float = 0.85
+    # Auto-write threshold. Calibrated against the spring-2026 fixture set:
+    # 0.85 produced ~7% wrong auto-writes in the 0.85-0.95 band (mostly
+    # wrong-volume picks for series with reboots like Watchmen 1986 vs
+    # Absolute Watchmen 2005). 0.95 converts those into prompts while
+    # preserving the high-volume of confident matches.
+    confidence_threshold: float = 0.95
     # Legacy flags (deprecated; matcher no longer reads these directly post-M-policy).
     # Kept for translation-layer compatibility — the CLI parser maps them to
     # the new `policy` / `unattended` fields with deprecation warnings.

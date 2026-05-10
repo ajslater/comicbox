@@ -435,3 +435,70 @@ def test_get_handles_get_volume_failure_gracefully(
     # The issue fetch itself wasn't disrupted.
     assert fake_cv.get_issue_calls == [42]
     assert fake_cv.get_volume_calls == [999]
+
+
+# ----------------------------------------- cover_date year-window filter
+
+
+def test_search_includes_cover_date_window_when_year_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """profile.year → cover_date:Y-2-01-01|Y+2-12-31 in the issue filter."""
+    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lois Lane")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=2019)
+    src.search(profile)
+    # First (and only) per-volume call carries the cover_date window.
+    [call] = fake_cv.list_issues_calls
+    assert "cover_date:2017-01-01|2021-12-31" in call.get("filter", "")
+
+
+def test_search_omits_cover_date_when_no_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """profile.year=None → no cover_date filter (we have no year to gate on)."""
+    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lois Lane")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=None)
+    src.search(profile)
+    [call] = fake_cv.list_issues_calls
+    assert "cover_date" not in call.get("filter", "")
+
+
+def test_search_retries_without_year_when_year_filter_returns_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    CV may have issues without cover_date set; fall back so we don't drop them.
+
+    The fake's `list_issues` ignores cover_date filters by design — but we
+    want to verify the retry happens. To do that we make a fake that
+    *does* honor cover_date and returns empty under it: that triggers
+    the year=None fallback.
+    """
+    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
+    real_issue = _FakeBasicIssue(iid=42, number="1", volume_name="Lois Lane")
+
+    class _YearFilterCV(_FakeCV):
+        def list_issues(self, params=None, max_results=500):
+            params = params or {}
+            self.list_issues_calls.append(params)
+            filter_str = params.get("filter", "")
+            # First call has cover_date filter → return empty.
+            # Second call doesn't → return the real issue.
+            if "cover_date:" in filter_str:
+                return []
+            return [real_issue]
+
+    fake_cv = _YearFilterCV(volumes=[vol], issues_by_volume={})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=2019)
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [42]
+    assert len(fake_cv.list_issues_calls) == 2
+    assert "cover_date:" in fake_cv.list_issues_calls[0].get("filter", "")
+    assert "cover_date:" not in fake_cv.list_issues_calls[1].get("filter", "")
