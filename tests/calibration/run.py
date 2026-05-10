@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import threading
 import time
@@ -145,6 +146,38 @@ def _load_miss_files(outcomes_path: Path) -> set[str]:
 
 def _filter_to_misses(fixtures: list[_Fixture], miss_files: set[str]) -> list[_Fixture]:
     return [f for f in fixtures if str(f.file_path) in miss_files]
+
+
+# "Series key" for --one-per-series: the part of the filename before the
+# issue-number marker. Keeps the year-in-parens because that often
+# distinguishes volumes ("Lois Lane (1986)" vs "Lois Lane (2019)").
+# Examples:
+#   "Watchmen (1986) #002.cbz"  → "Watchmen (1986)"
+#   "Conan (2004) #005.cbz"     → "Conan (2004)"
+#   "Lois Lane (2019) #001.cbz" → "Lois Lane (2019)"
+#   "Akira (1984) #001.cbz"     → "Akira (1984)"  # same logical series
+#                                                 # but treated as distinct
+#                                                 # — conservative; user can
+#                                                 # group further via --filter.
+_ISSUE_MARKER_RE = re.compile(r"\s*#\d")
+
+
+def _series_key(filename: str) -> str:
+    """Reduce a comic filename to a stable key for --one-per-series."""
+    return _ISSUE_MARKER_RE.split(filename, maxsplit=1)[0].rstrip()
+
+
+def _dedupe_one_per_series(fixtures: list[_Fixture]) -> list[_Fixture]:
+    """Keep only the first fixture for each series-key prefix."""
+    seen: set[str] = set()
+    out: list[_Fixture] = []
+    for f in fixtures:
+        key = _series_key(f.file_path.name)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f)
+    return out
 
 
 def _load_fixtures(path: Path) -> list[_Fixture]:
@@ -477,10 +510,11 @@ def _apply_filters(
     outcomes_path: Path,
     retry_misses: bool,
     name_filter: str | None,
+    one_per_series: bool,
     limit: int | None,
 ) -> list[_Fixture]:
     """
-    Apply --retry-misses, --filter, and --limit in that order.
+    Apply --retry-misses, --filter, --one-per-series, and --limit in order.
 
     Raises FileNotFoundError when --retry-misses requires an outcomes
     file that doesn't exist (caller catches and reports).
@@ -500,12 +534,17 @@ def _apply_filters(
             f"(loaded misses from {outcomes_path.name})"
         )
     if name_filter:
-        import re
-
         pattern = re.compile(name_filter)
         before = len(fixtures)
         fixtures = [f for f in fixtures if pattern.search(f.file_path.name)]
         print(f"--filter {name_filter!r}: {before} → {len(fixtures)} fixtures")  # noqa: T201
+    if one_per_series:
+        before = len(fixtures)
+        fixtures = _dedupe_one_per_series(fixtures)
+        print(  # noqa: T201
+            f"--one-per-series: {before} → {len(fixtures)} fixtures "
+            f"(one representative per series prefix)"
+        )
     if limit:
         fixtures = fixtures[:limit]
     return fixtures
@@ -579,6 +618,18 @@ def main() -> int:
             "E.g. --filter 'Lois Lane|Watchmen' for a focused smoke run."
         ),
     )
+    parser.add_argument(
+        "--one-per-series",
+        action="store_true",
+        help=(
+            "Dedupe fixtures by series, keeping only the first issue per "
+            "series prefix (everything before the # issue marker). Six "
+            "Watchmen issues, twenty Conan issues, etc. all probe the same "
+            "series-discovery code path — one representative is enough for "
+            "calibration. Pairs well with --retry-misses for cheap "
+            "fix-verification iterations."
+        ),
+    )
     args = parser.parse_args()
 
     # Honor --max-per-search by patching the class-level caps. Affects all
@@ -607,6 +658,7 @@ def main() -> int:
             outcomes_path=outcomes_path,
             retry_misses=args.retry_misses,
             name_filter=args.name_filter,
+            one_per_series=args.one_per_series,
             limit=args.limit,
         )
     except FileNotFoundError as exc:
@@ -631,8 +683,11 @@ def main() -> int:
     _print_failed_outcomes(outcomes)
 
     # Save outcomes for future --retry-misses runs. Don't overwrite when
-    # we ourselves were a filtered run — that'd lose the wider context.
-    if not args.retry_misses and not args.name_filter and not args.limit:
+    # we ourselves were a filtered/sampled run — that'd lose the wider context.
+    was_filtered = bool(
+        args.retry_misses or args.name_filter or args.limit or args.one_per_series
+    )
+    if not was_filtered:
         _serialize_outcomes(outcomes, outcomes_path)
         print(f"\nSaved outcomes to {outcomes_path}")  # noqa: T201
     elif outcomes:

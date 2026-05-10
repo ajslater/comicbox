@@ -113,6 +113,34 @@ Typical iteration loop:
 The retry run does NOT overwrite the main outcomes.json; it writes
 to `fixtures.outcomes.partial.json` so you can compare before/after.
 
+### `make calibrate-retry-sampled` (or `--one-per-series`)
+
+Even faster than `calibrate-retry`: drops to one representative
+fixture per series. If 19 Conan issues all failed the same way,
+testing one of them tells you everything testing all 19 does — they
+share the volume-search code path.
+
+```sh
+make calibrate-retry-sampled
+```
+
+Series key is "everything before the issue marker", so:
+
+| Filename | Series key |
+|---|---|
+| `Watchmen (1986) #002.cbz` | `Watchmen (1986)` |
+| `Conan (2004) #005.cbz`    | `Conan (2004)` |
+| `Lois Lane (2019) #001.cbz`| `Lois Lane (2019)` |
+| `Akira (1984) #001.cbz`    | `Akira (1984)`* |
+
+\* `Akira (1984)` and `Akira (1990)` are treated as separate series
+because the year-in-parens often distinguishes volumes (`Lois Lane
+(1986)` vs `Lois Lane (2019)`). For Akira specifically the same
+logical run got split across years, but the harness errs conservative
+— group further with `--filter` if you want.
+
+`--one-per-series` composes with `--retry-misses` and `--filter`.
+
 ### `--filter REGEX`
 
 Run only fixtures whose filename matches a regex:

@@ -27,6 +27,13 @@ calibrate:
 calibrate-retry:
 	uv run python -m tests.calibration.run --retry-misses
 
+## Fast iteration: previously-failed fixtures, one per series (drops the
+## 19 other Conan issues that all probe the same code path).
+## @category Test
+.PHONY: calibrate-retry-sampled
+calibrate-retry-sampled:
+	uv run python -m tests.calibration.run --retry-misses --one-per-series
+
 ## Bootstrap a calibration fixtures.json from already-tagged comics.
 ## Use CALIBRATE_PATHS=... to override paths; defaults to a Milliways layout.
 ## @category Test

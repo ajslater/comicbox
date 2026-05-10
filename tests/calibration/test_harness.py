@@ -360,3 +360,69 @@ def test_load_miss_files_handles_a_comic_with_one_correct_one_wrong(
     from tests.calibration.run import _load_miss_files
 
     assert _load_miss_files(out_path) == {"/x.cbz"}
+
+
+# --------------------------------------------- _series_key / --one-per-series
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        pytest.param("Watchmen (1986) #002.cbz", "Watchmen (1986)", id="year-paren"),
+        pytest.param("Conan (2004) #005.cbz", "Conan (2004)", id="year-paren-2"),
+        pytest.param("Lois Lane (2019) #001.cbz", "Lois Lane (2019)", id="multi-word"),
+        pytest.param("Akira (1984) #001.cbz", "Akira (1984)", id="single-word"),
+        pytest.param("X-Men Hellfire Gala #001.cbz", "X-Men Hellfire Gala", id="no-paren"),
+        # Edge: leading whitespace, multiple spaces
+        pytest.param("Foo Bar   #042.cbz", "Foo Bar", id="extra-whitespace"),
+        # No issue marker at all → whole filename
+        pytest.param("comic.cbz", "comic.cbz", id="no-issue-marker"),
+    ],
+)
+def test_series_key(filename: str, expected: str) -> None:
+    from tests.calibration.run import _series_key
+
+    assert _series_key(filename) == expected
+
+
+def test_dedupe_one_per_series_keeps_first(tmp_path: Path) -> None:
+    from tests.calibration.run import _dedupe_one_per_series
+
+    fixtures = [
+        _Fixture(tmp_path / "Watchmen (1986) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Watchmen (1986) #002.cbz", {}, "full"),
+        _Fixture(tmp_path / "Watchmen (1986) #003.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lois Lane (2019) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lois Lane (2019) #002.cbz", {}, "full"),
+    ]
+    deduped = _dedupe_one_per_series(fixtures)
+    assert len(deduped) == 2
+    assert deduped[0].file_path.name == "Watchmen (1986) #001.cbz"
+    assert deduped[1].file_path.name == "Lois Lane (2019) #001.cbz"
+
+
+def test_dedupe_one_per_series_distinguishes_volumes(tmp_path: Path) -> None:
+    """Lois Lane (1986) and Lois Lane (2019) are separate series — keep both."""
+    from tests.calibration.run import _dedupe_one_per_series
+
+    fixtures = [
+        _Fixture(tmp_path / "Lois Lane (1986) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lois Lane (2019) #001.cbz", {}, "full"),
+    ]
+    deduped = _dedupe_one_per_series(fixtures)
+    assert len(deduped) == 2
+
+
+def test_dedupe_one_per_series_preserves_input_order(tmp_path: Path) -> None:
+    """Iteration order matches input order (not alphabetical or anything)."""
+    from tests.calibration.run import _dedupe_one_per_series
+
+    fixtures = [
+        _Fixture(tmp_path / "Z Series #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "A Series #001.cbz", {}, "full"),
+    ]
+    deduped = _dedupe_one_per_series(fixtures)
+    assert [f.file_path.name for f in deduped] == [
+        "Z Series #001.cbz",
+        "A Series #001.cbz",
+    ]
