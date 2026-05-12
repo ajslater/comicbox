@@ -11,11 +11,22 @@
       auto-writes obvious wins and sole plausible matches, prompts on close
       calls. Per-source overrides via `--policy metron:eager`.
     - `--unattended` turns prompts into skips for cron / batch use.
-    - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally
-      or per source. Default 0.95 (calibrated against a real fixture set;
-      lower values produced too many wrong-volume false positives).
-    - End-of-run summary shows distinct AUTO_WRITE / PROMPT / SKIP /
-      NO_MATCH counts.
+    - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally or
+      per source. Default 0.95 (calibrated against a real fixture set; lower
+      values produced too many wrong-volume false positives).
+    - `--api-budget {exhaustive | balanced | fast}` trades matching accuracy for
+      API throughput. Default `balanced` runs today's algorithm with a
+      conservative pre-filter (~18% fewer calls, zero accuracy change in
+      calibration). `fast` cuts ~60% of calls with a stricter pre-filter,
+      validated to 100% accuracy on the calibration set. `exhaustive` disables
+      the pre-filter for maximum recall. Per-source overrides via
+      `--api-budget metron:fast`. Auto-engages `fast` for batches ≥ 50
+      (ComicVine) or ≥ 500 (Metron) when `--unattended` is set; the suggestion
+      is logged and can be overridden with
+      `--api-budget-per-source <source>:balanced`. See
+      `tasks/online-tagging/api-budget-user-doc.md`.
+    - End-of-run summary shows distinct AUTO_WRITE / PROMPT / SKIP / NO_MATCH
+      counts.
     - Cross-source disagreement: when Metron's stored `cv_id` and our
       independent ComicVine match disagree, comicbox logs a WARNING.
 - Breaking changes

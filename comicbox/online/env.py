@@ -34,6 +34,7 @@ _POLICY_FIELDS: Mapping[str, str] = {
     "SKIP_MULTIPLE": "skip_multiple",
     "IGNORE_EXISTING": "ignore_existing",
     "CONFIDENCE_THRESHOLD": "confidence_threshold",
+    "API_BUDGET": "api_budget",
     "CACHE_ENABLED": "cache_enabled",
     "CACHE_DIR": "cache_dir",
     "CACHE_TTL": "cache_ttl",

@@ -419,6 +419,21 @@ def _add_online_options(option_group: Any) -> None:
         ),
     )
     option_group.add_argument(
+        "--api-budget",
+        action="append",
+        dest="api_budget",
+        default=None,
+        metavar="[DB:]MODE",
+        help=(
+            "API-call budget per comic: [green]exhaustive[/green], "
+            "[green]balanced[/green] (default), [green]fast[/green]. "
+            "Controls how aggressively pre-call algorithms trade "
+            "accuracy for API throughput. Repeatable for per-source "
+            "overrides ([green]--api-budget comicvine:fast[/green]). "
+            "See `tasks/online-tagging/api-budget-user-doc.md`."
+        ),
+    )
+    option_group.add_argument(
         "--cache-dir",
         dest="cache_dir",
         default=None,

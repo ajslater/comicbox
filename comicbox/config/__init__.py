@@ -29,6 +29,7 @@ from comicbox.config.paths import (
 )
 from comicbox.config.read import read_config_sources
 from comicbox.config.settings import (
+    APIBudget,
     ComicboxSettings,
     OnlineSettings,
     OnlineSourceLimits,
@@ -279,12 +280,20 @@ def _build_online_settings(
     policy_cli_raw = _cli("policy")
     if policy_cli_raw is not None and not isinstance(policy_cli_raw, list):
         policy_cli_raw = [str(policy_cli_raw)]
+    api_budget_cli_raw = _cli("api_budget")
+    if api_budget_cli_raw is not None and not isinstance(api_budget_cli_raw, list):
+        api_budget_cli_raw = [str(api_budget_cli_raw)]
     resolved_policy = _resolve_match_policy(
         policy_cli=policy_cli_raw,
         unattended_cli=_cli("unattended"),
         threshold_cli=threshold_cli_raw,
         accept_only_cli=_cli("accept_only"),
         skip_multiple_cli=_cli("skip_multiple"),
+        online_block=online,
+        policy_env=policy_env,
+    )
+    api_budget_global, api_budget_per_source = _resolve_api_budget(
+        api_budget_cli=api_budget_cli_raw,
         online_block=online,
         policy_env=policy_env,
     )
@@ -346,6 +355,8 @@ def _build_online_settings(
         explicit_series_ids=dict(runtime.explicit_series_ids),
         policy=resolved_policy.policy,
         unattended=resolved_policy.unattended,
+        api_budget=api_budget_global,
+        api_budget_per_source=api_budget_per_source,
         policy_per_source=resolved_policy.policy_per_source,
         confidence_threshold=resolved_policy.confidence_threshold,
         confidence_threshold_per_source=resolved_policy.confidence_threshold_per_source,
@@ -604,6 +615,45 @@ def _parse_confidence_threshold_value(raw: str) -> float:
         reason = f"--confidence-threshold must be in [0, 1], got {value}"
         raise ValueError(reason)
     return value
+
+
+def _parse_api_budget_value(raw: str) -> APIBudget:
+    try:
+        return APIBudget(raw.strip().lower())
+    except ValueError as exc:
+        valid = ", ".join(b.value for b in APIBudget)
+        reason = f"--api-budget: unknown name {raw!r}; valid: {valid}"
+        raise ValueError(reason) from exc
+
+
+def _resolve_api_budget(
+    *,
+    api_budget_cli: list[str] | None,
+    online_block: Any,
+    policy_env: Mapping[str, Any],
+) -> tuple[APIBudget, dict[str, APIBudget]]:
+    """
+    Resolve `--api-budget` CLI values plus env / config defaults.
+
+    Returns the global budget and the per-source override map. Resolution
+    order matches the existing `--policy` pattern: CLI > env > config
+    file > built-in default (`BALANCED`).
+    """
+    global_value, per_source = _parse_global_or_per_source_list(
+        api_budget_cli, "--api-budget", _parse_api_budget_value
+    )
+    if global_value is None:
+        # Env or config-file default if user didn't set CLI.
+        env_value = policy_env.get("api_budget")
+        if env_value is not None:
+            global_value = _parse_api_budget_value(str(env_value))
+        else:
+            config_value = getattr(online_block, "api_budget", None)
+            if config_value is not None:
+                global_value = _parse_api_budget_value(str(config_value))
+            else:
+                global_value = APIBudget.BALANCED
+    return global_value, per_source
 
 
 def _parse_explicit_series_id(source: str, raw: str) -> int:
