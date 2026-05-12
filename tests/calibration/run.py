@@ -36,10 +36,10 @@ import sys
 import threading
 import time
 import traceback
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -48,10 +48,11 @@ from comicbox.online.sources.comicvine import ComicVineOnlineSource
 from comicbox.online.sources.metron import MetronOnlineSource
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from comicbox.config.settings import OnlineSettings
-    from comicbox.online.profile import Candidate, ComicProfile
+    from comicbox.online.matcher import CandidateHashFetcher, LocalHashProvider
+    from comicbox.online.profile import Candidate
     from comicbox.online.sources.base import OnlineSource
 
 
@@ -72,6 +73,35 @@ class _Fixture:
     cover_quality: str  # "full" | "thumbnail" | "missing"
 
 
+@dataclass(frozen=True, slots=True)
+class _CandidateSummary:
+    """Per-candidate breakdown for MISS-case diagnostic output."""
+
+    issue_id: int
+    score: float  # blended (metadata + cover when hashing fired)
+    metadata_score: float
+    cover_score: float | None  # None when this candidate didn't get hashed
+    # Volume/series name as the source returned it. Useful for "which
+    # reprint did this come from" forensics when ids alone are opaque:
+    # CV issue id 476696 means nothing visually, but "Watchmen Annotated"
+    # tells you immediately what you're looking at.
+    series: str = ""
+    summary_year: int | None = (
+        None  # the issue's cover_date.year as the source returned it
+    )
+    # The parent container id from the source (CV's volume.id /
+    # Metron's series.id). Lets a calibration reader distinguish two
+    # candidates with the same series name from same-volume variant
+    # records vs different-volume name collisions.
+    volume_id: int | None = None
+
+
+# How many top candidates to retain on each outcome for MISS diagnostics.
+# Three is enough to see "right answer is at rank 2 or 3" patterns without
+# making the saved outcomes JSON enormous.
+_TOP_K_FOR_DIAGNOSTIC: int = 3
+
+
 @dataclass(slots=True)
 class _Outcome:
     """One (fixture, source) pair's calibration outcome."""
@@ -83,6 +113,28 @@ class _Outcome:
     top_correct: bool | None  # None = no candidates
     n_candidates: int
     error: str | None = None  # set when search fails
+    # Diagnostic detail for the top candidate. Set when ranking produced
+    # at least one candidate; left at defaults when search errored or
+    # returned nothing. Used by `_print_failed_outcomes` to surface
+    # whether cover hashing fired and how it scored against the metadata
+    # signal.
+    top_metadata_score: float | None = None
+    top_cover_score: float | None = None  # None when hashing didn't fire or failed
+    runner_up_score: float | None = None  # None when there's only one candidate
+    hash_providers_supplied: bool = False  # False when cover_quality != "full"
+    # Top-K candidate breakdowns retained for MISS-case investigation.
+    # When the top candidate is tied or near-tied with the runner-up,
+    # the runner-up's score breakdown tells us whether the right answer
+    # is sitting at rank 2 (lost the tiebreak) or genuinely below
+    # everyone. Empty when there were no candidates.
+    top_candidates: list[_CandidateSummary] = field(default_factory=list)
+    # Per-method API-call counts observed for THIS fixture only. The
+    # harness snapshots the source's `api_call_counts` before and after
+    # `_score_one` and stores the diff. Includes cache hits (we can't
+    # distinguish those without peeking inside simyan/mokkari) so the
+    # number is an upper bound on actual rate-limit budget consumed —
+    # exact for cold-cache runs, over-counts for warm-cache.
+    api_call_counts: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -110,22 +162,117 @@ def _classify_outcome(o: _Outcome) -> str:
     return "correct" if o.top_correct else "wrong"
 
 
+def _outcome_to_dict(o: _Outcome) -> dict:
+    """Serialize one _Outcome to its JSON-dict shape."""
+    return {
+        "file": str(o.fixture.file_path),
+        "source": o.source_name,
+        "outcome": _classify_outcome(o),
+        "top_score": o.top_score,
+        "top_issue_id": o.top_issue_id,
+        "expected": o.fixture.expected.get(o.source_name),
+        "n_candidates": o.n_candidates,
+        "error": o.error,
+        # Diagnostic fields — useful for post-hoc analysis of which
+        # cases hashing helped vs. where it didn't fire. Keys stay
+        # present even when None so consumers see consistent shape.
+        "top_metadata_score": o.top_metadata_score,
+        "top_cover_score": o.top_cover_score,
+        "runner_up_score": o.runner_up_score,
+        "hash_providers_supplied": o.hash_providers_supplied,
+        # Top-K candidate breakdowns. Empty list for no-candidate /
+        # errored outcomes. Useful for "right answer at rank 2"
+        # forensics on tied scores.
+        "top_candidates": [
+            {
+                "issue_id": c.issue_id,
+                "score": c.score,
+                "metadata_score": c.metadata_score,
+                "cover_score": c.cover_score,
+                "series": c.series,
+                "summary_year": c.summary_year,
+                "volume_id": c.volume_id,
+            }
+            for c in o.top_candidates
+        ],
+        # Per-method API-call counts for this fixture's search + rank.
+        # Includes cache hits — upper bound on rate-limit budget used.
+        # Useful for Phase B comparison runs to measure how much the
+        # api_budget knob saved against `balanced`.
+        "api_call_counts": dict(o.api_call_counts),
+    }
+
+
+def _atomic_write_json(path: Path, payload: object) -> None:
+    """
+    Write JSON to `path` atomically: temp file + rename.
+
+    Used by both the end-of-run save and the periodic checkpointer. The
+    rename is atomic on POSIX (same-directory `Path.replace()`), so a
+    `Ctrl-C` mid-write either leaves the original file untouched (if
+    the temp was still being written) or completes the new file (if
+    rename was reached). Never a half-written outcomes file.
+    """
+    tmp = path.parent / (path.name + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2) + "\n")
+    tmp.replace(path)
+
+
 def _serialize_outcomes(outcomes: list[_Outcome], path: Path) -> None:
     """Write outcomes to JSON for `--retry-misses` and post-hoc analysis."""
-    payload = [
-        {
-            "file": str(o.fixture.file_path),
-            "source": o.source_name,
-            "outcome": _classify_outcome(o),
-            "top_score": o.top_score,
-            "top_issue_id": o.top_issue_id,
-            "expected": o.fixture.expected.get(o.source_name),
-            "n_candidates": o.n_candidates,
-            "error": o.error,
-        }
-        for o in outcomes
-    ]
-    path.write_text(json.dumps(payload, indent=2) + "\n")
+    _atomic_write_json(path, [_outcome_to_dict(o) for o in outcomes])
+
+
+def _merge_outcomes_to_partial(path: Path, new_outcomes: list[_Outcome]) -> None:
+    """
+    Overlay new outcomes onto an existing partial file, preserving others.
+
+    Used by filtered runs (`--retry-misses`, `--filter`, `--one-per-series`,
+    `--limit`) so iterating a subset of failures doesn't wipe state for
+    the fixtures we didn't retry. Keying is by (file, source):
+
+    - Existing entries with a matching (file, source) → replaced by the
+      new outcome (most recent result wins).
+    - Existing entries without a match → preserved verbatim.
+    - New (file, source) not present in the file → appended (handles
+      "user added a fixture between runs").
+
+    When the file doesn't exist, falls back to a plain write — the
+    first filtered run after a clean slate has nothing to merge into.
+
+    Without this, each `--retry-misses` overwrites the whole partial
+    with just the subset it ran: passing 1 fixture into Watchmen-only
+    retry deletes the other 14 fixtures' last-known states, and the
+    next `--retry-misses` sees an empty miss set even though those
+    fixtures are still actually broken.
+    """
+    if not path.exists():
+        _serialize_outcomes(new_outcomes, path)
+        return
+
+    new_by_key: dict[tuple[str, str], dict] = {
+        (str(o.fixture.file_path), o.source_name): _outcome_to_dict(o)
+        for o in new_outcomes
+    }
+    overlaid: set[tuple[str, str]] = set()
+
+    existing = json.loads(path.read_text())
+    merged: list[dict] = []
+    for entry in existing:
+        key = (str(entry.get("file", "")), str(entry.get("source", "")))
+        if key in new_by_key:
+            merged.append(new_by_key[key])
+            overlaid.add(key)
+        else:
+            merged.append(entry)
+
+    # New (file, source) pairs not in the existing file — appended.
+    # Preserves the existing file's order; new entries come last.
+    for key, dict_entry in new_by_key.items():
+        if key not in overlaid:
+            merged.append(dict_entry)
+
+    _atomic_write_json(path, merged)
 
 
 def _load_miss_files(outcomes_path: Path) -> set[str]:
@@ -233,19 +380,121 @@ def _build_source(name: str, online: OnlineSettings) -> OnlineSource:
     return src
 
 
-def _build_profile(comic_path: Path) -> ComicProfile:
+class _HashProviderBox(Protocol):
     """
-    Build a ComicProfile by letting comicbox merge the comic's tags + filename.
+    Just-enough Comicbox surface for `_hash_providers` to bind callables.
 
-    `get_merged_metadata()` runs the read/normalize pipeline. Online
-    lookup itself stays disabled (it's off by default), so this is purely
-    a "what would comicbox extract from this file's existing tags + name"
-    operation. Then we read the per-source normalized state via the
-    mixin's private `_build_profile`.
+    Spelling it as a Protocol (instead of `Comicbox`) lets unit tests pass
+    a minimal duck without `cast(...)` shenanigans — and documents which
+    bits of the box `_hash_providers` actually touches.
     """
-    with Comicbox(comic_path) as cb:
-        cb.get_merged_metadata()
-        return cb._build_profile()
+
+    def _local_cover_phash(self) -> str | None: ...
+
+    def _candidate_cover_hash_fetcher(self, url: str) -> str | None: ...
+
+
+def _hash_providers(
+    cb: _HashProviderBox, fixture: _Fixture
+) -> tuple[LocalHashProvider | None, CandidateHashFetcher | None]:
+    """
+    Return the cover-hash providers the matcher should use for this fixture.
+
+    Cover hashing only fires when the metadata-only top is ambiguous
+    (matcher's `_should_invoke_hashing`), so passing the providers for
+    every fixture is cheap — the lambda's only invoked when it matters.
+
+    We gate on `cover_quality`:
+
+    - **full** — pass both providers. `_local_cover_phash` reads the
+      first archive page and hashes it; `_candidate_cover_hash_fetcher`
+      downloads ComicVine cover URLs (Metron candidates ship a
+      precomputed hash) into the shared SQLite cache. This is the
+      production hashing path, just driven from the harness.
+    - **thumbnail** / **missing** — return (None, None). Slimlib's
+      shrunk covers and missing-cover fixtures produce noise at best
+      and degrade the metadata-only signal at worst. We'd rather see
+      the metadata-only number for these so we know what the matcher's
+      doing without the hash boost.
+    """
+    if fixture.cover_quality != "full":
+        return None, None
+    # Bind to the instance methods (mixin-provided on Comicbox).
+    return cb._local_cover_phash, cb._candidate_cover_hash_fetcher
+
+
+def _format_duration(seconds: float) -> str:
+    """Compact human-readable duration: '47s', '12m', '3.4h', '1.2d'."""
+    if seconds < 60:
+        return f"{seconds:.0f}s"
+    if seconds < 3600:
+        return f"{seconds / 60:.1f}m"
+    if seconds < 86400:
+        return f"{seconds / 3600:.1f}h"
+    return f"{seconds / 86400:.1f}d"
+
+
+class _ETA:
+    """
+    Running estimate of when the calibration will finish.
+
+    Tracks per-fixture wall-clock durations in a rolling window (last 20
+    by default), then projects the average onto the remaining count. The
+    rolling window — rather than overall average — keeps the ETA
+    responsive to cache-warming (early fixtures slow, later fast) and to
+    rate-limit walls (sudden multi-minute waits dominate the new
+    average within a few fixtures).
+
+    Wall-clock includes everything: API calls, rate-limit waits, cover
+    downloads, and the local Comicbox open. That's what the user
+    actually wants to plan around.
+    """
+
+    # Fixtures sampled for the rolling average. Small enough to react to
+    # regime changes within a few fixtures; large enough to smooth out
+    # single-fixture spikes.
+    _ROLLING_WINDOW: ClassVar[int] = 20
+
+    def __init__(self, total_fixtures: int) -> None:
+        self._total = total_fixtures
+        self._completed = 0
+        self._start = time.monotonic()
+        self._recent_durations: deque[float] = deque(maxlen=self._ROLLING_WINDOW)
+        self._last_fixture_start: float | None = None
+
+    def fixture_started(self) -> None:
+        """Mark the moment a fixture begins. Called before `_score_one`."""
+        self._last_fixture_start = time.monotonic()
+
+    def fixture_finished(self) -> None:
+        """Record this fixture's duration. Called after all sources scored."""
+        if self._last_fixture_start is None:
+            return
+        self._recent_durations.append(time.monotonic() - self._last_fixture_start)
+        self._completed += 1
+
+    def remaining(self) -> int:
+        return self._total - self._completed
+
+    def elapsed_seconds(self) -> float:
+        return time.monotonic() - self._start
+
+    def eta_seconds(self) -> float | None:
+        """Projected wall-clock to completion. None until any fixture finishes."""
+        if not self._recent_durations or self.remaining() <= 0:
+            return None
+        avg = sum(self._recent_durations) / len(self._recent_durations)
+        return avg * self.remaining()
+
+    def progress_line(self) -> str:
+        """Compact one-line summary suitable for heartbeat / periodic display."""
+        elapsed_str = _format_duration(self.elapsed_seconds())
+        eta = self.eta_seconds()
+        eta_str = _format_duration(eta) if eta is not None else "—"
+        return (
+            f"overall {self._completed}/{self._total} fixtures, "
+            f"{elapsed_str} elapsed, ETA {eta_str}"
+        )
 
 
 class _Heartbeat:
@@ -256,14 +505,25 @@ class _Heartbeat:
     call for up to an hour when an hourly cap is hit. Without this hint,
     the user sees a stalled-looking line and has no idea whether the
     process is wedged or just being polite.
+
+    When an `_ETA` is passed, each tick also prints the overall progress
+    line so the user can see both "current fixture stuck for 90s" AND
+    "overall: 5/343 done, ETA 14h" — same heartbeat moment, two scales.
     """
 
-    def __init__(self, label: str, *, interval: float = 15.0) -> None:
+    def __init__(
+        self,
+        label: str,
+        *,
+        interval: float = 15.0,
+        eta: _ETA | None = None,
+    ) -> None:
         self._label = label
         self._interval = interval
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._start = time.monotonic()
+        self._eta = eta
 
     def __enter__(self) -> Self:
         self._thread.start()
@@ -276,24 +536,57 @@ class _Heartbeat:
     def _run(self) -> None:
         while not self._stop.wait(self._interval):
             elapsed = time.monotonic() - self._start
-            print(  # noqa: T201
-                f"\n      [..still working on {self._label}, {elapsed:.0f}s elapsed]",
-                flush=True,
-            )
+            line = f"\n      [..still working on {self._label}, {elapsed:.0f}s elapsed]"
+            if self._eta is not None:
+                line += f"\n      [..{self._eta.progress_line()}]"
+            print(line, flush=True)  # noqa: T201
+
+
+def _diff_counts(before: dict[str, int], after: dict[str, int]) -> dict[str, int]:
+    """Per-method delta between two snapshots of `api_call_counts`."""
+    return {
+        method: after.get(method, 0) - before.get(method, 0)
+        for method in set(before) | set(after)
+        if after.get(method, 0) - before.get(method, 0) > 0
+    }
 
 
 def _score_one(
     source: OnlineSource,
     fixture: _Fixture,
 ) -> _Outcome:
-    """Run search + rank on a fixture; produce an outcome."""
+    """
+    Run search + rank on a fixture; produce an outcome.
+
+    The Comicbox stays open for the full search+rank because the
+    matcher may call back into it for the local cover pHash when
+    metadata-only ranking is ambiguous (close call or below
+    threshold). For `cover_quality != "full"` fixtures the providers
+    are None and the matcher stays metadata-only — same as before.
+
+    Captures the top candidate's metadata / cover sub-scores and the
+    runner-up's blended score so `_print_failed_outcomes` can show
+    whether hashing fired and how tight the call was.
+    """
+    hash_providers_supplied = False
+    # Snapshot the source's API-call counters so we can compute the
+    # per-fixture delta. The source's `api_call_counts` dict
+    # accumulates over the whole run; we want only the slice for THIS
+    # fixture's search + rank.
+    counts_before = dict(source.api_call_counts)
     try:
-        profile = _build_profile(fixture.file_path)
-        candidates: list[Candidate] = source.search(profile)
-        # Rank using the same parameters comicbox would use in production.
-        # No cover hashing here — calibration covers may be degraded
-        # (slimlib) and we want a stable metadata-first signal anyway.
-        ranked = OnlineMatcher().rank(profile, candidates)
+        with Comicbox(fixture.file_path) as cb:
+            cb.get_merged_metadata()
+            profile = cb._build_profile()
+            candidates: list[Candidate] = source.search(profile)
+            local_provider, candidate_fetcher = _hash_providers(cb, fixture)
+            hash_providers_supplied = local_provider is not None
+            ranked = OnlineMatcher().rank(
+                profile,
+                candidates,
+                local_hash_provider=local_provider,
+                candidate_hash_fetcher=candidate_fetcher,
+            )
     except Exception as exc:
         return _Outcome(
             fixture=fixture,
@@ -303,6 +596,8 @@ def _score_one(
             top_correct=None,
             n_candidates=0,
             error=f"{type(exc).__name__}: {exc}",
+            hash_providers_supplied=hash_providers_supplied,
+            api_call_counts=_diff_counts(counts_before, source.api_call_counts),
         )
     if not ranked:
         return _Outcome(
@@ -312,10 +607,25 @@ def _score_one(
             top_issue_id=None,
             top_correct=None,
             n_candidates=0,
+            hash_providers_supplied=hash_providers_supplied,
+            api_call_counts=_diff_counts(counts_before, source.api_call_counts),
         )
     top = ranked[0]
+    runner_up = ranked[1] if len(ranked) > 1 else None
     expected = fixture.expected.get(source.name)
     correct = (top.issue_id == expected) if expected is not None else None
+    top_candidates = [
+        _CandidateSummary(
+            issue_id=c.issue_id,
+            score=c.score,
+            metadata_score=c.metadata_score,
+            cover_score=c.cover_score,
+            series=c.summary.series,
+            summary_year=c.summary.year,
+            volume_id=c.volume_id,
+        )
+        for c in ranked[:_TOP_K_FOR_DIAGNOSTIC]
+    ]
     return _Outcome(
         fixture=fixture,
         source_name=source.name,
@@ -323,6 +633,12 @@ def _score_one(
         top_issue_id=top.issue_id,
         top_correct=correct,
         n_candidates=len(ranked),
+        top_metadata_score=top.metadata_score,
+        top_cover_score=top.cover_score,
+        runner_up_score=runner_up.score if runner_up else None,
+        hash_providers_supplied=hash_providers_supplied,
+        top_candidates=top_candidates,
+        api_call_counts=_diff_counts(counts_before, source.api_call_counts),
     )
 
 
@@ -383,6 +699,62 @@ def _format_report(reports: dict[str, _SourceReport]) -> str:
     return "\n".join(lines)
 
 
+def _cover_score_repr(o: _Outcome) -> str:
+    """
+    Render the top candidate's cover-hash status for diagnostic output.
+
+    Distinguishes the four observable states:
+
+    - ``"<float>"`` — hashing fired AND we got a score (the useful case).
+    - ``"N/A (cover_quality != full)"`` — harness gated hashing off for
+      this fixture, so the matcher only saw metadata signal.
+    - ``"N/A (unambiguous metadata)"`` — providers were supplied but
+      the matcher's `_should_invoke_hashing` decided ranking was already
+      a clear win; hashing skipped.
+    - ``"N/A (provider returned None)"`` — providers fired but produced
+      no usable hash (local cover unreadable, candidate URLs all empty,
+      or download/hash exceptions for every candidate).
+
+    Inferred from `_Outcome` fields without re-querying the matcher.
+    """
+    if o.top_cover_score is not None:
+        return f"{o.top_cover_score:.2f}"
+    if not o.hash_providers_supplied:
+        return "N/A (cover_quality != full)"
+    # Providers were supplied; the matcher chose not to hash this
+    # candidate OR hashing failed. Distinguish via the score gap: if
+    # the gap is < the matcher's default disambiguation_margin (0.10),
+    # we'd have expected hashing to fire — so the None means it
+    # actually fired-and-failed.
+    if o.runner_up_score is not None and (o.top_score - o.runner_up_score) < 0.10:
+        return "N/A (provider returned None)"
+    return "N/A (unambiguous metadata)"
+
+
+def _format_candidate_line(rank: int, c: _CandidateSummary, expected: object) -> str:
+    """One line of the top-K table — marks the expected id when present."""
+    marker = " ← expected" if expected == c.issue_id else ""
+    cover_repr = f"{c.cover_score:.2f}" if c.cover_score is not None else "N/A"
+    # Volume/series name, cover year, and volume_id together identify
+    # which reprint or variant volume a candidate came from — and let
+    # us tell same-volume variants ("vol=123") apart from name
+    # collisions ("vol=123" vs "vol=987"). CV issue id 476696 means
+    # nothing visually, but "[Watchmen, 1987, vol=10455]" tells you
+    # the volume at a glance.
+    series_parts: list[str] = []
+    if c.series:
+        series_parts.append(c.series)
+    if c.summary_year is not None:
+        series_parts.append(str(c.summary_year))
+    if c.volume_id is not None:
+        series_parts.append(f"vol={c.volume_id}")
+    series_repr = f" [{', '.join(series_parts)}]" if series_parts else ""
+    return (
+        f"        #{rank} id={c.issue_id} score={c.score:.2f} "
+        f"(md={c.metadata_score:.2f} cover={cover_repr}){series_repr}{marker}"
+    )
+
+
 def _print_failed_outcomes(outcomes: list[_Outcome]) -> None:
     """Show details on wrong / errored outcomes for hand-investigation."""
     bad = [
@@ -396,12 +768,36 @@ def _print_failed_outcomes(outcomes: list[_Outcome]) -> None:
     for o in bad:
         marker = "ERR" if o.error else ("MISS" if o.top_correct is False else "EMPTY")
         expected = o.fixture.expected.get(o.source_name, "?")
-        print(  # noqa: T201
-            f"  [{marker}] {o.source_name}: {o.fixture.file_path.name}\n"
-            f"      expected={expected} got={o.top_issue_id} "
-            f"score={o.top_score:.2f} n={o.n_candidates}"
-            + (f"\n      error: {o.error}" if o.error else "")
-        )
+        lines = [
+            f"  [{marker}] {o.source_name}: {o.fixture.file_path.name}",
+            (
+                f"      expected={expected} got={o.top_issue_id} "
+                f"score={o.top_score:.2f} n={o.n_candidates}"
+            ),
+        ]
+        if o.error:
+            lines.append(f"      error: {o.error}")
+        elif o.top_metadata_score is not None:
+            # Diagnostic line: shows raw metadata score, cover score
+            # (or why it's missing), and the gap to the runner-up.
+            gap_repr = (
+                f"gap={o.top_score - o.runner_up_score:.2f}"
+                if o.runner_up_score is not None
+                else "no runner-up"
+            )
+            lines.append(
+                f"      metadata={o.top_metadata_score:.2f} "
+                f"cover={_cover_score_repr(o)} {gap_repr}"
+            )
+            if o.top_candidates:
+                # Show the top-K table for MISS cases. When gap is small
+                # (tied or near-tied), the runner-up is usually the right
+                # answer; printing its breakdown shows whether it lost on
+                # cover-score, metadata, or a tiebreak.
+                lines.append("      top candidates:")
+                for rank, c in enumerate(o.top_candidates, start=1):
+                    lines.append(_format_candidate_line(rank, c, expected))
+        print("\n".join(lines))  # noqa: T201
 
 
 def _print_progress(outcome: _Outcome, fixture: _Fixture) -> None:
@@ -412,21 +808,47 @@ def _print_progress(outcome: _Outcome, fixture: _Fixture) -> None:
         print(f"OK  score={outcome.top_score:.2f}")  # noqa: T201
     elif outcome.top_correct is False:
         print(f"miss expected={fixture.expected.get(outcome.source_name)} ")  # noqa: T201
+    elif outcome.n_candidates == 0:
+        print("no candidates returned")  # noqa: T201
     else:
-        print(f"no candidates / no labeled id (n={outcome.n_candidates})")  # noqa: T201
+        # Candidates exist but the fixture didn't ship an expected id for
+        # this source, so we can't grade the result. Distinct case from
+        # n=0 — used to be conflated in one message.
+        print(  # noqa: T201
+            f"no expected {outcome.source_name} id "
+            f"(returned n={outcome.n_candidates} candidates; "
+            f"top.score={outcome.top_score:.2f})"
+        )
 
 
 def _calibrate_loop(
-    fixtures: list[_Fixture], sources: list[OnlineSource]
+    fixtures: list[_Fixture],
+    sources: list[OnlineSource],
+    *,
+    checkpoint: Callable[[list[_Outcome]], None] | None = None,
+    checkpoint_every: int = 10,
 ) -> list[_Outcome]:
-    """Drive search+rank for every (fixture, source) pair, with progress."""
+    """
+    Drive search+rank for every (fixture, source) pair, with progress + ETA.
+
+    When `checkpoint` is supplied, the callback is invoked with the
+    outcomes-so-far every `checkpoint_every` fixtures (default 10). This
+    bounds work lost to a mid-run kill: at most `checkpoint_every`
+    fixtures of in-memory state are lost if the process is interrupted
+    between checkpoints. Combined with atomic writes in
+    `_serialize_outcomes`, you can `Ctrl-C` safely and resume by
+    restarting (the API cache replays already-done fixtures fast; the
+    written outcomes file shows what was already saved).
+    """
     outcomes: list[_Outcome] = []
+    eta = _ETA(total_fixtures=len(fixtures))
     for i, fixture in enumerate(fixtures, start=1):
         if not fixture.file_path.exists():
             print(  # noqa: T201
                 f"  [{i}/{len(fixtures)}] {fixture.file_path}: missing, skipping"
             )
             continue
+        eta.fixture_started()
         for source in sources:
             print(  # noqa: T201
                 f"  [{i}/{len(fixtures)}] {source.name}: {fixture.file_path.name}",
@@ -434,7 +856,7 @@ def _calibrate_loop(
                 flush=True,
             )
             try:
-                with _Heartbeat(f"{source.name}:{fixture.file_path.name}"):
+                with _Heartbeat(f"{source.name}:{fixture.file_path.name}", eta=eta):
                     outcome = _score_one(source, fixture)
             except Exception:  # pragma: no cover — defensive
                 print("ERROR")  # noqa: T201
@@ -442,6 +864,19 @@ def _calibrate_loop(
                 continue
             _print_progress(outcome, fixture)
             outcomes.append(outcome)
+        eta.fixture_finished()
+        # After the first fixture, and at every 10th, print an overall
+        # progress line so the user has a visible ETA without waiting
+        # for a heartbeat tick on a slow fixture.
+        if i == 1 or i % 10 == 0 or i == len(fixtures):
+            print(f"  [{eta.progress_line()}]")  # noqa: T201
+        # Periodic checkpoint to disk so a mid-run kill doesn't lose
+        # more than `checkpoint_every` fixtures of work.
+        if checkpoint is not None and i % checkpoint_every == 0 and outcomes:
+            checkpoint(outcomes)
+            print(  # noqa: T201
+                f"  [checkpoint: {len(outcomes)} outcomes saved]"
+            )
     return outcomes
 
 
@@ -504,10 +939,39 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
     )
 
 
+def _resolve_retry_outcomes_path(fixtures_path: Path) -> Path:
+    """
+    Pick which outcomes file `--retry-misses` should read.
+
+    Preference order:
+
+    1. ``<stem>.outcomes.json`` (a full run's output) — the canonical
+       source if it exists.
+    2. ``<stem>.outcomes.partial.json`` (a filtered run's output) —
+       fallback for users iterating before they've ever had budget for
+       a full run (CV's 200/hr cap can make full calibration take days).
+
+    Raises FileNotFoundError when neither exists. The error message
+    names both expected paths so the user knows what to produce.
+    """
+    full = fixtures_path.with_suffix(".outcomes.json")
+    if full.exists():
+        return full
+    partial = fixtures_path.with_suffix(".outcomes.partial.json")
+    if partial.exists():
+        return partial
+    msg = (
+        f"--retry-misses needs a previous run's outcomes at {full} "
+        f"(or {partial.name} from a prior filtered/sampled run); "
+        f"run `make calibrate` or a filtered run first."
+    )
+    raise FileNotFoundError(msg)
+
+
 def _apply_filters(
     fixtures: list[_Fixture],
     *,
-    outcomes_path: Path,
+    fixtures_path: Path,
     retry_misses: bool,
     name_filter: str | None,
     one_per_series: bool,
@@ -520,12 +984,7 @@ def _apply_filters(
     file that doesn't exist (caller catches and reports).
     """
     if retry_misses:
-        if not outcomes_path.exists():
-            msg = (
-                f"--retry-misses needs a previous run's outcomes at "
-                f"{outcomes_path}; run a full calibration first."
-            )
-            raise FileNotFoundError(msg)
+        outcomes_path = _resolve_retry_outcomes_path(fixtures_path)
         miss_files = _load_miss_files(outcomes_path)
         before = len(fixtures)
         fixtures = _filter_to_misses(fixtures, miss_files)
@@ -550,20 +1009,70 @@ def _apply_filters(
     return fixtures
 
 
-def _resolve_sources(args_sources: str) -> list[OnlineSource]:
-    """Build configured sources from the comicbox config; skip + warn on misconfigured."""
+def _build_checkpoint(
+    *,
+    fixtures_path: Path,
+    outcomes_path: Path,
+    label: str | None,
+    was_filtered: bool,
+) -> Callable[[list[_Outcome]], None]:
+    """
+    Pick the right periodic-save callback for `_calibrate_loop`.
+
+    Mirrors the end-of-run save logic so the checkpoint and the final
+    write go to the same place. Three branches:
+
+    - **Labeled run** → write to `<stem>.outcomes.<label>.json` (Phase B
+      matrix runs). Overwrites every checkpoint.
+    - **Filtered run** → merge into `<stem>.outcomes.partial.json` so
+      iterating a subset preserves other fixtures' state.
+    - **Default (full) run** → overwrite the canonical
+      `<stem>.outcomes.json`. Ctrl-C between checkpoints leaves the
+      latest-saved version on disk; restart picks up cached API
+      responses fast and runs the remaining fixtures.
+
+    Atomicity comes from `_atomic_write_json` (used by both serializers).
+    """
+    if label:
+        labeled_path = fixtures_path.with_suffix(f".outcomes.{label}.json")
+        return lambda outcomes: _serialize_outcomes(outcomes, labeled_path)
+    if was_filtered:
+        side = fixtures_path.with_suffix(".outcomes.partial.json")
+        return lambda outcomes: _merge_outcomes_to_partial(side, outcomes)
+    return lambda outcomes: _serialize_outcomes(outcomes, outcomes_path)
+
+
+def _resolve_sources(
+    args_sources: str, api_budget: str | None = None
+) -> list[OnlineSource]:
+    """
+    Build configured sources from the comicbox config.
+
+    Skip + warn on misconfigured sources. When `api_budget` is supplied
+    (typically from the `--api-budget` CLI flag), the loaded online
+    settings are rebuilt with that value applied globally so every
+    source's resolve_api_budget(...) reflects the experiment.
+    """
+    from dataclasses import replace
+
+    from comicbox.config.settings import APIBudget
+
     cfg = get_config(None)
+    online = cfg.online
+    if api_budget is not None:
+        online = replace(online, api_budget=APIBudget(api_budget))
     enabled = {n.strip() for n in args_sources.split(",") if n.strip()}
     sources: list[OnlineSource] = []
     for name in enabled:
         try:
-            sources.append(_build_source(name, cfg.online))
+            sources.append(_build_source(name, online))
         except RuntimeError as exc:
             sys.stderr.write(f"skipping {name}: {exc}\n")
     return sources
 
 
-def main() -> int:
+def _build_argparser() -> argparse.ArgumentParser:
+    """All CLI flags. Extracted so `main()` stays under the C901 statement cap."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--fixtures",
@@ -601,11 +1110,13 @@ def main() -> int:
         action="store_true",
         help=(
             "Run only the fixtures that previously failed (wrong / no "
-            "candidates / error) per the saved outcomes.json. Looks for "
-            "<fixtures-dir>/<fixtures-stem>.outcomes.json. Useful when "
-            "verifying a scoring or filter change against just the "
-            "regression set rather than re-running the full fixture set "
-            "(which can take hours against CV's hourly cap)."
+            "candidates / error) per a saved outcomes file. Prefers "
+            "<fixtures-dir>/<fixtures-stem>.outcomes.json (full run); "
+            "falls back to .outcomes.partial.json (filtered run) so you "
+            "can iterate before a full calibration is ever finished. "
+            "Useful for verifying a scoring or filter change against just "
+            "the regression set rather than re-running the full fixture "
+            "set (which can take days against CV's 200/hr cap)."
         ),
     )
     parser.add_argument(
@@ -630,7 +1141,35 @@ def main() -> int:
             "fix-verification iterations."
         ),
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--api-budget",
+        choices=("exhaustive", "balanced", "fast"),
+        default=None,
+        help=(
+            "Override the api_budget for ALL queried sources. Default uses "
+            "whatever the config / built-in default specifies (today: "
+            "'balanced'). Phase B calibration uses this to compare modes — "
+            "run the matrix with --label exhaustive, then --label fast, "
+            "then diff with tests/calibration/compare.py. See "
+            "tasks/online-tagging/06-api-budget-spec.md."
+        ),
+    )
+    parser.add_argument(
+        "--label",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Name this run for cross-run comparison. Outcomes go to "
+            "<fixtures-stem>.outcomes.<label>.json instead of overwriting "
+            "the canonical outcomes file. Use with --api-budget to label "
+            "experiments: --api-budget fast --label fast-pf07-mv5."
+        ),
+    )
+    return parser
+
+
+def main() -> int:
+    args = _build_argparser().parse_args()
 
     # Honor --max-per-search by patching the class-level caps. Affects all
     # sources constructed below.
@@ -655,7 +1194,7 @@ def main() -> int:
     try:
         fixtures = _apply_filters(
             fixtures,
-            outcomes_path=outcomes_path,
+            fixtures_path=fixtures_path,
             retry_misses=args.retry_misses,
             name_filter=args.name_filter,
             one_per_series=args.one_per_series,
@@ -670,31 +1209,58 @@ def main() -> int:
         sys.stderr.write("no fixtures to process after filtering; aborting\n")
         return 1
 
-    sources = _resolve_sources(args.sources)
+    sources = _resolve_sources(args.sources, api_budget=args.api_budget)
     if not sources:
         sys.stderr.write("no usable sources; aborting\n")
         return 1
     print(f"Calibrating against: {', '.join(s.name for s in sources)}")  # noqa: T201
+    if args.api_budget is not None:
+        print(f"api_budget override: {args.api_budget}")  # noqa: T201
     _print_cost_estimate(len(fixtures), sources)
 
-    outcomes = _calibrate_loop(fixtures, sources)
+    # Compute filtered status once — both the checkpoint callback and
+    # the final save need it.
+    was_filtered = bool(
+        args.retry_misses or args.name_filter or args.limit or args.one_per_series
+    )
+    checkpoint = _build_checkpoint(
+        fixtures_path=fixtures_path,
+        outcomes_path=outcomes_path,
+        label=args.label,
+        was_filtered=was_filtered,
+    )
+
+    outcomes = _calibrate_loop(fixtures, sources, checkpoint=checkpoint)
     reports = _aggregate(outcomes)
     print(_format_report(reports))  # noqa: T201
     _print_failed_outcomes(outcomes)
 
+    # Label takes precedence — labeled runs always go to the labeled
+    # path. Used by Phase B experiments where every matrix-cell run
+    # gets its own file so `compare.py` can diff them.
+    if args.label:
+        labeled = fixtures_path.with_suffix(f".outcomes.{args.label}.json")
+        _serialize_outcomes(outcomes, labeled)
+        print(f"\nSaved labeled outcomes to {labeled}")  # noqa: T201
+        return 0
+
     # Save outcomes for future --retry-misses runs. Don't overwrite when
     # we ourselves were a filtered/sampled run — that'd lose the wider context.
-    was_filtered = bool(
-        args.retry_misses or args.name_filter or args.limit or args.one_per_series
-    )
     if not was_filtered:
         _serialize_outcomes(outcomes, outcomes_path)
         print(f"\nSaved outcomes to {outcomes_path}")  # noqa: T201
     elif outcomes:
-        # Filtered runs save to a sibling file so we can compare.
+        # Filtered runs MERGE into a sibling file so iterating a subset
+        # (e.g. `--retry-misses --filter Watchmen`) doesn't destroy the
+        # other fixtures' last-known states. Without the merge, a
+        # successful retry of one family wipes the file, and subsequent
+        # `--retry-misses` sees zero misses even though the others are
+        # still broken.
         side = fixtures_path.with_suffix(".outcomes.partial.json")
-        _serialize_outcomes(outcomes, side)
-        print(f"\nSaved partial outcomes to {side}")  # noqa: T201
+        existed = side.exists()
+        _merge_outcomes_to_partial(side, outcomes)
+        verb = "Merged" if existed else "Saved"
+        print(f"\n{verb} partial outcomes into {side}")  # noqa: T201
     return 0
 
 
