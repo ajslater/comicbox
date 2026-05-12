@@ -10,7 +10,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.config.settings import (
+    APIBudget,
+    OnlineSettings,
+    OnlineSourceCredentials,
+)
 from comicbox.online.profile import ComicProfile
 from comicbox.online.sources.metron import MetronOnlineSource
 
@@ -72,10 +76,26 @@ class _FakeMokkari:
 
 
 def _make_metron_source(
-    monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari
+    monkeypatch: pytest.MonkeyPatch,
+    fake: _FakeMokkari,
+    *,
+    api_budget: APIBudget = APIBudget.EXHAUSTIVE,
 ) -> MetronOnlineSource:
+    """
+    Build a Metron source for tests with the pre-filter OFF by default.
+
+    Unit tests in this file use synthetic series names that don't share
+    tokens with `profile.series` (e.g., 25 series named `S0`..`S24` vs
+    profile.series=`X`). Under the production default `BALANCED` budget
+    (pre-filter threshold 0.4) those tests would have every candidate
+    series dropped by the pre-filter before the code under test ran.
+    Using `EXHAUSTIVE` for the default keeps these tests focused on the
+    behavior they're verifying (caps, retry, candidate plumbing) without
+    tripping on pre-filter side-effects. Tests that exercise the
+    pre-filter explicitly can override `api_budget=`.
+    """
     creds = OnlineSourceCredentials(username="u", password="p")
-    settings = OnlineSettings()
+    settings = OnlineSettings(api_budget=api_budget)
     src = MetronOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake)
     return src

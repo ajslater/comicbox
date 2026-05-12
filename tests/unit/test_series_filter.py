@@ -14,10 +14,9 @@ from comicbox.online.series_filter import (
 
 
 def test_threshold_for_known_budgets() -> None:
-    """Each APIBudget maps to a defined threshold."""
-    # Phase A placeholders — Phase B calibration confirms or replaces.
+    """Each APIBudget maps to its Phase B-validated threshold."""
     assert threshold_for(APIBudget.EXHAUSTIVE) == 0.0
-    assert threshold_for(APIBudget.BALANCED) == 0.0
+    assert threshold_for(APIBudget.BALANCED) == 0.4
     assert threshold_for(APIBudget.FAST) == 0.7
 
 

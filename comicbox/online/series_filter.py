@@ -79,14 +79,23 @@ def _strip_year_parens(s: str) -> str:
 # this against the comic's `profile.series` to survive the filter and
 # get its issue-list call. Threshold 0.0 = filter is a no-op.
 #
-# Phase A ships `BALANCED` at 0.0 deliberately: the lever lands but the
-# default behaviour matches today's exactly. Phase B calibration picks
-# the real numbers; these placeholders mirror the values in the spec.
+# Values are Phase B-validated against the spring-2026 339-fixture
+# calibration set. See `tasks/online-tagging/calibration-notes/` for the
+# experiment data behind each number.
 _THRESHOLDS: Final[MappingProxyType[APIBudget, float]] = MappingProxyType(
     {
-        APIBudget.EXHAUSTIVE: 0.0,  # never filter
-        APIBudget.BALANCED: 0.0,  # Phase A placeholder; spec says 0.4 once tuned
-        APIBudget.FAST: 0.7,  # Phase A placeholder; spec says 0.7 once tuned
+        # EXHAUSTIVE never filters — semantically off. Spend API budget
+        # freely; recover the very long tail of edge cases.
+        APIBudget.EXHAUSTIVE: 0.0,
+        # BALANCED at 0.4 (Phase B-validated): zero outcome changes vs
+        # 0.0 across the full fixture set, 18% fewer API calls. Strictly
+        # better than the previous "today's behavior" of 0.0.
+        APIBudget.BALANCED: 0.4,
+        # FAST at 0.7 (Phase B-validated): 100% accuracy on labeled
+        # fixtures, 60.5% fewer API calls than balanced-at-0. Catches
+        # the "Moebius Library vs Adventures of Basil & Moebius"-style
+        # substring false positives.
+        APIBudget.FAST: 0.7,
     }
 )
 
