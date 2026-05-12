@@ -59,6 +59,14 @@ class Candidate:
     score: float = 0.0
     url: str = ""
     precomputed_cover_hash: str | None = None
+    # The parent container's id — CV's `volume.id`, Metron's `series.id`.
+    # Two issues sharing a volume_id are siblings in the same series run;
+    # this is what calibration uses to distinguish "variant cover of the
+    # same issue" (same volume_id) from "wrong-series collision" (different
+    # volume_ids that happen to share a name like "Watchmen"). Sources set
+    # this when constructing the candidate; left as None for sources that
+    # don't expose it.
+    volume_id: int | None = None
 
 
 _INT_RE = re.compile(r"^\d+$")

@@ -97,6 +97,7 @@ class MetronOnlineSource(OnlineSource):
     def get(self, issue_id: int) -> dict[str, Any]:
         """Fetch one Metron issue by id; return its model dump."""
         session = self._get_session()
+        self._record_api_call("issue")
         issue = session.issue(issue_id)
         return issue.model_dump(mode="json")
 
@@ -136,7 +137,11 @@ class MetronOnlineSource(OnlineSource):
         return params
 
     def _to_candidate(
-        self, base_issue: Any, series_name: str | None = None
+        self,
+        base_issue: Any,
+        series_name: str | None = None,
+        *,
+        series_id: int | None = None,
     ) -> Candidate:
         """
         Map a mokkari `BaseIssue` to a Candidate.
@@ -144,6 +149,12 @@ class MetronOnlineSource(OnlineSource):
         ``series_name`` overrides the issue's series field when supplied — the
         two-step search has already resolved the series so we use its
         canonical name, since `BaseIssue.series` is sparse.
+
+        ``series_id`` is the parent container's id from the two-step
+        search (`series.id` at the discovery step). Passed in explicitly
+        because mokkari's `BaseIssue.series` is often missing or a thin
+        object without `.id`; relying on it loses the link to the
+        volume/series.
         """
         cover_year = base_issue.cover_date.year if base_issue.cover_date else None
         image_url = str(base_issue.image) if base_issue.image else None
@@ -164,6 +175,11 @@ class MetronOnlineSource(OnlineSource):
             cover_url=image_url,
             variant_label=None,
         )
+        # Prefer the explicit series_id from the two-step search; fall
+        # back to BaseIssue.series.id when it happens to be present.
+        resolved_series_id = series_id
+        if resolved_series_id is None and bi_series is not None:
+            resolved_series_id = getattr(bi_series, "id", None)
         return Candidate(
             source=self.name,
             issue_id=base_issue.id,
@@ -172,6 +188,7 @@ class MetronOnlineSource(OnlineSource):
             if hasattr(base_issue, "resource_url") and base_issue.resource_url
             else "",
             precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
+            volume_id=resolved_series_id,
         )
 
     @with_retry()
@@ -208,14 +225,14 @@ class MetronOnlineSource(OnlineSource):
                 profile, explicit_sid, include_volume=False
             )
             try:
-                issues = session.issues_list(params=params)
+                issues = self._issues_list_with_retry(session, params)
             except Exception as exc:
                 logger.warning(
                     f"online {self.name}: issue-list for series id "
                     f"{explicit_sid} failed: {exc}"
                 )
                 raise
-            return [self._to_candidate(i) for i in issues]
+            return [self._to_candidate(i, series_id=explicit_sid) for i in issues]
 
         if not profile.series:
             logger.debug(
@@ -224,6 +241,7 @@ class MetronOnlineSource(OnlineSource):
             )
             return []
         try:
+            self._record_api_call("series_list")
             series_results = session.series_list(params={"name": profile.series})
         except Exception as exc:
             logger.warning(f"online {self.name}: series search failed: {exc}")
@@ -302,6 +320,30 @@ class MetronOnlineSource(OnlineSource):
                 candidates.extend(retry)
         return candidates
 
+    @with_retry()
+    def _issues_list_with_retry(
+        self, session: Session, params: dict[str, Any]
+    ) -> list[Any]:
+        """
+        Per-call retry wrapper around `session.issues_list`.
+
+        The `_fetch_candidates_across_series` loop fires up to
+        `_MAX_SERIES_PER_SEARCH` (= 20) issues_list calls in quick
+        succession. Mokkari's pyrate_limiter SQLite bucket caps Metron
+        at 20 req/min; the 21st call in the same window raises
+        `RateLimitError` with a `retry_after` hint.
+
+        Decorating this method with `@with_retry()` means the retry
+        decorator catches that error, honors the server-side
+        `retry_after`, sleeps, and replays the single failed call
+        rather than spamming "issue-list … failed: Rate limit exceeded"
+        warnings and dropping the data. Without this, the loop's
+        `except Exception: continue` silently swallowed every
+        rate-limited call.
+        """
+        self._record_api_call("issues_list")
+        return session.issues_list(params=params)
+
     def _fetch_candidates_across_series(
         self,
         session: Session,
@@ -312,9 +354,29 @@ class MetronOnlineSource(OnlineSource):
         include_volume: bool = True,
     ) -> list[Candidate]:
         """Run `issues_list` once per series, accumulating candidates."""
+        # Pre-call filter threshold from the resolved API budget. At the
+        # `balanced` default this resolves to 0.0 (filter is a no-op),
+        # so Phase A behaviour is identical to today's. Phase B
+        # calibration picks the real values for `fast`.
+        from comicbox.config.settings import resolve_api_budget
+        from comicbox.online.series_filter import (
+            should_keep_volume_name,
+            threshold_for,
+        )
+
+        name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
+
         candidates: list[Candidate] = []
         for series in series_results:
             display = _series_display_name(series)
+            if not should_keep_volume_name(profile.series, display, name_threshold):
+                logger.debug(
+                    f"online {self.name}: skipping series {series.id} "
+                    f"({display!r}); name dissimilar to "
+                    f"profile.series={profile.series!r} (threshold="
+                    f"{name_threshold:.2f}, api_budget pre-filter)."
+                )
+                continue
             params = self._build_issue_params(
                 profile,
                 series.id,
@@ -322,14 +384,16 @@ class MetronOnlineSource(OnlineSource):
                 include_volume=include_volume,
             )
             try:
-                issues = session.issues_list(params=params)
+                issues = self._issues_list_with_retry(session, params)
             except Exception as exc:
                 logger.warning(
                     f"online {self.name}: issue-list for series {series.id} "
                     f"({display!r}) failed: {exc}"
                 )
                 continue
-            candidates.extend(self._to_candidate(i, display) for i in issues)
+            candidates.extend(
+                self._to_candidate(i, display, series_id=series.id) for i in issues
+            )
         return candidates
 
 

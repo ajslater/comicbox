@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from functools import wraps
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Final, TypeVar
 
 from loguru import logger
 
@@ -30,6 +30,28 @@ _MAX_DELAY_S = 60.0
 # anything longer than that and we'd rather error out so the user can
 # decide whether to wait or come back later.
 _MAX_RETRY_AFTER_S = 3600.0
+
+# Rate-limit-specific backoff schedule. Different from the generic
+# exponential because rate-limit recovery is fundamentally about waiting
+# for a sliding window to clear, not about retrying a transient failure.
+#
+# ComicVine's 200/hr cap means once tripped, you may need to wait
+# minutes for the rolling window to slide forward. Our generic 1-2-4-8-16
+# schedule tops out at 31s total — far too short for an hourly cap.
+# This schedule starts at 30s (one second-bucket reset plus margin) and
+# escalates to 10-min waits, with a total budget of ~18 minutes across
+# 5 attempts. Enough to clear a typical hourly-cap hit without giving
+# up on transient server-side enforcement glitches (clock skew, burst
+# protection) that locally-paced 1/sec calls occasionally trip.
+#
+# Honored only when there's no server-supplied `retry_after` hint;
+# mokkari sets that explicitly, simyan does not.
+_RATE_LIMIT_SCHEDULE: Final[tuple[float, ...]] = (30.0, 60.0, 120.0, 300.0, 600.0)
+
+# Max retry attempts for rate-limit errors specifically. Generic errors
+# stay at `max_retries=5` (31s total budget for transient 5xx). Going
+# higher for rate-limit gives the schedule above room to play out fully.
+_MAX_RATE_LIMIT_RETRIES: Final[int] = len(_RATE_LIMIT_SCHEDULE)
 
 
 def _is_rate_limit(exc: BaseException) -> bool:
@@ -83,18 +105,79 @@ def _delay_for(attempt: int) -> float:
     return min(_BASE_DELAY_S * (2**attempt), _MAX_DELAY_S)
 
 
+def _delay_for_rate_limit(attempt: int) -> float:
+    """Longer schedule for rate-limit hits with no server hint."""
+    if attempt >= len(_RATE_LIMIT_SCHEDULE):
+        return _RATE_LIMIT_SCHEDULE[-1]
+    return _RATE_LIMIT_SCHEDULE[attempt]
+
+
+def _plan_retry(
+    exc: BaseException,
+    *,
+    attempt: int,
+    rate_limit_attempt: int,
+    max_retries: int,
+) -> tuple[float, str, bool] | None:
+    """
+    Decide whether and how to retry. Returns (delay, budget_label, is_rate_limit).
+
+    Returns ``None`` when the applicable budget is exhausted. Rate-limit
+    errors have their own budget (`_MAX_RATE_LIMIT_RETRIES`) and schedule
+    (`_RATE_LIMIT_SCHEDULE`); generic retriable errors use the caller's
+    `max_retries` and the exponential schedule. A server-supplied
+    `retry_after` hint always wins over both.
+    """
+    is_rate_limit = _is_rate_limit(exc)
+    if is_rate_limit:
+        if rate_limit_attempt >= _MAX_RATE_LIMIT_RETRIES:
+            return None
+    elif attempt >= max_retries:
+        return None
+    server_hint = _retry_after(exc)
+    if server_hint is not None:
+        delay = min(server_hint, _MAX_RETRY_AFTER_S)
+    elif is_rate_limit:
+        delay = _delay_for_rate_limit(rate_limit_attempt)
+    else:
+        delay = min(_delay_for(attempt), _MAX_DELAY_S)
+    if is_rate_limit:
+        budget = (
+            f"rate-limit attempt {rate_limit_attempt + 1}/{_MAX_RATE_LIMIT_RETRIES}"
+        )
+    else:
+        budget = f"attempt {attempt + 1}/{max_retries}"
+    return delay, budget, is_rate_limit
+
+
 def with_retry(
     *,
     max_retries: int = 5,
     sleep: Callable[[float], None] = time.sleep,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Wrap a callable with retry-on-rate-limit / 5xx; never retries auth errors."""
+    """
+    Wrap a callable with retry-on-rate-limit / 5xx; never retries auth errors.
+
+    Rate-limit errors get a separate retry budget (`_MAX_RATE_LIMIT_RETRIES`)
+    and a longer delay schedule (`_RATE_LIMIT_SCHEDULE`) than other
+    retriable failures. The generic 1-2-4-8-16s schedule tops out at 31s
+    of total wait, which is far too short for hourly-cap recovery
+    (ComicVine's 200/hr can require several minutes to clear). The
+    rate-limit schedule (30s, 1m, 2m, 5m, 10m) gives that window time to
+    slide forward.
+
+    When the exception carries a `retry_after` attribute (mokkari does
+    this), we honor it directly — server hint always wins over our
+    blind schedules.
+    """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             last_exc: BaseException | None = None
-            for attempt in range(max_retries + 1):
+            attempt = 0
+            rate_limit_attempt = 0
+            while True:
                 try:
                     return func(*args, **kwargs)
                 except Exception as exc:
@@ -102,22 +185,24 @@ def with_retry(
                         # Programmer errors, auth errors, etc.: surface immediately.
                         raise
                     last_exc = exc
-                    if attempt == max_retries:
+                    plan = _plan_retry(
+                        exc,
+                        attempt=attempt,
+                        rate_limit_attempt=rate_limit_attempt,
+                        max_retries=max_retries,
+                    )
+                    if plan is None:
                         break
-                    server_hint = _retry_after(exc)
-                    if server_hint is not None:
-                        # Server told us when to come back — honor it up to
-                        # the hourly-cap-sized ceiling. Don't squeeze it
-                        # down to our own short backoff schedule.
-                        delay = min(server_hint, _MAX_RETRY_AFTER_S)
-                    else:
-                        delay = min(_delay_for(attempt), _MAX_DELAY_S)
-                    cause = "rate-limit" if _is_rate_limit(exc) else type(exc).__name__
+                    delay, budget, is_rate_limit = plan
+                    cause = "rate-limit" if is_rate_limit else type(exc).__name__
                     logger.info(
-                        f"{func.__name__}: {cause}, retrying in {delay:.1f}s "
-                        f"(attempt {attempt + 1}/{max_retries})"
+                        f"{func.__name__}: {cause}, retrying in {delay:.1f}s ({budget})"
                     )
                     sleep(delay)
+                    if is_rate_limit:
+                        rate_limit_attempt += 1
+                    else:
+                        attempt += 1
             assert last_exc is not None
             raise last_exc
 

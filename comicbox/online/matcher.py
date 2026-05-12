@@ -182,6 +182,147 @@ def _resolve_policy(
 
 _TOP_K_FOR_HASHING = 5
 
+# Tiebreak sentinel: candidates with no `volume_id` sort to the bottom of
+# a score tie. We'd rather break ties in favor of *known*-canonical
+# volumes than guess about unknown ones.
+_NO_VOLUME_ID_TIEBREAK: int = 2**31
+
+
+def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
+    """
+    Tuple sort key with deterministic tiebreaks for ranked candidates.
+
+    Components, ascending so smaller-tuple wins:
+
+    1. ``-c.score`` — primary: blended score descending. The matcher's
+       headline output.
+    2. ``c.volume_id`` (or sentinel) — secondary: on a tied blended
+       score, prefer the candidate from the *lower* volume id. CV
+       creates the canonical volume first; later "Watchmen, 1987"
+       volumes that share a name with the original are duplicates,
+       regional editions, or admin oversights. None → sentinel so
+       known volumes win against unknowns.
+    3. ``c.issue_id`` — tertiary: on tied score AND tied volume_id
+       (within-volume variant cover dupes), prefer the lower issue id.
+       Same logic — the canonical issue record is the one created
+       first.
+
+    Without explicit tiebreakers Python's stable sort preserves the
+    order the source returned candidates in, which lets the API's
+    iteration order decide the matcher's verdict on ties. That's
+    arbitrary and the wrong source of authority for tag writes.
+    """
+    return (
+        -c.score,
+        c.volume_id if c.volume_id is not None else _NO_VOLUME_ID_TIEBREAK,
+        c.issue_id,
+    )
+
+
+# Maximum blended-score gap inside which the volume_id tiebreak overrides
+# a slight cover-hash difference. The matcher's `disambiguation_margin`
+# (0.10) is the policy threshold for "ambiguous"; this is roughly half
+# of that — within which we treat metadata-identical candidates as
+# effectively tied even if cover-hash nudged their blended scores apart.
+#
+# Why this matters: Watchmen (1987) #009 has two CV records — vol=3622
+# (canonical) and vol=79545 (dupe). Both score md=0.91. Cover-hash
+# rounds out at 0.81 vs 0.84 because of cover-image variance, blended
+# diverges by ~0.006 (displayed 0.01). The plain sort picks vol=79545
+# because its blended score is fractionally higher; with this
+# correction, when metadata is identical the cover-hash signal isn't
+# strong enough on its own to overrule the canonical-volume preference.
+_TIED_METADATA_BLEND_MARGIN: float = 0.02
+
+# Maximum cover-score difference treated as hash noise rather than a
+# real disambiguation signal. ~3 Hamming bits out of 64 (pHash range).
+# Below this, cover-score variation is hash artifact / variant-cover
+# wobble. Above it, one candidate's cover is materially more similar to
+# the local than the other's — that's a real signal we should respect.
+#
+# Specifically: Original Sin (2014) #001 has two records, md=0.91 both;
+# one at cover=1.00 (perfect Hamming match), one at cover=0.91 (close
+# but not identical). The 0.09 cover gap IS the signal — the right
+# answer's cover is genuinely a better match. Without this guard, the
+# tiebreak collapses them and the lower vol_id wins, which is wrong.
+_COVER_DIFF_NOISE_MARGIN: float = 0.05
+
+
+def _cover_diff_is_noise(a: Candidate, b: Candidate) -> bool:
+    """
+    Decide whether the cover-score gap between two candidates is hash noise.
+
+    Returns True when the gap is small enough to be hash artifact rather
+    than disambiguation signal. When either candidate's cover_score is
+    missing, we can't compute a diff — fall back to "noise" so the
+    volume_id tiebreak still applies (no cover signal at all means
+    cover wasn't helping anyway).
+    """
+    if a.cover_score is None or b.cover_score is None:
+        return True
+    return abs(a.cover_score - b.cover_score) <= _COVER_DIFF_NOISE_MARGIN
+
+
+def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
+    """
+    Within same-metadata, near-blended-score groups, prefer lower volume_id.
+
+    Walks the score-sorted list looking for consecutive candidates with
+    *identical* `metadata_score` whose blended `score` differs by at
+    most `_TIED_METADATA_BLEND_MARGIN` AND whose `cover_score` differs by
+    at most `_COVER_DIFF_NOISE_MARGIN`. Within each such group, re-sorts
+    by ``(volume_id, issue_id)`` ascending so the canonical record wins
+    over near-tied dupes from later volumes.
+
+    Conservative on three axes:
+
+    - Requires *exact* metadata-score equality. Different metadata
+      means the cover-hash signal is doing legitimate disambiguation
+      work, and we should respect its blended-score outcome.
+    - Requires blended scores within a small margin. Genuine
+      score-spread (>0.02) means the matcher distinguished the
+      candidates and we should trust that.
+    - Requires cover-score difference to be noise-level (<=0.05). When
+      one candidate's cover is a near-perfect Hamming match and the
+      other's is materially worse, that's the cover signal doing real
+      work — don't override.
+
+    The three predicates together catch the "two records, same series +
+    issue + year + publisher, different volume, near-identical covers"
+    duplicate case (Watchmen #005, #009) without touching cases where
+    the matcher's signals genuinely rank the candidates differently
+    (Original Sin #001 — different cover scores, the better hash wins).
+    """
+    if len(ranked) < 2:  # noqa: PLR2004 — need at least 2 to compare adjacents
+        return ranked
+
+    result: list[Candidate] = []
+    i = 0
+    while i < len(ranked):
+        # Group consecutive candidates with same metadata_score, close
+        # blended score, AND noise-level cover-score difference relative
+        # to the group leader.
+        j = i + 1
+        while (
+            j < len(ranked)
+            and ranked[j].metadata_score == ranked[i].metadata_score
+            and ranked[i].score - ranked[j].score <= _TIED_METADATA_BLEND_MARGIN
+            and _cover_diff_is_noise(ranked[i], ranked[j])
+        ):
+            j += 1
+        group = ranked[i:j]
+        if len(group) > 1:
+            group = sorted(
+                group,
+                key=lambda c: (
+                    c.volume_id if c.volume_id is not None else _NO_VOLUME_ID_TIEBREAK,
+                    c.issue_id,
+                ),
+            )
+        result.extend(group)
+        i = j
+    return result
+
 
 def _should_invoke_hashing(
     metadata_ranked: list[Candidate],
@@ -255,8 +396,8 @@ def _apply_cover_hashing(
         rescored.append(
             replace(with_cover, score=final_score(with_cover, hash_used=True))
         )
-    rescored.sort(key=lambda c: c.score, reverse=True)
-    return rescored
+    rescored.sort(key=_candidate_sort_key)
+    return _apply_tied_metadata_tiebreak(rescored)
 
 
 class OnlineMatcher:
@@ -288,7 +429,8 @@ class OnlineMatcher:
             md = metadata_score(profile, c)
             with_md = replace(c, metadata_score=md)
             scored.append(replace(with_md, score=final_score(with_md, hash_used=False)))
-        scored.sort(key=lambda c: c.score, reverse=True)
+        scored.sort(key=_candidate_sort_key)
+        scored = _apply_tied_metadata_tiebreak(scored)
 
         if local_hash_provider is None or not _should_invoke_hashing(
             scored,

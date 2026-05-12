@@ -159,8 +159,12 @@ def test_search_continues_on_per_series_issue_failure(
         def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
             self.issues_list_calls.append(dict(params or {}))
             if (params or {}).get("series") == 101:
-                msg = "boom"
-                raise RuntimeError(msg)
+                # Use a non-retriable exception (ValueError is in
+                # `_NON_RETRIABLE`) so we exercise the `except / continue`
+                # fallback directly — RuntimeError would be retried by
+                # @with_retry and burn 31s of exponential backoff.
+                msg = "bad params"
+                raise ValueError(msg)
             return super().issues_list(params)
 
     fake = _FlakyMokkari(series=[s1, s2], issues_by_series=issues)
@@ -168,6 +172,53 @@ def test_search_continues_on_per_series_issue_failure(
     profile = ComicProfile(series="X", issue="1", issue_int=1)
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [5001]
+
+
+def test_search_retries_per_call_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Per-call retry honors the server's retry_after and replays the call.
+
+    Before this fix, a `RateLimitError` from mokkari was caught by the
+    `_fetch_candidates_across_series` loop's `except Exception: continue`
+    and silently dropped that series' issue data. With `@with_retry()`
+    on `_issues_list_with_retry`, the retry decorator catches the error,
+    sleeps the hinted duration, and replays the same call.
+    """
+    s1 = _FakeBaseSeries(sid=100, name="A")
+    issues = {100: [_FakeBaseIssue(iid=5001, number="1", series_name="A")]}
+
+    # mokkari-shaped exception: the retry decorator keys on the type
+    # name string "RateLimitError" and the `retry_after` attribute.
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _RateLimitedMokkari(_FakeMokkari):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self._fail_count = 0
+
+        def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
+            if self._fail_count < 1:
+                # Record the failed attempt too so we can assert retry count.
+                self.issues_list_calls.append(dict(params or {}))
+                self._fail_count += 1
+                raise RateLimitError(retry_after=0.001)
+            return super().issues_list(params)
+
+    fake = _RateLimitedMokkari(series=[s1], issues_by_series=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="A", issue="1", issue_int=1)
+    candidates = src.search(profile)
+    # The retry succeeded — we got the issue (before the fix, the
+    # rate-limit error was swallowed by `except Exception: continue`
+    # and the candidate list was empty).
+    assert [c.issue_id for c in candidates] == [5001]
+    # Two issues_list calls happened: the rate-limited one + the replay.
+    assert len(fake.issues_list_calls) == 2
 
 
 # ---------------------------------------------------------- --series-id
@@ -215,6 +266,33 @@ def test_series_id_works_without_profile_series(
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [9002]
     assert fake.series_list_calls == []
+
+
+def test_to_candidate_propagates_series_id_from_two_step(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Candidates carry the parent series.id (from the discovery step)."""
+    s = _FakeBaseSeries(sid=10455, name="Watchmen")
+    issues = {10455: [_FakeBaseIssue(iid=27650, number="5", series_name="Watchmen")]}
+    fake = _FakeMokkari(series=[s], issues_by_series=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    [cand] = src.search(profile)
+    # Comes from the series discovery step, not from BaseIssue.series.id
+    # (which is the sparse fake-default 999) — explicit threading wins.
+    assert cand.volume_id == 10455
+
+
+def test_to_candidate_propagates_series_id_from_series_id_fastpath(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--series-id metron:NNN candidates also carry the series id."""
+    issues = {77: [_FakeBaseIssue(iid=9001, number="7", series_name="Bypassed")]}
+    fake = _FakeMokkari(series=[], issues_by_series=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=77)
+    profile = ComicProfile(series="X", issue="7", issue_int=7, year=1952)
+    [cand] = src.search(profile)
+    assert cand.volume_id == 77
 
 
 # ---------------------------------------------------------- ±1 year retry

@@ -90,6 +90,7 @@ class ComicVineOnlineSource(OnlineSource):
         than per issue — successive issues from the same volume are free.
         """
         session = self._get_session()
+        self._record_api_call("get_issue")
         issue = session.get_issue(issue_id)
         dump: dict[str, Any] = issue.model_dump(mode="json")
         # `issue.volume` is a GenericEntry with id; fetch the full volume
@@ -99,6 +100,7 @@ class ComicVineOnlineSource(OnlineSource):
         )
         if volume_id is not None:
             try:
+                self._record_api_call("get_volume")
                 volume = session.get_volume(int(volume_id))
             except Exception as exc:
                 logger.warning(
@@ -168,6 +170,10 @@ class ComicVineOnlineSource(OnlineSource):
             # ComicVine doesn't expose a precomputed pHash; matcher will
             # download and hash on demand if needed.
             precomputed_cover_hash=None,
+            # CV's volume.id — propagated for calibration diagnostics
+            # (lets us tell "variant cover of same volume" apart from
+            # "wrong volume with the same name" when two candidates tie).
+            volume_id=bi_volume.id if bi_volume else None,
         )
 
     # Cover-date window applied around `profile.year` when filtering
@@ -176,6 +182,22 @@ class ComicVineOnlineSource(OnlineSource):
     # that score well on every other signal.
     _COVER_DATE_WINDOW_YEARS: ClassVar[int] = 2
 
+    # Maximum number of years a comic may pre-date its volume's start_year
+    # before we treat the volume as causally impossible and skip the
+    # per-volume issue lookup. A 1987 Watchmen issue with profile.year=1987
+    # cannot have been published in a reprint volume that started in 2008;
+    # any candidate from that volume is a reprint with cover_date=1987
+    # preserved from the original, score-identical to the original on
+    # every signal the matcher reads. Skip-and-save-budget is cleaner
+    # than admitting the candidate and hoping a tiebreaker resolves it.
+    #
+    # The slop=1 matches `s_year`'s diff=1 tolerance — we accept "started
+    # the year after the comic's cover date" cases (off-by-one cover
+    # dating across publisher fiscal year boundaries) without keeping
+    # outright impossible volumes.
+    _VOLUME_START_YEAR_SLOP: ClassVar[int] = 1
+
+    @with_retry()
     def _list_issues_by_volume(
         self,
         session: Any,
@@ -198,7 +220,15 @@ class ComicVineOnlineSource(OnlineSource):
         2-year slop is generous; this prevents wrong-volume picks (e.g.
         a 1986 series matching a 2005 collected edition with the same
         issue number) from polluting the candidate set in the first place.
+
+        Decorated with ``@with_retry()`` so a rate-limit hit on this
+        single call honors simyan's `retry_after` hint and replays just
+        the failed call. The outer ``search`` loop catches and continues
+        on the FINAL failure after retries are exhausted, so transient
+        rate-limit hits inside the loop no longer silently drop the
+        per-volume issue data.
         """
+        self._record_api_call("list_issues")
         issue_filter = [f"volume:{volume_id}"]
         if issue_number:
             issue_filter.append(f"issue_number:{issue_number}")
@@ -210,7 +240,28 @@ class ComicVineOnlineSource(OnlineSource):
         issues = session.list_issues(params={"filter": ",".join(issue_filter)})
         return [self._to_candidate(i, volume_name) for i in issues]
 
-    @with_retry()
+    def _volume_predates_comic(
+        self, vol_start_year: int | None, comic_year: int | None
+    ) -> bool:
+        """
+        Return True when the volume started so far after the comic to be impossible.
+
+        Used to skip per-volume issue queries for volumes whose `start_year`
+        is later than the comic year + slop. Reprint volumes (which copy the
+        original's cover_date onto their issues) are score-identical to
+        the original on every signal the matcher reads — the only thing
+        that distinguishes them is their volume start_year, and the
+        matcher doesn't see that. Filtering at search time avoids both
+        wrong-volume picks and the wasted `list_issues` call.
+
+        Returns False (i.e. keep the volume) when either input is None —
+        we'd rather over-include than drop the right answer on missing
+        data.
+        """
+        if vol_start_year is None or comic_year is None:
+            return False
+        return vol_start_year > comic_year + self._VOLUME_START_YEAR_SLOP
+
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
         Search ComicVine for candidate issues matching the profile.
@@ -229,13 +280,16 @@ class ComicVineOnlineSource(OnlineSource):
         ``--series-id comicvine:<id>`` short-circuits step 1 and runs
         only step 2 against the supplied volume id.
 
-        Volume `start_year` is intentionally NOT used as a filter — a
-        comic dated 2020 can be issue #100 of a series that started in
-        1963. But ``profile.year`` IS used as a per-issue ``cover_date``
-        window (±2 years), to keep wrong-volume candidates with the
-        same issue number out of the candidate set entirely. If the
-        year filter returns empty (CV has issues with missing
-        cover_date), we retry once without the year filter.
+        Volumes whose ``start_year`` is *later* than ``profile.year + 1``
+        (causally impossible — a reprint volume started in 2008 cannot
+        contain the original 1987 issue) are dropped before step 2;
+        otherwise ``start_year`` is NOT used as a filter, since a comic
+        dated 2020 can legitimately be issue #100 of a series that
+        started in 1963. ``profile.year`` is also used as a per-issue
+        ``cover_date`` window (±2 years) inside step 2, to keep
+        wrong-volume candidates with the same issue number out of the
+        candidate set entirely. If that year filter returns empty (CV
+        has issues with missing cover_date), we retry once without it.
         """
         session = self._get_session()
         issue_number = strip_issue_leading_zeros(profile.issue)
@@ -266,6 +320,7 @@ class ComicVineOnlineSource(OnlineSource):
         from simyan.comicvine import ComicvineResource
 
         try:
+            self._record_api_call("search_volumes")
             volumes = session.search(
                 resource=ComicvineResource.VOLUME,
                 query=profile.series,
@@ -288,21 +343,78 @@ class ComicVineOnlineSource(OnlineSource):
             f"series={profile.series!r}: {sample}"
         )
 
+        # Pre-call filter threshold from the resolved API budget. At the
+        # `balanced` default this resolves to 0.0 (filter is a no-op), so
+        # Phase A behaviour is identical to today's. Phase B calibration
+        # picks the real values for `fast` (currently 0.7 placeholder).
+        from comicbox.config.settings import resolve_api_budget
+        from comicbox.online.series_filter import threshold_for
+
+        name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
+
         candidates: list[Candidate] = []
         for vol in volumes:
-            try:
-                candidates.extend(
-                    self._list_with_year_retry(
-                        session, vol.id, issue_number, vol.name, year=year
-                    )
+            candidates.extend(
+                self._candidates_for_volume(
+                    session,
+                    vol,
+                    profile=profile,
+                    issue_number=issue_number,
+                    year=year,
+                    name_threshold=name_threshold,
                 )
-            except Exception as exc:
-                logger.warning(
-                    f"online {self.name}: issue-list for volume {vol.id} "
-                    f"({vol.name!r}) failed: {exc}"
-                )
-                continue
+            )
         return candidates
+
+    def _candidates_for_volume(
+        self,
+        session: Any,
+        vol: Any,
+        *,
+        profile: ComicProfile,
+        issue_number: str | None,
+        year: int | None,
+        name_threshold: float,
+    ) -> list[Candidate]:
+        """
+        Apply pre-call filters and (if kept) fetch the volume's matching issues.
+
+        Pre-filters in order: start_year causality (skip volumes that
+        started after the comic), then series-name fuzzy match (skip
+        volumes whose name diverges from `profile.series` past the
+        api_budget threshold). Both filters log at debug level so
+        calibration runs can audit drops. The actual `list_issues` call
+        only fires for volumes that survive both gates.
+        """
+        from comicbox.online.series_filter import should_keep_volume_name
+
+        vol_start = getattr(vol, "start_year", None)
+        if self._volume_predates_comic(vol_start, year):
+            logger.debug(
+                f"online {self.name}: skipping volume {vol.id} "
+                f"({vol.name!r}, start_year={vol_start}); comic "
+                f"year={year} predates the volume — issue cannot "
+                f"originate here."
+            )
+            return []
+        if not should_keep_volume_name(profile.series, vol.name, name_threshold):
+            logger.debug(
+                f"online {self.name}: skipping volume {vol.id} "
+                f"({vol.name!r}); name dissimilar to "
+                f"profile.series={profile.series!r} (threshold="
+                f"{name_threshold:.2f}, api_budget pre-filter)."
+            )
+            return []
+        try:
+            return self._list_with_year_retry(
+                session, vol.id, issue_number, vol.name, year=year
+            )
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: issue-list for volume {vol.id} "
+                f"({vol.name!r}) failed: {exc}"
+            )
+            return []
 
     def _list_with_year_retry(
         self,

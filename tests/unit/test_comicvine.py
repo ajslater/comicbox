@@ -160,9 +160,12 @@ def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
 
 
 class _FakeBasicVolume:
-    def __init__(self, vid: int, name: str) -> None:
+    def __init__(self, vid: int, name: str, start_year: int | None = None) -> None:
         self.id = vid
         self.name = name
+        # simyan's BasicVolume exposes start_year; the search loop uses it
+        # to skip volumes that started after the comic was published.
+        self.start_year = start_year
 
 
 class _FakeImage:
@@ -502,3 +505,161 @@ def test_search_retries_without_year_when_year_filter_returns_empty(
     assert len(fake_cv.list_issues_calls) == 2
     assert "cover_date:" in fake_cv.list_issues_calls[0].get("filter", "")
     assert "cover_date:" not in fake_cv.list_issues_calls[1].get("filter", "")
+
+
+# --------------------------------------- volume-predates-comic skip filter
+
+
+def test_volume_predates_comic_basic() -> None:
+    """Volume started after comic year + slop → predates."""
+    src = ComicVineOnlineSource(OnlineSourceCredentials(api_key="x"), OnlineSettings())
+    # 1987 comic, 2008 volume → predates by 21y.
+    assert src._volume_predates_comic(2008, 1987) is True
+    # 1987 comic, 1986 volume → not predates (volume started earlier, fine).
+    assert src._volume_predates_comic(1986, 1987) is False
+    # 1987 comic, 1987 volume → same year, fine.
+    assert src._volume_predates_comic(1987, 1987) is False
+    # Slop tolerance: 1987 comic, 1988 volume → diff=1, within slop.
+    assert src._volume_predates_comic(1988, 1987) is False
+    # Slop tolerance: 1987 comic, 1989 volume → diff=2, beyond slop.
+    assert src._volume_predates_comic(1989, 1987) is True
+
+
+def test_volume_predates_comic_none_inputs_keep_volume() -> None:
+    """Missing data → keep the volume (don't drop on uncertainty)."""
+    src = ComicVineOnlineSource(OnlineSourceCredentials(api_key="x"), OnlineSettings())
+    assert src._volume_predates_comic(None, 1987) is False
+    assert src._volume_predates_comic(2008, None) is False
+    assert src._volume_predates_comic(None, None) is False
+
+
+def test_search_skips_volumes_started_after_comic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Watchmen-shaped case: 1987 comic, reprint volume started 2008 is dropped.
+
+    The matcher otherwise can't distinguish the reprint from the original
+    — both candidates carry cover_date=1987, so all metadata signals
+    score identically and the wrong volume wins on sort order.
+    """
+    # 1986 vol — keep (original); 2008 vol — skip (started after comic).
+    vol_keep = _FakeBasicVolume(vid=100, name="Watchmen", start_year=1986)
+    vol_skip = _FakeBasicVolume(vid=200, name="Watchmen Reprint", start_year=2008)
+    issues = {
+        100: [_FakeBasicIssue(iid=27650, number="5", volume_name="Watchmen")],
+        200: [_FakeBasicIssue(iid=476696, number="5", volume_name="Watchmen Reprint")],
+    }
+    fake_cv = _FakeCV(volumes=[vol_keep, vol_skip], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    candidates = src.search(profile)
+
+    # Only the original volume's issue survived.
+    assert [c.issue_id for c in candidates] == [27650]
+    # The skipped volume never received a list_issues call.
+    filters = [c.get("filter", "") for c in fake_cv.list_issues_calls]
+    assert any("volume:100" in f for f in filters)
+    assert not any("volume:200" in f for f in filters)
+
+
+def test_search_keeps_volume_when_start_year_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A volume with no start_year is kept (don't drop on missing data)."""
+    vol = _FakeBasicVolume(vid=100, name="Mystery Vol", start_year=None)
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Mystery Vol")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Mystery Vol", issue="1", issue_int=1, year=1987)
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [1]
+
+
+def test_search_keeps_volume_when_profile_year_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No profile.year → no basis to compare; all volumes kept."""
+    # Volume started in 2020; absent a comic year we can't say it predates.
+    vol = _FakeBasicVolume(vid=100, name="Future Vol", start_year=2020)
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Future Vol")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Future Vol", issue="1", issue_int=1, year=None)
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [1]
+
+
+def test_search_keeps_long_running_volume(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 2020 issue from a volume that started in 1963 should NOT be dropped."""
+    vol = _FakeBasicVolume(vid=100, name="Action Comics", start_year=1938)
+    issues = {100: [_FakeBasicIssue(iid=1, number="1000", volume_name="Action Comics")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(
+        series="Action Comics", issue="1000", issue_int=1000, year=2018
+    )
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [1]
+
+
+# --------------------------------------------- volume_id plumbing
+
+
+def test_to_candidate_propagates_volume_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Candidates carry the parent volume.id (used by calibration diagnostics)."""
+    vol = _FakeBasicVolume(vid=10455, name="Watchmen", start_year=1986)
+    # _FakeBasicIssue's internal volume defaults to vid=999; override
+    # to match the parent volume the search step found, so the
+    # `basic_issue.volume.id` plumbing has a meaningful value to read.
+    issue = _FakeBasicIssue(iid=27650, number="5", volume_name="Watchmen")
+    issue.volume = _FakeBasicVolume(vid=10455, name="Watchmen")
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume={10455: [issue]})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    [cand] = src.search(profile)
+    assert cand.volume_id == 10455
+
+
+# --------------------------------------------- rate-limit per-call retry
+
+
+def test_list_issues_by_volume_retries_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Per-call retry honors the server's retry_after and replays the call.
+
+    Before this fix, a `RateLimitError` from simyan was caught by the
+    `search` loop's `except Exception: continue` and silently dropped
+    that volume's issue data. With `@with_retry()` on
+    `_list_issues_by_volume`, the retry decorator catches the error,
+    sleeps the hinted duration, and replays the same call.
+    """
+    vol = _FakeBasicVolume(vid=100, name="Foo", start_year=2020)
+    issue = _FakeBasicIssue(iid=5001, number="1", volume_name="Foo")
+
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _RateLimitedCV(_FakeCV):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType]
+            self._fail_count = 0
+
+        def list_issues(self, params=None, max_results=500):
+            if self._fail_count < 1:
+                self.list_issues_calls.append(dict(params or {}))
+                self._fail_count += 1
+                raise RateLimitError(retry_after=0.001)
+            return super().list_issues(params, max_results)
+
+    fake = _RateLimitedCV(volumes=[vol], issues_by_volume={100: [issue]})
+    src = _make_cv_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+    candidates = src.search(profile)
+    assert [c.issue_id for c in candidates] == [5001]
+    # Two list_issues calls: failed + replay.
+    assert len(fake.list_issues_calls) == 2

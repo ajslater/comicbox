@@ -40,6 +40,21 @@ class OnlineSource(ABC):
         """Store refs needed for client construction."""
         self._credentials = credentials
         self._settings = settings
+        # Per-method call counters for calibration / cost telemetry.
+        # Counts INVOCATIONS at our wrapper level — includes cache hits
+        # (since we can't distinguish them without peeking inside
+        # simyan/mokkari) and counts retries as separate invocations
+        # (each retry attempt is a real send when the cache miss). The
+        # harness snapshots the dict before each fixture and diffs
+        # after, which gives a per-fixture cost upper bound that's
+        # exact for cold-cache runs and over-counts for warm-cache
+        # runs by the cache-hit fraction. Good enough for Phase B
+        # comparison; refine later if needed.
+        self.api_call_counts: dict[str, int] = {}
+
+    def _record_api_call(self, method: str) -> None:
+        """Bump `api_call_counts[method]`. Called by source-internal wrappers."""
+        self.api_call_counts[method] = self.api_call_counts.get(method, 0) + 1
 
     @abstractmethod
     def is_configured(self) -> bool:

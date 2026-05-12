@@ -35,6 +35,7 @@ def _candidate(
     year: int | None = 2020,
     publisher: str | None = "Quality Comics",
     page_count: int | None = 24,
+    volume_id: int | None = None,
 ) -> Candidate:
     return Candidate(
         source="metron",
@@ -48,6 +49,7 @@ def _candidate(
             cover_url=None,
             variant_label=None,
         ),
+        volume_id=volume_id,
     )
 
 
@@ -413,3 +415,239 @@ def test_per_source_confidence_threshold_override() -> None:
     assert res_metron.kind is ResolutionKind.AUTO_WRITE
     res_cv = matcher.resolve(ranked, settings, source_name="comicvine")
     assert res_cv.kind is ResolutionKind.PROMPT
+
+
+# ----------------------------------------- score-tie tiebreak by volume_id
+
+
+def test_rank_breaks_ties_by_lower_volume_id() -> None:
+    """
+    When two candidates score identically, the lower volume_id wins.
+
+    Replicates the Watchmen (1987) #5 case: two CV issue records with
+    bit-identical metadata land at the same blended score; the canonical
+    volume (vol=3622) must beat the duplicate (vol=79545) regardless of
+    the order the source returned them.
+    """
+    matcher = OnlineMatcher()
+    # Source returns the dupe first — simulating CV's actual response order.
+    candidates = [
+        _candidate(issue_id=476696, volume_id=79545),  # dupe
+        _candidate(issue_id=27650, volume_id=3622),  # canonical
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    # Canonical wins despite arriving second.
+    assert ranked[0].issue_id == 27650
+    assert ranked[0].volume_id == 3622
+
+
+def test_rank_within_volume_tiebreak_by_lower_issue_id() -> None:
+    """Tied score AND tied volume_id (variant covers) → lower issue_id wins."""
+    matcher = OnlineMatcher()
+    # Both from the same volume — variant cover scenario.
+    candidates = [
+        _candidate(issue_id=500, volume_id=100),
+        _candidate(issue_id=400, volume_id=100),  # canonical (lower)
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    assert ranked[0].issue_id == 400
+
+
+def test_rank_tiebreak_treats_none_volume_id_as_lowest_priority() -> None:
+    """None volume_id sorts to the bottom of a tie (we trust known data)."""
+    matcher = OnlineMatcher()
+    candidates = [
+        _candidate(issue_id=1, volume_id=None),
+        _candidate(issue_id=2, volume_id=999),
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    # Even though id=1 is lower, the known volume_id beats the unknown.
+    assert ranked[0].issue_id == 2
+
+
+def test_rank_score_dominates_over_volume_id_tiebreak() -> None:
+    """A clearly higher score wins regardless of volume_id ordering."""
+    matcher = OnlineMatcher()
+    # Top scorer has a *higher* volume_id; should still win.
+    candidates = [
+        _candidate(issue_id=1, volume_id=1, year=2010),  # year off → lower md
+        _candidate(issue_id=2, volume_id=9999),  # perfect match
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    assert ranked[0].issue_id == 2
+    # Score gap is non-trivial — not a tie.
+    assert ranked[0].score > ranked[1].score
+
+
+def test_candidate_sort_key_stable_ordering() -> None:
+    """Direct test of the sort key for unit-level coverage."""
+    from comicbox.online.matcher import _candidate_sort_key
+
+    c1 = _candidate(issue_id=1, volume_id=100)
+    c2 = _candidate(issue_id=2, volume_id=50)
+    c3 = _candidate(issue_id=3, volume_id=None)
+    # Force identical metadata_score / final score by direct construction.
+    from dataclasses import replace
+
+    c1 = replace(c1, metadata_score=0.9, score=0.9)
+    c2 = replace(c2, metadata_score=0.9, score=0.9)
+    c3 = replace(c3, metadata_score=0.9, score=0.9)
+    keys = sorted([c1, c2, c3], key=_candidate_sort_key)
+    # Lower volume_id wins; None sorts to bottom.
+    assert [c.issue_id for c in keys] == [2, 1, 3]
+
+
+# ----------------------------- tied-metadata near-blend-score tiebreak
+
+
+def test_apply_tied_metadata_tiebreak_reorders_near_tied_same_md() -> None:
+    """
+    Reorder near-tied same-md candidates: canonical volume wins.
+
+    Watchmen #009 shape: same md (0.91), small cover-hash difference
+    moves blended scores by 0.01. Without this pass the dupe-volume
+    candidate (higher cover hash but higher vol_id) wins; with it, the
+    canonical volume wins.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    # The wrong volume's slight cover edge gives it a fractionally higher
+    # blended score in the input order.
+    wrong = _candidate(issue_id=476700, volume_id=79545)
+    right = _candidate(issue_id=28090, volume_id=3622)
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.84, score=0.896)
+    right = _replace(right, metadata_score=0.91, cover_score=0.81, score=0.890)
+
+    ranked = _apply_tied_metadata_tiebreak([wrong, right])
+    # Canonical vol wins despite arriving with a 0.006 score deficit.
+    assert ranked[0].issue_id == 28090
+    assert ranked[0].volume_id == 3622
+
+
+def test_apply_tied_metadata_tiebreak_respects_different_md() -> None:
+    """
+    Leave different-md candidates alone — cover does legitimate work there.
+
+    Genuine cover-hash disambiguation case: different metadata scores,
+    blended ties. The metadata-equality predicate is the safety rail.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    # A: md=0.85 (weaker), but covers very similar (cover=0.95) → blended 0.87.
+    # B: md=0.95 (strong), but cover different (cover=0.55) → blended 0.87.
+    # Different metadata; the post-pass should NOT collapse them.
+    a = _candidate(issue_id=1, volume_id=999)
+    b = _candidate(issue_id=2, volume_id=100)
+    a = _replace(a, metadata_score=0.85, cover_score=0.95, score=0.87)
+    b = _replace(b, metadata_score=0.95, cover_score=0.55, score=0.87)
+
+    # Input order: A first (entered first). Different md → no re-ordering.
+    ranked = _apply_tied_metadata_tiebreak([a, b])
+    assert ranked == [a, b]
+
+
+def test_apply_tied_metadata_tiebreak_score_gap_too_wide() -> None:
+    """
+    Leave alone when same md but blended score gap > the margin.
+
+    Score gap > 0.02 means the matcher distinguished them clearly via
+    the cover-hash signal — the volume_id correction shouldn't override.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    # md tied, but score gap of 0.05 (> the 0.02 margin)
+    high = _candidate(issue_id=1, volume_id=999)
+    low = _candidate(issue_id=2, volume_id=100)
+    high = _replace(high, metadata_score=0.91, cover_score=0.95, score=0.94)
+    low = _replace(low, metadata_score=0.91, cover_score=0.70, score=0.89)
+    ranked = _apply_tied_metadata_tiebreak([high, low])
+    # No swap — the gap is meaningful; the higher cover legitimately wins.
+    assert ranked[0].issue_id == 1
+
+
+def test_apply_tied_metadata_tiebreak_handles_empty_and_single() -> None:
+    """Empty + single-element lists are no-ops."""
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    assert _apply_tied_metadata_tiebreak([]) == []
+    [c] = _apply_tied_metadata_tiebreak([_candidate()])
+    assert c is not None
+
+
+def test_rank_applies_tied_metadata_tiebreak_in_metadata_only_path() -> None:
+    """End-to-end via OnlineMatcher.rank, no hashing path."""
+    matcher = OnlineMatcher()
+    # Two candidates where one's cover_score on construction is already
+    # set — but the rank path won't invoke hashing (no provider). So
+    # scores reflect metadata-only output. Use perfect-match candidates
+    # to force md=1.0 on both, then perturb post-rank to test the
+    # post-pass directly is enough — but to test the wired path we
+    # rely on the perfect-match producing identical metadata + scores.
+    candidates = [
+        _candidate(issue_id=476700, volume_id=79545),  # dupe vol
+        _candidate(issue_id=28090, volume_id=3622),  # canonical
+    ]
+    ranked = matcher.rank(_profile(), candidates)
+    # Identical metadata → identical scores → vol_id tiebreak (via sort
+    # key OR post-pass; both agree). Canonical wins.
+    assert ranked[0].issue_id == 28090
+
+
+def test_apply_tied_metadata_tiebreak_respects_cover_signal_when_diff_large() -> None:
+    """
+    When same-md but cover-score gap is real (>0.05), keep the cover-winner.
+
+    Original Sin (2014) #001 shape: two records, both at md=0.91. One has
+    cover_score=1.00 (perfect Hamming match — the right answer); the
+    other has cover_score=0.91 (close but not identical). The 0.09 gap
+    is real signal, not hash noise. Without the cover-diff predicate
+    the old tiebreak would group them and let vol_id win — which would
+    pick the WRONG answer (the higher cover_score is the right one).
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    # Source returns near-tied candidates: vol=73241 first by API order,
+    # vol=77906 second. After scoring, the perfect-cover one has higher
+    # blended score (0.928 vs 0.910).
+    wrong = _candidate(issue_id=452317, volume_id=73241)
+    right = _candidate(issue_id=469279, volume_id=77906)
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.91, score=0.910)
+    right = _replace(right, metadata_score=0.91, cover_score=1.00, score=0.928)
+
+    # The input order is high-score-first after the upstream sort:
+    ranked = _apply_tied_metadata_tiebreak([right, wrong])
+    # The cover-diff predicate must REJECT the grouping (0.09 > 0.05),
+    # leaving the cover-winner at rank 1 despite higher vol_id.
+    assert ranked[0].issue_id == 469279
+    assert ranked[0].cover_score == 1.00
+
+
+def test_apply_tied_metadata_tiebreak_skips_when_cover_score_missing() -> None:
+    """
+    Missing cover_score on either side → treat as noise, apply vol_id tiebreak.
+
+    This is the metadata-only path: no hashing fired, both cover_scores
+    are None. We have no cover information to make a decision, so fall
+    back to the canonical-record preference.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    wrong = _candidate(issue_id=2, volume_id=999)
+    right = _candidate(issue_id=1, volume_id=100)
+    # Both at the same score, no cover hashing.
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=None, score=0.91)
+    right = _replace(right, metadata_score=0.91, cover_score=None, score=0.91)
+    ranked = _apply_tied_metadata_tiebreak([wrong, right])
+    # Lower vol_id wins — the cover signal is absent so it can't push
+    # the decision away from the canonical-record preference.
+    assert ranked[0].issue_id == 1
