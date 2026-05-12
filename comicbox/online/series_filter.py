@@ -100,9 +100,38 @@ _THRESHOLDS: Final[MappingProxyType[APIBudget, float]] = MappingProxyType(
 )
 
 
+# Per-budget cap on how many discovered volumes / series to expand into
+# per-volume issue queries. The production default is 20 (held in the
+# source classes' `_MAX_*_PER_SEARCH` constants); `fast` overrides to 5.
+#
+# Rationale: even after the pre-filter at threshold 0.7 drops obvious
+# mismatches, the long tail of weakly-matching volumes can still
+# survive (anything in 0.7-1.0 range). For `fast`, additionally cap at
+# top 5 — the matcher's downstream signals favor name-similarity-leading
+# candidates anyway, so the rank-6+ tail rarely changes the verdict.
+# Phase B didn't formally measure this (the pre-filter alone hit the
+# cost target) but the spec called for it; landing it at scale-time
+# (Phase D) because library-of-17500-comics scenarios need every cut.
+_MAX_RESULTS_OVERRIDES: Final[MappingProxyType[APIBudget, int]] = MappingProxyType(
+    {
+        APIBudget.FAST: 5,
+    }
+)
+
+
 def threshold_for(budget: APIBudget) -> float:
     """Return the per-budget filter threshold in `[0, 1]`."""
     return _THRESHOLDS.get(budget, 0.0)
+
+
+def max_results_for(budget: APIBudget, *, default: int) -> int:
+    """
+    Return the per-budget cap on volumes/series to expand into issue queries.
+
+    `default` is the source's class-level production cap (20 today).
+    Returns the per-budget override when set; otherwise the default.
+    """
+    return _MAX_RESULTS_OVERRIDES.get(budget, default)
 
 
 def should_keep_volume_name(

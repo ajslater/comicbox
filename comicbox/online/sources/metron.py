@@ -249,7 +249,18 @@ class MetronOnlineSource(OnlineSource):
         if not series_results:
             logger.info(f"online {self.name}: no series match {profile.series!r}")
             return []
-        series_results = list(series_results)[: self._MAX_SERIES_PER_SEARCH]
+        # Phase D: `fast` budget caps the series-search breadth more
+        # aggressively than the class default (20 → 5). Mirrors the CV
+        # side; cuts the per-series `issues_list` fan-out further at
+        # scale.
+        from comicbox.config.settings import resolve_api_budget
+        from comicbox.online.series_filter import max_results_for
+
+        max_series = max_results_for(
+            resolve_api_budget(self._settings, self.name),
+            default=self._MAX_SERIES_PER_SEARCH,
+        )
+        series_results = list(series_results)[:max_series]
         sample_size = 5
         sample = ", ".join(
             f"{_series_display_name(s)} ({s.id})" for s in series_results[:sample_size]

@@ -319,12 +319,24 @@ class ComicVineOnlineSource(OnlineSource):
             return []
         from simyan.comicvine import ComicvineResource
 
+        from comicbox.config.settings import resolve_api_budget
+        from comicbox.online.series_filter import max_results_for
+
+        # Phase D: `fast` budget caps the volume-search breadth more
+        # aggressively than the class default (20 → 5). Cuts the per-volume
+        # `list_issues` fan-out further at scale; the pre-filter already
+        # drops obvious mismatches but the long tail of weakly-matching
+        # volumes adds up across thousands of comics.
+        max_volumes = max_results_for(
+            resolve_api_budget(self._settings, self.name),
+            default=self._MAX_VOLUMES_PER_SEARCH,
+        )
         try:
             self._record_api_call("search_volumes")
             volumes = session.search(
                 resource=ComicvineResource.VOLUME,
                 query=profile.series,
-                max_results=self._MAX_VOLUMES_PER_SEARCH,
+                max_results=max_volumes,
             )
         except Exception as exc:
             logger.warning(f"online {self.name}: volume search failed: {exc}")

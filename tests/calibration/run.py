@@ -968,6 +968,45 @@ def _resolve_retry_outcomes_path(fixtures_path: Path) -> Path:
     raise FileNotFoundError(msg)
 
 
+def _load_done_files(outcomes_path: Path) -> set[str]:
+    """Return file paths in `outcomes_path` regardless of outcome tag."""
+    if not outcomes_path.exists():
+        return set()
+    raw = json.loads(outcomes_path.read_text())
+    return {str(entry["file"]) for entry in raw if "file" in entry}
+
+
+def _filter_skip_done(fixtures: list[_Fixture], done_files: set[str]) -> list[_Fixture]:
+    """Drop fixtures already present in `done_files` (resume support)."""
+    return [f for f in fixtures if str(f.file_path) not in done_files]
+
+
+def _resolve_resume_source_path(fixtures_path: Path, label: str | None) -> Path | None:
+    """
+    Pick which outcomes file `--resume` should read fixtures-done from.
+
+    When `--label` is set, a chunked run writes to the labeled file and
+    must resume from the same labeled file — even if a canonical full
+    outcomes file exists, mixing the two would skip the wrong fixtures.
+
+    When `--label` is unset, fall back to the same full-then-partial
+    resolution `--retry-misses` uses. The user's first chunked run will
+    accumulate into the canonical outcomes file; subsequent chunks resume
+    from there.
+
+    Returns None when nothing exists. Unlike `_resolve_retry_outcomes_path`,
+    a missing source is NOT an error: a fresh `--resume` run just starts
+    from the beginning.
+    """
+    if label:
+        labeled = fixtures_path.with_suffix(f".outcomes.{label}.json")
+        return labeled if labeled.exists() else None
+    try:
+        return _resolve_retry_outcomes_path(fixtures_path)
+    except FileNotFoundError:
+        return None
+
+
 def _apply_filters(
     fixtures: list[_Fixture],
     *,
@@ -976,12 +1015,27 @@ def _apply_filters(
     name_filter: str | None,
     one_per_series: bool,
     limit: int | None,
+    resume: bool = False,
+    label: str | None = None,
 ) -> list[_Fixture]:
     """
-    Apply --retry-misses, --filter, --one-per-series, and --limit in order.
+    Apply --retry-misses, --filter, --one-per-series, --resume, --limit in order.
 
     Raises FileNotFoundError when --retry-misses requires an outcomes
     file that doesn't exist (caller catches and reports).
+
+    Resume semantics: when `--resume` is set, fixtures whose file path
+    already appears in the resume source (labeled outcomes file when
+    `--label` is set, otherwise canonical → partial fallback) are
+    skipped. Lets you run the full fixture set in overnight-sized
+    chunks with `--limit N` repeated: each chunk picks up where the
+    previous left off, processing the next N un-done fixtures.
+
+    Order rationale: resume runs AFTER `--one-per-series` so series
+    dedup operates on the full set every chunk and picks the same
+    representative each time (avoiding re-tagging the same series
+    across chunks). Resume runs BEFORE `--limit` so the chunk cap
+    applies to the *undone* fixtures.
     """
     if retry_misses:
         outcomes_path = _resolve_retry_outcomes_path(fixtures_path)
@@ -1004,6 +1058,21 @@ def _apply_filters(
             f"--one-per-series: {before} → {len(fixtures)} fixtures "
             f"(one representative per series prefix)"
         )
+    if resume:
+        resume_source = _resolve_resume_source_path(fixtures_path, label)
+        if resume_source is None:
+            print(  # noqa: T201
+                "--resume: no existing outcomes file; starting from "
+                "the beginning of the fixture set"
+            )
+        else:
+            done_files = _load_done_files(resume_source)
+            before = len(fixtures)
+            fixtures = _filter_skip_done(fixtures, done_files)
+            print(  # noqa: T201
+                f"--resume: skipped {before - len(fixtures)} already-done "
+                f"fixtures from {resume_source.name} → {len(fixtures)} remaining"
+            )
     if limit:
         fixtures = fixtures[:limit]
     return fixtures
@@ -1015,24 +1084,40 @@ def _build_checkpoint(
     outcomes_path: Path,
     label: str | None,
     was_filtered: bool,
+    resume: bool = False,
 ) -> Callable[[list[_Outcome]], None]:
     """
     Pick the right periodic-save callback for `_calibrate_loop`.
 
     Mirrors the end-of-run save logic so the checkpoint and the final
-    write go to the same place. Three branches:
+    write go to the same place. Five branches:
 
-    - **Labeled run** → write to `<stem>.outcomes.<label>.json` (Phase B
-      matrix runs). Overwrites every checkpoint.
-    - **Filtered run** → merge into `<stem>.outcomes.partial.json` so
+    - **Resume + labeled** → MERGE into `<stem>.outcomes.<label>.json`.
+      Each chunk accumulates into the labeled file; the final outcomes
+      file is the union of all chunks.
+    - **Resume (no label)** → MERGE into the canonical
+      `<stem>.outcomes.json`. Same accumulation, into the default path.
+    - **Labeled run** (no resume) → OVERWRITE
+      `<stem>.outcomes.<label>.json` (Phase B matrix runs).
+    - **Filtered run** → MERGE into `<stem>.outcomes.partial.json` so
       iterating a subset preserves other fixtures' state.
-    - **Default (full) run** → overwrite the canonical
+    - **Default (full) run** → OVERWRITE the canonical
       `<stem>.outcomes.json`. Ctrl-C between checkpoints leaves the
-      latest-saved version on disk; restart picks up cached API
-      responses fast and runs the remaining fixtures.
+      latest-saved version on disk.
+
+    `--resume` always implies merge (chunks accumulate), regardless of
+    `--label` or implicit filtering. Without merge, each chunk would
+    overwrite the previous chunk's results — defeating the point.
 
     Atomicity comes from `_atomic_write_json` (used by both serializers).
     """
+    if resume:
+        dest = (
+            fixtures_path.with_suffix(f".outcomes.{label}.json")
+            if label
+            else outcomes_path
+        )
+        return lambda outcomes: _merge_outcomes_to_partial(dest, outcomes)
     if label:
         labeled_path = fixtures_path.with_suffix(f".outcomes.{label}.json")
         return lambda outcomes: _serialize_outcomes(outcomes, labeled_path)
@@ -1040,6 +1125,53 @@ def _build_checkpoint(
         side = fixtures_path.with_suffix(".outcomes.partial.json")
         return lambda outcomes: _merge_outcomes_to_partial(side, outcomes)
     return lambda outcomes: _serialize_outcomes(outcomes, outcomes_path)
+
+
+def _save_outcomes(
+    outcomes: list[_Outcome],
+    *,
+    fixtures_path: Path,
+    outcomes_path: Path,
+    label: str | None,
+    was_filtered: bool,
+    resume: bool,
+) -> None:
+    """
+    Save the final outcomes to whichever file the checkpointer was using.
+
+    Mirrors `_build_checkpoint`'s branching so the final write goes to
+    the same file the periodic checkpoint targeted. Prints a one-line
+    confirmation describing where outcomes landed.
+    """
+    if resume:
+        dest = (
+            fixtures_path.with_suffix(f".outcomes.{label}.json")
+            if label
+            else outcomes_path
+        )
+        existed = dest.exists()
+        _merge_outcomes_to_partial(dest, outcomes)
+        verb = "Merged chunk into" if existed else "Saved chunk to"
+        print(f"\n{verb} {dest}")  # noqa: T201
+        return
+    if label:
+        labeled = fixtures_path.with_suffix(f".outcomes.{label}.json")
+        _serialize_outcomes(outcomes, labeled)
+        print(f"\nSaved labeled outcomes to {labeled}")  # noqa: T201
+        return
+    if not was_filtered:
+        _serialize_outcomes(outcomes, outcomes_path)
+        print(f"\nSaved outcomes to {outcomes_path}")  # noqa: T201
+        return
+    if outcomes:
+        # Filtered runs MERGE into a sibling file so iterating a subset
+        # (e.g. `--retry-misses --filter Watchmen`) doesn't destroy the
+        # other fixtures' last-known states.
+        side = fixtures_path.with_suffix(".outcomes.partial.json")
+        existed = side.exists()
+        _merge_outcomes_to_partial(side, outcomes)
+        verb = "Merged" if existed else "Saved"
+        print(f"\n{verb} partial outcomes into {side}")  # noqa: T201
 
 
 def _resolve_sources(
@@ -1120,6 +1252,19 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Skip fixtures already present in the outcomes file (any "
+            "outcome — correct, wrong, no_candidates, error). Combined "
+            "with --limit N, run the full set in overnight-sized chunks: "
+            "each session picks up where the previous left off. The "
+            "checkpoint mechanism saves outcomes every 10 fixtures, so "
+            "Ctrl-C between sessions loses at most ~10 fixtures of work. "
+            "No-op when no existing outcomes file is found."
+        ),
+    )
+    parser.add_argument(
         "--filter",
         dest="name_filter",
         default=None,
@@ -1196,6 +1341,8 @@ def main() -> int:
             fixtures,
             fixtures_path=fixtures_path,
             retry_misses=args.retry_misses,
+            resume=args.resume,
+            label=args.label,
             name_filter=args.name_filter,
             one_per_series=args.one_per_series,
             limit=args.limit,
@@ -1228,39 +1375,21 @@ def main() -> int:
         outcomes_path=outcomes_path,
         label=args.label,
         was_filtered=was_filtered,
+        resume=args.resume,
     )
 
     outcomes = _calibrate_loop(fixtures, sources, checkpoint=checkpoint)
     reports = _aggregate(outcomes)
     print(_format_report(reports))  # noqa: T201
     _print_failed_outcomes(outcomes)
-
-    # Label takes precedence — labeled runs always go to the labeled
-    # path. Used by Phase B experiments where every matrix-cell run
-    # gets its own file so `compare.py` can diff them.
-    if args.label:
-        labeled = fixtures_path.with_suffix(f".outcomes.{args.label}.json")
-        _serialize_outcomes(outcomes, labeled)
-        print(f"\nSaved labeled outcomes to {labeled}")  # noqa: T201
-        return 0
-
-    # Save outcomes for future --retry-misses runs. Don't overwrite when
-    # we ourselves were a filtered/sampled run — that'd lose the wider context.
-    if not was_filtered:
-        _serialize_outcomes(outcomes, outcomes_path)
-        print(f"\nSaved outcomes to {outcomes_path}")  # noqa: T201
-    elif outcomes:
-        # Filtered runs MERGE into a sibling file so iterating a subset
-        # (e.g. `--retry-misses --filter Watchmen`) doesn't destroy the
-        # other fixtures' last-known states. Without the merge, a
-        # successful retry of one family wipes the file, and subsequent
-        # `--retry-misses` sees zero misses even though the others are
-        # still broken.
-        side = fixtures_path.with_suffix(".outcomes.partial.json")
-        existed = side.exists()
-        _merge_outcomes_to_partial(side, outcomes)
-        verb = "Merged" if existed else "Saved"
-        print(f"\n{verb} partial outcomes into {side}")  # noqa: T201
+    _save_outcomes(
+        outcomes,
+        fixtures_path=fixtures_path,
+        outcomes_path=outcomes_path,
+        label=args.label,
+        was_filtered=was_filtered,
+        resume=args.resume,
+    )
     return 0
 
 

@@ -153,3 +153,31 @@ def test_threshold_boundary_inclusive() -> None:
     # (Comparison is `>= threshold * 100`; at threshold=0, every score
     # passes.)
     assert should_keep_volume_name("Foo", "Bar", threshold=0.0)
+
+
+# ----------------------------------------- max_results_for (Phase D)
+
+
+def test_max_results_for_fast_caps_at_5() -> None:
+    """`fast` budget caps discovery-search breadth at 5."""
+    from comicbox.online.series_filter import max_results_for
+
+    assert max_results_for(APIBudget.FAST, default=20) == 5
+
+
+def test_max_results_for_balanced_uses_default() -> None:
+    """`balanced` (and `exhaustive`) inherit the source's class default."""
+    from comicbox.online.series_filter import max_results_for
+
+    assert max_results_for(APIBudget.BALANCED, default=20) == 20
+    assert max_results_for(APIBudget.EXHAUSTIVE, default=20) == 20
+
+
+def test_max_results_for_passes_through_alternative_default() -> None:
+    """`default` arg lets callers thread their own class constant in."""
+    from comicbox.online.series_filter import max_results_for
+
+    # Hypothetical: a future source with default=30.
+    assert max_results_for(APIBudget.BALANCED, default=30) == 30
+    # FAST still caps at 5 regardless of the caller's default.
+    assert max_results_for(APIBudget.FAST, default=30) == 5
