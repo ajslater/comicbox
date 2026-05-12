@@ -30,12 +30,18 @@ _PUBLISHER_NOISE_RE = re.compile(
 _NON_ALPHANUM_RE = re.compile(r"[^a-z0-9]+")
 
 
-def _normalize_series(name: str) -> str:
+def normalize_series(name: str) -> str:
     """Lowercase, strip volume suffixes, collapse non-alphanumeric runs."""
     s = name.lower()
     s = _VOLUME_SUFFIX_RE.sub(" ", s)
     s = _NON_ALPHANUM_RE.sub(" ", s)
     return " ".join(s.split())
+
+
+# Backward-compat alias for the previously-private helper. Other modules
+# in `comicbox.online` import the public `normalize_series`; keep the
+# old name resolving until those migrations land.
+_normalize_series = normalize_series
 
 
 def _normalize_publisher(name: str) -> str:

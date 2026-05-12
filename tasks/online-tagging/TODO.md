@@ -48,7 +48,40 @@ Marker conventions:
   rate limiter. Add notes after stress-testing.
 
 
-## 3. Architecture (post-feature)
+## 3. API budget
+
+⭐ Implements [`06-api-budget-spec.md`](06-api-budget-spec.md): a three-tier
+`exhaustive` / `balanced` / `fast` knob to trade accuracy for API throughput
+on batch runs. Without this, libraries above ~50 comics on ComicVine or ~500
+on Metron pay multi-hour-to-multi-day wait times at the documented rate
+caps. At 500,000-comic scale, even Metron's looser cap means months under
+today's behavior.
+
+Ships in three sequential phases; Phase B (calibration) is load-bearing
+and picks the placeholder thresholds in the spec:
+
+- **Phase A — Build.** Add `APIBudget` enum + per-source resolve helpers,
+  source-name pre-filter (shared by CV / Metron), harness `--api-budget`
+  and `--label` pass-throughs, per-source API-call counter,
+  outcomes-comparison tool. Dormant on the default `balanced` budget — no
+  user-visible change ships from Phase A alone. One PR.
+- **Phase B — Calibrate.** Run the 10-row experiment matrix from the spec
+  against the fixture set. Pin data-driven values for pre-filter threshold
+  (placeholder 0.4 / 0.7), `_MAX_*_PER_SEARCH` (placeholder 5), top-K
+  hashing (placeholder 5), and per-source auto-engagement batch sizes
+  (placeholder 50 for CV, 500 for Metron). Output: a dated writeup in
+  `tasks/online-tagging/calibration-notes/` plus a PR pinning the spec's
+  numbers.
+- **Phase C — Integrate & ship.** Wire auto-engagement triggers with Phase
+  B's confirmed thresholds, add `--api-budget` and
+  `--api-budget-per-source` CLI flags, write `api-budget-user-doc.md`,
+  NEWS entry. Sign-off re-runs B0/B1 against shipped (not prototype) code
+  and must meet the four acceptance criteria in the spec (≤2h cold-cache
+  on `fast`, ≥97% auto-write band, ≤5% extra NO_MATCH vs `balanced`,
+  `exhaustive` within 1pp of `balanced`).
+
+
+## 4. Architecture (post-feature)
 
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo,
   MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF, Metron API,

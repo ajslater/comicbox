@@ -38,6 +38,28 @@ class Policy(str, Enum):
     EAGER = "eager"
 
 
+class APIBudget(str, Enum):
+    """
+    API-call budget per comic.
+
+    Orthogonal to `Policy` (which controls how the matcher's verdict is
+    applied). `APIBudget` controls how aggressively pre-call algorithms
+    trade accuracy for API throughput. See `06-api-budget-spec.md` for
+    the full design.
+
+    - `EXHAUSTIVE`: spend API budget freely; max accuracy.
+    - `BALANCED`: today's behavior; the default.
+    - `FAST`: aggressive pre-filtering; trade accuracy for throughput.
+
+    Inherits from str for the same reasons as `Policy` (dataclass
+    equality, dict keys, JSON without StrEnum).
+    """
+
+    EXHAUSTIVE = "exhaustive"
+    BALANCED = "balanced"
+    FAST = "fast"
+
+
 @dataclass(frozen=True, slots=True)
 class OnlineSourceCredentials:
     """
@@ -95,10 +117,18 @@ class OnlineSettings:
     # Match-resolution policy (the new scheme; see match-resolution-user-doc.md).
     policy: Policy = Policy.NORMAL
     unattended: bool = False
-    # Per-source overrides for `policy` and `confidence_threshold`. Resolution:
-    # per-source > global > built-in default. Empty dict means "use global".
+    # API-call budget per comic (see 06-api-budget-spec.md). Controls
+    # pre-call algorithms (series-name pre-filter strictness, per-source
+    # search breadth caps) that trade accuracy for API throughput. Default
+    # `BALANCED` is today's behavior — Phase A ships the levers dormant
+    # until Phase B calibration picks the real thresholds.
+    api_budget: APIBudget = APIBudget.BALANCED
+    # Per-source overrides for `policy`, `confidence_threshold`, and
+    # `api_budget`. Resolution: per-source > global > built-in default.
+    # Empty dict means "use global".
     policy_per_source: Mapping[str, Policy] = field(default_factory=dict)
     confidence_threshold_per_source: Mapping[str, float] = field(default_factory=dict)
+    api_budget_per_source: Mapping[str, APIBudget] = field(default_factory=dict)
     # Internal-only per-source overrides (no CLI today; ready for when
     # calibration data justifies surfacing them).
     min_confidence_per_source: Mapping[str, float] = field(default_factory=dict)
@@ -154,6 +184,11 @@ def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) ->
     return settings.disambiguation_margin_per_source.get(
         source_name, DEFAULT_DISAMBIGUATION_MARGIN
     )
+
+
+def resolve_api_budget(settings: OnlineSettings, source_name: str) -> APIBudget:
+    """Per-source override > global default."""
+    return settings.api_budget_per_source.get(source_name, settings.api_budget)
 
 
 @dataclass(frozen=True, slots=True)
