@@ -240,21 +240,26 @@ Items surfaced by the slimlib calibration that warrant their own work:
    results. Tightening to 0.75 specifically for FAST would have dropped
    these. Needs validation that it doesn't introduce false negatives.
 
-4. **Calibration against `/Volumes/Media/Comics/` (~860 full-cover
-   comics).** A separate library, primarily Big Two with full cover
-   images, makes this fixture set useful for two things slimlib couldn't
-   exercise:
-   - **Cover-hash signal calibration.** Slimlib's thumbnail covers
-     forced `cover_quality: thumbnail`, so cover hashing never fired in
-     the 500-fixture run. A full-cover library closes the loop on M4's
-     cover-hash work.
-   - **Metron calibration.** Slimlib's 2.2% Metron coverage was too
-     sparse for reliable Metron accuracy stats. Big-Two-heavy is exactly
-     Metron's strong suit; expect 30-50%+ Metron coverage after running
-     `label_metron.py`.
+4. **Calibration against `/Volumes/Media/Comics/`** ✓ — completed
+   2026-05-14. Sampled 247 unique-series fixtures (864 comics deduped
+   to 247 series). Final: **CV 94.3% / Metron 97.0% / Metron auto-write
+   band 100%**. Confirmed the `series_id` fix is working at scale and
+   validated Phase D-E behavior on a full-cover, Big-Two-leaning
+   library. See
+   [`calibration-notes/2026-05-14-bigmedia-247.md`](calibration-notes/2026-05-14-bigmedia-247.md)
+   for full results, failure analysis, and architectural takeaways.
 
-   Run shape would mirror slimlib: stratified sample → label_metron →
-   chunked --resume → summarize → notes doc.
+   The main insight: the next high-leverage improvement isn't year-
+   scoring (item 2) — it's **search relevance for ambiguous queries
+   under the FAST budget**. 7 of 14 CV misses were "right answer not
+   in CV's top-5 search results" cases (Akira 2000 reissues, X-Men #1
+   Facsimile, etc.) where no scoring tweak can help because the
+   correct candidate never reaches the matcher. Possible follow-ups:
+   - Increase `_MAX_VOLUMES_PER_SEARCH` for FAST from 5 → 10 (doubles
+     API cost; might help)
+   - Add server-side year filtering at the CV search step
+   - Add a retry-with-broader-search path when no candidate clears
+     `min_confidence`
 
 5. **CLI surface for `solo_confidence_threshold`** (low priority).
    Internal-only for now. If real-world usage shows the 0.95 default is
