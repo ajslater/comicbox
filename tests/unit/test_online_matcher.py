@@ -651,3 +651,131 @@ def test_apply_tied_metadata_tiebreak_skips_when_cover_score_missing() -> None:
     # Lower vol_id wins — the cover signal is absent so it can't push
     # the decision away from the canonical-record preference.
     assert ranked[0].issue_id == 1
+
+
+# ------------- Phase E: solo-viable confidence floor
+
+
+def test_solo_viable_below_floor_prompts_under_normal() -> None:
+    """
+    A lone candidate below `solo_confidence_threshold` prompts under NORMAL.
+
+    Reproduces the Groo and Wanted Dossier silent-failure pattern from the
+    slimlib calibration: CV's search returned a single candidate scoring
+    in the 0.85-0.95 range; the actual right answer wasn't in CV's top-5.
+    Pre-Phase-E, NORMAL's `solo_viable` carve-out auto-wrote the wrong
+    answer silently. Phase E gates that carve-out on the new floor.
+    """
+    matcher = OnlineMatcher()
+    # Year off by 2 (0.4 weight) + pages within 25% (0.3 weight) →
+    # raw = 0.30+0.25+0.10*0.4+0.10+0.05*0.3 = 0.705; normalized = 0.881.
+    candidates = [_candidate(issue_id=1, year=2018, page_count=20)]
+    ranked = matcher.rank(_profile(), candidates)
+    # Sanity: score is in the auto-write band but below the 0.95 floor.
+    assert 0.85 < ranked[0].score < 0.95
+    # Use confidence_threshold=0.99 so `unambig` is False (top<threshold) —
+    # forces the policy decision through the solo_viable carve-out path.
+    res = matcher.resolve(
+        ranked,
+        _settings(confidence_threshold=0.99),
+        source_name="metron",
+    )
+    # Pre-Phase-E this would have been AUTO_WRITE (solo_viable=True).
+    # Phase E: solo confidence floor (0.95) is not cleared → PROMPT.
+    assert res.kind is ResolutionKind.PROMPT
+
+
+def test_solo_viable_above_floor_still_auto_writes_under_normal() -> None:
+    """
+    A solo candidate at or above the floor still auto-writes under NORMAL.
+
+    Phase E doesn't trap high-confidence solo matches. A perfect-match
+    candidate scores 1.0, which clears the default 0.95 floor. The
+    carve-out still fires, just behind a stricter gate.
+    """
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1)]  # perfect match → score = 1.0
+    ranked = matcher.rank(_profile(), candidates)
+    assert ranked[0].score == pytest.approx(1.0)
+    # confidence_threshold=0.99: top=1.0 clears it, so unambig=True →
+    # AUTO_WRITE without consulting solo_viable_confident. Either way
+    # auto-writes: this confirms the floor isn't a trap for clean matches.
+    res = matcher.resolve(
+        ranked,
+        _settings(confidence_threshold=0.99),
+        source_name="metron",
+    )
+    assert res.kind is ResolutionKind.AUTO_WRITE
+
+
+def test_solo_confidence_threshold_per_source_override_relaxes_floor() -> None:
+    """
+    Per-source override of `solo_confidence_threshold` restores permissiveness.
+
+    Setting per-source to 0.50 (= min_confidence) re-enables the pre-
+    Phase-E behavior: any solo candidate above min_confidence auto-writes
+    under NORMAL.
+    """
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, year=2018, page_count=20)]
+    ranked = matcher.rank(_profile(), candidates)
+    assert 0.85 < ranked[0].score < 0.95
+
+    settings_strict = _settings(confidence_threshold=0.99)
+    settings_relaxed = _settings(
+        confidence_threshold=0.99,
+        solo_confidence_threshold_per_source={"metron": 0.50},
+    )
+
+    # Default floor (0.95): solo below → PROMPT.
+    assert matcher.resolve(ranked, settings_strict, "metron").kind is (
+        ResolutionKind.PROMPT
+    )
+    # Per-source floor (0.50): solo above min_confidence → AUTO_WRITE.
+    assert matcher.resolve(ranked, settings_relaxed, "metron").kind is (
+        ResolutionKind.AUTO_WRITE
+    )
+
+
+def test_solo_confidence_floor_does_not_affect_strict() -> None:
+    """
+    STRICT has no `solo_viable` carve-out so the floor is irrelevant.
+
+    STRICT's auto-write rule is just `unambig` (top ≥ threshold AND gap
+    ≥ margin). A solo candidate below threshold prompts regardless of
+    the solo floor's value.
+    """
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, year=2018, page_count=20)]
+    ranked = matcher.rank(_profile(), candidates)
+
+    # Even with the floor relaxed to 0.50, STRICT still prompts —
+    # because STRICT never consulted the solo carve-out anyway.
+    settings_relaxed_strict = _settings(
+        confidence_threshold=0.99,
+        policy=Policy.STRICT,
+        solo_confidence_threshold_per_source={"metron": 0.50},
+    )
+    res = matcher.resolve(ranked, settings_relaxed_strict, "metron")
+    assert res.kind is ResolutionKind.PROMPT
+
+
+def test_solo_confidence_floor_gates_eager_solo_carve_out() -> None:
+    """
+    EAGER's `solo_viable` path is gated by the same floor as NORMAL's.
+
+    Pre-Phase-E EAGER auto-wrote any solo candidate above min_confidence
+    regardless of how close to the confidence threshold it scored.
+    Phase E gates that on the solo floor too — defense-in-depth for
+    EAGER users who didn't intend "auto-write 0.50-scored solo matches."
+    """
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, year=2018, page_count=20)]
+    ranked = matcher.rank(_profile(), candidates)
+    settings_eager = _settings(
+        policy=Policy.EAGER,
+        confidence_threshold=0.99,  # so top_score>=threshold isn't met
+    )
+    # 0.88 < 0.95 floor AND 0.88 < 0.99 confidence_threshold → PROMPT.
+    res = matcher.resolve(ranked, settings_eager, "metron")
+    assert res.kind is ResolutionKind.PROMPT

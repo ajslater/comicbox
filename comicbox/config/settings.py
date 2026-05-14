@@ -100,6 +100,19 @@ class OnlineSourceLimits:
 # Calibration defaults — internal, not exposed as user-facing knobs.
 DEFAULT_MIN_CONFIDENCE = 0.50
 DEFAULT_DISAMBIGUATION_MARGIN = 0.10
+# Solo-viable auto-write floor (Phase E). When the matcher returns exactly
+# one candidate clearing `min_confidence`, `NORMAL`/`EAGER` policies have
+# historically auto-written it regardless of how close to the confidence
+# threshold it scored. That carve-out powers the worst silent-failure
+# pattern observed at scale: a single weak candidate (e.g. score=0.88)
+# wins by default when CV's search didn't return the actual right answer.
+#
+# Setting the floor equal to the default confidence threshold (0.95)
+# means: even solo candidates need to clear the same bar as multi-candidate
+# unambig cases to auto-write. Below the floor, solo cases route to
+# PROMPT — the user picks. Per-source override available for callers who
+# want the old permissive behavior (set to 0.50 = min_confidence).
+DEFAULT_SOLO_CONFIDENCE_THRESHOLD = 0.95
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +146,15 @@ class OnlineSettings:
     # calibration data justifies surfacing them).
     min_confidence_per_source: Mapping[str, float] = field(default_factory=dict)
     disambiguation_margin_per_source: Mapping[str, float] = field(default_factory=dict)
+    # Floor below which a `solo_viable` candidate (single viable hit) is
+    # NOT auto-written under NORMAL/EAGER — falls through to PROMPT
+    # instead. Default `DEFAULT_SOLO_CONFIDENCE_THRESHOLD` (0.95) matches
+    # the global confidence threshold; setting per-source to 0.50 restores
+    # the pre-Phase-E permissive behavior (any solo candidate above
+    # min_confidence auto-writes).
+    solo_confidence_threshold_per_source: Mapping[str, float] = field(
+        default_factory=dict
+    )
 
     # Persistent (config file + env var; CLI flag may override)
     # Auto-write threshold. Calibrated against the spring-2026 fixture set:
@@ -183,6 +205,15 @@ def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) ->
     """Per-source override > built-in default. Not user-exposed today."""
     return settings.disambiguation_margin_per_source.get(
         source_name, DEFAULT_DISAMBIGUATION_MARGIN
+    )
+
+
+def resolve_solo_confidence_threshold(
+    settings: OnlineSettings, source_name: str
+) -> float:
+    """Per-source override > built-in default. Not user-exposed today."""
+    return settings.solo_confidence_threshold_per_source.get(
+        source_name, DEFAULT_SOLO_CONFIDENCE_THRESHOLD
     )
 
 

@@ -26,6 +26,7 @@ from comicbox.config.settings import (
     resolve_disambiguation_margin,
     resolve_min_confidence,
     resolve_policy,
+    resolve_solo_confidence_threshold,
 )
 from comicbox.online.cover_hash import cover_score as _cover_score
 from comicbox.online.signals import (
@@ -114,23 +115,36 @@ def _policy_auto_writes(
     confidence_threshold: float,
     disambiguation_margin: float,
     solo_viable: bool,
+    solo_confidence_threshold: float,
 ) -> bool:
     """
     Encode the four policy levels' auto-write rules.
 
     Containment holds: `strict ⊂ normal ⊂ eager`. `always-prompt` never
     auto-writes (the deferred path falls to PROMPT or SKIP).
+
+    The `solo_viable` carve-out under NORMAL/EAGER is gated by
+    `solo_confidence_threshold` (Phase E). Below the floor, a lone
+    viable candidate does NOT auto-write — it falls through to PROMPT.
+    The pre-Phase-E behavior is recoverable by setting the threshold
+    to `min_confidence` (default 0.50), which makes any solo candidate
+    above the min_confidence bar auto-write.
     """
     unambig = top_score >= confidence_threshold and gap >= disambiguation_margin
+    # Solo-viable auto-write requires the lone candidate clear the floor.
+    # Default floor = global confidence threshold, so NORMAL/EAGER's solo
+    # path is no more permissive than STRICT unless the user opts in
+    # by lowering the per-source override.
+    solo_viable_confident = solo_viable and top_score >= solo_confidence_threshold
     match policy:
         case Policy.ALWAYS_PROMPT:
             return False
         case Policy.STRICT:
             return unambig
         case Policy.NORMAL:
-            return unambig or solo_viable
+            return unambig or solo_viable_confident
         case Policy.EAGER:
-            return top_score >= confidence_threshold or solo_viable
+            return top_score >= confidence_threshold or solo_viable_confident
 
 
 def _resolve_policy(
@@ -149,6 +163,7 @@ def _resolve_policy(
     threshold = resolve_confidence_threshold(settings, source_name)
     min_confidence = resolve_min_confidence(settings, source_name)
     margin = resolve_disambiguation_margin(settings, source_name)
+    solo_threshold = resolve_solo_confidence_threshold(settings, source_name)
 
     if not ranked or ranked[0].score < min_confidence:
         if ranked:
@@ -171,6 +186,7 @@ def _resolve_policy(
         confidence_threshold=threshold,
         disambiguation_margin=margin,
         solo_viable=solo_viable,
+        solo_confidence_threshold=solo_threshold,
     ):
         return Resolution(ResolutionKind.AUTO_WRITE, top, tuple(ranked))
 
