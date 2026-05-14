@@ -189,6 +189,78 @@ Test strategy:
 - `--id` semantics: issue-id, series-id, or both with explicit prefix? Note
   metron-tagger's `--id` is series-id. (Phase 2)
 
+## API budget rollout (sub-project)
+
+Designed in [`06-api-budget-spec.md`](06-api-budget-spec.md). Rolled out
+in five phases, all shipped on the `online-tagging` branch:
+
+- **Phase A** ✓ — Build the levers as dormant code (a754f6a).
+- **Phase B** ✓ — Calibrate against 339-fixture labeled set; pin
+  thresholds (99d794e). See
+  [`calibration-notes/2026-05-11-phase-b.md`](calibration-notes/2026-05-11-phase-b.md).
+- **Phase C** ✓ — Ship `--api-budget` CLI flag + auto-engagement
+  (c2b2ca6).
+- **Phase D** ✓ — Per-budget `_MAX_VOLUMES_PER_SEARCH` (fast=5) +
+  chunked-run scaffolding (`--resume`, sampler, labeler) (241fa04).
+- **Phase E** ✓ — Solo-viable confidence floor; eliminates the
+  solo-below-threshold silent-failure pattern (e7bfdbd).
+
+Validated against the developer's 17,500-comic slimlib via a 500-fixture
+stratified sample. See
+[`calibration-notes/2026-05-12-slimlib-500.md`](calibration-notes/2026-05-12-slimlib-500.md):
+
+- 96.9% CV accuracy on a one-per-series, decade+publisher-stratified sample
+- 98.7% in the auto-write band
+- 2 silent failures identified → addressed by Phase E
+
+## Calibration follow-ups
+
+Items surfaced by the slimlib calibration that warrant their own work:
+
+1. **Phase E re-validation run.** Re-run the 500-fixture slimlib
+   calibration with Phase E in place. Confirms:
+   - Groo and Wanted Dossier convert from silent AUTO_WRITE → PROMPT
+   - How many of the 471 currently-correct auto-write band hits convert
+     to prompts (UX cost in real numbers)
+   - No regressions on the other 469 auto-write band hits
+   CV cache is warm so the re-run is paced by rate limits, not fetches —
+   ~1-2 days wall-clock vs 3-4 for the first time.
+
+2. **Multi-volume year-drift signal.** The Boys 2009 / Conan 2004 cases
+   are multi-volume same-name series where the expected answer was in
+   CV's top-3 candidates but lost on year ranking. `s_year` could be
+   smarter about this: when a candidate's *volume* covers a year range
+   that includes the file's year (even if `summary.year` differs by ±N),
+   give credit. Touches: `comicbox/online/signals.py`. Worth a focused
+   investigation before deciding the fix shape.
+
+3. **Pre-filter tightening for FAST.** The Afterschool / Rain cases are
+   single-candidate matches scoring 0.71-0.84 — they sneak past the 0.70
+   pre-filter threshold but the actual right answer wasn't in CV's
+   results. Tightening to 0.75 specifically for FAST would have dropped
+   these. Needs validation that it doesn't introduce false negatives.
+
+4. **Calibration against `/Volumes/Media/Comics/` (~860 full-cover
+   comics).** A separate library, primarily Big Two with full cover
+   images, makes this fixture set useful for two things slimlib couldn't
+   exercise:
+   - **Cover-hash signal calibration.** Slimlib's thumbnail covers
+     forced `cover_quality: thumbnail`, so cover hashing never fired in
+     the 500-fixture run. A full-cover library closes the loop on M4's
+     cover-hash work.
+   - **Metron calibration.** Slimlib's 2.2% Metron coverage was too
+     sparse for reliable Metron accuracy stats. Big-Two-heavy is exactly
+     Metron's strong suit; expect 30-50%+ Metron coverage after running
+     `label_metron.py`.
+
+   Run shape would mirror slimlib: stratified sample → label_metron →
+   chunked --resume → summarize → notes doc.
+
+5. **CLI surface for `solo_confidence_threshold`** (low priority).
+   Internal-only for now. If real-world usage shows the 0.95 default is
+   too strict and users want to tune per-source from config.yaml or CLI,
+   that's a small plumbing exercise.
+
 ## Follow-up work (after this feature ships)
 
 > The full follow-up checklist lives in [TODO.md](TODO.md). The

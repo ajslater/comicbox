@@ -4,6 +4,15 @@ How comicbox decides how stingy to be with online API calls per comic.
 Orthogonal to (and composes with) the Match Resolution Policy in
 [04-match-resolution-spec.md](04-match-resolution-spec.md).
 
+> **Status (2026-05-12):** Phases A–E shipped. The original spec called
+> for three phases (A/B/C); D and E were added in flight. D landed the
+> per-budget `_MAX_VOLUMES_PER_SEARCH` cap (fast=5) plus chunked-run
+> harness scaffolding; E added a solo-viable confidence floor that
+> closed the last silent-failure pattern surfaced by the 500-fixture
+> slimlib calibration. See
+> [`calibration-notes/2026-05-12-slimlib-500.md`](calibration-notes/2026-05-12-slimlib-500.md)
+> for the production-scale validation.
+
 ## Problem
 
 Today's online lookup runs a fixed algorithm regardless of batch size: for each
@@ -293,6 +302,55 @@ tables.
     - `exhaustive` matches `balanced` accuracy within 1 percentage point (i.e.,
       the cost of full breadth isn't paying off measurably, OR it is and we know
       which fixtures benefit).
+
+### Phase D — Per-budget search-breadth cap & chunked-run scaffolding
+
+Added after Phase C in response to the realization that calibration against
+the developer's 17,500-comic slimlib would take 38+ days under `fast`, with
+no harness support for chunked execution.
+
+1. **`_MAX_RESULTS_OVERRIDES` table** in `series_filter.py` — per-budget
+   override map. `fast` → 5; other budgets inherit the source's class
+   default (20). Both source classes consult via
+   `max_results_for(budget, default=...)`.
+
+2. **`run.py --resume` flag** — skip fixtures already present in the
+   outcomes file. Combined with `--limit N`, lets the user chunk a
+   500-fixture set across overnight/work-day sessions; each chunk
+   merges into the canonical outcomes file rather than overwriting.
+
+3. **`tests/calibration/sample.py`** — stratified one-per-series fixture
+   sampler. Bucketed by (decade, publisher); round-robins across buckets.
+   Outputs `cover_quality: thumbnail` by default for slimlib-style
+   libraries.
+
+4. **`tests/calibration/label_metron.py`** — Metron labeler using
+   Metron's `cv_id` cross-reference filter. Recovers Metron ground-truth
+   ids on CV-tagged libraries without manual lookup.
+
+5. **`tests/calibration/summarize.py`** — cumulative report tool for the
+   chunked-run output.
+
+Shipped as commit 241fa04.
+
+### Phase E — Solo-viable confidence floor
+
+The 500-fixture slimlib calibration surfaced two silent failures (Groo:
+Hell On Earth, Wanted Dossier) that auto-wrote the wrong answer under
+NORMAL. Pattern: a single CV search result clearing `min_confidence`
+(0.50) gets auto-written even when far below the auto-write
+`confidence_threshold` (0.95), via NORMAL's `solo_viable` carve-out.
+
+Added a new internal setting `DEFAULT_SOLO_CONFIDENCE_THRESHOLD = 0.95`
+plus per-source override `solo_confidence_threshold_per_source`. The
+`solo_viable` carve-out under NORMAL/EAGER is now gated on
+`top_score >= solo_confidence_threshold`. Default 0.95 means solo
+candidates need to clear the same bar as multi-candidate unambig cases
+to auto-write; below the floor they fall through to PROMPT.
+
+STRICT and ALWAYS_PROMPT unchanged.
+
+Shipped as commit e7bfdbd.
 
 ## What's NOT in this spec
 
