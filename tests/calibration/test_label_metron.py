@@ -223,10 +223,16 @@ def test_label_fixtures_respects_limit(
     assert len(fake.calls) == 3
 
 
-def test_label_fixtures_handles_lookup_exception(
+def test_label_fixtures_handles_non_retriable_exception(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A Metron API error on one fixture doesn't abort the whole run."""
+    """
+    A non-retriable Metron error on one fixture doesn't abort the run.
+
+    Uses `ValueError` which is in `_NON_RETRIABLE` — the retry decorator
+    passes it straight through, the outer except catches it, the fixture
+    is marked no-coverage, and the loop continues to the next fixture.
+    """
 
     class _FlakySession:
         def __init__(self) -> None:
@@ -235,8 +241,8 @@ def test_label_fixtures_handles_lookup_exception(
         def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
             self.calls += 1
             if self.calls == 1:
-                msg = "transient 502"
-                raise RuntimeError(msg)
+                msg = "bad request param"
+                raise ValueError(msg)
             return [_FakeIssue(500)]
 
     fixtures = [
@@ -253,6 +259,53 @@ def test_label_fixtures_handles_lookup_exception(
     # First call errored (→ not_found), second succeeded.
     assert stats.not_found == 1
     assert stats.labeled == 1
+
+
+def test_label_fixtures_retries_rate_limit_then_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    A `RateLimitError` triggers @with_retry's auto-retry with the server hint.
+
+    Before this fix, Metron's 20/min cap would silently mark CVids as
+    "no metron coverage" whenever rate-limiting kicked in (false
+    negative on the calibration ground truth). The retry decorator now
+    catches RateLimitError, honors `retry_after`, and replays.
+    """
+
+    # Mokkari-shaped exception: the retry decorator keys on the type's
+    # name string "RateLimitError" and on `retry_after`.
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _RateLimitedSession:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
+            self.calls += 1
+            if self.calls == 1:
+                # Tiny retry_after so the test runs fast — the decorator
+                # honors the server hint over its default schedule.
+                raise RateLimitError(retry_after=0.001)
+            return [_FakeIssue(500)]
+
+    fixtures = [{"file": "/a.cbz", "metron": None, "comicvine": 100}]
+    path = _write_fixtures(tmp_path, fixtures)
+    session_instance = _RateLimitedSession()
+    monkeypatch.setattr(
+        "tests.calibration.label_metron._build_metron_session",
+        lambda: session_instance,
+    )
+
+    stats = label_fixtures(path)
+    # The rate-limited first call was retried, the retry succeeded.
+    assert session_instance.calls == 2
+    assert stats.labeled == 1
+    assert stats.not_found == 0
+    assert json.loads(path.read_text())[0]["metron"] == 500
 
 
 def test_label_fixtures_writes_incrementally(
@@ -279,8 +332,10 @@ def test_label_fixtures_writes_incrementally(
             # Snapshot the file before raising, so the test can verify
             # the first call's result was already persisted.
             on_disk_after_calls[self.calls] = json.loads(path.read_text())
+            # ValueError is in _NON_RETRIABLE so the decorator passes
+            # it straight through — keeps the test fast (no retry sleep).
             msg = "synthetic post-first-call failure"
-            raise RuntimeError(msg)
+            raise ValueError(msg)
 
     fixtures = [
         {"file": "/a.cbz", "metron": None, "comicvine": 100},
@@ -322,15 +377,22 @@ def test_lookup_metron_by_cv_id_returns_first_on_ambiguous(
     assert "matched 2 Metron issues" in captured.err
 
 
-def test_lookup_metron_by_cv_id_swallows_exception(
+def test_lookup_metron_by_cv_id_swallows_non_retriable_exception(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Network / API errors log and return None, not propagate."""
+    """
+    Non-retriable errors log and return None, not propagate.
+
+    Uses `ValueError` (in `_NON_RETRIABLE` per `comicbox.online.retry`) so
+    `@with_retry()` passes it straight through without a 31s exponential
+    backoff. Retriable errors (RateLimitError, RuntimeError, etc.) get
+    the retry path — see `test_label_fixtures_retries_rate_limit_then_succeeds`.
+    """
 
     class _BrokenSession:
         def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
-            msg = "boom"
-            raise RuntimeError(msg)
+            msg = "bad param"
+            raise ValueError(msg)
 
     assert lookup_metron_by_cv_id(_BrokenSession(), 100) is None  # type: ignore[arg-type]
     assert "Metron lookup failed" in capsys.readouterr().err

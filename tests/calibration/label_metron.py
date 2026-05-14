@@ -53,6 +53,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from comicbox.config import get_config
+from comicbox.online.retry import with_retry
 from comicbox.online.sources.metron import MetronOnlineSource
 
 if TYPE_CHECKING:
@@ -102,6 +103,21 @@ def _build_metron_session() -> Session:
     return source._get_session()
 
 
+@with_retry()
+def _issues_list_by_cv_id(session: Session, cv_id: int) -> list:
+    """
+    Run the Metron `issues_list(cv_id=...)` call with auto-retry.
+
+    `@with_retry()` catches RateLimitError, honors the server's
+    `retry_after` hint, and replays the call — same pattern the
+    matcher uses in production. Without this wrapper, Metron's 20/min
+    cap would cause the labeler to silently mark cv_ids as "no
+    metron coverage" whenever rate-limiting kicked in (false negative
+    on the calibration ground truth).
+    """
+    return list(session.issues_list({"cv_id": cv_id}))
+
+
 def lookup_metron_by_cv_id(session: Session, cv_id: int) -> int | None:
     """
     Return the Metron issue id cross-referencing `cv_id`, or None.
@@ -110,9 +126,14 @@ def lookup_metron_by_cv_id(session: Session, cv_id: int) -> int | None:
     cross-reference returns exactly one issue; ambiguous responses (>1
     hit) log a warning and fall back to the first result — better than
     skipping the comic entirely.
+
+    Rate-limit errors auto-retry via `_issues_list_by_cv_id`'s
+    `@with_retry()` wrapper. Only non-retriable failures (auth errors,
+    bad params) or exhausted retry budgets reach this function's
+    `except Exception` branch.
     """
     try:
-        results = session.issues_list({"cv_id": cv_id})
+        results = _issues_list_by_cv_id(session, cv_id)
     except Exception as exc:
         print(  # noqa: T201
             f"  ! Metron lookup failed for cv_id={cv_id}: {type(exc).__name__}: {exc}",
