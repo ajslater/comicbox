@@ -261,38 +261,25 @@ Items surfaced by the slimlib calibration that warrant their own work:
    too strict and users want to tune per-source from config.yaml or CLI,
    that's a small plumbing exercise.
 
-6. **Metron search returning the same wrong issue for unrelated comics.**
-   Surfaced when running the post-Phase-E Phase E re-validation chunk:
-   `label_metron.py` added Metron expected ids to 11 fixtures, and the
-   compare report showed Metron issue id **7098** returned as the top
-   matcher pick for three unrelated 2020 indie #1s (American Ronin,
-   Kidz, Miles to Go). Issue 7098 is *New Mutants Vol 4 #1 (Marvel,
-   Jan 2020)* per Metron's API. Issue id 128 similarly returned for
-   Bad Reception 2019 and Archie 1955 #1.
+6. **Metron `series` filter bug** ✓ — fixed 2026-05-13. The
+   `_build_issue_params` filter `{"series": series_id}` was being
+   silently ignored by Metron's DRF backend; correct filter is
+   `series_id`. mokkari's docstring example is misleading. See
+   [`calibration-notes/2026-05-13-metron-series-filter-bug.md`](calibration-notes/2026-05-13-metron-series-filter-bug.md)
+   for the diagnostic story and empirical confirmation.
 
-   All matcher picks scored 0.88-0.89 against profiles that should have
-   scored ~0.4-0.5 by the metadata weights. Three hypotheses to
-   investigate (in order of likelihood):
+7. **Verify `series_volume` filter behavior** (low priority,
+   spin-off from #6). When `profile.volume` is set (e.g.
+   "Spider-Man Vol. 2 #1"), `_build_issue_params` adds
+   `series_volume` to the issues_list query. We confirmed `series` →
+   `series_id` is the right rename for the FK filter; we did NOT
+   verify whether `series_volume` is the right name for the
+   volume-ordinal filter or whether it has the same silent-ignore
+   problem. Slimlib's calibration didn't surface this because
+   profile.volume is None for almost all fixtures.
 
-   - The series_filter pre-filter at 0.7 isn't being applied on the
-     Metron path for these fixtures (despite the FAST budget being
-     active for CV).
-   - Metron's `series_list({"name": ...})` filter isn't the AND-of-terms
-     icontains+unaccent we documented — maybe loose-token match.
-   - `_build_profile` for slimlib comics is picking up an unexpected
-     series name from non-online tags.
-
-   30-second diagnostic via `tests/calibration/debug_search.py`:
-   ```
-   uv run python -m tests.calibration.debug_search \
-       ~/Milliways/Comics/slimlib/.../American\ Ronin\ \#001.cbz \
-       --source metron
-   ```
-   That prints the profile, the exact search call, and the raw Metron
-   response — instantly localizing where the false match enters.
-
-   Likely a real matcher bug worth a focused fix; the math doesn't add
-   up under any clean reading of the current scoring code.
+   30-second diagnostic against a Vol.2-named fixture would confirm.
+   If broken, similar one-line fix.
 
 ## Follow-up work (after this feature ships)
 

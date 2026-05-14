@@ -58,7 +58,10 @@ def _build_issues_list_params(profile: object, series_id: int) -> dict[str, obje
     """Mirror production's `_build_issue_params` for a single series."""
     from comicbox.online.profile import strip_issue_leading_zeros
 
-    params: dict[str, object] = {"series": series_id}
+    # `series_id` is the correct Metron API filter for the FK to series.
+    # `series` (mokkari's docstring example) is silently ignored — see
+    # metron.py's `_build_issue_params` for the bug history.
+    params: dict[str, object] = {"series_id": series_id}
     issue_number = getattr(profile, "issue", None)
     if issue_number:
         stripped = strip_issue_leading_zeros(issue_number)

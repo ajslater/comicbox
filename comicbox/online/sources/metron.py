@@ -122,8 +122,17 @@ class MetronOnlineSource(OnlineSource):
         ``include_volume`` is the toggle for the drop-volume retry path:
         passing False omits Metron's ``series_volume`` filter even when
         ``profile.volume`` is set.
+
+        IMPORTANT: the FK filter param is ``series_id``, NOT ``series``.
+        Mokkari's docstring example (`{"series": 1}`) is misleading —
+        Metron's DRF backend silently ignores `series` as an unknown
+        filter and returns issues matched only by the remaining params
+        (number + cover_year), leaking thousands of unrelated 2020 #1s
+        when querying for AR #1 (2020). Confirmed empirically against
+        the live Metron API on 2026-05-13. See
+        `tasks/online-tagging/calibration-notes/2026-05-13-metron-series-filter-bug.md`.
         """
-        params: dict[str, Any] = {"series": series_id}
+        params: dict[str, Any] = {"series_id": series_id}
         # Strip leading zeros — Metron stores `number` without padding.
         if number := strip_issue_leading_zeros(profile.issue):
             params["number"] = number
@@ -201,10 +210,10 @@ class MetronOnlineSource(OnlineSource):
         1. ``series_list({"name": profile.series})`` — Metron's name filter
            is icontains+unaccent and splits on whitespace (AND-of-terms),
            so it tolerates case, accents, and word-order quirks.
-        2. For each matched series, ``issues_list({"series": id, "number":
-           N, "cover_year": Y})`` — issue lookup constrained by the
-           resolved series id. Metron's `issue.number` is unpadded, so we
-           strip leading zeros on the way in.
+        2. For each matched series, ``issues_list({"series_id": id,
+           "number": N, "cover_year": Y})`` — issue lookup constrained by
+           the resolved series id. Metron's `issue.number` is unpadded,
+           so we strip leading zeros on the way in.
 
         The earlier single-call form passed `series_name` directly to
         ``issues_list``, which Metron does accept (icontains too) but it's

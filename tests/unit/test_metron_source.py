@@ -69,7 +69,7 @@ class _FakeMokkari:
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)
-        sid = params.get("series")
+        sid = params.get("series_id")
         if sid is None:
             return []
         return list(self._issues_by_series.get(int(sid), []))
@@ -141,7 +141,7 @@ def test_search_two_step_returns_candidates(
     assert {c.issue_id for c in candidates} == {5001, 5002}
 
     # Both series got their own issue lookup.
-    series_ids = [call.get("series") for call in fake.issues_list_calls]
+    series_ids = [call.get("series_id") for call in fake.issues_list_calls]
     assert sorted(series_ids) == [100, 101]
 
     # Issue number flowed through stripped of leading zeros.
@@ -178,7 +178,7 @@ def test_search_continues_on_per_series_issue_failure(
     class _FlakyMokkari(_FakeMokkari):
         def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
             self.issues_list_calls.append(dict(params or {}))
-            if (params or {}).get("series") == 101:
+            if (params or {}).get("series_id") == 101:
                 # Use a non-retriable exception (ValueError is in
                 # `_NON_RETRIABLE`) so we exercise the `except / continue`
                 # fallback directly — RuntimeError would be retried by
@@ -269,7 +269,7 @@ def test_series_id_skips_series_list_call(
     # Step 2 ran exactly once with the explicit series id.
     assert len(fake.issues_list_calls) == 1
     call = fake.issues_list_calls[0]
-    assert call["series"] == 200
+    assert call["series_id"] == 200
     assert call["number"] == "7"  # leading zeros stripped
     assert call["cover_year"] == 1952
     assert [c.issue_id for c in candidates] == [9001]
@@ -332,7 +332,7 @@ class _YearAwareMokkari(_FakeMokkari):
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)
-        sid = params.get("series")
+        sid = params.get("series_id")
         year = params.get("cover_year")
         if sid is None or year is None:
             return []
@@ -438,7 +438,7 @@ class _VolumeAwareMokkari(_FakeMokkari):
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)
-        sid = params.get("series")
+        sid = params.get("series_id")
         if sid is None:
             return []
         year = params.get("cover_year")
