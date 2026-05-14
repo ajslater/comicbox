@@ -261,6 +261,39 @@ Items surfaced by the slimlib calibration that warrant their own work:
    too strict and users want to tune per-source from config.yaml or CLI,
    that's a small plumbing exercise.
 
+6. **Metron search returning the same wrong issue for unrelated comics.**
+   Surfaced when running the post-Phase-E Phase E re-validation chunk:
+   `label_metron.py` added Metron expected ids to 11 fixtures, and the
+   compare report showed Metron issue id **7098** returned as the top
+   matcher pick for three unrelated 2020 indie #1s (American Ronin,
+   Kidz, Miles to Go). Issue 7098 is *New Mutants Vol 4 #1 (Marvel,
+   Jan 2020)* per Metron's API. Issue id 128 similarly returned for
+   Bad Reception 2019 and Archie 1955 #1.
+
+   All matcher picks scored 0.88-0.89 against profiles that should have
+   scored ~0.4-0.5 by the metadata weights. Three hypotheses to
+   investigate (in order of likelihood):
+
+   - The series_filter pre-filter at 0.7 isn't being applied on the
+     Metron path for these fixtures (despite the FAST budget being
+     active for CV).
+   - Metron's `series_list({"name": ...})` filter isn't the AND-of-terms
+     icontains+unaccent we documented — maybe loose-token match.
+   - `_build_profile` for slimlib comics is picking up an unexpected
+     series name from non-online tags.
+
+   30-second diagnostic via `tests/calibration/debug_search.py`:
+   ```
+   uv run python -m tests.calibration.debug_search \
+       ~/Milliways/Comics/slimlib/.../American\ Ronin\ \#001.cbz \
+       --source metron
+   ```
+   That prints the profile, the exact search call, and the raw Metron
+   response — instantly localizing where the false match enters.
+
+   Likely a real matcher bug worth a focused fix; the math doesn't add
+   up under any clean reading of the current scoring code.
+
 ## Follow-up work (after this feature ships)
 
 > The full follow-up checklist lives in [TODO.md](TODO.md). The
