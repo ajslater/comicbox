@@ -54,6 +54,55 @@ def _print_profile(comic_path: Path) -> object:
     return profile
 
 
+def _build_issues_list_params(profile: object, series_id: int) -> dict[str, object]:
+    """Mirror production's `_build_issue_params` for a single series."""
+    from comicbox.online.profile import strip_issue_leading_zeros
+
+    params: dict[str, object] = {"series": series_id}
+    issue_number = getattr(profile, "issue", None)
+    if issue_number:
+        stripped = strip_issue_leading_zeros(issue_number)
+        if stripped:
+            params["number"] = stripped
+    profile_year = getattr(profile, "year", None)
+    if profile_year is not None:
+        params["cover_year"] = profile_year
+    return params
+
+
+def _print_issue(issue: object) -> None:
+    issue_series = getattr(issue, "series", None)
+    issue_series_repr = (
+        getattr(issue_series, "name", "?") if issue_series is not None else "?"
+    )
+    cover_date = getattr(issue, "cover_date", None)
+    print(  # noqa: T201
+        f"      id={issue.id} series={issue_series_repr!r} "  # type: ignore[attr-defined]
+        f"number={getattr(issue, 'number', '?')!r} "
+        f"cover_date={cover_date}"
+    )
+
+
+def _probe_issues_list(
+    session: object, profile: object, series_results: list[object]
+) -> None:
+    """For each matching series, issue the production issues_list call."""
+    for r in series_results:
+        series_id = getattr(r, "id", None)
+        if series_id is None:
+            continue
+        params = _build_issues_list_params(profile, series_id)
+        print(f"\n  [follow-up] issues_list(params={params!r})")  # noqa: T201
+        try:
+            issues = list(session.issues_list(params=params))  # type: ignore[attr-defined]
+        except Exception as exc:
+            print(f"    EXCEPTION: {exc!r}")  # noqa: T201
+            continue
+        print(f"    → {len(issues)} result(s)")  # noqa: T201
+        for issue in issues[:5]:
+            _print_issue(issue)
+
+
 def _debug_metron(profile: object, online: object) -> None:
     print("\n=== Metron debug ===")  # noqa: T201
     creds = online.sources.get("metron")  # type: ignore[attr-defined]
@@ -76,6 +125,11 @@ def _debug_metron(profile: object, online: object) -> None:
         display = getattr(r, "display_name", None) or getattr(r, "name", "?")
         year = getattr(r, "year_began", "?")
         print(f"      id={r.id} {display!r} year_began={year}")  # noqa: T201
+
+    # 1b. The actual second-step issues_list per matching series — production's
+    # next call. Surfaces "series_list found AR but issues_list returned NM"
+    # bugs.
+    _probe_issues_list(session, profile, results[:5])
 
     # 2. Variant: word-by-word, dropping parens etc.
     cleaned = _clean_for_search(series_name)
