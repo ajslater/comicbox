@@ -166,6 +166,28 @@ class TestYearSignal:
     def test_off_by_two(self) -> None:
         assert s_year(_profile(year=2020), _candidate(year=2022)) == 0.4
 
+    def test_off_by_three_decays_smoothly(self) -> None:
+        """Phase F: diff=3 → 0.32 (was 0.0 under the original cliff)."""
+        assert s_year(_profile(year=2020), _candidate(year=2023)) == pytest.approx(
+            0.32, abs=1e-9
+        )
+
+    def test_off_by_four_continues_decay(self) -> None:
+        """Phase F: linear decay from diff=2 to diff=7."""
+        assert s_year(_profile(year=2020), _candidate(year=2024)) == pytest.approx(
+            0.24, abs=1e-9
+        )
+
+    def test_off_by_six_near_cliff(self) -> None:
+        """Phase F: diff=6 → 0.08, just before the cliff at diff=7."""
+        assert s_year(_profile(year=2020), _candidate(year=2026)) == pytest.approx(
+            0.08, abs=1e-9
+        )
+
+    def test_off_by_seven_hits_cliff(self) -> None:
+        """Phase F: diff=7 still hits 0.0 — the long tail doesn't get year credit."""
+        assert s_year(_profile(year=2020), _candidate(year=2027)) == 0.0
+
     def test_far_off_zero(self) -> None:
         assert s_year(_profile(year=2020), _candidate(year=2010)) == 0.0
 

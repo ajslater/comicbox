@@ -19,6 +19,16 @@ if TYPE_CHECKING:
     from comicbox.online.profile import Candidate, ComicProfile
 
 import re
+from types import MappingProxyType
+from typing import Final
+
+# Year-signal anchors. Original calibration values for diff in {0, 1, 2};
+# beyond diff=2 we linearly decay to 0.0 at `_YEAR_DECAY_ZERO` (Phase F).
+# See `s_year` docstring for the rationale.
+_YEAR_ANCHORS: Final[MappingProxyType[int, float]] = MappingProxyType(
+    {0: 1.0, 1: 0.7, 2: 0.4}
+)
+_YEAR_DECAY_ZERO: Final[int] = 7
 
 _VOLUME_SUFFIX_RE = re.compile(
     r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
@@ -87,7 +97,13 @@ def s_issue(profile: ComicProfile, candidate: Candidate) -> float:
 
 def s_year(profile: ComicProfile, candidate: Candidate) -> float:
     """
-    Year match: 1 if equal, 0.7 if ±1, 0.4 if ±2, 0 otherwise.
+    Year match with smooth decay beyond the original 1.0/0.7/0.4 anchors.
+
+    - 1.0 on exact match
+    - 0.7 at ±1 year
+    - 0.4 at ±2 years
+    - Linear decay from 0.4 (diff=2) to 0.0 (diff=7) — Phase F
+    - 0.0 for diff ≥ 7
 
     Missing-data handling distinguishes two cases:
       - both missing: 0.5 (weak agnostic prior — we have no signal)
@@ -96,21 +112,32 @@ def s_year(profile: ComicProfile, candidate: Candidate) -> float:
         wrong-volume picks coast through the auto-write band when CV's
         BasicIssue lacked a cover_date)
 
-    The asymmetric value is intentionally lower than any partial-match
-    bracket: even ±2 years gets 0.4, beating a candidate that "just
-    doesn't have a year." Tighter than a real diff penalty would be —
-    we keep diff==0 → 1.0 to reward exact matches strongly.
+    Phase F (2026-05-14) replaced the original cliff (0.0 for any
+    diff ≥ 3) with linear decay. The cliff treated modern reissues of
+    older series as having no year signal at all — fine for the
+    common case where year discriminates between volumes, but bad
+    when the right candidate IS the same series at a different year
+    (e.g. The Boys 2009 fixture's expected vol was at year=2006, gap
+    of 3 years). Smooth decay gives the older candidate ~75% of the
+    one-year-off signal, enough to compete with cover-hash signal
+    when present. Beyond 7 years, the score still hits zero — the
+    long tail of 20+ year reissues (Conan 1973 vs 2025) shouldn't
+    benefit from year signal.
+
+    See `tasks/online-tagging/calibration-notes/2026-05-14-bigmedia-247.md`
+    for the failure-mode analysis that motivated this change.
     """
     if profile.year is None and candidate.summary.year is None:
         return 0.5
     if profile.year is None or candidate.summary.year is None:
         return 0.3
     diff = abs(profile.year - candidate.summary.year)
-    if diff == 0:
-        return 1.0
-    if diff == 1:
-        return 0.7
-    return 0.4 if diff == 2 else 0.0  # noqa: PLR2004
+    if diff in _YEAR_ANCHORS:
+        return _YEAR_ANCHORS[diff]
+    # Linear decay from the diff=2 anchor (0.4) to 0.0 at `_YEAR_DECAY_ZERO`.
+    # `max` clamps the long tail (diff ≥ _YEAR_DECAY_ZERO → 0.0).
+    decay_span = _YEAR_DECAY_ZERO - 2
+    return max(0.0, _YEAR_ANCHORS[2] * (_YEAR_DECAY_ZERO - diff) / decay_span)
 
 
 def s_publisher(profile: ComicProfile, candidate: Candidate) -> float:
