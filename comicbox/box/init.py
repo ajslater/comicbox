@@ -219,12 +219,11 @@ class ComicboxInit:
 
     def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
+        self._archive_is_pdf: bool = False
+        self._pdf_suffix: str = ""
         if not self._path:
             return
         path = self._path
-
-        self._archive_is_pdf: bool = False
-        self._pdf_suffix: str = ""
 
         self._detect_archive_cls(path)
 
