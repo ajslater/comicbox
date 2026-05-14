@@ -268,18 +268,27 @@ Items surfaced by the slimlib calibration that warrant their own work:
    [`calibration-notes/2026-05-13-metron-series-filter-bug.md`](calibration-notes/2026-05-13-metron-series-filter-bug.md)
    for the diagnostic story and empirical confirmation.
 
-7. **Verify `series_volume` filter behavior** (low priority,
-   spin-off from #6). When `profile.volume` is set (e.g.
-   "Spider-Man Vol. 2 #1"), `_build_issue_params` adds
-   `series_volume` to the issues_list query. We confirmed `series` →
-   `series_id` is the right rename for the FK filter; we did NOT
-   verify whether `series_volume` is the right name for the
-   volume-ordinal filter or whether it has the same silent-ignore
-   problem. Slimlib's calibration didn't surface this because
-   profile.volume is None for almost all fixtures.
+7. **Verify `series_volume` filter behavior** ✓ — verified
+   2026-05-13. Probed Metron live against New Mutants Vol 4
+   (series.id=794, volume=4):
 
-   30-second diagnostic against a Vol.2-named fixture would confirm.
-   If broken, similar one-line fix.
+   | Query                                            | Count |
+   | ------------------------------------------------ | ----- |
+   | `series_id=794`                                  |    33 |
+   | `series_id=794, series_volume=4`  (right volume) |    33 |
+   | `series_id=794, series_volume=99` (wrong volume) |     0 |
+
+   The filter works correctly. No fix needed. Note that
+   `series_volume` is effectively redundant when combined with
+   `series_id` (since each Metron series_id IS a single volume),
+   but it doesn't cause bugs and the drop-volume retry path
+   provides defense against filename "Vol. N" mistakes.
+
+   Reference: metron-tagger doesn't use `series_volume` at all —
+   relies on `series_id` uniqueness alone. We retain ours as a
+   secondary check + retry-safety net; it costs negligible API
+   budget (1 extra query per fixture with profile.volume set, and
+   most fixtures don't set it).
 
 ## Follow-up work (after this feature ships)
 

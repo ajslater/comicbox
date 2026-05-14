@@ -103,7 +103,26 @@ Worth a separate report upstream; out of scope for this fix.
 - 821 existing tests pass after the fix.
 - The same diagnostic against the same fixture now correctly returns
   exactly one issue from the queried series.
-- The `series_volume` filter (used for multi-volume series like
-  "Spider-Man Vol 2") was NOT tested in this diagnostic — `profile.volume`
-  was None for American Ronin. May or may not have the same naming
-  issue. Left as follow-up.
+
+## Follow-up verification: `series_volume` is clean
+
+After the `series` → `series_id` fix landed, we verified the parallel
+question for the `series_volume` filter (used in our drop-volume retry
+path). Probed live against NM Vol 4 (series.id=794, volume=4):
+
+| Query                                            | Count |
+| ------------------------------------------------ | ----- |
+| `series_id=794`                                  |    33 |
+| `series_id=794, series_volume=4`  (right volume) |    33 |
+| `series_id=794, series_volume=99` (wrong volume) |     0 |
+
+`series_volume` filters correctly. Our existing code is right. No
+change needed.
+
+Architectural note: `series_volume` is structurally redundant when
+combined with `series_id` (every issue in a given Metron series has
+the same volume by construction). metron-tagger's reference
+implementation skips it entirely. We keep ours because (a) it costs
+~one extra API query when profile.volume is set, which is rare,
+and (b) the drop-volume retry path is useful when filename "Vol. N"
+parsing is wrong. Net wash — leaving it as-is.
