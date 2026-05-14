@@ -213,7 +213,9 @@ def _credits_from_cb(
     values: dict[str, Any],
     role_map: dict[str, set[Any]],
 ) -> list:
-    comicbox_credits = values.get(CREDITS_KEY, {})
+    comicbox_credits = values.get(CREDITS_KEY)
+    if comicbox_credits is None:
+        comicbox_credits = {}
     primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
     return [
         metron_credit
