@@ -623,7 +623,7 @@ def test_rank_applies_tied_metadata_tiebreak_in_metadata_only_path() -> None:
 
 def test_apply_tied_metadata_tiebreak_respects_cover_signal_when_diff_large() -> None:
     """
-    When same-md but cover-score gap is real (>0.05), keep the cover-winner.
+    When same-md but cover-score gap is real, keep the cover-winner.
 
     Original Sin (2014) #001 shape: two records, both at md=0.91. One has
     cover_score=1.00 (perfect Hamming match — the right answer); the
@@ -646,10 +646,62 @@ def test_apply_tied_metadata_tiebreak_respects_cover_signal_when_diff_large() ->
 
     # The input order is high-score-first after the upstream sort:
     ranked = _apply_tied_metadata_tiebreak([right, wrong])
-    # The cover-diff predicate must REJECT the grouping (0.09 > 0.05),
+    # The cover-diff predicate must REJECT the grouping (0.09 > 0.03),
     # leaving the cover-winner at rank 1 despite higher vol_id.
     assert ranked[0].issue_id == 469279
     assert ranked[0].cover_score == 1.00
+
+
+def test_apply_tied_metadata_tiebreak_cover_diff_within_margin_is_noise() -> None:
+    """
+    Phase G: cover diff within the 0.03 noise margin is still noise.
+
+    Watchmen #009 dupe shape: same md (0.91), cover-hash difference of
+    ~0.025 (within 2 Hamming bits). The Phase G threshold (0.03) treats
+    this as noise — tiebreak fires, canonical (lower vol_id) wins. This
+    locks in the Phase G boundary: tightening to 0.02 would make this
+    case a signal, which we don't want (covers are essentially
+    identical — variant scan, slight Hamming jitter).
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    wrong = _candidate(issue_id=476700, volume_id=79545)
+    right = _candidate(issue_id=28090, volume_id=3622)
+    # Cover diff = 0.025 (unambiguously within 0.03 margin in float math).
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.85, score=0.915)
+    right = _replace(right, metadata_score=0.91, cover_score=0.825, score=0.910)
+
+    ranked = _apply_tied_metadata_tiebreak([wrong, right])
+    # 0.025 < 0.03 = noise → tiebreak fires → canonical (lower vol_id) wins.
+    assert ranked[0].issue_id == 28090
+    assert ranked[0].volume_id == 3622
+
+
+def test_apply_tied_metadata_tiebreak_cover_diff_above_margin_is_signal() -> None:
+    """
+    Phase G: cover diff just above 0.03 is signal — keep cover winner.
+
+    Locks in the lower bound: 0.04 cover diff IS signal, doesn't get
+    collapsed by the tiebreak. Was previously 0.04 ≤ 0.05 = noise; the
+    Phase G tightening makes this case respect the cover-hash decision.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    wrong = _candidate(issue_id=10000, volume_id=100)  # lower vol_id (canonical)
+    right = _candidate(issue_id=10001, volume_id=200)
+    # Cover diff = 0.04, just above the noise margin.
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.84, score=0.910)
+    right = _replace(right, metadata_score=0.91, cover_score=0.88, score=0.918)
+
+    # Input order is high-score-first.
+    ranked = _apply_tied_metadata_tiebreak([right, wrong])
+    # 0.04 > 0.03 = real signal → tiebreak rejects grouping → cover winner stays.
+    assert ranked[0].issue_id == 10001
+    assert ranked[0].volume_id == 200
 
 
 def test_apply_tied_metadata_tiebreak_skips_when_cover_score_missing() -> None:

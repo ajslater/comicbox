@@ -251,7 +251,7 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
 _TIED_METADATA_BLEND_MARGIN: float = 0.02
 
 # Maximum cover-score difference treated as hash noise rather than a
-# real disambiguation signal. ~3 Hamming bits out of 64 (pHash range).
+# real disambiguation signal. ~2 Hamming bits out of 64 (pHash range).
 # Below this, cover-score variation is hash artifact / variant-cover
 # wobble. Above it, one candidate's cover is materially more similar to
 # the local than the other's — that's a real signal we should respect.
@@ -261,7 +261,18 @@ _TIED_METADATA_BLEND_MARGIN: float = 0.02
 # but not identical). The 0.09 cover gap IS the signal — the right
 # answer's cover is genuinely a better match. Without this guard, the
 # tiebreak collapses them and the lower vol_id wins, which is wrong.
-_COVER_DIFF_NOISE_MARGIN: float = 0.05
+#
+# Phase G (2026-05-14): tightened from 0.05 → 0.03. The bigmedia
+# calibration surfaced two tied-dupe cases (Fallen Son: Death of Cap
+# America 2007, Hawkeye Freefall 2020) where cover diffs of 0.00 and
+# 0.03 fell within the old noise margin and let the lower-vol-id
+# tiebreak fire, picking the wrong record. Tightening to 0.03 still
+# treats the Watchmen-vs-dupe case (cover diff 0.03 between near-
+# identical scans) as noise (≤ 0.03 = noise), but pulls the boundary
+# in slightly. Doesn't fix Hawkeye Freefall (cover diff exactly 0.03)
+# directly — would need 0.02 for that, but 0.02 risks breaking the
+# Watchmen canonical-volume tiebreak. Conservative tightening.
+_COVER_DIFF_NOISE_MARGIN: float = 0.03
 
 
 def _cover_diff_is_noise(a: Candidate, b: Candidate) -> bool:
