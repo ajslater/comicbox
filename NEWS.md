@@ -16,8 +16,8 @@
       values produced too many wrong-volume false positives).
     - `--api-budget {exhaustive | balanced | fast}` trades matching accuracy for
       API throughput. Default `balanced` runs today's algorithm with a
-      conservative pre-filter (~18% fewer calls, zero accuracy change in
-      calibration). `fast` cuts ~60% of calls with a stricter pre-filter,
+      conservative pre-filter (\~18% fewer calls, zero accuracy change in
+      calibration). `fast` cuts \~60% of calls with a stricter pre-filter,
       validated to 100% accuracy on the calibration set. `exhaustive` disables
       the pre-filter for maximum recall. Per-source overrides via
       `--api-budget metron:fast`. Auto-engages `fast` for batches ≥ 50
@@ -37,6 +37,17 @@
     - `--accept-only` and `--skip-multiple` are deprecated in favor of
       `--policy` and `--unattended`. The legacy flags still work but emit a
       deprecation warning and translate to the new flags. Removed in 5.0.
+
+## v3.0.2
+
+- Use new comicfn2dict. Parses more comic filename variations.
+
+## v3.0.1
+
+- Require new comicbox-pdffile that doesn't corrupt PDF pages. Includes
+  image-dominant page detection (`PDFFile.classify_page`,
+  `PDFFile.read_image_if_dominant`, `PDFFile.read_full_pixmap_jpeg`) used by
+  browser readers to serve scanned-comic PDF pages as plain `<img>`.
 
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
