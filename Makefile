@@ -60,3 +60,15 @@ stress:
 .PHONY: stress-prompt-ux
 stress-prompt-ux:
 	uv run python -m tests.stress.prompt_ux $(STRESS_PATH) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS)
+
+## M7 jobs-accuracy sweep: runs the same fixture set at jobs=1,4,8 with
+## cold cache between, diffs each parallel run vs the jobs=1 baseline.
+## Quantifies how often parallelism changes the matcher's decision.
+## STRESS_FIXTURES_JSON defaults to a bootstrap'd fixtures.json under
+## tests/calibration/. See tests/stress/README.md.
+## @category Test
+STRESS_FIXTURES_JSON ?= tests/calibration/fixtures-jobs.json
+STRESS_JOBS_VALUES ?= 1,4,8
+.PHONY: stress-jobs-accuracy
+stress-jobs-accuracy:
+	uv run python -m tests.stress.jobs_accuracy $(STRESS_FIXTURES_JSON) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS_VALUES)

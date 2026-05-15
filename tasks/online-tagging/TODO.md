@@ -96,15 +96,27 @@ Marker conventions:
   is the inherent high-fan-out problem (Conan-titled fixtures
   fanning out to 20+ candidate series in Metron); further reduction
   needs fan-out caps or `-j`-aware budgets, not just more retries.
-- **Tagging-quality measurement under -j 8 cold cache.** The 100-
-  fixture run proved no crashes / no rate violations, but partial
-  candidate-set drops on high-fan-out fixtures mean some matches
-  almost certainly went to the wrong candidate or got skipped. Re-
-  run a labeled calibration set at -j 8 vs -j 1, diff the outcomes,
-  quantify the accuracy cost of parallelism. Most user-visible
-  consequence of -j 8 and probably the most important follow-up.
-  **Even more important post-fixes** — the residual 158 issue-list
-  WARNINGs on 29 series are the candidate drops worth measuring.
+- ✅ **Tagging-quality measurement under -j 8 cold cache** —
+  measured 2026-05-15. 50 fixtures × jobs=1,4,8 cold cache + Metron
+  + `--policy normal --unattended --force-search` → **0 differences
+  across jobs values, all 50 fixtures landed in SKIP**. The 0.95
+  production threshold is well above the noise floor that candidate-
+  set drops introduce, so parallelism is invisible under normal
+  policy. Harness at `tests/stress/jobs_accuracy.py`; run via
+  `make stress-jobs-accuracy`. See
+  [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md).
+- **Stronger jobs-accuracy follow-up.** The trivial-pass result
+  above doesn't measure the more interesting question — "when the
+  matcher DOES pick a candidate, does -j change which one?". Three
+  ways to push this:
+  1. Re-run with `--confidence-threshold 0.50` to force decisions
+     on every candidate. Cheapest; reuses the existing harness.
+  2. Add a "top-pick" selector mode (in-process, monkeypatched like
+     prompt_ux.py). Bypasses confidence threshold entirely.
+  3. Build a Metron-rich fixture set. The current set is CV-only-
+     labeled because the library is CV-tagged; a Metron-tagged
+     library would land more fixtures in the auto-write band.
+  Option 1 is the lowest-effort meaningful test, ~60-min wall.
 
 
 ## 3. API budget
