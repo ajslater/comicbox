@@ -84,14 +84,23 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
 - ✅ **Phase G — Tighten cover-diff noise margin** (commit `fe7bf90`).
   `_COVER_DIFF_NOISE_MARGIN` 0.05 → 0.03 based on bigmedia tied-dupe
   cases (Fallen Son, Hawkeye Freefall).
+- ✅ **Phase H — CV broadening retry on weak top quick-score**
+  (commit `f772d75`). When initial CV search's top candidate
+  quick-scores < 0.85 under FAST, re-issue with max_results=20 and
+  fetch new volumes only (vol_id dedup). Addresses the 7 bigmedia
+  "right answer not in CV's top-5" misses without paying broader-
+  search cost on every fixture (option C over option A).
+- ✅ **Phase I — Cover-diff relative threshold** (commit `d2a07e5`).
+  Replaces Phase G's absolute 0.03 threshold with a quality-relative
+  rule: signal iff diff ≥ 0.10 absolute OR diff/(1-min_score) ≥ 0.5.
+  Catches Hawkeye Freefall (signal at high cover scores) while
+  preserving Watchmen #009 dupe behavior (noise at medium scores).
 
 **Calibration follow-ups still open** (see
 [`META-PLAN.md`](META-PLAN.md) "Calibration follow-ups" section):
-- Search-relevance improvements for FAST budget (the 7 "right answer
-  not in CV's top-5" cases from bigmedia)
 - CLI surface for `solo_confidence_threshold` (low priority)
-- Cover-hash hamming bits vs cover-image variance — open theoretical
-  question on whether to switch to relative cover-diff thresholds
+- Calibration re-run on bigmedia post-Phase-H/I to measure recovery
+  rate of the 7 "older record wins" misses and any regressions
 
 
 ## 4. Architecture (post-feature)

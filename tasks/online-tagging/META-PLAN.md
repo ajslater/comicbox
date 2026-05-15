@@ -252,12 +252,16 @@ Items surfaced by the slimlib calibration that warrant their own work:
     budget**. 7 of 14 CV misses were "right answer not in CV's top-5 search
     results" cases (Akira 2000 reissues, X-Men #1 Facsimile, etc.) where no
     scoring tweak can help because the correct candidate never reaches the
-    matcher. Possible follow-ups:
-    - Increase `_MAX_VOLUMES_PER_SEARCH` for FAST from 5 → 10 (doubles API cost;
-      might help)
-    - Add server-side year filtering at the CV search step
-    - Add a retry-with-broader-search path when no candidate clears
-      `min_confidence`
+    matcher.
+
+    **Addressed by Phase H** (commit `f772d75`, 2026-05-14). When the initial
+    CV search's top candidate quick-scores below 0.85, the source re-issues
+    the volume search with max_results=20 (the BALANCED default) and fetches
+    issues for new volumes only. Volume_id dedup keeps the cost bounded:
+    only fixtures with weak initial matches pay the broaden cost (~25% of
+    fixtures on heterogeneous libraries). Picked Option C over A (always
+    bumping max_volumes) because it keeps the budget tight on the common
+    case while recovering the failure case.
 
 5. **CLI surface for `solo_confidence_threshold`** (low priority). Internal-only
    for now. If real-world usage shows the 0.95 default is too strict and users
