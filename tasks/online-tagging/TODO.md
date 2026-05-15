@@ -15,26 +15,35 @@ Marker conventions:
 
 ## 1. Calibration & defaults
 
-- **Run calibration against a real fixture set.** The harness is
-  built (`tests/calibration/run.py`, `make calibrate`) but no
-  fixtures.json has been populated yet. Need ~100–300 known-correct
-  comics across the score-band distribution.
-- **Tune `--confidence-threshold` and `min_confidence` from data.**
-  Currently 0.85 and 0.50 — placeholders. After running the harness,
-  shift the defaults so ≥95% of correct matches clear
-  `confidence_threshold` and ≥99% clear `min_confidence`.
-- **VCR cassettes for integration tests.** Recorded once with real
-  credentials, replayed in CI. Currently every test mocks the upstream
-  client directly. (Optional — the calibration harness covers most of
-  what VCR cassettes would.)
-- **Default policy choice.** New default is `normal`, slightly more
-  eager than today. If real-world calibration shows it produces a high
-  false-positive write rate, retreat the default to `strict`.
-  Decision belongs with the calibration harness output.
-- **Cover-hash calibration.** The current harness runs metadata-only
-  ranking. A separate mode that exercises the cover-hash path on
-  full-cover fixtures (not slimlib's degraded thumbnails) would tune
-  the hashing weights.
+- ✅ **Run calibration against a real fixture set.** DONE — three
+  calibrations now in the books:
+  - **Phase B** (339 fixtures, labeled): 100% accuracy under `fast`.
+    See [`calibration-notes/2026-05-11-phase-b.md`](calibration-notes/2026-05-11-phase-b.md).
+  - **Slimlib** (500 fixtures, stratified one-per-series, thumbnail
+    covers): 96.9% CV, metadata-signal-only validation. See
+    [`calibration-notes/2026-05-12-slimlib-500.md`](calibration-notes/2026-05-12-slimlib-500.md).
+  - **Bigmedia** (247 fixtures, full-cover, Big-Two-heavy): 94.3%
+    CV / 97.0% Metron / 100% Metron auto-write band. See
+    [`calibration-notes/2026-05-14-bigmedia-247.md`](calibration-notes/2026-05-14-bigmedia-247.md).
+- ✅ **Tune `--confidence-threshold` and `min_confidence` from data.**
+  DONE. `confidence_threshold` settled at 0.95 (was 0.85 — calibration
+  showed 7% wrong auto-writes in 0.85-0.95 band, mostly wrong-volume
+  picks for series with reboots). `min_confidence` stays at 0.50.
+  Phase E added a `solo_confidence_threshold` floor (0.95 default) to
+  close the silent-failure path when the matcher returns a single
+  below-threshold candidate.
+- **VCR cassettes for integration tests.** Still not done.
+  (Optional — the three calibration sets now cover most of what VCR
+  cassettes would.)
+- ✅ **Default policy choice.** DONE. `normal` validated across all
+  three calibration sets; no false-positive write rate that justified
+  retreating to `strict`. Phase E's solo-confidence floor further
+  hardened NORMAL against the worst silent-failure pattern.
+- ✅ **Cover-hash calibration.** DONE via the bigmedia 247-fixture
+  run (full covers, cover_quality: full in the fixture set). 97.6%
+  CV auto-write band with cover hashing firing where appropriate.
+  Phase G (2026-05-14) tightened the `_COVER_DIFF_NOISE_MARGIN` from
+  0.05 → 0.03 based on bigmedia tied-dupe analysis.
 
 
 ## 2. Stress test & parallelism
@@ -50,35 +59,39 @@ Marker conventions:
 
 ## 3. API budget
 
-⭐ Implements [`06-api-budget-spec.md`](06-api-budget-spec.md): a three-tier
-`exhaustive` / `balanced` / `fast` knob to trade accuracy for API throughput
-on batch runs. Without this, libraries above ~50 comics on ComicVine or ~500
-on Metron pay multi-hour-to-multi-day wait times at the documented rate
-caps. At 500,000-comic scale, even Metron's looser cap means months under
-today's behavior.
+✅ **DONE** — three planned phases shipped, plus four additional phases
+(D / E / F / G) added in flight based on calibration data. Detailed
+status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
+[`META-PLAN.md`](META-PLAN.md).
 
-Ships in three sequential phases; Phase B (calibration) is load-bearing
-and picks the placeholder thresholds in the spec:
+- ✅ **Phase A — Build** (commit `a754f6a`). Dormant levers.
+- ✅ **Phase B — Calibrate** (commit `99d794e`). Pinned thresholds at
+  pre-filter 0.4 / 0.7 (balanced / fast), max-volumes=5, top-K=5. See
+  [`calibration-notes/2026-05-11-phase-b.md`](calibration-notes/2026-05-11-phase-b.md).
+- ✅ **Phase C — Integrate & ship** (commit `c2b2ca6`). `--api-budget`
+  CLI flag, auto-engagement, user doc.
+- ✅ **Phase D — Per-budget search cap + chunked-run scaffolding**
+  (commit `241fa04`). Added `--resume`, `sample.py`, `label_metron.py`,
+  `summarize.py`. Phase D was added beyond the original three-phase
+  plan when slimlib-scale calibration motivated chunked execution.
+- ✅ **Phase E — Solo-viable confidence floor** (commit `e7bfdbd`).
+  New `solo_confidence_threshold` setting (default 0.95) closes the
+  worst silent-failure pattern (solo candidate below threshold
+  auto-writes wrong answer).
+- ✅ **Phase F — Year-signal decay** (commit `602378d`). Replaces the
+  binary-cliff at year-diff ≥ 3 with smooth linear decay to 0.0 at
+  diff=7. Preserves original anchors (1.0 / 0.7 / 0.4 for diff 0/1/2).
+- ✅ **Phase G — Tighten cover-diff noise margin** (commit `fe7bf90`).
+  `_COVER_DIFF_NOISE_MARGIN` 0.05 → 0.03 based on bigmedia tied-dupe
+  cases (Fallen Son, Hawkeye Freefall).
 
-- **Phase A — Build.** Add `APIBudget` enum + per-source resolve helpers,
-  source-name pre-filter (shared by CV / Metron), harness `--api-budget`
-  and `--label` pass-throughs, per-source API-call counter,
-  outcomes-comparison tool. Dormant on the default `balanced` budget — no
-  user-visible change ships from Phase A alone. One PR.
-- **Phase B — Calibrate.** Run the 10-row experiment matrix from the spec
-  against the fixture set. Pin data-driven values for pre-filter threshold
-  (placeholder 0.4 / 0.7), `_MAX_*_PER_SEARCH` (placeholder 5), top-K
-  hashing (placeholder 5), and per-source auto-engagement batch sizes
-  (placeholder 50 for CV, 500 for Metron). Output: a dated writeup in
-  `tasks/online-tagging/calibration-notes/` plus a PR pinning the spec's
-  numbers.
-- **Phase C — Integrate & ship.** Wire auto-engagement triggers with Phase
-  B's confirmed thresholds, add `--api-budget` and
-  `--api-budget-per-source` CLI flags, write `api-budget-user-doc.md`,
-  NEWS entry. Sign-off re-runs B0/B1 against shipped (not prototype) code
-  and must meet the four acceptance criteria in the spec (≤2h cold-cache
-  on `fast`, ≥97% auto-write band, ≤5% extra NO_MATCH vs `balanced`,
-  `exhaustive` within 1pp of `balanced`).
+**Calibration follow-ups still open** (see
+[`META-PLAN.md`](META-PLAN.md) "Calibration follow-ups" section):
+- Search-relevance improvements for FAST budget (the 7 "right answer
+  not in CV's top-5" cases from bigmedia)
+- CLI surface for `solo_confidence_threshold` (low priority)
+- Cover-hash hamming bits vs cover-image variance — open theoretical
+  question on whether to switch to relative cover-diff thresholds
 
 
 ## 4. Architecture (post-feature)
