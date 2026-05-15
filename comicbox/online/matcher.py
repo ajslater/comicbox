@@ -89,55 +89,79 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
     """
     Renormalised weighted sum of metadata signals, in [0, 1].
 
-    Phase K (2026-05-14): only signals where BOTH sides have data
-    contribute to the weighted sum, and the total is renormalised over
-    the *contributing* weights — not the full `_METADATA_WEIGHT_SUM`.
+    Phase K rev 2 (2026-05-14): a signal contributes when EITHER side
+    has data. The total is renormalised over the contributing weights.
+    Signals are skipped only when BOTH sides are empty/None — i.e. there
+    is genuinely no comparison to make.
 
-    Why: ComicVine's `BasicIssue` (what `search` returns) doesn't expose
-    publisher or page_count. Under the original formula, those signals
-    returned weak-prior values (0.5/0.6) that diluted the score even
-    when series/issue/year all matched perfectly. The structural cap
-    for a CV BasicIssue candidate was md=0.91 — below the default
-    confidence_threshold of 0.95 — so the matcher would PROMPT for
-    obvious matches like "Wolverine #20 (2026)" → CV's "Wolverine #20
-    (2026)" candidate.
+    Why this matters:
 
-    Phase K skips signals when either side is missing data. The
-    Wolverine case scores series=1.0, issue=1.0, year=1.0, with
-    publisher and pages both skipped (profile or candidate is None).
-    Renormalised: (0.30 + 0.25 + 0.10) / (0.30 + 0.25 + 0.10) = 1.0.
+    1. CV's `BasicIssue` (what `search` returns) doesn't expose
+       publisher or page_count. Under the original formula those signals
+       returned weak-prior values (0.5/0.6) that diluted the score even
+       when series/issue/year all matched perfectly. A thumbnail-library
+       comic with no profile-side publisher / pages would prompt for an
+       otherwise-obvious match ("Wolverine #20 (2026)" → md capped at
+       0.91 < confidence_threshold 0.95).
 
-    Interaction with Phase E: solo-viable candidates can now reach
-    md=1.0 even on thumbnail libraries (cover hash not firing). That
-    means the Phase E `solo_confidence_threshold` (default 0.95) is
-    where silent-failure protection lives. Users who calibrate against
-    thumbnail-only libraries should be aware that solo CV matches with
-    all available signals at 1.0 will auto-write under default
-    settings.
+    2. The fix is to renormalise — but only over the signals where data
+       exists *on at least one side*. Truly-symmetric absence (both
+       profile and candidate missing publisher) is dropped from the
+       denominator. Asymmetric absence (profile knows year, candidate
+       doesn't) keeps the signal in the denominator and lets the
+       signal function's missing-data branch (s_year=0.3,
+       s_publisher=0.5, s_pages=0.6) penalise the under-informed
+       candidate.
+
+    Phase K rev 1 (the first cut of this function) skipped on EITHER
+    side missing, which incorrectly lifted CV BasicIssue candidates with
+    a null `cover_date` to md=1.0 over the actually-matching trade
+    collection. Caught by bigmedia calibration: "Conan the Barbarian by
+    Jim Zub: Land of the Lotus (2021)" preferred a 1.0-scored canonical
+    Conan record with year=None over the year=2021 trade-collection
+    record. Rev 2 keeps asymmetric signals; only both-None disappears.
+
+    Interaction with Phase E: solo-viable candidates can still reach
+    md=1.0 in the symmetric-missing case (Wolverine prompt fix). For
+    libraries with full profile metadata (publisher / page_count
+    present), the asymmetric-skip stays as the s_publisher=0.5 /
+    s_pages=0.6 weak prior, matching pre-Phase-K behaviour. So Phase E's
+    `solo_confidence_threshold` is the load-bearing protection only on
+    thumbnail-library calibration runs.
     """
     weighted_sum = 0.0
     total_weight = 0.0
 
-    if profile.series and candidate.summary.series:
+    # Skip a signal only when BOTH sides are empty (truly no data on
+    # either side). When asymmetric — profile has data, candidate doesn't
+    # or vice versa — keep the signal so its function's missing-data
+    # branch (s_year=0.3, s_publisher=0.5, s_pages=0.6, s_series=0.0,
+    # s_issue=0.5) penalises the candidate rather than letting it coast.
+    # Skipping asymmetric cases was the Phase K rev-1 bug: CV BasicIssue
+    # candidates with year=None / publisher=None won over candidates that
+    # actually matched the profile's year, because their missing-data
+    # signals got dropped from the renormalisation denominator.
+
+    if profile.series or candidate.summary.series:
         weighted_sum += W_SERIES * s_series(profile, candidate)
         total_weight += W_SERIES
 
     # Issue: profile carries either the raw string `issue` (e.g. "001")
     # or the parsed `issue_int`. The candidate side just has `issue`.
     profile_has_issue = bool(profile.issue) or profile.issue_int is not None
-    if profile_has_issue and candidate.summary.issue:
+    if profile_has_issue or candidate.summary.issue:
         weighted_sum += W_ISSUE * s_issue(profile, candidate)
         total_weight += W_ISSUE
 
-    if profile.year is not None and candidate.summary.year is not None:
+    if profile.year is not None or candidate.summary.year is not None:
         weighted_sum += W_YEAR * s_year(profile, candidate)
         total_weight += W_YEAR
 
-    if profile.publisher and candidate.summary.publisher:
+    if profile.publisher or candidate.summary.publisher:
         weighted_sum += W_PUBLISHER * s_publisher(profile, candidate)
         total_weight += W_PUBLISHER
 
-    if profile.page_count is not None and candidate.summary.page_count is not None:
+    if profile.page_count is not None or candidate.summary.page_count is not None:
         weighted_sum += W_PAGES * s_pages(profile, candidate)
         total_weight += W_PAGES
 

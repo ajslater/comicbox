@@ -281,18 +281,26 @@ def test_partial_match_above_min_confidence() -> None:
 
 def test_phase_k_cv_basicissue_perfect_match_scores_one() -> None:
     """
-    CV BasicIssue perfect match scores 1.0 when publisher + pages are absent.
+    Thumbnail-library CV BasicIssue match scores 1.0 when both sides lack publisher / pages.
 
     The structural cap on CV BasicIssue candidates pre-Phase-K was
     md=0.91 (s_publisher=0.5 + s_pages=0.6 priors). The "Wolverine #20
-    (2026)" prompt-UX issue was caused exactly by this cap.
+    (2026)" prompt-UX issue was caused exactly by this cap when a
+    thumbnail-only profile met a CV BasicIssue (both sides missing
+    publisher + pages).
+
+    Phase K rev 2: only signals where BOTH sides are missing are
+    dropped. Asymmetric absence (profile has data, candidate doesn't)
+    keeps the signal so its weak-prior value contributes. See the
+    `asymmetric` tests below for that case.
     """
     score = metadata_score(
-        _profile(year=2026),
+        _profile(year=2026, publisher=None, page_count=None),
         _candidate(year=2026, publisher=None, page_count=None),
     )
-    # All three contributing signals (series, issue, year) at 1.0 →
-    # renormalised score = 1.0.
+    # Three contributing signals (series, issue, year) at 1.0; publisher
+    # and pages dropped because both sides are missing. Renormalised
+    # score = (0.30 + 0.25 + 0.10) / (0.30 + 0.25 + 0.10) = 1.0.
     assert score == pytest.approx(1.0, abs=1e-9)
 
 
@@ -349,22 +357,70 @@ def test_phase_k_solo_signal_uses_full_weight() -> None:
     assert metadata_score(profile, cand) == pytest.approx(1.0, abs=1e-9)
 
 
-def test_phase_k_asymmetric_publisher_skipped_not_penalised() -> None:
+def test_phase_k_asymmetric_publisher_uses_weak_prior() -> None:
     """
-    Phase K: profile has publisher but candidate doesn't → skip the signal.
+    Profile has publisher but candidate doesn't → weak prior penalises.
 
-    Pre-Phase-K behavior: s_publisher returned 0.5 (weak prior), the
-    score was diluted as if "publisher partially matched." Phase K
-    treats this as "we don't know" and doesn't include the signal in
-    the renormalised average. Other signals carry the score.
+    Phase K rev 1 dropped this signal from the denominator, which let CV
+    BasicIssue candidates with missing publisher coast to perfect scores
+    they didn't deserve. Phase K rev 2 keeps the signal in the
+    denominator and lets s_publisher's 0.5 weak prior pull the score
+    down — matching pre-Phase-K behaviour for asymmetric data.
     """
     score = metadata_score(
         _profile(publisher="Marvel"),
         _candidate(publisher=None),  # asymmetric: profile has, candidate doesn't
     )
-    # Without publisher (skipped), with pages contributing (both 24):
-    # series + issue + year + pages = 0.30 + 0.25 + 0.10 + 0.05 = 0.70
-    # Total contributing weight = 0.70; renormalised score = 1.0.
+    # All 5 signals contribute. Publisher weak prior 0.5, others 1.0.
+    # Weighted sum: 0.75 (publisher contributes 0.10 * 0.5).
+    # Total weight: 0.80 (full _METADATA_WEIGHT_SUM).
+    # Renormalised: 0.75 / 0.80 → 0.9375.
+    assert score == pytest.approx(0.9375, abs=1e-9)
+
+
+def test_phase_k_asymmetric_year_penalises_candidate() -> None:
+    """
+    Profile has year, candidate has year=None → s_year=0.3 contributes.
+
+    This is the Conan regression case: a CV BasicIssue with year=None
+    (e.g. canonical "Conan the Barbarian" volume that doesn't expose its
+    cover_date in the search response) should NOT score the same as a
+    candidate that genuinely matches the profile's year. Phase K rev 1
+    dropped the year signal entirely on asymmetric absence, which
+    inverted the ranking for the bigmedia "Conan the Barbarian by Jim
+    Zub: Land of the Lotus (2021)" fixture. Rev 2 keeps the signal and
+    lets s_year's 0.3 asymmetric value penalise the under-informed
+    candidate.
+    """
+    score = metadata_score(
+        _profile(year=2021),
+        _candidate(year=None),
+    )
+    # All 5 signals contribute. Year asymmetric penalty 0.3, others 1.0.
+    # Weighted sum: 0.73 (year contributes 0.10 * 0.3).
+    # Total weight: 0.80 (full _METADATA_WEIGHT_SUM).
+    # Renormalised: 0.73 / 0.80 → 0.9125.
+    assert score == pytest.approx(0.9125, abs=1e-9)
+
+
+def test_phase_k_symmetric_missing_year_dropped_from_denominator() -> None:
+    """
+    Both sides missing year → signal dropped, denominator shrinks.
+
+    The thumbnail-library complement to the asymmetric case: when
+    neither side carries year (a barely-tagged comic against a CV
+    BasicIssue that also lacks cover_date), there's genuinely nothing to
+    compare. Drop the signal entirely so the other matching signals
+    still produce a confident score.
+    """
+    score = metadata_score(
+        _profile(year=None),
+        _candidate(year=None),
+    )
+    # Year skipped (both None). Remaining 4 signals all at 1.0.
+    # Weighted sum: 0.70.
+    # Total weight: 0.70 (year's 0.10 dropped from denominator).
+    # Renormalised: 0.70 / 0.70 → 1.0.
     assert score == pytest.approx(1.0, abs=1e-9)
 
 
