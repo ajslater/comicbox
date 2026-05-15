@@ -84,23 +84,51 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
 - ✅ **Phase G — Tighten cover-diff noise margin** (commit `fe7bf90`).
   `_COVER_DIFF_NOISE_MARGIN` 0.05 → 0.03 based on bigmedia tied-dupe
   cases (Fallen Son, Hawkeye Freefall).
-- ✅ **Phase H — CV broadening retry on weak top quick-score**
-  (commit `f772d75`). When initial CV search's top candidate
-  quick-scores < 0.85 under FAST, re-issue with max_results=20 and
-  fetch new volumes only (vol_id dedup). Addresses the 7 bigmedia
-  "right answer not in CV's top-5" misses without paying broader-
-  search cost on every fixture (option C over option A).
-- ✅ **Phase I — Cover-diff relative threshold** (commit `d2a07e5`).
-  Replaces Phase G's absolute 0.03 threshold with a quality-relative
-  rule: signal iff diff ≥ 0.10 absolute OR diff/(1-min_score) ≥ 0.5.
-  Catches Hawkeye Freefall (signal at high cover scores) while
-  preserving Watchmen #009 dupe behavior (noise at medium scores).
+- ❌ **Phase H — CV broadening retry on weak top quick-score** —
+  REVERTED. Landed as `f772d75`, reverted by `62a5725`. Rev 2 with
+  source-aware discovery_pass tiebreak (`35ff22f`) also reverted by
+  `b407815` after producing 0 flips on bigmedia. The "right answer
+  not in CV's top-5" problem (7 bigmedia misses) is therefore still
+  open; see calibration follow-up below.
+- ❌ **Phase I — Cover-diff relative threshold** — REVERTED. Landed
+  as `d2a07e5`, reverted by `b33da25`. Bigmedia diff showed silent
+  CV accuracy regression (94.6% → 89.9%) on "specific trade
+  collection vs canonical series volume" pattern (Black Widow by
+  Kelly Thompson, Conan by Jim Zub, Wolverine by Claremont, Elektra
+  by Greg Rucka, etc.). Phase G's absolute 0.03 margin is restored.
+  Hawkeye Freefall reverts to noise (worth 1 fixture vs 14
+  regressions Phase G handled correctly).
+- ✅ **Phase J — Adaptive top-K for cover hashing** (commit
+  `7a44fa4`). Replaces fixed top-K with a quality-adaptive cutoff so
+  cover hashing engages on the right candidate set even when the
+  initial metadata-score distribution is flat.
+- ✅ **Phase K rev 2 — Signal-content-aware metadata renormalisation**
+  (commit `916a488`; rev 1 at `7867459` superseded). A metadata
+  signal is dropped from the denominator only when BOTH profile and
+  candidate sides are empty/None. Asymmetric absence keeps the
+  signal in the denominator and lets the signal function's
+  missing-data branch penalise the under-informed candidate
+  (s_year=0.3, s_publisher=0.5, s_pages=0.6 asymmetric). Rev 1 had
+  dropped signals on either-side-missing and let canonical-named
+  series volumes (Conan the Barbarian) beat the actual trade-
+  collection answer for thumbnail-only profiles; rev 2 fixes that
+  while preserving the Wolverine prompt-UX win (both-None →
+  signals dropped → renormalised to 1.0).
 
 **Calibration follow-ups still open** (see
 [`META-PLAN.md`](META-PLAN.md) "Calibration follow-ups" section):
 - CLI surface for `solo_confidence_threshold` (low priority)
-- Calibration re-run on bigmedia post-Phase-H/I to measure recovery
-  rate of the 7 "older record wins" misses and any regressions
+- Bigmedia re-run after Phase H/I reverts + Phase J/K rev 2 to
+  confirm recovery toward the pre-HI ~263-correct baseline and lock
+  in the K-rev-2 trade-collection ordering empirically. Manual spot-
+  checks (Conan by Jim Zub, Wolverine thumbnail) confirmed; full
+  bigmedia sweep still pending.
+- "Right answer not in CV's top-5" search-relevance problem (the
+  original Phase H motivation) remains open after two failed
+  broadening attempts. Needs a different approach than broadening
+  every weak-top query — likely query-side (more specific search
+  terms) or post-hoc (only broaden when we can detect the candidate
+  set is wrong, not just weak).
 
 
 ## 4. Architecture (post-feature)
