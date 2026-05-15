@@ -33,9 +33,7 @@ def test_jobs_setting_threadpool_invocation(tmp_path: Path) -> None:
     """Jobs > 1 routes the run through ThreadPoolExecutor."""
     paths = _make_paths(tmp_path, 4)
     runner = Runner(
-        Namespace(
-            comicbox=Namespace(paths=paths, jobs=2, print_metadata=True)
-        )
+        Namespace(comicbox=Namespace(paths=paths, jobs=2, print_metadata=True))
     )
 
     called_paths: list[Path] = []
@@ -47,9 +45,7 @@ def test_jobs_setting_threadpool_invocation(tmp_path: Path) -> None:
         runner.run()
 
     # All four paths processed, regardless of order.
-    assert sorted(p.name for p in called_paths) == [
-        f"file_{i}.cbz" for i in range(4)
-    ]
+    assert sorted(p.name for p in called_paths) == [f"file_{i}.cbz" for i in range(4)]
 
 
 def test_single_job_takes_serial_path(tmp_path: Path) -> None:

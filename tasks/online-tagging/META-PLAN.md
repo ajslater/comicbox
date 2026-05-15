@@ -191,17 +191,16 @@ Test strategy:
 
 ## API budget rollout (sub-project)
 
-Designed in [`06-api-budget-spec.md`](06-api-budget-spec.md). Rolled out
-in five phases, all shipped on the `online-tagging` branch:
+Designed in [`06-api-budget-spec.md`](06-api-budget-spec.md). Rolled out in five
+phases, all shipped on the `online-tagging` branch:
 
 - **Phase A** ✓ — Build the levers as dormant code (a754f6a).
-- **Phase B** ✓ — Calibrate against 339-fixture labeled set; pin
-  thresholds (99d794e). See
+- **Phase B** ✓ — Calibrate against 339-fixture labeled set; pin thresholds
+  (99d794e). See
   [`calibration-notes/2026-05-11-phase-b.md`](calibration-notes/2026-05-11-phase-b.md).
-- **Phase C** ✓ — Ship `--api-budget` CLI flag + auto-engagement
-  (c2b2ca6).
-- **Phase D** ✓ — Per-budget `_MAX_VOLUMES_PER_SEARCH` (fast=5) +
-  chunked-run scaffolding (`--resume`, sampler, labeler) (241fa04).
+- **Phase C** ✓ — Ship `--api-budget` CLI flag + auto-engagement (c2b2ca6).
+- **Phase D** ✓ — Per-budget `_MAX_VOLUMES_PER_SEARCH` (fast=5) + chunked-run
+  scaffolding (`--resume`, sampler, labeler) (241fa04).
 - **Phase E** ✓ — Solo-viable confidence floor; eliminates the
   solo-below-threshold silent-failure pattern (e7bfdbd).
 
@@ -217,89 +216,84 @@ stratified sample. See
 
 Items surfaced by the slimlib calibration that warrant their own work:
 
-1. **Phase E re-validation run.** Re-run the 500-fixture slimlib
-   calibration with Phase E in place. Confirms:
-   - Groo and Wanted Dossier convert from silent AUTO_WRITE → PROMPT
-   - How many of the 471 currently-correct auto-write band hits convert
-     to prompts (UX cost in real numbers)
-   - No regressions on the other 469 auto-write band hits
-   CV cache is warm so the re-run is paced by rate limits, not fetches —
-   ~1-2 days wall-clock vs 3-4 for the first time.
+1. **Phase E re-validation run.** Re-run the 500-fixture slimlib calibration
+   with Phase E in place. Confirms:
+    - Groo and Wanted Dossier convert from silent AUTO_WRITE → PROMPT
+    - How many of the 471 currently-correct auto-write band hits convert to
+      prompts (UX cost in real numbers)
+    - No regressions on the other 469 auto-write band hits CV cache is warm so
+      the re-run is paced by rate limits, not fetches — ~1-2 days wall-clock vs
+      3-4 for the first time.
 
-2. **Multi-volume year-drift signal.** The Boys 2009 / Conan 2004 cases
-   are multi-volume same-name series where the expected answer was in
-   CV's top-3 candidates but lost on year ranking. `s_year` could be
-   smarter about this: when a candidate's *volume* covers a year range
-   that includes the file's year (even if `summary.year` differs by ±N),
-   give credit. Touches: `comicbox/online/signals.py`. Worth a focused
-   investigation before deciding the fix shape.
+2. **Multi-volume year-drift signal.** The Boys 2009 / Conan 2004 cases are
+   multi-volume same-name series where the expected answer was in CV's top-3
+   candidates but lost on year ranking. `s_year` could be smarter about this:
+   when a candidate's _volume_ covers a year range that includes the file's year
+   (even if `summary.year` differs by ±N), give credit. Touches:
+   `comicbox/online/signals.py`. Worth a focused investigation before deciding
+   the fix shape.
 
 3. **Pre-filter tightening for FAST.** The Afterschool / Rain cases are
    single-candidate matches scoring 0.71-0.84 — they sneak past the 0.70
-   pre-filter threshold but the actual right answer wasn't in CV's
-   results. Tightening to 0.75 specifically for FAST would have dropped
-   these. Needs validation that it doesn't introduce false negatives.
+   pre-filter threshold but the actual right answer wasn't in CV's results.
+   Tightening to 0.75 specifically for FAST would have dropped these. Needs
+   validation that it doesn't introduce false negatives.
 
-4. **Calibration against `/Volumes/Media/Comics/`** ✓ — completed
-   2026-05-14. Sampled 247 unique-series fixtures (864 comics deduped
-   to 247 series). Final: **CV 94.3% / Metron 97.0% / Metron auto-write
-   band 100%**. Confirmed the `series_id` fix is working at scale and
-   validated Phase D-E behavior on a full-cover, Big-Two-leaning
-   library. See
+4. **Calibration against `/Volumes/Media/Comics/`** ✓ — completed 2026-05-14.
+   Sampled 247 unique-series fixtures (864 comics deduped to 247 series). Final:
+   **CV 94.3% / Metron 97.0% / Metron auto-write band 100%**. Confirmed the
+   `series_id` fix is working at scale and validated Phase D-E behavior on a
+   full-cover, Big-Two-leaning library. See
    [`calibration-notes/2026-05-14-bigmedia-247.md`](calibration-notes/2026-05-14-bigmedia-247.md)
    for full results, failure analysis, and architectural takeaways.
 
-   The main insight: the next high-leverage improvement isn't year-
-   scoring (item 2) — it's **search relevance for ambiguous queries
-   under the FAST budget**. 7 of 14 CV misses were "right answer not
-   in CV's top-5 search results" cases (Akira 2000 reissues, X-Men #1
-   Facsimile, etc.) where no scoring tweak can help because the
-   correct candidate never reaches the matcher. Possible follow-ups:
-   - Increase `_MAX_VOLUMES_PER_SEARCH` for FAST from 5 → 10 (doubles
-     API cost; might help)
-   - Add server-side year filtering at the CV search step
-   - Add a retry-with-broader-search path when no candidate clears
-     `min_confidence`
+    The main insight: the next high-leverage improvement isn't year- scoring
+    (item 2) — it's **search relevance for ambiguous queries under the FAST
+    budget**. 7 of 14 CV misses were "right answer not in CV's top-5 search
+    results" cases (Akira 2000 reissues, X-Men #1 Facsimile, etc.) where no
+    scoring tweak can help because the correct candidate never reaches the
+    matcher. Possible follow-ups:
+    - Increase `_MAX_VOLUMES_PER_SEARCH` for FAST from 5 → 10 (doubles API cost;
+      might help)
+    - Add server-side year filtering at the CV search step
+    - Add a retry-with-broader-search path when no candidate clears
+      `min_confidence`
 
-5. **CLI surface for `solo_confidence_threshold`** (low priority).
-   Internal-only for now. If real-world usage shows the 0.95 default is
-   too strict and users want to tune per-source from config.yaml or CLI,
-   that's a small plumbing exercise.
+5. **CLI surface for `solo_confidence_threshold`** (low priority). Internal-only
+   for now. If real-world usage shows the 0.95 default is too strict and users
+   want to tune per-source from config.yaml or CLI, that's a small plumbing
+   exercise.
 
 6. **Metron `series` filter bug** ✓ — fixed 2026-05-13. The
-   `_build_issue_params` filter `{"series": series_id}` was being
-   silently ignored by Metron's DRF backend; correct filter is
-   `series_id`. mokkari's docstring example is misleading. See
+   `_build_issue_params` filter `{"series": series_id}` was being silently
+   ignored by Metron's DRF backend; correct filter is `series_id`. mokkari's
+   docstring example is misleading. See
    [`calibration-notes/2026-05-13-metron-series-filter-bug.md`](calibration-notes/2026-05-13-metron-series-filter-bug.md)
    for the diagnostic story and empirical confirmation.
 
-7. **Verify `series_volume` filter behavior** ✓ — verified
-   2026-05-13. Probed Metron live against New Mutants Vol 4
-   (series.id=794, volume=4):
+7. **Verify `series_volume` filter behavior** ✓ — verified 2026-05-13. Probed
+   Metron live against New Mutants Vol 4 (series.id=794, volume=4):
 
-   | Query                                            | Count |
-   | ------------------------------------------------ | ----- |
-   | `series_id=794`                                  |    33 |
-   | `series_id=794, series_volume=4`  (right volume) |    33 |
-   | `series_id=794, series_volume=99` (wrong volume) |     0 |
+    | Query                                            | Count |
+    | ------------------------------------------------ | ----- |
+    | `series_id=794`                                  | 33    |
+    | `series_id=794, series_volume=4` (right volume)  | 33    |
+    | `series_id=794, series_volume=99` (wrong volume) | 0     |
 
-   The filter works correctly. No fix needed. Note that
-   `series_volume` is effectively redundant when combined with
-   `series_id` (since each Metron series_id IS a single volume),
-   but it doesn't cause bugs and the drop-volume retry path
-   provides defense against filename "Vol. N" mistakes.
+    The filter works correctly. No fix needed. Note that `series_volume` is
+    effectively redundant when combined with `series_id` (since each Metron
+    series_id IS a single volume), but it doesn't cause bugs and the drop-volume
+    retry path provides defense against filename "Vol. N" mistakes.
 
-   Reference: metron-tagger doesn't use `series_volume` at all —
-   relies on `series_id` uniqueness alone. We retain ours as a
-   secondary check + retry-safety net; it costs negligible API
-   budget (1 extra query per fixture with profile.volume set, and
-   most fixtures don't set it).
+    Reference: metron-tagger doesn't use `series_volume` at all — relies on
+    `series_id` uniqueness alone. We retain ours as a secondary check +
+    retry-safety net; it costs negligible API budget (1 extra query per fixture
+    with profile.volume set, and most fixtures don't set it).
 
 ## Follow-up work (after this feature ships)
 
-> The full follow-up checklist lives in [TODO.md](TODO.md). The
-> high-level entries below are kept here for context.
-
+> The full follow-up checklist lives in [TODO.md](TODO.md). The high-level
+> entries below are kept here for context.
 
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo, MetronInfo,
   ComicBookInfo, CoMet, ComicTagger, PDF, plus the new Metron and ComicVine
@@ -312,13 +306,13 @@ Items surfaced by the slimlib calibration that warrant their own work:
   classes (which still handle PDF `keywords` deserialization sanely) may be
   simplifiable. Investigate post-feature; out of scope for online tagging.
 - **CV `description` HTML sanitization.** ComicVine's `description` field
-  carries HTML markup (`<p>`, `<a>`, etc.). The M6 transform passes it
-  through to `comicbox.summary` as-is. Decide whether to strip/escape on
-  read; could live in the transform itself or as a computed-step pass.
-  Touches: `comicbox/transforms/comicvine_api/`.
+  carries HTML markup (`<p>`, `<a>`, etc.). The M6 transform passes it through
+  to `comicbox.summary` as-is. Decide whether to strip/escape on read; could
+  live in the transform itself or as a computed-step pass. Touches:
+  `comicbox/transforms/comicvine_api/`.
 - **Richer Metron + ComicVine field mappings.** M2/M6 ship a focused subset
   (issue, series, dates, summary, page count, cover, publisher, collection
   title, modified). Add characters, teams, story arcs, credits with roles,
   identifiers (cross-source), prices, story_titles → stories, reprints,
-  variants. Touches the per-format key maps and may need new `MetaSpec`
-  builders for collections.
+  variants. Touches the per-format key maps and may need new `MetaSpec` builders
+  for collections.

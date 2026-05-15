@@ -179,8 +179,8 @@ comicbox --import comicinfo.xml --write cix "My Overtagged Comic.cbz"
 
 #### Online Tagging
 
-Comicbox can fetch metadata from online comic databases (Metron and
-ComicVine), match it against the comic at hand, and write the result.
+Comicbox can fetch metadata from online comic databases (Metron and ComicVine),
+match it against the comic at hand, and write the result.
 
 ```sh
 # One comic, interactive — comicbox prompts when the match isn't obvious.
@@ -198,30 +198,30 @@ comicbox --online metron --series-id metron:100 "comic.cbz"
 
 ##### Credentials
 
-Each source needs credentials before it can run. Resolution order is
-**CLI > env > config file > keyring**:
+Each source needs credentials before it can run. Resolution order is **CLI >
+env > config file > keyring**:
 
-| Source    | Required          | Env vars                                                  |
-|-----------|-------------------|-----------------------------------------------------------|
-| metron    | username + password | `COMICBOX_METRON_USERNAME`, `COMICBOX_METRON_PASSWORD`   |
-| comicvine | api_key           | `COMICBOX_COMICVINE_API_KEY`                              |
+| Source    | Required            | Env vars                                               |
+| --------- | ------------------- | ------------------------------------------------------ |
+| metron    | username + password | `COMICBOX_METRON_USERNAME`, `COMICBOX_METRON_PASSWORD` |
+| comicvine | api_key             | `COMICBOX_COMICVINE_API_KEY`                           |
 
 Or set them in `~/.config/comicbox/config.yaml`:
 
 ```yaml
 comicbox:
-  online:
-    metron:
-      username: alice
-      password: secret
-    comicvine:
-      api_key: xyz123
+    online:
+        metron:
+            username: alice
+            password: secret
+        comicvine:
+            api_key: xyz123
 ```
 
 ##### Match-resolution policy
 
-When the match is unambiguous, comicbox writes silently. When it isn't,
-the policy decides whether to prompt, skip, or write anyway.
+When the match is unambiguous, comicbox writes silently. When it isn't, the
+policy decides whether to prompt, skip, or write anyway.
 
 ```sh
 # --policy: how aggressively to auto-write
@@ -231,8 +231,8 @@ the policy decides whether to prompt, skip, or write anyway.
 #   eager         — auto-write any top above threshold, even with close runner-up
 
 # --unattended: never prompt; turn would-be prompts into skips
-comicbox --online metron --unattended --policy strict ./comics/  # cautious cron
-comicbox --online metron --unattended --policy eager ./comics/   # trust the matcher
+comicbox --online metron --unattended --policy strict ./comics/ # cautious cron
+comicbox --online metron --unattended --policy eager ./comics/  # trust the matcher
 
 # Per-source overrides (mirrors the --id <db>:<id> pattern):
 comicbox --online all --policy metron:eager --policy comicvine:strict ...
@@ -249,8 +249,8 @@ Online tagging summary (24 comics × sources):
    2 no-match (nothing scored above min_confidence)
 ```
 
-The legacy flags `--accept-only` and `--skip-multiple` still work but
-emit a deprecation warning and translate to `--policy normal` and
+The legacy flags `--accept-only` and `--skip-multiple` still work but emit a
+deprecation warning and translate to `--policy normal` and
 `--unattended --policy strict` respectively.
 
 For the full algorithm and worked examples, see
