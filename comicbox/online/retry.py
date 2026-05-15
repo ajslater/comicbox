@@ -39,14 +39,31 @@ _MAX_RETRY_AFTER_S = 3600.0
 # minutes for the rolling window to slide forward. Our generic 1-2-4-8-16
 # schedule tops out at 31s total — far too short for an hourly cap.
 # This schedule starts at 30s (one second-bucket reset plus margin) and
-# escalates to 10-min waits, with a total budget of ~18 minutes across
-# 5 attempts. Enough to clear a typical hourly-cap hit without giving
-# up on transient server-side enforcement glitches (clock skew, burst
-# protection) that locally-paced 1/sec calls occasionally trip.
+# escalates to 10-min waits, then plateaus there for the tail. Enough
+# to clear a typical hourly-cap hit without giving up on transient
+# server-side enforcement glitches (clock skew, burst protection) that
+# locally-paced 1/sec calls occasionally trip.
+#
+# The plateau-tail matters under -j N parallel batches: the
+# 2026-05-15-stress-100 run quantified retry-exhaustion cascades on
+# high-fan-out fixtures (a single Conan-titled fixture fans out to 20+
+# candidate series, all hitting Metron's 20/min cap simultaneously
+# under -j 8). 5 attempts wasn't enough to clear the cascade for some
+# candidates — 8 attempts gives a worker that gets repeatedly bucketed
+# enough room to recover without dropping its series.
 #
 # Honored only when there's no server-supplied `retry_after` hint;
 # mokkari sets that explicitly, simyan does not.
-_RATE_LIMIT_SCHEDULE: Final[tuple[float, ...]] = (30.0, 60.0, 120.0, 300.0, 600.0)
+_RATE_LIMIT_SCHEDULE: Final[tuple[float, ...]] = (
+    30.0,
+    60.0,
+    120.0,
+    300.0,
+    600.0,
+    600.0,
+    600.0,
+    600.0,
+)
 
 # Max retry attempts for rate-limit errors specifically. Generic errors
 # stay at `max_retries=5` (31s total budget for transient 5xx). Going

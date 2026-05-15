@@ -250,8 +250,7 @@ class MetronOnlineSource(OnlineSource):
             )
             return []
         try:
-            self._record_api_call("series_list")
-            series_results = session.series_list(params={"name": profile.series})
+            series_results = self._series_list_with_retry(session, profile.series)
         except Exception as exc:
             logger.warning(f"online {self.name}: series search failed: {exc}")
             raise
@@ -339,6 +338,20 @@ class MetronOnlineSource(OnlineSource):
                 )
                 candidates.extend(retry)
         return candidates
+
+    @with_retry()
+    def _series_list_with_retry(self, session: Session, name: str) -> Any:
+        """
+        Per-call retry wrapper around `session.series_list`.
+
+        The series search runs once per fixture; under -j N batch
+        contention the call competes with workers' issue-list calls
+        for the same 20/min Metron bucket. Pre-fix, this call was
+        un-retried — see the 2026-05-15-stress-100 calibration note
+        for the WARNING count it generated.
+        """
+        self._record_api_call("series_list")
+        return session.series_list(params={"name": name})
 
     @with_retry()
     def _issues_list_with_retry(

@@ -82,20 +82,20 @@ Marker conventions:
   data (default 1, sweet-spot 4, spec'd-target 8 with caveat). See
   the stress-test calibration note for the underlying numbers.
 
-**Bugs surfaced by the stress run (separate follow-ups):**
+**Bugs surfaced by the stress run:**
 
-- `Metron.series_list` at `comicbox/online/sources/metron.py:254` is
-  **not** wrapped by `@with_retry()`. Six terminal rate-limit
-  failures in the stress run came from this gap. Audit ComicVine's
-  equivalent path for the same issue.
-- `_MAX_RATE_LIMIT_RETRIES = 5` is **too small under -j 8 contention
-  on high-fan-out fixtures** — promoted from "worth measuring" after
-  the 100-fixture run quantified the cascade: 465 issue-list WARNINGs
-  concentrated on 32 series, with single Conan-titled fixtures fan-
-  outting to 20+ candidate series that all exhaust retries
-  simultaneously. Bumping to 8 (or making it `-j`-aware) is needed
-  before -j 8 becomes a reasonable default. See
-  [`calibration-notes/2026-05-15-stress-100.md`](calibration-notes/2026-05-15-stress-100.md).
+- ✅ **`Metron.series_list` un-retried** — fixed 2026-05-15. New
+  `_series_list_with_retry` helper at `metron.py`. Audit also found
+  two CV equivalents (`session.search(VOLUME, ...)` and the
+  supplementary `get_volume(...)`), both wrapped in the same pass.
+  Re-run dropped series-search WARNINGs from 86 to 3 (-96%); see
+  [`calibration-notes/2026-05-15-stress-100-verify.md`](calibration-notes/2026-05-15-stress-100-verify.md).
+- ✅ **`_MAX_RATE_LIMIT_RETRIES = 5` too small** — fixed 2026-05-15.
+  Bumped to 8 via `_RATE_LIMIT_SCHEDULE` plateau extension. Re-run
+  cut issue-list WARNINGs by two-thirds (465 → 158). What remains
+  is the inherent high-fan-out problem (Conan-titled fixtures
+  fanning out to 20+ candidate series in Metron); further reduction
+  needs fan-out caps or `-j`-aware budgets, not just more retries.
 - **Tagging-quality measurement under -j 8 cold cache.** The 100-
   fixture run proved no crashes / no rate violations, but partial
   candidate-set drops on high-fan-out fixtures mean some matches
@@ -103,6 +103,8 @@ Marker conventions:
   run a labeled calibration set at -j 8 vs -j 1, diff the outcomes,
   quantify the accuracy cost of parallelism. Most user-visible
   consequence of -j 8 and probably the most important follow-up.
+  **Even more important post-fixes** — the residual 158 issue-list
+  WARNINGs on 29 series are the candidate drops worth measuring.
 
 
 ## 3. API budget
@@ -178,8 +180,24 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   terms) or post-hoc (only broaden when we can detect the candidate
   set is wrong, not just weak).
 
+## 4. Search quality
 
-## 4. Architecture (post-feature)
+- 🔍 **Retry-relaxation order: volume vs year.** Current order is
+  `(year, volume) → year ±1 → drop volume → drop volume + year ±1`.
+  This treats volume as more reliable than year — but for an
+  undertagged comic the opposite might be true: scanners often drop
+  or guess volume entirely, while cover-date drift is a ±1 thing that
+  doesn't make the year *wrong*, just adjacent. Worth A/B-ing with
+  real-world miss data: try `(year, volume) → drop volume → year ±1
+  → drop both` and see which order finds more correct matches with
+  fewer API calls. Decision needs miss-rate telemetry from a
+  calibration set, not a guess.
+
+## 5. Variants Exploration
+
+- Metron has `Issue.variants` and ComicVine has `associated_images`, GCD has `variant_of`. Explore the utility of a variant schema for comicbox. Mostly only worth doing if it enhances search quality.
+
+## 6. Architecture (post-feature)
 
 - **Flavor A plugin refactor.** Consolidate each format (ComicInfo,
   MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF, Metron API,
@@ -219,16 +237,6 @@ NEWS.md entry under the version that ships it. Don't let the list rot.
   canonical stored name keeps them. The right fix for this lives
   upstream (DB fuzz) or in the filename parser (don't strip dots), not
   in client-side query expansion.
-- 🔍 **Retry-relaxation order: volume vs year.** Current order is
-  `(year, volume) → year ±1 → drop volume → drop volume + year ±1`.
-  This treats volume as more reliable than year — but for an
-  undertagged comic the opposite might be true: scanners often drop
-  or guess volume entirely, while cover-date drift is a ±1 thing that
-  doesn't make the year *wrong*, just adjacent. Worth A/B-ing with
-  real-world miss data: try `(year, volume) → drop volume → year ±1
-  → drop both` and see which order finds more correct matches with
-  fewer API calls. Decision needs miss-rate telemetry from a
-  calibration set, not a guess.
 - **Series-list volume narrowing (Metron).** When `profile.volume` is
   set, we *could* also pass it to `series_list` to pre-filter the
   candidate-series set before fan-out (Metron exposes `volume` as a

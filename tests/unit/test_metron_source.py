@@ -241,6 +241,52 @@ def test_search_retries_per_call_on_rate_limit(
     assert len(fake.issues_list_calls) == 2
 
 
+def test_search_retries_series_list_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `series_list` is now also retry-wrapped.
+
+    Pre-fix: a `RateLimitError` from `series_list` propagated up
+    through `except Exception: ... raise`, dropping the whole
+    fixture's candidate set. The 2026-05-15-stress-100 run counted 86
+    such cases in 100 fixtures. With `_series_list_with_retry`, the
+    retry decorator catches the error, sleeps the hinted duration,
+    and replays the call.
+    """
+    s1 = _FakeBaseSeries(sid=100, name="A")
+    issues = {100: [_FakeBaseIssue(iid=5001, number="1", series_name="A")]}
+
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _SeriesRateLimitedMokkari(_FakeMokkari):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self._fail_count = 0
+
+        def series_list(
+            self, params: dict | None = None
+        ) -> list[_FakeBaseSeries]:
+            if self._fail_count < 1:
+                self.series_list_calls.append(dict(params or {}))
+                self._fail_count += 1
+                raise RateLimitError(retry_after=0.001)
+            return super().series_list(params)
+
+    fake = _SeriesRateLimitedMokkari(series=[s1], issues_by_series=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="A", issue="1", issue_int=1)
+    candidates = src.search(profile)
+    # The retry succeeded — we got the issue. Pre-fix, the rate-limit
+    # error from series_list would have aborted the whole search.
+    assert [c.issue_id for c in candidates] == [5001]
+    # Two series_list calls happened: the rate-limited one + the replay.
+    assert len(fake.series_list_calls) == 2
+
+
 # ---------------------------------------------------------- --series-id
 
 

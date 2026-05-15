@@ -100,8 +100,7 @@ class ComicVineOnlineSource(OnlineSource):
         )
         if volume_id is not None:
             try:
-                self._record_api_call("get_volume")
-                volume = session.get_volume(int(volume_id))
+                volume = self._get_volume_with_retry(session, int(volume_id))
             except Exception as exc:
                 logger.warning(
                     f"online {self.name}: get_volume({volume_id}) failed; "
@@ -196,6 +195,44 @@ class ComicVineOnlineSource(OnlineSource):
     # dating across publisher fiscal year boundaries) without keeping
     # outright impossible volumes.
     _VOLUME_START_YEAR_SLOP: ClassVar[int] = 1
+
+    @with_retry()
+    def _get_volume_with_retry(self, session: Any, volume_id: int) -> Any:
+        """
+        Per-call retry wrapper around `session.get_volume`.
+
+        This is the supplementary publisher-lookup call in `get()`. The
+        outer `get()` is itself `@with_retry()`-decorated but its inner
+        `try/except` swallows rate-limit errors as "best effort" —
+        meaning under -j N contention every transient rate-limit on
+        get_volume silently drops the publisher field. Wrapping the
+        call here lets rate-limit hits replay transparently; the outer
+        except only catches terminal failures (404, retries exhausted).
+        """
+        self._record_api_call("get_volume")
+        return session.get_volume(volume_id)
+
+    @with_retry()
+    def _volume_search_with_retry(
+        self, session: Any, query: str, max_results: int
+    ) -> list[Any]:
+        """
+        Per-call retry wrapper around `session.search(VOLUME, ...)`.
+
+        Mirrors the Metron `_series_list_with_retry` fix from the same
+        2026-05-15-stress-100 audit pass: the volume-search call was
+        un-retried, so under -j N contention a single rate-limit hit
+        would drop the entire fixture's candidate set instead of
+        retrying transparently.
+        """
+        from simyan.comicvine import ComicvineResource
+
+        self._record_api_call("search_volumes")
+        return session.search(
+            resource=ComicvineResource.VOLUME,
+            query=query,
+            max_results=max_results,
+        )
 
     @with_retry()
     def _list_issues_by_volume(
@@ -317,8 +354,6 @@ class ComicVineOnlineSource(OnlineSource):
                 "--series-id comicvine:<id>)"
             )
             return []
-        from simyan.comicvine import ComicvineResource
-
         from comicbox.config.settings import resolve_api_budget
         from comicbox.online.series_filter import max_results_for
 
@@ -332,11 +367,8 @@ class ComicVineOnlineSource(OnlineSource):
             default=self._MAX_VOLUMES_PER_SEARCH,
         )
         try:
-            self._record_api_call("search_volumes")
-            volumes = session.search(
-                resource=ComicvineResource.VOLUME,
-                query=profile.series,
-                max_results=max_volumes,
+            volumes = self._volume_search_with_retry(
+                session, profile.series, max_volumes
             )
         except Exception as exc:
             logger.warning(f"online {self.name}: volume search failed: {exc}")

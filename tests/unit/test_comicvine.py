@@ -262,6 +262,49 @@ def test_search_volumes_via_full_text(
     assert call["query"] == "GI Joe"
 
 
+def test_search_retries_volume_search_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `session.search(VOLUME, ...)` is now retry-wrapped.
+
+    Pre-fix: a `RateLimitError` from CV's volume search propagated up
+    through `except Exception: ... raise`, dropping the whole fixture's
+    candidate set. Mirrors the Metron `series_list` fix from the same
+    2026-05-15-stress-100 audit pass.
+    """
+    vol1 = _FakeBasicVolume(vid=100, name="A")
+    issues = {100: [_FakeBasicIssue(iid=5001, number="1", volume_name="A")]}
+
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float = 0) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _RateLimitedCV(_FakeCV):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self._fail_count = 0
+
+        def search(self, resource, query, max_results=500):
+            if self._fail_count < 1:
+                self.search_calls.append(
+                    {"resource": resource, "query": query, "max_results": max_results}
+                )
+                self._fail_count += 1
+                raise RateLimitError(retry_after=0.001)
+            return super().search(resource, query, max_results)
+
+    fake_cv = _RateLimitedCV(volumes=[vol1], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="A", issue="1", issue_int=1)
+    candidates = src.search(profile)
+    # The retry succeeded — we got the issue.
+    assert [c.issue_id for c in candidates] == [5001]
+    # Two search calls happened: the rate-limited one + the replay.
+    assert len(fake_cv.search_calls) == 2
+
+
 def _make_cv_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV, series_id: int
 ) -> ComicVineOnlineSource:
@@ -379,8 +422,13 @@ class _FakeCVForGet:
     def get_volume(self, volume_id: int) -> _FakeFullVolume:
         self.get_volume_calls.append(volume_id)
         if self._volume is None:
+            # ValueError is in `_NON_RETRIABLE` so the retry decorator
+            # passes it through unchanged. That matches the test's
+            # intent (graceful degradation on a permanent failure)
+            # rather than triggering the rate-limit retry path, which
+            # has its own dedicated test below.
             msg = f"no fake volume for {volume_id}"
-            raise RuntimeError(msg)
+            raise ValueError(msg)
         return self._volume
 
 
@@ -438,6 +486,52 @@ def test_get_handles_get_volume_failure_gracefully(
     # The issue fetch itself wasn't disrupted.
     assert fake_cv.get_issue_calls == [42]
     assert fake_cv.get_volume_calls == [999]
+
+
+def test_get_retries_get_volume_on_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    `get_volume`'s rate-limit hits replay transparently.
+
+    Pre-fix: the inner `try/except` in `get()` swallowed ALL exceptions
+    from `get_volume`, including `RateLimitError`. Under -j N cold-cache
+    contention, that silently dropped publisher fields on every
+    rate-limit hit. With `_get_volume_with_retry`, rate-limit errors
+    retry inside the helper; only terminal failures (404, retries
+    exhausted) hit the outer `except: warn`.
+    """
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(
+        vid=999, name="X-Men", publisher=_FakeGenericEntry(eid=1, name="Marvel")
+    )
+
+    class RateLimitError(Exception):
+        def __init__(self, retry_after: float = 0) -> None:
+            super().__init__("Rate limit exceeded")
+            self.retry_after = retry_after
+
+    class _RateLimitedGetCV(_FakeCVForGet):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self._fail_count = 0
+
+        def get_volume(self, volume_id: int) -> _FakeFullVolume:
+            if self._fail_count < 1:
+                self.get_volume_calls.append(volume_id)
+                self._fail_count += 1
+                raise RateLimitError(retry_after=0.001)
+            return super().get_volume(volume_id)
+
+    fake_cv = _RateLimitedGetCV(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+    # The retry succeeded — publisher came through.
+    assert payload["id"] == 42
+    assert payload.get("publisher", {}).get("name") == "Marvel"
+    # Two get_volume calls: the rate-limited one + the replay.
+    assert fake_cv.get_volume_calls == [999, 999]
 
 
 # ----------------------------------------- cover_date year-window filter
