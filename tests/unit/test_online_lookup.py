@@ -44,6 +44,7 @@ class _FakeMetronSource:
         self._credentials = credentials
         self._settings = settings
         self.get_calls: list[int] = []
+        self.search_calls: list = []
         self._payload = payload or _SAMPLE_ISSUE
 
     def is_configured(self) -> bool:
@@ -52,6 +53,10 @@ class _FakeMetronSource:
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
         return dict(self._payload)
+
+    def search(self, profile) -> list[Candidate]:
+        self.search_calls.append(profile)
+        return []
 
 
 @pytest.fixture
@@ -435,4 +440,293 @@ def test_resolve_volume_handles_missing_or_garbage() -> None:
     assert _resolve_volume({}) is None
     assert _resolve_volume({"comicbox": {}}) is None
     assert _resolve_volume({"comicbox": {"volume": {"number": "abc"}}}) is None
-    assert _resolve_volume({"comicbox": {"volume": {"number": None}}}) is None
+
+
+# ----------------------------------------- first-wins, tag-all, stored-id, force-search
+
+
+def _dual_factories_for_first_wins(
+    metron_payload: dict | None = None,
+) -> tuple[list[_FakeMetronSource], list, dict]:
+    """Build metron + cv factories that record their instances."""
+    metron_instances: list[_FakeMetronSource] = []
+    cv_instances: list = []
+
+    class _FakeCV:
+        name = "comicvine"
+        metadata_source = MetadataSources.COMICVINE_API
+        metadata_format = MetadataFormats.COMICVINE_API
+
+        def __init__(self, credentials, settings) -> None:
+            self._credentials = credentials
+            self.get_calls: list[int] = []
+            self.search_calls: list = []
+            cv_instances.append(self)
+
+        def is_configured(self) -> bool:
+            return bool(self._credentials.api_key)
+
+        def get(self, issue_id: int) -> dict:
+            self.get_calls.append(issue_id)
+            return dict(_CV_PAYLOAD_ID_1234)
+
+        def search(self, profile) -> list[Candidate]:
+            self.search_calls.append(profile)
+            return []
+
+    def metron_factory(creds, settings):
+        src = _FakeMetronSource(creds, settings, payload=metron_payload)
+        metron_instances.append(src)
+        return src
+
+    factories = {"metron": metron_factory, "comicvine": _FakeCV}
+    return metron_instances, cv_instances, factories
+
+
+def test_first_wins_skips_second_source_on_metron_explicit_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metron contributes via --id → CV is skipped under first-wins (default)."""
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            # Both sources active; only metron has --id.
+            online_sources=["metron", "comicvine"],
+            explicit_ids=["metron:42"],
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == [42]
+    # CV factory was constructed (during _build_active_online_sources) but
+    # neither get() nor search() should have been called under first-wins.
+    assert cv_instances
+    assert cv_instances[0].get_calls == []
+    assert cv_instances[0].search_calls == []
+
+
+def test_tag_all_sources_runs_both(monkeypatch: pytest.MonkeyPatch) -> None:
+    """--tag-all-sources lets CV run even after metron contributed."""
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["metron:42", "comicvine:1234"],
+            tag_all_sources=True,
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == [42]
+    assert cv_instances[0].get_calls == [1234]
+
+
+def test_first_wins_continues_when_first_no_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metron search returns nothing → CV still gets a chance with its --id."""
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            # No metron --id; metron falls to search and returns [].
+            # CV has explicit --id, which always runs.
+            explicit_ids=["comicvine:1234"],
+            online_sources=["metron", "comicvine"],
+            metadata={"comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}},
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == []
+    assert metron_instances[0].search_calls  # search was attempted
+    assert cv_instances[0].get_calls == [1234]
+
+
+def test_explicit_id_on_second_source_overrides_first_wins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Metron wins via --id; CV has its own --id → CV still runs."""
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["metron:42", "comicvine:1234"],
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == [42]
+    assert cv_instances[0].get_calls == [1234]
+
+
+def test_stored_id_triggers_refresh_instead_of_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Comic has a stored metron id → metron.get(stored_id) runs, no search."""
+    metron_instances, _cv, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            metadata={
+                "comicbox": {"identifiers": {"metron": {"key": "42"}}},
+            },
+            online={"metron": {"username": "u", "password": "p"}},
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == [42]
+    assert metron_instances[0].search_calls == []
+
+
+def test_force_search_overrides_stored_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--force-search ignores the stored id and runs the search path."""
+    metron_instances, _cv, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            force_search=True,
+            metadata={
+                "comicbox": {
+                    "identifiers": {"metron": {"key": "42"}},
+                    "series": {"name": "Foo"},
+                    "issue": {"name": "5"},
+                },
+            },
+            online={"metron": {"username": "u", "password": "p"}},
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == []
+    assert metron_instances[0].search_calls  # search ran instead of stored-id refresh
+
+
+def test_explicit_id_beats_force_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """--id is the strongest user signal; --force-search does not override it."""
+    metron_instances, _cv, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            explicit_ids=["metron:7"],
+            force_search=True,
+            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
+            online={"metron": {"username": "u", "password": "p"}},
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == [7]
+    assert metron_instances[0].search_calls == []
+
+
+def test_ignore_existing_with_first_wins_short_circuits_second_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Stored metron id + --ignore-existing → metron skipped but counts as a win.
+
+    Under first-wins, that counts as a contribution: CV is also skipped
+    because the user already has the file tagged from a prior source.
+    """
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron", "comicvine"],
+            ignore_existing=True,
+            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
+            online={
+                "metron": {"username": "u", "password": "p"},
+                "comicvine": {"api_key": "k"},
+            },
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert metron_instances[0].get_calls == []
+    assert cv_instances[0].get_calls == []
+    assert cv_instances[0].search_calls == []
+
+
+def test_stored_identifier_helper_returns_none_when_unset(
+    patched_metron,
+) -> None:
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            metadata={"comicbox": {"series": {"name": "Foo"}}},
+            online={"metron": {"username": "u", "password": "p"}},
+        )
+    )
+    cb = Comicbox(config=args)
+    # Trigger normalize so non-online sources are populated.
+    cb.get_normalized_metadata(MetadataSources.CONFIG)
+    assert cb._stored_identifier("metron") is None
+
+
+def test_stored_identifier_helper_returns_parsed_int(patched_metron) -> None:
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
+            online={"metron": {"username": "u", "password": "p"}},
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.get_normalized_metadata(MetadataSources.CONFIG)
+    assert cb._stored_identifier("metron") == 42

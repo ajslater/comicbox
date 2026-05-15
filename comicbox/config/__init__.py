@@ -81,6 +81,8 @@ _ONLINE_TEMPLATE = MappingTemplate(
         "policy": Optional(str),
         "unattended": bool,
         "confidence_threshold": Number(),
+        "tag_all_sources": bool,
+        "force_search": bool,
         # Legacy flags — still accepted for backward compat; the CLI
         # parser translates them to `policy` / `unattended` with a
         # deprecation warning.
@@ -305,6 +307,22 @@ def _build_online_settings(
         )
     )
 
+    tag_all_sources = bool(
+        _coalesce(
+            _cli("tag_all_sources"),
+            policy_env.get("tag_all_sources"),
+            online.tag_all_sources,
+        )
+    )
+
+    force_search = bool(
+        _coalesce(
+            _cli("force_search"),
+            policy_env.get("force_search"),
+            online.force_search,
+        )
+    )
+
     cache_enabled = bool(
         _coalesce(policy_env.get("cache_enabled"), online.cache_enabled)
     )
@@ -351,6 +369,8 @@ def _build_online_settings(
     return OnlineSettings(
         enabled=runtime.enabled,
         selected_sources=runtime.selected_sources,
+        tag_all_sources=tag_all_sources,
+        force_search=force_search,
         explicit_ids=dict(runtime.explicit_ids),
         explicit_series_ids=dict(runtime.explicit_series_ids),
         policy=resolved_policy.policy,

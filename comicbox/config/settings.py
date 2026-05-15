@@ -122,6 +122,17 @@ class OnlineSettings:
     # Runtime-only (CLI-derived; never lives in the config file)
     enabled: bool = False
     selected_sources: frozenset[str] | None = None
+    # First-wins vs tag-with-every-source. Default False means: stop after
+    # the first online source that contributes data (or has a stored id
+    # from a prior tag). Sources passed via --id / --series-id always run
+    # regardless. Order is the priority of `_DEFAULT_SOURCE_FACTORIES`
+    # in `box/online_lookup.py` (metron first, then comicvine).
+    tag_all_sources: bool = False
+    # When True, force a full search even if the comic already has a
+    # stored identifier for the source. Use to override stale or wrong
+    # ids without manually passing --id. Does not override an explicit
+    # --id flag (which is the strongest user signal).
+    force_search: bool = False
     explicit_ids: Mapping[str, int] = field(default_factory=dict)
     # Optional `--series-id <db>:<id>`: skips the per-source series-discovery
     # step and constrains issue lookup to the named series id directly.

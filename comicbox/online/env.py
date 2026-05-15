@@ -33,6 +33,8 @@ _POLICY_FIELDS: Mapping[str, str] = {
     "ACCEPT_ONLY": "accept_only",
     "SKIP_MULTIPLE": "skip_multiple",
     "IGNORE_EXISTING": "ignore_existing",
+    "TAG_ALL_SOURCES": "tag_all_sources",
+    "FORCE_SEARCH": "force_search",
     "CONFIDENCE_THRESHOLD": "confidence_threshold",
     "API_BUDGET": "api_budget",
     "CACHE_ENABLED": "cache_enabled",
@@ -89,6 +91,8 @@ def read_policy_env(env: Mapping[str, str]) -> dict[str, Any]:
             "accept_only",
             "skip_multiple",
             "ignore_existing",
+            "tag_all_sources",
+            "force_search",
             "cache_enabled",
             "refresh_cache",
         }:

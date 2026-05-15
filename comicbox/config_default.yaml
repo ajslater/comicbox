@@ -60,6 +60,16 @@ comicbox:
     policy: normal
     unattended: False
     confidence_threshold: 0.95
+    # When False (default), stop after the first online source that
+    # contributes data (or has a stored id from a prior tag). Set True
+    # to query every configured source. Sources named on the CLI via
+    # --id / --series-id always run regardless. Priority order is
+    # metron, then comicvine.
+    tag_all_sources: False
+    # When True, force a full search even if the comic already has a
+    # stored identifier for the source. Does not override an explicit
+    # --id flag.
+    force_search: False
     # Legacy flags — translated to `policy`/`unattended` at run time with
     # a deprecation warning. Will be removed in a future release.
     skip_multiple: False

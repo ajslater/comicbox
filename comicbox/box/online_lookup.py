@@ -283,6 +283,33 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                     return True
         return False
 
+    def _stored_identifier(self, source_name: str) -> int | None:
+        """
+        Return the upstream issue id for `source_name` stored on the comic, if any.
+
+        Scans every non-online normalized source for
+        ``comicbox.identifiers.<source_name>.key`` and returns the first
+        value that parses as an int. Used to drive a fast `source.get(id)`
+        refresh in lieu of a full search when the comic was previously
+        tagged. Returns None when no parseable stored id is found.
+        """
+        keypath = f"comicbox.identifiers.{source_name}.key"
+        for src in MetadataSources:
+            if src in _ONLINE_SOURCE_ENUMS:
+                continue
+            normalized = self.get_normalized_metadata(src)
+            if not normalized:
+                continue
+            for loaded in normalized:
+                raw = glom(dict(loaded.metadata), keypath, default=None)
+                if raw is None:
+                    continue
+                try:
+                    return int(raw)
+                except (TypeError, ValueError):
+                    continue
+        return None
+
     def _wrap_payload(self, source: OnlineSource, payload: dict[str, Any]) -> dict:
         """Wrap raw API response under the format's ROOT_TAG for schema.load."""
         schema_class = source.metadata_format.value.schema_class
@@ -533,22 +560,48 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         # ResolutionKind.PROMPT — invoke the selector callback.
         self._handle_prompt(source, resolution.candidates)
 
-    def _lookup_one_source(self, source: OnlineSource) -> None:
-        if self._config.online.ignore_existing and self._has_existing_identifier(
-            source.name
-        ):
-            logger.info(
-                f"online {source.name}: --ignore-existing skipping "
-                f"(already has {source.name} id)"
-            )
-            return
-        explicit_ids = self._config.online.explicit_ids
+    def _lookup_one_source(self, source: OnlineSource) -> bool:
+        """
+        Drive the lookup for one source; return True iff the source "won".
+
+        A win is any of: explicit-id fetch, --ignore-existing skip on a
+        pre-tagged file, stored-id refresh, or an accepted search result.
+        The win signal feeds the first-wins early-exit in `run_online_lookup`.
+        """
+        online = self._config.online
+        # Explicit --id is the strongest user signal. It overrides
+        # --force-search and --ignore-existing.
+        explicit_ids = online.explicit_ids
         issue_id = explicit_ids.get(source.name)
         if issue_id is not None:
             outcome_stats.record_explicit_id(source.name)
             self._fetch_explicit_id(source, issue_id)
-            return
+            return True
+
+        if online.ignore_existing and self._has_existing_identifier(source.name):
+            logger.info(
+                f"online {source.name}: --ignore-existing skipping "
+                f"(already has {source.name} id)"
+            )
+            return True
+
+        # Fast refresh: a stored upstream id from a prior tag lets us
+        # call source.get(id) instead of walking the full search path.
+        # Suppressed by --force-search for users who want to re-evaluate
+        # a stale/wrong id.
+        if not online.force_search:
+            stored_id = self._stored_identifier(source.name)
+            if stored_id is not None:
+                logger.info(
+                    f"online {source.name}: refreshing via stored id={stored_id}"
+                )
+                self._fetch_explicit_id(source, stored_id)
+                return True
+
+        before = len(self._sources.get(source.metadata_source) or ())
         self._search_path(source)
+        after = len(self._sources.get(source.metadata_source) or ())
+        return after > before
 
     def _first_normalized(self, src: MetadataSources) -> dict | None:
         """First normalized metadata dict from `src`, or None if unset."""
@@ -590,10 +643,25 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if self._online_lookup_already_done():
             return
         self._mark_online_lookup_done()
-        if not self._config.online.enabled:
+        online = self._config.online
+        if not online.enabled:
             return
-        if not self._config.online.unattended:
+        if not online.unattended:
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
+        won_any = False
         for source in self._build_active_online_sources():
-            self._lookup_one_source(source)
+            # Explicit per-source flags always run — first-wins must not
+            # silently drop a source the user named on the CLI.
+            has_explicit = (
+                source.name in online.explicit_ids
+                or source.name in online.explicit_series_ids
+            )
+            if won_any and not online.tag_all_sources and not has_explicit:
+                logger.info(
+                    f"online {source.name}: skipped (first-wins satisfied; "
+                    f"use --tag-all-sources to query every source)"
+                )
+                continue
+            if self._lookup_one_source(source):
+                won_any = True
         self._cross_source_cv_id_check()

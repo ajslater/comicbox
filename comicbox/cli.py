@@ -408,6 +408,30 @@ def _add_online_options(option_group: Any) -> None:
         help="Skip files already tagged from this run's selected online sources.",
     )
     option_group.add_argument(
+        "--tag-all-sources",
+        dest="tag_all_sources",
+        action="store_true",
+        default=None,
+        help=(
+            "Query every configured online source instead of stopping after "
+            "the first one that contributes data. Sources are tried in "
+            "priority order ([green]metron[/green], then "
+            "[green]comicvine[/green]); per-source [cyan]--id[/cyan] / "
+            "[cyan]--series-id[/cyan] flags always run regardless."
+        ),
+    )
+    option_group.add_argument(
+        "--force-search",
+        dest="force_search",
+        action="store_true",
+        default=None,
+        help=(
+            "Force a full search even if the comic has a stored identifier "
+            "for the source. Use to override a stale or wrong stored id. "
+            "Does not override an explicit [cyan]--id[/cyan] flag."
+        ),
+    )
+    option_group.add_argument(
         "--confidence-threshold",
         action="append",
         dest="confidence_threshold",
