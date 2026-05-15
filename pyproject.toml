@@ -73,6 +73,7 @@ dev = [
   "neovim~=0.3",
   "packaging>=26.1",
   "pyclean~=3.1",
+  "pypi-cleanup~=0.1.10",
   "semver~=3.0.4",
   "toml-cli~=0.7",
   "tomlkit~=0.14",
@@ -137,6 +138,7 @@ source-include = [
   "frontend/**",
   "img/**",
   "mkdocks.yml",
+  "mkdocs.yml",
   "mock_comics/**",
   "package-lock.json",
   "package.json",
@@ -155,7 +157,6 @@ exclude = [
   "comicbox/zipfile_remove",
   "dist",
   "frontend",
-  "site",
   "site",
   "test-results",
   "typings",
@@ -184,13 +185,15 @@ reportUntypedBaseClass = false
 [tool.codespell]
 builtin = "clear,code,rare"
 check-hidden = true
-ignore-words-list = "coverd,falsy,jupyter,ro,searchd,thead,versio,ws"
-skip = "*~,.*,./.venv/*,./bun.lock,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,comicbox/zipfile_remove"
+ignore-words-list = "coverd,crate,falsy,iff,jupyter,ro,searchd,thead,versio,wan,warmup,ws"
+skip = "*.svg,*~,.*,.*/*,./.venv/*,./bun.lock,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,__pycache__,bun.lock,comicbox/zipfile_remove,dist,htmlcov,node_modules,package.json,test-results,typings,uv.lock"
 
 [tool.complexipy]
 failed = true
 paths = ["comicbox", "tests"]
 exclude = [
+  "**/.*",
+  "**/__pycache__",
   "*/.*",
   "frontend",
   "node_modules",
@@ -240,7 +243,7 @@ pythonpath = ["."]
 asyncio_mode = "strict"
 
 [tool.radon]
-exclude = "*~,.*,.*/*,__pycache__/*,comicbox/zipfile_remove/*,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*"
+exclude = "*~,.*,.*/*,__pycache__/*,comicbox/zipfile_remove/*,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py"
 
 [tool.ruff]
 builtins = ["ic"]
@@ -367,13 +370,11 @@ exclude = [
   "vulture_ignorelist.py",
 ]
 
-[tool.typos.default.extend-words]
-bookmarkd = "bookmarkd"
-coverd = "coverd"
-versio = "versio"
-
 [tool.vulture]
 exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
   "*/.*",
   "*/__pycache__*",
   "*/node_modules*",
@@ -387,3 +388,8 @@ exclude = [
 ]
 min_confidence = 61
 sort_by_size = true
+
+[tool.typos.default.extend-words]
+bookmarkd = "bookmarkd"
+coverd = "coverd"
+versio = "versio"
