@@ -647,7 +647,7 @@ wheels = [
 
 [[package]]
 name = "comicbox"
-version = "3.0.2"
+version = "3.0.3"
 source = { editable = "." }
 dependencies = [
     { name = "ansicolors" },
@@ -702,6 +702,7 @@ dev = [
     { name = "neovim" },
     { name = "packaging" },
     { name = "pyclean" },
+    { name = "pypi-cleanup" },
     { name = "semver" },
     { name = "toml-cli" },
     { name = "tomlkit" },
@@ -784,6 +785,7 @@ dev = [
     { name = "neovim", specifier = "~=0.3" },
     { name = "packaging", specifier = ">=26.1" },
     { name = "pyclean", specifier = "~=3.1" },
+    { name = "pypi-cleanup", specifier = "~=0.1.10" },
     { name = "semver", specifier = "~=3.0.4" },
     { name = "toml-cli", specifier = "~=0.7" },
     { name = "tomlkit", specifier = "~=0.14" },
@@ -2814,6 +2816,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/04/d7/c4412e6219661fd8689cdd9553988f8ea38c151067d70c49436977688aa9/pynvim-0.6.0.tar.gz", hash = "sha256:0ffcb879322d08f9e9061e1123dd58ba3a5ccfbd4999bb1157bac525822aa590", size = 51478, upload-time = "2025-09-07T18:35:37.601Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/2d/c28b9293975ed9ee05e52f1d316cb402ba6edb232baa0497754a70182ca2/pynvim-0.6.0-py3-none-any.whl", hash = "sha256:29f92ff3fde9e52c263e6bfd7f30345be05bfc7b5c21484da1cc38a8d8e5e98f", size = 47633, upload-time = "2025-09-07T18:35:36.348Z" },
+]
+
+[[package]]
+name = "pypi-cleanup"
+version = "0.1.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/15/5e/09422369613502701638e98b208ffb7bfc12c8722b43554f4b6a54bda209/pypi_cleanup-0.1.10.tar.gz", hash = "sha256:db1c7dca7e1114497fe73034e7dd579f8700e885e8ea9e164a63a1ee3be4af3d", size = 19429, upload-time = "2026-02-26T01:34:12.543Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/ee/1e0ae175e1aee8a98c58b6026dd13d6526ee63cb9a801228730abf0b9f30/pypi_cleanup-0.1.10-py3-none-any.whl", hash = "sha256:8d727d6437198b9171a0ef2875be6301a7db89d399ab955ab02354350b4a46b6", size = 14947, upload-time = "2026-02-26T01:34:11.33Z" },
 ]
 
 [[package]]
