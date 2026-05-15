@@ -48,13 +48,38 @@ Marker conventions:
 
 ## 2. Stress test & parallelism
 
-- **Real-load stress test.** The unit test verifies the prompt lock
-  holds; we haven't actually run `-j 8` against 1000 files with live
-  API access. Validate rate-limiter compliance and prompt UX under
-  load before declaring M7 production-ready.
-- **`-j` documentation.** CLI help mentions the flag exists but
-  doesn't yet recommend a sensible value or warn about thrashing the
-  rate limiter. Add notes after stress-testing.
+- ✅ **Real-load stress test (rate-limiter compliance).** Done
+  2026-05-15. -j 8, 20 fixtures, cold cache → PASS. Metron pinned at
+  20.10/min (exactly its 20/min cap); CV at 8.23/min (well under).
+  No tracebacks, exit 0. See
+  [`calibration-notes/2026-05-15-stress-test.md`](calibration-notes/2026-05-15-stress-test.md).
+  Harness lives at `tests/stress/`; run via `make stress`.
+- ✅ **Prompt UX under -j.** Done 2026-05-15. 16 fixtures, -j 8,
+  `--policy always-prompt --force-search` forces every candidate
+  through PROMPT. 23 selector calls across 8 distinct threads, **0
+  overlapping intervals**, no deadlocks. See
+  [`calibration-notes/2026-05-15-prompt-ux.md`](calibration-notes/2026-05-15-prompt-ux.md).
+  Harness at `tests/stress/prompt_ux.py`; run via
+  `make stress-prompt-ux`.
+- **Larger stress run (50-100 fixtures).** The 20-fixture run was
+  Metron-bound; bigger runs exercise CV's 200/hr cap and a different
+  code path (simyan's pyrate_limiter backoff vs mokkari's raise-and-
+  retry). Worth doing before declaring M7 fully shipped; doesn't
+  block doc updates.
+- **`-j` documentation.** Done in the follow-up commit that closes
+  this section — CLI help recommends defaults based on the stress
+  data (default 1, sweet-spot 4, spec'd-target 8 with caveat). See
+  the stress-test calibration note for the underlying numbers.
+
+**Bugs surfaced by the stress run (separate follow-ups):**
+
+- `Metron.series_list` at `comicbox/online/sources/metron.py:254` is
+  **not** wrapped by `@with_retry()`. Six terminal rate-limit
+  failures in the stress run came from this gap. Audit ComicVine's
+  equivalent path for the same issue.
+- `_MAX_RATE_LIMIT_RETRIES = 5` is sometimes too small under -j 8
+  contention. Bumping to 8 or making it `-j`-aware are both worth
+  measuring before deciding the shape.
 
 
 ## 3. API budget

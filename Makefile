@@ -41,3 +41,22 @@ CALIBRATE_PATHS ?= ~/Milliways/Comics/Test ~/Milliways/Comics/full/demo
 .PHONY: calibrate-bootstrap
 calibrate-bootstrap:
 	uv run python -m tests.calibration.bootstrap $(CALIBRATE_PATHS)
+
+## M7 stress test: -j 8 against a directory of comics, cold cache, dry-run.
+## Validates rate-limiter compliance + no exceptions under parallel load.
+## Use STRESS_PATH=... and STRESS_LIMIT=... (defaults below). See tests/stress/README.md.
+## @category Test
+STRESS_PATH ?= ~/Milliways/Comics/Test
+STRESS_LIMIT ?= 50
+STRESS_JOBS ?= 8
+.PHONY: stress
+stress:
+	uv run python -m tests.stress.run $(STRESS_PATH) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS)
+
+## M7 prompt-UX validation: -j 8 with always-prompt policy + recording
+## selector. Verifies _PROMPT_LOCK serialises under contention.
+## See tests/stress/README.md.
+## @category Test
+.PHONY: stress-prompt-ux
+stress-prompt-ux:
+	uv run python -m tests.stress.prompt_ux $(STRESS_PATH) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS)

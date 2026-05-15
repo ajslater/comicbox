@@ -540,8 +540,14 @@ def _add_online_options(option_group: Any) -> None:
         default=None,
         metavar="N",
         help=(
-            "Parallel workers across files (no-op until parallelism milestone; "
-            "accepted now for forward compatibility)."
+            "Parallel workers across files. Default [green]1[/green] (serial). "
+            "[green]4[/green] is the sweet spot for cold-cache batch runs. "
+            "Higher values (e.g. [green]8[/green]) work but trade match "
+            "quality for wall time — under sustained API rate-limit "
+            "contention some calls exhaust the retry budget, giving the "
+            "matcher fewer candidates. [green]16+[/green] is not faster than "
+            "[green]8[/green]; both online libraries share a single rate-"
+            "limit bucket per source."
         ),
     )
 
