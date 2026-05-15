@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING
 
-from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.config.settings import APIBudget, OnlineSettings, OnlineSourceCredentials
 from comicbox.online.profile import ComicProfile
 from comicbox.online.sources.comicvine import (
     ComicVineOnlineSource,
@@ -184,6 +184,7 @@ class _FakeBasicIssue:
         number: str,
         volume_name: str,
         cover_year: int = 1952,
+        volume_id: int = 999,
     ) -> None:
         from datetime import date
 
@@ -192,7 +193,7 @@ class _FakeBasicIssue:
         self.cover_date = date(cover_year, 1, 1)
         self.image = _FakeImage()
         self.site_url = f"http://example.com/issue/{iid}"
-        self.volume = _FakeBasicVolume(vid=999, name=volume_name)
+        self.volume = _FakeBasicVolume(vid=volume_id, name=volume_name)
 
 
 class _FakeCV:
@@ -663,3 +664,208 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     assert [c.issue_id for c in candidates] == [5001]
     # Two list_issues calls: failed + replay.
     assert len(fake.list_issues_calls) == 2
+
+
+# --------------------------- Phase H (rev 2): broaden + discovery_pass marker
+
+
+class _TwoStepCV(_FakeCV):
+    """
+    Two-stage volume responder for broaden tests.
+
+    First `search()` call returns `initial_volumes`; subsequent calls
+    return `broader_volumes`. Lets a single test verify both the
+    initial pass and the Phase H broaden pass without rebuilding the
+    fake mid-test.
+    """
+
+    def __init__(
+        self,
+        initial_volumes: list[_FakeBasicVolume],
+        broader_volumes: list[_FakeBasicVolume],
+        issues_by_volume: dict[int, list[_FakeBasicIssue]],
+    ) -> None:
+        super().__init__(volumes=initial_volumes, issues_by_volume=issues_by_volume)
+        self._initial = initial_volumes
+        self._broader = broader_volumes
+
+    def search(self, resource, query, max_results=500):
+        self.search_calls.append(
+            {"resource": resource, "query": query, "max_results": max_results}
+        )
+        return (
+            list(self._initial)
+            if len(self.search_calls) == 1
+            else list(self._broader)
+        )
+
+
+def _make_cv_source_with_budget(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_cv: _FakeCV,
+    budget: APIBudget,
+) -> ComicVineOnlineSource:
+    """`_make_cv_source` variant with an explicit api_budget override."""
+    creds = OnlineSourceCredentials(api_key="test-key")
+    settings = OnlineSettings(api_budget=budget)
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src
+
+
+def test_broaden_marks_added_candidates_with_discovery_pass_1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Broaden's new candidates get `discovery_pass=1`; initial keeps 0.
+
+    The Conan-by-X / Black-Widow-by-X bigmedia regression came from
+    broaden-added candidates winning the lower-vol-id tiebreak over
+    user's already-tagged answer. The discovery_pass marker is what
+    the matcher's tiebreak uses to prefer initial-pass candidates in
+    tied groups — this test locks in that the marker is set correctly.
+    """
+    initial_volumes = [
+        _FakeBasicVolume(vid=1001, name="My Series", start_year=2010),
+    ]
+    broader_volumes = [
+        *initial_volumes,  # dup, deduped out
+        _FakeBasicVolume(vid=2001, name="My Series", start_year=2024),
+    ]
+    issues = {
+        1001: [
+            _FakeBasicIssue(
+                iid=901, number="1", volume_name="My Series",
+                cover_year=2010, volume_id=1001,
+            )
+        ],
+        2001: [
+            _FakeBasicIssue(
+                iid=903, number="1", volume_name="My Series",
+                cover_year=2024, volume_id=2001,
+            )
+        ],
+    }
+    fake = _TwoStepCV(
+        initial_volumes=initial_volumes,
+        broader_volumes=broader_volumes,
+        issues_by_volume=issues,
+    )
+    src = _make_cv_source_with_budget(monkeypatch, fake, APIBudget.FAST)
+
+    profile = ComicProfile(series="My Series", issue="1", issue_int=1, year=2024)
+    candidates = src.search(profile)
+
+    by_id = {c.issue_id: c for c in candidates}
+    # Initial-pass candidate keeps discovery_pass=0.
+    assert by_id[901].discovery_pass == 0
+    # Broaden-pass candidate is marked discovery_pass=1.
+    assert by_id[903].discovery_pass == 1
+
+
+def test_broaden_skipped_when_top_quick_score_strong(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Strong initial top-score skips broaden — saves API calls.
+
+    When the initial pass returns a volume whose metadata aligns with
+    `profile` (matching name + year), metadata_score clears 0.85 and
+    the broaden retry doesn't fire.
+    """
+    vol = _FakeBasicVolume(vid=100, name="Watchmen", start_year=1986)
+    issue = _FakeBasicIssue(
+        iid=42, number="1", volume_name="Watchmen", cover_year=1986
+    )
+    fake = _TwoStepCV(
+        initial_volumes=[vol],
+        broader_volumes=[
+            vol,
+            _FakeBasicVolume(vid=200, name="Watchmen Annotated", start_year=2008),
+        ],
+        issues_by_volume={100: [issue], 200: []},
+    )
+    src = _make_cv_source_with_budget(monkeypatch, fake, APIBudget.FAST)
+
+    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    src.search(profile)
+
+    assert len(fake.search_calls) == 1
+
+
+def test_broaden_skipped_under_balanced_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BALANCED/EXHAUSTIVE already use max_volumes=20 — broaden gate False."""
+    vol = _FakeBasicVolume(vid=1, name="Unrelated", start_year=2020)
+    issue = _FakeBasicIssue(
+        iid=1, number="1", volume_name="Unrelated", volume_id=1
+    )
+    fake = _TwoStepCV(
+        initial_volumes=[vol],
+        broader_volumes=[
+            vol,
+            _FakeBasicVolume(vid=2, name="My Series", start_year=2020),
+        ],
+        issues_by_volume={1: [issue], 2: []},
+    )
+    src = _make_cv_source_with_budget(monkeypatch, fake, APIBudget.BALANCED)
+
+    profile = ComicProfile(series="My Series", issue="1", issue_int=1, year=2020)
+    src.search(profile)
+
+    assert len(fake.search_calls) == 1
+
+
+def test_broaden_dedupes_by_volume_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Broaden's `list_issues` calls skip volume_ids already fetched."""
+    initial = [_FakeBasicVolume(vid=10, name="My Series", start_year=2010)]
+    broader = [
+        _FakeBasicVolume(vid=10, name="My Series", start_year=2010),  # dup
+        _FakeBasicVolume(vid=11, name="My Series", start_year=2015),  # new
+        _FakeBasicVolume(vid=20, name="My Series", start_year=2024),  # new
+    ]
+    issues = {
+        10: [
+            _FakeBasicIssue(
+                iid=110, number="1", volume_name="My Series",
+                cover_year=2010, volume_id=10,
+            )
+        ],
+        11: [
+            _FakeBasicIssue(
+                iid=111, number="1", volume_name="My Series",
+                cover_year=2015, volume_id=11,
+            )
+        ],
+        20: [
+            _FakeBasicIssue(
+                iid=120, number="1", volume_name="My Series",
+                cover_year=2024, volume_id=20,
+            )
+        ],
+    }
+    fake = _TwoStepCV(
+        initial_volumes=initial,
+        broader_volumes=broader,
+        issues_by_volume=issues,
+    )
+    src = _make_cv_source_with_budget(monkeypatch, fake, APIBudget.FAST)
+
+    profile = ComicProfile(series="My Series", issue="1", issue_int=1, year=2024)
+    src.search(profile)
+
+    vol10_calls = [
+        c for c in fake.list_issues_calls if "volume:10," in c.get("filter", "")
+    ]
+    vol11_calls = [
+        c for c in fake.list_issues_calls if "volume:11," in c.get("filter", "")
+    ]
+    vol20_calls = [
+        c for c in fake.list_issues_calls if "volume:20," in c.get("filter", "")
+    ]
+    assert len(vol10_calls) == 1
+    assert len(vol11_calls) == 1
+    assert len(vol20_calls) == 1

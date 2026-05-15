@@ -67,6 +67,19 @@ class Candidate:
     # this when constructing the candidate; left as None for sources that
     # don't expose it.
     volume_id: int | None = None
+    # Source-discovery pass: 0 = initial search, 1+ = broaden retry or
+    # later expansion pass. Used as a tiebreak signal in the matcher
+    # (`_apply_tied_metadata_tiebreak`): when multiple candidates tie on
+    # metadata, prefer the initial-pass one over a broaden-added one.
+    #
+    # Without this, CV's catalog dupes (where many records share a
+    # series-name and a year) all enter the candidate set after broaden
+    # and the lower-vol-id tiebreak picks whichever came first by CV's
+    # internal ordering — which may differ from the user's existing tag
+    # for the same content. The discovery_pass marker says: trust the
+    # canonical-lower-vol-id heuristic only WITHIN a single pass, not
+    # across passes that brought in catalog dupes.
+    discovery_pass: int = 0
 
 
 _INT_RE = re.compile(r"^\d+$")

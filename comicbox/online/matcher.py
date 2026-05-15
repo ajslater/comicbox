@@ -242,7 +242,7 @@ def _top_k_for_hashing(candidate_count: int) -> int:
 _NO_VOLUME_ID_TIEBREAK: int = 2**31
 
 
-def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
+def _candidate_sort_key(c: Candidate) -> tuple[float, int, int, int]:
     """
     Tuple sort key with deterministic tiebreaks for ranked candidates.
 
@@ -250,16 +250,21 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
 
     1. ``-c.score`` — primary: blended score descending. The matcher's
        headline output.
-    2. ``c.volume_id`` (or sentinel) — secondary: on a tied blended
-       score, prefer the candidate from the *lower* volume id. CV
-       creates the canonical volume first; later "Watchmen, 1987"
-       volumes that share a name with the original are duplicates,
-       regional editions, or admin oversights. None → sentinel so
-       known volumes win against unknowns.
-    3. ``c.issue_id`` — tertiary: on tied score AND tied volume_id
-       (within-volume variant cover dupes), prefer the lower issue id.
-       Same logic — the canonical issue record is the one created
-       first.
+    2. ``c.discovery_pass`` — secondary: on a tied blended score, prefer
+       initial-pass candidates over broaden-pass ones. Broaden tends to
+       surface CV catalog dupes (same content, multiple records); the
+       initial pass reflects CV's own relevance ranking which is the
+       better default for tags previously written by other tools.
+    3. ``c.volume_id`` (or sentinel) — tertiary: within a (score,
+       discovery_pass) tie, prefer the candidate from the *lower*
+       volume id. CV creates the canonical volume first; later
+       "Watchmen, 1987" volumes that share a name with the original
+       are duplicates, regional editions, or admin oversights. None →
+       sentinel so known volumes win against unknowns.
+    4. ``c.issue_id`` — quaternary: on tied (score, discovery_pass,
+       volume_id) (within-volume variant cover dupes), prefer the
+       lower issue id. Same logic — the canonical issue record is the
+       one created first.
 
     Without explicit tiebreakers Python's stable sort preserves the
     order the source returned candidates in, which lets the API's
@@ -268,6 +273,7 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
     """
     return (
         -c.score,
+        c.discovery_pass,
         c.volume_id if c.volume_id is not None else _NO_VOLUME_ID_TIEBREAK,
         c.issue_id,
     )
@@ -414,6 +420,12 @@ def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
             group = sorted(
                 group,
                 key=lambda c: (
+                    # Prefer initial-pass candidates over broaden-pass
+                    # ones — broaden surfaces catalog dupes which then
+                    # win the lower-vol-id tiebreak in ways that diverge
+                    # from existing user tags. See the Conan-by-X /
+                    # Black-Widow-by-X bigmedia regression analysis.
+                    c.discovery_pass,
                     c.volume_id if c.volume_id is not None else _NO_VOLUME_ID_TIEBREAK,
                     c.issue_id,
                 ),

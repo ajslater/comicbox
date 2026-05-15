@@ -1001,3 +1001,103 @@ class TestTopKForHashing:
         # Adaptive K = 12 // 2 = 6. So 6 candidates got hashed.
         hashed = sum(1 for c in result if c.cover_score is not None)
         assert hashed == 6
+
+
+# ----------------------- Source-aware tiebreak (discovery_pass)
+
+
+def test_tied_metadata_tiebreak_prefers_initial_pass_over_broaden() -> None:
+    """
+    When tied on metadata, initial-pass candidate beats broaden-pass.
+
+    Reproduces the Conan-by-X bigmedia regression: broaden brings in
+    CV catalog dupes that share metadata with the user's tagged
+    answer. Without the discovery_pass marker, the lower-vol-id
+    tiebreak would pick the (smaller-id) broaden candidate over the
+    (higher-id) user-tagged initial candidate. With the marker, the
+    initial-pass candidate wins regardless of vol_id ordering.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    # The "user's tag" — higher vol_id, came from initial pass.
+    initial = _candidate(issue_id=827683, volume_id=827683)
+    initial = _replace(
+        initial,
+        metadata_score=0.91,
+        cover_score=1.0,
+        score=0.928,
+        discovery_pass=0,
+    )
+
+    # The broaden-added dupe — lower vol_id, would normally win the
+    # vol_id tiebreak, but discovery_pass=1 demotes it.
+    broaden = _candidate(issue_id=716354, volume_id=716354)
+    broaden = _replace(
+        broaden,
+        metadata_score=0.91,
+        cover_score=1.0,
+        score=0.928,
+        discovery_pass=1,
+    )
+
+    # Sort by sort_key (the live ranking would use _candidate_sort_key);
+    # then apply the tiebreak. With discovery_pass as the secondary key,
+    # initial-pass wins even though its volume_id is higher.
+    ranked = _apply_tied_metadata_tiebreak([broaden, initial])
+    # Initial-pass wins regardless of input order.
+    assert ranked[0].issue_id == 827683
+    assert ranked[0].discovery_pass == 0
+
+
+def test_tied_metadata_tiebreak_falls_back_to_vol_id_within_same_pass() -> None:
+    """
+    Within a single discovery pass, lower vol_id still wins.
+
+    Watchmen #009 dupe case: both candidates come from the initial CV
+    search (no broaden), both have discovery_pass=0, both tied md, small
+    cover diff. The discovery_pass tiebreak doesn't differentiate; falls
+    back to the volume_id tiebreak — canonical (lower vol_id) wins.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+
+    wrong = _candidate(issue_id=476700, volume_id=79545)
+    right = _candidate(issue_id=28090, volume_id=3622)
+    # Both initial-pass; cover diff at noise level under Phase I.
+    wrong = _replace(
+        wrong, metadata_score=0.91, cover_score=0.85, score=0.915,
+        discovery_pass=0,
+    )
+    right = _replace(
+        right, metadata_score=0.91, cover_score=0.825, score=0.910,
+        discovery_pass=0,
+    )
+
+    ranked = _apply_tied_metadata_tiebreak([wrong, right])
+    # Both discovery_pass=0; vol_id tiebreak picks 3622 (canonical).
+    assert ranked[0].issue_id == 28090
+
+
+def test_candidate_sort_key_uses_discovery_pass_within_tied_score() -> None:
+    """
+    When score is exactly tied, sort_key prefers lower discovery_pass.
+
+    Two candidates with identical blended scores (e.g., both 0.91 after
+    cover hashing): sort_key tiebreak picks initial-pass over broaden.
+    """
+    from dataclasses import replace as _replace
+
+    from comicbox.online.matcher import _candidate_sort_key
+
+    initial = _candidate(issue_id=999, volume_id=999)
+    broaden = _candidate(issue_id=100, volume_id=100)
+    initial = _replace(initial, score=0.91, discovery_pass=0)
+    broaden = _replace(broaden, score=0.91, discovery_pass=1)
+
+    # Sort by _candidate_sort_key — initial-pass wins despite higher
+    # vol_id, because discovery_pass comes before vol_id in the key.
+    sorted_list = sorted([broaden, initial], key=_candidate_sort_key)
+    assert sorted_list[0].issue_id == 999

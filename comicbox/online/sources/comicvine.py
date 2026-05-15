@@ -14,7 +14,8 @@ when needed. Downloaded hashes are cached in
 from __future__ import annotations
 
 import sqlite3
-from typing import TYPE_CHECKING, Any, ClassVar
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
 
@@ -33,6 +34,26 @@ if TYPE_CHECKING:
     from simyan.comicvine import Comicvine
 
     from comicbox.online.profile import ComicProfile
+
+
+# Phase H (rev 2) — broaden the CV volume search when the initial result
+# set's top quick-scored candidate is weak. See the original Phase H
+# rationale (reverted in 62a5725) for the recovery target: the 7
+# bigmedia "older record wins" misses where the right answer fell
+# outside CV's top-5 for ambiguous queries (Akira 2000, X-Men #1
+# Facsimile, Storm 2024, Conan 2024-2025, etc.).
+#
+# The first Phase H attempt produced 14 PROMPT-zone regressions: CV
+# catalog dupes added by broaden tied with the user's tagged answer on
+# metadata, and the lower-vol-id tiebreak picked the broaden-added
+# canonical record. The rev-2 fix marks broaden additions with
+# `discovery_pass=1` on the Candidate. The matcher's tiebreak then
+# prefers initial-pass candidates within tied groups, so broaden only
+# wins when its candidate's metadata genuinely outscores the initial
+# (the Akira / Storm cases) — never just on the tiebreak (the Conan /
+# Black Widow cases).
+_BROADEN_TRIGGER_THRESHOLD: Final[float] = 0.85
+_BROADEN_CAP: Final[int] = 20
 
 
 class ComicVineOnlineSource(OnlineSource):
@@ -376,6 +397,90 @@ class ComicVineOnlineSource(OnlineSource):
                     name_threshold=name_threshold,
                 )
             )
+
+        # Phase H (rev 2): broaden if quick-scoring shows weak top match
+        # AND the initial cap was below _BROADEN_CAP. Marks broaden
+        # additions with discovery_pass=1 so the matcher's tiebreak
+        # prefers the initial-pass candidates within tied groups (avoids
+        # the Conan-by-X / Black-Widow-by-X bigmedia regression).
+        if max_volumes < _BROADEN_CAP and candidates:
+            candidates = self._maybe_broaden_search(
+                session,
+                profile,
+                candidates,
+                issue_number=issue_number,
+                year=year,
+                name_threshold=name_threshold,
+            )
+        return candidates
+
+    def _maybe_broaden_search(
+        self,
+        session: Any,
+        profile: ComicProfile,
+        candidates: list[Candidate],
+        *,
+        issue_number: str | None,
+        year: int | None,
+        name_threshold: float,
+    ) -> list[Candidate]:
+        """
+        Broaden the CV volume search when the quick top score is weak.
+
+        Quick-scores existing candidates with `metadata_score` (no API
+        calls), and if the top is below the prompt-zone bound (0.85),
+        re-issues a wider volume search (max_results=_BROADEN_CAP).
+        Deduplicates by volume_id so already-fetched volumes don't
+        re-run their `list_issues` calls. Marks newly-added candidates
+        with `discovery_pass=1` so the matcher's tied-metadata tiebreak
+        prefers the initial-pass candidates when scores tie.
+        """
+        from simyan.comicvine import ComicvineResource
+
+        from comicbox.online.matcher import metadata_score
+
+        top_quick = max(
+            (metadata_score(profile, c) for c in candidates), default=0.0
+        )
+        if top_quick >= _BROADEN_TRIGGER_THRESHOLD:
+            return candidates
+
+        seen_vol_ids: set[int] = {
+            c.volume_id for c in candidates if c.volume_id is not None
+        }
+        logger.info(
+            f"online {self.name}: top metadata={top_quick:.2f} below "
+            f"{_BROADEN_TRIGGER_THRESHOLD:.2f}; broadening volume search "
+            f"to {_BROADEN_CAP} (was {len(seen_vol_ids)})"
+        )
+        try:
+            self._record_api_call("search_volumes_broaden")
+            broader_volumes = session.search(
+                resource=ComicvineResource.VOLUME,
+                query=profile.series,
+                max_results=_BROADEN_CAP,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: broaden volume search failed: {exc}"
+            )
+            return candidates
+
+        # Dedupe + mark broaden additions with discovery_pass=1 so the
+        # matcher's tiebreak deprioritizes them against initial-pass
+        # candidates that tied on metadata.
+        for vol in broader_volumes:
+            if vol.id in seen_vol_ids:
+                continue
+            new_candidates = self._candidates_for_volume(
+                session,
+                vol,
+                profile=profile,
+                issue_number=issue_number,
+                year=year,
+                name_threshold=name_threshold,
+            )
+            candidates.extend(replace(c, discovery_pass=1) for c in new_candidates)
         return candidates
 
     def _candidates_for_volume(
