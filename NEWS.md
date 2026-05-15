@@ -1,5 +1,9 @@
 # 📰 News
 
+## v3.0.3
+
+- Fix small crashes with metron credits and comicbox with no path
+
 ## v3.0.2
 
 - Use new comicfn2dict. Parses more comic filename variations.
