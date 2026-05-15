@@ -250,29 +250,42 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
 # strong enough on its own to overrule the canonical-volume preference.
 _TIED_METADATA_BLEND_MARGIN: float = 0.02
 
-# Maximum cover-score difference treated as hash noise rather than a
-# real disambiguation signal. ~2 Hamming bits out of 64 (pHash range).
-# Below this, cover-score variation is hash artifact / variant-cover
-# wobble. Above it, one candidate's cover is materially more similar to
-# the local than the other's — that's a real signal we should respect.
+# Cover-score difference thresholds for the tied-metadata tiebreak.
+# Phase I (2026-05-14) replaced the original absolute-threshold approach
+# with a quality-relative one: a fixed-size diff means different things
+# at different score levels.
 #
-# Specifically: Original Sin (2014) #001 has two records, md=0.91 both;
-# one at cover=1.00 (perfect Hamming match), one at cover=0.91 (close
-# but not identical). The 0.09 cover gap IS the signal — the right
-# answer's cover is genuinely a better match. Without this guard, the
-# tiebreak collapses them and the lower vol_id wins, which is wrong.
+# **The intuition.** When both candidates score very high (≥0.95), the
+# Hamming distance from the local cover is tiny for both — under 1 bit
+# out of 64. A 0.03 diff in that regime is meaningful (one is genuinely
+# a tighter match). When both score medium (0.80-0.94), each has ~2
+# bits of imprecision baked in — small diffs are hash variance from
+# scan/JPEG/crop noise. The signal-vs-noise ratio inverts with the
+# score level.
 #
-# Phase G (2026-05-14): tightened from 0.05 → 0.03. The bigmedia
-# calibration surfaced two tied-dupe cases (Fallen Son: Death of Cap
-# America 2007, Hawkeye Freefall 2020) where cover diffs of 0.00 and
-# 0.03 fell within the old noise margin and let the lower-vol-id
-# tiebreak fire, picking the wrong record. Tightening to 0.03 still
-# treats the Watchmen-vs-dupe case (cover diff 0.03 between near-
-# identical scans) as noise (≤ 0.03 = noise), but pulls the boundary
-# in slightly. Doesn't fix Hawkeye Freefall (cover diff exactly 0.03)
-# directly — would need 0.02 for that, but 0.02 risks breaking the
-# Watchmen canonical-volume tiebreak. Conservative tightening.
-_COVER_DIFF_NOISE_MARGIN: float = 0.03
+# **The formula.** A cover-diff is noise iff BOTH:
+#   - `diff < _COVER_DIFF_ABSOLUTE_SIGNAL`: any diff above this is
+#     always real signal (e.g., 0.59 vs 1.00 on the Hilda case — two
+#     genuinely different covers).
+#   - `diff / (1 - min_cover_score) < _COVER_DIFF_RELATIVE_THRESHOLD`:
+#     the diff is a small fraction of the "room to perfect" the worse
+#     candidate has. Room = how far the WORSE candidate sits from 1.0;
+#     a diff that uses up half or more of that room is significant.
+#
+# **Empirical anchors** (from bigmedia 2026-05-14):
+#   Hawkeye Freefall:   min=0.94, diff=0.03, room=0.06, ratio=0.50 → SIGNAL ✓
+#   Watchmen #009 dup:  min=0.81, diff=0.03, room=0.19, ratio=0.16 → NOISE ✓
+#   Original Sin dup:   min=0.91, diff=0.09, room=0.09, ratio=1.00 → SIGNAL ✓
+#   Hilda Stone Forest: min=0.59, diff=0.41                        → SIGNAL via absolute floor
+#   Fallen Son tied:    min=0.50, diff=0.00, room=0.50, ratio=0.00 → NOISE ✓
+#
+# Hawkeye is the case Phase G's tighter-absolute approach couldn't fix:
+# with min=0.94, the 0.03 diff is a full half of the 0.06 room to
+# perfect — clearly meaningful when both candidates are essentially
+# matches. Watchmen's 0.03 diff at min=0.81 is only 16% of the room —
+# scan noise.
+_COVER_DIFF_ABSOLUTE_SIGNAL: float = 0.10
+_COVER_DIFF_RELATIVE_THRESHOLD: float = 0.5
 
 
 def _cover_diff_is_noise(a: Candidate, b: Candidate) -> bool:
@@ -284,10 +297,31 @@ def _cover_diff_is_noise(a: Candidate, b: Candidate) -> bool:
     missing, we can't compute a diff — fall back to "noise" so the
     volume_id tiebreak still applies (no cover signal at all means
     cover wasn't helping anyway).
+
+    Phase I uses a quality-relative threshold (see module-level
+    docstring on `_COVER_DIFF_ABSOLUTE_SIGNAL` and
+    `_COVER_DIFF_RELATIVE_THRESHOLD` for the math). Replaces Phase G's
+    simple absolute threshold which couldn't separate the Hawkeye case
+    (signal at high-quality cover scores) from the Watchmen case
+    (noise at medium-quality cover scores).
     """
     if a.cover_score is None or b.cover_score is None:
         return True
-    return abs(a.cover_score - b.cover_score) <= _COVER_DIFF_NOISE_MARGIN
+    diff = abs(a.cover_score - b.cover_score)
+    # Above the absolute signal floor → always real signal, regardless
+    # of where on the cover-score range the candidates sit.
+    if diff >= _COVER_DIFF_ABSOLUTE_SIGNAL:
+        return False
+    # Relative threshold: how much of the "room to perfect" the worse
+    # candidate's score is doing the diff use up? Using `min` (not max)
+    # so a candidate at 1.00 vs one at 0.91 yields room=0.09, ratio=1.0
+    # (signal) — the asymmetric Original Sin case.
+    min_score = min(a.cover_score, b.cover_score)
+    room_to_perfect = 1.0 - min_score
+    if room_to_perfect <= 0.0:
+        # Both at 1.00 — diff is hash precision artifact.
+        return True
+    return (diff / room_to_perfect) < _COVER_DIFF_RELATIVE_THRESHOLD
 
 
 def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
