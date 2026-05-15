@@ -61,11 +61,22 @@ Marker conventions:
   [`calibration-notes/2026-05-15-prompt-ux.md`](calibration-notes/2026-05-15-prompt-ux.md).
   Harness at `tests/stress/prompt_ux.py`; run via
   `make stress-prompt-ux`.
-- **Larger stress run (50-100 fixtures).** The 20-fixture run was
-  Metron-bound; bigger runs exercise CV's 200/hr cap and a different
-  code path (simyan's pyrate_limiter backoff vs mokkari's raise-and-
-  retry). Worth doing before declaring M7 fully shipped; doesn't
-  block doc updates.
+- ✅ **Larger stress run (100 fixtures).** Done 2026-05-15. 59-min
+  wall time, exit 0, no exceptions. Metron at 16.79/min (84% of
+  cap), CV at 2.16/min. See
+  [`calibration-notes/2026-05-15-stress-100.md`](calibration-notes/2026-05-15-stress-100.md).
+  **Caveat:** CV's 200/hr cap was not exercised — Metron's tighter
+  per-minute cap paces the run too slowly for CV to accumulate >200
+  req/hr, especially with most fixtures taking the cheap refresh-by-
+  stored-id path. Crossing the cap requires `--sources comicvine
+  --force-search` (separate follow-up below).
+- **CV-only force-search stress run.** New follow-up surfaced by the
+  100-fixture run. Single-source removes Metron pacing;
+  `--force-search` bypasses the refresh-by-id shortcut so each
+  fixture costs ~6 CV requests. 100 fixtures → ~600 CV requests,
+  comfortably crossing CV's 200/hr cap and exercising simyan's
+  `pyrate_limiter` hourly-stall path. Estimated wall time 2-3 hr
+  once stalling engages.
 - **`-j` documentation.** Done in the follow-up commit that closes
   this section — CLI help recommends defaults based on the stress
   data (default 1, sweet-spot 4, spec'd-target 8 with caveat). See
@@ -77,9 +88,21 @@ Marker conventions:
   **not** wrapped by `@with_retry()`. Six terminal rate-limit
   failures in the stress run came from this gap. Audit ComicVine's
   equivalent path for the same issue.
-- `_MAX_RATE_LIMIT_RETRIES = 5` is sometimes too small under -j 8
-  contention. Bumping to 8 or making it `-j`-aware are both worth
-  measuring before deciding the shape.
+- `_MAX_RATE_LIMIT_RETRIES = 5` is **too small under -j 8 contention
+  on high-fan-out fixtures** — promoted from "worth measuring" after
+  the 100-fixture run quantified the cascade: 465 issue-list WARNINGs
+  concentrated on 32 series, with single Conan-titled fixtures fan-
+  outting to 20+ candidate series that all exhaust retries
+  simultaneously. Bumping to 8 (or making it `-j`-aware) is needed
+  before -j 8 becomes a reasonable default. See
+  [`calibration-notes/2026-05-15-stress-100.md`](calibration-notes/2026-05-15-stress-100.md).
+- **Tagging-quality measurement under -j 8 cold cache.** The 100-
+  fixture run proved no crashes / no rate violations, but partial
+  candidate-set drops on high-fan-out fixtures mean some matches
+  almost certainly went to the wrong candidate or got skipped. Re-
+  run a labeled calibration set at -j 8 vs -j 1, diff the outcomes,
+  quantify the accuracy cost of parallelism. Most user-visible
+  consequence of -j 8 and probably the most important follow-up.
 
 
 ## 3. API budget
