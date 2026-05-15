@@ -787,96 +787,29 @@ def test_apply_tied_metadata_tiebreak_cover_diff_within_margin_is_noise() -> Non
     assert ranked[0].volume_id == 3622
 
 
-def test_apply_tied_metadata_tiebreak_high_quality_small_diff_is_signal() -> None:
+def test_apply_tied_metadata_tiebreak_cover_diff_above_margin_is_signal() -> None:
     """
-    Phase I: at near-perfect cover scores, a small diff IS signal.
+    Phase G: cover diff just above 0.03 is signal — keep cover winner.
 
-    Hawkeye Freefall (bigmedia 2026-05-14) shape: both candidates have
-    cover_score ≥ 0.94 (near-perfect Hamming matches); diff is 0.03.
-    Phase G's absolute 0.03 threshold collapsed this as noise (wrong).
-    Phase I looks at room-to-perfect: 1 - 0.94 = 0.06, ratio = 0.03/0.06
-    = 0.5 → at the relative threshold; cover-winner stays.
+    Locks in the lower bound: 0.04 cover diff IS signal, doesn't get
+    collapsed by the tiebreak. Was previously 0.04 ≤ 0.05 = noise; the
+    Phase G tightening makes this case respect the cover-hash decision.
     """
     from dataclasses import replace as _replace
 
     from comicbox.online.matcher import _apply_tied_metadata_tiebreak
 
-    wrong = _candidate(issue_id=10000, volume_id=100)  # lower vol_id
-    right = _candidate(issue_id=10001, volume_id=200)  # higher vol_id
-    # Cover diff = 0.03 at min=0.94 → ratio 0.5 → signal.
-    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.94, score=0.916)
-    right = _replace(right, metadata_score=0.91, cover_score=0.97, score=0.922)
+    wrong = _candidate(issue_id=10000, volume_id=100)  # lower vol_id (canonical)
+    right = _candidate(issue_id=10001, volume_id=200)
+    # Cover diff = 0.04, just above the noise margin.
+    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.84, score=0.910)
+    right = _replace(right, metadata_score=0.91, cover_score=0.88, score=0.918)
 
+    # Input order is high-score-first.
     ranked = _apply_tied_metadata_tiebreak([right, wrong])
+    # 0.04 > 0.03 = real signal → tiebreak rejects grouping → cover winner stays.
     assert ranked[0].issue_id == 10001
     assert ranked[0].volume_id == 200
-
-
-def test_apply_tied_metadata_tiebreak_medium_quality_small_diff_is_noise() -> None:
-    """
-    Phase I: at medium cover scores, a small diff is hash noise.
-
-    Same Watchmen #009 dupe shape as `cover_diff_within_margin_is_noise`
-    but anchored to the Phase I formula explicitly. Both candidates at
-    cover_score 0.81 / 0.84 (medium quality matches); diff=0.03 is 16%
-    of the room-to-perfect at min=0.81 → noise → vol_id wins.
-    """
-    from dataclasses import replace as _replace
-
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
-
-    wrong = _candidate(issue_id=476700, volume_id=79545)
-    right = _candidate(issue_id=28090, volume_id=3622)
-    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.84, score=0.916)
-    right = _replace(right, metadata_score=0.91, cover_score=0.81, score=0.910)
-
-    ranked = _apply_tied_metadata_tiebreak([wrong, right])
-    assert ranked[0].issue_id == 28090
-    assert ranked[0].volume_id == 3622
-
-
-def test_apply_tied_metadata_tiebreak_large_diff_always_signal() -> None:
-    """
-    Phase I: any diff ≥ 0.10 is signal regardless of score level.
-
-    Hilda Stone Forest shape (bigmedia): cover_score 1.00 vs 0.59,
-    diff=0.41. The absolute floor catches it — these are genuinely
-    different covers, not hash noise.
-    """
-    from dataclasses import replace as _replace
-
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
-
-    wrong = _candidate(issue_id=10000, volume_id=100)
-    right = _candidate(issue_id=10001, volume_id=200)
-    wrong = _replace(wrong, metadata_score=0.91, cover_score=0.59, score=0.850)
-    right = _replace(right, metadata_score=0.91, cover_score=1.00, score=0.928)
-
-    ranked = _apply_tied_metadata_tiebreak([right, wrong])
-    assert ranked[0].issue_id == 10001
-
-
-def test_apply_tied_metadata_tiebreak_both_perfect_is_noise() -> None:
-    """
-    Phase I: two candidates both at 1.00 are degenerate → noise.
-
-    When min(a, b) == 1.0, room-to-perfect = 0 which would divide by
-    zero. The implementation short-circuits to noise (vol_id wins),
-    which is correct: two perfect-cover matches are interchangeable
-    by the cover signal alone.
-    """
-    from dataclasses import replace as _replace
-
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
-
-    wrong = _candidate(issue_id=10000, volume_id=200)  # higher vol_id
-    right = _candidate(issue_id=10001, volume_id=100)  # lower vol_id (canonical)
-    wrong = _replace(wrong, metadata_score=0.91, cover_score=1.00, score=0.928)
-    right = _replace(right, metadata_score=0.91, cover_score=1.00, score=0.928)
-
-    ranked = _apply_tied_metadata_tiebreak([wrong, right])
-    # Canonical (lower vol_id) wins via tiebreak.
-    assert ranked[0].volume_id == 100
 
 
 def test_apply_tied_metadata_tiebreak_skips_when_cover_score_missing() -> None:
