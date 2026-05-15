@@ -14,7 +14,7 @@ when needed. Downloaded hashes are cached in
 from __future__ import annotations
 
 import sqlite3
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
 
@@ -33,24 +33,6 @@ if TYPE_CHECKING:
     from simyan.comicvine import Comicvine
 
     from comicbox.online.profile import ComicProfile
-
-
-# Phase H — broaden the CV volume search when the initial result set's
-# top quick-scored candidate is weak. CV's relevance ranking tends to
-# favor canonical / older volumes over recent reissues; under FAST
-# budget's max_volumes=5 cap, modern reissues (Akira 2000 vs the 1988
-# original, X-Men #1 Facsimile 2019 vs the 1963 original) often fall
-# outside the top-5 entirely. The broaden retry catches these without
-# paying the wider-search cost on every fixture.
-#
-# Trigger: top metadata score below the prompt-zone lower bound (0.85).
-# Catches the 7 multi-volume "older record wins" cases from bigmedia
-# calibration (`tasks/online-tagging/calibration-notes/2026-05-14-bigmedia-247.md`).
-# Cap: 20 = the default budget's max_volumes — only fires when the
-# resolved budget is below it (i.e., FAST). BALANCED / EXHAUSTIVE
-# already issue the wider search up-front.
-_BROADEN_TRIGGER_THRESHOLD: Final[float] = 0.85
-_BROADEN_CAP: Final[int] = 20
 
 
 class ComicVineOnlineSource(OnlineSource):
@@ -384,85 +366,6 @@ class ComicVineOnlineSource(OnlineSource):
 
         candidates: list[Candidate] = []
         for vol in volumes:
-            candidates.extend(
-                self._candidates_for_volume(
-                    session,
-                    vol,
-                    profile=profile,
-                    issue_number=issue_number,
-                    year=year,
-                    name_threshold=name_threshold,
-                )
-            )
-
-        # Phase H: broaden if quick-scoring shows weak top match AND
-        # the initial cap was below _BROADEN_CAP. Catches reissues that
-        # CV's relevance ranks below their canonical original (the
-        # 7 bigmedia misses: Akira 2000 / X-Men Facsimile 2019 / etc.).
-        # See _BROADEN_TRIGGER_THRESHOLD docstring for the cost model.
-        if max_volumes < _BROADEN_CAP and candidates:
-            candidates = self._maybe_broaden_search(
-                session,
-                profile,
-                candidates,
-                issue_number=issue_number,
-                year=year,
-                name_threshold=name_threshold,
-            )
-        return candidates
-
-    def _maybe_broaden_search(
-        self,
-        session: Any,
-        profile: ComicProfile,
-        candidates: list[Candidate],
-        *,
-        issue_number: str | None,
-        year: int | None,
-        name_threshold: float,
-    ) -> list[Candidate]:
-        """
-        Broaden the CV volume search when the quick top score is weak.
-
-        Quick-scores existing candidates with `metadata_score` (no API
-        calls), and if the top is below the prompt-zone bound (0.85),
-        re-issues a wider volume search (max_results=_BROADEN_CAP).
-        Deduplicates by volume_id so already-fetched volumes don't
-        re-run their `list_issues` calls.
-        """
-        from simyan.comicvine import ComicvineResource
-
-        from comicbox.online.matcher import metadata_score
-
-        top_quick = max((metadata_score(profile, c) for c in candidates), default=0.0)
-        if top_quick >= _BROADEN_TRIGGER_THRESHOLD:
-            return candidates
-
-        seen_vol_ids: set[int] = {
-            c.volume_id for c in candidates if c.volume_id is not None
-        }
-        logger.info(
-            f"online {self.name}: top metadata={top_quick:.2f} below "
-            f"{_BROADEN_TRIGGER_THRESHOLD:.2f}; broadening volume search "
-            f"to {_BROADEN_CAP} (was {len(seen_vol_ids)})"
-        )
-        try:
-            self._record_api_call("search_volumes_broaden")
-            broader_volumes = session.search(
-                resource=ComicvineResource.VOLUME,
-                query=profile.series,
-                max_results=_BROADEN_CAP,
-            )
-        except Exception as exc:
-            logger.warning(f"online {self.name}: broaden volume search failed: {exc}")
-            return candidates
-
-        # Dedupe: skip volumes we've already fetched issues for in the
-        # initial pass. Avoids paying for the same per-volume
-        # `list_issues` call twice.
-        for vol in broader_volumes:
-            if vol.id in seen_vol_ids:
-                continue
             candidates.extend(
                 self._candidates_for_volume(
                     session,
