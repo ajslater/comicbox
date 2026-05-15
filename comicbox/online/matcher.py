@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from loguru import logger
 
@@ -196,7 +196,45 @@ def _resolve_policy(
     return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
 
 
-_TOP_K_FOR_HASHING = 5
+# Minimum number of top-ranked candidates to hash. For small candidate
+# sets (≤ ~10 candidates), top-5 is enough to cover the realistic
+# winners — broader hashing wastes cover-download budget.
+_TOP_K_FOR_HASHING_MIN: Final[int] = 5
+
+# Maximum number of candidates to hash. Caps cost on very large candidate
+# sets (BALANCED budget over Watchmen-style multi-volume searches can
+# return 15-25 candidates after pre-filter).
+_TOP_K_FOR_HASHING_MAX: Final[int] = 15
+
+
+def _top_k_for_hashing(candidate_count: int) -> int:
+    """
+    Adaptive cover-hash top-K (Phase J).
+
+    The bigmedia 2026-05-14 calibration showed that Phase H's broaden
+    retry caused 14 PROMPT-zone regressions: when broaden added
+    candidates with similar metadata scores, the previously-best
+    candidate dropped out of the fixed top-5 for hashing and lost its
+    cover boost.
+
+    Adaptive K scales with the candidate count — hash half the list,
+    floored at 5 (the original constant), capped at 15 (cost budget).
+    Cost: at most 10 extra cover-hash fetches per fixture vs the
+    original K=5, only when the candidate set is genuinely large.
+    Cache absorbs subsequent runs.
+
+    Examples:
+      5 candidates  → K=5  (current behavior; small set)
+      10 candidates → K=5
+      12 candidates → K=6
+      20 candidates → K=10
+      30 candidates → K=15 (capped)
+
+    """
+    return min(
+        _TOP_K_FOR_HASHING_MAX, max(_TOP_K_FOR_HASHING_MIN, candidate_count // 2)
+    )
+
 
 # Tiebreak sentinel: candidates with no `volume_id` sort to the bottom of
 # a score tie. We'd rather break ties in favor of *known*-canonical
@@ -435,10 +473,17 @@ def _apply_cover_hashing(
     local_hash: str,
     candidate_hash_fetcher: CandidateHashFetcher | None,
 ) -> list[Candidate]:
-    """Hash the top K candidates and re-rank by blended score."""
+    """
+    Hash the top K candidates and re-rank by blended score.
+
+    K is adaptive (Phase J — see `_top_k_for_hashing`): for small
+    candidate sets it stays at 5 (the historical constant); for larger
+    sets (Phase H broaden-retry, BALANCED budget) it scales up to 15.
+    """
+    top_k = _top_k_for_hashing(len(ranked))
     rescored: list[Candidate] = []
     for i, c in enumerate(ranked):
-        if i >= _TOP_K_FOR_HASHING:
+        if i >= top_k:
             rescored.append(c)
             continue
         cand_hash = _resolve_candidate_hash(c, candidate_hash_fetcher)

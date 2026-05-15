@@ -920,3 +920,84 @@ def test_solo_confidence_floor_gates_eager_solo_carve_out() -> None:
     # 0.88 < 0.95 floor AND 0.88 < 0.99 confidence_threshold → PROMPT.
     res = matcher.resolve(ranked, settings_eager, "metron")
     assert res.kind is ResolutionKind.PROMPT
+
+
+# ------------- Phase J: adaptive top-K for cover hashing
+
+
+class TestTopKForHashing:
+    """Adaptive cover-hash K scales with candidate count."""
+
+    def test_small_set_uses_minimum(self) -> None:
+        """≤10 candidates → K stays at the original 5 (no behavior change)."""
+        from comicbox.online.matcher import (
+            _TOP_K_FOR_HASHING_MIN,
+            _top_k_for_hashing,
+        )
+
+        assert _top_k_for_hashing(1) == _TOP_K_FOR_HASHING_MIN
+        assert _top_k_for_hashing(5) == _TOP_K_FOR_HASHING_MIN
+        assert _top_k_for_hashing(10) == _TOP_K_FOR_HASHING_MIN
+
+    def test_medium_set_scales_up(self) -> None:
+        """11-29 candidates → K = candidate_count // 2 (linear scale)."""
+        from comicbox.online.matcher import _top_k_for_hashing
+
+        # Boundary: 12 → 6 (linear).
+        assert _top_k_for_hashing(12) == 6
+        # Mid-range: 20 → 10.
+        assert _top_k_for_hashing(20) == 10
+        # Just under cap: 28 → 14.
+        assert _top_k_for_hashing(28) == 14
+
+    def test_large_set_caps_at_max(self) -> None:
+        """≥30 candidates → K caps at the 15 budget bound."""
+        from comicbox.online.matcher import (
+            _TOP_K_FOR_HASHING_MAX,
+            _top_k_for_hashing,
+        )
+
+        assert _top_k_for_hashing(30) == _TOP_K_FOR_HASHING_MAX
+        assert _top_k_for_hashing(100) == _TOP_K_FOR_HASHING_MAX
+        assert _top_k_for_hashing(1000) == _TOP_K_FOR_HASHING_MAX
+
+    def test_apply_cover_hashing_hashes_more_when_set_is_large(self) -> None:
+        """
+        End-to-end: large candidate sets get more hashes than top-5.
+
+        Lays out 12 candidates so the adaptive K kicks in (12 // 2 = 6).
+        Counts cover_score!=None on the result — that count IS the
+        number of candidates that got hashed.
+        """
+        from dataclasses import replace as _replace
+
+        from comicbox.online.matcher import _apply_cover_hashing
+
+        hashes: dict[str, str] = {
+            "http://example.com/c1.jpg": "ffffffffffffffff",
+        }
+
+        def fake_fetcher(url: str) -> str:
+            return hashes.get(url, "ffffffffffffffff")
+
+        # 12 candidates, all with the same cover URL so they all get
+        # a valid cover_score post-hashing.
+        candidates = []
+        for i in range(12):
+            c = _candidate(issue_id=i)
+            c = _replace(c, metadata_score=0.9 - 0.01 * i, score=0.9 - 0.01 * i)
+            c = _replace(
+                c,
+                summary=_replace(c.summary, cover_url="http://example.com/c1.jpg"),
+            )
+            candidates.append(c)
+
+        result = _apply_cover_hashing(
+            candidates,
+            local_hash="0000000000000000",
+            candidate_hash_fetcher=fake_fetcher,
+        )
+
+        # Adaptive K = 12 // 2 = 6. So 6 candidates got hashed.
+        hashed = sum(1 for c in result if c.cover_score is not None)
+        assert hashed == 6
