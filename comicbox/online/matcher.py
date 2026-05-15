@@ -86,19 +86,77 @@ class Resolution:
 
 
 def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
-    """Renormalised weighted sum of metadata signals, in [0, 1]."""
-    score = (
-        s_series(profile, candidate) * W_SERIES
-        + s_issue(profile, candidate) * W_ISSUE
-        + s_year(profile, candidate) * W_YEAR
-        + s_publisher(profile, candidate) * W_PUBLISHER
-        + s_pages(profile, candidate) * W_PAGES
-    )
-    return score / _METADATA_WEIGHT_SUM
+    """
+    Renormalised weighted sum of metadata signals, in [0, 1].
+
+    Phase K (2026-05-14): only signals where BOTH sides have data
+    contribute to the weighted sum, and the total is renormalised over
+    the *contributing* weights — not the full `_METADATA_WEIGHT_SUM`.
+
+    Why: ComicVine's `BasicIssue` (what `search` returns) doesn't expose
+    publisher or page_count. Under the original formula, those signals
+    returned weak-prior values (0.5/0.6) that diluted the score even
+    when series/issue/year all matched perfectly. The structural cap
+    for a CV BasicIssue candidate was md=0.91 — below the default
+    confidence_threshold of 0.95 — so the matcher would PROMPT for
+    obvious matches like "Wolverine #20 (2026)" → CV's "Wolverine #20
+    (2026)" candidate.
+
+    Phase K skips signals when either side is missing data. The
+    Wolverine case scores series=1.0, issue=1.0, year=1.0, with
+    publisher and pages both skipped (profile or candidate is None).
+    Renormalised: (0.30 + 0.25 + 0.10) / (0.30 + 0.25 + 0.10) = 1.0.
+
+    Interaction with Phase E: solo-viable candidates can now reach
+    md=1.0 even on thumbnail libraries (cover hash not firing). That
+    means the Phase E `solo_confidence_threshold` (default 0.95) is
+    where silent-failure protection lives. Users who calibrate against
+    thumbnail-only libraries should be aware that solo CV matches with
+    all available signals at 1.0 will auto-write under default
+    settings.
+    """
+    weighted_sum = 0.0
+    total_weight = 0.0
+
+    if profile.series and candidate.summary.series:
+        weighted_sum += W_SERIES * s_series(profile, candidate)
+        total_weight += W_SERIES
+
+    # Issue: profile carries either the raw string `issue` (e.g. "001")
+    # or the parsed `issue_int`. The candidate side just has `issue`.
+    profile_has_issue = bool(profile.issue) or profile.issue_int is not None
+    if profile_has_issue and candidate.summary.issue:
+        weighted_sum += W_ISSUE * s_issue(profile, candidate)
+        total_weight += W_ISSUE
+
+    if profile.year is not None and candidate.summary.year is not None:
+        weighted_sum += W_YEAR * s_year(profile, candidate)
+        total_weight += W_YEAR
+
+    if profile.publisher and candidate.summary.publisher:
+        weighted_sum += W_PUBLISHER * s_publisher(profile, candidate)
+        total_weight += W_PUBLISHER
+
+    if profile.page_count is not None and candidate.summary.page_count is not None:
+        weighted_sum += W_PAGES * s_pages(profile, candidate)
+        total_weight += W_PAGES
+
+    if total_weight == 0.0:
+        # No signal at all — neither side has data we can compare.
+        return 0.0
+    return weighted_sum / total_weight
 
 
 def final_score(candidate: Candidate, *, hash_used: bool) -> float:
-    """Blend metadata and cover scores. Cover-only-when-hashing case."""
+    """
+    Blend metadata and cover scores. Cover-only-when-hashing case.
+
+    Phase K note: `metadata_score` now renormalises over contributing
+    signals, so for hashed candidates the blended formula stays the
+    same — `_METADATA_WEIGHT_SUM` (0.80) is still the metadata's
+    share of the blended budget, regardless of which signals
+    contributed to producing the md value.
+    """
     if not hash_used or candidate.cover_score is None:
         return candidate.metadata_score
     return (

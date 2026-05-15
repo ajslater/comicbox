@@ -276,6 +276,114 @@ def test_partial_match_above_min_confidence() -> None:
     assert score >= 0.50
 
 
+# ----------- Phase K: signal-content-aware metadata score
+
+
+def test_phase_k_cv_basicissue_perfect_match_scores_one() -> None:
+    """
+    CV BasicIssue perfect match scores 1.0 when publisher + pages are absent.
+
+    The structural cap on CV BasicIssue candidates pre-Phase-K was
+    md=0.91 (s_publisher=0.5 + s_pages=0.6 priors). The "Wolverine #20
+    (2026)" prompt-UX issue was caused exactly by this cap.
+    """
+    score = metadata_score(
+        _profile(year=2026),
+        _candidate(year=2026, publisher=None, page_count=None),
+    )
+    # All three contributing signals (series, issue, year) at 1.0 →
+    # renormalised score = 1.0.
+    assert score == pytest.approx(1.0, abs=1e-9)
+
+
+def test_phase_k_no_contribution_returns_zero() -> None:
+    """
+    Phase K: zero contributing signals (truly empty case) → 0.0.
+
+    If neither profile nor candidate have any of the five signals,
+    there's nothing to match on; return 0.0 rather than dividing by zero.
+    """
+    profile = ComicProfile(series=None, issue=None, issue_int=None)
+    cand = Candidate(
+        source="comicvine",
+        issue_id=42,
+        summary=CandidateSummary(
+            series="",
+            issue="",
+            year=None,
+            publisher=None,
+            page_count=None,
+            cover_url=None,
+            variant_label=None,
+        ),
+    )
+    assert metadata_score(profile, cand) == 0.0
+
+
+def test_phase_k_solo_signal_uses_full_weight() -> None:
+    """
+    One contributing signal → score is that signal's value.
+
+    Edge case worth a test: if only series matches (no issue, year,
+    etc. on either side), the renormalised score is just s_series.
+    A perfect series match alone yields 1.0 — which is "trust the
+    series name and nothing else." For solo-viable candidates, this
+    interacts with Phase E's `solo_confidence_threshold` (default 0.95)
+    which protects against silent auto-write here.
+    """
+    profile = ComicProfile(series="Foo Comics", issue=None, issue_int=None)
+    cand = Candidate(
+        source="comicvine",
+        issue_id=42,
+        summary=CandidateSummary(
+            series="Foo Comics",
+            issue="",
+            year=None,
+            publisher=None,
+            page_count=None,
+            cover_url=None,
+            variant_label=None,
+        ),
+    )
+    # Only s_series contributes (1.0); renormalised score is 1.0.
+    assert metadata_score(profile, cand) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_phase_k_asymmetric_publisher_skipped_not_penalised() -> None:
+    """
+    Phase K: profile has publisher but candidate doesn't → skip the signal.
+
+    Pre-Phase-K behavior: s_publisher returned 0.5 (weak prior), the
+    score was diluted as if "publisher partially matched." Phase K
+    treats this as "we don't know" and doesn't include the signal in
+    the renormalised average. Other signals carry the score.
+    """
+    score = metadata_score(
+        _profile(publisher="Marvel"),
+        _candidate(publisher=None),  # asymmetric: profile has, candidate doesn't
+    )
+    # Without publisher (skipped), with pages contributing (both 24):
+    # series + issue + year + pages = 0.30 + 0.25 + 0.10 + 0.05 = 0.70
+    # Total contributing weight = 0.70; renormalised score = 1.0.
+    assert score == pytest.approx(1.0, abs=1e-9)
+
+
+def test_phase_k_preserves_wrong_issue_penalty() -> None:
+    """
+    Phase K leaves the wrong-issue penalty intact.
+
+    When issue numbers diverge (5 vs 6), s_issue returns 0.0. With
+    Phase K, the score is renormalised over contributing signals — but
+    the wrong issue is still penalised (the signal contributes a 0.0
+    in the weighted sum).
+    """
+    score = metadata_score(_profile(issue_int=5), _candidate(issue="6"))
+    # All 5 signals contribute, s_issue=0.0, others=1.0.
+    # weighted = 0.30 + 0 + 0.10 + 0.10 + 0.05 = 0.55; total_weight=0.80
+    # score = 0.55/0.80 = 0.6875
+    assert score == pytest.approx(0.6875, abs=1e-9)
+
+
 # --------------------------------------------------------- resolution
 
 
