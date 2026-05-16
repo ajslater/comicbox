@@ -97,38 +97,33 @@ Marker conventions:
   fanning out to 20+ candidate series in Metron); further reduction
   needs fan-out caps or `-j`-aware budgets, not just more retries.
 - ✅ **Tagging-quality measurement under -j 8 cold cache** —
-  measured 2026-05-15. 50 fixtures × jobs=1,4,8 cold cache + Metron
-  + `--policy normal --unattended --force-search` → **0 differences
-  across jobs values, all 50 fixtures landed in SKIP**. The 0.95
-  production threshold is well above the noise floor that candidate-
-  set drops introduce, so parallelism is invisible under normal
-  policy. Harness at `tests/stress/jobs_accuracy.py`; run via
-  `make stress-jobs-accuracy`. See
-  [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md).
-- **Stronger jobs-accuracy follow-up.** Option 1 (re-run with
-  `--confidence-threshold 0.50`) was attempted 2026-05-15 and
-  surfaced a **critical wall-time issue at jobs=8** (5.7h vs 22m,
-  15x slower). See addendum in
-  [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md).
-  The accuracy result is unreliable — the harness's log parser
-  breaks under -j 8 interleaving, catching only 2 of 39 actual
-  auto-writes. Two follow-ups now sit on top:
-  1. ❌ **Bound the retry-cumulative wait** (tried + reverted
-     2026-05-16). Three iterations of a 300s per-call cap, all
-     reverted: caps that included server-hinted long waits broke
-     existing tests; exempting the first wait let mokkari's 3600s
-     contention hints through; hard-capping regressed the production
-     100-fixture stress wall time 49min → 231min (4.7x slower) by
-     interrupting productive patient-waiting that lets the rate-limit
-     bucket clear. See "Failed fix attempt" section in the
-     calibration note. Future attempts should target adaptive
-     matcher-level throttling (drop max_series_per_search under
-     detected contention) rather than retry-level capping.
-  2. **Refactor jobs_accuracy harness to in-process driver.** Match
-     the prompt_ux.py pattern: monkeypatch a recording hook into
-     `_accept_candidate` (or `outcome_stats.record_auto_write`) so
-     auto-write IDs are captured directly without log parsing.
-     Robust under heavy -j interleaving.
+  measured 2026-05-15 then re-measured 2026-05-16 with refactored
+  in-process harness. **Headline: zero identity changes at any -j
+  value** (matcher never confidently mis-picks under contention);
+  parallelism trades coverage, not accuracy. -j 4 loses 6% of
+  decisions vs jobs=1; -j 8 loses 24%, concentrated on high-fan-
+  out series (Lois Lane 2020 multi-volume, Watchmen 1986/87, etc.).
+  Validates the `-j 4` doc ceiling. See
+  [`calibration-notes/2026-05-16-jobs-accuracy-v2.md`](calibration-notes/2026-05-16-jobs-accuracy-v2.md)
+  for the clean v2 data and
+  [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md)
+  for the earlier broken-parser version + failed cap experiment.
+  Harness at `tests/stress/jobs_accuracy.py`; `make stress-jobs-accuracy`.
+- ✅ **Stronger jobs-accuracy follow-up.** Both sub-items resolved
+  2026-05-16:
+  - ❌ **Bound the retry-cumulative wait** — tried + reverted
+    (three iterations all regressed production wall time; the
+    productive patient-waiting was load-bearing). Notes preserved
+    in
+    [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md)
+    "Failed fix attempt" section. Future attempts should target
+    adaptive matcher-level throttling, not retry-level capping.
+  - ✅ **Refactor jobs_accuracy harness to in-process driver**
+    (commit `5aa76ff`). Drove `cli.main()` in-process with a
+    monkeypatched `_accept_candidate` hook. Captured 39 auto-writes
+    cleanly (vs 2 in the broken subprocess version). The clean v2
+    data above showed zero identity changes — refuting the prior
+    "wrong candidate under contention" anxiety. See the v2 note.
 
 
 ## 3. API budget
