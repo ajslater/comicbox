@@ -113,11 +113,17 @@ Marker conventions:
   The accuracy result is unreliable — the harness's log parser
   breaks under -j 8 interleaving, catching only 2 of 39 actual
   auto-writes. Two follow-ups now sit on top:
-  1. **Bound the retry-cumulative wait** in `retry.py`. After 5+
-     server-hinted retries, calls can spend tens of minutes patiently
-     waiting before finally succeeding or giving up. A 5-minute
-     per-call wait cap would prevent the 50-min worst-case observed.
-     Or make `_MAX_RATE_LIMIT_RETRIES` jobs-aware (lower under -j>4).
+  1. ❌ **Bound the retry-cumulative wait** (tried + reverted
+     2026-05-16). Three iterations of a 300s per-call cap, all
+     reverted: caps that included server-hinted long waits broke
+     existing tests; exempting the first wait let mokkari's 3600s
+     contention hints through; hard-capping regressed the production
+     100-fixture stress wall time 49min → 231min (4.7x slower) by
+     interrupting productive patient-waiting that lets the rate-limit
+     bucket clear. See "Failed fix attempt" section in the
+     calibration note. Future attempts should target adaptive
+     matcher-level throttling (drop max_series_per_search under
+     detected contention) rather than retry-level capping.
   2. **Refactor jobs_accuracy harness to in-process driver.** Match
      the prompt_ux.py pattern: monkeypatch a recording hook into
      `_accept_candidate` (or `outcome_stats.record_auto_write`) so

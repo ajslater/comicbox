@@ -181,6 +181,76 @@ as a separate follow-up.
 The wall-time finding above is rock-solid (timing data is captured
 externally; not affected by parser bugs).
 
+## Failed fix attempt 2026-05-16: cumulative-wait cap
+
+Tried capping retry cumulative wait at 300s per call as a backstop
+against the 5.7-hour pathology. **It made things worse for the
+production stress workload.** Two iterations, both reverted:
+
+### Attempt A: cap on every wait
+
+Logic: `if cumulative_wait + delay > 300: bail`.
+
+Broke the pre-existing 1-day-clamp test
+(`test_with_retry_clamps_excessive_retry_after` expected a 3600s
+wait to be honored). Test was correct under the old semantic; the
+cap was too aggressive.
+
+### Attempt B: cap exempts first wait
+
+Logic: `if cumulative_wait > 0 and cumulative_wait + delay > 300: bail`.
+
+Preserved the 1-day-clamp test, but **mokkari hands out 3600s
+retry_after hints under -j 8 heavy contention** (server's view of
+backlogged bucket). The first-wait exemption let those through →
+wall ballooned to 6.8 hours in a 100-fixture re-verify.
+
+### Attempt C: hard cap including first wait
+
+Logic: `if cumulative_wait + delay > 300: bail` (reverting Attempt B).
+
+20-fixture smoke passed (6.2 min wall, similar to baseline). But
+100-fixture verify regressed: **49 min (pre-cap) → 231 min (4.7x
+slower)**, WARNINGs 161 → 864. Root cause: under heavy contention
+with short server hints (typically 30-60s in this workload), the
+cap interrupts the productive patient-waiting that lets the
+rate-limit bucket clear. Each cap-bail spawns a fresh retry cycle
+on the next series — failure cycling cascades through the matcher's
+candidate set.
+
+The pre-cap behaviour (wait through the long-tail of the schedule)
+was actually adaptive: it gave the bucket time to refill. The cap
+breaks this.
+
+### Decision: revert, accept the pathology
+
+Reverted retry.py and tests. The 5.7-hour pathological case under
+`--confidence-threshold 0.50 --force-search -j 8 cold cache` stays
+as a known limitation. It only manifests under a specific
+power-user workload that production users won't hit. The doc
+downgrade in commit `8ac616f` (recommending `-j 4` ceiling for
+cold-cache runs) is the right user-facing response.
+
+### Notes for any future fix
+
+If someone tries this again:
+
+- Don't cap based on cumulative wait alone — the production
+  workload benefits from patient-waiting.
+- Don't cap based on single-wait length — short hints under
+  contention are normal and productive.
+- The pathology is specifically: *many calls, each with short
+  hints, all bailing early creates re-issuance cycles*. The fix
+  needs to recognise the cycle, not the wait.
+- A more promising direction: when a worker's call fails terminally,
+  briefly back off the WHOLE WORKER for a few seconds before
+  starting the next series. Reduces re-issuance pressure. But
+  that's a structural change to the matcher loop, not retry.py.
+- Or: the real fix is to back off the matcher's fan-out under
+  detected contention (drop max_series_per_search from 20 to 5
+  when WARNINGs accumulate). Adaptive throttling at the matcher
+  level, not the retry level.
+
 ## Harness notes
 
 The harness lives at `tests/stress/jobs_accuracy.py`. It subprocess-
