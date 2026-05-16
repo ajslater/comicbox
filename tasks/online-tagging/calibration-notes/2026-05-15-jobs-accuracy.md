@@ -94,6 +94,93 @@ finding — it justifies leaving -j 8 as the spec'd target without
 narrowing the recommended default — but it's a weaker conclusion
 than a richer comparison would yield.
 
+## Follow-up run: threshold=0.50 sweep (CRITICAL wall-time finding)
+
+Re-ran with `--threshold 0.50` per option 1 above. Same 50 fixtures,
+same cold-cache + Metron-only + force-search.
+
+**The wall-time result is the headline:**
+
+| Jobs | Wall (min) | Metron requests | Rate-limit retries |
+| --- | --- | --- | --- |
+| 1 | 22.4 | 432 | 351 |
+| 4 | 24.1 | 428 | 938 |
+| 8 | **342.2** | 453 | **1238** |
+
+**Jobs=8 took 5.7 hours — 15x longer than jobs=1.** Request counts
+barely budged (453 vs 432, +5%); the time went into rate-limit
+*waits*. Retry-attempt distribution at jobs=8 (out of 8 max):
+
+| Attempt | Count |
+| --- | --- |
+| 1/8 | 398 |
+| 2/8 | 257 |
+| 3/8 | 180 |
+| 4/8 | 137 |
+| 5/8 | 98 |
+| 6/8 | 72 |
+| 7/8 | 54 |
+| 8/8 | 42 |
+
+42 calls reached the final retry (attempt 8/8) — those waited the
+full schedule (30+60+120+300+600+600+600+600 = ~50 min worst case
+with server-hinted overrides applying), all in series across the 8
+contending workers.
+
+**Root cause: the retry-budget bump from 5 → 8 (the same-day fix
+in commit `5359cc4`) trades wall time for cascade-WARNING
+reduction. At -j 8 cold-cache with the matcher fully invested
+(threshold=0.50 makes more fixtures progress past the early-skip
+gate), more calls patient-wait their way through the longer
+schedule instead of failing fast.** The 100-fixture stress run
+that validated the fix (`2026-05-15-stress-100-verify.md`) didn't
+expose this because under production `--policy normal` most
+fixtures SKIP before exercising the slow retry path.
+
+### What changed in user-visible behaviour
+
+This finding contradicts the `-j` doc text we shipped in commit
+`111a75a` ("8 with caveat — trade match quality for wall time").
+The actual trade-off at jobs=8 under high contention is much worse
+than that: wall time can be **15x** slower, not "slightly".
+
+### Recommendations
+
+1. **Tighten the `-j` doc.** Recommend `-j 4` as the actual safe
+   ceiling for cold-cache runs, not just the sweet spot. Mark `-j 8`
+   as "experimental — wall time can balloon under cold-cache
+   contention with `--force-search`".
+2. **Bound the retry-cumulative wait.** Add a per-call max wait
+   (e.g. 5 min total). Once a call's accumulated retry waits exceed
+   that, give up — the wall-time cost of patient-waiting isn't
+   worth the partial-candidate-recovery gain.
+3. **Or revert the budget bump under -j > 4.** Make
+   `_MAX_RATE_LIMIT_RETRIES` jobs-aware: 8 at jobs=1, dropping to 5
+   at jobs >= 4. The schedule that was fine at jobs=1 becomes
+   pathological under parallelism.
+
+(2) is probably the right structural fix. (3) is more conservative.
+
+### Accuracy result is suspect
+
+The harness reported 49/50 same outcome at jobs=8 with 1 identity
+change (Captain Science 53445 → 4749). But the log parser broke
+down under -j 8 interleaving: under heavy parallelism, comicbox's
+rich-styled fixture banners get word-wrapped AND shuffled by 8
+concurrent workers, so the path-substring tracking heuristic in
+`parse_chosen_ids` fails. **The harness caught only 2 of 39 actual
+auto-writes; the 1 changed-identity result is from an unknown
+sample size, not 50.**
+
+To get a clean accuracy measurement under -j 8, the harness needs
+either an in-process driver with monkeypatched recording (like
+prompt_ux.py) or a more robust parser keyed on a more
+identification-friendly log anchor than path substrings. Tracked
+as a separate follow-up.
+
+The wall-time finding above is rock-solid (timing data is captured
+externally; not affected by parser bugs).
+
 ## Harness notes
 
 The harness lives at `tests/stress/jobs_accuracy.py`. It subprocess-

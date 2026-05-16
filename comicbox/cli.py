@@ -541,13 +541,14 @@ def _add_online_options(option_group: Any) -> None:
         metavar="N",
         help=(
             "Parallel workers across files. Default [green]1[/green] (serial). "
-            "[green]4[/green] is the sweet spot for cold-cache batch runs. "
-            "Higher values (e.g. [green]8[/green]) work but trade match "
-            "quality for wall time — under sustained API rate-limit "
-            "contention some calls exhaust the retry budget, giving the "
-            "matcher fewer candidates. [green]16+[/green] is not faster than "
-            "[green]8[/green]; both online libraries share a single rate-"
-            "limit bucket per source."
+            "[green]4[/green] is the recommended ceiling for cold-cache batch "
+            "runs. [green]8[/green]+ is [yellow]not recommended for cold "
+            "cache[/yellow] — under sustained API rate-limit contention with "
+            "force-search or lowered thresholds, wall time can balloon 10x+ "
+            "as workers patient-wait through the retry schedule (calibrated "
+            "2026-05-15 at jobs=8: 5.7 hours vs 22 min at jobs=1 on the same "
+            "fixture set). [green]16+[/green] is not faster than [green]8[/green]; "
+            "both online libraries share a single rate-limit bucket per source."
         ),
     )
 

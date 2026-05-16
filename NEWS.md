@@ -30,9 +30,10 @@
     - Cross-source disagreement: when Metron's stored `cv_id` and our
       independent ComicVine match disagree, comicbox logs a WARNING.
     - `-j N` runs online lookup across N files in parallel. Default 1
-      (serial); 4 is the sweet spot for cold-cache batch runs; 8 is
-      faster but trades match quality for wall time under API rate-
-      limit contention. See `--help` for details.
+      (serial); 4 is the recommended ceiling for cold-cache batch runs.
+      Higher values are not recommended for cold cache — wall time can
+      balloon 10x+ under sustained rate-limit contention. See `--help`
+      for details.
 - Breaking changes
     - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
       alias through 4.x and is removed in 5.0.

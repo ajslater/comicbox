@@ -69,6 +69,7 @@ stress-prompt-ux:
 ## @category Test
 STRESS_FIXTURES_JSON ?= tests/calibration/fixtures-jobs.json
 STRESS_JOBS_VALUES ?= 1,4,8
+STRESS_THRESHOLD ?=
 .PHONY: stress-jobs-accuracy
 stress-jobs-accuracy:
-	uv run python -m tests.stress.jobs_accuracy $(STRESS_FIXTURES_JSON) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS_VALUES)
+	uv run python -m tests.stress.jobs_accuracy $(STRESS_FIXTURES_JSON) --limit $(STRESS_LIMIT) --jobs $(STRESS_JOBS_VALUES) $(if $(STRESS_THRESHOLD),--threshold $(STRESS_THRESHOLD))

@@ -105,18 +105,24 @@ Marker conventions:
   policy. Harness at `tests/stress/jobs_accuracy.py`; run via
   `make stress-jobs-accuracy`. See
   [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md).
-- **Stronger jobs-accuracy follow-up.** The trivial-pass result
-  above doesn't measure the more interesting question — "when the
-  matcher DOES pick a candidate, does -j change which one?". Three
-  ways to push this:
-  1. Re-run with `--confidence-threshold 0.50` to force decisions
-     on every candidate. Cheapest; reuses the existing harness.
-  2. Add a "top-pick" selector mode (in-process, monkeypatched like
-     prompt_ux.py). Bypasses confidence threshold entirely.
-  3. Build a Metron-rich fixture set. The current set is CV-only-
-     labeled because the library is CV-tagged; a Metron-tagged
-     library would land more fixtures in the auto-write band.
-  Option 1 is the lowest-effort meaningful test, ~60-min wall.
+- **Stronger jobs-accuracy follow-up.** Option 1 (re-run with
+  `--confidence-threshold 0.50`) was attempted 2026-05-15 and
+  surfaced a **critical wall-time issue at jobs=8** (5.7h vs 22m,
+  15x slower). See addendum in
+  [`calibration-notes/2026-05-15-jobs-accuracy.md`](calibration-notes/2026-05-15-jobs-accuracy.md).
+  The accuracy result is unreliable — the harness's log parser
+  breaks under -j 8 interleaving, catching only 2 of 39 actual
+  auto-writes. Two follow-ups now sit on top:
+  1. **Bound the retry-cumulative wait** in `retry.py`. After 5+
+     server-hinted retries, calls can spend tens of minutes patiently
+     waiting before finally succeeding or giving up. A 5-minute
+     per-call wait cap would prevent the 50-min worst-case observed.
+     Or make `_MAX_RATE_LIMIT_RETRIES` jobs-aware (lower under -j>4).
+  2. **Refactor jobs_accuracy harness to in-process driver.** Match
+     the prompt_ux.py pattern: monkeypatch a recording hook into
+     `_accept_candidate` (or `outcome_stats.record_auto_write`) so
+     auto-write IDs are captured directly without log parsing.
+     Robust under heavy -j interleaving.
 
 
 ## 3. API budget

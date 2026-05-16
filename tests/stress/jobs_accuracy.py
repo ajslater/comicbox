@@ -116,9 +116,21 @@ def metron_cache_rows() -> int:
 
 
 def run_comicbox(
-    fixtures: list[Fixture], jobs: int, log_path: Path
+    fixtures: list[Fixture],
+    jobs: int,
+    log_path: Path,
+    threshold: float | None = None,
 ) -> tuple[int, float]:
-    """Subprocess-invoke comicbox; return (exit_code, wall_seconds)."""
+    """
+    Subprocess-invoke comicbox; return (exit_code, wall_seconds).
+
+    When ``threshold`` is set (e.g. 0.5), passes
+    ``--confidence-threshold metron:<threshold>`` so the matcher
+    auto-writes any candidate above that bar instead of holding out
+    for the production 0.95 default. Lets the harness force decisions
+    when the labeled fixture set is too thin to land naturally in the
+    auto-write band.
+    """
     cmd = [
         "uv",
         "run",
@@ -132,8 +144,10 @@ def run_comicbox(
         "--force-search",
         "-j",
         str(jobs),
-        *[str(f.path) for f in fixtures],
     ]
+    if threshold is not None:
+        cmd += ["--confidence-threshold", f"metron:{threshold}"]
+    cmd += [str(f.path) for f in fixtures]
     started = time.monotonic()
     with log_path.open("wb") as logf:
         result = subprocess.run(  # noqa: S603 — trusted argv
@@ -283,14 +297,24 @@ def _format_diff_section(jobs: int, baseline_jobs: int, diff: _Diff) -> list[str
     return lines
 
 
-def format_summary(fixtures: list[Fixture], outcomes: list[JobsOutcome]) -> str:
+def format_summary(
+    fixtures: list[Fixture],
+    outcomes: list[JobsOutcome],
+    threshold: float | None = None,
+) -> str:
     """Build the comparison markdown. jobs=1 is the baseline."""
+    threshold_line = (
+        f"- Confidence threshold: {threshold} (overridden via --threshold)"
+        if threshold is not None
+        else "- Confidence threshold: 0.95 (production default)"
+    )
     lines = [
         "# M7 jobs-accuracy comparison",
         "",
         f"- Fixture count: {len(fixtures)}",
         "- Source: metron",
         "- Policy: normal, --unattended, --force-search",
+        threshold_line,
         "- Cache: wiped before each run (cold)",
         "- Baseline: jobs=1 (serial, no contention)",
         "",
@@ -335,6 +359,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Cap fixture count per run (default: 50)",
     )
     parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help=(
+            "Override `--confidence-threshold metron:<v>` so the matcher "
+            "auto-writes any candidate above <v> instead of the production "
+            "0.95 default. Use 0.50 to force decisions on every above-"
+            "min_confidence candidate (handy when the labeled fixture set "
+            "is too thin for auto-writes to land naturally)."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("tests/stress/output"),
@@ -366,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         before_rows = metron_cache_rows()
         log_path = args.output_dir / f"jobs-accuracy-{timestamp}-j{jobs}.log"
         sys.stderr.write(f"  jobs={jobs} → {log_path.name}\n")
-        exit_code, wall = run_comicbox(fixtures, jobs, log_path)
+        exit_code, wall = run_comicbox(fixtures, jobs, log_path, args.threshold)
         after_rows = metron_cache_rows()
         sys.stderr.write(
             f"  jobs={jobs} done: exit={exit_code} wall={wall / 60:.1f}m "
@@ -374,7 +410,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         outcomes.append(score_outcome(fixtures, jobs, wall, log_path))
 
-    summary = format_summary(fixtures, outcomes)
+    summary = format_summary(fixtures, outcomes, args.threshold)
     summary_path = args.output_dir / "JOBS_ACCURACY_SUMMARY.md"
     summary_path.write_text(summary)
     sys.stdout.write(summary + "\n")
