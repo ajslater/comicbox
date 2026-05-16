@@ -154,14 +154,17 @@ def run_with_recording_selector(
     events: list[PromptEvent] = []
     events_lock = threading.Lock()
     recording_selector = make_recording_selector(args.think_time, events, events_lock)
-    original_selector = _lookup_module.cli_selector
-    _lookup_module.cli_selector = recording_selector  # type: ignore[assignment]
+    # `cli_selector` is `from`-imported into online_lookup; patching the
+    # attribute on that module is what `_selector_for_run` actually reads.
+    # pyright flags it as a private-import use; that's intentional here.
+    original_selector = _lookup_module.cli_selector  # pyright: ignore[reportPrivateLocalImportUsage]
+    _lookup_module.cli_selector = recording_selector  # type: ignore[assignment]  # pyright: ignore[reportPrivateLocalImportUsage]
     started = time.monotonic()
     try:
         argv = build_cli_argv(args, fixtures)
         _cli_module.main(argv)
     finally:
-        _lookup_module.cli_selector = original_selector  # type: ignore[assignment]
+        _lookup_module.cli_selector = original_selector  # type: ignore[assignment]  # pyright: ignore[reportPrivateLocalImportUsage]
     wall_seconds = time.monotonic() - started
     return PromptUXResult(
         events=events,

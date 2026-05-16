@@ -1,7 +1,8 @@
 # M7 Stress-test Harness
 
-Validates parallel batch processing (`-j N`) under live-API load. Two
-harnesses, each closing one half of the M7 acceptance gate in
+Validates parallel batch processing (`-j N`) under live-API load.
+Three harnesses, each answering one piece of the M7 acceptance gate
+in
 [`tasks/online-tagging/TODO.md`](../../tasks/online-tagging/TODO.md)
 section 2:
 
@@ -12,10 +13,16 @@ section 2:
   serialisation under contention. Uses `--policy always-prompt
   --force-search` + a monkeypatched recording selector that
   simulates user think-time.
+- **`jobs_accuracy.py`** (`make stress-jobs-accuracy`) — does
+  parallelism change the matcher's per-fixture decision vs the
+  serial path? Drives `cli.main()` in-process with a monkeypatched
+  recording hook on `_accept_candidate`; diffs jobs=N outcomes vs
+  jobs=1 as the baseline.
 
-Neither is part of the regular test suite — both hit live Metron and
-ComicVine APIs, require credentials, and take minutes to run. Run
-them manually before declaring an M7-touching change shipped.
+None of these is part of the regular test suite — all hit live
+Metron and ComicVine APIs, require credentials, and take minutes
+to run. Run them manually before declaring an M7-touching change
+shipped.
 
 ## `run.py` — rate-limiter compliance
 
@@ -71,6 +78,47 @@ The real `Runner._run_parallel` runs the ThreadPoolExecutor + the
   real `cli_selector` in a TTY is still worth doing before declaring
   4.0.0 fully shipped.
 
+## `jobs_accuracy.py` — does parallelism change matcher decisions
+
+### What it measures
+
+| Signal | Source |
+| --- | --- |
+| Per-fixture chosen Metron id | recorded via monkeypatched `_accept_candidate` hook |
+| Per-fixture decision diff vs jobs=1 | computed across the chosen-id dicts |
+| Decided vs SKIPPED counts | per jobs value, from the chosen dict |
+| Wall time + Metron cache-row delta | per jobs value |
+
+### How it works
+
+Same in-process pattern as `prompt_ux.py`: drives
+`comicbox.cli.main(argv)` and monkeypatches
+`ComicboxOnlineLookup._accept_candidate` to record `(path, source,
+issue_id)` before calling the original. The patch hooks into the
+matcher's actual auto-write decision point — robust under heavy
+-j N log interleaving (a prior subprocess-based iteration broke
+under -j 8 and only caught 2 of 39 actual auto-writes).
+
+Targets Metron only (the contention-prone source per
+2026-05-15-stress-100). Uses `--force-search` so fixtures with
+stored Metron IDs still go through the matcher path (without it,
+the explicit-id shortcut skips search entirely → -j is moot). Use
+`--threshold 0.50` to force decisions when the labeled fixture set
+is too thin for auto-writes to land naturally at the production
+0.95 default.
+
+### What it doesn't measure
+
+- **Absolute correctness.** Uses jobs=1 as the baseline, not labels.
+  Tells you "did -j N change the answer?" not "is jobs=N's answer
+  right?". The labeled fixture set in
+  `tests/calibration/fixtures-jobs.json` is CV-only-tagged so we
+  can't measure absolute Metron accuracy without bootstrapping a
+  Metron-tagged set first.
+- **ComicVine source path.** Metron-only by current design. CV's
+  hourly cap makes a CV-source sweep expensive and the cap dynamics
+  haven't been a problem on CV per the production stress data.
+
 ## Setup
 
 Same as the calibration harness:
@@ -104,10 +152,18 @@ uv run python -m tests.stress.run /path/to/fixtures --sources metron --limit 50
 # Prompt-UX: 16 fixtures, jobs=8, 0.5s think-time per prompt
 uv run python -m tests.stress.prompt_ux /path/to/fixtures \
     --limit 16 --jobs 8 --think-time 0.5
+
+# Jobs-accuracy: 50 fixtures × jobs=1,4,8 cold cache, threshold 0.50
+uv run python -m tests.stress.jobs_accuracy \
+    tests/calibration/fixtures-jobs.json \
+    --jobs 1,4,8 --limit 50 --threshold 0.5
 ```
 
-Makefile shortcuts: `make stress` and `make stress-prompt-ux`. Both
-respect `STRESS_PATH`, `STRESS_LIMIT`, `STRESS_JOBS` overrides.
+Makefile shortcuts: `make stress`, `make stress-prompt-ux`, and
+`make stress-jobs-accuracy`. All respect `STRESS_PATH`,
+`STRESS_LIMIT`, `STRESS_JOBS` overrides; `stress-jobs-accuracy`
+also takes `STRESS_FIXTURES_JSON`, `STRESS_JOBS_VALUES`,
+`STRESS_THRESHOLD`.
 
 The harness is **read-only against your archives** — always passes `-n`
 (dry-run) to comicbox. No tag writes.

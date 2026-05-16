@@ -2,9 +2,9 @@ r"""
 M7 tagging-quality measurement under -j N.
 
 Runs the same fixture set at each jobs value with cold cache between
-runs, parses per-fixture chosen IDs from the comicbox log, and uses
-jobs=1's output as the ground-truth baseline. Quantifies how often
-higher -j values reach a different decision than the serial path.
+runs and uses jobs=1's output as the ground-truth baseline.
+Quantifies how often higher -j values reach a different decision
+than the serial path.
 
 The bootstrap'd labeled fixtures don't include Metron IDs (only CV),
 and CV's hourly cap makes a labeled CV sweep expensive (~1.5 hr
@@ -20,6 +20,13 @@ Uses `--force-search` so fixtures with stored Metron IDs still
 exercise the matcher path (without this, the explicit-id shortcut
 bypasses search entirely → -j has no effect).
 
+Architecture: drives `comicbox.cli.main(argv)` in-process so we can
+monkeypatch `ComicboxOnlineLookup._accept_candidate` with a
+recording hook. Per-fixture chosen IDs are captured directly
+without log parsing, which means the harness is robust under heavy
+-j N log interleaving (a previous subprocess-based iteration broke
+under -j 8 — caught 2 of 39 actual auto-writes).
+
 Usage:
 
     uv run python -m tests.stress.jobs_accuracy \\
@@ -34,19 +41,17 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sqlite3
-import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from platformdirs import user_cache_path
 
-_AUTO_WRITE_RE = re.compile(
-    r"online (?P<source>\w+): auto-writing id=(?P<id>\d+) \(score=(?P<score>[\d.]+)\)"
-)
+from comicbox import cli as _cli_module
+from comicbox.box import online_lookup as _lookup_module
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +69,6 @@ class JobsOutcome:
 
     jobs: int
     wall_seconds: float
-    log_path: Path
     chosen_by_fixture: dict[str, int | None]  # path string → chosen metron id
     # Count of fixtures with an auto-write decision; the rest were skipped.
     decided: int
@@ -115,26 +119,11 @@ def metron_cache_rows() -> int:
         return 0
 
 
-def run_comicbox(
-    fixtures: list[Fixture],
-    jobs: int,
-    log_path: Path,
-    threshold: float | None = None,
-) -> tuple[int, float]:
-    """
-    Subprocess-invoke comicbox; return (exit_code, wall_seconds).
-
-    When ``threshold`` is set (e.g. 0.5), passes
-    ``--confidence-threshold metron:<threshold>`` so the matcher
-    auto-writes any candidate above that bar instead of holding out
-    for the production 0.95 default. Lets the harness force decisions
-    when the labeled fixture set is too thin to land naturally in the
-    auto-write band.
-    """
-    cmd = [
-        "uv",
-        "run",
-        "comicbox",
+def build_cli_argv(
+    fixtures: list[Fixture], jobs: int, threshold: float | None = None
+) -> list[str]:
+    """Build the argv that `comicbox.cli.main` would parse."""
+    argv = [
         "-n",
         "--online",
         "metron",
@@ -146,74 +135,60 @@ def run_comicbox(
         str(jobs),
     ]
     if threshold is not None:
-        cmd += ["--confidence-threshold", f"metron:{threshold}"]
-    cmd += [str(f.path) for f in fixtures]
-    started = time.monotonic()
-    with log_path.open("wb") as logf:
-        result = subprocess.run(  # noqa: S603 — trusted argv
-            cmd,
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
-    elapsed = time.monotonic() - started
-    return result.returncode, elapsed
+        argv += ["--confidence-threshold", f"metron:{threshold}"]
+    argv += [str(f.path) for f in fixtures]
+    return argv
 
 
-def parse_chosen_ids(log_path: Path, fixtures: list[Fixture]) -> dict[str, int | None]:
+def run_with_recording_hook(
+    fixtures: list[Fixture],
+    jobs: int,
+    threshold: float | None,
+) -> tuple[dict[str, int | None], float]:
     """
-    Walk the log, slot each `auto-writing id=N` line under its fixture.
+    Drive `comicbox.cli.main(argv)` with a monkeypatched recording hook.
 
-    Returns {fixture_path_str: chosen_metron_id_or_None}. Fixtures with
-    no auto-write event get None (matcher SKIPPED or NO_MATCH or
-    rate-limit dropped the candidate set).
+    Captures the (fixture_path → metron_id) decision dict by patching
+    `ComicboxOnlineLookup._accept_candidate` to record before calling
+    the original. Robust under heavy -j N log interleaving because
+    we're hooked into the in-process matcher state, not parsing
+    interleaved log lines.
 
-    Parsing is path-driven not banner-driven: under -j N the log
-    interleaves worker output. We scan for any line containing a
-    fixture's path (which appears in the fixture-header banner) and
-    associate subsequent same-thread log lines with it. Simpler
-    fallback: pair auto-write lines with the nearest preceding path
-    mention. Works because comicbox emits each fixture's path right
-    before its processing starts on the same worker thread.
+    Returns (chosen_by_fixture, wall_seconds).
     """
-    text = log_path.read_text(errors="replace")
-    fixture_paths = {str(f.path): f for f in fixtures}
     chosen: dict[str, int | None] = {str(f.path): None for f in fixtures}
+    chosen_lock = threading.Lock()
+    original = _lookup_module.ComicboxOnlineLookup._accept_candidate
 
-    # Sweep line by line; track which fixture each worker is currently
-    # processing. Worker disambiguation via the timestamp+log lines is
-    # noisy under -j, so we use a simpler heuristic: every time a path
-    # appears in a log line, that's the "current" fixture for whatever
-    # auto-write follows on subsequent lines until another path shows up.
-    # Under -j this is imperfect (interleaving) but the auto-write line
-    # for fixture X is *almost always* logged immediately after fixture
-    # X's banner/path on the same worker.
-    current_fixture: str | None = None
-    for line in text.splitlines():
-        for fp_str in fixture_paths:
-            if fp_str in line:
-                current_fixture = fp_str
-                break
-        match = _AUTO_WRITE_RE.search(line)
-        if match and match.group("source") == "metron" and current_fixture is not None:
-            chosen[current_fixture] = int(match.group("id"))
-    return chosen
+    def recording_accept(self, source, candidate) -> None:
+        if source.name == "metron":
+            path = getattr(self, "_path", None)
+            if path is not None:
+                with chosen_lock:
+                    chosen[str(path)] = candidate.issue_id
+        original(self, source, candidate)
+
+    _lookup_module.ComicboxOnlineLookup._accept_candidate = recording_accept  # type: ignore[assignment]
+    started = time.monotonic()
+    try:
+        _cli_module.main(build_cli_argv(fixtures, jobs, threshold))
+    finally:
+        _lookup_module.ComicboxOnlineLookup._accept_candidate = original  # type: ignore[assignment]
+    return chosen, time.monotonic() - started
 
 
 def score_outcome(
     fixtures: list[Fixture],
     jobs: int,
     wall_seconds: float,
-    log_path: Path,
+    chosen: dict[str, int | None],
 ) -> JobsOutcome:
-    """Bucket fixtures into decided / skipped given parsed chosen IDs."""
-    chosen = parse_chosen_ids(log_path, fixtures)
+    """Bucket fixtures into decided / skipped given recorded chosen IDs."""
     decided = sum(1 for f in fixtures if chosen.get(str(f.path)) is not None)
     skipped = len(fixtures) - decided
     return JobsOutcome(
         jobs=jobs,
         wall_seconds=wall_seconds,
-        log_path=log_path,
         chosen_by_fixture=chosen,
         decided=decided,
         skipped=skipped,
@@ -388,7 +363,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = time.strftime("%Y%m%dT%H%M%S")
     jobs_values = [int(j) for j in args.jobs.split(",")]
 
     sys.stderr.write(
@@ -400,15 +374,16 @@ def main(argv: list[str] | None = None) -> int:
     for jobs in jobs_values:
         wipe_metron_cache()
         before_rows = metron_cache_rows()
-        log_path = args.output_dir / f"jobs-accuracy-{timestamp}-j{jobs}.log"
-        sys.stderr.write(f"  jobs={jobs} → {log_path.name}\n")
-        exit_code, wall = run_comicbox(fixtures, jobs, log_path, args.threshold)
+        sys.stderr.write(f"  jobs={jobs} ...\n")
+        chosen, wall = run_with_recording_hook(fixtures, jobs, args.threshold)
         after_rows = metron_cache_rows()
+        decided_now = sum(1 for v in chosen.values() if v is not None)
         sys.stderr.write(
-            f"  jobs={jobs} done: exit={exit_code} wall={wall / 60:.1f}m "
-            f"metron requests={after_rows - before_rows}\n"
+            f"  jobs={jobs} done: wall={wall / 60:.1f}m "
+            f"metron requests={after_rows - before_rows} "
+            f"decided={decided_now}/{len(fixtures)}\n"
         )
-        outcomes.append(score_outcome(fixtures, jobs, wall, log_path))
+        outcomes.append(score_outcome(fixtures, jobs, wall, chosen))
 
     summary = format_summary(fixtures, outcomes, args.threshold)
     summary_path = args.output_dir / "JOBS_ACCURACY_SUMMARY.md"

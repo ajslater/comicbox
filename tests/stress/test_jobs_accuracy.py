@@ -1,10 +1,9 @@
 """
 Unit tests for the jobs-accuracy harness's pure functions.
 
-Subprocess + cache-wipe are exercised by the harness itself in live
-runs. These tests cover parse_chosen_ids and _diff_outcomes — the
-bits that determine which fixture got which decision and how that
-compares across jobs values.
+The in-process driver + cache-wipe are exercised by the harness
+itself in live runs. These tests cover _diff_outcomes and
+build_cli_argv — the bits that don't need a live API.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from tests.stress.jobs_accuracy import (
     Fixture,
     JobsOutcome,
     _diff_outcomes,
-    parse_chosen_ids,
+    build_cli_argv,
 )
 
 
@@ -32,60 +31,39 @@ def _outcome(
     return JobsOutcome(
         jobs=jobs,
         wall_seconds=wall,
-        log_path=Path("/tmp/x.log"),
         chosen_by_fixture=chosen,
         decided=decided,
         skipped=len(chosen) - decided,
     )
 
 
-def _write_log(tmp_path: Path, content: str) -> Path:
-    log = tmp_path / "run.log"
-    log.write_text(content)
-    return log
+class TestBuildCliArgv:
+    def test_basic_invocation_has_expected_flags(self) -> None:
+        argv = build_cli_argv([_fixture("/a.cbz")], jobs=4)
+        assert "-n" in argv
+        assert "--online" in argv
+        assert "--unattended" in argv
+        assert "--force-search" in argv
+        assert "-j" in argv
+        assert "4" in argv
+        assert argv[-1] == "/a.cbz"
 
+    def test_threshold_adds_confidence_flag(self) -> None:
+        argv = build_cli_argv([_fixture("/a.cbz")], jobs=1, threshold=0.5)
+        assert "--confidence-threshold" in argv
+        idx = argv.index("--confidence-threshold")
+        assert argv[idx + 1] == "metron:0.5"
 
-class TestParseChosenIds:
-    def test_no_auto_writes_returns_all_none(self, tmp_path: Path) -> None:
-        fixtures = [_fixture("/lib/a.cbz"), _fixture("/lib/b.cbz")]
-        log = _write_log(tmp_path, "nothing relevant here\n")
-        result = parse_chosen_ids(log, fixtures)
-        assert result == {"/lib/a.cbz": None, "/lib/b.cbz": None}
+    def test_no_threshold_omits_confidence_flag(self) -> None:
+        argv = build_cli_argv([_fixture("/a.cbz")], jobs=1)
+        assert "--confidence-threshold" not in argv
 
-    def test_path_then_auto_write_assigns_correctly(self, tmp_path: Path) -> None:
-        fixtures = [_fixture("/lib/a.cbz"), _fixture("/lib/b.cbz")]
-        log = _write_log(
-            tmp_path,
-            "processing /lib/a.cbz\n"
-            "INFO     | online metron: auto-writing id=42 (score=0.99)\n"
-            "processing /lib/b.cbz\n"
-            "INFO     | online metron: auto-writing id=99 (score=0.97)\n",
+    def test_multiple_fixtures_all_appended(self) -> None:
+        argv = build_cli_argv(
+            [_fixture("/a.cbz"), _fixture("/b.cbz"), _fixture("/c.cbz")],
+            jobs=2,
         )
-        result = parse_chosen_ids(log, fixtures)
-        assert result == {"/lib/a.cbz": 42, "/lib/b.cbz": 99}
-
-    def test_skipped_fixture_keeps_none(self, tmp_path: Path) -> None:
-        fixtures = [_fixture("/lib/a.cbz"), _fixture("/lib/b.cbz")]
-        log = _write_log(
-            tmp_path,
-            "processing /lib/a.cbz\n"
-            "INFO     | online metron: skipped (matcher declined)\n"
-            "processing /lib/b.cbz\n"
-            "INFO     | online metron: auto-writing id=99 (score=0.97)\n",
-        )
-        result = parse_chosen_ids(log, fixtures)
-        assert result == {"/lib/a.cbz": None, "/lib/b.cbz": 99}
-
-    def test_ignores_other_sources(self, tmp_path: Path) -> None:
-        fixtures = [_fixture("/lib/a.cbz")]
-        log = _write_log(
-            tmp_path,
-            "processing /lib/a.cbz\n"
-            "INFO     | online comicvine: auto-writing id=12345 (score=0.99)\n",
-        )
-        # CV auto-write should NOT be recorded — harness is Metron-only.
-        result = parse_chosen_ids(log, fixtures)
-        assert result == {"/lib/a.cbz": None}
+        assert argv[-3:] == ["/a.cbz", "/b.cbz", "/c.cbz"]
 
 
 class TestDiffOutcomes:
