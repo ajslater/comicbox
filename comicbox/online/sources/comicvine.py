@@ -212,14 +212,6 @@ class ComicVineOnlineSource(OnlineSource):
         self._record_api_call("get_volume")
         return session.get_volume(volume_id)
 
-    # Tolerance window for the narrow start_year filter. User filenames
-    # year-tag the issue's cover_date, the original-issue year, or the
-    # TPB year depending on convention; CV's start_year is when the
-    # volume began publishing. They don't always agree even when the
-    # user's tag is correct. ±1 year covers most of the gap without
-    # adding noise; ±2+ would start matching unrelated reissues.
-    _NARROW_YEAR_TOLERANCE: ClassVar[tuple[int, ...]] = (0, -1, 1)
-
     def _discover_volumes(
         self, session: Any, profile: ComicProfile, max_volumes: int
     ) -> list[Any]:
@@ -234,12 +226,6 @@ class ComicVineOnlineSource(OnlineSource):
           for Pattern A cases (reissues, trade collections, facsimiles)
           where CV's relevance buries the year-anchored volume below
           older canonical runs.
-
-        The narrow side tries `start_year:Y`, then `Y-1`, then `Y+1`
-        (per `_NARROW_YEAR_TOLERANCE`) until something comes back. The
-        tolerance covers user-filename-vs-CV-start_year mismatches
-        (trade collections that ship year N from a volume that began
-        in N-1, etc.).
 
         Results are dedup'd by volume_id (fuzzy order preserved first;
         narrow's new entries appended). Both halves are independently
@@ -264,27 +250,16 @@ class ComicVineOnlineSource(OnlineSource):
         if profile.year is None:
             return fuzzy
 
-        narrow: list[Any] = []
-        for delta in self._NARROW_YEAR_TOLERANCE:
-            try:
-                narrow = self._volume_filter_search_with_retry(
-                    session, profile.series, profile.year + delta, max_volumes
-                )
-            except Exception as exc:
-                logger.info(
-                    f"online {self.name}: volume filter-search failed "
-                    f"at start_year={profile.year + delta} ({exc}); "
-                    "proceeding with fuzzy-only candidates"
-                )
-                return fuzzy
-            if narrow:
-                if delta != 0:
-                    logger.debug(
-                        f"online {self.name}: narrow filter year-tolerance "
-                        f"hit at start_year={profile.year + delta} "
-                        f"(profile.year={profile.year}, delta={delta:+d})"
-                    )
-                break
+        try:
+            narrow = self._volume_filter_search_with_retry(
+                session, profile.series, profile.year, max_volumes
+            )
+        except Exception as exc:
+            logger.info(
+                f"online {self.name}: volume filter-search failed "
+                f"({exc}); proceeding with fuzzy-only candidates"
+            )
+            return fuzzy
 
         if not narrow:
             return fuzzy
