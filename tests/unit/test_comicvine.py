@@ -202,26 +202,17 @@ class _FakeCV:
         self,
         volumes: list[_FakeBasicVolume],
         issues_by_volume: dict[int, list[_FakeBasicIssue]],
-        filter_volumes: list[_FakeBasicVolume] | None = None,
     ) -> None:
         self._volumes = volumes
         self._issues_by_volume = issues_by_volume
-        # When set, `list_volumes` returns these instead of an empty list,
-        # exercising the narrow-then-fuzzy flow's hit path. None ≡ empty.
-        self._filter_volumes = filter_volumes
         self.search_calls: list[dict] = []
         self.list_issues_calls: list[dict] = []
-        self.list_volumes_calls: list[dict] = []
 
     def search(self, resource, query, max_results=500):
         self.search_calls.append(
             {"resource": resource, "query": query, "max_results": max_results}
         )
         return list(self._volumes)
-
-    def list_volumes(self, params=None, max_results=500):
-        self.list_volumes_calls.append(params or {})
-        return list(self._filter_volumes or [])
 
     def list_issues(self, params=None, max_results=500):
         self.list_issues_calls.append(params or {})
@@ -265,105 +256,10 @@ def test_search_volumes_via_full_text(
     src = _make_cv_source(monkeypatch, fake_cv)
     profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=1952)
     src.search(profile)
-    # No year-filter hit (filter_volumes is empty) → narrow tried, fell
-    # back to fuzzy search.
-    assert len(fake_cv.list_volumes_calls) == 1
     assert len(fake_cv.search_calls) == 1
     call = fake_cv.search_calls[0]
     assert call["resource"] == ComicvineResource.VOLUME
     assert call["query"] == "GI Joe"
-
-
-def test_search_no_year_skips_narrow_filter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """profile.year=None → narrow filter is skipped, only fuzzy search runs."""
-    fake_cv = _FakeCV(volumes=[], issues_by_volume={})
-    src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=None)
-    src.search(profile)
-    # Narrow filter not tried — no year anchor.
-    assert fake_cv.list_volumes_calls == []
-    assert len(fake_cv.search_calls) == 1
-
-
-def test_narrow_filter_hit_skips_fuzzy_search(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """
-    When the narrow filter returns ≥1 volume, fuzzy search is skipped.
-
-    This is the Pattern A fix: a year-anchored query that surfaces the
-    specific year's volume directly should NOT also fan out to the fuzzy
-    `/search` that returns canonical older runs.
-    """
-    target_vol = _FakeBasicVolume(vid=910095, name="Conan the Barbarian by Jim Zub")
-    issues = {
-        910095: [_FakeBasicIssue(iid=1, number="1", volume_name=target_vol.name)],
-    }
-    fake_cv = _FakeCV(
-        volumes=[_FakeBasicVolume(vid=22947, name="Conan the Barbarian")],
-        issues_by_volume=issues,
-        filter_volumes=[target_vol],
-    )
-    src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(
-        series="Conan the Barbarian", issue="1", issue_int=1, year=2021
-    )
-    candidates = src.search(profile)
-    # Narrow hit → fuzzy was NOT called.
-    assert len(fake_cv.list_volumes_calls) == 1
-    assert fake_cv.search_calls == []
-    # Filter call carried name + start_year.
-    filter_str = fake_cv.list_volumes_calls[0].get("filter", "")
-    assert "name:Conan the Barbarian" in filter_str
-    assert "start_year:2021" in filter_str
-    # Candidates came from the narrow-filter volume, not the canonical
-    # 22947 from the fuzzy mock.
-    assert [c.issue_id for c in candidates] == [1]
-
-
-def test_narrow_filter_miss_falls_back_to_fuzzy(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Narrow returns 0 → fuzzy runs as fallback. Existing behaviour preserved."""
-    fuzzy_vol = _FakeBasicVolume(vid=22947, name="Conan the Barbarian")
-    issues = {22947: [_FakeBasicIssue(iid=99, number="1", volume_name=fuzzy_vol.name)]}
-    fake_cv = _FakeCV(
-        volumes=[fuzzy_vol],
-        issues_by_volume=issues,
-        filter_volumes=None,  # narrow returns []
-    )
-    src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(
-        series="Conan the Barbarian", issue="1", issue_int=1, year=2021
-    )
-    candidates = src.search(profile)
-    assert len(fake_cv.list_volumes_calls) == 1
-    assert len(fake_cv.search_calls) == 1  # fallback fired
-    assert [c.issue_id for c in candidates] == [99]
-
-
-def test_filter_query_strips_commas_and_colons(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """CV filter syntax uses , and : as separators; strip them from the query."""
-    fake_cv = _FakeCV(volumes=[], issues_by_volume={})
-    src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(
-        series="Wolverine, M.D.: Origin", issue="1", issue_int=1, year=2010
-    )
-    src.search(profile)
-    assert len(fake_cv.list_volumes_calls) == 1
-    filter_str = fake_cv.list_volumes_calls[0].get("filter", "")
-    # Commas/colons in the series name must not appear in the filter — they'd
-    # be parsed as additional field:value pairs by CV.
-    # The filter has exactly two clauses (name and start_year), so exactly
-    # one comma in the assembled string.
-    assert filter_str.count(",") == 1
-    # No leftover series-name colons.
-    name_clause = filter_str.split(",")[0]
-    assert name_clause.count(":") == 1  # only the `name:` separator
 
 
 def test_search_retries_volume_search_on_rate_limit(

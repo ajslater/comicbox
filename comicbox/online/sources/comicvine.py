@@ -234,83 +234,6 @@ class ComicVineOnlineSource(OnlineSource):
             max_results=max_results,
         )
 
-    def _discover_volumes(
-        self, session: Any, profile: ComicProfile, max_volumes: int
-    ) -> list[Any]:
-        """
-        Narrow-then-fuzzy volume discovery.
-
-        When `profile.year` is set, tries the server-side filter first
-        (`name:<series>,start_year:<year>`). If the filter returns hits,
-        those are used directly — they're a high-precision match for the
-        specific year's volume, side-stepping the Pattern A issue where
-        CV's fuzzy `/search` ranks canonical older runs above reissues.
-
-        Falls back to the fuzzy `/search` path when:
-        - profile.year is unset (filter has no anchor)
-        - filter call returned 0 results (year mismatch, filename mis-
-          parse, volume's start_year differs from issue's cover_date year)
-        - filter call failed terminally (degraded mode; better fuzzy than
-          nothing)
-        """
-        if profile.year is not None:
-            try:
-                volumes = self._volume_filter_search_with_retry(
-                    session, profile.series, profile.year, max_volumes
-                )
-            except Exception as exc:
-                logger.info(
-                    f"online {self.name}: volume filter-search failed "
-                    f"({exc}); falling back to fuzzy search"
-                )
-            else:
-                if volumes:
-                    logger.debug(
-                        f"online {self.name}: narrow filter returned "
-                        f"{len(volumes)} volume(s) for series={profile.series!r} "
-                        f"start_year={profile.year}"
-                    )
-                    return volumes
-
-        try:
-            return self._volume_search_with_retry(session, profile.series, max_volumes)
-        except Exception as exc:
-            logger.warning(f"online {self.name}: volume search failed: {exc}")
-            raise
-
-    @with_retry()
-    def _volume_filter_search_with_retry(
-        self, session: Any, query: str, start_year: int, max_results: int
-    ) -> list[Any]:
-        """
-        Narrow volume search via `list_volumes` server-side filter.
-
-        Uses CV's `/volumes` endpoint with `name:<query>,start_year:<year>`
-        filter — different code path from the fuzzy `/search` endpoint.
-        Addresses the Pattern A "right answer not in CV's top-5"
-        problem documented in
-        `tasks/online-tagging/research-notes/cv-top-5-search-relevance.md`
-        and quantified in
-        `tasks/online-tagging/calibration-notes/2026-05-17-bigmedia-247-postrevert.md`:
-        for ambiguous queries like "Conan the Barbarian", CV's `/search`
-        ranks canonical 1970s runs in the top 5 and a 2021 trade
-        collection at rank 6+; the matcher under FAST budget never sees
-        the trade collection. Filtering by start_year surfaces the
-        specific year's volume directly.
-
-        Caller falls back to fuzzy `_volume_search_with_retry` when this
-        returns 0 (year mismatch, filename mis-parse, etc.).
-        """
-        self._record_api_call("filter_volumes")
-        # CV's filter syntax: `field1:value1,field2:value2`. Commas in the
-        # query would break the parser; colons would too. Strip both —
-        # they're rare in series names and won't affect icontains matching.
-        safe_query = query.replace(",", " ").replace(":", " ").strip()
-        return session.list_volumes(
-            params={"filter": f"name:{safe_query},start_year:{start_year}"},
-            max_results=max_results,
-        )
-
     @with_retry()
     def _list_issues_by_volume(
         self,
@@ -443,7 +366,13 @@ class ComicVineOnlineSource(OnlineSource):
             resolve_api_budget(self._settings, self.name),
             default=self._MAX_VOLUMES_PER_SEARCH,
         )
-        volumes = self._discover_volumes(session, profile, max_volumes)
+        try:
+            volumes = self._volume_search_with_retry(
+                session, profile.series, max_volumes
+            )
+        except Exception as exc:
+            logger.warning(f"online {self.name}: volume search failed: {exc}")
+            raise
         if not volumes:
             logger.info(
                 f"online {self.name}: no volumes match series {profile.series!r}"
