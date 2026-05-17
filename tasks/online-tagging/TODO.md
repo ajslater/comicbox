@@ -223,16 +223,17 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   
   **Remaining ~16 Pattern A misses (Conan by Jim Zub trade
   collections, Conan 2025, Storm 2024, etc.) did NOT recover.**
-  Most likely cause: their volumes' CV `start_year` doesn't match
-  the user's filename year exactly. Same root cause that broke the
-  earlier narrow-then-fuzzy (commit `ea7d776`, reverted) — but here
-  it just blocks further wins, not causes regressions. Future
-  approaches: year-tolerance window (`start_year:Y±1`), different
-  anchor (publisher? count_of_issues?), or accept as catalog
-  convention gap. Research note at
-  [`research-notes/cv-top-5-search-relevance.md`](research-notes/cv-top-5-search-relevance.md)
-  records the failure history (Phase H, H rev 2, narrow-then-fuzzy)
-  and successful union approach.
+  
+  Year-tolerance window (`start_year:Y±1`) attempted 2026-05-17
+  (commit `26fb74d`, reverted by `c0ca037`): 0 accuracy change,
+  +297 wasted list_volumes calls per bigmedia run. Diagnosis: the
+  trade-collection volumes' CV `start_year` differs from filename
+  year by MORE than ±1, OR their CV name doesn't icontains-match
+  the user's series. Wider tolerance would worsen the cost/risk
+  ratio. Future approaches need a different anchor (publisher?
+  `count_of_issues`?) or to accept the misses as the steady state.
+  Full history at
+  [`research-notes/cv-top-5-search-relevance.md`](research-notes/cv-top-5-search-relevance.md).
 
 ## 4. Search quality
 

@@ -247,6 +247,59 @@ zone, so production users see them as PROMPTs, not wrong tags.
 That's acceptable for now per the 2026-05-17 bigmedia ship-readiness
 finding.
 
+## Empirical attempt 2026-05-17 (later) — union narrow+fuzzy SHIPPED
+
+Implemented the union strategy (commit `2381c0e`). Bigmedia
+validation: **CV 89.4% → 90.2% (+0.8pp, +2 correct, 0 regressions).**
+Akira (2000) and Ghost in the Shell (2009) recovered as Pattern A
+wins. Union design held — fuzzy as floor, narrow purely additive.
+
+See [`../calibration-notes/2026-05-17-bigmedia-union-validation.md`](../calibration-notes/2026-05-17-bigmedia-union-validation.md).
+
+## Empirical attempt 2026-05-17 (latest) — year-tolerance window REVERTED
+
+Implemented ±1 year tolerance in the narrow filter (commit
+`26fb74d`, reverted by `c0ca037`). Hypothesis: trade-collection
+volumes' CV `start_year` differs from user filename year by ±1
+because of TPB/issue-year convention mixing. Tolerance would let
+the narrow side find them.
+
+**Result: zero accuracy change, +297 list_volumes API calls per
+bigmedia run.**
+
+Per-fixture breakdown:
+- 101 fixtures hit on Y (first try) — same behaviour as before.
+- 0 fixtures hit on Y-1 (would have meant 2 calls).
+- 0 fixtures hit on Y+1 (would have meant 3 calls).
+- 145 fixtures hit nothing across all three years — all empty,
+  3 wasted calls each.
+
+Diagnosis: for the trade-collection misses, the CV volume's
+`start_year` differs from the user filename year by MORE than ±1
+— OR the volume's NAME in CV doesn't `icontains`-match the user's
+series string at all. Pushing the tolerance wider (±2 or ±5) would
+add more API cost AND risk matching unrelated reissues that
+happen to share a name fragment.
+
+### Possible future directions
+
+1. **Different anchor entirely.** Instead of `start_year`, use
+   `publisher_name` or `count_of_issues` range as the narrow's
+   non-year filter. Less obviously wrong, but no data on whether
+   it would help.
+2. **Drop the year constraint after a successful series-name
+   filter.** Run `list_volumes(name:X)` without year, take top
+   N by some heuristic. Risky — opens the door to lots of
+   unrelated same-named volumes.
+3. **Accept the remaining ~16 Pattern A misses as the steady
+   state.** They sit in the prompt zone; users veto manually.
+   The 2026-05-17 ship-readiness finding holds.
+
+Option 3 is the current state. Further attempts at Pattern A
+recovery should start from option 1 with concrete data on which
+anchor distinguishes trade collections from canonical runs in
+CV's catalog.
+
 ## What this note is NOT
 
 Not a design doc, not a plan. It's a research record of the
