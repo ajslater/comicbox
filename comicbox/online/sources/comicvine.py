@@ -212,6 +212,70 @@ class ComicVineOnlineSource(OnlineSource):
         self._record_api_call("get_volume")
         return session.get_volume(volume_id)
 
+    def _discover_volumes(
+        self, session: Any, profile: ComicProfile, max_volumes: int
+    ) -> list[Any]:
+        """
+        Union-of-narrow-and-fuzzy volume discovery.
+
+        Always runs both:
+        - Fuzzy `session.search(VOLUME, query)` — CV's text-relevance
+          ranking. Surfaces canonical / popular volumes.
+        - Narrow `session.list_volumes(name+start_year filter)` — only
+          when profile.year is set. Surfaces the specific year's volume
+          for Pattern A cases (reissues, trade collections, facsimiles)
+          where CV's relevance buries the year-anchored volume below
+          older canonical runs.
+
+        Results are dedup'd by volume_id (fuzzy order preserved first;
+        narrow's new entries appended). Both halves are independently
+        capped at ``max_volumes``; the union is capped at
+        ``2 * max_volumes``.
+
+        Replaces the 2026-05-17 narrow-then-fuzzy approach which lost
+        previously-correct fuzzy candidates whenever the narrow filter
+        returned a wrong volume. Union preserves fuzzy's candidates so
+        the matcher still scores them; narrow's contribution is purely
+        additive.
+        """
+        # Fuzzy always runs (preserves today's behaviour as a floor).
+        try:
+            fuzzy = self._volume_search_with_retry(
+                session, profile.series, max_volumes
+            )
+        except Exception as exc:
+            logger.warning(f"online {self.name}: volume search failed: {exc}")
+            raise
+
+        if profile.year is None:
+            return fuzzy
+
+        try:
+            narrow = self._volume_filter_search_with_retry(
+                session, profile.series, profile.year, max_volumes
+            )
+        except Exception as exc:
+            logger.info(
+                f"online {self.name}: volume filter-search failed "
+                f"({exc}); proceeding with fuzzy-only candidates"
+            )
+            return fuzzy
+
+        if not narrow:
+            return fuzzy
+
+        # Dedup union, fuzzy first to preserve relevance ordering for
+        # already-good cases. Narrow's new entries appended.
+        fuzzy_ids = {v.id for v in fuzzy}
+        narrow_only = [v for v in narrow if v.id not in fuzzy_ids]
+        if narrow_only:
+            logger.debug(
+                f"online {self.name}: narrow filter added "
+                f"{len(narrow_only)} volume(s) to fuzzy's {len(fuzzy)} "
+                f"for series={profile.series!r} start_year={profile.year}"
+            )
+        return fuzzy + narrow_only
+
     @with_retry()
     def _volume_search_with_retry(
         self, session: Any, query: str, max_results: int
@@ -231,6 +295,30 @@ class ComicVineOnlineSource(OnlineSource):
         return session.search(
             resource=ComicvineResource.VOLUME,
             query=query,
+            max_results=max_results,
+        )
+
+    @with_retry()
+    def _volume_filter_search_with_retry(
+        self, session: Any, query: str, start_year: int, max_results: int
+    ) -> list[Any]:
+        """
+        Narrow volume search via `list_volumes` server-side filter.
+
+        Uses CV's `/volumes` endpoint with `name:<query>,start_year:<year>`
+        filter — different code path from the fuzzy `/search` endpoint.
+        Always paired with fuzzy via ``_discover_volumes``; never used
+        as a replacement. See that method's docstring + the failure
+        history in
+        ``tasks/online-tagging/research-notes/cv-top-5-search-relevance.md``.
+        """
+        self._record_api_call("filter_volumes")
+        # CV's filter syntax: `field1:value1,field2:value2`. Commas and
+        # colons in the query would break the parser. Strip them — they're
+        # rare in series names and won't affect icontains matching.
+        safe_query = query.replace(",", " ").replace(":", " ").strip()
+        return session.list_volumes(
+            params={"filter": f"name:{safe_query},start_year:{start_year}"},
             max_results=max_results,
         )
 
@@ -366,13 +454,7 @@ class ComicVineOnlineSource(OnlineSource):
             resolve_api_budget(self._settings, self.name),
             default=self._MAX_VOLUMES_PER_SEARCH,
         )
-        try:
-            volumes = self._volume_search_with_retry(
-                session, profile.series, max_volumes
-            )
-        except Exception as exc:
-            logger.warning(f"online {self.name}: volume search failed: {exc}")
-            raise
+        volumes = self._discover_volumes(session, profile, max_volumes)
         if not volumes:
             logger.info(
                 f"online {self.name}: no volumes match series {profile.series!r}"

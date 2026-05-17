@@ -202,17 +202,26 @@ class _FakeCV:
         self,
         volumes: list[_FakeBasicVolume],
         issues_by_volume: dict[int, list[_FakeBasicIssue]],
+        filter_volumes: list[_FakeBasicVolume] | None = None,
     ) -> None:
         self._volumes = volumes
         self._issues_by_volume = issues_by_volume
+        # When set, `list_volumes` returns these instead of an empty list.
+        # Exercises the union-with-fuzzy narrow-filter path. None ≡ empty.
+        self._filter_volumes = filter_volumes
         self.search_calls: list[dict] = []
         self.list_issues_calls: list[dict] = []
+        self.list_volumes_calls: list[dict] = []
 
     def search(self, resource, query, max_results=500):
         self.search_calls.append(
             {"resource": resource, "query": query, "max_results": max_results}
         )
         return list(self._volumes)
+
+    def list_volumes(self, params=None, max_results=500):
+        self.list_volumes_calls.append(params or {})
+        return list(self._filter_volumes or [])
 
     def list_issues(self, params=None, max_results=500):
         self.list_issues_calls.append(params or {})
@@ -260,6 +269,97 @@ def test_search_volumes_via_full_text(
     call = fake_cv.search_calls[0]
     assert call["resource"] == ComicvineResource.VOLUME
     assert call["query"] == "GI Joe"
+
+
+def test_narrow_filter_unions_with_fuzzy_no_year_skips_narrow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """profile.year=None → only fuzzy runs; narrow skipped (no anchor)."""
+    fake_cv = _FakeCV(
+        volumes=[_FakeBasicVolume(vid=100, name="X")],
+        issues_by_volume={},
+        filter_volumes=[_FakeBasicVolume(vid=999, name="X-by-author")],
+    )
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="X", issue="1", issue_int=1, year=None)
+    src.search(profile)
+    assert fake_cv.list_volumes_calls == []
+    assert len(fake_cv.search_calls) == 1
+
+
+def test_narrow_filter_unions_with_fuzzy_both_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """profile.year set → both narrow and fuzzy run; results union'd."""
+    fuzzy_vol = _FakeBasicVolume(vid=22947, name="Conan the Barbarian")
+    narrow_vol = _FakeBasicVolume(vid=910095, name="Conan by Jim Zub")
+    issues = {
+        22947: [_FakeBasicIssue(iid=1, number="1", volume_name=fuzzy_vol.name)],
+        910095: [_FakeBasicIssue(iid=2, number="1", volume_name=narrow_vol.name)],
+    }
+    fake_cv = _FakeCV(
+        volumes=[fuzzy_vol],
+        issues_by_volume=issues,
+        filter_volumes=[narrow_vol],
+    )
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(
+        series="Conan the Barbarian", issue="1", issue_int=1, year=2021
+    )
+    candidates = src.search(profile)
+    # BOTH calls fired (union).
+    assert len(fake_cv.search_calls) == 1
+    assert len(fake_cv.list_volumes_calls) == 1
+    # Candidates from BOTH volumes — fuzzy preserved, narrow added.
+    issue_ids = {c.issue_id for c in candidates}
+    assert issue_ids == {1, 2}
+
+
+def test_narrow_dedups_overlapping_volume_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same volume in both narrow + fuzzy → list_issues called once for it."""
+    shared = _FakeBasicVolume(vid=42, name="Shared")
+    issues = {42: [_FakeBasicIssue(iid=1, number="1", volume_name="Shared")]}
+    fake_cv = _FakeCV(
+        volumes=[shared],
+        issues_by_volume=issues,
+        filter_volumes=[shared],  # same volume_id
+    )
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Shared", issue="1", issue_int=1, year=2021)
+    src.search(profile)
+    # Only one list_issues call for the shared volume id (dedup'd).
+    list_issues_volumes = [
+        int(clause.split(":", 1)[1])
+        for call in fake_cv.list_issues_calls
+        for clause in call.get("filter", "").split(",")
+        if clause.startswith("volume:")
+    ]
+    assert list_issues_volumes.count(42) == 1
+
+
+def test_narrow_failure_falls_back_to_fuzzy_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Narrow call raises → log + use fuzzy results only (degraded mode)."""
+    fuzzy_vol = _FakeBasicVolume(vid=100, name="X")
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="X")]}
+
+    class _FailingNarrow(_FakeCV):
+        def list_volumes(self, params=None, max_results=500):
+            self.list_volumes_calls.append(params or {})
+            msg = "permanent narrow failure"
+            raise ValueError(msg)  # ValueError is non-retriable
+
+    fake_cv = _FailingNarrow(volumes=[fuzzy_vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="X", issue="1", issue_int=1, year=2021)
+    candidates = src.search(profile)
+    # Narrow was tried (and failed).
+    assert len(fake_cv.list_volumes_calls) == 1
+    # Fuzzy still ran and returned candidates.
+    assert [c.issue_id for c in candidates] == [1]
 
 
 def test_search_retries_volume_search_on_rate_limit(
