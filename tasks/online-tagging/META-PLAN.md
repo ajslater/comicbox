@@ -218,7 +218,16 @@ expanded as bigmedia calibration motivated follow-ups. See
 - **Phase K rev 2** ✓ — Signal-content-aware metadata renormalisation;
   drop a signal only when BOTH sides are empty/None, asymmetric absence
   penalises via the signal function's missing-data branch (916a488; rev 1
-  at 7867459 was over-aggressive and superseded).
+  at 7867459 was over-aggressive and superseded). **Empirical caveat
+  (2026-05-17):** the bigmedia re-run showed that the Conan-by-Jim-Zub
+  case originally cited as the canonical K rev 2 win is actually
+  Pattern A (CV search relevance) — the "right" candidate isn't in
+  CV's top-5 under FAST budget, so K rev 2's scoring fix never gets
+  to fire. K rev 2 may still help OTHER cases where both candidates
+  ARE in the candidate set (the original slimlib Wolverine-thumbnail
+  motivation), but it does NOT recover the trade-collection-by-Author
+  pattern. See
+  [`calibration-notes/2026-05-17-bigmedia-247-postrevert.md`](calibration-notes/2026-05-17-bigmedia-247-postrevert.md).
 
 Validated against the developer's 17,500-comic slimlib via a 500-fixture
 stratified sample. See
