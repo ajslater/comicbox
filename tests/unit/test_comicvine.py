@@ -339,6 +339,70 @@ def test_narrow_dedups_overlapping_volume_ids(
     assert list_issues_volumes.count(42) == 1
 
 
+def test_narrow_filter_year_tolerance_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Y returns 0 → retry Y-1, then Y+1. Surfaces volume on first hit.
+
+    Trade collections and reissues are filed under the VOLUME's
+    publication-start year in CV's catalog, which may be N-1 or N+1
+    from the user-filename year. Y-tolerance window covers the gap.
+    """
+    target_vol = _FakeBasicVolume(vid=910095, name="Conan by Jim Zub")
+    issues = {910095: [_FakeBasicIssue(iid=2, number="1", volume_name=target_vol.name)]}
+
+    class _YearAwareCV(_FakeCV):
+        """list_volumes returns target_vol only when start_year=2020."""
+
+        def list_volumes(self, params=None, max_results=500):
+            self.list_volumes_calls.append(params or {})
+            filter_str = (params or {}).get("filter", "")
+            if "start_year:2020" in filter_str:
+                return [target_vol]
+            return []
+
+    fake_cv = _YearAwareCV(
+        volumes=[_FakeBasicVolume(vid=22947, name="Conan the Barbarian")],
+        issues_by_volume=issues,
+    )
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(
+        series="Conan the Barbarian", issue="1", issue_int=1, year=2021
+    )
+    candidates = src.search(profile)
+    # 2 narrow calls (Y=2021 empty, Y-1=2020 hit; Y+1 not tried).
+    assert len(fake_cv.list_volumes_calls) == 2
+    years_tried = [
+        int(c["filter"].split("start_year:", 1)[1])
+        for c in fake_cv.list_volumes_calls
+    ]
+    assert years_tried == [2021, 2020]
+    # Narrow hit added the target volume's issue to the candidate set.
+    assert 2 in {c.issue_id for c in candidates}
+
+
+def test_narrow_filter_year_tolerance_tries_y_plus_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Y empty + Y-1 empty → also tries Y+1 before giving up."""
+
+    class _NoVolumesCV(_FakeCV):
+        def list_volumes(self, params=None, max_results=500):
+            self.list_volumes_calls.append(params or {})
+            return []  # all years empty
+
+    fake_cv = _NoVolumesCV(volumes=[], issues_by_volume={})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="X", issue="1", issue_int=1, year=2020)
+    src.search(profile)
+    years_tried = [
+        int(c["filter"].split("start_year:", 1)[1])
+        for c in fake_cv.list_volumes_calls
+    ]
+    assert years_tried == [2020, 2019, 2021]
+
+
 def test_narrow_failure_falls_back_to_fuzzy_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
