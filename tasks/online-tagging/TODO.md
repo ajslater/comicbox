@@ -193,11 +193,16 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   checks (Conan by Jim Zub, Wolverine thumbnail) confirmed; full
   bigmedia sweep still pending.
 - "Right answer not in CV's top-5" search-relevance problem (the
-  original Phase H motivation) remains open after two failed
-  broadening attempts. Needs a different approach than broadening
-  every weak-top query — likely query-side (more specific search
-  terms) or post-hoc (only broaden when we can detect the candidate
-  set is wrong, not just weak).
+  original Phase H motivation) remains open. Both prior broadening
+  attempts (H, H rev 2) were reverted. Research note at
+  [`research-notes/cv-top-5-search-relevance.md`](research-notes/cv-top-5-search-relevance.md)
+  catalogs the 7 known cases, explains why Phase H's broadening
+  approach failed, and proposes an unexplored query-side narrowing
+  direction via CV's `list_volumes` endpoint with `name + start_year`
+  filter (vs the fuzzy `/search` we currently use). The note
+  includes pseudocode, cost analysis, caveats, and suggested
+  validation steps. Not a plan — just the problem shape preserved
+  so future work doesn't re-attempt Phase H.
 
 ## 4. Search quality
 
