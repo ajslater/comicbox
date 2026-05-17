@@ -187,11 +187,24 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
 **Calibration follow-ups still open** (see
 [`META-PLAN.md`](META-PLAN.md) "Calibration follow-ups" section):
 - CLI surface for `solo_confidence_threshold` (low priority)
-- Bigmedia re-run after Phase H/I reverts + Phase J/K rev 2 to
-  confirm recovery toward the pre-HI ~263-correct baseline and lock
-  in the K-rev-2 trade-collection ordering empirically. Manual spot-
-  checks (Conan by Jim Zub, Wolverine thumbnail) confirmed; full
-  bigmedia sweep still pending.
+- ✅ **Bigmedia re-run after Phase H/I reverts + Phase J/K rev 2**
+  — done 2026-05-17, results
+  [`calibration-notes/2026-05-17-bigmedia-247-postrevert.md`](calibration-notes/2026-05-17-bigmedia-247-postrevert.md).
+  **CV auto-write band unchanged at 97% (vs 97.6% baseline)** —
+  production users running `--policy normal` see no degradation.
+  **Overall CV accuracy regressed 4.9pp (94.3% → 89.4%)** —
+  concentrated in the prompt zone (55% correct), so wrong picks
+  surface as PROMPTs, not auto-tags. Metron path unchanged at 100%
+  auto-write-band accuracy.
+  
+  **Surprise finding worth a follow-up:** the META-PLAN claim that
+  Phase K rev 2 fixes the "trade collection by Author" pattern
+  (Conan by Jim Zub, Black Widow by Kelly Thompson, etc.) doesn't
+  hold empirically — 11+ new misses of exactly that pattern showed
+  up. Cheap probe to investigate: unit-test-style call to
+  `OnlineMatcher.rank()` against the candidate set for one of these
+  fixtures, compare actual md scores to the META-PLAN's
+  hand-calculated 0.9125 vs 0.7875. No live API needed.
 - "Right answer not in CV's top-5" search-relevance problem (the
   original Phase H motivation) remains open. Both prior broadening
   attempts (H, H rev 2) were reverted. Research note at
