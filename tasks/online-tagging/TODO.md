@@ -212,22 +212,27 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   [CV search-relevance research note](research-notes/cv-top-5-search-relevance.md)
   fix would address all 18 (7 Pattern A + 11 trade-collection)
   cases.
-- "Right answer not in CV's top-5" search-relevance problem
-  remains open after THREE failed attempts:
-  - Phase H broadening on weak top quick-score (reverted)
-  - Phase H rev 2 broadening + discovery_pass tiebreak (reverted)
-  - 2026-05-17 narrow-then-fuzzy `list_volumes(name+start_year)`
-    (reverted, commit `ea7d776`): 2 Pattern A wins but 14
-    regressions because `profile.year` doesn't reliably equal the
-    user's tag's volume `start_year` (user filenames mix
-    conventions: original year, TPB year, volume start year).
-    When narrow returned 1+ wrong volumes, fuzzy fallback never
-    fired and the matcher lost previously-correct picks.
-  Research note at
+- ✅ **"Right answer not in CV's top-5" — partial fix shipped
+  2026-05-17** (commit `2381c0e`). Union narrow+fuzzy
+  `_discover_volumes`: always run fuzzy as the floor; also run
+  `list_volumes(name+start_year)` when profile.year is set; dedup
+  by volume_id and score the union. Bigmedia validation: CV
+  89.4% → **90.2%** (+0.8pp, +2 correct, 0 regressions). Recovered
+  Akira (2000) and Ghost in the Shell (2009). See
+  [`calibration-notes/2026-05-17-bigmedia-union-validation.md`](calibration-notes/2026-05-17-bigmedia-union-validation.md).
+  
+  **Remaining ~16 Pattern A misses (Conan by Jim Zub trade
+  collections, Conan 2025, Storm 2024, etc.) did NOT recover.**
+  Most likely cause: their volumes' CV `start_year` doesn't match
+  the user's filename year exactly. Same root cause that broke the
+  earlier narrow-then-fuzzy (commit `ea7d776`, reverted) — but here
+  it just blocks further wins, not causes regressions. Future
+  approaches: year-tolerance window (`start_year:Y±1`), different
+  anchor (publisher? count_of_issues?), or accept as catalog
+  convention gap. Research note at
   [`research-notes/cv-top-5-search-relevance.md`](research-notes/cv-top-5-search-relevance.md)
-  records all three attempts + the "what WOULD work" thinking
-  (union narrow + fuzzy, not replace). Don't re-attempt without
-  empirical bigmedia validation as the bar.
+  records the failure history (Phase H, H rev 2, narrow-then-fuzzy)
+  and successful union approach.
 
 ## 4. Search quality
 
