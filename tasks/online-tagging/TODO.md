@@ -212,17 +212,22 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   [CV search-relevance research note](research-notes/cv-top-5-search-relevance.md)
   fix would address all 18 (7 Pattern A + 11 trade-collection)
   cases.
-- "Right answer not in CV's top-5" search-relevance problem (the
-  original Phase H motivation) remains open. Both prior broadening
-  attempts (H, H rev 2) were reverted. Research note at
+- "Right answer not in CV's top-5" search-relevance problem
+  remains open after THREE failed attempts:
+  - Phase H broadening on weak top quick-score (reverted)
+  - Phase H rev 2 broadening + discovery_pass tiebreak (reverted)
+  - 2026-05-17 narrow-then-fuzzy `list_volumes(name+start_year)`
+    (reverted, commit `ea7d776`): 2 Pattern A wins but 14
+    regressions because `profile.year` doesn't reliably equal the
+    user's tag's volume `start_year` (user filenames mix
+    conventions: original year, TPB year, volume start year).
+    When narrow returned 1+ wrong volumes, fuzzy fallback never
+    fired and the matcher lost previously-correct picks.
+  Research note at
   [`research-notes/cv-top-5-search-relevance.md`](research-notes/cv-top-5-search-relevance.md)
-  catalogs the 7 known cases, explains why Phase H's broadening
-  approach failed, and proposes an unexplored query-side narrowing
-  direction via CV's `list_volumes` endpoint with `name + start_year`
-  filter (vs the fuzzy `/search` we currently use). The note
-  includes pseudocode, cost analysis, caveats, and suggested
-  validation steps. Not a plan — just the problem shape preserved
-  so future work doesn't re-attempt Phase H.
+  records all three attempts + the "what WOULD work" thinking
+  (union narrow + fuzzy, not replace). Don't re-attempt without
+  empirical bigmedia validation as the bar.
 
 ## 4. Search quality
 

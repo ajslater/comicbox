@@ -164,6 +164,89 @@ the hit case.
    commas.** Already used at comicvine.py:269 for `list_issues`
    filters; same syntax works for `list_volumes`.
 
+## Empirical attempt 2026-05-17 — REVERTED
+
+Implemented the narrow-then-fuzzy proposal above (commit `7390393`,
+reverted by `ea7d776`). Bigmedia re-run results:
+
+|              | Pre-fix | Post-fix | Delta |
+| ------------ | ------- | -------- | ----- |
+| CV accuracy  | 89.4%   | **85.6%** | **-3.8pp** |
+| CV correct   | 219/247 | 208/247  | -11   |
+| Improvements | —       | **2**    | Akira (2000), Ghost in the Shell (2009) |
+| Regressions  | —       | **14**   | 300 (1999), Weapon X (1994), The Cimmerian (2020), etc. |
+
+**The fix worked for Pattern A but introduced a larger class of
+regressions.** 2 wins vs 14 losses.
+
+### Root cause of the regressions
+
+The "fall back to fuzzy when narrow returns 0" rule was too coarse.
+**When narrow returns 1+ wrong volumes, fuzzy never fires** — the
+matcher is stuck with whatever name+year happened to match in CV's
+catalog, even if it's not the user's intended volume.
+
+Concrete examples:
+
+- **300 (1999)**: user's tag = volume 22632 (Frank Miller's "300",
+  CV start_year likely 1998). Filename year = 1999 (TPB year).
+  Narrow query `name:300,start_year:1999` returned volume 6811 (a
+  different "300"-named series that actually started in 1999).
+  Fuzzy WAS finding 22632 correctly. Lost it.
+- **Weapon X (1994)**: user's tag = volume 35703. Narrow query
+  `name:Weapon X,start_year:1994` returned volume 5564 instead.
+  Fuzzy had 35703 in candidates. Lost it.
+- **The Cimmerian (2020)**: user's tag = volume 132702. Narrow
+  returned volume 127841 instead. Fuzzy had 132702. Lost it.
+
+**The premise was wrong.** `profile.year` (from filename or
+cover_date) doesn't reliably correspond to the user's tagged
+volume's `start_year` in CV. User filenames mix conventions:
+sometimes "(YYYY)" is the original-issue year, sometimes the TPB
+year, sometimes the volume's start year. CV's `start_year` is one
+specific thing (when the volume began publishing). They don't
+always agree.
+
+### What WOULD work (untried)
+
+The fix would be to NOT replace fuzzy with narrow, but rather to
+UNION their results. Run BOTH `list_volumes(name+start_year)` and
+`session.search(VOLUME, query)`, dedup by volume_id, let the
+matcher score the combined set. This way Pattern A cases pick up
+the year-anchored volume AND keep the fuzzy canonical volumes.
+
+Cost: every CV search now makes 2 API calls instead of 1 (about
++50% on CV's binding hourly cap). For the bigmedia run that's
+manageable; for users with very large libraries it's a more
+visible cost.
+
+But there's a deeper concern with the union approach: under FAST
+budget (max_volumes=5), combining two top-5 sets means we either
+- accept 10 candidates (doubles per-volume `list_issues` cost), OR
+- truncate to 5 of the combined 10 by some heuristic — and the
+  heuristic determines which Pattern-A wins survive.
+
+Both options have real tradeoffs that need calibration data.
+
+### Recommendation for future work
+
+Don't re-attempt this fix without:
+
+1. **Acceptance that profile.year ≠ user's tag's start_year for
+   many fixtures.** This is a CV catalog convention reality, not a
+   filename-parsing fix.
+2. **A combine-not-replace strategy.** Narrow as supplement to
+   fuzzy, not as replacement. Calibrate the combined-set size and
+   ranking under FAST budget.
+3. **Empirical validation BEFORE shipping.** This commit looked
+   right by unit tests; it was wrong by bigmedia data. Bigmedia
+   validation is the bar for any CV search-relevance change.
+
+The 7+11 Pattern A misses remain unfixed. They're in the prompt
+zone, so production users see them as PROMPTs, not wrong tags.
+That's acceptable for now per the 2026-05-17 bigmedia ship-readiness
+finding.
+
 ## What this note is NOT
 
 Not a design doc, not a plan. It's a research record of the
