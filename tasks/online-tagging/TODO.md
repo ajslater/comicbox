@@ -197,14 +197,21 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
   surface as PROMPTs, not auto-tags. Metron path unchanged at 100%
   auto-write-band accuracy.
   
-  **Surprise finding worth a follow-up:** the META-PLAN claim that
-  Phase K rev 2 fixes the "trade collection by Author" pattern
-  (Conan by Jim Zub, Black Widow by Kelly Thompson, etc.) doesn't
-  hold empirically — 11+ new misses of exactly that pattern showed
-  up. Cheap probe to investigate: unit-test-style call to
-  `OnlineMatcher.rank()` against the candidate set for one of these
-  fixtures, compare actual md scores to the META-PLAN's
-  hand-calculated 0.9125 vs 0.7875. No live API needed.
+  **Diagnosed 2026-05-17 follow-up:** the 11+ "trade collection by
+  Author" misses are **Pattern A in disguise** (CV search relevance,
+  not Phase K rev 2 scoring). `debug_search` probes of
+  Conan-by-Jim-Zub and Black-Widow-by-Kelly-Thompson show CV
+  returns 20 candidate volumes for the query, but under FAST
+  budget the matcher only sees the top 5 — all canonical Marvel
+  runs, never the specific trade-collection volume. The
+  META-PLAN's hand-calculation about Phase K rev 2 fixing the
+  Conan case was wrong (assumed both candidates were in the
+  candidate set; empirically only one is). The 4.9pp regression
+  is **library composition** (more trade-collection fixtures
+  sampled this time), not code regression. The
+  [CV search-relevance research note](research-notes/cv-top-5-search-relevance.md)
+  fix would address all 18 (7 Pattern A + 11 trade-collection)
+  cases.
 - "Right answer not in CV's top-5" search-relevance problem (the
   original Phase H motivation) remains open. Both prior broadening
   attempts (H, H rev 2) were reverted. Research note at

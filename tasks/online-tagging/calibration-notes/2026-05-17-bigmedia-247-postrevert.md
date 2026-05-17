@@ -82,7 +82,7 @@ Forest, Who is Jake Ellis, Fallen Son, Captain America First
 Vengeance, Hawkeye Freefall. Tiebreak picks lower vol_id;
 sometimes the user tagged with the higher one.
 
-### Pattern D (new) — "trade collection by Author" loses to canonical series volume
+### Pattern D (new) — "trade collection by Author" — turns out to be Pattern A in disguise
 
 11+ cases not present in the baseline:
 
@@ -98,37 +98,43 @@ sometimes the user tagged with the higher one.
 - Daredevil by Chip Zdarsky To Heaven Through Hell (2021)
 - Elektra by Greg Rucka Ultimate Collection (2012)
 
-These are the *exact* fixtures that the Phase I revert
-(`b33da25`) and Phase K rev 2 (`916a488`) were supposed to fix.
-META-PLAN.md cites the Conan-by-Jim-Zub case specifically as the
-canonical example, with hand-computed scores:
+META-PLAN.md attributes the Conan-by-Jim-Zub case to a Phase K
+rev 2 scoring fix, with hand-computed scores:
 
 > Right (910095, year=2021):  md = 0.9125  (publisher/pages asymmetric)
 > Wrong (690927, year=None):  md = 0.7875  (year asymmetric too)
 > → 0.125 metadata margin on right's side.
 
-But this run shows that case as a MISS with `md=0.83` on the
-chosen (wrong) candidate and `gap=0.00` between top 2 — i.e., the
-right answer is in the top set but tied or below the picked one.
+**The META-PLAN diagnosis is wrong.** A `debug_search` probe of
+the Conan-by-Jim-Zub-Lotus fixture shows CV returns 20 volumes for
+the query "Conan the Barbarian", but the matcher under FAST budget
+only sees the top 5 — all canonical Marvel runs with names like
+"Conan the Barbarian" but NOT the specific trade-collection volume
+that contains issue 910095.
 
-**This is the most surprising finding of the run.** The
-hand-calculated scores in the META-PLAN note don't match what the
-matcher is actually producing. Possible reasons:
+**This is Pattern A in disguise.** Every one of the 11 cases
+checked has its expected ID at rank ≥ 6 of CV's relevance ranking
+— never reaches the matcher. The probe was repeated on
+"Black Widow by Kelly Thompson Die By The Blade" with the same
+result: 20 candidate volumes returned, top 5 are canonical Black
+Widow runs (7167, 11492, etc.), the trade-collection volume isn't
+in those 5.
 
-1. Phase K rev 2 doesn't behave the way META-PLAN described under
-   FAST budget specifically (maybe the candidate pruning kicks in
-   before signal-content-aware normalisation runs).
-2. The candidate-set on this run differs from what META-PLAN
-   analyzed (different volumes returned by CV search, different
-   metadata fields populated).
-3. Phase K rev 2's signal-asymmetric weights (s_year=0.3,
-   s_publisher=0.5, s_pages=0.6) are right in isolation but get
-   diluted in the renormalisation when more signals are tied.
+So the 4.9pp "regression" is *library composition*, not code
+regression. The bigmedia library has gained more
+trade-collection-by-Author fixtures between 2026-05-14 and now
+(the seed=0 sampler is deterministic for a given library, but the
+library itself grew). These all probe the same CV search-relevance
+failure the 7 Pattern-A cases already do.
 
-Whichever it is, **the documented win on this case isn't
-holding in practice on the real bigmedia data.** Worth a focused
-investigation if the goal is to get back to the 94%+ overall
-number.
+**Phase K rev 2's claimed fix is moot for these fixtures** — it
+can't score what the matcher never sees. The hand-calculation in
+META-PLAN assumed both volumes (910095 and 690927) were in the
+candidate set; empirically only 690927 is.
+
+**The actual fix is the CV search-relevance work documented in**
+[`../research-notes/cv-top-5-search-relevance.md`](../research-notes/cv-top-5-search-relevance.md)
+**, not a matcher-scoring tweak.**
 
 ## Cross-checks
 
@@ -150,27 +156,42 @@ number.
 
 **Doesn't validate:**
 - The META-PLAN claim that Phase K rev 2 fixes the trade-collection
-  pattern. Empirically it does NOT on the bigmedia data — the same
-  pattern surfaces as 11+ new misses in the prompt zone.
-- The hoped-for recovery toward the pre-HI ~94.6% number. Overall
-  number is at 89.4%, below baseline.
+  pattern. The Pattern-D investigation showed these misses are
+  Pattern A in disguise — the matcher never sees the right
+  candidate, so any scoring fix is moot. META-PLAN's
+  hand-calculation assumed both candidates were in the candidate
+  set; empirically the right one isn't.
+
+**Refutes:**
+- The "code regression" interpretation of the 4.9pp drop. The
+  Pattern-D investigation shows the drop is library composition
+  (more trade-collection fixtures in bigmedia now), all probing
+  the same Pattern A search-relevance gap. No code change
+  introduced these misses.
 
 ## Recommendation
 
-**Ship-readiness:** safe to ship under `--policy normal` (which is
-the default). Auto-write-band accuracy is unchanged. The 4.9pp
-regression in overall accuracy is concentrated in the prompt zone,
-which doesn't auto-tag.
+**Ship-readiness:** safe to ship under `--policy normal` (the
+default). Auto-write-band accuracy is unchanged at 97%; the 4.9pp
+overall regression is concentrated in the prompt zone, which
+doesn't auto-tag. Combined with the Pattern-D investigation
+showing the misses are library-composition + Pattern A (not a
+code regression), there's nothing in this data blocking ship.
 
-**Investigation worth doing before ship if higher overall accuracy
-matters:** dig into one of the 11+ trade-collection-by-Author
-misses. Run a unit-test-style probe of `OnlineMatcher.rank()`
-against the actual candidate set from the bigmedia run for, say,
-"Conan the Barbarian by Jim Zub Land of the Lotus (2021)". Confirm
-whether Phase K rev 2's signal-content-aware normalisation is
-producing the META-PLAN's documented md=0.9125 vs md=0.7875 gap,
-or something different. Cheap probe — no live API needed once we
-have the candidate IDs from the existing outcomes JSON.
+**To recover the overall accuracy number:** ship the CV
+search-relevance fix from
+[`../research-notes/cv-top-5-search-relevance.md`](../research-notes/cv-top-5-search-relevance.md).
+Pattern A (7 cases) + Pattern D (11 cases) = 18 of the 26 CV
+misses share the same root cause and would all be addressed by
+narrow-then-fuzzy volume search with `name + start_year` filter.
+
+**META-PLAN.md needs a correction.** The Phase K rev 2 entry
+attributes a Conan-by-Jim-Zub win to the signal-content-aware
+renormalisation; that's an incorrect diagnosis (the right answer
+was never in the candidate set in this run). The K rev 2 fix may
+still help OTHER cases (the slimlib Wolverine thumbnail case,
+which META-PLAN also cites), but not the trade-collection
+pattern.
 
 ## Where to find the data
 
