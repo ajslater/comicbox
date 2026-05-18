@@ -10,8 +10,8 @@ from dateutil.tz import tzutc
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
+from comicbox.formats.comic_info.schema import ComicInfoSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.comicinfo import ComicInfoSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 

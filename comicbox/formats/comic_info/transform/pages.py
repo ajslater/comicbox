@@ -9,7 +9,7 @@ from loguru import logger
 
 from comicbox.empty import is_empty
 from comicbox.schemas.comicbox import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
-from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
+from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,

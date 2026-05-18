@@ -10,6 +10,26 @@ from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
+from comicbox.formats.comic_info.schema import (
+    BOOKMARK_ATTRIBUTE,
+    ComicInfoSchema,
+)
+from comicbox.formats.comic_info.transform.identifiers import (
+    COMICINFO_IDENTIFIERS_TO_CB,
+)
+from comicbox.formats.comic_info.transform.pages import (
+    comicinfo_bookmark_to_cb,
+    comicinfo_pages_from_cb,
+    comicinfo_pages_to_cb,
+)
+from comicbox.formats.comic_info.transform.reprints import (
+    COMICINFO_REPRINTS_FROM_CB,
+    COMICINFO_REPRINTS_TO_CB,
+)
+from comicbox.formats.comic_info.transform.storyarcs import (
+    story_arcs_from_cb,
+    story_arcs_to_cb,
+)
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
@@ -35,11 +55,7 @@ from comicbox.schemas.comicbox import (
     TEAMS_KEY,
     TITLE_KEY,
 )
-from comicbox.schemas.comicinfo import (
-    BOOKMARK_ATTRIBUTE,
-    IMAGE_ATTRIBUTE,
-    ComicInfoSchema,
-)
+from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox import (
     DAY_KEYPATH,
@@ -50,20 +66,6 @@ from comicbox.transforms.comicbox import (
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
-)
-from comicbox.transforms.comicinfo.identifiers import COMICINFO_IDENTIFIERS_TO_CB
-from comicbox.transforms.comicinfo.pages import (
-    comicinfo_bookmark_to_cb,
-    comicinfo_pages_from_cb,
-    comicinfo_pages_to_cb,
-)
-from comicbox.transforms.comicinfo.reprints import (
-    COMICINFO_REPRINTS_FROM_CB,
-    COMICINFO_REPRINTS_TO_CB,
-)
-from comicbox.transforms.comicinfo.storyarcs import (
-    story_arcs_from_cb,
-    story_arcs_to_cb,
 )
 from comicbox.transforms.identifiers import (
     identifiers_transform_from_cb,

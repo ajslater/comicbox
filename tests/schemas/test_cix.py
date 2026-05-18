@@ -10,8 +10,8 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.comic_info.schema import ComicInfoSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.comicinfo import ComicInfoSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (

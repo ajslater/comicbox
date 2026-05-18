@@ -15,11 +15,11 @@ from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
 from comicbox.formats.comic_book_info import (
     REGISTRATION as _COMIC_BOOK_INFO_REGISTRATION,
 )
+from comicbox.formats.comic_info import REGISTRATION as _COMIC_INFO_REGISTRATION
 from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
 from comicbox.transforms.comicbox.cli import ComicboxCLITransform
 from comicbox.transforms.comicbox.json import ComicboxJsonTransform
 from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
-from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
 from comicbox.transforms.metron_api import MetronApiTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
@@ -50,14 +50,7 @@ class MetadataFormats(Enum):
     )
     COMET = _COMET_REGISTRATION.format
     COMIC_BOOK_INFO = _COMIC_BOOK_INFO_REGISTRATION.format
-    COMIC_INFO = MetadataFormat(
-        "ComicInfo",
-        frozenset({"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}),
-        "ComicInfo.xml",  # Comictagger doesn't read without CapCase
-        ComicInfoTransform,
-        has_pages=True,
-        lexer="xml",
-    )
+    COMIC_INFO = _COMIC_INFO_REGISTRATION.format
     METRON_INFO = MetadataFormat(
         "MetronInfo",
         frozenset({"metron", "metroninfo", "mi", "mix"}),

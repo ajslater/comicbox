@@ -20,6 +20,11 @@ XML_UNPARSE_ARGS = MappingProxyType(
     }
 )
 
+# xmltodict-style key for the XML `Image` attribute (`@` is xmltodict's
+# attribute prefix). Used by ComicInfo's <Page Image="…"> elements and
+# referenced by the YAML render module for flow-style rendering.
+IMAGE_ATTRIBUTE = "@Image"
+
 
 class XmlRenderModule(BaseRenderModule):
     """Marshmallow Render Module imitates json module."""

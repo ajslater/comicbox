@@ -12,7 +12,7 @@ from typing_extensions import override
 
 from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 from comicbox.schemas.comicbox import BOOKMARK_KEY, ID_KEY_KEY, PAGE_KEYS
-from comicbox.schemas.comicinfo import IMAGE_ATTRIBUTE
+from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
 
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"

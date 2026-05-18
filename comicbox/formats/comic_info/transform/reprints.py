@@ -4,6 +4,11 @@ from types import MappingProxyType
 
 from glom import Fill, T
 
+from comicbox.formats.comic_info.schema import (
+    ALTERNATE_COUNT_TAG,
+    ALTERNATE_NUMBER_TAG,
+    ALTERNATE_SERIES_TAG,
+)
 from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     NAME_KEY,
@@ -11,11 +16,6 @@ from comicbox.schemas.comicbox import (
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
-)
-from comicbox.schemas.comicinfo import (
-    ALTERNATE_COUNT_TAG,
-    ALTERNATE_NUMBER_TAG,
-    ALTERNATE_SERIES_TAG,
 )
 from comicbox.transforms.spec import MetaSpec
 
