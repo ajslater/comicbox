@@ -31,6 +31,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
+from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.online import outcome_stats
@@ -60,6 +61,12 @@ class OnlineLookupAbortedError(Exception):
 OnlineSourceFactory = "Callable[[Any, OnlineSettings], OnlineSource]"
 
 
+# Short-name → OnlineSource class. Kept centralized rather than declared
+# in each format's REGISTRATION because each OnlineSource subclass imports
+# from `comicbox.formats` at module level (ClassVar = MetadataFormats.X) —
+# pulling those imports into the FormatRegistration declaration creates
+# a load-time cycle through the formats package init. Revisit if those
+# ClassVars are restructured to defer the enum lookup.
 _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
     {
         "metron": MetronOnlineSource,
@@ -67,11 +74,24 @@ _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
     }
 )
 
-# Online MetadataSources entries. Used to skip self when checking for existing
-# identifiers under `--ignore-existing`.
-_ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = frozenset(
-    {MetadataSources.METRON_API, MetadataSources.COMICVINE_API}
-)
+
+def _online_source_enums() -> frozenset[MetadataSources]:
+    """
+    Derive the set of online MetadataSources from per-format REGISTRATIONs.
+
+    Used to skip self when checking for existing identifiers under
+    `--ignore-existing`.
+    """
+    online_source_names = {
+        source_name
+        for registration in FORMAT_REGISTRATIONS.values()
+        if registration.is_online
+        for source_name in registration.sources
+    }
+    return frozenset(MetadataSources[name] for name in online_source_names)
+
+
+_ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = _online_source_enums()
 
 
 class _NoTtyHintGuard:

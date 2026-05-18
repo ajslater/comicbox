@@ -19,7 +19,7 @@ from typing_extensions import override
 from comicbox._pdf import PDF_ENABLED
 from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.formats import MetadataFormats
+from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.print import PrintPhases
 from comicbox.run import Runner
 
@@ -92,20 +92,12 @@ _MATCH_POLICY_UNATTENDED_NOTE = (
     "[yellow]always-prompt --unattended[/yellow] is rejected (no work)."
 )
 
-# (name, required credentials, accepted --id forms, website)
-_ONLINE_SOURCES_INFO = (
-    (
-        "metron",
-        "username + password",
-        "metron:NNN",
-        "https://metron.cloud",
-    ),
-    (
-        "comicvine",
-        "api_key",
-        "comicvine:NNN  or  comicvine:4000-NNN",
-        "https://comicvine.gamespot.com",
-    ),
+# (name, required credentials, accepted --id forms, website) — derived
+# from each online format's REGISTRATION.cli_info.
+_ONLINE_SOURCES_INFO = tuple(
+    (info.short_name, info.credentials, info.id_form, info.website)
+    for registration in FORMAT_REGISTRATIONS.values()
+    if (info := registration.cli_info) is not None
 )
 _MATCH_POLICY_INTRO = Styled(
     """

@@ -9,7 +9,7 @@ from loguru import logger
 
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
-from comicbox.formats import MetadataFormats
+from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.sources import MetadataSources
 
@@ -184,11 +184,16 @@ class ComicboxSources(ComicboxArchive):
             MetadataSources.ARCHIVE_FILE: _get_source_archive_files_metadata,
         }
     )
+    # API is set by the public Comicbox(...) constructor; online sources are
+    # set by the online-lookup pipeline. Either way, the standard
+    # SOURCE_METHOD_MAP dispatch does not apply.
     SOURCES_SET_ELSEWHERE = frozenset(
-        {
-            MetadataSources.API,
-            MetadataSources.METRON_API,
-            MetadataSources.COMICVINE_API,
+        {MetadataSources.API}
+        | {
+            MetadataSources[source_name]
+            for registration in FORMAT_REGISTRATIONS.values()
+            if registration.is_online
+            for source_name in registration.sources
         }
     )
 

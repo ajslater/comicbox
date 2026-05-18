@@ -25,6 +25,22 @@ class MetadataFormat:
 
 
 @dataclass(frozen=True, slots=True)
+class OnlineSourceCliInfo:
+    """
+    User-facing description of an online source for CLI help.
+
+    Pure data — no imports or class references, safe to declare at
+    module-load time without triggering the formats-package cycle that
+    the heavier OnlineSource class would.
+    """
+
+    short_name: str  # As used in `--online <name>` and credentials config.
+    credentials: str  # What credentials are required (free-form text).
+    id_form: str  # Accepted `--id` forms.
+    website: str
+
+
+@dataclass(frozen=True, slots=True)
 class FormatRegistration:
     """
     Self-contained declaration of a metadata format's wiring.
@@ -39,3 +55,5 @@ class FormatRegistration:
     sources: MappingProxyType[str, int]
     validator: BaseValidator | None = None
     has_tags_without_ids: bool = False
+    is_online: bool = False
+    cli_info: OnlineSourceCliInfo | None = None
