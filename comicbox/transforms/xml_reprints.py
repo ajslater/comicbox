@@ -2,6 +2,12 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.filename.schema import (
+    ISSUE_COUNT_TAG,
+    ISSUE_TAG,
+    SERIES_TAG,
+    VOLUME_TAG,
+)
 from comicbox.schemas.comicbox import (
     ISSUE_KEY,
     NAME_KEY,
@@ -10,7 +16,6 @@ from comicbox.schemas.comicbox import (
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
 )
-from comicbox.schemas.filename import ISSUE_COUNT_TAG, ISSUE_TAG, SERIES_TAG, VOLUME_TAG
 from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,

@@ -10,8 +10,8 @@ from glom import glom
 
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
+from comicbox.formats.filename.schema import FilenameSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.filename import FilenameSchema
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"

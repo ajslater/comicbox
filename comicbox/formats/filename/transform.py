@@ -9,6 +9,7 @@ effective, simple and easy to read and to contribute to.
 
 from bidict import frozenbidict
 
+from comicbox.formats.filename.schema import FilenameSchema
 from comicbox.schemas.comicbox import (
     EXT_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -16,7 +17,6 @@ from comicbox.schemas.comicbox import (
     SCAN_INFO_KEY,
     TITLE_KEY,
 )
-from comicbox.schemas.filename import FilenameSchema
 from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.comicbox import ISSUE_NAME_KEYPATH, YEAR_KEYPATH
 from comicbox.transforms.publishing_tags import (

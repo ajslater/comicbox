@@ -12,13 +12,13 @@ from enum import Enum
 from comicbox._pdf import PDF_ENABLED
 from comicbox.formats._base import MetadataFormat
 from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
+from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
 from comicbox.transforms.comicbox.cli import ComicboxCLITransform
 from comicbox.transforms.comicbox.json import ComicboxJsonTransform
 from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
-from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metron_api import MetronApiTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
@@ -29,13 +29,7 @@ class MetadataFormats(Enum):
 
     # The order these are listed is the order of masking. Very important.
 
-    FILENAME = MetadataFormat(
-        "Filename",
-        frozenset({"fn", "filename"}),
-        "comicbox-filename.txt",
-        FilenameTransform,
-        lexer="",
-    )
+    FILENAME = _FILENAME_REGISTRATION.format
     PDF = MetadataFormat(
         "MuPDF",
         frozenset({"pdf", "mudpdf"}),
