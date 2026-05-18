@@ -6,6 +6,7 @@ http://www.denvog.com/comet/comet-specification/
 
 from types import MappingProxyType
 
+from comicbox.box.validate.xml_validator import XmlValidator
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comet.transform import CoMetTransform
 
@@ -25,4 +26,5 @@ REGISTRATION = FormatRegistration(
             "API": 6,
         }
     ),
+    validator=XmlValidator("CoMet-v1.1.xsd"),
 )

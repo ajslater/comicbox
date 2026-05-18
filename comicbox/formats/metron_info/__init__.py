@@ -2,6 +2,7 @@
 
 from types import MappingProxyType
 
+from comicbox.box.validate.xml_validator import XmlValidator
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.metron_info.transform import MetronInfoTransform
 
@@ -22,4 +23,5 @@ REGISTRATION = FormatRegistration(
             "API": 3,
         }
     ),
+    validator=XmlValidator("MetronInfo-v1.0.xsd"),
 )

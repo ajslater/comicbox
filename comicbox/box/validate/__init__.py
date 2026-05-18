@@ -17,28 +17,17 @@ from xmlschema.exceptions import XMLSchemaException
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
 from comicbox.box.validate.guess_format import guess_format
-from comicbox.box.validate.json_validator import JsonValidator
-from comicbox.box.validate.xml_validator import XmlValidator
-from comicbox.box.validate.yaml_validator import YamlValidator
-from comicbox.formats import MetadataFormats
+from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.sources import MetadataSources
 
+#: Derived from per-format `REGISTRATION.validator`. Formats whose
+#: registration has `validator=None` (PDF, PDF_XML, Filename, online APIs)
+#: are absent here and trigger the "no validator available" path below.
 FMT_VALIDATOR_MAP = MappingProxyType(
     {
-        MetadataFormats.COMIC_INFO: XmlValidator("ComicInfo-v2.1-Draft.xsd"),
-        MetadataFormats.COMIC_BOOK_INFO: JsonValidator(
-            "comic-book-info-v1.0.schema.json"
-        ),
-        MetadataFormats.METRON_INFO: XmlValidator("MetronInfo-v1.0.xsd"),
-        MetadataFormats.COMET: XmlValidator("CoMet-v1.1.xsd"),
-        MetadataFormats.COMICBOX_JSON: JsonValidator("v2.0/comicbox-v2.0.schema.json"),
-        MetadataFormats.COMICBOX_YAML: YamlValidator("v2.0/comicbox-v2.0.schema.json"),
-        MetadataFormats.COMICBOX_CLI_YAML: YamlValidator(
-            "v2.0/comicbox-v2.0.schema.json"
-        ),
-        # "pdf":
-        # "pdfxml":
-        # "filename":
+        fmt: registration.validator
+        for fmt, registration in FORMAT_REGISTRATIONS.items()
+        if registration.validator is not None
     }
 )
 

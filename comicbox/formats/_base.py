@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from comicbox.box.validate.base import BaseValidator
 from comicbox.transforms.base import BaseTransform
 
 
@@ -36,3 +37,4 @@ class FormatRegistration:
 
     format: MetadataFormat
     sources: MappingProxyType[str, int]
+    validator: BaseValidator | None = None

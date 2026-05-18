@@ -9,10 +9,14 @@ Three REGISTRATIONs share schema + transform helpers in this package:
 
 from types import MappingProxyType
 
+from comicbox.box.validate.json_validator import JsonValidator
+from comicbox.box.validate.yaml_validator import YamlValidator
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comicbox.transform.cli import ComicboxCLITransform
 from comicbox.formats.comicbox.transform.json import ComicboxJsonTransform
 from comicbox.formats.comicbox.transform.yaml import ComicboxYamlTransform
+
+_COMICBOX_SCHEMA_FILE = "v2.0/comicbox-v2.0.schema.json"
 
 YAML_REGISTRATION = FormatRegistration(
     format=MetadataFormat(
@@ -29,6 +33,7 @@ YAML_REGISTRATION = FormatRegistration(
             "API": 1,
         }
     ),
+    validator=YamlValidator(_COMICBOX_SCHEMA_FILE),
 )
 
 JSON_REGISTRATION = FormatRegistration(
@@ -46,6 +51,7 @@ JSON_REGISTRATION = FormatRegistration(
             "API": 2,
         }
     ),
+    validator=JsonValidator(_COMICBOX_SCHEMA_FILE),
 )
 
 CLI_YAML_REGISTRATION = FormatRegistration(
@@ -64,4 +70,5 @@ CLI_YAML_REGISTRATION = FormatRegistration(
             "API": 0,
         }
     ),
+    validator=YamlValidator(_COMICBOX_SCHEMA_FILE),
 )

@@ -62,7 +62,9 @@ def _formats_for_source(name: str) -> tuple[MetadataFormats, ...]:
     return tuple(fmt for _, fmt in sorted(pairs, key=lambda p: p[0]))
 
 
-def _build_source(name: str, label: str, from_archive: bool, accepts_any: bool) -> MetadataSource:  # noqa: FBT001
+def _build_source(
+    name: str, label: str, from_archive: bool, accepts_any: bool
+) -> MetadataSource:  # noqa: FBT001
     if accepts_any:
         return MetadataSource(label, from_archive=from_archive)
     return MetadataSource(
