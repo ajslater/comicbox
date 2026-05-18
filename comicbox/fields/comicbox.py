@@ -18,12 +18,12 @@ from comicbox.fields.enum_fields import (
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import IntegerField
 from comicbox.fields.union import UNION_SCHEMA_IGNORE_ERRORS
-from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.comicbox.identifiers import (
+from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedNameSchema,
     IdentifiedSchema,
 )
-from comicbox.schemas.comicbox.pages import PageInfoSchema
+from comicbox.formats.comicbox.schema.pages import PageInfoSchema
+from comicbox.schemas.base import BaseSubSchema
 
 NAME_KEY = "name"
 

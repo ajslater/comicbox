@@ -6,7 +6,7 @@ from typing import Any
 
 from glom import Coalesce, Iter, T
 
-from comicbox.schemas.comicbox import ARCS_KEY, NUMBER_KEY
+from comicbox.formats.comicbox.schema import ARCS_KEY, NUMBER_KEY
 from comicbox.transforms.spec import MetaSpec
 
 

@@ -5,24 +5,11 @@ from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.identifiers.identifiers import (
-    create_identifier,
-    get_identifier_url,
-)
-from comicbox.identifiers.other import (
-    parse_identifier_other_str,
-)
-from comicbox.identifiers.urns import (
-    parse_urn_identifier,
-)
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ARCS_KEY,
     CHARACTERS_KEY,
     CREDITS_KEY,
     GENRES_KEY,
-    ID_KEY_KEY,
-    ID_URL_KEY,
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
     LOCATIONS_KEY,
@@ -34,6 +21,18 @@ from comicbox.schemas.comicbox import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
+from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
+from comicbox.identifiers.identifiers import (
+    create_identifier,
+    get_identifier_url,
+)
+from comicbox.identifiers.other import (
+    parse_identifier_other_str,
+)
+from comicbox.identifiers.urns import (
+    parse_urn_identifier,
+)
+from comicbox.merge import AdditiveMerger, Merger
 
 _IDENTIFIED_KEYS = (PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY)
 _IDENTIFIED_TAG_KEYS = (

@@ -11,7 +11,7 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comet.schema import CoMetSchema
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 

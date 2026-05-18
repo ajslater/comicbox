@@ -10,8 +10,9 @@ from typing import Any
 from ruamel.yaml import YAML, MappingNode, RoundTripRepresenter, ScalarNode, StringIO
 from typing_extensions import override
 
+from comicbox.formats.comicbox.schema import BOOKMARK_KEY, PAGE_KEYS
+from comicbox.identifiers import ID_KEY_KEY
 from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
-from comicbox.schemas.comicbox import BOOKMARK_KEY, ID_KEY_KEY, PAGE_KEYS
 from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
 
 _TAG_YAML = "tag:yaml.org,2002"

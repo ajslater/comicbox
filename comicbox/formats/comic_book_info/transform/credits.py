@@ -9,12 +9,14 @@ from comicbox.formats.comic_book_info.schema import (
     PRIMARY_TAG,
     ROLE_TAG,
 )
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     CREDIT_PRIMARIES_KEY,
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
+from comicbox.formats.comicbox.transform.credits import (
+    add_credit_role_to_comicbox_credits,
+)
 from comicbox.transforms.spec import MetaSpec
 
 

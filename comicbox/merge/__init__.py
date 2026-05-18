@@ -5,8 +5,8 @@ from collections.abc import Mapping, MutableMapping
 
 from typing_extensions import override
 
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.merge.mergedeep import Strategy, merge
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
 
 
 class Merger(ABC):

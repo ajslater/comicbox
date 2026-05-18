@@ -8,7 +8,7 @@ from typing import Any
 from glom import A, Coalesce, Path, S, T, Val, assign
 
 from comicbox.empty import is_empty
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
 GLOBAL_SCOPE_PREFIX = "S.globals.comicbox"
 

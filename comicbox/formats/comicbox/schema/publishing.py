@@ -5,8 +5,11 @@ from marshmallow.fields import Nested
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import DecimalField, IntegerField
 from comicbox.fields.pycountry import LanguageField
+from comicbox.formats.comicbox.schema.identifiers import (
+    IdentifiedNameSchema,
+    IdentifiedSchema,
+)
 from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.comicbox.identifiers import IdentifiedNameSchema, IdentifiedSchema
 
 
 class SeriesSchema(IdentifiedNameSchema):

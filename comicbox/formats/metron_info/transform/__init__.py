@@ -2,6 +2,19 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.comicbox.schema import (
+    AGE_RATING_KEY,
+    COLLECTION_TITLE_KEY,
+    NOTES_KEY,
+    PAGE_COUNT_KEY,
+    SUMMARY_KEY,
+    UPDATED_AT_KEY,
+)
+from comicbox.formats.comicbox.transform import (
+    COVER_DATE_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    STORE_DATE_KEYPATH,
+)
 from comicbox.formats.metron_info.schema import (
     MetronInfoSchema,
 )
@@ -42,20 +55,7 @@ from comicbox.formats.metron_info.transform.resources import (
     METRON_UNIVERSES_TRANSFORM_FROM_CB,
     METRON_UNIVERSES_TRANSFORM_TO_CB,
 )
-from comicbox.schemas.comicbox import (
-    AGE_RATING_KEY,
-    COLLECTION_TITLE_KEY,
-    NOTES_KEY,
-    PAGE_COUNT_KEY,
-    SUMMARY_KEY,
-    UPDATED_AT_KEY,
-)
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import (
-    COVER_DATE_KEYPATH,
-    ISSUE_NAME_KEYPATH,
-    STORE_DATE_KEYPATH,
-)
 from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,

@@ -12,12 +12,12 @@ from comicbox.empty import is_empty
 from comicbox.fields.comicbox import NAME_KEY
 from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import DecimalField
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,
     NUMBER_KEY,
 )
+from comicbox.merge import AdditiveMerger, Merger
 
 ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")

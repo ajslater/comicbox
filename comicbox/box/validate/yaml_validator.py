@@ -10,7 +10,7 @@ from typing_extensions import override
 from comicbox.box.pages.covers import PAGES_KEYPATH
 from comicbox.box.validate.json_validator import JsonValidator
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     PAGES_KEY,
@@ -18,7 +18,7 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.transforms.comicbox import (
+from comicbox.formats.comicbox.transform import (
     COVER_DATE_KEYPATH,
     STORE_DATE_KEYPATH,
 )

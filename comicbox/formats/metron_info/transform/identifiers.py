@@ -10,19 +10,18 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
 from comicbox.enums.metroninfo import MetronSourceEnum
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.comicbox.schema import (
+    ID_SOURCE_KEY,
+    IDENTIFIER_PRIMARY_SOURCE_KEY,
+    IDENTIFIERS_KEY,
+)
 from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
 )
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox import (
-    ID_KEY_KEY,
-    ID_SOURCE_KEY,
-    ID_URL_KEY,
-    IDENTIFIER_PRIMARY_SOURCE_KEY,
-    IDENTIFIERS_KEY,
-)
 from comicbox.transforms.identifiers import (
     PRIMARY_ID_SOURCE_KEYPATH,
     create_identifier_primary_source,

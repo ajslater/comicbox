@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from glom import Assign, Path, glom
 
-from comicbox.schemas.comicbox import ROLES_KEY
+from comicbox.formats.comicbox.schema import ROLES_KEY
 
 ROLE_SPELLING = MappingProxyType({"penciler": "Penciller"})
 

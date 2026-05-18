@@ -9,8 +9,7 @@ from loguru import logger
 
 from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
-from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     BOOKMARK_KEY,
     PAGE_BOOKMARK_KEY,
     PAGE_COUNT_KEY,
@@ -18,6 +17,7 @@ from comicbox.schemas.comicbox import (
     PAGE_TYPE_KEY,
     PAGES_KEY,
 )
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 
 _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
     {

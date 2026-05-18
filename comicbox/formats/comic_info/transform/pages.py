@@ -8,7 +8,7 @@ from glom.grouping import Group
 from loguru import logger
 
 from comicbox.empty import is_empty
-from comicbox.schemas.comicbox import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
+from comicbox.formats.comicbox.schema import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
 from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.transforms.spec import (
     MetaSpec,

@@ -11,15 +11,7 @@ from loguru import logger
 from comicbox.box.merge import ComicboxMerge
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP, get_id_source_by_alias
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.identifiers import IDENTIFIER_RE_EXP
-from comicbox.identifiers.identifiers import (
-    create_identifier,
-)
-from comicbox.identifiers.urns import (
-    parse_urn_identifier_and_warn,
-)
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,
@@ -30,7 +22,15 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     YEAR_KEY,
 )
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSubSchema
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSubSchema
+from comicbox.identifiers import IDENTIFIER_RE_EXP
+from comicbox.identifiers.identifiers import (
+    create_identifier,
+)
+from comicbox.identifiers.urns import (
+    parse_urn_identifier_and_warn,
+)
+from comicbox.merge import AdditiveMerger, Merger
 
 _DATE_KEYS = frozenset({COVER_DATE_KEY, YEAR_KEY, MONTH_KEY, DAY_KEY})
 _NOTES_TAGGER_VERSION_EXP = r"(?:\s(?:dev|test|[\d\.]+\S+))?"

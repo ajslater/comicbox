@@ -8,7 +8,7 @@ from comicbox.formats.comic_book_info.transform.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
     GENRES_KEY,
@@ -21,14 +21,17 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import (
+from comicbox.formats.comicbox.transform import (
     DAY_KEYPATH,
     ISSUE_NAME_KEYPATH,
     MONTH_KEYPATH,
     YEAR_KEYPATH,
 )
-from comicbox.transforms.comicbox.name_objs import name_obj_from_cb, name_obj_to_cb
+from comicbox.formats.comicbox.transform.name_objs import (
+    name_obj_from_cb,
+    name_obj_to_cb,
+)
+from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.publishing_tags import (
     ISSUE_COUNT_KEYPATH,
     PUBLISHER_NAME_KEYPATH,

@@ -6,7 +6,7 @@ from comicbox.enums.comet import CoMetRoleTagEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     CREDITS_KEY,
     ROLES_KEY,
 )

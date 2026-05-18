@@ -7,6 +7,12 @@ from loguru import logger
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.comicbox.schema import (
+    ID_SOURCE_KEY,
+    IDENTIFIER_PRIMARY_SOURCE_KEY,
+    IDENTIFIERS_KEY,
+)
+from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -15,13 +21,6 @@ from comicbox.identifiers.identifiers import (
 from comicbox.identifiers.urns import (
     parse_string_identifier,
     to_urn_string,
-)
-from comicbox.schemas.comicbox import (
-    ID_KEY_KEY,
-    ID_SOURCE_KEY,
-    ID_URL_KEY,
-    IDENTIFIER_PRIMARY_SOURCE_KEY,
-    IDENTIFIERS_KEY,
 )
 from comicbox.transforms.spec import MetaSpec
 

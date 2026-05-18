@@ -9,7 +9,7 @@ from typing_extensions import override
 from comicbox.fields.comicbox import PagesField
 from comicbox.fields.fields import StringField
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     PAGES_KEY,
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,

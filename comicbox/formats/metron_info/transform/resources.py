@@ -9,6 +9,19 @@ from typing import Any
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.comicbox.schema import (
+    ARCS_KEY,
+    CHARACTERS_KEY,
+    DESIGNATION_KEY,
+    GENRES_KEY,
+    LOCATIONS_KEY,
+    NUMBER_KEY,
+    PRICES_KEY,
+    STORIES_KEY,
+    TAGS_KEY,
+    TEAMS_KEY,
+    UNIVERSES_KEY,
+)
 from comicbox.formats.metron_info.schema import (
     COUNTRY_ATTR,
     DESIGNATION_TAG,
@@ -22,19 +35,6 @@ from comicbox.formats.metron_info.transform.identified_name import (
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.schemas.comicbox import (
-    ARCS_KEY,
-    CHARACTERS_KEY,
-    DESIGNATION_KEY,
-    GENRES_KEY,
-    LOCATIONS_KEY,
-    NUMBER_KEY,
-    PRICES_KEY,
-    STORIES_KEY,
-    TAGS_KEY,
-    TEAMS_KEY,
-    UNIVERSES_KEY,
-)
 from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.transforms.spec import MetaSpec
 

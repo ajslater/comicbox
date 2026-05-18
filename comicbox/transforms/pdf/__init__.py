@@ -2,7 +2,7 @@
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     GENRES_KEY,
     SCAN_INFO_KEY,
     TAGGER_KEY,
@@ -10,12 +10,12 @@ from comicbox.schemas.comicbox import (
     TITLE_KEY,
     UPDATED_AT_KEY,
 )
-from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox.name_objs import (
+from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
 )
+from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
+from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.pdf.credits import (
     authors_to_credits_transform_from_cb,
     authors_to_credits_transform_to_cb,

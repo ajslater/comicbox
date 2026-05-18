@@ -2,7 +2,7 @@
 
 from glom import Coalesce, Fill, Iter, T
 
-from comicbox.schemas.comicbox import PRICES_KEY
+from comicbox.formats.comicbox.schema import PRICES_KEY
 from comicbox.transforms.spec import MetaSpec
 
 

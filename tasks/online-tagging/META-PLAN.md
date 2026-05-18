@@ -193,8 +193,8 @@ Test strategy:
 
 Designed in [`06-api-budget-spec.md`](06-api-budget-spec.md). Rolled out
 incrementally on the `online-tagging` branch; the original three-phase plan
-expanded as bigmedia calibration motivated follow-ups. See
-[`TODO.md`](TODO.md) section 3 for the canonical per-phase status.
+expanded as bigmedia calibration motivated follow-ups. See [`TODO.md`](TODO.md)
+section 3 for the canonical per-phase status.
 
 - **Phase A** ✓ — Build the levers as dormant code (a754f6a).
 - **Phase B** ✓ — Calibrate against 339-fixture labeled set; pin thresholds
@@ -207,26 +207,25 @@ expanded as bigmedia calibration motivated follow-ups. See
   solo-below-threshold silent-failure pattern (e7bfdbd).
 - **Phase F** ✓ — Smooth year-signal decay beyond diff=2 (602378d).
 - **Phase G** ✓ — Tighten `_COVER_DIFF_NOISE_MARGIN` 0.05 → 0.03 (fe7bf90).
-- **Phase H** ✗ REVERTED — CV broadening retry on weak top quick-score
-  (f772d75, reverted by 62a5725). Rev 2 with discovery_pass tiebreak
-  (35ff22f) also reverted (b407815). Search-relevance problem still open.
+- **Phase H** ✗ REVERTED — CV broadening retry on weak top quick-score (f772d75,
+  reverted by 62a5725). Rev 2 with discovery_pass tiebreak (35ff22f) also
+  reverted (b407815). Search-relevance problem still open.
 - **Phase I** ✗ REVERTED — Quality-relative cover-diff threshold (d2a07e5,
   reverted by b33da25) after silent ~13-case CV regression on
-  trade-collection-vs-canonical-series pattern. Phase G's absolute 0.03
-  margin restored.
+  trade-collection-vs-canonical-series pattern. Phase G's absolute 0.03 margin
+  restored.
 - **Phase J** ✓ — Adaptive top-K for cover hashing (7a44fa4).
-- **Phase K rev 2** ✓ — Signal-content-aware metadata renormalisation;
-  drop a signal only when BOTH sides are empty/None, asymmetric absence
-  penalises via the signal function's missing-data branch (916a488; rev 1
-  at 7867459 was over-aggressive and superseded). **Empirical caveat
-  (2026-05-17):** the bigmedia re-run showed that the Conan-by-Jim-Zub
-  case originally cited as the canonical K rev 2 win is actually
-  Pattern A (CV search relevance) — the "right" candidate isn't in
-  CV's top-5 under FAST budget, so K rev 2's scoring fix never gets
-  to fire. K rev 2 may still help OTHER cases where both candidates
-  ARE in the candidate set (the original slimlib Wolverine-thumbnail
-  motivation), but it does NOT recover the trade-collection-by-Author
-  pattern. See
+- **Phase K rev 2** ✓ — Signal-content-aware metadata renormalisation; drop a
+  signal only when BOTH sides are empty/None, asymmetric absence penalises via
+  the signal function's missing-data branch (916a488; rev 1 at 7867459 was
+  over-aggressive and superseded). **Empirical caveat (2026-05-17):** the
+  bigmedia re-run showed that the Conan-by-Jim-Zub case originally cited as the
+  canonical K rev 2 win is actually Pattern A (CV search relevance) — the
+  "right" candidate isn't in CV's top-5 under FAST budget, so K rev 2's scoring
+  fix never gets to fire. K rev 2 may still help OTHER cases where both
+  candidates ARE in the candidate set (the original slimlib Wolverine-thumbnail
+  motivation), but it does NOT recover the trade-collection-by-Author pattern.
+  See
   [`calibration-notes/2026-05-17-bigmedia-247-postrevert.md`](calibration-notes/2026-05-17-bigmedia-247-postrevert.md).
 
 Validated against the developer's 17,500-comic slimlib via a 500-fixture
@@ -279,16 +278,16 @@ Items surfaced by the slimlib calibration that warrant their own work:
     scoring tweak can help because the correct candidate never reaches the
     matcher.
 
-    **Phase H attempt — REVERTED.** Phase H (commit `f772d75`) re-issued
-    the CV search with max_results=20 when the initial top quick-scored
-    below 0.85. Reverted by `62a5725` after prompt-zone regressions. Phase
-    H rev 2 (`35ff22f`) added a source-aware discovery_pass tiebreak; also
-    reverted by `b407815` after producing 0 net flips on bigmedia. The
-    underlying problem — correct answer never reaching the matcher — is
-    still open. Next attempt should not just broaden every weak-top query;
-    options worth exploring are query-side refinement (more specific
-    search terms) and post-hoc broadening triggered only when we can
-    detect the candidate set is wrong rather than weak.
+    **Phase H attempt — REVERTED.** Phase H (commit `f772d75`) re-issued the CV
+    search with max_results=20 when the initial top quick-scored below 0.85.
+    Reverted by `62a5725` after prompt-zone regressions. Phase H rev 2
+    (`35ff22f`) added a source-aware discovery_pass tiebreak; also reverted by
+    `b407815` after producing 0 net flips on bigmedia. The underlying problem —
+    correct answer never reaching the matcher — is still open. Next attempt
+    should not just broaden every weak-top query; options worth exploring are
+    query-side refinement (more specific search terms) and post-hoc broadening
+    triggered only when we can detect the candidate set is wrong rather than
+    weak.
 
 5. **CLI surface for `solo_confidence_threshold`** (low priority). Internal-only
    for now. If real-world usage shows the 0.95 default is too strict and users

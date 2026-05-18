@@ -13,8 +13,8 @@ import pytest
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
     CB7_SOURCE_PATH,

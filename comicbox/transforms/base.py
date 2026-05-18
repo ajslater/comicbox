@@ -9,7 +9,6 @@ from glom import glom
 
 from comicbox.schemas.base import BaseSchema
 from comicbox.schemas.cache import get_schema
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 
 
 def skip_not(val: Any) -> bool:
@@ -38,6 +37,12 @@ class BaseTransform:
 
     def to_comicbox(self, data: Mapping) -> MappingProxyType:
         """Transform the data to a normalized comicbox schema."""
+        # Deferred import to break a load-time cycle: every format module
+        # transitively imports BaseTransform, so a top-level import here
+        # would pull comicbox.formats.comicbox.schema.yaml back through
+        # itself during MetadataFormats assembly.
+        from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+
         schema = get_schema(ComicboxYamlSchema, path=self._path)
         transformed_data = glom(dict(data), dict(self.SPECS_TO))
         loaded_data: dict = schema.load(transformed_data)  # pyright: ignore[reportAssignmentType]

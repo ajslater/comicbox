@@ -267,9 +267,7 @@ def test_search_retries_series_list_on_rate_limit(
             super().__init__(*args, **kwargs)
             self._fail_count = 0
 
-        def series_list(
-            self, params: dict | None = None
-        ) -> list[_FakeBaseSeries]:
+        def series_list(self, params: dict | None = None) -> list[_FakeBaseSeries]:
             if self._fail_count < 1:
                 self.series_list_calls.append(dict(params or {}))
                 self._fail_count += 1

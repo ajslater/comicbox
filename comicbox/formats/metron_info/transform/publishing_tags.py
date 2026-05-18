@@ -6,24 +6,7 @@ from typing import Any
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
-from comicbox.formats.metron_info.schema import (
-    ALTERNATIVE_NAMES_TAGPATH,
-    IMPRINT_TAG,
-    LANG_ATTR,
-    MANGA_VOLUME_TAG,
-    NAME_TAG,
-    PUBLISHER_TAG,
-    SERIES_TAG,
-    VOLUME_TAG,
-)
-from comicbox.formats.metron_info.transform.identifier_attribute import (
-    ID_ATTRIBUTE,
-    metron_id_attribute_from_cb,
-    metron_id_attribute_to_cb,
-)
-from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
-from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
     LANGUAGE_KEY,
@@ -42,6 +25,23 @@ from comicbox.schemas.comicbox import (
     VOLUME_NUMBER_KEY,
     VOLUME_NUMBER_TO_KEY,
 )
+from comicbox.formats.metron_info.schema import (
+    ALTERNATIVE_NAMES_TAGPATH,
+    IMPRINT_TAG,
+    LANG_ATTR,
+    MANGA_VOLUME_TAG,
+    NAME_TAG,
+    PUBLISHER_TAG,
+    SERIES_TAG,
+    VOLUME_TAG,
+)
+from comicbox.formats.metron_info.transform.identifier_attribute import (
+    ID_ATTRIBUTE,
+    metron_id_attribute_from_cb,
+    metron_id_attribute_to_cb,
+)
+from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
+from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.transforms.spec import MetaSpec
 

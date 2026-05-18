@@ -13,7 +13,7 @@ from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comic_info.schema import ComicInfoSchema
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,

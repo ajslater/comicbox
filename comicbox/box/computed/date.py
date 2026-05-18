@@ -8,14 +8,14 @@ from typing import Any
 from loguru import logger
 
 from comicbox.box.computed.identifiers import ComicboxComputedIdentifiers
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,
     MONTH_KEY,
     YEAR_KEY,
 )
+from comicbox.merge import AdditiveMerger, Merger
 
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 

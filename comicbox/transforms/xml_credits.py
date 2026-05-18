@@ -7,11 +7,13 @@ from typing import Any, TypeVar
 from loguru import logger
 
 from comicbox.fields.enum_fields import EnumField
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.comicbox.credits import add_credit_role_to_comicbox_credits
+from comicbox.formats.comicbox.transform.credits import (
+    add_credit_role_to_comicbox_credits,
+)
 from comicbox.transforms.spec import MetaSpec
 
 

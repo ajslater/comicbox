@@ -14,9 +14,10 @@ from comicbox.identifiers import (
     COMICVINE_LONG_ID_KEY_EXP,
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
+    ID_KEY_KEY,
+    ID_URL_KEY,
     PARSE_COMICVINE_RE,
 )
-from comicbox.schemas.comicbox import ID_KEY_KEY, ID_URL_KEY
 
 _SLUG_REXP = r"(?:/\S*)?"
 

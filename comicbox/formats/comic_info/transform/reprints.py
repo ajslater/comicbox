@@ -9,7 +9,7 @@ from comicbox.formats.comic_info.schema import (
     ALTERNATE_NUMBER_TAG,
     ALTERNATE_SERIES_TAG,
 )
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     NAME_KEY,
     REPRINTS_KEY,

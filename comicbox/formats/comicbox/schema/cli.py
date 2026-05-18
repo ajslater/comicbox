@@ -5,7 +5,7 @@ from typing import Any
 
 from typing_extensions import override
 
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 
 
 class ComicboxCLISchema(ComicboxYamlSchema):

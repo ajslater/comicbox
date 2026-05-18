@@ -7,15 +7,15 @@ from typing import Any
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.enums.comicbox import IdSources
 from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers.urns import to_urn_string
-from comicbox.merge import ReplaceMerger
-from comicbox.schemas.comicbox import (
-    ID_KEY_KEY,
+from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     NOTES_KEY,
     TAGGER_KEY,
     UPDATED_AT_KEY,
 )
+from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers.urns import to_urn_string
+from comicbox.merge import ReplaceMerger
 
 
 class ComicboxComputedStamp(ComicboxComputedPages):

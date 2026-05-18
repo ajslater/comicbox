@@ -22,8 +22,8 @@ from rich.table import Table
 from rich.text import Text
 
 from comicbox.box.validate import ComicboxValidate
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 from comicbox.print import PrintPhases
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
 from comicbox.schemas.yaml import YamlRenderModule
 from comicbox.sources import MetadataSources
 from comicbox.version import VERSION

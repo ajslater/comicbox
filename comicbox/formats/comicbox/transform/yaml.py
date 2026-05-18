@@ -1,7 +1,7 @@
 """Comicbox JSON transform to and from Comicbox format."""
 
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
-from comicbox.transforms.comicbox import ComicboxBaseTransform
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+from comicbox.formats.comicbox.transform import ComicboxBaseTransform
 
 
 class ComicboxYamlTransform(ComicboxBaseTransform):

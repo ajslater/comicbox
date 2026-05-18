@@ -1,6 +1,6 @@
 """Nested Publishing Tags."""
 
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     IMPRINT_KEY,
     NAME_KEY,
     PUBLISHER_KEY,

@@ -2,19 +2,19 @@
 
 from bidict import frozenbidict
 
-from comicbox.formats.filename.schema import (
-    ISSUE_COUNT_TAG,
-    ISSUE_TAG,
-    SERIES_TAG,
-    VOLUME_TAG,
-)
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     NAME_KEY,
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
+)
+from comicbox.formats.filename.schema import (
+    ISSUE_COUNT_TAG,
+    ISSUE_TAG,
+    SERIES_TAG,
+    VOLUME_TAG,
 )
 from comicbox.transforms.spec import (
     MetaSpec,

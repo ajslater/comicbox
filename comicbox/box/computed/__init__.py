@@ -10,13 +10,13 @@ from deepdiff import DeepDiff
 
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
 from comicbox.fields.enum_fields import OriginalFormatField
-from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ORIGINAL_FORMAT_KEY,
     REPRINTS_KEY,
     SCAN_INFO_KEY,
     ComicboxSchemaMixin,
 )
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 
 
 @dataclass

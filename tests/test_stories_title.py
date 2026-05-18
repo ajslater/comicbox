@@ -9,7 +9,7 @@ from deepdiff import DeepDiff
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.schemas.comicbox import STORIES_KEY, TITLE_KEY
+from comicbox.formats.comicbox.schema import STORIES_KEY, TITLE_KEY
 
 STORIES = {"a": {"identifiers": {"comicvine": {"key": "123"}}}, "d": {}}
 TITLE = "a; b; c"

@@ -2,7 +2,7 @@
 
 from types import MappingProxyType
 
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     APP_ID_KEY,
     COVER_DATE_KEY,
     DATE_KEY,

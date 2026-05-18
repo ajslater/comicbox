@@ -240,9 +240,7 @@ class ComicVineOnlineSource(OnlineSource):
         """
         # Fuzzy always runs (preserves today's behaviour as a floor).
         try:
-            fuzzy = self._volume_search_with_retry(
-                session, profile.series, max_volumes
-            )
+            fuzzy = self._volume_search_with_retry(session, profile.series, max_volumes)
         except Exception as exc:
             logger.warning(f"online {self.name}: volume search failed: {exc}")
             raise

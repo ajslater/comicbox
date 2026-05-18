@@ -16,11 +16,17 @@ from comicbox.formats.comic_book_info import (
     REGISTRATION as _COMIC_BOOK_INFO_REGISTRATION,
 )
 from comicbox.formats.comic_info import REGISTRATION as _COMIC_INFO_REGISTRATION
+from comicbox.formats.comicbox import (
+    CLI_YAML_REGISTRATION as _COMICBOX_CLI_YAML_REGISTRATION,
+)
+from comicbox.formats.comicbox import (
+    JSON_REGISTRATION as _COMICBOX_JSON_REGISTRATION,
+)
+from comicbox.formats.comicbox import (
+    YAML_REGISTRATION as _COMICBOX_YAML_REGISTRATION,
+)
 from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
 from comicbox.formats.metron_info import REGISTRATION as _METRON_INFO_REGISTRATION
-from comicbox.transforms.comicbox.cli import ComicboxCLITransform
-from comicbox.transforms.comicbox.json import ComicboxJsonTransform
-from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
 from comicbox.transforms.metron_api import MetronApiTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
@@ -68,26 +74,6 @@ class MetadataFormats(Enum):
         lexer="json",
         enabled=False,
     )
-    COMICBOX_YAML = MetadataFormat(
-        "Comicbox YAML",
-        frozenset({"comicbox-yaml", "yaml"}),
-        "comicbox.yaml",
-        ComicboxYamlTransform,
-        has_pages=True,
-    )
-    COMICBOX_JSON = MetadataFormat(
-        "Comicbox JSON",
-        frozenset({"cb", "comicbox", "json", "comicbox-json"}),
-        "comicbox.json",
-        ComicboxJsonTransform,
-        has_pages=True,
-        lexer="json",
-    )
-    COMICBOX_CLI_YAML = MetadataFormat(
-        "Comicbox CLI Yaml",
-        frozenset({"cli", "comicbox-cli"}),
-        "comicbox-cli.yaml",
-        ComicboxCLITransform,
-        has_pages=True,
-        lexer="yaml",
-    )
+    COMICBOX_YAML = _COMICBOX_YAML_REGISTRATION.format
+    COMICBOX_JSON = _COMICBOX_JSON_REGISTRATION.format
+    COMICBOX_CLI_YAML = _COMICBOX_CLI_YAML_REGISTRATION.format

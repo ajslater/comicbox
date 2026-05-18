@@ -15,8 +15,7 @@ from comicbox.formats.comet.transform.reprints import (
     comet_reprints_transform_from_cb,
     comet_reprints_transform_to_cb,
 )
-from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     AGE_RATING_KEY,
     BOOKMARK_KEY,
     CHARACTERS_KEY,
@@ -30,12 +29,13 @@ from comicbox.schemas.comicbox import (
     SUMMARY_KEY,
     TITLE_KEY,
 )
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import COVER_DATE_KEYPATH, ISSUE_NAME_KEYPATH
-from comicbox.transforms.comicbox.name_objs import (
+from comicbox.formats.comicbox.transform import COVER_DATE_KEYPATH, ISSUE_NAME_KEYPATH
+from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
 )
+from comicbox.identifiers import DEFAULT_ID_SOURCE
+from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.identifiers import (
     identifiers_transform_from_cb,
     identifiers_transform_to_cb,

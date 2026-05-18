@@ -7,6 +7,12 @@ from comicfn2dict.unparse import dict2comicfn
 from glom import glom
 
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.comicbox.schema import (
+    LANGUAGE_KEY,
+    NAME_KEY,
+    REPRINTS_KEY,
+    SERIES_KEY,
+)
 from comicbox.formats.metron_info.schema import ALTERNATIVE_NAMES_TAGPATH, LANG_ATTR
 from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
 from comicbox.formats.metron_info.transform.identifier_attribute import (
@@ -14,12 +20,6 @@ from comicbox.formats.metron_info.transform.identifier_attribute import (
     metron_id_attribute_to_cb,
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
-from comicbox.schemas.comicbox import (
-    LANGUAGE_KEY,
-    NAME_KEY,
-    REPRINTS_KEY,
-    SERIES_KEY,
-)
 from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.transforms.spec import MetaSpec
 from comicbox.transforms.xml_reprints import (

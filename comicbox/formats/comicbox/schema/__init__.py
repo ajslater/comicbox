@@ -30,17 +30,17 @@ from comicbox.fields.fields import StringField
 from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
 from comicbox.fields.pycountry import CountryField, LanguageField
 from comicbox.fields.time_fields import DateField, DateTimeField
-from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.comicbox.identifiers import (
+from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
     IdentifierPrimarySource,
 )
-from comicbox.schemas.comicbox.publishing import (
+from comicbox.formats.comicbox.schema.publishing import (
     IssueSchema,
     ReprintSchema,
     SeriesSchema,
     VolumeSchema,
 )
+from comicbox.schemas.base import BaseSubSchema
 
 NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"
@@ -62,9 +62,7 @@ EXT_KEY = "ext"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
 IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
-ID_KEY_KEY = "key"
 ID_SOURCE_KEY = "source"
-ID_URL_KEY = "url"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_SUFFIX_KEY = "suffix"

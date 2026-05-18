@@ -9,7 +9,7 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from tests.const import (
     CBI_CBR_FN,
     CBI_CBR_SOURCE_PATH,

@@ -4,9 +4,10 @@ from collections.abc import Mapping
 
 from loguru import logger
 
+from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
 from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.identifiers import ID_KEY_KEY
 from comicbox.identifiers.identifiers import create_identifier
-from comicbox.schemas.comicbox import ID_KEY_KEY, IDENTIFIERS_KEY
 
 ID_ATTRIBUTE = "@id"
 
