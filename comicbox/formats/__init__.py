@@ -1,15 +1,15 @@
 """
 Metadata formats registry.
 
-`MetadataFormats` is assembled from per-format packages (under
-`comicbox.formats.<name>`) plus inline declarations for formats not
-yet migrated to the format-package layout. Each migrated format
-exports a `REGISTRATION: FormatRegistration` from its `__init__.py`.
+Every format is a self-contained package under `comicbox.formats.<name>`
+exporting a `REGISTRATION: FormatRegistration` from its `__init__.py`.
+This module assembles the `MetadataFormats` enum from those registrations.
 """
 
 from enum import Enum
+from types import MappingProxyType
 
-from comicbox.formats._base import MetadataFormat
+from comicbox.formats._base import FormatRegistration
 from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
 from comicbox.formats.comic_book_info import (
     REGISTRATION as _COMIC_BOOK_INFO_REGISTRATION,
@@ -49,3 +49,25 @@ class MetadataFormats(Enum):
     COMICBOX_YAML = _COMICBOX_YAML_REGISTRATION.format
     COMICBOX_JSON = _COMICBOX_JSON_REGISTRATION.format
     COMICBOX_CLI_YAML = _COMICBOX_CLI_YAML_REGISTRATION.format
+
+
+# Reverse lookup: enum member → its REGISTRATION. Used by `comicbox.sources`
+# to derive source-membership tuples from per-format declarations.
+FORMAT_REGISTRATIONS: MappingProxyType[MetadataFormats, FormatRegistration] = (
+    MappingProxyType(
+        {
+            MetadataFormats.FILENAME: _FILENAME_REGISTRATION,
+            MetadataFormats.PDF: _PDF_REGISTRATION,
+            MetadataFormats.PDF_XML: _PDF_XML_REGISTRATION,
+            MetadataFormats.COMET: _COMET_REGISTRATION,
+            MetadataFormats.COMIC_BOOK_INFO: _COMIC_BOOK_INFO_REGISTRATION,
+            MetadataFormats.COMIC_INFO: _COMIC_INFO_REGISTRATION,
+            MetadataFormats.METRON_INFO: _METRON_INFO_REGISTRATION,
+            MetadataFormats.METRON_API: _METRON_API_REGISTRATION,
+            MetadataFormats.COMICVINE_API: _COMICVINE_API_REGISTRATION,
+            MetadataFormats.COMICBOX_YAML: _COMICBOX_YAML_REGISTRATION,
+            MetadataFormats.COMICBOX_JSON: _COMICBOX_JSON_REGISTRATION,
+            MetadataFormats.COMICBOX_CLI_YAML: _COMICBOX_CLI_YAML_REGISTRATION,
+        }
+    )
+)
