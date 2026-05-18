@@ -10,8 +10,12 @@ from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
+from comicbox.formats.comet.schema import CoMetSchema
+from comicbox.formats.comet.transform.reprints import (
+    comet_reprints_transform_from_cb,
+    comet_reprints_transform_to_cb,
+)
 from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.schemas.comet import CoMetSchema
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     BOOKMARK_KEY,
@@ -27,10 +31,6 @@ from comicbox.schemas.comicbox import (
     TITLE_KEY,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet.reprints import (
-    comet_reprints_transform_from_cb,
-    comet_reprints_transform_to_cb,
-)
 from comicbox.transforms.comicbox import COVER_DATE_KEYPATH, ISSUE_NAME_KEYPATH
 from comicbox.transforms.comicbox.name_objs import (
     name_obj_from_cb,

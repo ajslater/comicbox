@@ -10,7 +10,7 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comet import CoMetSchema
+from comicbox.formats.comet.schema import CoMetSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser

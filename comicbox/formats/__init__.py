@@ -1,11 +1,17 @@
-"""Metadata sources definitions."""
+"""
+Metadata formats registry.
 
-from dataclasses import dataclass
+`MetadataFormats` is assembled from per-format packages (under
+`comicbox.formats.<name>`) plus inline declarations for formats not
+yet migrated to the format-package layout. Each migrated format
+exports a `REGISTRATION: FormatRegistration` from its `__init__.py`.
+"""
+
 from enum import Enum
 
 from comicbox._pdf import PDF_ENABLED
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet import CoMetTransform
+from comicbox.formats._base import MetadataFormat
+from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
 from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
 from comicbox.transforms.comicbox.cli import ComicboxCLITransform
 from comicbox.transforms.comicbox.json import ComicboxJsonTransform
@@ -17,23 +23,6 @@ from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metron_api import MetronApiTransform
 from comicbox.transforms.metroninfo import MetronInfoTransform
 from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
-
-
-@dataclass
-class MetadataFormat:
-    """Metadata format attributes."""
-
-    label: str
-    config_keys: frozenset
-    filename: str
-    transform_class: type[BaseTransform]
-    has_pages: bool = False
-    lexer: str = "yaml"
-    enabled: bool = True
-
-    def __post_init__(self) -> None:
-        """Hoist the schema class."""
-        self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 class MetadataFormats(Enum):
@@ -72,13 +61,7 @@ class MetadataFormats(Enum):
         lexer="xml",
         enabled=PDF_ENABLED,
     )
-    COMET = MetadataFormat(
-        "CoMet",
-        frozenset({"comet"}),
-        "CoMet.xml",
-        CoMetTransform,
-        lexer="xml",
-    )
+    COMET = _COMET_REGISTRATION.format
     COMIC_BOOK_INFO = MetadataFormat(
         "ComicBookInfo",
         frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"}),

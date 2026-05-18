@@ -2,6 +2,7 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.comet.transform.reprints import comet_reprints_transform_from_cb
 from comicbox.schemas.comicbox import (
     AGE_RATING_KEY,
     BOOKMARK_KEY,
@@ -27,7 +28,6 @@ from comicbox.schemas.comictagger import (
     ComictaggerSchema,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comet.reprints import comet_reprints_transform_from_cb
 from comicbox.transforms.comicbookinfo.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
