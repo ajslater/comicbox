@@ -21,11 +21,20 @@ from tests.util import (
 )
 
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=["cix"], read=["cix"], compute_pages=True))
+    Namespace(
+        comicbox=Namespace(
+            compute=Namespace(pages=True),
+            read=Namespace(formats=["cix"]),
+            write=Namespace(formats=["cix"]),
+        )
+    )
 )
 READ_CONFIG = get_config(
     Namespace(
-        comicbox=Namespace(read=["cix"], compute_pages=True, compute_page_count=False)
+        comicbox=Namespace(
+            read=Namespace(formats=["cix"]),
+            compute=Namespace(pages=True, page_count=False),
+        )
     )
 )
 READ_METADATA = MappingProxyType(

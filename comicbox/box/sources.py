@@ -26,14 +26,15 @@ class ComicboxSources(ComicboxArchive):
 
     def _get_source_config_metadata(self) -> list[SourceData]:
         source_data_list = []
-        if not self._config.metadata:
+        general = self._config.general
+        if not general.metadata:
             return source_data_list
-        fmt = self._config.metadata_format
+        fmt = general.metadata_format
         try:
             if isinstance(fmt, str):
                 fmt = MetadataFormats[fmt.upper()]
-            if not fmt or fmt in self._config.read:
-                source_data_list = [SourceData(self._config.metadata, fmt=fmt)]
+            if not fmt or fmt in self._config.read.formats:
+                source_data_list = [SourceData(general.metadata, fmt=fmt)]
         except Exception as exc:
             logger.warning(f"Error reading metadata from config: {exc}")
         return source_data_list
@@ -41,9 +42,10 @@ class ComicboxSources(ComicboxArchive):
     def _get_source_cli_metadata(self) -> list[SourceData]:
         """Get metadatas from cli."""
         source_data_list = []
-        if not self._config.metadata_cli:
+        metadata_cli = self._config.general.metadata_cli
+        if not metadata_cli:
             return source_data_list
-        for source_string in self._config.metadata_cli:
+        for source_string in metadata_cli:
             try:
                 sd = SourceData(source_string)
                 source_data_list.append(sd)
@@ -56,7 +58,7 @@ class ComicboxSources(ComicboxArchive):
     def _get_source_import_metadata(self) -> list[SourceData]:
         """Read multiple import paths into strings."""
         source_data_list = []
-        paths = self._config.import_paths
+        paths = self._config.convert.import_paths
         if not paths:
             return source_data_list
         for path_str in paths:
@@ -65,7 +67,7 @@ class ComicboxSources(ComicboxArchive):
                 with path.open("r") as f:
                     source_string = f.read()
                 fmt = FILENAME_FORMAT_MAP.get(path.name.lower())
-                if not fmt or fmt in self._config.read:
+                if not fmt or fmt in self._config.read.formats:
                     sd = SourceData(source_string, path, fmt)
                     source_data_list.append(sd)
             except Exception as exc:
@@ -97,7 +99,7 @@ class ComicboxSources(ComicboxArchive):
         try:
             # Only one archive comment format exists, so assume it.
             only_comment_format = MetadataSources.ARCHIVE_COMMENT.value.formats[0]
-            formats = only_comment_format in self._config.read
+            formats = only_comment_format in self._config.read.formats
             if formats and (comment := self._get_comment()):
                 comment = comment.decode(errors="replace")
                 source_data_list = [
@@ -113,7 +115,8 @@ class ComicboxSources(ComicboxArchive):
         if not self._path:
             return source_data_list
         pdf_fmts = (
-            frozenset(MetadataSources.ARCHIVE_PDF.value.formats) & self._config.read
+            frozenset(MetadataSources.ARCHIVE_PDF.value.formats)
+            & self._config.read.formats
         )
         if not pdf_fmts:
             return source_data_list
@@ -135,7 +138,9 @@ class ComicboxSources(ComicboxArchive):
     ) -> None:
         path = Path(fn)
         lower_name = path.name.lower()
-        if (fmt := FILENAME_FORMAT_MAP.get(lower_name)) and fmt in self._config.read:
+        if (
+            fmt := FILENAME_FORMAT_MAP.get(lower_name)
+        ) and fmt in self._config.read.formats:
             old_entry = files_dict.get(fmt)
             path_level = len(path.parents)
             if not old_entry or old_entry[1] > path_level:
@@ -202,7 +207,7 @@ class ComicboxSources(ComicboxArchive):
         self, source: MetadataSources
     ) -> list[SourceData] | tuple[SourceData, ...] | None:
         """Set source metadata by source."""
-        if self._config.delete_all_tags:
+        if self._config.write.delete_all_tags:
             return
         if source in self.SOURCES_SET_ELSEWHERE:
             # Set by init & add metadata below.

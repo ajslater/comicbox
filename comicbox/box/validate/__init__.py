@@ -79,7 +79,7 @@ class ComicboxValidate(ComicboxDumpToFiles):
 
     def validate(self):
         """Validate metadata in archive."""
-        if not self._config.validate:
+        if not self._config.print.validate:
             return
 
         validated = True

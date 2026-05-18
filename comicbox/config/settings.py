@@ -3,6 +3,17 @@ Typed runtime config for comicbox.
 
 Built once by ``get_config()`` from the validated confuse AttrDict; every
 downstream module takes ``ComicboxSettings`` instead of ``AttrDict``.
+
+The dataclass tree mirrors the YAML config tree and the CLI argument
+groups one-for-one:
+
+    comicbox:
+      general / read / write / print / convert / compute
+      online:
+        lookup / auth / cache / tuning
+
+This taxonomy is the source of truth for the config tree. New options
+must land under the group that owns their concern.
 """
 
 from collections.abc import Mapping
@@ -18,46 +29,156 @@ if TYPE_CHECKING:
     from comicbox.print import PrintPhases
 
 
-class Policy(str, Enum):
+class MatchMode(str, Enum):
     """
-    Match-resolution policy.
+    Match-resolution aggressiveness.
 
     Strictly increasing aggressiveness: each level auto-writes a
-    superset of what the previous one does (always-prompt ⊂ strict ⊂
-    normal ⊂ eager). See `match-resolution-user-doc.md` for the full
+    superset of what the previous one does (ask ⊂ careful ⊂ auto ⊂
+    eager). See ``match-resolution-user-doc.md`` for the full
     decision algorithm.
 
     Inherits from str so dataclass equality, dict keys, and JSON
-    serialization all "just work" without StrEnum (ty's stdlib stubs
-    don't recognize StrEnum yet).
+    serialization all "just work".
     """
 
-    ALWAYS_PROMPT = "always-prompt"
-    STRICT = "strict"
-    NORMAL = "normal"
+    ASK = "ask"
+    CAREFUL = "careful"
+    AUTO = "auto"
     EAGER = "eager"
 
 
-class APIBudget(str, Enum):
+class Prompts(str, Enum):
+    """Whether comicbox is allowed to prompt the user mid-run."""
+
+    ASK = "ask"
+    NEVER = "never"
+
+
+class Effort(str, Enum):
     """
-    API-call budget per comic.
+    API-call effort per comic.
 
-    Orthogonal to `Policy` (which controls how the matcher's verdict is
-    applied). `APIBudget` controls how aggressively pre-call algorithms
-    trade accuracy for API throughput. See `06-api-budget-spec.md` for
-    the full design.
+    Orthogonal to ``MatchMode`` (which controls how the matcher's
+    verdict is applied). ``Effort`` controls how aggressively pre-call
+    algorithms trade accuracy for API throughput.
 
-    - `EXHAUSTIVE`: spend API budget freely; max accuracy.
-    - `BALANCED`: today's behavior; the default.
-    - `FAST`: aggressive pre-filtering; trade accuracy for throughput.
-
-    Inherits from str for the same reasons as `Policy` (dataclass
-    equality, dict keys, JSON without StrEnum).
+    - ``MINIMAL``: aggressive pre-filtering; trade accuracy for throughput.
+    - ``BALANCED``: today's behavior; the default.
+    - ``THOROUGH``: spend API budget freely; max accuracy.
     """
 
-    EXHAUSTIVE = "exhaustive"
+    MINIMAL = "minimal"
     BALANCED = "balanced"
-    FAST = "fast"
+    THOROUGH = "thorough"
+
+
+class CacheMode(str, Enum):
+    """Cache tri-state: on / off / refresh."""
+
+    ON = "on"
+    OFF = "off"
+    REFRESH = "refresh"
+
+
+# Built-in defaults for per-source tuning knobs. Internal — not surfaced
+# in user-facing CLI/docs but available as per-source YAML overrides.
+DEFAULT_MIN_CONFIDENCE = 0.50
+DEFAULT_DISAMBIGUATION_MARGIN = 0.10
+# Solo-viable auto-write floor. When the matcher returns exactly one
+# candidate clearing ``min_confidence``, ``AUTO``/``EAGER`` modes
+# auto-write only if it also clears this floor. Default equals the
+# global confidence threshold (0.95), so solo cases need the same bar
+# as multi-candidate unambiguous wins.
+DEFAULT_SOLO_THRESHOLD = 0.95
+
+
+@dataclass(frozen=True, slots=True)
+class GeneralSettings:
+    """Cross-cutting options that don't fit a verb-specific group."""
+
+    config: str | Path | None = None
+    recurse: bool = False
+    dry_run: bool = False
+    loglevel: str | int = "INFO"
+    dest_path: str | Path = "."
+    delete_keys: frozenset[str] = field(default_factory=frozenset)
+    delete_orig: bool = False
+    metadata: Mapping | None = None
+    metadata_cli: tuple[str, ...] | None = None
+    metadata_format: str | None = None
+    jobs: int = 1
+    tagger: str | None = None
+    theme: str | None = "gruvbox-dark"
+
+
+@dataclass(frozen=True, slots=True)
+class ReadSettings:
+    """Which metadata sources to load and in what merge order."""
+
+    formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    except_formats: frozenset[str] | None = None  # YAML key: "except"
+    # Merge precedence (None = ``MetadataSources`` enum order). Expert
+    # knob; YAML-only.
+    merge_order: "tuple[MetadataSources, ...] | None" = None
+
+
+@dataclass(frozen=True, slots=True)
+class WriteSettings:
+    """Which metadata formats to write back, and how."""
+
+    formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    replace: bool = False
+    stamp: bool = False
+    stamp_notes: bool = True
+    delete_all_tags: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class PrintSettings:
+    """Phases to print and whether to validate."""
+
+    phases: "frozenset[PrintPhases]" = field(default_factory=frozenset)
+    validate: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ConvertSettings:
+    """Archive conversion actions: cbz, rename, page/cover extraction, import/export."""
+
+    cbz: bool | None = None
+    rename: bool | None = None
+    extract_pages_from: int | None = None
+    extract_pages_to: int | None = None
+    extract_covers: bool | None = None
+    import_paths: tuple[Path, ...] = ()
+    export_formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    pdf_pages: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ComputeSettings:
+    """Derived-metadata switches. YAML-only — set-once preferences."""
+
+    pages: bool = False
+    page_count: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineLookupSettings:
+    """What to look up and how aggressively to act on results."""
+
+    # Runtime-only (CLI-derived; never lives in the config file).
+    enabled: bool = False
+    sources: frozenset[str] | None = None
+    ids: Mapping[str, int] = field(default_factory=dict)
+    series_ids: Mapping[str, int] = field(default_factory=dict)
+
+    # Behavior toggles.
+    match: MatchMode = MatchMode.AUTO
+    prompts: Prompts = Prompts.ASK
+    rematch: bool = False
+    all_sources: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,14 +186,31 @@ class OnlineSourceCredentials:
     """
     Resolved credentials for one online source.
 
-    A source is "configured" iff its required fields resolve to non-null.
-    Each source decides which fields are required.
+    Field membership is per-source: Metron uses ``user``/``password``/``url``;
+    ComicVine uses ``key``/``url``. The source's ``is_configured()``
+    decides which fields are required.
     """
 
-    api_key: str | None = None
-    username: str | None = None
+    user: str | None = None
     password: str | None = None
+    key: str | None = None
     url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineAuthSettings:
+    """Per-source credentials, indexed by source name."""
+
+    sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineCacheSettings:
+    """Where the online response cache lives and how long entries survive."""
+
+    mode: CacheMode = CacheMode.ON
+    dir: Path | None = None
+    ttl: timedelta = field(default_factory=lambda: timedelta(days=7))
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,12 +219,12 @@ class OnlineSourceLimits:
     Per-source rate-limit overrides.
 
     All fields default to None, in which case comicbox lets the upstream
-    library (mokkari / simyan) apply its own documented rate limits. Set
-    any field to override that source's bucket — useful when the user has
-    a higher API tier or wants to be more conservative.
+    library (mokkari / simyan) apply its own documented rate limits.
+    Set any field to override that source's bucket — useful when the
+    user has a higher API tier or wants to be more conservative.
 
-    Documented defaults (as of 2026-05) live in
-    `comicbox.formats.base.online.rate_limits` for citation / audit.
+    Documented defaults live in
+    ``comicbox.formats.base.online.rate_limits`` for citation / audit.
     """
 
     # Used by Metron (mokkari).
@@ -97,192 +235,127 @@ class OnlineSourceLimits:
     per_hour: int | None = None
 
 
-# Calibration defaults — internal, not exposed as user-facing knobs.
-DEFAULT_MIN_CONFIDENCE = 0.50
-DEFAULT_DISAMBIGUATION_MARGIN = 0.10
-# Solo-viable auto-write floor (Phase E). When the matcher returns exactly
-# one candidate clearing `min_confidence`, `NORMAL`/`EAGER` policies have
-# historically auto-written it regardless of how close to the confidence
-# threshold it scored. That carve-out powers the worst silent-failure
-# pattern observed at scale: a single weak candidate (e.g. score=0.88)
-# wins by default when CV's search didn't return the actual right answer.
-#
-# Setting the floor equal to the default confidence threshold (0.95)
-# means: even solo candidates need to clear the same bar as multi-candidate
-# unambig cases to auto-write. Below the floor, solo cases route to
-# PROMPT — the user picks. Per-source override available for callers who
-# want the old permissive behavior (set to 0.50 = min_confidence).
-DEFAULT_SOLO_CONFIDENCE_THRESHOLD = 0.95
+@dataclass(frozen=True, slots=True)
+class OnlineSourceTuning:
+    """
+    Per-source overrides for tuning knobs.
+
+    Any field left at None falls back to the global default in
+    ``OnlineTuningSettings``. Advanced fields
+    (``min_confidence``, ``disambiguation_margin``, ``solo_threshold``)
+    are undocumented in user-facing reference but live here so power
+    users can adjust them per source via YAML.
+    """
+
+    auto_threshold: float | None = None
+    effort: Effort | None = None
+    min_confidence: float | None = None
+    disambiguation_margin: float | None = None
+    solo_threshold: float | None = None
+    rate_limit: OnlineSourceLimits = field(default_factory=OnlineSourceLimits)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineTuningSettings:
+    """Global tuning defaults plus per-source overrides."""
+
+    # Global defaults.
+    auto_threshold: float = 0.95
+    effort: Effort = Effort.BALANCED
+    retry_budget: int = 5
+
+    # Per-source overrides (keyed by source name).
+    per_source: Mapping[str, OnlineSourceTuning] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
 class OnlineSettings:
-    """Online metadata-tagging settings."""
+    """Online metadata-tagging settings, split into four concern groups."""
 
-    # Runtime-only (CLI-derived; never lives in the config file)
-    enabled: bool = False
-    selected_sources: frozenset[str] | None = None
-    # First-wins vs tag-with-every-source. Default False means: stop after
-    # the first online source that contributes data (or has a stored id
-    # from a prior tag). Sources passed via --id / --series-id always run
-    # regardless. Order is the priority of `_DEFAULT_SOURCE_FACTORIES`
-    # in `box/online_lookup.py` (metron first, then comicvine).
-    tag_all_sources: bool = False
-    # When True, force a full search even if the comic already has a
-    # stored identifier for the source. Use to override stale or wrong
-    # ids without manually passing --id. Does not override an explicit
-    # --id flag (which is the strongest user signal).
-    force_search: bool = False
-    explicit_ids: Mapping[str, int] = field(default_factory=dict)
-    # Optional `--series-id <db>:<id>`: skips the per-source series-discovery
-    # step and constrains issue lookup to the named series id directly.
-    explicit_series_ids: Mapping[str, int] = field(default_factory=dict)
-
-    # Match-resolution policy (the new scheme; see match-resolution-user-doc.md).
-    policy: Policy = Policy.NORMAL
-    unattended: bool = False
-    # API-call budget per comic (see 06-api-budget-spec.md). Controls
-    # pre-call algorithms (series-name pre-filter strictness, per-source
-    # search breadth caps) that trade accuracy for API throughput. Default
-    # `BALANCED` is today's behavior — Phase A ships the levers dormant
-    # until Phase B calibration picks the real thresholds.
-    api_budget: APIBudget = APIBudget.BALANCED
-    # Per-source overrides for `policy`, `confidence_threshold`, and
-    # `api_budget`. Resolution: per-source > global > built-in default.
-    # Empty dict means "use global".
-    policy_per_source: Mapping[str, Policy] = field(default_factory=dict)
-    confidence_threshold_per_source: Mapping[str, float] = field(default_factory=dict)
-    api_budget_per_source: Mapping[str, APIBudget] = field(default_factory=dict)
-    # Internal-only per-source overrides (no CLI today; ready for when
-    # calibration data justifies surfacing them).
-    min_confidence_per_source: Mapping[str, float] = field(default_factory=dict)
-    disambiguation_margin_per_source: Mapping[str, float] = field(default_factory=dict)
-    # Floor below which a `solo_viable` candidate (single viable hit) is
-    # NOT auto-written under NORMAL/EAGER — falls through to PROMPT
-    # instead. Default `DEFAULT_SOLO_CONFIDENCE_THRESHOLD` (0.95) matches
-    # the global confidence threshold; setting per-source to 0.50 restores
-    # the pre-Phase-E permissive behavior (any solo candidate above
-    # min_confidence auto-writes).
-    solo_confidence_threshold_per_source: Mapping[str, float] = field(
-        default_factory=dict
-    )
-
-    # Persistent (config file + env var; CLI flag may override)
-    # Auto-write threshold. Calibrated against the spring-2026 fixture set:
-    # 0.85 produced ~7% wrong auto-writes in the 0.85-0.95 band (mostly
-    # wrong-volume picks for series with reboots like Watchmen 1986 vs
-    # Absolute Watchmen 2005). 0.95 converts those into prompts while
-    # preserving the high-volume of confident matches.
-    confidence_threshold: float = 0.95
-    # Legacy flags (deprecated; matcher no longer reads these directly post-M-policy).
-    # Kept for translation-layer compatibility — the CLI parser maps them to
-    # the new `policy` / `unattended` fields with deprecation warnings.
-    skip_multiple: bool = False
-    accept_only: bool = False
-    ignore_existing: bool = False
-
-    cache_enabled: bool = True
-    cache_dir: Path | None = None
-    cache_ttl: timedelta = field(default_factory=lambda: timedelta(days=7))
-    refresh_cache: bool = False
-
-    retry_budget: int = 5
-
-    # Per-source credentials and config (keyed by source name).
-    sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
-    # Per-source rate-limit overrides (keyed by source name). Empty dict
-    # for any source means "use upstream library default."
-    source_limits: Mapping[str, OnlineSourceLimits] = field(default_factory=dict)
+    lookup: OnlineLookupSettings = field(default_factory=OnlineLookupSettings)
+    auth: OnlineAuthSettings = field(default_factory=OnlineAuthSettings)
+    cache: OnlineCacheSettings = field(default_factory=OnlineCacheSettings)
+    tuning: OnlineTuningSettings = field(default_factory=OnlineTuningSettings)
 
 
-def resolve_policy(settings: OnlineSettings, source_name: str) -> Policy:
-    """Per-source override > global default."""
-    return settings.policy_per_source.get(source_name, settings.policy)
+def _tuning_for(settings: OnlineSettings, source_name: str) -> OnlineSourceTuning:
+    return settings.tuning.per_source.get(source_name) or OnlineSourceTuning()
 
 
-def resolve_confidence_threshold(settings: OnlineSettings, source_name: str) -> float:
-    """Per-source override > global default."""
-    return settings.confidence_threshold_per_source.get(
-        source_name, settings.confidence_threshold
-    )
+def resolve_match(settings: OnlineSettings, source_name: str) -> MatchMode:
+    """Per-source match mode falls back to the global default."""
+    # No per-source override on this knob (carried in the global
+    # ``lookup.match``); helper exists for symmetry and future expansion.
+    del source_name  # unused — kept for signature consistency
+    return settings.lookup.match
+
+
+def resolve_auto_threshold(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source auto_threshold override > global default."""
+    override = _tuning_for(settings, source_name).auto_threshold
+    return override if override is not None else settings.tuning.auto_threshold
+
+
+def resolve_effort(settings: OnlineSettings, source_name: str) -> Effort:
+    """Per-source effort override > global default."""
+    override = _tuning_for(settings, source_name).effort
+    return override if override is not None else settings.tuning.effort
 
 
 def resolve_min_confidence(settings: OnlineSettings, source_name: str) -> float:
     """Per-source override > built-in default. Not user-exposed today."""
-    return settings.min_confidence_per_source.get(source_name, DEFAULT_MIN_CONFIDENCE)
+    override = _tuning_for(settings, source_name).min_confidence
+    return override if override is not None else DEFAULT_MIN_CONFIDENCE
 
 
 def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) -> float:
     """Per-source override > built-in default. Not user-exposed today."""
-    return settings.disambiguation_margin_per_source.get(
-        source_name, DEFAULT_DISAMBIGUATION_MARGIN
-    )
+    override = _tuning_for(settings, source_name).disambiguation_margin
+    return override if override is not None else DEFAULT_DISAMBIGUATION_MARGIN
 
 
-def resolve_solo_confidence_threshold(
-    settings: OnlineSettings, source_name: str
-) -> float:
+def resolve_solo_threshold(settings: OnlineSettings, source_name: str) -> float:
     """Per-source override > built-in default. Not user-exposed today."""
-    return settings.solo_confidence_threshold_per_source.get(
-        source_name, DEFAULT_SOLO_CONFIDENCE_THRESHOLD
-    )
+    override = _tuning_for(settings, source_name).solo_threshold
+    return override if override is not None else DEFAULT_SOLO_THRESHOLD
 
 
-def resolve_api_budget(settings: OnlineSettings, source_name: str) -> APIBudget:
-    """Per-source override > global default."""
-    return settings.api_budget_per_source.get(source_name, settings.api_budget)
+def resolve_rate_limit(
+    settings: OnlineSettings, source_name: str
+) -> OnlineSourceLimits:
+    """Per-source rate-limit override; empty default = use upstream library default."""
+    return _tuning_for(settings, source_name).rate_limit
+
+
+def resolve_credentials(
+    settings: OnlineSettings, source_name: str
+) -> OnlineSourceCredentials:
+    """Per-source credentials; returns an empty record if no entry."""
+    return settings.auth.sources.get(source_name) or OnlineSourceCredentials()
 
 
 @dataclass(frozen=True, slots=True)
 class ComicboxSettings:
-    """Typed runtime config for comicbox."""
+    """Typed runtime config for comicbox, organized by verb taxonomy."""
 
-    # Options
-    compute_pages: bool
-    compute_page_count: bool
-    config: str | Path | None
-    delete_all_tags: bool
-    delete_keys: frozenset[str]
-    delete_orig: bool
-    dest_path: str | Path
-    dry_run: bool
-    loglevel: str | int
-    metadata: Mapping | None
-    metadata_format: str | None
-    metadata_cli: tuple[str, ...] | None
-    pdf_page_format: str
-    read: "frozenset[MetadataFormats]"
-    read_ignore: frozenset[str] | None
-    recurse: bool
-    replace_metadata: bool
-    stamp: bool
-    stamp_notes: bool
-    tagger: str
-    theme: str | None
-    # Actions
-    cbz: bool | None
-    covers: bool | None
-    export: "frozenset[MetadataFormats]"
-    import_paths: tuple[Path, ...]
-    index_from: int | None
-    index_to: int | None
-    print: "frozenset[PrintPhases]"
-    rename: bool | None
-    validate: bool | None
-    write: "frozenset[MetadataFormats]"
-    # Targets
-    paths: tuple[str | Path | None, ...]
-    # Computed (derived in compute_config(); nested under "computed" in the
-    # confuse template as an implementation convenience, but flat here).
-    all_write_formats: "frozenset[MetadataFormats]"
-    read_filename_formats: "frozenset[MetadataFormats]"
-    read_file_formats: "frozenset[MetadataFormats]"
-    read_metadata_lower_filenames: frozenset[str]
-    is_read_comments: bool
-    is_skip_computed_from_tags: bool
-    # Merge ordering (None = use MetadataSources enum order).
-    merge_order: "tuple[MetadataSources, ...] | None"
-    # Parallel workers across files (1 = serial, no thread pool).
-    jobs: int
-    # Online metadata-tagging settings (always present).
+    general: GeneralSettings
+    read: ReadSettings
+    write: WriteSettings
+    print: PrintSettings
+    convert: ConvertSettings
+    compute: ComputeSettings
     online: OnlineSettings
+
+    # CLI positional args.
+    paths: tuple[str | Path | None, ...] = ()
+
+    # Computed (derived in compute_config(); kept flat for ergonomics —
+    # they're read by many call sites and the flat names are clearer).
+    all_write_formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    read_filename_formats: "frozenset[MetadataFormats]" = field(
+        default_factory=frozenset
+    )
+    read_file_formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    read_metadata_lower_filenames: frozenset[str] = field(default_factory=frozenset)
+    is_read_comments: bool = False
+    is_skip_computed_from_tags: bool = False

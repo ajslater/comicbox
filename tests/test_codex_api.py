@@ -29,7 +29,14 @@ from tests.const import (
 )
 from tests.util import assert_diff
 
-CONFIG = get_config(Namespace(comicbox=Namespace(print="sc", compute_page_count=False)))
+CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            print=Namespace(phases="sc"),
+            compute=Namespace(page_count=False),
+        )
+    )
+)
 
 
 @dataclass
@@ -311,7 +318,9 @@ _COVER_PATH_LIST_IMPORTS = (
 
 def test_cover_paths() -> None:
     """Test codex cover path lists."""
-    config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
+    config = Namespace(
+        comicbox=Namespace(convert=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
+    )
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
         cover_path_list = car.get_cover_paths()
     assert_diff(_COVER_PATH_LIST, cover_path_list)

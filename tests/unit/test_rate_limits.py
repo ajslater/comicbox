@@ -75,39 +75,70 @@ def test_documented_defaults_match_upstream() -> None:
 # -------------------------------------------------- config-resolution flow
 
 
-def test_no_rate_limit_overrides_yields_empty_dict() -> None:
+def test_no_rate_limit_overrides_yields_empty_per_source() -> None:
     cfg = get_config(Namespace(comicbox=Namespace()))
-    assert cfg.online.source_limits == {}
+    assert cfg.online.tuning.per_source == {}
 
 
 def test_metron_rate_limit_override_via_config() -> None:
-    """A nested config block reaches OnlineSettings.source_limits."""
-    cli = Namespace(
-        online={"metron": {"rate_limit": {"per_minute": 30, "per_day": 6000}}}
+    """A nested config block reaches OnlineTuningSettings.per_source[<src>].rate_limit."""
+    cfg = get_config(
+        {
+            "comicbox": {
+                "online": {
+                    "tuning": {
+                        "per_source": {
+                            "metron": {
+                                "rate_limit": {"per_minute": 30, "per_day": 6000}
+                            }
+                        }
+                    }
+                }
+            }
+        }
     )
-    cfg = get_config(Namespace(comicbox=cli))
-    assert "metron" in cfg.online.source_limits
-    assert cfg.online.source_limits["metron"].per_minute == 30
-    assert cfg.online.source_limits["metron"].per_day == 6000
+    metron = cfg.online.tuning.per_source["metron"]
+    assert metron.rate_limit.per_minute == 30
+    assert metron.rate_limit.per_day == 6000
 
 
 def test_comicvine_rate_limit_override_via_config() -> None:
-    cli = Namespace(
-        online={"comicvine": {"rate_limit": {"per_second": 2, "per_hour": 500}}}
+    cfg = get_config(
+        {
+            "comicbox": {
+                "online": {
+                    "tuning": {
+                        "per_source": {
+                            "comicvine": {
+                                "rate_limit": {"per_second": 2, "per_hour": 500}
+                            }
+                        }
+                    }
+                }
+            }
+        }
     )
-    cfg = get_config(Namespace(comicbox=cli))
-    assert "comicvine" in cfg.online.source_limits
-    assert cfg.online.source_limits["comicvine"].per_second == 2
-    assert cfg.online.source_limits["comicvine"].per_hour == 500
+    cv = cfg.online.tuning.per_source["comicvine"]
+    assert cv.rate_limit.per_second == 2
+    assert cv.rate_limit.per_hour == 500
 
 
 def test_partial_rate_limit_override() -> None:
     """Per-day-only override carries through; per-minute stays None."""
-    cli = Namespace(online={"metron": {"rate_limit": {"per_day": 10_000}}})
-    cfg = get_config(Namespace(comicbox=cli))
-    limits = cfg.online.source_limits["metron"]
-    assert limits.per_day == 10_000
-    assert limits.per_minute is None
+    cfg = get_config(
+        {
+            "comicbox": {
+                "online": {
+                    "tuning": {
+                        "per_source": {"metron": {"rate_limit": {"per_day": 10_000}}}
+                    }
+                }
+            }
+        }
+    )
+    metron = cfg.online.tuning.per_source["metron"]
+    assert metron.rate_limit.per_day == 10_000
+    assert metron.rate_limit.per_minute is None
 
 
 # ----------------------------------------------------- with_retry retry_after

@@ -1,8 +1,8 @@
-# API Budget — User-Perspective Doc
+# Effort — User Doc
 
-User-facing description of `--api-budget` — comicbox's lever for trading
-matching accuracy against per-comic API call cost. Composes with `--policy` and
-`--unattended`; orthogonal to both. See
+User-facing description of `--effort` — comicbox's lever for trading
+matching accuracy against per-comic API call cost. Composes with `--match` and
+`--prompts never`; orthogonal to both. See
 [`match-resolution-user-doc.md`](match-resolution-user-doc.md) for the related
 "what does comicbox do once it has candidates" decision.
 
@@ -27,14 +27,14 @@ Celebration", "The Adventures of Basil & Moebius" for a "Moebius Library"
 comic). The matcher would score them near-zero and ignore them — but the API
 call to confirm has already been spent.
 
-`--api-budget` controls how aggressively comicbox pre-filters those
+`--effort` controls how aggressively comicbox pre-filters those
 obvious-mismatch volumes BEFORE step 2 fires. The trade-off:
 
 | Mode                 | Pre-filter strictness                | API cost           | Accuracy on validated set                                                     |
 | -------------------- | ------------------------------------ | ------------------ | ----------------------------------------------------------------------------- |
-| `exhaustive`         | off                                  | highest            | 99.7%                                                                         |
+| `thorough`         | off                                  | highest            | 99.7%                                                                         |
 | `balanced` (default) | conservative (drops obvious garbage) | −18% vs exhaustive | 99.7% (identical)                                                             |
-| `fast`               | aggressive                           | −60% vs exhaustive | 100% — and correctly says "I don't know" on the one case `balanced` got wrong |
+| `minimal`               | aggressive                           | −60% vs exhaustive | 100% — and correctly says "I don't know" on the one case `balanced` got wrong |
 
 The validated numbers come from a 339-fixture calibration run against a real
 comic library. Your library may behave differently — the lever's defaults aim to
@@ -44,20 +44,20 @@ be safe-and-fast (balanced) and let you escalate or de-escalate when needed.
 
 ## When to pick which mode
 
-### `--api-budget exhaustive`
+### `--effort exhaustive`
 
 "Spend whatever it takes; I want the best possible match." Use when:
 
 - Tagging one comic (or a small handful) interactively and the matcher is
   borderline-confident; you want to see every plausible volume, not have the
   pre-filter prune anything.
-- Debugging a wrong-volume pick — `exhaustive` shows you the full candidate set
+- Debugging a wrong-volume pick — `thorough` shows you the full candidate set
   the matcher had to work with.
 - You have a private API tier and aren't rate-limited.
 
 Cost: highest. Roughly 32 API calls per comic in the validated set.
 
-### `--api-budget balanced` (the default)
+### `--effort balanced` (the default)
 
 "Drop the obvious mismatches; don't overthink it." Use when:
 
@@ -68,7 +68,7 @@ Cost: highest. Roughly 32 API calls per comic in the validated set.
 
 Cost: ~26 API calls per comic.
 
-### `--api-budget fast`
+### `--effort fast`
 
 "I'm tagging a lot at once; trade a tiny accuracy notch for big API savings."
 Use when:
@@ -88,12 +88,12 @@ cap, that's roughly 15 comics/hour vs balanced's ~6.
 
 ## Auto-engagement
 
-Comicbox watches two signals and auto-engages `fast` mode per-source when it
+Comicbox watches two signals and auto-engages `minimal` mode per-source when it
 would meaningfully reduce your wait time:
 
 | Signal                        | ComicVine threshold | Metron threshold    |
 | ----------------------------- | ------------------- | ------------------- |
-| `--unattended` set            | batch ≥ 50 comics   | batch ≥ 500 comics  |
+| `--prompts never` set            | batch ≥ 50 comics   | batch ≥ 500 comics  |
 | stdin not a TTY (cron / pipe) | batch ≥ 200 comics  | batch ≥ 2000 comics |
 
 Why different thresholds:
@@ -101,37 +101,37 @@ Why different thresholds:
 - **Per-source**: ComicVine's 200/hour cap is six times tighter than Metron's
   1,200/hour, so the breaking point for "this is going to take all day" is much
   lower on the CV side.
-- **TTY vs unattended**: explicit `--unattended` is a strong signal you want
-  batch behavior; non-TTY without `--unattended` could be a manual `xargs`
+- **TTY vs unattended**: explicit `--prompts never` is a strong signal you want
+  batch behavior; non-TTY without `--prompts never` could be a manual `xargs`
   pipeline, so the bar is stricter.
 
 When auto-engagement fires, you'll see an INFO line:
 
 ```
-online: auto-engaging api_budget=fast for comicvine (batch=343 >= 50,
+online: auto-engaging effort=fast for comicvine (batch=343 >= 50,
 unattended). Override with --api-budget-per-source comicvine:balanced.
 ```
 
 You can suppress per-source with `--api-budget-per-source <source>:balanced` or
-globally by setting `--api-budget exhaustive` (or `--api-budget fast` to make it
+globally by setting `--effort exhaustive` (or `--effort fast` to make it
 explicit-not-auto).
 
 ---
 
 ## Per-source overrides
 
-Same shape as `--policy`. The flag is repeatable; bare values set the global
+Same shape as `--match`. The flag is repeatable; bare values set the global
 default, `source:value` pairs set a per-source override:
 
 ```sh
 # Global default: exhaustive for everything.
-comicbox --online --api-budget exhaustive *.cbz
+comicbox --online --effort exhaustive *.cbz
 
 # Mixed: fast on the rate-tight source, exhaustive on the looser one.
-comicbox --online --api-budget comicvine:fast --api-budget metron:exhaustive *.cbz
+comicbox --online --effort comicvine:fast --effort metron:exhaustive *.cbz
 
 # Mixed: global default + one override.
-comicbox --online --api-budget fast --api-budget metron:balanced *.cbz
+comicbox --online --effort fast --effort metron:balanced *.cbz
 ```
 
 Per-source overrides ALWAYS win over the global default. Auto-engagement
@@ -145,63 +145,63 @@ file.)
 
 ## Interaction with other settings
 
-- **`--policy`**: orthogonal. `--api-budget` controls how candidates are
-  produced; `--policy` controls what happens once they exist. Example:
-  `--api-budget fast --policy strict` is a sensible unattended-batch
+- **`--match`**: orthogonal. `--effort` controls how candidates are
+  produced; `--match` controls what happens once they exist. Example:
+  `--effort fast --match strict` is a sensible unattended-batch
   combination.
 
-- **`--unattended`**: triggers auto-engagement (see above) but is otherwise
+- **`--prompts never`**: triggers auto-engagement (see above) but is otherwise
   independent.
 
-- **`--confidence-threshold`**: independent — same threshold applies regardless
+- **`--auto-threshold`**: independent — same threshold applies regardless
   of budget. (Phase B preserved this for simplicity; a per-budget confidence
   threshold could be a future enhancement.)
 
 - **`--id` / `--series-id`**: short-circuit the entire discovery flow;
-  `--api-budget` doesn't affect them.
+  `--effort` doesn't affect them.
 
 - **`--max-per-search`** (in the calibration harness only): an alternative
   escape valve that lowers the discovery breadth directly. Equivalent for
-  measurement purposes but more granular than the three-tier `--api-budget`. The
-  harness uses it; the production CLI uses `--api-budget`.
+  measurement purposes but more granular than the three-tier `--effort`. The
+  harness uses it; the production CLI uses `--effort`.
 
 ---
 
-## What you'd lose under `fast`
+## What you'd lose under `minimal`
 
-The single labeled-fixture difference between `balanced` and `fast` on the
+The single labeled-fixture difference between `balanced` and `minimal` on the
 validated 339-comic set:
 
 - **Moebius Library (2016) #001**: `balanced` returns a wrong-volume candidate
   at score 0.76 (below the 0.95 auto-write threshold, so it would have prompted
-  you anyway). `fast` correctly returns no candidates — its pre-filter drops the
+  you anyway). `minimal` correctly returns no candidates — its pre-filter drops the
   "Adventures of Basil & Moebius" volume that `balanced` admits.
 
 User-visible behavior: under both modes you don't get a wrong auto-write. Under
-`balanced` you might see a prompt that you would reject; under `fast` you don't
+`balanced` you might see a prompt that you would reject; under `minimal` you don't
 see the prompt. Both end up with the comic untagged unless you supply
 `--id comicvine:555444` directly.
 
-This pattern generalizes: `fast`'s "false negatives" are cases where the matcher
+This pattern generalizes: `minimal`'s "false negatives" are cases where the matcher
 would have prompted under `balanced` and you'd have declined. The savings come
 from skipping the prompt-or-skip dance entirely. If your workflow auto-accepts
-prompts, you may see slightly fewer suggestions under `fast`; if you reject most
+prompts, you may see slightly fewer suggestions under `minimal`; if you reject most
 prompts (the common case for ambiguous matches), the difference is invisible.
 
 ---
 
-## When `fast` is wrong for you
+## When `minimal` is wrong for you
 
-Use `--api-budget exhaustive` (or `balanced` per-source) when:
+Use `--effort exhaustive` (or `balanced` per-source) when:
 
 - You're tagging an obscure series and need the matcher to consider every
   plausible volume — even ones with name-similarity below 0.7.
 - You're testing the matcher against new data and want to see what it WOULD have
   found before filtering.
 - You're not actually batch-tagging — auto-engagement won't fire for small
-  batches anyway, but explicit `--api-budget exhaustive` guarantees nothing's
+  batches anyway, but explicit `--effort exhaustive` guarantees nothing's
   hidden.
 
-There's no scenario where `fast` is _strictly_ wrong on the validated set — the
+There's no scenario where `minimal` is _strictly_ wrong on the validated set — the
 only deviation is the strictly-better Moebius case described above. But your
 library may exercise the pre-filter in ways the calibration set didn't.

@@ -18,10 +18,12 @@ class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
     def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
+        write = self._config.write
+        convert = self._config.convert
         formats: frozenset[MetadataFormats] | None = frozenset()
-        if self._config.write:
-            formats = self._config.write
-        elif self._config.cbz:
+        if write.formats:
+            formats = write.formats
+        elif convert.cbz:
             loaded_data_lists = (
                 self.get_loaded_metadata(source) for source in MetadataSources
             )
@@ -32,7 +34,7 @@ class ComicboxDump(ComicboxPages):
                 for loaded_data in loaded_data_list
                 if loaded_data and loaded_data.fmt is not None
             )
-        elif not self._config.delete_all_tags:
+        elif not write.delete_all_tags:
             reason = "No formats specified to write"
             logger.warning(reason)
             formats = None
@@ -46,9 +48,13 @@ class ComicboxDump(ComicboxPages):
         self, formats: frozenset[MetadataFormats]
     ) -> frozenset[MetadataFormats]:
         """If no formats given to PDF -> CBZ convert default to ComicInfo."""
-        if self._config.cbz:
+        if self._config.convert.cbz:
             formats_without_pdf = formats - {MetadataFormats.PDF}
             if not formats_without_pdf:
+                logger.info(
+                    "PDF→CBZ conversion with no --write formats; "
+                    "defaulting to ComicInfo."
+                )
                 formats = frozenset(formats_without_pdf | {MetadataFormats.COMIC_INFO})
         return formats
 
@@ -68,7 +74,7 @@ class ComicboxDump(ComicboxPages):
         ) = self._to_dict(fmt)
         if not denormalized_metadata:
             return
-        if fmt == MetadataFormats.PDF and not self._config.cbz:
+        if fmt == MetadataFormats.PDF and not self._config.convert.cbz:
             schema, denormalized_metadata = self._to_dict(MetadataFormats.PDF)
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if isinstance(mupdf_md, Mapping):
@@ -86,7 +92,7 @@ class ComicboxDump(ComicboxPages):
         files = {}
         comment = {"c": b""}
         pdf_md = {}
-        if not self._config.delete_all_tags:
+        if not self._config.write.delete_all_tags:
             formats = self._ensure_pdf_to_cbz_default_format(formats)
             for fmt in formats:
                 self._dump_format_to_archive(fmt, files, pdf_md, comment)
@@ -96,8 +102,10 @@ class ComicboxDump(ComicboxPages):
 
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
-        if self._config.dry_run or not (
-            self._config.write or self._config.cbz or self._config.delete_all_tags
+        write = self._config.write
+        convert = self._config.convert
+        if self._config.general.dry_run or not (
+            write.formats or convert.cbz or write.delete_all_tags
         ):
             logger.info(f"Not writing metadata for: {self._path}")
             return None
@@ -109,7 +117,7 @@ class ComicboxDump(ComicboxPages):
                 return None
 
         result = None
-        if formats or self._config.cbz or self._config.delete_all_tags:
+        if formats or convert.cbz or write.delete_all_tags:
             result = self._dump_to_archive(formats)
         logger.info(f"Wrote metadata to: {self._path}")
         return result

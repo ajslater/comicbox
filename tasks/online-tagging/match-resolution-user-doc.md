@@ -1,10 +1,10 @@
-# Match Resolution — User-Perspective Doc
+# Match Resolution — User Doc
 
 User-facing description of how comicbox decides whether to auto-write, prompt,
 skip, or report no-match when an online source returns candidates for a comic.
-This is a **proposed** design (rev 2), replacing the current `--accept-only` /
-`--skip-multiple` flag scheme with two orthogonal knobs: `--unattended` and
-`--policy`.
+This is a **proposed** design (rev 2), replacing the current `--match auto` /
+`--match careful --prompts never` flag scheme with two orthogonal knobs: `--prompts never` and
+`--match`.
 
 Source of truth for the current implementation: `comicbox/online/matcher.py`.
 The proposal in this doc has not yet shipped.
@@ -69,7 +69,7 @@ and runner-up is small. This avoids burning API/IO on already-clear cases.
 | `disambiguation_margin` | 0.10  | Required gap between top and runner-up for unambiguous                                                              |
 
 These are calibration values — they live inside the matcher and you don't tune
-them per-run. The two user-facing knobs (`--unattended` and `--policy`) compose
+them per-run. The two user-facing knobs (`--prompts never` and `--match`) compose
 these into a behavior you choose.
 
 `--confidence-threshold N` remains as a power-user override if you really want
@@ -80,7 +80,7 @@ cases.
 
 ## The two knobs
 
-### `--unattended` (boolean flag, default off)
+### `--prompts never` (boolean flag, default off)
 
 When set: **never prompt.** Any decision that would have prompted becomes SKIP
 instead.
@@ -91,49 +91,49 @@ want interactive behavior via a registered prompt callback. The flag is explicit
 would silently change behavior for programmatic callers. If you want
 unattended-on-cron-job behavior, pass the flag.
 
-When stdin isn't a TTY and `--unattended` is not set and no programmatic prompt
+When stdin isn't a TTY and `--prompts never` is not set and no programmatic prompt
 callback is registered, comicbox logs a one-time hint at startup: _"no TTY
-detected; pass `--unattended` if you don't expect to see prompts."_ This catches
+detected; pass `--prompts never` if you don't expect to see prompts."_ This catches
 the common cron-job-without-the-flag mistake without changing default behavior
 for library callers (whose registered callback silences the hint).
 
-### `--policy <name>` (default `normal`)
+### `--match <mode>` (default `auto`)
 
 Four levels along an axis from "ask me about everything" to "trust the matcher
 fully":
 
-| Policy             | Behavior on top candidate ≥ confidence_threshold and clear gap | Behavior on solo viable (one ≥ min_confidence, no peers) | Behavior on top above threshold but narrow gap |
+| Match Mode         | Behavior on top candidate ≥ confidence_threshold and clear gap | Behavior on solo viable (one ≥ min_confidence, no peers) | Behavior on top above threshold but narrow gap |
 | ------------------ | -------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------- |
-| `always-prompt`    | PROMPT                                                         | PROMPT                                                   | PROMPT                                         |
-| `strict`           | AUTO_WRITE                                                     | PROMPT                                                   | PROMPT                                         |
-| `normal` (default) | AUTO_WRITE                                                     | AUTO_WRITE                                               | PROMPT                                         |
+| `ask`    | PROMPT                                                         | PROMPT                                                   | PROMPT                                         |
+| `careful`           | AUTO_WRITE                                                     | PROMPT                                                   | PROMPT                                         |
+| `auto` (default) | AUTO_WRITE                                                     | AUTO_WRITE                                               | PROMPT                                         |
 | `eager`            | AUTO_WRITE                                                     | AUTO_WRITE                                               | AUTO_WRITE                                     |
 
 In all four levels: candidates with `top.score < min_confidence` produce
 NO_MATCH. NO_MATCH never auto-writes regardless of policy.
 
-The progression is **strictly containing** — `eager` ⊃ `normal` ⊃ `strict` ⊃
-`always-prompt` in terms of what gets auto-written. Anything `strict`
-auto-writes, `normal` auto-writes too, and so on up to `eager`. The formal
+The progression is **strictly containing** — `eager` ⊃ `auto` ⊃ `careful` ⊃
+`ask` in terms of what gets auto-written. Anything `careful`
+auto-writes, `auto` auto-writes too, and so on up to `eager`. The formal
 rules:
 
-- `strict`: AUTO_WRITE iff `unambig` (top ≥ 0.85 AND gap ≥ 0.10)
-- `normal`: AUTO_WRITE iff `unambig` OR `solo_viable` (top ≥ 0.50 AND exactly
+- `careful`: AUTO_WRITE iff `unambig` (top ≥ 0.85 AND gap ≥ 0.10)
+- `auto`: AUTO_WRITE iff `unambig` OR `solo_viable` (top ≥ 0.50 AND exactly
   one viable candidate)
 - `eager`: AUTO_WRITE iff `top.score ≥ 0.85` OR `solo_viable`
 
-Conservative users tune toward `strict`; users who trust their setup tune toward
+Conservative users tune toward `careful`; users who trust their setup tune toward
 `eager`.
 
 ### Combining the two
 
-The 8-cell matrix below is what `--unattended` does to each PROMPT cell:
+The 8-cell matrix below is what `--prompts never` does to each PROMPT cell:
 
-|                    | interactive (default)                                          | `--unattended`                                             |
+|                    | interactive (default)                                          | `--prompts never`                                             |
 | ------------------ | -------------------------------------------------------------- | ---------------------------------------------------------- |
-| `always-prompt`    | prompts on every viable candidate                              | skips every viable candidate (essentially a dry-run)       |
-| `strict`           | auto-writes unambiguous tops; prompts the rest                 | auto-writes unambiguous tops; skips the rest               |
-| `normal` (default) | auto-writes unambiguous + solo-viable; prompts rest            | auto-writes unambiguous + solo-viable; skips rest          |
+| `ask`    | prompts on every viable candidate                              | skips every viable candidate (essentially a dry-run)       |
+| `careful`           | auto-writes unambiguous tops; prompts the rest                 | auto-writes unambiguous tops; skips the rest               |
+| `auto` (default) | auto-writes unambiguous + solo-viable; prompts rest            | auto-writes unambiguous + solo-viable; skips rest          |
 | `eager`            | auto-writes top above threshold; prompts only on sub-threshold | auto-writes top above threshold; skips sub-threshold cases |
 
 `always-prompt --unattended` is mathematically valid but produces zero
@@ -158,10 +158,10 @@ solo_viable = top.score >= 0.50 AND len([c for c in ranked if c.score >= 0.50]) 
 if not ranked or top.score < 0.50:           → NO_MATCH
 
 # 2. Policy decides whether to auto-write
-elif policy == always-prompt:                → defer to step 3
-elif policy == strict and unambig:           → AUTO_WRITE
-elif policy == normal and (unambig or solo_viable):              → AUTO_WRITE
-elif policy == eager  and (top.score >= 0.85 or solo_viable):    → AUTO_WRITE
+elif match == ASK:                → defer to step 3
+elif match == CAREFUL and unambig:           → AUTO_WRITE
+elif match == AUTO and (unambig or solo_viable):              → AUTO_WRITE
+elif match == EAGER  and (top.score >= 0.85 or solo_viable):    → AUTO_WRITE
 else:                                        → defer to step 3
 
 # 3. Couldn't auto-write; ask or skip
@@ -171,7 +171,7 @@ else:                                        → PROMPT
 
 The gap rule (the 0.10 disambiguation margin) lives inside `unambig` and is
 intentionally hidden from users — it's an implementation detail of "what counts
-as a clear winner." `strict` and `normal` honor it; `eager` waives it and trusts
+as a clear winner." `careful` and `auto` honor it; `eager` waives it and trusts
 the threshold alone.
 
 ---
@@ -179,13 +179,13 @@ the threshold alone.
 ## Worked examples
 
 For each scenario, candidates are listed by score after ranking. All defaults
-active unless noted (`policy=normal`, interactive).
+active unless noted (`match=AUTO`, interactive).
 
 ### Scenario 1 — clear winner
 
 Candidates: A=0.92, B=0.71
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | AUTO_WRITE A | AUTO_WRITE A   |
@@ -199,7 +199,7 @@ auto-write.
 
 Candidates: A=0.86, B=0.84
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | PROMPT       | SKIP           |
@@ -212,7 +212,7 @@ Why: top ≥ 0.85 but gap = 0.02 < 0.10. Only `eager` waives the gap and takes A
 
 Candidates: A=0.70, B=0.45
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | PROMPT       | SKIP           |
@@ -220,14 +220,14 @@ Candidates: A=0.70, B=0.45
 | eager         | AUTO_WRITE A | AUTO_WRITE A   |
 
 Why: top is below auto-write threshold (0.85), so `unambig` is false. Only one
-viable (B is below 0.50), so `solo_viable` is true → `normal` and `eager` both
-auto-write A. `strict` requires `unambig` and gets neither.
+viable (B is below 0.50), so `solo_viable` is true → `auto` and `eager` both
+auto-write A. `careful` requires `unambig` and gets neither.
 
 ### Scenario 4 — sole candidate, just above the auto-write bar
 
 Candidates: A=0.86
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | AUTO_WRITE A | AUTO_WRITE A   |
@@ -240,21 +240,21 @@ Why: only one candidate, gap = 1.0, top ≥ 0.85 → unambiguous.
 
 Candidates: A=0.65
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | PROMPT       | SKIP           |
 | normal        | AUTO_WRITE A | AUTO_WRITE A   |
 | eager         | AUTO_WRITE A | AUTO_WRITE A   |
 
-Why: top below `confidence_threshold` but solo viable. `normal` and `eager` both
-take it (containment); `strict` requires `unambig`.
+Why: top below `confidence_threshold` but solo viable. `auto` and `eager` both
+take it (containment); `careful` requires `unambig`.
 
 ### Scenario 6 — nothing meaningful
 
 Candidates: A=0.40, B=0.25
 
-| Policy | Interactive | `--unattended` |
+| Policy | Interactive | `--prompts never` |
 | ------ | ----------- | -------------- |
 | any    | NO_MATCH    | NO_MATCH       |
 
@@ -264,7 +264,7 @@ Top is below `min_confidence`. NO_MATCH short-circuits before policy.
 
 Candidates: A=0.92, B=0.84
 
-| Policy        | Interactive  | `--unattended` |
+| Match Mode    | Interactive  | `--prompts never` |
 | ------------- | ------------ | -------------- |
 | always-prompt | PROMPT       | SKIP           |
 | strict        | PROMPT       | SKIP           |
@@ -300,10 +300,10 @@ For users upgrading:
 
 | Current flags                   | Equivalent new flags                             |
 | ------------------------------- | ------------------------------------------------ |
-| (no flags, has TTY)             | (default — interactive `normal`)                 |
-| `--accept-only` (alone)         | `--policy normal`                                |
-| `--skip-multiple` (alone)       | `--unattended --policy strict`                   |
-| `--accept-only --skip-multiple` | `--unattended --policy normal`                   |
+| (no flags, has TTY)             | (default — interactive `auto`)                 |
+| `--match auto` (alone)         | `--match normal`                                |
+| `--match careful --prompts never` (alone)       | `--unattended --match strict`                   |
+| `--accept-only --skip-multiple` | `--unattended --match normal`                   |
 | `--confidence-threshold N`      | unchanged — still works as a power-user override |
 
 The legacy flags will be deprecated with warnings, removed in a future version.
@@ -313,22 +313,22 @@ The legacy flags will be deprecated with warnings, removed in a future version.
 ## Settled questions (was: open questions)
 
 1. **Two thresholds vs one?** Settled: keep both internal (0.85 and 0.50),
-   surface a 4-level `--policy` instead of asking users to think about
+   surface a 4-level `--match` instead of asking users to think about
    thresholds.
 
 2. **Should the gap rule be exposed?** Settled: no. It's an internal
-   implementation of "what counts as unambiguous"; `strict` and `normal` honor
+   implementation of "what counts as unambiguous"; `careful` and `auto` honor
    it, `eager` waives it. Users get the choice via policy, not via a numeric
    tweak.
 
-3. **Should `--accept-only` use `confidence_threshold`?** Moot — `--accept-only`
-   is replaced by `--policy normal`'s solo-viable rule, which is explicit about
+3. **Should `--match auto` use `confidence_threshold`?** Moot — `--match auto`
+   is replaced by `--match normal`'s solo-viable rule, which is explicit about
    its threshold being `min_confidence`.
 
 4. **NO_MATCH vs SKIP in summary?** Settled: yes, distinct counts in the
    end-of-run report.
 
-5. **Default policy?** Settled: `normal`. That auto-writes the obvious wins
+5. **Default policy?** Settled: `auto`. That auto-writes the obvious wins
    (unambiguous + solo viable) and prompts on close calls. Slightly more eager
    than today's default (today's default treats solo viable as ambiguous).
 
@@ -336,24 +336,24 @@ The legacy flags will be deprecated with warnings, removed in a future version.
 
 ## Per-source policy and threshold overrides
 
-`--policy` and `--confidence-threshold` accept a global value or a per-source
-override using the same `<source>:<value>` syntax that `--id` and `--api-url`
+`--match` and `--auto-threshold` accept a global value or a per-source
+override using the same `<source>:<value>` syntax that `--id` and `--auth <source>:url=<value>`
 already use:
 
 ```
---policy normal                       # global default
---policy metron:eager                  # override for metron only
---policy strict --policy metron:eager  # global = strict, metron = eager
+--match normal                       # global default
+--match metron:eager                  # override for metron only
+--match strict --match metron:eager  # global = strict, metron = eager
 ```
 
 Both flags are repeatable; later occurrences for the same source replace earlier
 ones. Resolution order per source:
 
-1. Per-source override (`--policy metron:X`) — wins if set
-2. Global value (`--policy X`) — wins otherwise
-3. Built-in default (`policy=normal`, `confidence_threshold=0.85`)
+1. Per-source override (`--match metron:X`) — wins if set
+2. Global value (`--match X`) — wins otherwise
+3. Built-in default (`match=AUTO`, `confidence_threshold=0.85`)
 
-Same for `--confidence-threshold`:
+Same for `--auto-threshold`:
 
 ```
 --confidence-threshold 0.85
@@ -369,14 +369,14 @@ in place.
 shape might be:
 
 ```
---online metron,comicvine --policy metron:eager --policy comicvine:strict
+--online metron,comicvine --match metron:eager --match comicvine:strict
 ```
 
 — Metron auto-writes plausible matches; ComicVine prompts unless it's truly
 unambiguous.
 
 **Validation**: unknown source names error out. Unknown policy names error out.
-`--policy <source>:<name>` for a source not in `--online` warns but doesn't
+`--match <source>:<name>` for a source not in `--online` warns but doesn't
 error (the override is harmless if the source isn't queried, but the user
 probably typo'd a source name).
 
@@ -395,13 +395,13 @@ probably typo'd a source name).
    is friendlier than silently skipping every file.
 
 3. **TTY auto-detection (was open question 3).** Closed: do not auto-flip to
-   `--unattended`. The flag stays explicit. When stdin isn't a TTY and
-   `--unattended` is _not_ set, log a one-time hint at startup: "no TTY
-   detected; pass `--unattended` if you don't expect to see prompts."
+   `--prompts never`. The flag stays explicit. When stdin isn't a TTY and
+   `--prompts never` is _not_ set, log a one-time hint at startup: "no TTY
+   detected; pass `--prompts never` if you don't expect to see prompts."
    Programmatic library callers (codex with a registered prompt callback)
    silence the hint by registering the callback before run.
 
-4. **`--policy` and `--confidence-threshold` interaction (was open question
+4. **`--match` and `--auto-threshold` interaction (was open question
    4).** Closed: keep both. `eager --confidence-threshold 0.70` is a meaningful
    "trust the matcher even more aggressively" combination. Per-source overrides
    on either flag work the same way.
@@ -413,7 +413,7 @@ probably typo'd a source name).
 - **"Always prompt the first N, then go unattended."** Supervise early, trust
   later. Run two batches — first interactive on a sample, then unattended on the
   rest once you're satisfied. Not a flag; just a workflow.
-- **Default policy choice.** Default is `normal`, slightly more eager than
-  today's behavior. If real-world calibration shows `normal` is too eager (high
-  false-positive write rate), retreat the default to `strict`. Calibration
+- **Default policy choice.** Default is `auto`, slightly more eager than
+  today's behavior. If real-world calibration shows `auto` is too eager (high
+  false-positive write rate), retreat the default to `careful`. Calibration
   harness (section 2 in TODO.md) is the place to find out.

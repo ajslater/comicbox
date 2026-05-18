@@ -25,7 +25,11 @@ TMP_DIR = get_tmp_dir(__file__)
 OLD_TEST_CBR_PATH = TMP_DIR / CBI_CBR_FN
 NEW_TEST_CBZ_PATH = OLD_TEST_CBR_PATH.with_suffix(".cbz")
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=["cix"], compute_pages=True))
+    Namespace(
+        comicbox=Namespace(
+            compute=Namespace(pages=True), write=Namespace(formats=["cix"])
+        )
+    )
 )
 METADATA = MappingProxyType(
     {

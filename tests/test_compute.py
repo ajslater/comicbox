@@ -16,11 +16,7 @@ from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
 PRINT_CONFIG = get_config(
-    Namespace(
-        comicbox=Namespace(
-            print="snmcp",
-        )
-    )
+    Namespace(comicbox=Namespace(print=Namespace(phases="snmcp")))
 )
 
 
@@ -50,7 +46,9 @@ DATE_FROM_NOTES_MD = MappingProxyType(
 
 def test_compute_date_from_notes() -> None:
     """Test getting the cover image."""
-    config = Namespace(comicbox=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
+    config = Namespace(
+        comicbox=Namespace(convert=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
+    )
     with Comicbox(config=config) as car:
         md = car.get_internal_metadata()
     assert_diff(DATE_FROM_NOTES_MD, md)
@@ -79,7 +77,10 @@ IDS_FROM_TAGS_MD = MappingProxyType(
 def test_compute_ids_from_tags() -> None:
     """Test computing identifiers from tags."""
     config = Namespace(
-        comicbox=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,), print="snmcp")
+        comicbox=Namespace(
+            print=Namespace(phases="snmcp"),
+            convert=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,)),
+        )
     )
     with Comicbox(config=config) as car:
         md = car.get_internal_metadata()

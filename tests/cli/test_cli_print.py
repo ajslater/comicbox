@@ -59,7 +59,7 @@ CBZ
 
 def test_cli_filetype() -> None:
     """Test filetype action."""
-    args = ("comicbox", "-P", "t", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "--print", "t", str(EMPTY_CBZ_SOURCE_PATH))
     output = "\n" + _get_output(args)
     assert output == FILETYPE_OUTPUT
 
@@ -75,7 +75,7 @@ empty.cbz
 
 def test_cli_source() -> None:
     """Test print source action."""
-    args = ("comicbox", "-P", "s", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "--print", "s", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     assert_diff_strings(SOURCE_OUTPUT, output)
@@ -94,7 +94,7 @@ comicfn2dict:
 
 def test_cli_loaded() -> None:
     """Test print loaded action."""
-    args = ("comicbox", "-P", "l", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
+    args = ("comicbox", "--print", "l", str(EMPTY_CBZ_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     assert_diff_strings(LOADED_OUTPUT, output)
@@ -122,8 +122,8 @@ def _ruamel_to_dict(yaml_dict: CommentedMap) -> dict[str, Any]:
 
 def test_cli_print() -> None:
     """Simple cli metadata print test."""
-    args = (*CLI_METADATA_ARGS, "-p", "-t", "none", str(EMPTY_CBZ_SOURCE_PATH))
-    cli.main((*CLI_METADATA_ARGS, "-p", "-P", "slncmd"))
+    args = (*CLI_METADATA_ARGS, "-p", str(EMPTY_CBZ_SOURCE_PATH))
+    cli.main((*CLI_METADATA_ARGS, "-p", "--print", "slncmd"))
     output = _get_output(args)
     output = output.split("\n", 4)[4]  # remove first four lines
     yaml = YamlRenderModule._get_write_yaml()
@@ -182,7 +182,7 @@ tests/files/Captain Science #001-cix-cbi.cbr
 
 def test_cli_print_contents() -> None:
     """Test list contents."""
-    args = ("comicbox", "-P", "f", "-t", "none", str(CIX_CBI_CBR_SOURCE_PATH))
+    args = ("comicbox", "--print", "f", str(CIX_CBI_CBR_SOURCE_PATH))
     output = _get_output(args)
     output = "\n" + output
     assert_diff_strings(LIST_OUTPUT, output)
@@ -193,7 +193,7 @@ LIST_RECURSE_OUTPUT_PATH = TEST_FILES_DIR / "list_recurse_output.txt"
 
 def test_cli_print_list_recurse() -> None:
     """Test recursion."""
-    args = ("comicbox", "--recurse", "-l", str(TEST_FILES_DIR))
+    args = ("comicbox", "--recurse", "--print=f", str(TEST_FILES_DIR))
     output = _get_output(args)
     check_output = LIST_RECURSE_OUTPUT_PATH.read_text()
     assert_diff_strings(check_output, output)

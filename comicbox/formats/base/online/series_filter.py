@@ -33,7 +33,7 @@ matcher's `s_series`; the matcher gets to be permissive because it sees
 the full candidate. The pre-filter has to decide before any API call
 goes out.
 
-Driven by the `APIBudget` resolved per-source. See
+Driven by the `Effort` resolved per-source. See
 `tasks/online-tagging/06-api-budget-spec.md` for the threshold rationale
 (Phase B picks the real numbers; Phase A ships with the lever dormant).
 """
@@ -46,7 +46,7 @@ from typing import Final
 
 from rapidfuzz import fuzz
 
-from comicbox.config.settings import APIBudget
+from comicbox.config.settings import Effort
 from comicbox.formats.base.online.signals import normalize_series
 
 # CV (and to a lesser extent Metron) annotate volume names with the
@@ -82,20 +82,20 @@ def _strip_year_parens(s: str) -> str:
 # Values are Phase B-validated against the spring-2026 339-fixture
 # calibration set. See `tasks/online-tagging/calibration-notes/` for the
 # experiment data behind each number.
-_THRESHOLDS: Final[MappingProxyType[APIBudget, float]] = MappingProxyType(
+_THRESHOLDS: Final[MappingProxyType[Effort, float]] = MappingProxyType(
     {
         # EXHAUSTIVE never filters — semantically off. Spend API budget
         # freely; recover the very long tail of edge cases.
-        APIBudget.EXHAUSTIVE: 0.0,
+        Effort.THOROUGH: 0.0,
         # BALANCED at 0.4 (Phase B-validated): zero outcome changes vs
         # 0.0 across the full fixture set, 18% fewer API calls. Strictly
         # better than the previous "today's behavior" of 0.0.
-        APIBudget.BALANCED: 0.4,
+        Effort.BALANCED: 0.4,
         # FAST at 0.7 (Phase B-validated): 100% accuracy on labeled
         # fixtures, 60.5% fewer API calls than balanced-at-0. Catches
         # the "Moebius Library vs Adventures of Basil & Moebius"-style
         # substring false positives.
-        APIBudget.FAST: 0.7,
+        Effort.MINIMAL: 0.7,
     }
 )
 
@@ -112,19 +112,19 @@ _THRESHOLDS: Final[MappingProxyType[APIBudget, float]] = MappingProxyType(
 # Phase B didn't formally measure this (the pre-filter alone hit the
 # cost target) but the spec called for it; landing it at scale-time
 # (Phase D) because library-of-17500-comics scenarios need every cut.
-_MAX_RESULTS_OVERRIDES: Final[MappingProxyType[APIBudget, int]] = MappingProxyType(
+_MAX_RESULTS_OVERRIDES: Final[MappingProxyType[Effort, int]] = MappingProxyType(
     {
-        APIBudget.FAST: 5,
+        Effort.MINIMAL: 5,
     }
 )
 
 
-def threshold_for(budget: APIBudget) -> float:
+def threshold_for(budget: Effort) -> float:
     """Return the per-budget filter threshold in `[0, 1]`."""
     return _THRESHOLDS.get(budget, 0.0)
 
 
-def max_results_for(budget: APIBudget, *, default: int) -> int:
+def max_results_for(budget: Effort, *, default: int) -> int:
     """
     Return the per-budget cap on volumes/series to expand into issue queries.
 

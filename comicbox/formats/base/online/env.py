@@ -4,15 +4,19 @@ Environment-variable helpers for online tagging settings.
 The resolution chain layers CLI > env > config > keyring; this module owns
 the env layer.
 
-Comicbox 4.0 adopts two env-var families for online settings:
+Two env-var families:
 
-1. Per-source credentials (short form) — `COMICBOX_<SOURCE>_<FIELD>`.
-   Examples: `COMICBOX_METRON_USERNAME`, `COMICBOX_COMICVINE_API_KEY`.
+1. Per-source credentials — ``COMICBOX_<SOURCE>_<FIELD>``:
+   - Metron: ``COMICBOX_METRON_USER``, ``COMICBOX_METRON_PASS``,
+     ``COMICBOX_METRON_URL``
+   - ComicVine: ``COMICBOX_COMICVINE_KEY``, ``COMICBOX_COMICVINE_URL``
 
-2. Policy and cache settings (path-aligned) — `COMICBOX_ONLINE_<KEY>`.
-   Examples: `COMICBOX_ONLINE_ACCEPT_ONLY`,
-   `COMICBOX_ONLINE_CONFIDENCE_THRESHOLD`,
-   `COMICBOX_ONLINE_CACHE_DIR`, `COMICBOX_ONLINE_CACHE_TTL`.
+2. Online lookup / cache / tuning settings — ``COMICBOX_ONLINE_<KEY>``:
+   ``COMICBOX_ONLINE_MATCH``, ``COMICBOX_ONLINE_PROMPTS``,
+   ``COMICBOX_ONLINE_REMATCH``, ``COMICBOX_ONLINE_ALL_SOURCES``,
+   ``COMICBOX_ONLINE_AUTO_THRESHOLD``, ``COMICBOX_ONLINE_EFFORT``,
+   ``COMICBOX_ONLINE_CACHE``, ``COMICBOX_ONLINE_CACHE_DIR``,
+   ``COMICBOX_ONLINE_CACHE_TTL``, ``COMICBOX_ONLINE_RETRY_BUDGET``.
 
 Both groups are read explicitly here (rather than via confuse's set_env)
 so behavior is predictable across nested template depths.
@@ -26,23 +30,19 @@ from comicbox.formats.base.online import SOURCE_NAMES
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
 
-# Per-source credential env var names → (source_name, field_name).
-_CRED_FIELDS = ("api_key", "username", "password", "url")
-# Policy / cache env var names → online_settings field name.
-_POLICY_FIELDS: Mapping[str, str] = {
-    "ACCEPT_ONLY": "accept_only",
-    "SKIP_MULTIPLE": "skip_multiple",
-    "IGNORE_EXISTING": "ignore_existing",
-    "TAG_ALL_SOURCES": "tag_all_sources",
-    "FORCE_SEARCH": "force_search",
-    "CONFIDENCE_THRESHOLD": "confidence_threshold",
-    "API_BUDGET": "api_budget",
-    "CACHE_ENABLED": "cache_enabled",
-    "CACHE_DIR": "cache_dir",
-    "CACHE_TTL": "cache_ttl",
-    "REFRESH_CACHE": "refresh_cache",
-    "RETRY_BUDGET": "retry_budget",
-}
+# Per-source credential fields (per ``OnlineSourceCredentials``).
+_CRED_FIELDS = ("user", "pass", "key", "url")
+
+# Online settings env-var suffix → resolved field name.
+# Keep the field names in sync with the per-knob keys ``_build_online_settings``
+# reads from ``read_online_env()``.
+_BOOL_FIELDS = frozenset({"rematch", "all_sources"})
+_FLOAT_FIELDS = frozenset({"auto_threshold"})
+_INT_FIELDS = frozenset({"retry_budget"})
+_STRING_FIELDS = frozenset(
+    {"match", "prompts", "effort", "cache", "cache_dir", "cache_ttl"}
+)
+_ALL_FIELDS = _BOOL_FIELDS | _FLOAT_FIELDS | _INT_FIELDS | _STRING_FIELDS
 
 
 def parse_bool(value: str) -> bool | None:
@@ -57,7 +57,7 @@ def parse_bool(value: str) -> bool | None:
 
 def read_credential_env(env: Mapping[str, str]) -> dict[str, dict[str, str]]:
     """
-    Read per-source credentials from `COMICBOX_<SOURCE>_<FIELD>` vars.
+    Read per-source credentials from ``COMICBOX_<SOURCE>_<FIELD>`` vars.
 
     Returns a dict mapping source name → field dict, omitting any source
     or field that has no env var set. Field names match
@@ -65,51 +65,42 @@ def read_credential_env(env: Mapping[str, str]) -> dict[str, dict[str, str]]:
     """
     result: dict[str, dict[str, str]] = {}
     for source in SOURCE_NAMES:
-        for field in _CRED_FIELDS:
-            env_name = f"COMICBOX_{source.upper()}_{field.upper()}"
+        for cred_field in _CRED_FIELDS:
+            env_name = f"COMICBOX_{source.upper()}_{cred_field.upper()}"
             value = env.get(env_name)
             if value is None:
                 continue
-            result.setdefault(source, {})[field] = value
+            result.setdefault(source, {})[cred_field] = value
     return result
 
 
-def read_policy_env(env: Mapping[str, str]) -> dict[str, Any]:
+def read_online_env(env: Mapping[str, str]) -> dict[str, Any]:
     """
-    Read online policy / cache settings from `COMICBOX_ONLINE_*` vars.
+    Read online lookup / cache / tuning settings from ``COMICBOX_ONLINE_*`` vars.
 
-    Returns a dict keyed by `OnlineSettings` field names; missing env
-    vars are omitted. Booleans, floats, and ints are parsed; strings
-    are returned as-is. Unparseable booleans/numbers are dropped.
+    Returns a dict keyed by resolved field name; missing env vars are
+    omitted. Booleans, floats, and ints are parsed; strings are returned
+    as-is. Unparseable values are dropped.
     """
     result: dict[str, Any] = {}
-    for env_suffix, field_name in _POLICY_FIELDS.items():
-        raw = env.get(f"COMICBOX_ONLINE_{env_suffix}")
+    for field_name in _ALL_FIELDS:
+        raw = env.get(f"COMICBOX_ONLINE_{field_name.upper()}")
         if raw is None:
             continue
-        if field_name in {
-            "accept_only",
-            "skip_multiple",
-            "ignore_existing",
-            "tag_all_sources",
-            "force_search",
-            "cache_enabled",
-            "refresh_cache",
-        }:
-            parsed = parse_bool(raw)
-            if parsed is not None:
-                result[field_name] = parsed
-        elif field_name == "confidence_threshold":
+        if field_name in _BOOL_FIELDS:
+            parsed_bool = parse_bool(raw)
+            if parsed_bool is not None:
+                result[field_name] = parsed_bool
+        elif field_name in _FLOAT_FIELDS:
             try:
                 result[field_name] = float(raw)
             except ValueError:
                 continue
-        elif field_name == "retry_budget":
+        elif field_name in _INT_FIELDS:
             try:
                 result[field_name] = int(raw)
             except ValueError:
                 continue
         else:
-            # cache_dir, cache_ttl — strings; downstream parses cache_ttl.
             result[field_name] = raw
     return result

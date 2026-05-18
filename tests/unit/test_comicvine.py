@@ -245,7 +245,7 @@ class _FakeCV:
 def _make_cv_source(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV
 ) -> ComicVineOnlineSource:
-    creds = OnlineSourceCredentials(api_key="test-key")
+    creds = OnlineSourceCredentials(key="test-key")
     settings = OnlineSettings()
     src = ComicVineOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
@@ -416,8 +416,12 @@ def test_search_retries_volume_search_on_rate_limit(
 def _make_cv_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV, series_id: int
 ) -> ComicVineOnlineSource:
-    creds = OnlineSourceCredentials(api_key="test-key")
-    settings = OnlineSettings(explicit_series_ids={"comicvine": series_id})
+    from comicbox.config.settings import OnlineLookupSettings
+
+    creds = OnlineSourceCredentials(key="test-key")
+    settings = OnlineSettings(
+        lookup=OnlineLookupSettings(series_ids={"comicvine": series_id})
+    )
     src = ComicVineOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
     return src
@@ -543,7 +547,7 @@ class _FakeCVForGet:
 def _make_cv_source_for_get(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCVForGet
 ) -> ComicVineOnlineSource:
-    creds = OnlineSourceCredentials(api_key="test-key")
+    creds = OnlineSourceCredentials(key="test-key")
     settings = OnlineSettings()
     src = ComicVineOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
@@ -716,7 +720,7 @@ def test_search_retries_without_year_when_year_filter_returns_empty(
 
 def test_volume_predates_comic_basic() -> None:
     """Volume started after comic year + slop → predates."""
-    src = ComicVineOnlineSource(OnlineSourceCredentials(api_key="x"), OnlineSettings())
+    src = ComicVineOnlineSource(OnlineSourceCredentials(key="x"), OnlineSettings())
     # 1987 comic, 2008 volume → predates by 21y.
     assert src._volume_predates_comic(2008, 1987) is True
     # 1987 comic, 1986 volume → not predates (volume started earlier, fine).
@@ -731,7 +735,7 @@ def test_volume_predates_comic_basic() -> None:
 
 def test_volume_predates_comic_none_inputs_keep_volume() -> None:
     """Missing data → keep the volume (don't drop on uncertainty)."""
-    src = ComicVineOnlineSource(OnlineSourceCredentials(api_key="x"), OnlineSettings())
+    src = ComicVineOnlineSource(OnlineSourceCredentials(key="x"), OnlineSettings())
     assert src._volume_predates_comic(None, 1987) is False
     assert src._volume_predates_comic(2008, None) is False
     assert src._volume_predates_comic(None, None) is False

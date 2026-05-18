@@ -44,7 +44,9 @@ FIXTURES = MappingProxyType(
         ),
     }
 )
-PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="snmcp")))
+PRINT_CONFIG = get_config(
+    Namespace(comicbox=Namespace(print=Namespace(phases="snmcp")))
+)
 
 
 @pytest.mark.parametrize("label", FIXTURES)

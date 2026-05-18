@@ -17,12 +17,19 @@ Layout matches the Phase 4 spec:
 
     s. Skip this file
     m. Enter ID manually
+    o. Session options ...
     q. Abort entire run
 
 Display rules:
 - Top 9 candidates max.
 - `cover_score` shown in parens after `score` when hashing was invoked.
 - Honors `--terse` / `-Q` quiet by trimming auxiliary lines.
+
+Session options (nested under `o`) let the user switch the rest of
+this run to unattended mode or change the match policy
+(always-prompt / strict / normal / eager). These exist as flat
+SelectorResult actions in the API but are tucked behind a submenu
+in the CLI so the primary prompt stays uncluttered.
 """
 
 from __future__ import annotations
@@ -38,6 +45,13 @@ if TYPE_CHECKING:
 
 
 _MAX_DISPLAYED = 9
+
+_POLICY_CHOICES: tuple[tuple[str, str], ...] = (
+    ("1", "always-prompt"),
+    ("2", "strict"),
+    ("3", "normal"),
+    ("4", "eager"),
+)
 
 
 def _format_candidate_line(idx: int, c: Candidate) -> str:
@@ -91,26 +105,44 @@ def _build_lines(
             "",
             "  s. Skip this file",
             "  m. Enter ID manually",
+            "  o. Session options ...",
             "  q. Abort entire run",
         ]
     )
     return head + body
 
 
+_OPTIONS_SENTINEL = "__options__"
+
+_TOP_LEVEL_REPLIES: dict[str, SelectorResult | str] = {
+    "s": ("skip", None),
+    "skip": ("skip", None),
+    "q": ("abort", None),
+    "quit": ("abort", None),
+    "abort": ("abort", None),
+    "m": ("manual", ""),  # caller re-prompts for the id
+    "manual": ("manual", ""),
+    "o": _OPTIONS_SENTINEL,
+    "options": _OPTIONS_SENTINEL,
+}
+
+
 def _interpret(
     raw: str,
     candidates_count: int,
-) -> SelectorResult | None:
-    """Parse the user's reply into a SelectorResult, or None if invalid."""
+) -> SelectorResult | str | None:
+    """
+    Parse the user's reply.
+
+    Returns a `SelectorResult` for terminal actions, the
+    `_OPTIONS_SENTINEL` string when the user wants the session-options
+    submenu, or `None` for an unrecognized input.
+    """
     s = raw.strip().lower()
     if not s:
         return None
-    if s in {"s", "skip"}:
-        return ("skip", None)
-    if s in {"q", "quit", "abort"}:
-        return ("abort", None)
-    if s in {"m", "manual"}:
-        return ("manual", "")  # caller re-prompts for the id
+    if (action := _TOP_LEVEL_REPLIES.get(s)) is not None:
+        return action
     if s.isdigit():
         idx = int(s)
         if 1 <= idx <= candidates_count:
@@ -139,6 +171,78 @@ def _is_tty() -> bool:
     return sys.stdin is not None and sys.stdin.isatty()
 
 
+def _build_options_lines() -> list[str]:
+    return [
+        "",
+        "  Session options (apply to all remaining files in this run):",
+        "    u. Unattended — skip any remaining prompts",
+        "    p. Change match policy ...",
+        "    b. Back",
+    ]
+
+
+def _build_policy_lines() -> list[str]:
+    lines = ["", "  Match policy:"]
+    lines.extend(f"    {key}. {name}" for key, name in _POLICY_CHOICES)
+    lines.append("    b. Back")
+    return lines
+
+
+def _prompt_line(message: str) -> str | None:
+    """Prompt the user once; return None if the user aborts."""
+    if _is_tty():
+        try:
+            import questionary
+
+            return questionary.text(message).ask()
+        except (ImportError, KeyboardInterrupt):
+            return None
+    return _read_input(message + " ")
+
+
+def _ask_policy_choice() -> SelectorResult | None:
+    """Show the policy submenu. Return a SelectorResult or None for back."""
+    policy_keys = {key for key, _ in _POLICY_CHOICES}
+    policy_names = {name for _, name in _POLICY_CHOICES}
+    while True:
+        for line in _build_policy_lines():
+            print(line)  # noqa: T201
+        raw = _prompt_line("Policy:")
+        if raw is None:
+            return ("abort", None)
+        s = raw.strip().lower()
+        if s in {"b", "back", ""}:
+            return None
+        if s in policy_keys:
+            for key, name in _POLICY_CHOICES:
+                if key == s:
+                    return ("set_policy", name)
+        if s in policy_names:
+            return ("set_policy", s)
+        print(f"  unrecognized: {raw!r}")  # noqa: T201
+
+
+def _ask_session_options() -> SelectorResult | None:
+    """Show the session-options submenu. Return a SelectorResult or None for back."""
+    while True:
+        for line in _build_options_lines():
+            print(line)  # noqa: T201
+        raw = _prompt_line("Option:")
+        if raw is None:
+            return ("abort", None)
+        s = raw.strip().lower()
+        if s in {"b", "back", ""}:
+            return None
+        if s in {"u", "unattended"}:
+            return ("set_unattended", None)
+        if s in {"p", "policy"}:
+            sub = _ask_policy_choice()
+            if sub is not None:
+                return sub
+            continue
+        print(f"  unrecognized: {raw!r}")  # noqa: T201
+
+
 def cli_selector(
     profile: ComicProfile,
     candidates: Sequence[Candidate],
@@ -148,8 +252,9 @@ def cli_selector(
     Default CLI prompt selector.
 
     Uses `questionary.select` when available + TTY; falls back to a
-    plain `input()` loop otherwise. Loops on `m` until the user enters
-    a valid id or skips/aborts.
+    plain `input()` loop otherwise. Loops on `m` and `o` (session
+    options submenu) until the user enters a valid id, skips, or
+    aborts.
     """
     settings = ctx.settings
     terse = bool(getattr(settings, "quiet", 0))
@@ -157,24 +262,22 @@ def cli_selector(
     while True:
         for line in _build_lines(profile, candidates, ctx.file_path, terse=terse):
             print(line)  # noqa: T201
-        if _is_tty():
-            try:
-                import questionary
-
-                raw = questionary.text("Choose:").ask()
-            except (ImportError, KeyboardInterrupt):
-                return ("abort", None)
-            if raw is None:
-                return ("abort", None)
-        else:
-            raw = _read_input("Choose: ")
+        raw = _prompt_line("Choose:")
+        if raw is None:
+            return ("abort", None)
         result = _interpret(raw, len(candidates[:_MAX_DISPLAYED]))
         if result is None:
             print(f"  unrecognized: {raw!r}")  # noqa: T201
             continue
-        if result[0] == "manual" and not result[1]:
-            manual = _ask_manual_id(ctx.source)
-            if not manual:
-                continue
-            return ("manual", manual)
-        return result
+        if result == _OPTIONS_SENTINEL:
+            sub = _ask_session_options()
+            if sub is None:
+                continue  # back to the main menu
+            return sub
+        if isinstance(result, tuple):
+            if result[0] == "manual" and not result[1]:
+                manual = _ask_manual_id(ctx.source)
+                if not manual:
+                    continue
+                return ("manual", manual)
+            return result

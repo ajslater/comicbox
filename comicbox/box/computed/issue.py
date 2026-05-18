@@ -79,7 +79,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, Any] | None:
         """Build issue from parts before dump if issue doesn't already exist."""
-        if not sub_data or ISSUE_KEY in self._config.delete_keys:
+        if not sub_data or ISSUE_KEY in self._config.general.delete_keys:
             return None
         issue = sub_data.get(ISSUE_KEY)
         if not issue:

@@ -21,8 +21,8 @@ from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 
 _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
     {
-        PAGE_COUNT_KEY: ("compute_page_count", "HAS_PAGE_COUNT"),
-        PAGES_KEY: ("compute_pages", "HAS_PAGES"),
+        PAGE_COUNT_KEY: ("page_count", "HAS_PAGE_COUNT"),
+        PAGES_KEY: ("pages", "HAS_PAGES"),
     }
 )
 
@@ -32,11 +32,11 @@ class ComicboxComputedPages(ComicboxComputedNotes):
 
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping) -> bool:
         """Determine if we should compute this attribute."""
-        if key in self._config.delete_keys or not sub_md or not self._path:
+        if key in self._config.general.delete_keys or not sub_md or not self._path:
             return False
         formats = frozenset(self._config.all_write_formats | self._dict_formats)
-        config_attr, schema_attr = _ENABLE_PAGE_COMPUTE_ATTRS[key]
-        return getattr(self._config, config_attr, False) and (
+        compute_attr, schema_attr = _ENABLE_PAGE_COMPUTE_ATTRS[key]
+        return getattr(self._config.compute, compute_attr, False) and (
             any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)
         )
 

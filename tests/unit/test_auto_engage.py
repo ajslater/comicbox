@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from comicbox.config.settings import APIBudget, OnlineSettings
+from comicbox.config.settings import (
+    Effort,
+    OnlineLookupSettings,
+    OnlineSettings,
+    OnlineSourceTuning,
+    OnlineTuningSettings,
+    Prompts,
+)
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 
 if TYPE_CHECKING:
@@ -13,16 +20,29 @@ if TYPE_CHECKING:
 
 def _settings(
     *,
-    api_budget: APIBudget = APIBudget.BALANCED,
-    api_budget_per_source: dict[str, APIBudget] | None = None,
+    effort: Effort = Effort.BALANCED,
+    per_source: dict[str, OnlineSourceTuning] | None = None,
     unattended: bool = False,
 ) -> OnlineSettings:
-    return OnlineSettings(
+    lookup = OnlineLookupSettings(
         enabled=True,
-        api_budget=api_budget,
-        api_budget_per_source=api_budget_per_source or {},
-        unattended=unattended,
+        prompts=Prompts.NEVER if unattended else Prompts.ASK,
     )
+    tuning = OnlineTuningSettings(
+        effort=effort,
+        per_source=per_source or {},
+    )
+    return OnlineSettings(lookup=lookup, tuning=tuning)
+
+
+def _cv_effort(settings: OnlineSettings) -> Effort | None:
+    entry = settings.tuning.per_source.get("comicvine")
+    return entry.effort if entry else None
+
+
+def _metron_effort(settings: OnlineSettings) -> Effort | None:
+    entry = settings.tuning.per_source.get("metron")
+    return entry.effort if entry else None
 
 
 def _force_tty(monkeypatch: pytest.MonkeyPatch, *, is_tty: bool) -> None:
@@ -51,28 +71,28 @@ def test_no_op_when_batch_size_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result is settings
 
 
-def test_no_op_when_global_budget_not_balanced(
+def test_no_op_when_global_effort_not_balanced(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """User pinned --api-budget exhaustive → respect, never auto-engage."""
+    """User pinned --effort thorough → respect, never auto-engage."""
     _force_tty(monkeypatch, is_tty=False)
-    settings = _settings(api_budget=APIBudget.EXHAUSTIVE, unattended=True)
+    settings = _settings(effort=Effort.THOROUGH, unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=500)
     assert result is settings
 
 
-def test_no_op_when_global_budget_already_fast(
+def test_no_op_when_global_effort_already_minimal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """User pinned --api-budget fast → already fast, no engagement needed."""
+    """User pinned --effort minimal → already minimal, no engagement needed."""
     _force_tty(monkeypatch, is_tty=False)
-    settings = _settings(api_budget=APIBudget.FAST, unattended=True)
+    settings = _settings(effort=Effort.MINIMAL, unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=500)
     assert result is settings
 
 
 def test_no_op_when_attended_and_tty(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No --unattended, TTY present → user is at keyboard, no engagement."""
+    """No --prompts never, TTY present → user is at keyboard, no engagement."""
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(unattended=False)
     result = resolve_auto_engaged_budget(settings, batch_size=500)
@@ -85,21 +105,21 @@ def test_no_op_when_attended_and_tty(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_unattended_engages_comicvine_at_threshold(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`--unattended` + batch ≥ 50 → engage fast for ComicVine."""
+    """`--prompts never` + batch ≥ 50 → engage minimal for ComicVine."""
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=50)
-    assert result.api_budget_per_source["comicvine"] == APIBudget.FAST
+    assert _cv_effort(result) == Effort.MINIMAL
 
 
 def test_unattended_below_cv_threshold_does_not_engage_cv(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`--unattended` + batch < 50 → no CV engagement."""
+    """`--prompts never` + batch < 50 → no CV engagement."""
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=49)
-    assert "comicvine" not in result.api_budget_per_source
+    assert "comicvine" not in result.tuning.per_source
 
 
 def test_unattended_metron_threshold_higher_than_cv(
@@ -110,19 +130,19 @@ def test_unattended_metron_threshold_higher_than_cv(
     settings = _settings(unattended=True)
     # Batch 100 — over CV's 50, under Metron's 500.
     result = resolve_auto_engaged_budget(settings, batch_size=100)
-    assert result.api_budget_per_source["comicvine"] == APIBudget.FAST
-    assert "metron" not in result.api_budget_per_source
+    assert _cv_effort(result) == Effort.MINIMAL
+    assert "metron" not in result.tuning.per_source
 
 
 def test_unattended_engages_metron_at_threshold(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`--unattended` + batch ≥ 500 → engage fast for Metron too."""
+    """`--prompts never` + batch ≥ 500 → engage minimal for Metron too."""
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=500)
-    assert result.api_budget_per_source["comicvine"] == APIBudget.FAST
-    assert result.api_budget_per_source["metron"] == APIBudget.FAST
+    assert _cv_effort(result) == Effort.MINIMAL
+    assert _metron_effort(result) == Effort.MINIMAL
 
 
 # --------------------------------------------------------- non-TTY trigger
@@ -131,16 +151,16 @@ def test_unattended_engages_metron_at_threshold(
 def test_non_tty_uses_stricter_thresholds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Non-TTY without --unattended → 4x the threshold (200 for CV)."""
+    """Non-TTY without --prompts never → 4x the threshold (200 for CV)."""
     _force_tty(monkeypatch, is_tty=False)
     settings = _settings(unattended=False)
-    # Batch 50 — would engage under --unattended, doesn't under non-TTY.
+    # Batch 50 — would engage under --prompts never, doesn't under non-TTY.
     result = resolve_auto_engaged_budget(settings, batch_size=50)
-    assert "comicvine" not in result.api_budget_per_source
+    assert "comicvine" not in result.tuning.per_source
 
     # Batch 200 — over the 4x non-TTY threshold.
     result = resolve_auto_engaged_budget(settings, batch_size=200)
-    assert result.api_budget_per_source["comicvine"] == APIBudget.FAST
+    assert _cv_effort(result) == Effort.MINIMAL
 
 
 def test_non_tty_engages_metron_at_2000(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,7 +168,7 @@ def test_non_tty_engages_metron_at_2000(monkeypatch: pytest.MonkeyPatch) -> None
     _force_tty(monkeypatch, is_tty=False)
     settings = _settings(unattended=False)
     result = resolve_auto_engaged_budget(settings, batch_size=2000)
-    assert result.api_budget_per_source["metron"] == APIBudget.FAST
+    assert _metron_effort(result) == Effort.MINIMAL
 
 
 # --------------------------------------------------------- user overrides
@@ -158,7 +178,7 @@ def test_per_source_override_blocks_engagement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    Explicit `--api-budget-per-source comicvine:balanced` blocks engagement.
+    Explicit per-source override blocks engagement.
 
     User has spoken — auto-engagement is for "user didn't choose, we
     should help" cases, not "we know better than the user."
@@ -166,13 +186,13 @@ def test_per_source_override_blocks_engagement(
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(
         unattended=True,
-        api_budget_per_source={"comicvine": APIBudget.BALANCED},
+        per_source={"comicvine": OnlineSourceTuning(effort=Effort.BALANCED)},
     )
     result = resolve_auto_engaged_budget(settings, batch_size=500)
-    # CV override is preserved (not bumped to fast).
-    assert result.api_budget_per_source["comicvine"] == APIBudget.BALANCED
+    # CV override is preserved (not bumped to minimal).
+    assert _cv_effort(result) == Effort.BALANCED
     # Metron still engages (no per-source override blocks it).
-    assert result.api_budget_per_source["metron"] == APIBudget.FAST
+    assert _metron_effort(result) == Effort.MINIMAL
 
 
 def test_logs_engagement_decision(
@@ -194,10 +214,10 @@ def test_logs_engagement_decision(
     finally:
         loguru_logger.remove(handler_id)
     messages = "\n".join(rec.getMessage() for rec in caplog.records)
-    assert "auto-engaging api_budget=fast for comicvine" in messages
-    assert "auto-engaging api_budget=fast for metron" in messages
+    assert "auto-engaging effort=minimal for comicvine" in messages
+    assert "auto-engaging effort=minimal for metron" in messages
     # Override hint is present.
-    assert "--api-budget-per-source comicvine:balanced" in messages
+    assert "online.tuning.per_source.comicvine.effort" in messages
 
 
 def test_returns_new_settings_object_when_changed(
@@ -209,5 +229,5 @@ def test_returns_new_settings_object_when_changed(
     result = resolve_auto_engaged_budget(settings, batch_size=50)
     assert result is not settings  # new object
     # Original untouched (frozen dataclass — defensive double-check).
-    assert settings.api_budget_per_source == {}
-    assert result.api_budget_per_source == {"comicvine": APIBudget.FAST}
+    assert settings.tuning.per_source == {}
+    assert _cv_effort(result) == Effort.MINIMAL

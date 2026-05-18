@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.config.settings import resolve_api_budget
+from comicbox.config.settings import resolve_effort
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -53,18 +53,21 @@ class ComicVineOnlineSource(OnlineSource):
     @override
     def is_configured(self) -> bool:
         """ComicVine requires an api_key."""
-        return bool(self._credentials.api_key)
+        return bool(self._credentials.key)
 
     def _get_cache(self) -> Any:
-        if not self._settings.cache_enabled:
+        from comicbox.config.settings import CacheMode
+
+        cache_mode = self._settings.cache.mode
+        if cache_mode is CacheMode.OFF:
             return None
         from simyan.cache.sqlite_cache import SQLiteCache
 
         cache_path = self.cache_db_path()
-        if self._settings.refresh_cache and cache_path.exists():
+        if cache_mode is CacheMode.REFRESH and cache_path.exists():
             cache_path.unlink()
             logger.debug(f"refresh-cache: removed {cache_path}")
-        ttl = self._settings.cache_ttl
+        ttl = self._settings.cache.ttl
         expiry = ttl if ttl.total_seconds() > 0 else None
         return SQLiteCache(path=cache_path, expiry=expiry)
 
@@ -72,13 +75,15 @@ class ComicVineOnlineSource(OnlineSource):
         from simyan.comicvine import Comicvine
 
         kwargs: dict[str, Any] = {
-            "api_key": self._credentials.api_key,
+            "api_key": self._credentials.key,
             "cache": self._get_cache(),
             "user_agent": f"{PACKAGE_NAME}/{VERSION}",
         }
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
-        limiter = build_comicvine_limiter(self._settings.source_limits.get(self.name))
+        from comicbox.config.settings import resolve_rate_limit
+
+        limiter = build_comicvine_limiter(resolve_rate_limit(self._settings, self.name))
         if limiter is not None:
             kwargs["limiter"] = limiter
         return Comicvine(**kwargs)
@@ -428,7 +433,7 @@ class ComicVineOnlineSource(OnlineSource):
         # Fast path: --series-id comicvine:<id> skips the volume search and
         # goes straight to a single list_issues call constrained by that
         # volume id, saving the discovery API call.
-        explicit_sid = self._settings.explicit_series_ids.get(self.name)
+        explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
             try:
                 return self._list_with_year_retry(
@@ -455,7 +460,7 @@ class ComicVineOnlineSource(OnlineSource):
         # drops obvious mismatches but the long tail of weakly-matching
         # volumes adds up across thousands of comics.
         max_volumes = max_results_for(
-            resolve_api_budget(self._settings, self.name),
+            resolve_effort(self._settings, self.name),
             default=self._MAX_VOLUMES_PER_SEARCH,
         )
         volumes = self._discover_volumes(session, profile, max_volumes)
@@ -477,7 +482,7 @@ class ComicVineOnlineSource(OnlineSource):
         # `balanced` default this resolves to 0.0 (filter is a no-op), so
         # Phase A behaviour is identical to today's. Phase B calibration
         # picks the real values for `fast` (currently 0.7 placeholder).
-        name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
+        name_threshold = threshold_for(resolve_effort(self._settings, self.name))
 
         candidates: list[Candidate] = []
         for vol in volumes:

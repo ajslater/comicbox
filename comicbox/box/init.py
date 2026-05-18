@@ -1,9 +1,9 @@
 """Initialization mixin."""
 
+from __future__ import annotations
+
 import stat
 import sys
-from argparse import Namespace
-from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,15 +17,14 @@ from rarfile import RarFile, is_rarfile
 from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
-from comicbox.config import get_config
 from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.formats import MetadataFormats
-from comicbox.formats.sources import MetadataSources
 from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
+    from argparse import Namespace
+    from collections.abc import Callable, Mapping
     from datetime import datetime
 
     from pdffile import PDFFile
@@ -33,6 +32,8 @@ if TYPE_CHECKING:
 
     from comicbox.box.archive.archiveinfo import InfoType
     from comicbox.box.types import ArchiveType
+    from comicbox.formats import MetadataFormats
+    from comicbox.formats.sources import MetadataSources
 else:
     from comicbox._pdf import PDFFile
 
@@ -95,8 +96,13 @@ class ComicboxInit:
         if isinstance(config, ComicboxSettings):
             self._config: ComicboxSettings = config
         else:
+            # Lazy import: comicbox.config imports comicbox.formats which
+            # transitively imports this module — keep the top-level import
+            # graph acyclic.
+            from comicbox.config import get_config
+
             self._config = get_config(config, path=self._path, box=True)
-        init_logging(self._config.loglevel, logger)
+        init_logging(self._config.general.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:
@@ -121,6 +127,8 @@ class ComicboxInit:
         self._page_filenames: tuple[str, ...] | None = None
         self._cover_paths: tuple[str, ...] | None = None
         self._page_count: int | None = None
+
+        from comicbox.formats.sources import MetadataSources
 
         self._sources: dict[
             MetadataSources, list[SourceData] | tuple[SourceData, ...]

@@ -21,12 +21,12 @@ from typing import TYPE_CHECKING, Final
 from loguru import logger
 
 from comicbox.config.settings import (
-    Policy,
-    resolve_confidence_threshold,
+    MatchMode,
+    resolve_auto_threshold,
     resolve_disambiguation_margin,
+    resolve_match,
     resolve_min_confidence,
-    resolve_policy,
-    resolve_solo_confidence_threshold,
+    resolve_solo_threshold,
 )
 from comicbox.formats.base.online.cover_hash import cover_score as _cover_score
 from comicbox.formats.base.online.signals import (
@@ -190,7 +190,7 @@ def final_score(candidate: Candidate, *, hash_used: bool) -> float:
 
 
 def _policy_auto_writes(
-    policy: Policy,
+    policy: MatchMode,
     *,
     top_score: float,
     gap: float,
@@ -219,13 +219,13 @@ def _policy_auto_writes(
     # by lowering the per-source override.
     solo_viable_confident = solo_viable and top_score >= solo_confidence_threshold
     match policy:
-        case Policy.ALWAYS_PROMPT:
+        case MatchMode.ASK:
             return False
-        case Policy.STRICT:
+        case MatchMode.CAREFUL:
             return unambig
-        case Policy.NORMAL:
+        case MatchMode.AUTO:
             return unambig or solo_viable_confident
-        case Policy.EAGER:
+        case MatchMode.EAGER:
             return top_score >= confidence_threshold or solo_viable_confident
 
 
@@ -241,11 +241,11 @@ def _resolve_policy(
     `min_confidence`, and `disambiguation_margin` are resolved here so the
     same matcher can serve multiple sources with different settings.
     """
-    policy = resolve_policy(settings, source_name)
-    threshold = resolve_confidence_threshold(settings, source_name)
+    policy = resolve_match(settings, source_name)
+    threshold = resolve_auto_threshold(settings, source_name)
     min_confidence = resolve_min_confidence(settings, source_name)
     margin = resolve_disambiguation_margin(settings, source_name)
-    solo_threshold = resolve_solo_confidence_threshold(settings, source_name)
+    solo_threshold = resolve_solo_threshold(settings, source_name)
 
     if not ranked or ranked[0].score < min_confidence:
         if ranked:
@@ -273,7 +273,9 @@ def _resolve_policy(
         return Resolution(ResolutionKind.AUTO_WRITE, top, tuple(ranked))
 
     # Couldn't auto-write under this policy — defer to interactive/unattended.
-    if settings.unattended:
+    from comicbox.config.settings import Prompts
+
+    if settings.lookup.prompts is Prompts.NEVER:
         return Resolution(ResolutionKind.SKIP, None, tuple(ranked))
     return Resolution(ResolutionKind.PROMPT, None, tuple(ranked))
 

@@ -25,15 +25,23 @@ def _make_paths(tmp_path: Path, count: int) -> list[str]:
 def test_jobs_default_is_one(tmp_path: Path) -> None:
     """Default config keeps the single-threaded path."""
     paths = _make_paths(tmp_path, 1)
-    runner = Runner(Namespace(comicbox=Namespace(paths=paths, print_metadata=True)))
-    assert runner._config.jobs == 1
+    runner = Runner(
+        Namespace(comicbox=Namespace(paths=paths, print=Namespace(phases="p")))
+    )
+    assert runner._config.general.jobs == 1
 
 
 def test_jobs_setting_threadpool_invocation(tmp_path: Path) -> None:
     """Jobs > 1 routes the run through ThreadPoolExecutor."""
     paths = _make_paths(tmp_path, 4)
     runner = Runner(
-        Namespace(comicbox=Namespace(paths=paths, jobs=2, print_metadata=True))
+        Namespace(
+            comicbox=Namespace(
+                paths=paths,
+                general=Namespace(jobs=2),
+                print=Namespace(phases="p"),
+            )
+        )
     )
 
     called_paths: list[Path] = []
@@ -51,7 +59,9 @@ def test_jobs_setting_threadpool_invocation(tmp_path: Path) -> None:
 def test_single_job_takes_serial_path(tmp_path: Path) -> None:
     """jobs=1 uses run_on_file (preserves original control flow incl. recurse)."""
     paths = _make_paths(tmp_path, 2)
-    runner = Runner(Namespace(comicbox=Namespace(paths=paths, jobs=1)))
+    runner = Runner(
+        Namespace(comicbox=Namespace(paths=paths, general=Namespace(jobs=1)))
+    )
     seen: list[str] = []
 
     def fake_run_on_file(self, path):
@@ -65,8 +75,8 @@ def test_single_job_takes_serial_path(tmp_path: Path) -> None:
 
 def test_jobs_clamped_to_minimum_one() -> None:
     """jobs=0 or negative collapses to serial."""
-    cfg = Runner(Namespace(comicbox=Namespace(jobs=0)))._config
-    assert cfg.jobs == 1
+    cfg = Runner(Namespace(comicbox=Namespace(general=Namespace(jobs=0))))._config
+    assert cfg.general.jobs == 1
 
 
 # ---------------------------------------------- prompt-lock concurrency

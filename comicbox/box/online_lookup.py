@@ -6,7 +6,7 @@ For M2 the only path implemented is ``--id <db>:<id>`` — exact-issue
 fetch. Search and ranking land in M3.
 
 The mixin runs once per box instance, gated on
-``settings.online.enabled``. For each active source (one whose
+``settings.online.lookup.enabled``. For each active source (one whose
 required credentials resolve and whose name is in
 ``selected_sources`` if that filter is set), it:
 
@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from dataclasses import replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -31,6 +32,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
+from comicbox.config.settings import MatchMode, Prompts
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.matcher import (
@@ -53,7 +55,7 @@ from comicbox.formats.sources import MetadataSources
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
     from comicbox.formats.base.online.profile import Candidate
-    from comicbox.formats.base.online.selector import SelectorCallback
+    from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
     from comicbox.formats.comicvine_api.online_source import CoverHashUrlCache
 
@@ -258,14 +260,14 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         — in that case we don't know the user wanted this specific source.
         """
         online = self._config.online
-        explicit_id = online.explicit_ids.get(name)
+        explicit_id = online.lookup.ids.get(name)
         if explicit_id is not None:
             logger.warning(
                 f"online: --id {name}:{explicit_id} requested but {name} is "
                 f"not configured (missing credentials); skipping"
             )
             return
-        explicit_sid = online.explicit_series_ids.get(name)
+        explicit_sid = online.lookup.series_ids.get(name)
         if explicit_sid is not None:
             logger.warning(
                 f"online: --series-id {name}:{explicit_sid} requested but "
@@ -274,7 +276,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         # Was the source named explicitly via `--online <list>`? selected
         # is None for the `all` sentinel; only warn for explicit lists.
-        if online.selected_sources is not None and name in online.selected_sources:
+        if online.lookup.sources is not None and name in online.lookup.sources:
             logger.warning(
                 f"online: --online {name} requested but {name} is not "
                 f"configured (missing credentials); skipping"
@@ -283,12 +285,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _build_active_online_sources(self) -> list[OnlineSource]:
         """Resolve which configured online sources participate in this run."""
         online: OnlineSettings = self._config.online
-        selected = online.selected_sources
+        selected = online.lookup.sources
         active: list[OnlineSource] = []
         for name, factory in self._ONLINE_SOURCE_FACTORIES.items():
             if selected is not None and name not in selected:
                 continue
-            creds = online.sources.get(name)
+            creds = online.auth.sources.get(name)
             if creds is None:
                 self._warn_unconfigured_source(name)
                 continue
@@ -405,7 +407,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
         cache = self._cover_hash_url_cache
         if cache is None:
-            cache_dir = self._config.online.cache_dir
+            cache_dir = self._config.online.cache.dir
             if cache_dir is None:
                 from platformdirs import user_cache_path
 
@@ -414,7 +416,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             cache = CoverHashUrlCache(cache_dir / "cover_hashes.sqlite")
             self._cover_hash_url_cache = cache
 
-        if not self._config.online.cache_enabled:
+        from comicbox.config.settings import CacheMode
+
+        if self._config.online.cache.mode is CacheMode.OFF:
             cache = None
         if cache is not None and (cached := cache.get(url)):
             return cached
@@ -462,13 +466,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         self, source_name: str, candidates: list[Candidate]
     ) -> Resolution:
         from comicbox.config.settings import (
-            resolve_confidence_threshold,
+            resolve_auto_threshold,
             resolve_disambiguation_margin,
             resolve_min_confidence,
         )
 
         online = self._config.online
-        threshold = resolve_confidence_threshold(online, source_name)
+        threshold = resolve_auto_threshold(online, source_name)
         min_conf = resolve_min_confidence(online, source_name)
         margin = resolve_disambiguation_margin(online, source_name)
         matcher = OnlineMatcher()
@@ -486,6 +490,21 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _selector_for_run(self) -> SelectorCallback:
         return self._online_selector or cli_selector
 
+    def _apply_session_lookup_override(self, **changes: Any) -> None:
+        """
+        Mutate the shared ``OnlineLookupSettings`` in place for session changes.
+
+        Used for ``set_unattended`` / ``set_policy`` from the prompt path.
+        The dataclasses are frozen, but the box's config is shared by
+        reference across all Comicbox instances spawned from the same
+        Runner. Replacing the nested slot via ``object.__setattr__``
+        propagates the change to every in-flight worker thread without
+        breaking the dataclass invariants for other callers.
+        """
+        new_lookup = replace(self._config.online.lookup, **changes)
+        new_online = replace(self._config.online, lookup=new_lookup)
+        object.__setattr__(self._config, "online", new_online)
+
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
     ) -> None:
@@ -494,8 +513,29 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
         Acquires the class-level `_PROMPT_LOCK` around the selector call
         so concurrent worker threads (when `-j N > 1`) don't garble each
-        other's prompts.
+        other's prompts. Re-resolves and re-prompts when the selector
+        requests a session-level setting change (`set_unattended` /
+        `set_policy`) so the new setting takes effect on the current
+        candidate set immediately.
         """
+        current = candidates
+        while True:
+            result = self._invoke_selector(source, current)
+            action, payload = result
+            if action in {"set_unattended", "set_policy"}:
+                if not self._apply_session_action(source, action, payload):
+                    return
+                resolution = self._resolve_existing(source.name, list(current))
+                if self._dispatch_resolution(source, resolution):
+                    return
+                current = resolution.candidates
+                continue
+            self._dispatch_terminal_prompt_action(source, current, action, payload)
+            return
+
+    def _invoke_selector(
+        self, source: OnlineSource, candidates: tuple[Candidate, ...]
+    ) -> SelectorResult:
         selector = self._selector_for_run()
         ctx = SelectorContext(
             file_path=getattr(self, "_path", None),
@@ -504,8 +544,86 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             triggered_hashing=any(c.cover_score is not None for c in candidates),
         )
         with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
-            result = selector(self._build_profile(), candidates, ctx)
-        action, payload = result
+            return selector(self._build_profile(), candidates, ctx)
+
+    def _apply_session_action(
+        self, source: OnlineSource, action: str, payload: int | str | None
+    ) -> bool:
+        """
+        Apply a `set_unattended` / `set_policy` action to the session.
+
+        Returns True on success, False if the payload was malformed (in
+        which case the prompt has been recorded as declined and the
+        caller should bail out).
+        """
+        if action == "set_unattended":
+            self._apply_session_lookup_override(prompts=Prompts.NEVER)
+            logger.info(f"online {source.name}: session set to unattended via prompt")
+            return True
+        if not isinstance(payload, str):
+            logger.warning(
+                f"online {source.name}: set_policy requires a policy name; "
+                f"got {payload!r}"
+            )
+            outcome_stats.record_prompt_declined(source.name)
+            return False
+        try:
+            new_match = MatchMode(payload)
+        except ValueError:
+            logger.warning(
+                f"online {source.name}: unknown match mode {payload!r}; "
+                "expected one of ask | careful | auto | eager"
+            )
+            outcome_stats.record_prompt_declined(source.name)
+            return False
+        self._apply_session_lookup_override(match=new_match)
+        logger.info(
+            f"online {source.name}: session match mode set to {new_match.value} via prompt"
+        )
+        return True
+
+    def _resolve_existing(
+        self, source_name: str, ranked: list[Candidate]
+    ) -> Resolution:
+        """Re-apply policy to an already-ranked candidate list."""
+        return OnlineMatcher().resolve(ranked, self._config.online, source_name)
+
+    def _dispatch_resolution(
+        self, source: OnlineSource, resolution: Resolution
+    ) -> bool:
+        """
+        Handle a fresh resolution after a session change.
+
+        Returns True when the resolution was terminal (auto-write, skip,
+        no-match) and the prompt loop should exit. Returns False when the
+        resolution is still PROMPT and the caller should loop.
+        """
+        if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
+            logger.info(
+                f"online {source.name}: auto-writing "
+                f"id={resolution.chosen.issue_id} "
+                f"(score={resolution.chosen.score:.2f}) after session change"
+            )
+            outcome_stats.record_auto_write(source.name)
+            self._accept_candidate(source, resolution.chosen)
+            return True
+        if resolution.kind is ResolutionKind.SKIP:
+            logger.info(f"online {source.name}: skipped after session change")
+            outcome_stats.record_skip(source.name)
+            return True
+        if resolution.kind is ResolutionKind.NO_MATCH:
+            logger.info(f"online {source.name}: no match after session change")
+            outcome_stats.record_no_match(source.name)
+            return True
+        return False
+
+    def _dispatch_terminal_prompt_action(
+        self,
+        source: OnlineSource,
+        candidates: tuple[Candidate, ...],
+        action: str,
+        payload: int | str | None,
+    ) -> None:
         if action == "choose" and isinstance(payload, int):
             chosen = candidates[payload]
             logger.info(f"online {source.name}: prompt-chose id={chosen.issue_id}")
@@ -597,26 +715,19 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """
         online = self._config.online
         # Explicit --id is the strongest user signal. It overrides
-        # --force-search and --ignore-existing.
-        explicit_ids = online.explicit_ids
+        # --rematch and the stored-id fast path.
+        explicit_ids = online.lookup.ids
         issue_id = explicit_ids.get(source.name)
         if issue_id is not None:
             outcome_stats.record_explicit_id(source.name)
             self._fetch_explicit_id(source, issue_id)
             return True
 
-        if online.ignore_existing and self._has_existing_identifier(source.name):
-            logger.info(
-                f"online {source.name}: --ignore-existing skipping "
-                f"(already has {source.name} id)"
-            )
-            return True
-
         # Fast refresh: a stored upstream id from a prior tag lets us
         # call source.get(id) instead of walking the full search path.
-        # Suppressed by --force-search for users who want to re-evaluate
-        # a stale/wrong id.
-        if not online.force_search:
+        # ``--rematch`` suppresses the fast path so users can re-evaluate
+        # a stale/wrong stored id.
+        if not online.lookup.rematch:
             stored_id = self._stored_identifier(source.name)
             if stored_id is not None:
                 logger.info(
@@ -671,19 +782,19 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         self._mark_online_lookup_done()
         online = self._config.online
-        if not online.enabled:
+        if not online.lookup.enabled:
             return
-        if not online.unattended:
+        if online.lookup.prompts is not Prompts.NEVER:
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
         won_any = False
         for source in self._build_active_online_sources():
             # Explicit per-source flags always run — first-wins must not
             # silently drop a source the user named on the CLI.
             has_explicit = (
-                source.name in online.explicit_ids
-                or source.name in online.explicit_series_ids
+                source.name in online.lookup.ids
+                or source.name in online.lookup.series_ids
             )
-            if won_any and not online.tag_all_sources and not has_explicit:
+            if won_any and not online.lookup.all_sources and not has_explicit:
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "
                     f"use --tag-all-sources to query every source)"

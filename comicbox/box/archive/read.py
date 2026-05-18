@@ -79,7 +79,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         return self._7zfactory
 
     def _get_pdf_format(self, pdf_format: str = "", default: str = "") -> str:
-        return pdf_format or (self._config.pdf_page_format or default)
+        return pdf_format or (self._config.convert.pdf_pages or default)
 
     def _archive_readfile(
         self, filename: str, pdf_format: str = "", props: dict | None = None

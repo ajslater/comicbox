@@ -33,8 +33,8 @@ class ComicboxMerge(ComicboxOnlineLookup):
         # Order the md list by source precedence (config-overridable;
         # falls back to the MetadataSources enum order when unset).
         merged_md = {ComicboxSchemaMixin.ROOT_TAG: {}}
-        merger = UpdateMerger if self._config.replace_metadata else AdditiveMerger
-        sources = self._config.merge_order or MetadataSources
+        merger = UpdateMerger if self._config.write.replace else AdditiveMerger
+        sources = self._config.read.merge_order or MetadataSources
         for source in sources:
             self._merge_metadata_by_source(source, merged_md, merger)
         self._merged_metadata = MappingProxyType(merged_md)

@@ -1,7 +1,7 @@
-# Phase 6 — API Budget Spec
+# Effort — Spec
 
 How comicbox decides how stingy to be with online API calls per comic.
-Orthogonal to (and composes with) the Match Resolution Policy in
+Orthogonal to (and composes with) the Match Resolution in
 [04-match-resolution-spec.md](04-match-resolution-spec.md).
 
 > **Status (2026-05-12):** Phases A–E shipped. The original spec called for
@@ -32,7 +32,7 @@ minutes and then waits a day before resuming, for **~100 days of total wall
 time**. CV at the same library size: years. Both sources need this lever at
 sufficient scale; the boundaries are different but the shape is the same.
 
-The Match Resolution Policy (`strict`/`normal`/`eager`/`always-prompt`) controls
+The Match Resolution (`careful`/`auto`/`eager`/`ask`) controls
 how _the matcher's verdict gets applied_ — but it has zero effect on how many
 API calls were spent producing the candidate set in the first place. That's the
 gap this spec fills.
@@ -43,12 +43,12 @@ This was the design correction that prompted this spec. Conflating
 unattended-vs-attended with fast-vs-exhaustive was wrong — they're independent
 axes with four legitimate quadrants:
 
-|                | **Attended (prompts allowed)**                                                                                               | **Unattended (`--unattended`)**                                                                                                                    |
+|                | **Attended (prompts allowed)**                                                                                               | **Unattended (`--prompts never`)**                                                                                                                    |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Exhaustive** | Tagging a single comic interactively; user accepts prompts; wants the most accurate result available regardless of API cost. | Overnight cron on a small library where accuracy matters more than wall time. User wants 200 high-confidence tags, not 2000 "probably right" ones. |
 | **Fast**       | Power user crunching a few hundred comics interactively, will prompt for ambiguity but wants throughput; OK losing a few.    | The headline use case: thousands of comics, unattended job, willing to skip ambiguous cases to stay under the hourly cap.                          |
 
-Picking `unattended` as a proxy for `fast` (or vice versa) breaks the
+Picking `unattended` as a proxy for `minimal` (or vice versa) breaks the
 "unattended + exhaustive" and "attended + fast" cells. They're real cases.
 
 ## Settings model
@@ -69,23 +69,23 @@ class OnlineSettings:
 
 Per-source override matters because **Metron's 20/min × 60 min = 1,200/hr is 6×
 more forgiving than CV's 200/hr**. The same library run might rationally want
-`fast` for CV and `exhaustive` for Metron.
+`minimal` for CV and `thorough` for Metron.
 
-CLI surface mirrors the existing `--policy` / `--policy-per-source` patterns:
+CLI surface mirrors the existing `--match` / `--policy-per-source` patterns:
 
 ```sh
-comicbox --online --api-budget fast *.cbz
+comicbox --online --effort fast *.cbz
 comicbox --online --api-budget-per-source comicvine:fast,metron:exhaustive *.cbz
 ```
 
-Composes with `--unattended`. The two flags address different concerns:
+Composes with `--prompts never`. The two flags address different concerns:
 
 ```sh
 # Single comic, careful work, no human present (overnight script).
-comicbox --online --unattended --api-budget exhaustive rare.cbz
+comicbox --online --unattended --effort exhaustive rare.cbz
 
 # Big batch, human at keyboard, OK to skip prompts when score is borderline.
-comicbox --online --api-budget fast Library/**/*.cbz
+comicbox --online --effort fast Library/**/*.cbz
 ```
 
 ## What each budget controls
@@ -116,13 +116,13 @@ call per non-matching volume. Filtering at search time using `rapidfuzz` against
 | Cover hashing on ambiguous match | yes        | yes      | optional (config: `fast.skip_cover_hash`) |
 | `min_confidence` default         | 0.50       | 0.50     | 0.60                                      |
 
-`fast` raises the bar so borderline matches get classified as NO_MATCH
+`minimal` raises the bar so borderline matches get classified as NO_MATCH
 (unattended) or PROMPT (attended) rather than auto-write. This is a fail-closed
-orientation: in `fast`, "we're not sure" should become "skip and move on" rather
+orientation: in `minimal`, "we're not sure" should become "skip and move on" rather
 than risk writing wrong tags into hundreds of files.
 
-Cover hashing in `fast` is _configurable_ rather than hard-off. Cover downloads
-from CV count against the rate-limit budget. In `fast` mode the user can opt out
+Cover hashing in `minimal` is _configurable_ rather than hard-off. Cover downloads
+from CV count against the rate-limit budget. In `minimal` mode the user can opt out
 via `fast.skip_cover_hash: true` if they want to push throughput further;
 default stays "hash when ambiguous" because the cost is amortized via the
 URL→pHash SQLite cache after first hit.
@@ -131,7 +131,7 @@ URL→pHash SQLite cache after first hit.
 
 `get_issue(id)` after an AUTO_WRITE always runs — it's the only way to get full
 issue metadata. Same in all modes. `get_volume(volume_id)` for the
-publisher-injection trick on CV gets skipped in `fast` (the matcher already has
+publisher-injection trick on CV gets skipped in `minimal` (the matcher already has
 the series name from the candidate; the publisher we'd be missing is recoverable
 from local metadata or future runs).
 
@@ -139,7 +139,7 @@ from local metadata or future runs).
 
 - The matcher's signal weights (`W_SERIES`, `W_ISSUE`, etc.) — those are the
   _quality_ of the ranking, not the _quantity_ of API calls.
-- The Match Resolution Policy (`strict`/`normal`/`eager`/`always-prompt`) —
+- The Match Resolution (`careful`/`auto`/`eager`/`ask`) —
   that's how a verdict gets applied, orthogonal to budget.
 - Cache and rate-limit infrastructure — both modes use the same SQLite buckets
   and response caches.
@@ -154,12 +154,12 @@ Auto-detection should be **conservative and verbose**, not silent and clever.
 Triggers fire per-source — Metron's looser cap means its auto-engagement
 threshold is much higher than ComicVine's, but **both sources auto-engage at
 some library size**. At the extreme — a 500,000-comic collection — even Metron's
-5,000/day daily cap means a full sweep takes 100 days under `balanced`; `fast`
+5,000/day daily cap means a full sweep takes 100 days under `balanced`; `minimal`
 matters everywhere if you're tagging enough.
 
 Triggers, both logged loudly when they fire:
 
-1. **`--unattended` + batch size ≥ per-source threshold**: auto-suggest `fast`
+1. **`--prompts never` + batch size ≥ per-source threshold**: auto-suggest `minimal`
    for that source. Thresholds are per-source because the caps are per-source:
     - ComicVine: 200/hr → threshold ~50 comics (≈ 2.5 hours of waiting under
       `balanced`).
@@ -170,7 +170,7 @@ Triggers, both logged loudly when they fire:
     breakpoints. Logs:
 
     ```
-    online: auto-enabling api_budget=fast for comicvine (batch=343 >= 50,
+    online: auto-enabling effort=fast for comicvine (batch=343 >= 50,
     unattended). Override with --api-budget-per-source comicvine:balanced.
     ```
 
@@ -178,7 +178,7 @@ Triggers, both logged loudly when they fire:
    attended numbers). Cron-shaped invocations get the suggestion at a higher
    threshold so manual `xargs` pipelines don't surprise the user.
 
-In both cases the user can override explicitly with `--api-budget` (which takes
+In both cases the user can override explicitly with `--effort` (which takes
 precedence over auto-detection). Auto-detection is a hint, not a policy.
 
 ## Rollout phases
@@ -215,7 +215,7 @@ at end of Phase A; the new code is dormant on the default `balanced` budget.
 
 6. **`online/matcher.py`**: `OnlineMatcher.resolve(...)` reads
    `resolve_confidence_threshold(settings, source_name)` already; per-source
-   override pattern flexes here naturally — `fast` just sets a higher default.
+   override pattern flexes here naturally — `minimal` just sets a higher default.
    No code change required, only config wiring.
 
 7. **`box/online_lookup.py`**: stub out orchestrator-level auto-detection. Wire
@@ -223,7 +223,7 @@ at end of Phase A; the new code is dormant on the default `balanced` budget.
    `None` until Phase B confirms them. No auto-engagement actually fires from
    this PR.
 
-8. **Calibration harness**: add `--api-budget` pass-through so we can measure
+8. **Calibration harness**: add `--effort` pass-through so we can measure
    each setting empirically. Also add `--label` so we can name runs and compare
    across them (`fixtures.outcomes.fast-threshold-0.5.json`, etc.). Outcomes
    files merge cleanly via the existing `--retry-misses` plumbing.
@@ -242,15 +242,15 @@ The experiment matrix:
 | Run | Budget       | Pre-filter threshold | `_MAX_VOLUMES_PER_SEARCH` | `_TOP_K_FOR_HASHING` | Purpose                    |
 | --- | ------------ | -------------------- | ------------------------- | -------------------- | -------------------------- |
 | B0  | `balanced`   | n/a (off)            | 20                        | 5                    | Current-behavior baseline. |
-| B1  | `exhaustive` | off                  | 20                        | 5                    | Accuracy ceiling.          |
-| B2  | `fast`       | 0.4                  | 5                         | 5                    | Conservative fast.         |
-| B3  | `fast`       | 0.5                  | 5                         | 5                    | Tighter pre-filter.        |
-| B4  | `fast`       | 0.6                  | 5                         | 5                    | Tighter still.             |
-| B5  | `fast`       | 0.7                  | 5                         | 5                    | Aggressive pre-filter.     |
-| B6  | `fast`       | _winner from B2-B5_  | 3                         | 5                    | Lower max-per-search.      |
-| B7  | `fast`       | _winner_             | 10                        | 5                    | Higher max-per-search.     |
-| B8  | `fast`       | _winner_             | _winner_                  | 2                    | Lower top-K hashing.       |
-| B9  | `fast`       | _winner_             | _winner_                  | 3                    | Mid top-K hashing.         |
+| B1  | `thorough` | off                  | 20                        | 5                    | Accuracy ceiling.          |
+| B2  | `minimal`       | 0.4                  | 5                         | 5                    | Conservative fast.         |
+| B3  | `minimal`       | 0.5                  | 5                         | 5                    | Tighter pre-filter.        |
+| B4  | `minimal`       | 0.6                  | 5                         | 5                    | Tighter still.             |
+| B5  | `minimal`       | 0.7                  | 5                         | 5                    | Aggressive pre-filter.     |
+| B6  | `minimal`       | _winner from B2-B5_  | 3                         | 5                    | Lower max-per-search.      |
+| B7  | `minimal`       | _winner_             | 10                        | 5                    | Higher max-per-search.     |
+| B8  | `minimal`       | _winner_             | _winner_                  | 2                    | Lower top-K hashing.       |
+| B9  | `minimal`       | _winner_             | _winner_                  | 3                    | Mid top-K hashing.         |
 
 Per-run measurements (all in the outcomes JSON for post-hoc grep):
 
@@ -281,7 +281,7 @@ tables.
 1. **Wire the auto-engagement triggers in `box/online_lookup.py`** using the
    thresholds Phase B confirmed.
 
-2. **CLI flags**: add `--api-budget` and `--api-budget-per-source`. Help text
+2. **CLI flags**: add `--effort` and `--api-budget-per-source`. Help text
    references the user doc.
 
 3. **User doc**: add `tasks/online-tagging/api-budget-user-doc.md` alongside
@@ -293,23 +293,23 @@ tables.
 
 5. **Calibration acceptance check**: re-run B0/B1 against the _shipped_ code
    (not the prototype) to confirm no regression. Sign-off requires:
-    - `fast` mode completes the 343-fixture set in ≤2 hours cold-cache
+    - `minimal` mode completes the 343-fixture set in ≤2 hours cold-cache
       (currently ~17h).
-    - `fast` auto-write band ≥97% correct (vs `balanced`'s post-Watchmen-fix
+    - `minimal` auto-write band ≥97% correct (vs `balanced`'s post-Watchmen-fix
       baseline).
-    - `fast` produces ≤5% more NO_MATCH outcomes than `balanced`.
-    - `exhaustive` matches `balanced` accuracy within 1 percentage point (i.e.,
+    - `minimal` produces ≤5% more NO_MATCH outcomes than `balanced`.
+    - `thorough` matches `balanced` accuracy within 1 percentage point (i.e.,
       the cost of full breadth isn't paying off measurably, OR it is and we know
       which fixtures benefit).
 
 ### Phase D — Per-budget search-breadth cap & chunked-run scaffolding
 
 Added after Phase C in response to the realization that calibration against the
-developer's 17,500-comic slimlib would take 38+ days under `fast`, with no
+developer's 17,500-comic slimlib would take 38+ days under `minimal`, with no
 harness support for chunked execution.
 
 1. **`_MAX_RESULTS_OVERRIDES` table** in `series_filter.py` — per-budget
-   override map. `fast` → 5; other budgets inherit the source's class default
+   override map. `minimal` → 5; other budgets inherit the source's class default
    (20). Both source classes consult via `max_results_for(budget, default=...)`.
 
 2. **`run.py --resume` flag** — skip fixtures already present in the outcomes
@@ -352,7 +352,7 @@ Shipped as commit e7bfdbd.
 ## What's NOT in this spec
 
 - **Adaptive mid-run downgrade.** Tempting design: notice we're rate-limited for
-  the 3rd time in 10 minutes and auto-switch from `exhaustive` to `fast` for the
+  the 3rd time in 10 minutes and auto-switch from `thorough` to `minimal` for the
   rest of the batch. Too much hidden state. Out of scope.
 - **Cost telemetry.** "You spent 187/200 hourly budget on this run" is useful
   but separate. Worth a follow-up spec; not in this one.

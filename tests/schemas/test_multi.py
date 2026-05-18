@@ -22,7 +22,11 @@ from tests.util import TestParser, create_write_dict, create_write_metadata
 
 READ_CONFIG = get_config(Namespace(comicbox=Namespace()))
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "cb")))
+    Namespace(
+        comicbox=Namespace(
+            write=Namespace(formats=("cix", "cbi", "comet", "fn", "cli", "cb"))
+        )
+    )
 )
 READ_METADATA = MappingProxyType(
     {

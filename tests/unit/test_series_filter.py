@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comicbox.config.settings import APIBudget
+from comicbox.config.settings import Effort
 from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,
@@ -14,18 +14,18 @@ from comicbox.formats.base.online.series_filter import (
 
 
 def test_threshold_for_known_budgets() -> None:
-    """Each APIBudget maps to its Phase B-validated threshold."""
-    assert threshold_for(APIBudget.EXHAUSTIVE) == 0.0
-    assert threshold_for(APIBudget.BALANCED) == 0.4
-    assert threshold_for(APIBudget.FAST) == 0.7
+    """Each Effort maps to its Phase B-validated threshold."""
+    assert threshold_for(Effort.THOROUGH) == 0.0
+    assert threshold_for(Effort.BALANCED) == 0.4
+    assert threshold_for(Effort.MINIMAL) == 0.7
 
 
 def test_threshold_for_known_budgets_exhaustive_table() -> None:
-    """Every defined `APIBudget` member has a threshold (no defensive default)."""
+    """Every defined `Effort` member has a threshold (no defensive default)."""
     # Iterating the enum ensures we don't ship a member without a
     # threshold row — the defensive `.get(..., 0.0)` in `threshold_for`
     # is a safety net but the table is meant to be exhaustive.
-    for budget in APIBudget:
+    for budget in Effort:
         threshold = threshold_for(budget)
         assert 0.0 <= threshold <= 1.0, f"{budget}: bad threshold {threshold}"
 
@@ -162,15 +162,15 @@ def test_max_results_for_fast_caps_at_5() -> None:
     """`fast` budget caps discovery-search breadth at 5."""
     from comicbox.formats.base.online.series_filter import max_results_for
 
-    assert max_results_for(APIBudget.FAST, default=20) == 5
+    assert max_results_for(Effort.MINIMAL, default=20) == 5
 
 
 def test_max_results_for_balanced_uses_default() -> None:
     """`balanced` (and `exhaustive`) inherit the source's class default."""
     from comicbox.formats.base.online.series_filter import max_results_for
 
-    assert max_results_for(APIBudget.BALANCED, default=20) == 20
-    assert max_results_for(APIBudget.EXHAUSTIVE, default=20) == 20
+    assert max_results_for(Effort.BALANCED, default=20) == 20
+    assert max_results_for(Effort.THOROUGH, default=20) == 20
 
 
 def test_max_results_for_passes_through_alternative_default() -> None:
@@ -178,6 +178,6 @@ def test_max_results_for_passes_through_alternative_default() -> None:
     from comicbox.formats.base.online.series_filter import max_results_for
 
     # Hypothetical: a future source with default=30.
-    assert max_results_for(APIBudget.BALANCED, default=30) == 30
+    assert max_results_for(Effort.BALANCED, default=30) == 30
     # FAST still caps at 5 regardless of the caller's default.
-    assert max_results_for(APIBudget.FAST, default=30) == 5
+    assert max_results_for(Effort.MINIMAL, default=30) == 5

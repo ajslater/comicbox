@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.config.settings import resolve_api_budget
+from comicbox.config.settings import resolve_effort
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -48,18 +48,21 @@ class MetronOnlineSource(OnlineSource):
     @override
     def is_configured(self) -> bool:
         """Metron requires both username and password."""
-        return bool(self._credentials.username and self._credentials.password)
+        return bool(self._credentials.user and self._credentials.password)
 
     def _get_cache(self) -> Any:
-        if not self._settings.cache_enabled:
+        from comicbox.config.settings import CacheMode
+
+        cache_mode = self._settings.cache.mode
+        if cache_mode is CacheMode.OFF:
             return None
         from mokkari.sqlite_cache import SqliteCache
 
         cache_path = self.cache_db_path()
-        if self._settings.refresh_cache and cache_path.exists():
+        if cache_mode is CacheMode.REFRESH and cache_path.exists():
             cache_path.unlink()
             logger.debug(f"refresh-cache: removed {cache_path}")
-        ttl = self._settings.cache_ttl
+        ttl = self._settings.cache.ttl
         expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
         return SqliteCache(db_name=str(cache_path), expire=expire)
 
@@ -76,12 +79,14 @@ class MetronOnlineSource(OnlineSource):
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}"
             )
-        bucket = build_metron_bucket(self._settings.source_limits.get(self.name))
+        from comicbox.config.settings import resolve_rate_limit
+
+        bucket = build_metron_bucket(resolve_rate_limit(self._settings, self.name))
         if bucket is None:
             # No override: defer to mokkari's default (a process-wide SQLite
             # bucket at the documented 20/min and 5,000/day limits).
             return api(
-                username=self._credentials.username,
+                username=self._credentials.user,  # mokkari keyword
                 passwd=self._credentials.password,
                 cache=self._get_cache(),
                 user_agent=f"{PACKAGE_NAME}/{VERSION}",
@@ -90,7 +95,7 @@ class MetronOnlineSource(OnlineSource):
         # construct the Session directly and pass our custom bucket. The
         # username / password are guaranteed non-None on this path —
         # `is_configured()` is checked before any source is used.
-        username = self._credentials.username or ""
+        username = self._credentials.user or ""
         password = self._credentials.password or ""
         return _MokkariSession(
             username=username,
@@ -236,7 +241,7 @@ class MetronOnlineSource(OnlineSource):
         # name on candidates falls back to whatever `BaseIssue.series.name` we
         # get back; we don't pre-resolve it because that'd cost the call we
         # just saved.
-        explicit_sid = self._settings.explicit_series_ids.get(self.name)
+        explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
             # The user has been explicit about the series id; the soft volume
             # filter would just risk false-zero. Trust the supplied id.
@@ -272,7 +277,7 @@ class MetronOnlineSource(OnlineSource):
         # side; cuts the per-series `issues_list` fan-out further at
         # scale.
         max_series = max_results_for(
-            resolve_api_budget(self._settings, self.name),
+            resolve_effort(self._settings, self.name),
             default=self._MAX_SERIES_PER_SEARCH,
         )
         series_results = list(series_results)[:max_series]
@@ -398,7 +403,7 @@ class MetronOnlineSource(OnlineSource):
         # `balanced` default this resolves to 0.0 (filter is a no-op),
         # so Phase A behaviour is identical to today's. Phase B
         # calibration picks the real values for `fast`.
-        name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
+        name_threshold = threshold_for(resolve_effort(self._settings, self.name))
 
         candidates: list[Candidate] = []
         for series in series_results:

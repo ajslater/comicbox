@@ -5,11 +5,13 @@ Reads and writes metadata via marshmallow schemas.
 Reads and writes archive file data.
 """
 
+from collections.abc import Callable
 from types import MappingProxyType
 
 from loguru import logger
 
 from comicbox.box.print import ComicboxPrint
+from comicbox.config.settings import ComicboxSettings
 
 
 class Comicbox(
@@ -21,21 +23,32 @@ class Comicbox(
     Contains the compressed archive file and its parsed metadata
     """
 
-    _CONFIG_ACTIONS = MappingProxyType(
+    # Each entry: action name → (predicate over settings, bound method to invoke).
+    _CONFIG_ACTIONS: MappingProxyType[
+        str, tuple[Callable[[ComicboxSettings], object], Callable[..., object]]
+    ] = MappingProxyType(
         {
-            "print": ComicboxPrint.print_out,
-            "validate": ComicboxPrint.validate,
-            "export": ComicboxPrint.export_files,
-            "covers": ComicboxPrint.extract_covers,
+            "print": (lambda s: bool(s.print.phases), ComicboxPrint.print_out),
+            "validate": (lambda s: s.print.validate, ComicboxPrint.validate),
+            "export": (
+                lambda s: bool(s.convert.export_formats),
+                ComicboxPrint.export_files,
+            ),
+            "covers": (
+                lambda s: bool(s.convert.extract_covers),
+                ComicboxPrint.extract_covers,
+            ),
         }
     )
 
     def _run_complex_actions(self) -> bool:
         noop = True
-        if (self._config.index_from, self._config.index_to) != (None, None):
+        convert = self._config.convert
+        write = self._config.write
+        if (convert.extract_pages_from, convert.extract_pages_to) != (None, None):
             self.extract_pages_config()
             noop = False
-        if self._config.write or self._config.cbz or self._config.delete_all_tags:
+        if write.formats or convert.cbz or write.delete_all_tags:
             self.dump()
             noop = False
         return noop
@@ -49,12 +62,12 @@ class Comicbox(
         self.run_online_lookup()
 
         noop = True
-        for attr, method in self._CONFIG_ACTIONS.items():
-            if getattr(self._config, attr):
+        for predicate, method in self._CONFIG_ACTIONS.values():
+            if predicate(self._config):
                 method(self)
                 noop = False
         noop &= self._run_complex_actions()
-        if self._config.rename:
+        if self._config.convert.rename:
             self.rename_file()
             noop = False
 

@@ -87,7 +87,7 @@ class OnlineSource(ABC):
         Honours `online.cache_dir` when set; otherwise uses the platformdirs
         user cache path for comicbox. Creates the parent directory.
         """
-        cache_dir = self._settings.cache_dir
+        cache_dir = self._settings.cache.dir
         if cache_dir is None:
             cache_dir = user_cache_path("comicbox") / "online"
         cache_dir = Path(cache_dir).expanduser()

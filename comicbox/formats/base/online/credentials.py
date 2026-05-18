@@ -3,10 +3,10 @@ Credential resolution chain for online sources.
 
 Resolution order, per (source, field):
 
-1. CLI override (`--api-key DB:KEY`, `--api-user DB:USER`,
-   `--api-password DB:PASS`, `--api-url DB:URL`).
-2. Environment variable (`COMICBOX_<SOURCE>_<FIELD>`).
-3. Config file value (loaded by confuse into the `online.<source>.*` block).
+1. CLI override via ``--auth <source>:<field>=<value>``.
+2. Environment variable (``COMICBOX_<SOURCE>_<FIELD>``).
+3. Config file value (loaded by confuse into the
+   ``online.auth.<source>.*`` block).
 4. Keyring lookup (passwords only, optional dependency, never written by
    comicbox).
 
@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 
     from comicbox.formats.base.online.cli_overrides import CliOverrides
 
-_FIELDS = ("api_key", "username", "password", "url")
-_PW = "password"
+_FIELDS = ("user", "pass", "key", "url")
+_PW = "pass"
 
 
 def _try_keyring(source: str, username: str | None) -> str | None:
@@ -100,8 +100,15 @@ def resolve_credentials(
             for field in _FIELDS
         }
 
-        if use_keyring and not values[_PW] and (username := values["username"]):
+        if use_keyring and not values[_PW] and (username := values["user"]):
             values[_PW] = _try_keyring(source, username)
 
-        resolved[source] = OnlineSourceCredentials(**values)
+        # OnlineSourceCredentials uses ``password`` for the keyword name;
+        # the YAML/env field name is ``pass`` to match the user-facing surface.
+        resolved[source] = OnlineSourceCredentials(
+            user=values["user"],
+            password=values["pass"],
+            key=values["key"],
+            url=values["url"],
+        )
     return resolved

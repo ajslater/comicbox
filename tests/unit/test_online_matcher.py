@@ -6,7 +6,14 @@ from typing import Any
 
 import pytest
 
-from comicbox.config.settings import OnlineSettings, Policy
+from comicbox.config.settings import (
+    MatchMode,
+    OnlineLookupSettings,
+    OnlineSettings,
+    OnlineSourceTuning,
+    OnlineTuningSettings,
+    Prompts,
+)
 from comicbox.formats.base.online.matcher import (
     OnlineMatcher,
     ResolutionKind,
@@ -27,6 +34,19 @@ from comicbox.formats.base.online.signals import (
     s_series,
     s_year,
 )
+
+
+# Back-compat alias: legacy tests still spell the resolution policy as
+# ``Policy.ALWAYS_PROMPT / STRICT / NORMAL / EAGER``. Provide a shim that
+# maps each spelling to its v5 ``MatchMode`` so existing test bodies need
+# no changes beyond the import.
+class Policy:
+    """Shim mapping legacy ``Policy.*`` names to v5 ``MatchMode`` members."""
+
+    ALWAYS_PROMPT = MatchMode.ASK
+    STRICT = MatchMode.CAREFUL
+    NORMAL = MatchMode.AUTO
+    EAGER = MatchMode.EAGER
 
 
 def _candidate(
@@ -446,10 +466,50 @@ def test_phase_k_preserves_wrong_issue_penalty() -> None:
 
 
 def _settings(**overrides) -> OnlineSettings:
-    return OnlineSettings(
-        confidence_threshold=overrides.pop("confidence_threshold", 0.85),
-        **overrides,
+    """
+    Build OnlineSettings from legacy-shaped kwargs.
+
+    Accepts v4-era keyword names (``confidence_threshold``, ``policy``,
+    ``unattended``, ``policy_per_source``,
+    ``confidence_threshold_per_source``,
+    ``solo_confidence_threshold_per_source``) and translates them to the
+    v5 nested dataclass tree. Existing test bodies in this file can keep
+    their original phrasing.
+    """
+    confidence_threshold = overrides.pop("confidence_threshold", 0.85)
+    policy = overrides.pop("policy", MatchMode.AUTO)
+    unattended = overrides.pop("unattended", False)
+    policy_per_source = overrides.pop("policy_per_source", None)
+    conf_per_source = overrides.pop("confidence_threshold_per_source", None) or {}
+    solo_per_source = overrides.pop("solo_confidence_threshold_per_source", None) or {}
+    if overrides:
+        reason = f"_settings: unexpected kwargs {sorted(overrides)}"
+        raise TypeError(reason)
+    if policy_per_source:
+        # v5 dropped per-source match-mode overrides. Tests that asserted
+        # them should be skipped / rewritten.
+        reason = "policy_per_source is not supported in v5"
+        raise NotImplementedError(reason)
+
+    per_source: dict[str, OnlineSourceTuning] = {}
+    for source, value in conf_per_source.items():
+        per_source[source] = OnlineSourceTuning(auto_threshold=value)
+    for source, value in solo_per_source.items():
+        existing = per_source.get(source) or OnlineSourceTuning()
+        per_source[source] = OnlineSourceTuning(
+            auto_threshold=existing.auto_threshold,
+            solo_threshold=value,
+        )
+
+    lookup = OnlineLookupSettings(
+        match=policy,
+        prompts=Prompts.NEVER if unattended else Prompts.ASK,
     )
+    tuning = OnlineTuningSettings(
+        auto_threshold=confidence_threshold,
+        per_source=per_source,
+    )
+    return OnlineSettings(lookup=lookup, tuning=tuning)
 
 
 # Default policy is `normal`, default unattended is False.
@@ -564,6 +624,7 @@ def test_always_prompt_never_auto_writes() -> None:
     assert res.kind is ResolutionKind.PROMPT
 
 
+@pytest.mark.skip(reason="v5 removed per-source match-mode overrides")
 def test_per_source_policy_override() -> None:
     """`policy_per_source['comicvine'] = strict` overrides the global policy."""
     matcher = OnlineMatcher()

@@ -16,9 +16,16 @@ from tests.util import TestParser
 PDF_CIX_FN = "test_cix.pdf"
 PDF_FN = "test_pdf.pdf"
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["pdf", "cix"])))
+READ_CONFIG = get_config(
+    Namespace(comicbox=Namespace(read=Namespace(formats=["pdf", "cix"])))
+)
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=["pdf", "cix"], read=["pdf", "cix"]))
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["pdf", "cix"]),
+            write=Namespace(formats=["pdf", "cix"]),
+        )
+    )
 )
 PDF_METADATA = MappingProxyType(
     {

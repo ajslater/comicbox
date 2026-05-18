@@ -10,6 +10,7 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup, OnlineLookupAbortedError
+from comicbox.config.settings import MatchMode, Prompts
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import Candidate, CandidateSummary
 from comicbox.formats.sources import MetadataSources
@@ -41,7 +42,7 @@ class _AmbiguousMetron:
         self.get_calls: list[int] = []
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.username and self._credentials.password)
+        return bool(self._credentials.user and self._credentials.password)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -100,8 +101,8 @@ def _build_cb(profile_metadata: dict | None = None) -> Comicbox:
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
-            metadata=cli_md,
-            online={"metron": {"username": "u", "password": "p"}},
+            general=Namespace(metadata=cli_md),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     return Comicbox(config=args)
@@ -161,6 +162,52 @@ def test_manual_id_for_other_source_skipped(patched_metron) -> None:
     cb.set_online_selector(selector)
     cb.run_online_lookup()
     # Mismatched source — not fetched.
+    assert patched_metron[0].get_calls == []
+
+
+def test_set_unattended_mutates_session_and_skips(patched_metron) -> None:
+    def selector(profile, candidates, ctx):
+        return ("set_unattended", None)
+
+    cb = _build_cb()
+    assert cb._config.online.lookup.prompts is Prompts.ASK
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    # Session was switched; the current prompt collapsed to SKIP, so the
+    # mock source's get() was never called.
+    assert cb._config.online.lookup.prompts is Prompts.NEVER
+    assert patched_metron[0].get_calls == []
+
+
+def test_set_policy_mutates_session_and_reprompts(patched_metron) -> None:
+    calls: list[str] = []
+
+    def selector(profile, candidates, ctx):
+        calls.append("call")
+        if len(calls) == 1:
+            return ("set_policy", "eager")
+        return ("skip", None)
+
+    cb = _build_cb()
+    assert cb._config.online.lookup.match is MatchMode.AUTO
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    assert cb._config.online.lookup.match is MatchMode.EAGER
+    # Either the EAGER re-resolution auto-wrote (candidate fetched) or it
+    # re-prompted and the second call skipped — both are valid outcomes
+    # depending on the mock candidates' final scores.
+    assert len(calls) >= 1
+
+
+def test_set_policy_invalid_payload_declines(patched_metron) -> None:
+    def selector(profile, candidates, ctx):
+        return ("set_policy", "nonsense")
+
+    cb = _build_cb()
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    # Bad payload: match unchanged, no candidate accepted.
+    assert cb._config.online.lookup.match is MatchMode.AUTO
     assert patched_metron[0].get_calls == []
 
 

@@ -35,7 +35,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, Any] | None:
         """Parse scan_info for original format info."""
-        if ORIGINAL_FORMAT_KEY in self._config.delete_keys or not sub_data:
+        if ORIGINAL_FORMAT_KEY in self._config.general.delete_keys or not sub_data:
             return None
         scan_info = sub_data.get(SCAN_INFO_KEY)
         if not scan_info or sub_data.get(ORIGINAL_FORMAT_KEY):
@@ -52,7 +52,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         self, sub_data: dict[str, Any]
     ) -> dict[str, list] | None:
         """Consolidate reprints."""
-        if REPRINTS_KEY in self._config.delete_keys or not sub_data:
+        if REPRINTS_KEY in self._config.general.delete_keys or not sub_data:
             return None
         old_reprints = sub_data.get(REPRINTS_KEY)
         if not old_reprints:
@@ -80,9 +80,9 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         return None
 
     def _get_delete_keys(self, _sub_data: Mapping) -> tuple | None:
-        if not self._config.delete_keys:
+        if not self._config.general.delete_keys:
             return None
-        return tuple(sorted(self._config.delete_keys | self._extra_delete_keys))
+        return tuple(sorted(self._config.general.delete_keys | self._extra_delete_keys))
 
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(

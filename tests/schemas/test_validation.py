@@ -28,8 +28,14 @@ from tests.util import (
 )
 
 EXPORT_FN = "comicinfo-validation.xml"
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cix"], read=["cix"])))
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cix"])))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["cix"]), write=Namespace(formats=["cix"])
+        )
+    )
+)
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["cix"]))))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

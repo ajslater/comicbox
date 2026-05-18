@@ -75,7 +75,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         if (
             not sub_data
             or self._config.is_skip_computed_from_tags
-            or _PARSE_AS_IDENTIFIERS.issubset(self._config.delete_keys)
+            or _PARSE_AS_IDENTIFIERS.issubset(self._config.general.delete_keys)
         ):
             return None
         identifiers = {}

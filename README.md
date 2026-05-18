@@ -187,7 +187,7 @@ match it against the comic at hand, and write the result.
 comicbox --online metron "GI Joe #007 (1952).cbz"
 
 # Bulk run, unattended — never prompts; ambiguous matches are skipped.
-comicbox --online metron,comicvine --unattended ./comics/ --recurse
+comicbox --online metron,comicvine --prompts never ./comics/ --recurse
 
 # Tag by exact id (skips search entirely).
 comicbox --id metron:42 "comic.cbz"
@@ -201,43 +201,56 @@ comicbox --online metron --series-id metron:100 "comic.cbz"
 Each source needs credentials before it can run. Resolution order is **CLI >
 env > config file > keyring**:
 
-| Source    | Required            | Env vars                                               |
-| --------- | ------------------- | ------------------------------------------------------ |
-| metron    | username + password | `COMICBOX_METRON_USERNAME`, `COMICBOX_METRON_PASSWORD` |
-| comicvine | api_key             | `COMICBOX_COMICVINE_API_KEY`                           |
+| Source    | Required        | Env vars                                       |
+| --------- | --------------- | ---------------------------------------------- |
+| metron    | user + pass     | `COMICBOX_METRON_USER`, `COMICBOX_METRON_PASS` |
+| comicvine | key             | `COMICBOX_COMICVINE_KEY`                       |
+
+Or set them on the CLI with the repeatable `--auth <source>:<field>=<value>` flag:
+
+```sh
+comicbox --online metron \
+    --auth metron:user=alice \
+    --auth metron:pass=secret \
+    "comic.cbz"
+# (--auth metron:pass=... warns: passwords leak into shell history.)
+```
 
 Or set them in `~/.config/comicbox/config.yaml`:
 
 ```yaml
 comicbox:
     online:
-        metron:
-            username: alice
-            password: secret
-        comicvine:
-            api_key: xyz123
+        auth:
+            metron:
+                user: alice
+                pass: secret
+            comicvine:
+                key: xyz123
 ```
 
-##### Match-resolution policy
+##### Match-resolution mode
 
 When the match is unambiguous, comicbox writes silently. When it isn't, the
-policy decides whether to prompt, skip, or write anyway.
+match mode decides whether to prompt, skip, or write anyway.
 
 ```sh
-# --policy: how aggressively to auto-write
-#   always-prompt — never auto-write; prompt on every viable candidate
-#   strict        — auto-write only when top is unambiguous (clear winner)
-#   normal        — strict + auto-write a sole plausible match (default)
-#   eager         — auto-write any top above threshold, even with close runner-up
+# --match: how aggressively to auto-write
+#   ask     — never auto-write; prompt on every viable candidate
+#   careful — auto-write only when top is unambiguous (clear winner)
+#   auto    — careful + auto-write a sole plausible match (default)
+#   eager   — auto-write any top above threshold, even with close runner-up
 
-# --unattended: never prompt; turn would-be prompts into skips
-comicbox --online metron --unattended --policy strict ./comics/ # cautious cron
-comicbox --online metron --unattended --policy eager ./comics/  # trust the matcher
+# --prompts never: never prompt; turn would-be prompts into skips
+comicbox --online metron --prompts never --match careful ./comics/  # cautious cron
+comicbox --online metron --prompts never --match eager ./comics/    # trust the matcher
 
-# Per-source overrides (mirrors the --id <db>:<id> pattern):
-comicbox --online all --policy metron:eager --policy comicvine:strict ...
-comicbox --online all --confidence-threshold 0.85 --confidence-threshold metron:0.75 ...
+# The global auto-write threshold:
+comicbox --online all --auto-threshold 0.85 ...
 ```
+
+Per-source overrides for `auto_threshold` and per-source tuning knobs
+live in YAML (under `online.tuning.per_source.<source>.*`).
 
 End-of-run summary distinguishes outcomes:
 
@@ -248,10 +261,6 @@ Online tagging summary (24 comics × sources):
    3 skipped (matcher declined)
    2 no-match (nothing scored above min_confidence)
 ```
-
-The legacy flags `--accept-only` and `--skip-multiple` still work but emit a
-deprecation warning and translate to `--policy normal` and
-`--unattended --policy strict` respectively.
 
 For the full algorithm and worked examples, see
 [tasks/online-tagging/match-resolution-user-doc.md](tasks/online-tagging/match-resolution-user-doc.md).
@@ -288,7 +297,7 @@ from the Stories. If you wish to set the title regardless, use the --replace
 option. e.g.
 
 ```sh
-comicbox -m "series: 'G.I. Robot', title: 'Foreign and Domestic'" -Rp
+comicbox -m "series: 'G.I. Robot', title: 'Foreign and Domestic'" --replace -p
 ```
 
 But be aware it will also create a story with the title's new name.

@@ -16,9 +16,15 @@ from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["comet"])))
+READ_CONFIG = get_config(
+    Namespace(comicbox=Namespace(read=Namespace(formats=["comet"])))
+)
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["comet"]), write=Namespace(formats=["comet"])
+        )
+    )
 )
 
 METADATA = MappingProxyType(

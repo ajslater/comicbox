@@ -44,7 +44,7 @@ def _test_cli_action_extract_util(
 
 def _test_cli_action_extract_cover(path: Path) -> None:
     """Test cli metadata write to file."""
-    _test_cli_action_extract_util(path, ["-o"], [TMP_COVER_PATH])
+    _test_cli_action_extract_util(path, ["--extract-covers"], [TMP_COVER_PATH])
 
 
 def test_cli_action_extract_cover_cbr() -> None:
@@ -65,7 +65,7 @@ def test_cli_action_extract_cover_cbz() -> None:
 def _test_cli_action_extract(
     path: Path, extract: str, test_files: list[str] | tuple[str, ...]
 ) -> None:
-    args = ("-e", extract)
+    args = ("--extract-pages", extract)
     _test_cli_action_extract_util(path, args, test_files)
 
 

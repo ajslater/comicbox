@@ -20,7 +20,7 @@ class ComicboxDumpToFiles(ComicboxDump):
     ) -> None:
         """Export metadatat to a file with a schema."""
         if dest_path is None:
-            dest_path = self._config.dest_path
+            dest_path = self._config.general.dest_path
         dest_path = Path(dest_path)
         fn = fmt.value.filename
         path = dest_path / fn
@@ -36,11 +36,11 @@ class ComicboxDumpToFiles(ComicboxDump):
 
     def export_files(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Export metadata to all supported file formats."""
-        if self._config.dry_run:
+        if self._config.general.dry_run:
             logger.info("Not exporting files.")
             return
         if not formats:
-            formats = self._config.export
+            formats = self._config.convert.export_formats
         if not formats:
             return
 
@@ -59,7 +59,7 @@ class ComicboxDumpToFiles(ComicboxDump):
             logger.warning(f"Unable to construct a filename for {old_path}")
             return
         new_path = self._path.parent / Path(fn)
-        if self._config.dry_run:
+        if self._config.general.dry_run:
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
         self._path.rename(new_path)

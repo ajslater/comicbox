@@ -1,4 +1,4 @@
-"""CLI flag parsing tests for online tagging options and the dry-run rename."""
+"""CLI flag parsing tests for online tagging options (v5)."""
 
 from argparse import Namespace
 
@@ -34,35 +34,35 @@ def test_id_repeatable() -> None:
 
 def test_dry_run_short_flag_is_n() -> None:
     args = _parse("-n")
-    assert args.dry_run is True
+    assert args.general.dry_run is True
 
 
 def test_dry_run_long_flag() -> None:
     args = _parse("--dry-run")
-    assert args.dry_run is True
+    assert args.general.dry_run is True
 
 
-def test_y_alias_still_sets_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
-    """-y is the deprecation-warned alias kept through the 4.x series."""
-    args = _parse("-y")
-    assert args.dry_run is True
-    captured = capsys.readouterr()
-    assert "deprecated" in captured.err.lower()
-
-
-def test_api_password_warns(capsys: pytest.CaptureFixture[str]) -> None:
-    args = _parse("--api-password", "metron:secret")
-    assert args.api_passwords == ["metron:secret"]
+def test_auth_warns_on_pass_field(capsys: pytest.CaptureFixture[str]) -> None:
+    """`--auth metron:pass=secret` warns that passwords leak into shell history."""
+    args = _parse("--auth", "metron:pass=secret")
+    assert args.auth == ["metron:pass=secret"]
     captured = capsys.readouterr()
     assert "shell history" in captured.err
+
+
+def test_auth_no_warning_on_user_field(capsys: pytest.CaptureFixture[str]) -> None:
+    """`--auth metron:user=alice` does not warn."""
+    args = _parse("--auth", "metron:user=alice")
+    assert args.auth == ["metron:user=alice"]
+    captured = capsys.readouterr()
+    assert "shell history" not in captured.err
 
 
 def test_id_with_multiple_paths_errors(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    args = get_args(["comicbox", "--id", "metron:42", "a.cbz", "b.cbz"])
     with pytest.raises(SystemExit) as exc_info:
-        post_process_args(args)
+        get_args(["comicbox", "--id", "metron:42", "a.cbz", "b.cbz"])
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert "--id requires exactly one" in captured.err
@@ -70,48 +70,54 @@ def test_id_with_multiple_paths_errors(
 
 def test_id_with_single_path_ok() -> None:
     args = get_args(["comicbox", "--id", "metron:42", "single.cbz"])
-    post_process_args(args)  # no raise
+    post_process_args(args)  # idempotent — no raise.
 
 
 def test_jobs_flag() -> None:
     args = _parse("-j", "4")
-    assert args.jobs == 4
+    assert args.general.jobs == 4
 
 
-def test_confidence_threshold_flag() -> None:
-    args = _parse("--confidence-threshold", "0.9")
-    # `action=append` parses each occurrence as a string; the config
-    # builder converts to float and supports per-source overrides.
-    assert args.confidence_threshold == ["0.9"]
+def test_auto_threshold_flag() -> None:
+    args = _parse("--auto-threshold", "0.9")
+    assert args.auto_threshold == 0.9
 
 
-def test_confidence_threshold_per_source() -> None:
-    args = _parse(
-        "--confidence-threshold", "metron:0.75", "--confidence-threshold", "0.90"
-    )
-    assert args.confidence_threshold == ["metron:0.75", "0.90"]
+def test_match_flag() -> None:
+    args = _parse("--match", "eager")
+    assert args.match == "eager"
 
 
-def test_policy_flag() -> None:
-    args = _parse("--policy", "eager")
-    assert args.policy == ["eager"]
+def test_match_rejects_unknown_choice() -> None:
+    with pytest.raises(SystemExit):
+        get_args(["comicbox", "--match", "bogus", "test.cbz"])
 
 
-def test_policy_per_source() -> None:
-    args = _parse("--policy", "metron:eager", "--policy", "comicvine:strict")
-    assert args.policy == ["metron:eager", "comicvine:strict"]
+def test_prompts_never_flag() -> None:
+    args = _parse("--prompts", "never")
+    assert args.prompts == "never"
 
 
-def test_unattended_flag() -> None:
-    args = _parse("--unattended")
-    assert args.unattended is True
+def test_cache_off_flag() -> None:
+    args = _parse("--cache", "off")
+    assert args.cache == "off"
 
 
-def test_no_cache_flag() -> None:
-    args = _parse("--no-cache")
-    assert args.no_cache is True
+def test_cache_refresh_flag() -> None:
+    args = _parse("--cache", "refresh")
+    assert args.cache == "refresh"
 
 
-def test_refresh_cache_flag() -> None:
-    args = _parse("--refresh-cache")
-    assert args.refresh_cache is True
+def test_rematch_flag() -> None:
+    args = _parse("--rematch")
+    assert args.rematch is True
+
+
+def test_all_sources_flag() -> None:
+    args = _parse("--all-sources")
+    assert args.all_sources is True
+
+
+def test_effort_flag() -> None:
+    args = _parse("--effort", "thorough")
+    assert args.effort == "thorough"

@@ -773,7 +773,10 @@ def test_import(fn: str) -> None:
     """Test importing metadata files."""
     test_md = MappingProxyType({"comicbox": FNS[fn]})
     import_path = TEST_METADATA_DIR / fn
-    cns = Namespace(import_paths=[import_path], print="ncp")
+    cns = Namespace(
+        convert=Namespace(import_paths=[import_path]),
+        print=Namespace(phases="ncp"),
+    )
     config = Namespace(comicbox=cns)
     with Comicbox(config=config) as car:
         car.print_out()  # debug
@@ -789,7 +792,8 @@ def test_export(fn: str) -> None:
     fmt = guess_format(fn)
     assert fmt
     cns = Namespace(
-        metadata=test_md, dest_path=str(_TMP_DIR), export=list(fmt.value.config_keys)
+        general=Namespace(metadata=test_md, dest_path=str(_TMP_DIR)),
+        convert=Namespace(export_formats=list(fmt.value.config_keys)),
     )
     config = Namespace(comicbox=cns)
     _TMP_DIR.mkdir(exist_ok=True)

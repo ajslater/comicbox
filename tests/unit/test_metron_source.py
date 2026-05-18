@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 from comicbox.config.settings import (
-    APIBudget,
+    Effort,
     OnlineSettings,
     OnlineSourceCredentials,
+    OnlineTuningSettings,
 )
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
@@ -81,23 +82,23 @@ def _make_metron_source(
     monkeypatch: pytest.MonkeyPatch,
     fake: _FakeMokkari,
     *,
-    api_budget: APIBudget = APIBudget.EXHAUSTIVE,
+    effort: Effort = Effort.THOROUGH,
 ) -> MetronOnlineSource:
     """
     Build a Metron source for tests with the pre-filter OFF by default.
 
     Unit tests in this file use synthetic series names that don't share
     tokens with `profile.series` (e.g., 25 series named `S0`..`S24` vs
-    profile.series=`X`). Under the production default `BALANCED` budget
+    profile.series=`X`). Under the production default `BALANCED` effort
     (pre-filter threshold 0.4) those tests would have every candidate
     series dropped by the pre-filter before the code under test ran.
-    Using `EXHAUSTIVE` for the default keeps these tests focused on the
+    Using `THOROUGH` for the default keeps these tests focused on the
     behavior they're verifying (caps, retry, candidate plumbing) without
     tripping on pre-filter side-effects. Tests that exercise the
-    pre-filter explicitly can override `api_budget=`.
+    pre-filter explicitly can override `effort=`.
     """
-    creds = OnlineSourceCredentials(username="u", password="p")
-    settings = OnlineSettings(api_budget=api_budget)
+    creds = OnlineSourceCredentials(user="u", password="p")
+    settings = OnlineSettings(tuning=OnlineTuningSettings(effort=effort))
     src = MetronOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake)
     return src
@@ -296,8 +297,12 @@ def test_search_retries_series_list_on_rate_limit(
 def _make_metron_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari, series_id: int
 ) -> MetronOnlineSource:
-    creds = OnlineSourceCredentials(username="u", password="p")
-    settings = OnlineSettings(explicit_series_ids={"metron": series_id})
+    from comicbox.config.settings import OnlineLookupSettings
+
+    creds = OnlineSourceCredentials(user="u", password="p")
+    settings = OnlineSettings(
+        lookup=OnlineLookupSettings(series_ids={"metron": series_id})
+    )
     src = MetronOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake)
     return src

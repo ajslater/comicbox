@@ -30,7 +30,7 @@ class Runner:
     def __init__(self, config: Namespace) -> None:
         """Initialize actions and config."""
         self._config: ComicboxSettings = get_config(config)
-        init_logging(self._config.loglevel)
+        init_logging(self._config.general.loglevel)
 
     def _iter_recurse(self, path: Path) -> Iterator[Path]:
         for full_path in sorted(path.rglob("*")):
@@ -51,7 +51,7 @@ class Runner:
                 logger.error(f"{path} does not exist.")
                 continue
             if path.is_dir():
-                if self._config.recurse:
+                if self._config.general.recurse:
                     out.extend(self._iter_recurse(path))
                 else:
                     logger.warning(f"Recurse option not set. Ignoring directory {path}")
@@ -75,7 +75,7 @@ class Runner:
             if not path.exists():
                 logger.error(f"{path} does not exist.")
                 return
-            if path.is_dir() and self._config.recurse:
+            if path.is_dir() and self._config.general.recurse:
                 self.recurse(path)
                 return
 
@@ -88,7 +88,7 @@ class Runner:
         if not path.is_dir():
             logger.error(f"{path} is not a directory")
             return
-        if not self._config.recurse:
+        if not self._config.general.recurse:
             logger.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
@@ -140,7 +140,7 @@ class Runner:
 
         See `comicbox.formats.base.online.auto_engage` for the trigger semantics.
         """
-        if not self._config.online.enabled:
+        if not self._config.online.lookup.enabled:
             return
         engaged = resolve_auto_engaged_budget(self._config.online, batch_size)
         if engaged is self._config.online:
@@ -149,7 +149,7 @@ class Runner:
 
     def _run_inner(self) -> None:
         """Dispatch to serial or parallel processing based on `--jobs`."""
-        jobs = max(1, self._config.jobs)
+        jobs = max(1, self._config.general.jobs)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:

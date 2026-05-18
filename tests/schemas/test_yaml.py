@@ -22,8 +22,16 @@ TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_NOTES = TEST_READ_NOTES + " urn:comicvine:issue:145269"
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=("yaml",))))
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["yaml"], read=("yaml",))))
+READ_CONFIG = get_config(
+    Namespace(comicbox=Namespace(read=Namespace(formats=("yaml",))))
+)
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=("yaml",)), write=Namespace(formats=["yaml"])
+        )
+    )
+)
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {

@@ -49,7 +49,7 @@ class _FakeMetronSource:
         self._payload = payload or _SAMPLE_ISSUE
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.username and self._credentials.password)
+        return bool(self._credentials.user and self._credentials.password)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -91,7 +91,7 @@ def test_explicit_id_triggers_get(patched_metron) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            online={"metron": {"username": "u", "password": "p"}},
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -107,7 +107,7 @@ def test_explicit_id_payload_appears_as_metron_api_source(
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            online={"metron": {"username": "u", "password": "p"}},
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -130,7 +130,7 @@ def test_unconfigured_source_skipped(patched_metron) -> None:
             # ~/.config/comicbox/config.yaml or env vars on the developer's
             # machine — otherwise is_configured() returns True and the
             # "skip unconfigured" branch we're testing never fires.
-            online={"metron": {"username": "", "password": ""}},
+            auth=[],  # explicitly unconfigured metron,
         )
     )
     cb = Comicbox(config=args)
@@ -145,7 +145,7 @@ def test_lookup_idempotent(patched_metron) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            online={"metron": {"username": "u", "password": "p"}},
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -158,7 +158,7 @@ def test_filter_excludes_unselected_source(patched_metron) -> None:
     args = Namespace(
         comicbox=Namespace(
             online_sources=["comicvine"],  # filter excludes metron
-            online={"metron": {"username": "u", "password": "p"}},
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -182,7 +182,7 @@ def test_explicit_id_for_unconfigured_source_warns(
             self._credentials = credentials
 
         def is_configured(self) -> bool:
-            return False  # No api_key configured.
+            return False  # No key configured.
 
         def get(self, issue_id: int) -> dict:
             return {}
@@ -300,7 +300,7 @@ def _make_dual_factories(metron_payload: dict, cv_payload: dict) -> dict:
             self._credentials = credentials
 
         def is_configured(self) -> bool:
-            return bool(self._credentials.api_key)
+            return bool(self._credentials.key)
 
         def get(self, issue_id: int) -> dict:
             return dict(cv_payload)
@@ -334,10 +334,7 @@ def test_cross_source_warning_fires_on_cv_id_mismatch(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -370,10 +367,7 @@ def test_cross_source_no_warning_when_cv_ids_match(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -456,7 +450,7 @@ def _dual_factories_for_first_wins(
             cv_instances.append(self)
 
         def is_configured(self) -> bool:
-            return bool(self._credentials.api_key)
+            return bool(self._credentials.key)
 
         def get(self, issue_id: int) -> dict:
             self.get_calls.append(issue_id)
@@ -490,10 +484,7 @@ def test_first_wins_skips_second_source_on_metron_explicit_id(
             # Both sources active; only metron has --id.
             online_sources=["metron", "comicvine"],
             explicit_ids=["metron:42"],
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -517,11 +508,8 @@ def test_tag_all_sources_runs_both(monkeypatch: pytest.MonkeyPatch) -> None:
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            tag_all_sources=True,
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            all_sources=True,
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -546,11 +534,12 @@ def test_first_wins_continues_when_first_no_match(
             # CV has explicit --id, which always runs.
             explicit_ids=["comicvine:1234"],
             online_sources=["metron", "comicvine"],
-            metadata={"comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}},
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            general=Namespace(
+                metadata={
+                    "comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}
+                }
+            ),
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -573,10 +562,7 @@ def test_explicit_id_on_second_source_overrides_first_wins(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -598,10 +584,12 @@ def test_stored_id_triggers_refresh_instead_of_search(
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
-            metadata={
-                "comicbox": {"identifiers": {"metron": {"key": "42"}}},
-            },
-            online={"metron": {"username": "u", "password": "p"}},
+            general=Namespace(
+                metadata={
+                    "comicbox": {"identifiers": {"metron": {"key": "42"}}},
+                }
+            ),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -623,15 +611,17 @@ def test_force_search_overrides_stored_id(
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
-            force_search=True,
-            metadata={
-                "comicbox": {
-                    "identifiers": {"metron": {"key": "42"}},
-                    "series": {"name": "Foo"},
-                    "issue": {"name": "5"},
-                },
-            },
-            online={"metron": {"username": "u", "password": "p"}},
+            rematch=True,
+            general=Namespace(
+                metadata={
+                    "comicbox": {
+                        "identifiers": {"metron": {"key": "42"}},
+                        "series": {"name": "Foo"},
+                        "issue": {"name": "5"},
+                    },
+                }
+            ),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -651,9 +641,11 @@ def test_explicit_id_beats_force_search(monkeypatch: pytest.MonkeyPatch) -> None
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:7"],
-            force_search=True,
-            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
-            online={"metron": {"username": "u", "password": "p"}},
+            rematch=True,
+            general=Namespace(
+                metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
+            ),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -680,12 +672,11 @@ def test_ignore_existing_with_first_wins_short_circuits_second_source(
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron", "comicvine"],
-            ignore_existing=True,
-            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
-            online={
-                "metron": {"username": "u", "password": "p"},
-                "comicvine": {"api_key": "k"},
-            },
+            rematch=True,
+            general=Namespace(
+                metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
+            ),
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -701,8 +692,8 @@ def test_stored_identifier_helper_returns_none_when_unset(
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
-            metadata={"comicbox": {"series": {"name": "Foo"}}},
-            online={"metron": {"username": "u", "password": "p"}},
+            general=Namespace(metadata={"comicbox": {"series": {"name": "Foo"}}}),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)
@@ -715,8 +706,10 @@ def test_stored_identifier_helper_returns_parsed_int(patched_metron) -> None:
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
-            metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}},
-            online={"metron": {"username": "u", "password": "p"}},
+            general=Namespace(
+                metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
+            ),
+            auth=["metron:user=u", "metron:pass=p"],
         )
     )
     cb = Comicbox(config=args)

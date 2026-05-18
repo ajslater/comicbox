@@ -43,7 +43,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self._path: Path | None = new_path
         if old_path.suffix != new_path.suffix:
             logger.info(f"Converted to: {new_path}")
-            if self._config.delete_orig and old_path != new_path and new_path.is_file():
+            if (
+                self._config.general.delete_orig
+                and old_path != new_path
+                and new_path.is_file()
+            ):
                 old_path.unlink()
                 logger.info(f"Removed: {old_path}")
 
@@ -161,10 +165,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             reason = "PDF archive class not initialized."
             raise ValueError(reason)
         self.close()
+        delete_all_tags = self._config.write.delete_all_tags
         with self._archive_cls(self._path) as pf:
-            if self._config.delete_all_tags or mupdf_metadata:
+            if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
-            if self._config.delete_all_tags or files:
+            if delete_all_tags or files:
                 self._archive_remove_metadata_files(pf)
                 self._archive_write_metadata_files(pf, files)
 
@@ -174,7 +179,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """Write the metadata files and comment to an archive."""
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
-        elif self._archive_is_pdf and not self._config.cbz:
+        elif self._archive_is_pdf and not self._config.convert.cbz:
             self._update_pdffile(files, mupdf_metadata)
         else:
             self._create_zipfile(files, comment)

@@ -24,8 +24,14 @@ from tests.util import (
     create_write_metadata,
 )
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["mi"])))
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["mi"], read=["mi"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["mi"]))))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["mi"]), write=Namespace(formats=["mi"])
+        )
+    )
+)
 
 METRON_NOTES = (
     "Tagged with "
@@ -455,9 +461,9 @@ URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
 URL_PRIMARY_CONFIG = get_config(
     Namespace(
         comicbox=Namespace(
-            metadata=URL_PRIMARY_READ_METRON_DICT,
             metadat_format=MetadataFormats.METRON_INFO,
-            print="sncmp",
+            general=Namespace(metadata=URL_PRIMARY_READ_METRON_DICT),
+            print=Namespace(phases="sncmp"),
         )
     )
 )

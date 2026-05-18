@@ -43,7 +43,9 @@ from tests.const import (
     TMP_ROOT_DIR,
 )
 
-PRINT_CONFIG = get_config(Namespace(comicbox=Namespace(print="slmncd")))
+PRINT_CONFIG = get_config(
+    Namespace(comicbox=Namespace(print=Namespace(phases="slmncd")))
+)
 PAGE_COUNT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGE_COUNT_KEY}"
 NOTES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{NOTES_KEY}"
 EXT_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{EXT_KEY}"
