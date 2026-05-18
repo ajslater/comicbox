@@ -43,9 +43,9 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.online.matcher import OnlineMatcher
-from comicbox.online.sources.comicvine import ComicVineOnlineSource
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -899,7 +899,7 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
     source_names = {s.name for s in sources}
     msgs: list[str] = []
     if "comicvine" in source_names:
-        from comicbox.online.sources.comicvine import ComicVineOnlineSource
+        from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 
         per = 1 + ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH
         total = n_fixtures * per
@@ -1319,8 +1319,8 @@ def main() -> int:
     # Honor --max-per-search by patching the class-level caps. Affects all
     # sources constructed below.
     if args.max_per_search is not None:
+        from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
         from comicbox.formats.metron_api.online_source import MetronOnlineSource
-        from comicbox.online.sources.comicvine import ComicVineOnlineSource
 
         ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH = args.max_per_search
         MetronOnlineSource._MAX_SERIES_PER_SEARCH = args.max_per_search

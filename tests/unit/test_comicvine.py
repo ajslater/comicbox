@@ -6,12 +6,12 @@ import sqlite3
 from typing import TYPE_CHECKING
 
 from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
-from comicbox.online.profile import ComicProfile
-from comicbox.online.sources.comicvine import (
+from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     CoverHashUrlCache,
 )
-from comicbox.transforms.comicvine_api import ComicVineApiTransform
+from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
+from comicbox.online.profile import ComicProfile
 
 if TYPE_CHECKING:
     from pathlib import Path

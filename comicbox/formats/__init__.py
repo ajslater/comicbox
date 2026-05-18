@@ -24,12 +24,12 @@ from comicbox.formats.comicbox import (
 from comicbox.formats.comicbox import (
     YAML_REGISTRATION as _COMICBOX_YAML_REGISTRATION,
 )
+from comicbox.formats.comicvine_api import REGISTRATION as _COMICVINE_API_REGISTRATION
 from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
 from comicbox.formats.metron_api import REGISTRATION as _METRON_API_REGISTRATION
 from comicbox.formats.metron_info import REGISTRATION as _METRON_INFO_REGISTRATION
 from comicbox.formats.pdf import PDF_REGISTRATION as _PDF_REGISTRATION
 from comicbox.formats.pdf import PDF_XML_REGISTRATION as _PDF_XML_REGISTRATION
-from comicbox.transforms.comicvine_api import ComicVineApiTransform
 
 
 class MetadataFormats(Enum):
@@ -45,14 +45,7 @@ class MetadataFormats(Enum):
     COMIC_INFO = _COMIC_INFO_REGISTRATION.format
     METRON_INFO = _METRON_INFO_REGISTRATION.format
     METRON_API = _METRON_API_REGISTRATION.format
-    COMICVINE_API = MetadataFormat(
-        "ComicVine API",
-        frozenset({"comicvine-api", "cv-api", "comicvineapi"}),
-        "comicvine-api.json",
-        ComicVineApiTransform,
-        lexer="json",
-        enabled=False,
-    )
+    COMICVINE_API = _COMICVINE_API_REGISTRATION.format
     COMICBOX_YAML = _COMICBOX_YAML_REGISTRATION.format
     COMICBOX_JSON = _COMICBOX_JSON_REGISTRATION.format
     COMICBOX_CLI_YAML = _COMICBOX_CLI_YAML_REGISTRATION.format

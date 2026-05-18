@@ -17,6 +17,7 @@ from typing_extensions import override
 
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+from comicbox.formats.comicvine_api.schema import ComicVineApiSchema
 from comicbox.online.sanitize import strip_html
 from comicbox.online.transform_helpers import (
     build_identifier,
@@ -25,7 +26,6 @@ from comicbox.online.transform_helpers import (
     named_dict_with_id,
 )
 from comicbox.schemas.cache import get_schema
-from comicbox.schemas.comicvine_api import ComicVineApiSchema
 from comicbox.transforms.base import BaseTransform
 
 if TYPE_CHECKING:

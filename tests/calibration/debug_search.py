@@ -32,8 +32,8 @@ from pathlib import Path
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
-from comicbox.online.sources.comicvine import ComicVineOnlineSource
 
 
 def _print_profile(comic_path: Path) -> object:
