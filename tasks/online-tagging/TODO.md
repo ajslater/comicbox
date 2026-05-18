@@ -254,12 +254,15 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
 
 ## 6. Architecture (post-feature)
 
-- **Flavor A plugin refactor.** Consolidate each format (ComicInfo,
-  MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF, Metron API,
-  ComicVine API) into self-contained modules owning schema +
-  transforms + source registration + format registration. No dynamic
-  discovery — just better internal organisation. Plan to be drafted
-  post-online-tagging with the M2/M6 integration experience as input.
+- ✅ **Flavor A plugin refactor.** Shipped on the `plugins` branch
+  2026-05-18. Every format (the original 8 from this list except
+  ComicTagger which was removed, plus `PDF_XML`, `FILENAME`, and the
+  three Comicbox-native serializations) now lives in
+  `comicbox/formats/<name>/` and exports a `FormatRegistration`.
+  `MetadataSources`, `FMT_VALIDATOR_MAP`,
+  `_FORMATS_WITH_TAGS_WITHOUT_IDS`, and the online registries derive
+  from those declarations. Plan + survey in
+  [`../plugins/`](../plugins/).
 
 
 ---

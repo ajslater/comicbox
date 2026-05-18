@@ -29,13 +29,29 @@ ComicboxInit → ComicboxArchive* (read/write/pages) → ComicboxSources
 
 **Key subsystems:**
 
-- `comicbox/transforms/` — One subdirectory per metadata format. Each transform
-  converts between that format's native representation and the internal Comicbox
-  schema.
-- `comicbox/schemas/` — Marshmallow schemas for serialization/deserialization.
+- `comicbox/formats/` — One self-contained package per metadata format. Each
+  package owns its schema, transform, and a `REGISTRATION: FormatRegistration`
+  declaration (`__init__.py`) that names its `MetadataFormat`, per-source
+  masking priorities, validator, and other format-specific flags. The
+  `comicbox.formats` package's `__init__.py` assembles the `MetadataFormats`
+  enum and a `FORMAT_REGISTRATIONS` reverse-lookup map from the per-format
+  REGISTRATIONs. `MetadataSources`, `FMT_VALIDATOR_MAP`,
+  `_FORMATS_WITH_TAGS_WITHOUT_IDS`, and the online-source registries derive from
+  those REGISTRATIONs at module load.
+- `comicbox/schemas/` — Marshmallow base schemas (`BaseSchema`, `XmlSchema`,
+  `JsonSchema`, the YAML render module, etc.). Format-specific schemas live
+  inside their format package.
+- `comicbox/transforms/` — Shared transform helpers (`BaseTransform`,
+  `MetaSpec`, plus reusable mini-transforms like `xml_credits`, `xml_reprints`,
+  `identifiers`, `publishing_tags`, `price`). Format-specific transforms live
+  inside their format package.
 - `comicbox/box/archive/` — Archive file I/O (zip, rar, 7z, tar, PDF).
 - `comicbox/box/computed/` — Fields derived from other metadata (dates,
   identifiers, issue numbers, page counts).
+- `comicbox/online/` — Online-tagging infrastructure (matcher, rate limits,
+  retry, profile, prompt, selector). Per-database `OnlineSource` subclasses live
+  in their format package (`comicbox/formats/metron_api/`,
+  `comicbox/formats/comicvine_api/`).
 - `comicbox/config/` — `confuse`-based configuration management.
 - `comicbox/enums/` — Enum types and bidirectional maps used across formats.
 

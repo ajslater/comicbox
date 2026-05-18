@@ -7,6 +7,57 @@ All **12** format entries in `MetadataFormats` — the 7 named in
 NEWS v4.0.0) plus `PDF_XML`, `FILENAME`, `COMICBOX_YAML`, `COMICBOX_JSON`,
 `COMICBOX_CLI_YAML`.
 
+## Status — All phases shipped 2026-05-18
+
+- ✅ **Phase 0** — CoMet pilot
+- ✅ **Phase 1a/b/c/d/e** — Filename, ComicBookInfo, ComicInfo, MetronInfo,
+  Comicbox-native (YAML/JSON/CLI YAML)
+- ✅ **Phase 2** — PDF + PDF_XML
+- ✅ **Phase 3a/b** — Metron API, ComicVine API (incl. relocated `OnlineSource`
+  wrappers)
+- ✅ **Phase 4a** — `MetadataSources` switched to dynamic
+  `Enum("MetadataSources", {...})` construction from per-format
+  `REGISTRATION.sources`
+- ✅ **Phase 4b** — `FMT_VALIDATOR_MAP` derived from `REGISTRATION.validator`
+- ✅ **Phase 4c** — `FILENAME_FORMAT_MAP` and `ARCHIVE_FORMATS` transitively
+  derived once 4a landed (no separate work)
+- ✅ **Phase 4d** — `_FORMATS_WITH_TAGS_WITHOUT_IDS` derived from
+  `REGISTRATION.has_tags_without_ids`
+- ✅ **Phase 4e** — `_ONLINE_SOURCE_ENUMS`, `SOURCES_SET_ELSEWHERE` (online
+  portion), and `_ONLINE_SOURCES_INFO` derived from `REGISTRATION.is_online` /
+  `REGISTRATION.cli_info`. `_DEFAULT_SOURCE_FACTORIES` remains centralized — see
+  follow-up below.
+- ✅ **Phase 5** — Cleanup; CLAUDE.md "Architecture" section rewritten; lint +
+  875 tests pass.
+
+**Deferred follow-ups:**
+
+1. **`_DEFAULT_SOURCE_FACTORIES`** still lives in `box/online_lookup.py` rather
+   than being derived from REGISTRATION. The `OnlineSource` subclasses
+   (`MetronOnlineSource`, `ComicVineOnlineSource`) have
+   `ClassVar = MetadataFormats.X` assignments at module load time; importing
+   them from a `REGISTRATION.online_source_factory` field creates a load-time
+   cycle through the formats-package init. The fix is to defer those ClassVar
+   lookups (turn into classmethods/properties resolving the enum at first use) —
+   small surgical change, but the payoff (one more derived registry) is modest.
+   Documented at the `_DEFAULT_SOURCE_FACTORIES` definition.
+2. **PDF-specific dispatch consolidation.** PDF's `_get_source_pdf_metadata`
+   (`box/sources.py`), `_ensure_pdf_to_cbz_default_format` (`box/dump.py`), and
+   `--pdf-page-format` CLI flag still live in their original locations rather
+   than being hoisted through a generic `archive_native` / hook abstraction on
+   REGISTRATION. PDF is the only case today; the plan's original §7 question
+   ("is `archive_role` overfitting on PDF?") resolved as yes — defer until a
+   second format needs similar dispatch.
+3. **Phase 0 `Transform` ABC question** — resolved as "leave it alone": the
+   file-based-vs-online `BaseTransform` split is fine in practice; no ABC
+   introduced.
+
+**Net result:** Adding a new format now involves creating one
+`comicbox/formats/<name>/` package and adding one line to
+`comicbox/formats/__init__.py` (the import + the enum value). No edits to
+`sources.py`, `box/validate/`, `config/computed.py`, or other
+previously-scattered locations.
+
 ## 1. Goal
 
 Each metadata format becomes a self-contained Python package owning its schema,
