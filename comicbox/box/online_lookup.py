@@ -31,6 +31,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
+from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.online import outcome_stats
 from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
 from comicbox.online.profile import (
@@ -42,7 +43,6 @@ from comicbox.online.profile import (
 from comicbox.online.prompt import cli_selector
 from comicbox.online.selector import SelectorContext
 from comicbox.online.sources.comicvine import ComicVineOnlineSource
-from comicbox.online.sources.metron import MetronOnlineSource
 from comicbox.sources import MetadataSources
 
 if TYPE_CHECKING:

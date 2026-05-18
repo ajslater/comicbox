@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from comicbox.transforms.metron_api import MetronApiTransform
+from comicbox.formats.metron_api.transform import MetronApiTransform
 
 
 def _sample_issue_dict() -> dict:

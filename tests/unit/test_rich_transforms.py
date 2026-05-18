@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from comicbox.formats.metron_api.transform import MetronApiTransform
 from comicbox.online.sanitize import strip_html
 from comicbox.online.transform_helpers import (
     build_identifier,
@@ -14,7 +15,6 @@ from comicbox.online.transform_helpers import (
     reprints_to_cb,
 )
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
-from comicbox.transforms.metron_api import MetronApiTransform
 
 # ----------------------------------------------------- sanitize
 

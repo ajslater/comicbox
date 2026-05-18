@@ -43,9 +43,9 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.online.matcher import OnlineMatcher
 from comicbox.online.sources.comicvine import ComicVineOnlineSource
-from comicbox.online.sources.metron import MetronOnlineSource
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -917,7 +917,7 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
                 f"means at least {total}s pacing."
             )
     if "metron" in source_names:
-        from comicbox.online.sources.metron import MetronOnlineSource
+        from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
         per = 1 + MetronOnlineSource._MAX_SERIES_PER_SEARCH
         total = n_fixtures * per
@@ -1319,8 +1319,8 @@ def main() -> int:
     # Honor --max-per-search by patching the class-level caps. Affects all
     # sources constructed below.
     if args.max_per_search is not None:
+        from comicbox.formats.metron_api.online_source import MetronOnlineSource
         from comicbox.online.sources.comicvine import ComicVineOnlineSource
-        from comicbox.online.sources.metron import MetronOnlineSource
 
         ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH = args.max_per_search
         MetronOnlineSource._MAX_SERIES_PER_SEARCH = args.max_per_search
