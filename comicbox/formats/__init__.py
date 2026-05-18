@@ -12,8 +12,10 @@ from enum import Enum
 from comicbox._pdf import PDF_ENABLED
 from comicbox.formats._base import MetadataFormat
 from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
+from comicbox.formats.comic_book_info import (
+    REGISTRATION as _COMIC_BOOK_INFO_REGISTRATION,
+)
 from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
-from comicbox.transforms.comicbookinfo import ComicBookInfoTransform
 from comicbox.transforms.comicbox.cli import ComicboxCLITransform
 from comicbox.transforms.comicbox.json import ComicboxJsonTransform
 from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
@@ -47,13 +49,7 @@ class MetadataFormats(Enum):
         enabled=PDF_ENABLED,
     )
     COMET = _COMET_REGISTRATION.format
-    COMIC_BOOK_INFO = MetadataFormat(
-        "ComicBookInfo",
-        frozenset({"cbi", "cbl", "comicbookinfo", "comicbooklover"}),
-        "comic-book-info.json",
-        ComicBookInfoTransform,
-        lexer="json",
-    )
+    COMIC_BOOK_INFO = _COMIC_BOOK_INFO_REGISTRATION.format
     COMIC_INFO = MetadataFormat(
         "ComicInfo",
         frozenset({"cr", "ci", "cix", "comicinfo", "comicinfoxml", "comicrack"}),

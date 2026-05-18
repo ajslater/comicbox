@@ -4,7 +4,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.schemas.comicbookinfo import (
+from comicbox.formats.comic_book_info.schema import (
     PERSON_TAG,
     PRIMARY_TAG,
     ROLE_TAG,

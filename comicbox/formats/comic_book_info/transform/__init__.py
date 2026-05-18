@@ -2,7 +2,12 @@
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
+from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
+from comicbox.formats.comic_book_info.transform.credits import (
+    cbi_credits_primary_to_cb,
+    cbi_credits_transform_from_cb,
+    cbi_credits_transform_to_cb,
+)
 from comicbox.schemas.comicbox import (
     COUNTRY_KEY,
     CRITICAL_RATING_KEY,
@@ -17,11 +22,6 @@ from comicbox.schemas.comicbox import (
     ComicboxSchemaMixin,
 )
 from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbookinfo.credits import (
-    cbi_credits_primary_to_cb,
-    cbi_credits_transform_from_cb,
-    cbi_credits_transform_to_cb,
-)
 from comicbox.transforms.comicbox import (
     DAY_KEYPATH,
     ISSUE_NAME_KEYPATH,
