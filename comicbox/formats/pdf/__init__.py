@@ -29,6 +29,7 @@ PDF_REGISTRATION = FormatRegistration(
             "API": 7,
         }
     ),
+    has_tags_without_ids=True,
 )
 
 PDF_XML_REGISTRATION = FormatRegistration(
@@ -45,4 +46,5 @@ PDF_XML_REGISTRATION = FormatRegistration(
             "API": 8,
         }
     ),
+    has_tags_without_ids=True,
 )

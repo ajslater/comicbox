@@ -64,7 +64,7 @@ def _formats_for_source(name: str) -> tuple[MetadataFormats, ...]:
 
 def _build_source(
     name: str, label: str, from_archive: bool, accepts_any: bool
-) -> MetadataSource:  # noqa: FBT001
+) -> MetadataSource:
     if accepts_any:
         return MetadataSource(label, from_archive=from_archive)
     return MetadataSource(

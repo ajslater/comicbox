@@ -24,4 +24,5 @@ REGISTRATION = FormatRegistration(
         }
     ),
     validator=JsonValidator("comic-book-info-v1.0.schema.json"),
+    has_tags_without_ids=True,
 )

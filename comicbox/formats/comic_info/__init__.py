@@ -24,4 +24,5 @@ REGISTRATION = FormatRegistration(
         }
     ),
     validator=XmlValidator("ComicInfo-v2.1-Draft.xsd"),
+    has_tags_without_ids=True,
 )

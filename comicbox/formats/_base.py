@@ -38,3 +38,4 @@ class FormatRegistration:
     format: MetadataFormat
     sources: MappingProxyType[str, int]
     validator: BaseValidator | None = None
+    has_tags_without_ids: bool = False

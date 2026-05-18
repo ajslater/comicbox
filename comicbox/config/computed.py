@@ -5,18 +5,15 @@ from loguru import logger
 
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
-from comicbox.formats import MetadataFormats
+from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.print import PrintPhases
 from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER
 
 _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
-    {
-        MetadataFormats.COMIC_BOOK_INFO,
-        MetadataFormats.COMIC_INFO,
-        MetadataFormats.PDF,
-        MetadataFormats.PDF_XML,
-    }
+    fmt
+    for fmt, registration in FORMAT_REGISTRATIONS.items()
+    if registration.has_tags_without_ids
 )
 
 
