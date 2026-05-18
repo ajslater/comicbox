@@ -9,7 +9,6 @@ exports a `REGISTRATION: FormatRegistration` from its `__init__.py`.
 
 from enum import Enum
 
-from comicbox._pdf import PDF_ENABLED
 from comicbox.formats._base import MetadataFormat
 from comicbox.formats.comet import REGISTRATION as _COMET_REGISTRATION
 from comicbox.formats.comic_book_info import (
@@ -27,9 +26,10 @@ from comicbox.formats.comicbox import (
 )
 from comicbox.formats.filename import REGISTRATION as _FILENAME_REGISTRATION
 from comicbox.formats.metron_info import REGISTRATION as _METRON_INFO_REGISTRATION
+from comicbox.formats.pdf import PDF_REGISTRATION as _PDF_REGISTRATION
+from comicbox.formats.pdf import PDF_XML_REGISTRATION as _PDF_XML_REGISTRATION
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
 from comicbox.transforms.metron_api import MetronApiTransform
-from comicbox.transforms.pdf import MuPDFTransform, PDFXmlTransform
 
 
 class MetadataFormats(Enum):
@@ -38,22 +38,8 @@ class MetadataFormats(Enum):
     # The order these are listed is the order of masking. Very important.
 
     FILENAME = _FILENAME_REGISTRATION.format
-    PDF = MetadataFormat(
-        "MuPDF",
-        frozenset({"pdf", "mudpdf"}),
-        "mupdf.json",
-        MuPDFTransform,
-        lexer="json",
-        enabled=PDF_ENABLED,
-    )
-    PDF_XML = MetadataFormat(
-        "PDF XML",
-        frozenset({"pdfxml"}),
-        "pdf.xml",
-        PDFXmlTransform,
-        lexer="xml",
-        enabled=PDF_ENABLED,
-    )
+    PDF = _PDF_REGISTRATION.format
+    PDF_XML = _PDF_XML_REGISTRATION.format
     COMET = _COMET_REGISTRATION.format
     COMIC_BOOK_INFO = _COMIC_BOOK_INFO_REGISTRATION.format
     COMIC_INFO = _COMIC_INFO_REGISTRATION.format

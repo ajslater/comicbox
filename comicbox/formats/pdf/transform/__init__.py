@@ -14,12 +14,12 @@ from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
 )
-from comicbox.schemas.pdf import MuPDFSchema, PDFXmlSchema
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.pdf.credits import (
+from comicbox.formats.pdf.schema import MuPDFSchema, PDFXmlSchema
+from comicbox.formats.pdf.transform.credits import (
     authors_to_credits_transform_from_cb,
     authors_to_credits_transform_to_cb,
 )
+from comicbox.transforms.base import BaseTransform
 from comicbox.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,

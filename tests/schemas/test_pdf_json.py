@@ -10,7 +10,7 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from comicbox.schemas.pdf import MuPDFSchema
+from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 

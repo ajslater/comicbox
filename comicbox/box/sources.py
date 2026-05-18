@@ -10,7 +10,7 @@ from loguru import logger
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.pdf import MuPDFSchema
+from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.sources import MetadataSources
 
 FILENAME_FORMAT_MAP = MappingProxyType(
