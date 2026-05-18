@@ -2,35 +2,21 @@
 
 from bidict import frozenbidict
 
-from comicbox.schemas.comicbox import (
-    AGE_RATING_KEY,
-    COLLECTION_TITLE_KEY,
-    NOTES_KEY,
-    PAGE_COUNT_KEY,
-    SUMMARY_KEY,
-    UPDATED_AT_KEY,
-)
-from comicbox.schemas.metroninfo import (
+from comicbox.formats.metron_info.schema import (
     MetronInfoSchema,
 )
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.comicbox import (
-    COVER_DATE_KEYPATH,
-    ISSUE_NAME_KEYPATH,
-    STORE_DATE_KEYPATH,
-)
-from comicbox.transforms.metroninfo.credits import (
+from comicbox.formats.metron_info.transform.credits import (
     METRON_CREDITS_TRANSFORM_TO_CB,
     metron_credits_from_cb,
 )
-from comicbox.transforms.metroninfo.identifiers import (
+from comicbox.formats.metron_info.transform.identifiers import (
     METRON_GTIN_TRANSFORM_FROM_CB,
     METRON_IDENTIFIERS_TRANSFORM_FROM_CB,
     METRON_IDENTIFIERS_TRANSFORM_TO_CB,
     METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
     METRON_URLS_TRANSFORM_FROM_CB,
 )
-from comicbox.transforms.metroninfo.publishing_tags import (
+from comicbox.formats.metron_info.transform.publishing_tags import (
     METRON_IMPRINT_TRANSFORM_TO_CB,
     METRON_MANGA_VOLUME_TRANSFORM_FROM_CB,
     METRON_PUBLISHER_TRANSFORM_FROM_CB,
@@ -42,11 +28,11 @@ from comicbox.transforms.metroninfo.publishing_tags import (
     METRON_SERIES_TRANSFORM_TO_CB,
     METRON_VOLUME_TRANSFORM_TO_CB,
 )
-from comicbox.transforms.metroninfo.reprints import (
+from comicbox.formats.metron_info.transform.reprints import (
     METRON_REPRINTS_TRANSFORM_FROM_CB,
     METRON_REPRINTS_TRANSFORM_TO_CB,
 )
-from comicbox.transforms.metroninfo.resources import (
+from comicbox.formats.metron_info.transform.resources import (
     METRON_ARCS_TRANSFORM_FROM_CB,
     METRON_ARCS_TRANSFORM_TO_CB,
     METRON_PRICES_TRANSFORM_FROM_CB,
@@ -55,6 +41,20 @@ from comicbox.transforms.metroninfo.resources import (
     METRON_RESOURCES_TRANSFORMS_TO_CB,
     METRON_UNIVERSES_TRANSFORM_FROM_CB,
     METRON_UNIVERSES_TRANSFORM_TO_CB,
+)
+from comicbox.schemas.comicbox import (
+    AGE_RATING_KEY,
+    COLLECTION_TITLE_KEY,
+    NOTES_KEY,
+    PAGE_COUNT_KEY,
+    SUMMARY_KEY,
+    UPDATED_AT_KEY,
+)
+from comicbox.transforms.base import BaseTransform
+from comicbox.transforms.comicbox import (
+    COVER_DATE_KEYPATH,
+    ISSUE_NAME_KEYPATH,
+    STORE_DATE_KEYPATH,
 )
 from comicbox.transforms.spec import (
     MetaSpec,

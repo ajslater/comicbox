@@ -13,8 +13,8 @@ from glom import Assign, glom
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
+from comicbox.formats.metron_info.schema import MetronInfoSchema
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.metroninfo import MetronInfoSchema
 from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (

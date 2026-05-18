@@ -25,6 +25,9 @@ from comicbox.formats.comic_book_info.schema import (
     LAST_MODIFIED_TAG as CBI_LAST_MODIFIED_TAG,
 )
 from comicbox.formats.comic_book_info.transform import UPDATED_AT_KEYPATH
+from comicbox.formats.metron_info.schema import (
+    LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG,
+)
 from comicbox.schemas.comicbox import (
     EXT_KEY,
     NOTES_KEY,
@@ -32,7 +35,6 @@ from comicbox.schemas.comicbox import (
     UPDATED_AT_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.schemas.metroninfo import LAST_MODIFIED_TAG as METRON_LAST_MODIFIED_TAG
 from tests.const import (
     EMPTY_CBZ_SOURCE_PATH,
     TEST_FILES_DIR,

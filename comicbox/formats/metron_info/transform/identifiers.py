@@ -10,6 +10,7 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
 from comicbox.enums.metroninfo import MetronSourceEnum
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -28,7 +29,6 @@ from comicbox.transforms.identifiers import (
     url_from_cb,
     urls_to_cb,
 )
-from comicbox.transforms.metroninfo.const import DEFAULT_ID_SOURCE
 from comicbox.transforms.spec import GLOBAL_SCOPE_PREFIX, MetaSpec
 
 PRIMARY_ATTRIBUTE = "@primary"

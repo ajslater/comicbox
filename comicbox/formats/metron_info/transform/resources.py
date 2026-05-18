@@ -9,6 +9,18 @@ from typing import Any
 from bidict import frozenbidict
 
 from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.metron_info.schema import (
+    COUNTRY_ATTR,
+    DESIGNATION_TAG,
+    NUMBER_TAG,
+)
+from comicbox.formats.metron_info.transform.identified_name import (
+    identified_name_from_cb,
+    identified_name_to_cb,
+    identified_name_with_tag_from_cb,
+    identified_name_with_tag_to_cb,
+)
+from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.identifiers import DEFAULT_ID_SOURCE
 from comicbox.schemas.comicbox import (
     ARCS_KEY,
@@ -23,15 +35,7 @@ from comicbox.schemas.comicbox import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
-from comicbox.schemas.metroninfo import COUNTRY_ATTR, DESIGNATION_TAG, NUMBER_TAG
 from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
-from comicbox.transforms.metroninfo.identified_name import (
-    identified_name_from_cb,
-    identified_name_to_cb,
-    identified_name_with_tag_from_cb,
-    identified_name_with_tag_to_cb,
-)
-from comicbox.transforms.metroninfo.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.transforms.spec import MetaSpec
 
 ARC_KEYPATH = "Arcs.Arc"

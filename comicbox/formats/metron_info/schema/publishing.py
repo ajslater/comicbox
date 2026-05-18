@@ -13,8 +13,8 @@ from comicbox.fields.xml_fields import (
     XmlStringField,
     create_sub_tag_field,
 )
-from comicbox.schemas.metroninfo.identifiers import MetronIdentifiedNameSchema
-from comicbox.schemas.metroninfo.resource import metron_resource_field
+from comicbox.formats.metron_info.schema.identifiers import MetronIdentifiedNameSchema
+from comicbox.formats.metron_info.schema.resource import metron_resource_field
 from comicbox.schemas.xml_schemas import XmlSubSchema
 
 

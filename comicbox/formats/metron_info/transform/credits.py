@@ -12,20 +12,20 @@ from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.fields.enum_fields import EnumField
+from comicbox.formats.metron_info.schema import CREATOR_TAG
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.identified_name import (
+    identified_name_from_cb,
+    identified_name_to_cb,
+)
+from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.schemas.comicbox import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.schemas.metroninfo import CREATOR_TAG
 from comicbox.transforms.identifiers import (
     PRIMARY_ID_SOURCE_KEYPATH,
 )
-from comicbox.transforms.metroninfo.const import DEFAULT_ID_SOURCE
-from comicbox.transforms.metroninfo.identified_name import (
-    identified_name_from_cb,
-    identified_name_to_cb,
-)
-from comicbox.transforms.metroninfo.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.transforms.spec import MetaSpec
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(

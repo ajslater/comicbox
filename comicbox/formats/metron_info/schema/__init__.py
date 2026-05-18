@@ -20,21 +20,21 @@ from comicbox.fields.xml_fields import (
     create_sub_tag_field,
     xml_list_polyfield,
 )
-from comicbox.schemas.metroninfo.credits import MetronCreditSchema
-from comicbox.schemas.metroninfo.identifiers import (
+from comicbox.formats.metron_info.schema.credits import MetronCreditSchema
+from comicbox.formats.metron_info.schema.identifiers import (
     MetronGTINSchema,
     MetronIdentifiedNameSchema,
     MetronIDSchema,
     MetronURLSchema,
 )
-from comicbox.schemas.metroninfo.price import (
+from comicbox.formats.metron_info.schema.price import (
     MetronPriceSchema,
 )
-from comicbox.schemas.metroninfo.publishing import (
+from comicbox.formats.metron_info.schema.publishing import (
     MetronPublisherSchema,
     MetronSeriesSchema,
 )
-from comicbox.schemas.metroninfo.resource import metron_resource_list_field
+from comicbox.formats.metron_info.schema.resource import metron_resource_list_field
 from comicbox.schemas.xml_schemas import (
     XmlSchema,
     XmlSubHeadSchema,
