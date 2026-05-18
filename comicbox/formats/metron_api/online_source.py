@@ -13,13 +13,20 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
 
+from comicbox.config.settings import resolve_api_budget
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
     CandidateSummary,
     strip_issue_leading_zeros,
 )
+from comicbox.formats.base.online.rate_limits import build_metron_bucket
 from comicbox.formats.base.online.retry import with_retry
+from comicbox.formats.base.online.series_filter import (
+    max_results_for,
+    should_keep_volume_name,
+    threshold_for,
+)
 from comicbox.formats.base.online.sources.base import OnlineSource
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME, VERSION
@@ -57,8 +64,6 @@ class MetronOnlineSource(OnlineSource):
     def _get_session(self) -> Session:
         from mokkari import api
         from mokkari.session import Session as _MokkariSession
-
-        from comicbox.formats.base.online.rate_limits import build_metron_bucket
 
         if self._credentials.url:
             # mokkari's api() factory has no URL-override parameter (only
@@ -261,9 +266,6 @@ class MetronOnlineSource(OnlineSource):
         # aggressively than the class default (20 → 5). Mirrors the CV
         # side; cuts the per-series `issues_list` fan-out further at
         # scale.
-        from comicbox.config.settings import resolve_api_budget
-        from comicbox.formats.base.online.series_filter import max_results_for
-
         max_series = max_results_for(
             resolve_api_budget(self._settings, self.name),
             default=self._MAX_SERIES_PER_SEARCH,
@@ -391,12 +393,6 @@ class MetronOnlineSource(OnlineSource):
         # `balanced` default this resolves to 0.0 (filter is a no-op),
         # so Phase A behaviour is identical to today's. Phase B
         # calibration picks the real values for `fast`.
-        from comicbox.config.settings import resolve_api_budget
-        from comicbox.formats.base.online.series_filter import (
-            should_keep_volume_name,
-            threshold_for,
-        )
-
         name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
 
         candidates: list[Candidate] = []
