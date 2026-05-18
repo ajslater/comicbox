@@ -108,6 +108,7 @@ class ComicboxSources(ComicboxArchive):
         return source_data_list
 
     def _get_source_pdf_metadata(self) -> list[SourceData]:
+        """If an archive is a pdf and we're configured to read pdf metadata, get the pdf metadata as source."""
         source_data_list = []
         if not self._path:
             return source_data_list
