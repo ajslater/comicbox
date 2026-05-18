@@ -2,6 +2,12 @@
 
 from types import MappingProxyType
 
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
 from comicbox.formats.comicbox.schema import (
     APP_ID_KEY,
     COVER_DATE_KEY,
@@ -14,12 +20,6 @@ from comicbox.formats.comicbox.schema import (
     TAGGER_KEY,
     YEAR_KEY,
     ComicboxSchemaMixin,
-)
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
 )
 
 ISSUE_NAME_KEYPATH = f"{ISSUE_KEY}.{NAME_KEY}"

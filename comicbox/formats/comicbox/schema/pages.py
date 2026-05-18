@@ -1,9 +1,9 @@
 """Page Schema."""
 
-from comicbox.fields.enum_fields import PageTypeField
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import BooleanField, IntegerField
-from comicbox.schemas.base import BaseSubSchema
+from comicbox.formats.base.fields.enum_fields import PageTypeField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import BooleanField, IntegerField
+from comicbox.formats.base.schemas.base import BaseSubSchema
 
 
 class PageInfoSchema(BaseSubSchema):  # CIX, CT - ONLY

@@ -51,7 +51,7 @@ class MetadataFormats(Enum):
     COMICBOX_CLI_YAML = _COMICBOX_CLI_YAML_REGISTRATION.format
 
 
-# Reverse lookup: enum member → its REGISTRATION. Used by `comicbox.sources`
+# Reverse lookup: enum member → its REGISTRATION. Used by `comicbox.formats.sources`
 # to derive source-membership tuples from per-format declarations.
 FORMAT_REGISTRATIONS: MappingProxyType[MetadataFormats, FormatRegistration] = (
     MappingProxyType(

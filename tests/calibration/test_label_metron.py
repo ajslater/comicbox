@@ -383,7 +383,7 @@ def test_lookup_metron_by_cv_id_swallows_non_retriable_exception(
     """
     Non-retriable errors log and return None, not propagate.
 
-    Uses `ValueError` (in `_NON_RETRIABLE` per `comicbox.online.retry`) so
+    Uses `ValueError` (in `_NON_RETRIABLE` per `comicbox.formats.base.online.retry`) so
     `@with_retry()` passes it straight through without a 31s exponential
     backoff. Retriable errors (RateLimitError, RuntimeError, etc.) get
     the retry path — see `test_label_fixtures_retries_rate_limit_then_succeeds`.

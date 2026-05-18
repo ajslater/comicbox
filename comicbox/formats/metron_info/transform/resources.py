@@ -8,7 +8,9 @@ from typing import Any
 
 from bidict import frozenbidict
 
-from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.base.fields.xml_fields import get_cdata
+from comicbox.formats.base.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
+from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comicbox.schema import (
     ARCS_KEY,
     CHARACTERS_KEY,
@@ -35,8 +37,6 @@ from comicbox.formats.metron_info.transform.identified_name import (
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
 from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
-from comicbox.transforms.spec import MetaSpec
 
 ARC_KEYPATH = "Arcs.Arc"
 UNIVERSES_KEYPATH = "Universes.Universe"

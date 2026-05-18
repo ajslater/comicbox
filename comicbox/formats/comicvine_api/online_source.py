@@ -19,20 +19,20 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
-from comicbox.online.profile import (
+from comicbox.formats.base.online.profile import (
     Candidate,
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.online.retry import with_retry
-from comicbox.online.sources.base import OnlineSource
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.online.retry import with_retry
+from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME, VERSION
 
 if TYPE_CHECKING:
     from simyan.comicvine import Comicvine
 
-    from comicbox.online.profile import ComicProfile
+    from comicbox.formats.base.online.profile import ComicProfile
 
 
 class ComicVineOnlineSource(OnlineSource):
@@ -62,7 +62,7 @@ class ComicVineOnlineSource(OnlineSource):
     def _get_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
-        from comicbox.online.rate_limits import build_comicvine_limiter
+        from comicbox.formats.base.online.rate_limits import build_comicvine_limiter
 
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.api_key,
@@ -441,7 +441,7 @@ class ComicVineOnlineSource(OnlineSource):
             )
             return []
         from comicbox.config.settings import resolve_api_budget
-        from comicbox.online.series_filter import max_results_for
+        from comicbox.formats.base.online.series_filter import max_results_for
 
         # Phase D: `fast` budget caps the volume-search breadth more
         # aggressively than the class default (20 → 5). Cuts the per-volume
@@ -472,7 +472,7 @@ class ComicVineOnlineSource(OnlineSource):
         # Phase A behaviour is identical to today's. Phase B calibration
         # picks the real values for `fast` (currently 0.7 placeholder).
         from comicbox.config.settings import resolve_api_budget
-        from comicbox.online.series_filter import threshold_for
+        from comicbox.formats.base.online.series_filter import threshold_for
 
         name_threshold = threshold_for(resolve_api_budget(self._settings, self.name))
 
@@ -510,7 +510,7 @@ class ComicVineOnlineSource(OnlineSource):
         calibration runs can audit drops. The actual `list_issues` call
         only fires for volumes that survive both gates.
         """
-        from comicbox.online.series_filter import should_keep_volume_name
+        from comicbox.formats.base.online.series_filter import should_keep_volume_name
 
         vol_start = getattr(vol, "start_year", None)
         if self._volume_predates_comic(vol_start, year):

@@ -13,16 +13,20 @@ from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
 from typing_extensions import override
 
-from comicbox.fields.collection_fields import StringListField
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import IntegerField
+from comicbox.formats.base.fields.collection_fields import StringListField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.formats.base.schemas.base import (
+    BaseRenderModule,
+    BaseSchema,
+    BaseSubSchema,
+)
 from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     SERIES_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
-from comicbox.schemas.base import BaseRenderModule, BaseSchema, BaseSubSchema
 
 SERIES_TAG = SERIES_KEY
 VOLUME_TAG = VOLUME_KEY

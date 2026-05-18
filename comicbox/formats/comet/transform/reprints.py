@@ -4,13 +4,13 @@ from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.unparse import dict2comicfn
 from glom import SKIP, Coalesce, Invoke, T
 
-from comicbox.formats.comicbox.schema import REPRINTS_KEY
-from comicbox.transforms.base import skip_not
-from comicbox.transforms.spec import MetaSpec
-from comicbox.transforms.xml_reprints import (
+from comicbox.formats.base.transforms.base import skip_not
+from comicbox.formats.base.transforms.spec import MetaSpec
+from comicbox.formats.base.transforms.xml_reprints import (
     FILENAME_TO_REPRINT_SPECS,
     REPRINT_TO_FILENAME_SPECS,
 )
+from comicbox.formats.comicbox.schema import REPRINTS_KEY
 
 
 def comet_reprints_transform_to_cb(is_version_of_tag: str) -> MetaSpec:

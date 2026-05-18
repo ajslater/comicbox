@@ -6,7 +6,7 @@ from typing import Any
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.enums.comicbox import IdSources
-from comicbox.fields.time_fields import DateTimeField
+from comicbox.formats.base.fields.time_fields import DateTimeField
 from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     NOTES_KEY,

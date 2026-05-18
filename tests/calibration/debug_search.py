@@ -56,7 +56,7 @@ def _print_profile(comic_path: Path) -> object:
 
 def _build_issues_list_params(profile: object, series_id: int) -> dict[str, object]:
     """Mirror production's `_build_issue_params` for a single series."""
-    from comicbox.online.profile import strip_issue_leading_zeros
+    from comicbox.formats.base.online.profile import strip_issue_leading_zeros
 
     # `series_id` is the correct Metron API filter for the FK to series.
     # `series` (mokkari's docstring example) is silently ignored — see

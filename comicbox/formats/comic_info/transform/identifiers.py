@@ -1,14 +1,14 @@
 """Comicinfo Identifiers to Comicbox transform."""
 
 from comicbox.enums.comicbox import IdSources
-from comicbox.formats.comic_info.schema import GTIN_TAG, WEB_TAG
-from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
-from comicbox.merge import AdditiveMerger
-from comicbox.transforms.identifiers import (
+from comicbox.formats.base.transforms.identifiers import (
     identifiers_to_cb,
     urls_to_cb,
 )
-from comicbox.transforms.spec import MetaSpec
+from comicbox.formats.base.transforms.spec import MetaSpec
+from comicbox.formats.comic_info.schema import GTIN_TAG, WEB_TAG
+from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
+from comicbox.merge import AdditiveMerger
 
 
 def _to_cb(values: dict[str, set[str] | None]) -> dict:

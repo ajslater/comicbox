@@ -3,7 +3,7 @@
 import pytest
 
 from comicbox.config import get_config
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 
 def test_merge_order_default_is_none() -> None:

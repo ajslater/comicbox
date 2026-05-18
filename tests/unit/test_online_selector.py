@@ -11,11 +11,11 @@ import pytest
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup, OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
-from comicbox.online.profile import Candidate, CandidateSummary
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.online.profile import Candidate, CandidateSummary
+from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from comicbox.online.selector import SelectorContext
+    from comicbox.formats.base.online.selector import SelectorContext
 
 
 def _candidate_payload(issue_id: int) -> dict:

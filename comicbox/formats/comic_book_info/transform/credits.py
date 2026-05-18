@@ -4,6 +4,7 @@ from typing import Any
 
 from loguru import logger
 
+from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comic_book_info.schema import (
     PERSON_TAG,
     PRIMARY_TAG,
@@ -17,7 +18,6 @@ from comicbox.formats.comicbox.schema import (
 from comicbox.formats.comicbox.transform.credits import (
     add_credit_role_to_comicbox_credits,
 )
-from comicbox.transforms.spec import MetaSpec
 
 
 def _get_cbi_credit_parts(cbi_credit: dict[str, str]) -> tuple:

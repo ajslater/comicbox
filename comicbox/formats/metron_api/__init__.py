@@ -3,7 +3,7 @@ Metron online API format package.
 
 Schema, transform, and the MetronOnlineSource wrapper live here. The
 online-tagging infrastructure (matcher, rate limits, retry, etc.)
-remains under `comicbox.online.*`.
+remains under `comicbox.formats.base.online.*`.
 """
 
 from types import MappingProxyType

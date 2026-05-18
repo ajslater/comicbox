@@ -99,7 +99,7 @@ def test_cbi_from_metadata() -> None:
 
 
 def test_cbi_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     CBI_TESTER.test_from_dict()
 
 

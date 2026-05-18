@@ -5,9 +5,13 @@ from argparse import Namespace
 import pytest
 
 from comicbox.config import get_config
-from comicbox.online.cli_overrides import CliOverrides
-from comicbox.online.credentials import resolve_credentials
-from comicbox.online.env import parse_bool, read_credential_env, read_policy_env
+from comicbox.formats.base.online.cli_overrides import CliOverrides
+from comicbox.formats.base.online.credentials import resolve_credentials
+from comicbox.formats.base.online.env import (
+    parse_bool,
+    read_credential_env,
+    read_policy_env,
+)
 
 # ------------------------------------------------------------------ env helpers
 

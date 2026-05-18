@@ -10,7 +10,7 @@ from loguru import logger
 
 from comicbox.box.merge import ComicboxMerge
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP, get_id_source_by_alias
-from comicbox.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,

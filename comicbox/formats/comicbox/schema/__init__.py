@@ -5,31 +5,36 @@ from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.collection_fields import (
+from comicbox.formats.base.fields.collection_fields import (
     DictField,
     ListField,
     StringListField,
     StringSetField,
 )
-from comicbox.fields.comicbox import (
+from comicbox.formats.base.fields.comicbox import (
     NAME_KEY as _FIELD_NAME_KEY,
 )
-from comicbox.fields.comicbox import (
+from comicbox.formats.base.fields.comicbox import (
     PagesField,
     RoleField,
     SimpleNamedDictField,
     SimpleNamedNestedField,
 )
-from comicbox.fields.enum_fields import (
+from comicbox.formats.base.fields.enum_fields import (
     AgeRatingField,
     ComicInfoMangaField,
     OriginalFormatField,
     ReadingDirectionField,
 )
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import BooleanField, DecimalField, IntegerField
-from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import (
+    BooleanField,
+    DecimalField,
+    IntegerField,
+)
+from comicbox.formats.base.fields.pycountry import CountryField, LanguageField
+from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
     IdentifierPrimarySource,
@@ -40,7 +45,6 @@ from comicbox.formats.comicbox.schema.publishing import (
     SeriesSchema,
     VolumeSchema,
 )
-from comicbox.schemas.base import BaseSubSchema
 
 NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"

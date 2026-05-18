@@ -3,9 +3,9 @@
 from decimal import Decimal
 from types import MappingProxyType
 
-from comicbox.fields.pycountry import CountryField
-from comicbox.fields.xml_fields import XmlDecimalField
-from comicbox.schemas.xml_schemas import XmlSubSchema
+from comicbox.formats.base.fields.pycountry import CountryField
+from comicbox.formats.base.fields.xml_fields import XmlDecimalField
+from comicbox.formats.base.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronPriceSchema(XmlSubSchema):

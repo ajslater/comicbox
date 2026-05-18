@@ -9,7 +9,7 @@ from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
 
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
-from comicbox.fields.enum_fields import OriginalFormatField
+from comicbox.formats.base.fields.enum_fields import OriginalFormatField
 from comicbox.formats.comicbox.schema import (
     ORIGINAL_FORMAT_KEY,
     REPRINTS_KEY,

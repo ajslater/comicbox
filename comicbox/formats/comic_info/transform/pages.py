@@ -8,13 +8,13 @@ from glom.grouping import Group
 from loguru import logger
 
 from comicbox.empty import is_empty
-from comicbox.formats.comicbox.schema import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
-from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
-from comicbox.transforms.spec import (
+from comicbox.formats.base.schemas.xml_schemas import IMAGE_ATTRIBUTE
+from comicbox.formats.base.transforms.spec import (
     MetaSpec,
     create_specs_from_comicbox,
     create_specs_to_comicbox,
 )
+from comicbox.formats.comicbox.schema import BOOKMARK_KEY, PAGE_INDEX_KEY, PAGES_KEY
 
 _KEY_SPEC = Coalesce(T[IMAGE_ATTRIBUTE], skip=is_empty, default=SKIP)
 

@@ -7,7 +7,7 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from comicbox.online.cover_hash import (
+from comicbox.formats.base.online.cover_hash import (
     HASH_BITS,
     compute_phash,
     cover_score,

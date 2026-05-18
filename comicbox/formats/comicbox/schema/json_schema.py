@@ -6,16 +6,16 @@ from typing import Any
 from marshmallow.fields import Constant, Nested
 from typing_extensions import override
 
-from comicbox.fields.comicbox import PagesField
-from comicbox.fields.fields import StringField
-from comicbox.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.fields.comicbox import PagesField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
 from comicbox.formats.comicbox.schema import (
     PAGES_KEY,
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
     DateSchema,
 )
-from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 
 class ComicboxJsonDateSchema(DateSchema):

@@ -14,20 +14,20 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 
 from comicbox.formats import MetadataFormats
-from comicbox.online.profile import (
+from comicbox.formats.base.online.profile import (
     Candidate,
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.online.retry import with_retry
-from comicbox.online.sources.base import OnlineSource
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.online.retry import with_retry
+from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME, VERSION
 
 if TYPE_CHECKING:
     from mokkari.session import Session
 
-    from comicbox.online.profile import ComicProfile
+    from comicbox.formats.base.online.profile import ComicProfile
 
 
 class MetronOnlineSource(OnlineSource):
@@ -58,7 +58,7 @@ class MetronOnlineSource(OnlineSource):
         from mokkari import api
         from mokkari.session import Session as _MokkariSession
 
-        from comicbox.online.rate_limits import build_metron_bucket
+        from comicbox.formats.base.online.rate_limits import build_metron_bucket
 
         if self._credentials.url:
             # mokkari's api() factory has no URL-override parameter (only
@@ -262,7 +262,7 @@ class MetronOnlineSource(OnlineSource):
         # side; cuts the per-series `issues_list` fan-out further at
         # scale.
         from comicbox.config.settings import resolve_api_budget
-        from comicbox.online.series_filter import max_results_for
+        from comicbox.formats.base.online.series_filter import max_results_for
 
         max_series = max_results_for(
             resolve_api_budget(self._settings, self.name),
@@ -392,7 +392,7 @@ class MetronOnlineSource(OnlineSource):
         # so Phase A behaviour is identical to today's. Phase B
         # calibration picks the real values for `fast`.
         from comicbox.config.settings import resolve_api_budget
-        from comicbox.online.series_filter import (
+        from comicbox.formats.base.online.series_filter import (
             should_keep_volume_name,
             threshold_for,
         )

@@ -35,12 +35,12 @@ from comicbox.config.settings import (
     OnlineSourceLimits,
     Policy,
 )
+from comicbox.formats.base.online import SOURCE_NAMES
+from comicbox.formats.base.online.cli_overrides import CliOverrides
+from comicbox.formats.base.online.credentials import resolve_credentials
+from comicbox.formats.base.online.env import read_policy_env
+from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import PARSE_COMICVINE_RE
-from comicbox.online import SOURCE_NAMES
-from comicbox.online.cli_overrides import CliOverrides
-from comicbox.online.credentials import resolve_credentials
-from comicbox.online.env import read_policy_env
-from comicbox.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME
 
 # ComicVine resource-type prefix for issues. CV ids are sometimes shown
@@ -71,7 +71,7 @@ _ONLINE_SOURCE_TEMPLATE = MappingTemplate(
         "password": Optional(str),
         "url": Optional(str),
         # Optional per-source rate-limit overrides. None / unset = use the
-        # upstream library's documented default (see comicbox.online.rate_limits).
+        # upstream library's documented default (see comicbox.formats.base.online.rate_limits).
         "rate_limit": Optional(_RATE_LIMIT_TEMPLATE),
     }
 )

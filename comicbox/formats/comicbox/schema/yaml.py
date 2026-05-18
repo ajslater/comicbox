@@ -2,11 +2,11 @@
 
 from marshmallow.fields import Nested
 
+from comicbox.formats.base.schemas.yaml import YamlSchema, YamlSubSchema
 from comicbox.formats.comicbox.schema import (
     ComicboxSchemaMixin,
     ComicboxSubSchemaMixin,
 )
-from comicbox.schemas.yaml import YamlSchema, YamlSubSchema
 
 
 class ComicboxYamlSubSchema(ComicboxSubSchemaMixin, YamlSubSchema):

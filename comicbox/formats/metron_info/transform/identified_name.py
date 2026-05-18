@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from enum import Enum
 
-from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.metron_info.schema import NAME_TAG
 from comicbox.formats.metron_info.transform.identifier_attribute import (
     metron_id_attribute_from_cb,

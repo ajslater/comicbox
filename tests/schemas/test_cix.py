@@ -10,9 +10,9 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
 from comicbox.formats.comic_info.schema import ComicInfoSchema
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import CIX_CBZ_FN, TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -212,7 +212,7 @@ CIX_TESTER = TestParser(
 
 
 def test_cix_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     CIX_TESTER.test_from_metadata()
 
 

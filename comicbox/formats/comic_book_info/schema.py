@@ -6,12 +6,12 @@ from types import MappingProxyType
 from marshmallow import Schema
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collection_fields import ListField, StringSetField
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import BooleanField, IntegerField
-from comicbox.fields.pycountry import CountryField, LanguageField
-from comicbox.fields.time_fields import DateTimeField
-from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
+from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import BooleanField, IntegerField
+from comicbox.formats.base.fields.pycountry import CountryField, LanguageField
+from comicbox.formats.base.fields.time_fields import DateTimeField
+from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 LAST_MODIFIED_TAG = "lastModified"
 ROLE_TAG = "role"

@@ -4,18 +4,18 @@ from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.fields import StringField
-from comicbox.fields.metroninfo import MetronFormatField
-from comicbox.fields.number_fields import IntegerField
-from comicbox.fields.pycountry import LanguageField
-from comicbox.fields.xml_fields import (
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.metroninfo import MetronFormatField
+from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.formats.base.fields.pycountry import LanguageField
+from comicbox.formats.base.fields.xml_fields import (
     XmlListField,
     XmlStringField,
     create_sub_tag_field,
 )
+from comicbox.formats.base.schemas.xml_schemas import XmlSubSchema
 from comicbox.formats.metron_info.schema.identifiers import MetronIdentifiedNameSchema
 from comicbox.formats.metron_info.schema.resource import metron_resource_field
-from comicbox.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronPublisherSchema(MetronIdentifiedNameSchema):

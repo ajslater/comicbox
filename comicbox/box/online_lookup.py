@@ -32,25 +32,29 @@ from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.formats import FORMAT_REGISTRATIONS
-from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
-from comicbox.formats.metron_api.online_source import MetronOnlineSource
-from comicbox.online import outcome_stats
-from comicbox.online.matcher import OnlineMatcher, Resolution, ResolutionKind
-from comicbox.online.profile import (
+from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online.matcher import (
+    OnlineMatcher,
+    Resolution,
+    ResolutionKind,
+)
+from comicbox.formats.base.online.profile import (
     ComicProfile,
     parse_issue_int,
     parse_year,
     strip_issue_leading_zeros,
 )
-from comicbox.online.prompt import cli_selector
-from comicbox.online.selector import SelectorContext
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.online.prompt import cli_selector
+from comicbox.formats.base.online.selector import SelectorContext
+from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
+from comicbox.formats.metron_api.online_source import MetronOnlineSource
+from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
-    from comicbox.online.profile import Candidate
-    from comicbox.online.selector import SelectorCallback
-    from comicbox.online.sources.base import OnlineSource
+    from comicbox.formats.base.online.profile import Candidate
+    from comicbox.formats.base.online.selector import SelectorCallback
+    from comicbox.formats.base.online.sources.base import OnlineSource
 
 
 class OnlineLookupAbortedError(Exception):
@@ -385,10 +389,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         (ComicVine, GCD). Local writes go through the shared
         cover-hashes sqlite cache.
         """
+        from comicbox.formats.base.online.cover_hash import compute_phash
         from comicbox.formats.comicvine_api.online_source import (
             CoverHashUrlCache,
         )
-        from comicbox.online.cover_hash import compute_phash
 
         if not url:
             return None
@@ -443,7 +447,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._local_cover_phash_value = None
             return None
         try:
-            from comicbox.online.cover_hash import compute_phash
+            from comicbox.formats.base.online.cover_hash import compute_phash
 
             self._local_cover_phash_value = compute_phash(cover_bytes)
         except Exception as exc:

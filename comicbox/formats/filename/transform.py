@@ -9,6 +9,17 @@ effective, simple and easy to read and to contribute to.
 
 from bidict import frozenbidict
 
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.publishing_tags import (
+    ISSUE_COUNT_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
+)
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
 from comicbox.formats.comicbox.schema import (
     EXT_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -18,17 +29,6 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.formats.comicbox.transform import ISSUE_NAME_KEYPATH, YEAR_KEYPATH
 from comicbox.formats.filename.schema import FilenameSchema
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.publishing_tags import (
-    ISSUE_COUNT_KEYPATH,
-    SERIES_NAME_KEYPATH,
-    VOLUME_NUMBER_KEYPATH,
-)
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
-)
 
 SIMPLE_KEY_MAP = frozenbidict(
     {

@@ -6,11 +6,11 @@ from comicbox.enums.comet import CoMetRoleTagEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
+from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comicbox.schema import (
     CREDITS_KEY,
     ROLES_KEY,
 )
-from comicbox.transforms.spec import MetaSpec
 
 _AUTHOR_VALUES = frozenset(
     {

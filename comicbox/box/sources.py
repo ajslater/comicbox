@@ -11,7 +11,7 @@ from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 FILENAME_FORMAT_MAP = MappingProxyType(
     {

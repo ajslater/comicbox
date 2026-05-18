@@ -15,18 +15,18 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import override
 
-from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
-from comicbox.formats.comicvine_api.schema import ComicVineApiSchema
-from comicbox.online.sanitize import strip_html
-from comicbox.online.transform_helpers import (
+from comicbox.formats.base.online.sanitize import strip_html
+from comicbox.formats.base.online.transform_helpers import (
     build_identifier,
     credits_to_cb,
     named_block,
     named_dict_with_id,
 )
-from comicbox.schemas.cache import get_schema
-from comicbox.transforms.base import BaseTransform
+from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+from comicbox.formats.comicvine_api.schema import ComicVineApiSchema
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

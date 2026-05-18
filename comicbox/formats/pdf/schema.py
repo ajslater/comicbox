@@ -4,17 +4,17 @@ from types import MappingProxyType
 
 from marshmallow.fields import Constant, Nested
 
-from comicbox.fields.collection_fields import StringSetField
-from comicbox.fields.fields import StringField
-from comicbox.fields.pdf import PdfDateTimeField
-from comicbox.fields.xml_fields import (
+from comicbox.formats.base.fields.collection_fields import StringSetField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.pdf import PdfDateTimeField
+from comicbox.formats.base.fields.xml_fields import (
     XmlPdfDateTimeField,
     XmlStringField,
     XmlStringSetField,
 )
-from comicbox.schemas.base import BaseSubSchema
-from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
-from comicbox.schemas.xml_schemas import (
+from comicbox.formats.base.schemas.base import BaseSubSchema
+from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
+from comicbox.formats.base.schemas.xml_schemas import (
     XmlSchema,
     XmlSubHeadSchema,
     XmlSubSchema,

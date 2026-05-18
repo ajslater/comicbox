@@ -6,8 +6,8 @@ from loguru import logger
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
 from comicbox.formats import FORMAT_REGISTRATIONS
+from comicbox.formats.sources import MetadataSources
 from comicbox.print import PrintPhases
-from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER
 
 _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(

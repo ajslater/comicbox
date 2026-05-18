@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comicbox.online.retry import _RATE_LIMIT_SCHEDULE, with_retry
+from comicbox.formats.base.online.retry import _RATE_LIMIT_SCHEDULE, with_retry
 
 
 class _FakeRateLimitError(Exception):

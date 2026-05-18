@@ -9,9 +9,9 @@ import xmltodict
 
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.pdf.schema import MuPDFSchema
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 
 PDF_CIX_FN = "test_cix.pdf"
@@ -108,12 +108,12 @@ PDF_CIX_TESTER = TestParser(
 
 
 def test_pdf_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     PDF_METADATA_TESTER.test_from_metadata()
 
 
 def test_pdf_from_metadata_cix() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     PDF_CIX_TESTER.test_from_metadata()
 
 

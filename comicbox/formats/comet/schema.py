@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.xml_fields import (
+from comicbox.formats.base.fields.xml_fields import (
     XmlDateField,
     XmlDecimalField,
     XmlIntegerField,
@@ -16,7 +16,7 @@ from comicbox.fields.xml_fields import (
     XmlStringField,
     XmlStringSetField,
 )
-from comicbox.schemas.xml_schemas import (
+from comicbox.formats.base.schemas.xml_schemas import (
     XmlSchema,
     XmlSubHeadSchema,
     create_xml_headers,

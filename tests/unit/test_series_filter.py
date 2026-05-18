@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from comicbox.config.settings import APIBudget
-from comicbox.online.series_filter import (
+from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,
 )
@@ -160,14 +160,14 @@ def test_threshold_boundary_inclusive() -> None:
 
 def test_max_results_for_fast_caps_at_5() -> None:
     """`fast` budget caps discovery-search breadth at 5."""
-    from comicbox.online.series_filter import max_results_for
+    from comicbox.formats.base.online.series_filter import max_results_for
 
     assert max_results_for(APIBudget.FAST, default=20) == 5
 
 
 def test_max_results_for_balanced_uses_default() -> None:
     """`balanced` (and `exhaustive`) inherit the source's class default."""
-    from comicbox.online.series_filter import max_results_for
+    from comicbox.formats.base.online.series_filter import max_results_for
 
     assert max_results_for(APIBudget.BALANCED, default=20) == 20
     assert max_results_for(APIBudget.EXHAUSTIVE, default=20) == 20
@@ -175,7 +175,7 @@ def test_max_results_for_balanced_uses_default() -> None:
 
 def test_max_results_for_passes_through_alternative_default() -> None:
     """`default` arg lets callers thread their own class constant in."""
-    from comicbox.online.series_filter import max_results_for
+    from comicbox.formats.base.online.series_filter import max_results_for
 
     # Hypothetical: a future source with default=30.
     assert max_results_for(APIBudget.BALANCED, default=30) == 30

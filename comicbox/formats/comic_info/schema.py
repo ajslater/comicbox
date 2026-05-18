@@ -5,12 +5,12 @@ from types import MappingProxyType
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.collection_fields import ListField
-from comicbox.fields.comicinfo import ComicInfoAgeRatingField
-from comicbox.fields.enum_fields import PageTypeField
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import IntegerField
-from comicbox.fields.xml_fields import (
+from comicbox.formats.base.fields.collection_fields import ListField
+from comicbox.formats.base.fields.comicinfo import ComicInfoAgeRatingField
+from comicbox.formats.base.fields.enum_fields import PageTypeField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.formats.base.fields.xml_fields import (
     XmlBooleanField,
     XmlComicInfoMangaField,
     XmlDecimalField,
@@ -24,7 +24,7 @@ from comicbox.fields.xml_fields import (
     XmlYesNoField,
     create_sub_tag_field,
 )
-from comicbox.schemas.xml_schemas import (
+from comicbox.formats.base.schemas.xml_schemas import (
     IMAGE_ATTRIBUTE,
     XmlSchema,
     XmlSubHeadSchema,

@@ -5,11 +5,11 @@ from typing import Any
 
 from marshmallow.fields import Field
 
-from comicbox.fields.collection_fields import ListField
-from comicbox.fields.fields import StringField
-from comicbox.fields.metroninfo import MetronIDAttrField
-from comicbox.fields.xml_fields import xml_list_polyfield, xml_polyfield
-from comicbox.schemas.xml_schemas import XmlSubSchema
+from comicbox.formats.base.fields.collection_fields import ListField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.metroninfo import MetronIDAttrField
+from comicbox.formats.base.fields.xml_fields import xml_list_polyfield, xml_polyfield
+from comicbox.formats.base.schemas.xml_schemas import XmlSubSchema
 
 
 class MetronResourceSchema(XmlSubSchema):

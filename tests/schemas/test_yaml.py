@@ -6,9 +6,9 @@ from types import MappingProxyType
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.yaml import YamlRenderModule
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
-from comicbox.schemas.yaml import YamlRenderModule
 from tests.const import (
     TEST_DATETIME,
     TEST_METADATA_DIR,
@@ -171,7 +171,7 @@ def test_yaml_from_metadata() -> None:
 
 
 def test_yaml_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     YAML_TESTER.test_from_dict()
 
 

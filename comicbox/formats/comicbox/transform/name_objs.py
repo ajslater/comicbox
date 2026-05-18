@@ -4,8 +4,8 @@ from bidict import frozenbidict
 from glom import SKIP, Coalesce, Iter, T, Val
 from glom.grouping import Group
 
-from comicbox.transforms.base import skip_not
-from comicbox.transforms.spec import MetaSpec
+from comicbox.formats.base.transforms.base import skip_not
+from comicbox.formats.base.transforms.spec import MetaSpec
 
 
 def name_obj_to_cb(

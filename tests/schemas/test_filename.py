@@ -66,7 +66,7 @@ FN_TESTER = TestParser(
 
 
 def test_filename_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     FN_TESTER.test_from_metadata()
 
 

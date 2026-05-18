@@ -1,11 +1,11 @@
-"""Tests for `comicbox.online.auto_engage.resolve_auto_engaged_budget`."""
+"""Tests for `comicbox.formats.base.online.auto_engage.resolve_auto_engaged_budget`."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from comicbox.config.settings import APIBudget, OnlineSettings
-from comicbox.online.auto_engage import resolve_auto_engaged_budget
+from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 
 if TYPE_CHECKING:
     import pytest
@@ -27,7 +27,9 @@ def _settings(
 
 def _force_tty(monkeypatch: pytest.MonkeyPatch, *, is_tty: bool) -> None:
     """Pin `_stdin_is_tty()` for test determinism."""
-    monkeypatch.setattr("comicbox.online.auto_engage._stdin_is_tty", lambda: is_tty)
+    monkeypatch.setattr(
+        "comicbox.formats.base.online.auto_engage._stdin_is_tty", lambda: is_tty
+    )
 
 
 # --------------------------------------------------------- no-op branches

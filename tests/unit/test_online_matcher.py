@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 
 from comicbox.config.settings import OnlineSettings, Policy
-from comicbox.online.matcher import (
+from comicbox.formats.base.online.matcher import (
     OnlineMatcher,
     ResolutionKind,
     metadata_score,
 )
-from comicbox.online.profile import (
+from comicbox.formats.base.online.profile import (
     Candidate,
     CandidateSummary,
     ComicProfile,
@@ -18,7 +18,7 @@ from comicbox.online.profile import (
     parse_year,
     strip_issue_leading_zeros,
 )
-from comicbox.online.signals import (
+from comicbox.formats.base.online.signals import (
     s_issue,
     s_pages,
     s_publisher,
@@ -667,7 +667,7 @@ def test_rank_score_dominates_over_volume_id_tiebreak() -> None:
 
 def test_candidate_sort_key_stable_ordering() -> None:
     """Direct test of the sort key for unit-level coverage."""
-    from comicbox.online.matcher import _candidate_sort_key
+    from comicbox.formats.base.online.matcher import _candidate_sort_key
 
     c1 = _candidate(issue_id=1, volume_id=100)
     c2 = _candidate(issue_id=2, volume_id=50)
@@ -697,7 +697,7 @@ def test_apply_tied_metadata_tiebreak_reorders_near_tied_same_md() -> None:
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     # The wrong volume's slight cover edge gives it a fractionally higher
     # blended score in the input order.
@@ -721,7 +721,7 @@ def test_apply_tied_metadata_tiebreak_respects_different_md() -> None:
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     # A: md=0.85 (weaker), but covers very similar (cover=0.95) → blended 0.87.
     # B: md=0.95 (strong), but cover different (cover=0.55) → blended 0.87.
@@ -745,7 +745,7 @@ def test_apply_tied_metadata_tiebreak_score_gap_too_wide() -> None:
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     # md tied, but score gap of 0.05 (> the 0.02 margin)
     high = _candidate(issue_id=1, volume_id=999)
@@ -759,7 +759,7 @@ def test_apply_tied_metadata_tiebreak_score_gap_too_wide() -> None:
 
 def test_apply_tied_metadata_tiebreak_handles_empty_and_single() -> None:
     """Empty + single-element lists are no-ops."""
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     assert _apply_tied_metadata_tiebreak([]) == []
     [c] = _apply_tied_metadata_tiebreak([_candidate()])
@@ -798,7 +798,7 @@ def test_apply_tied_metadata_tiebreak_respects_cover_signal_when_diff_large() ->
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     # Source returns near-tied candidates: vol=73241 first by API order,
     # vol=77906 second. After scoring, the perfect-cover one has higher
@@ -829,7 +829,7 @@ def test_apply_tied_metadata_tiebreak_cover_diff_within_margin_is_noise() -> Non
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     wrong = _candidate(issue_id=476700, volume_id=79545)
     right = _candidate(issue_id=28090, volume_id=3622)
@@ -853,7 +853,7 @@ def test_apply_tied_metadata_tiebreak_cover_diff_above_margin_is_signal() -> Non
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     wrong = _candidate(issue_id=10000, volume_id=100)  # lower vol_id (canonical)
     right = _candidate(issue_id=10001, volume_id=200)
@@ -878,7 +878,7 @@ def test_apply_tied_metadata_tiebreak_skips_when_cover_score_missing() -> None:
     """
     from dataclasses import replace as _replace
 
-    from comicbox.online.matcher import _apply_tied_metadata_tiebreak
+    from comicbox.formats.base.online.matcher import _apply_tied_metadata_tiebreak
 
     wrong = _candidate(issue_id=2, volume_id=999)
     right = _candidate(issue_id=1, volume_id=100)
@@ -1027,7 +1027,7 @@ class TestTopKForHashing:
 
     def test_small_set_uses_minimum(self) -> None:
         """≤10 candidates → K stays at the original 5 (no behavior change)."""
-        from comicbox.online.matcher import (
+        from comicbox.formats.base.online.matcher import (
             _TOP_K_FOR_HASHING_MIN,
             _top_k_for_hashing,
         )
@@ -1038,7 +1038,7 @@ class TestTopKForHashing:
 
     def test_medium_set_scales_up(self) -> None:
         """11-29 candidates → K = candidate_count // 2 (linear scale)."""
-        from comicbox.online.matcher import _top_k_for_hashing
+        from comicbox.formats.base.online.matcher import _top_k_for_hashing
 
         # Boundary: 12 → 6 (linear).
         assert _top_k_for_hashing(12) == 6
@@ -1049,7 +1049,7 @@ class TestTopKForHashing:
 
     def test_large_set_caps_at_max(self) -> None:
         """≥30 candidates → K caps at the 15 budget bound."""
-        from comicbox.online.matcher import (
+        from comicbox.formats.base.online.matcher import (
             _TOP_K_FOR_HASHING_MAX,
             _top_k_for_hashing,
         )
@@ -1068,7 +1068,7 @@ class TestTopKForHashing:
         """
         from dataclasses import replace as _replace
 
-        from comicbox.online.matcher import _apply_cover_hashing
+        from comicbox.formats.base.online.matcher import _apply_cover_hashing
 
         hashes: dict[str, str] = {
             "http://example.com/c1.jpg": "ffffffffffffffff",

@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
+    from comicbox.formats.sources import MetadataSources
     from comicbox.print import PrintPhases
-    from comicbox.sources import MetadataSources
 
 
 class Policy(str, Enum):
@@ -86,7 +86,7 @@ class OnlineSourceLimits:
     a higher API tier or wants to be more conservative.
 
     Documented defaults (as of 2026-05) live in
-    `comicbox.online.rate_limits` for citation / audit.
+    `comicbox.formats.base.online.rate_limits` for citation / audit.
     """
 
     # Used by Metron (mokkari).

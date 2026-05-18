@@ -11,9 +11,9 @@ from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.logger import init_logging
-from comicbox.online import outcome_stats
-from comicbox.online.auto_engage import resolve_auto_engaged_budget
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -138,7 +138,7 @@ class Runner:
         - batch is small (single-fixture interactive use)
         - user pinned the global budget or any per-source budget
 
-        See `comicbox.online.auto_engage` for the trigger semantics.
+        See `comicbox.formats.base.online.auto_engage` for the trigger semantics.
         """
         if not self._config.online.enabled:
             return

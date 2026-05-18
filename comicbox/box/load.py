@@ -15,8 +15,8 @@ from simplejson.errors import JSONDecodeError
 from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.cache import get_schema
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.sources import MetadataSources
 
 
 class ComicboxLoad(ComicboxSources):

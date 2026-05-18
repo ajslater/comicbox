@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from comicbox.online import outcome_stats
+from comicbox.formats.base.online import outcome_stats
 
 
 def setup_function() -> None:

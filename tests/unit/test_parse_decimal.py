@@ -1,6 +1,6 @@
 """Test decimal parsing."""
 
-from comicbox.fields.number_fields import DecimalField
+from comicbox.formats.base.fields.number_fields import DecimalField
 
 FIVE = 5.0
 FIVE_HALF = 5.5

@@ -43,17 +43,20 @@ from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.formats.base.online.matcher import OnlineMatcher
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
-from comicbox.online.matcher import OnlineMatcher
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from comicbox.config.settings import OnlineSettings
-    from comicbox.online.matcher import CandidateHashFetcher, LocalHashProvider
-    from comicbox.online.profile import Candidate
-    from comicbox.online.sources.base import OnlineSource
+    from comicbox.formats.base.online.matcher import (
+        CandidateHashFetcher,
+        LocalHashProvider,
+    )
+    from comicbox.formats.base.online.profile import Candidate
+    from comicbox.formats.base.online.sources.base import OnlineSource
 
 
 # Score bands for the report. Inclusive lower bound, exclusive upper.

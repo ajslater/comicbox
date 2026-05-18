@@ -4,8 +4,8 @@ from types import MappingProxyType
 
 from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.sources import MetadataSources
 from comicbox.merge import AdditiveMerger, Merger, UpdateMerger
-from comicbox.sources import MetadataSources
 
 
 class ComicboxMerge(ComicboxOnlineLookup):

@@ -9,9 +9,9 @@ from types import MappingProxyType
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.json_schemas import JsonRenderModule
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
-from comicbox.schemas.json_schemas import JsonRenderModule
 from tests.const import TEST_DATETIME, TEST_DTTM_STR, TEST_READ_NOTES
 from tests.util import TestParser, create_write_dict, create_write_metadata
 
@@ -207,7 +207,7 @@ def test_comicbox_from_metadata() -> None:
 
 
 def test_comicbox_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     COMICBOX_TESTER.test_from_dict()
 
 

@@ -22,8 +22,8 @@ from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
+from comicbox.formats.sources import MetadataSources
 from comicbox.logger import init_logging
-from comicbox.sources import MetadataSources
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -88,7 +88,7 @@ class ComicboxInit:
         path: the path to the comic archive
         config: a ComicboxSettings dataclass. If None, Comicbox generates its own from the
             environment.
-        metadata: a comicbox.schemas dict to use instead of gathering the metadata
+        metadata: a comicbox.formats.base.schemas dict to use instead of gathering the metadata
             from the path.
         """
         self._path = self._validate_path(path)

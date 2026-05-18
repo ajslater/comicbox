@@ -10,6 +10,28 @@ from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
+from comicbox.formats.base.schemas.xml_schemas import IMAGE_ATTRIBUTE
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.identifiers import (
+    identifiers_transform_from_cb,
+    urls_transform_from_cb,
+)
+from comicbox.formats.base.transforms.publishing_tags import (
+    IMPRINT_NAME_KEYPATH,
+    ISSUE_COUNT_KEYPATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
+)
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.formats.base.transforms.xml_credits import (
+    xml_credits_transform_from_cb,
+    xml_credits_transform_to_cb,
+)
 from comicbox.formats.comic_info.schema import (
     BOOKMARK_ATTRIBUTE,
     ComicInfoSchema,
@@ -64,28 +86,6 @@ from comicbox.formats.comicbox.transform import (
 from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
-)
-from comicbox.schemas.xml_schemas import IMAGE_ATTRIBUTE
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.identifiers import (
-    identifiers_transform_from_cb,
-    urls_transform_from_cb,
-)
-from comicbox.transforms.publishing_tags import (
-    IMPRINT_NAME_KEYPATH,
-    ISSUE_COUNT_KEYPATH,
-    PUBLISHER_NAME_KEYPATH,
-    SERIES_NAME_KEYPATH,
-    VOLUME_NUMBER_KEYPATH,
-)
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
-)
-from comicbox.transforms.xml_credits import (
-    xml_credits_transform_from_cb,
-    xml_credits_transform_to_cb,
 )
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(

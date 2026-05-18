@@ -6,8 +6,8 @@ from typing import Any
 
 from glom import Coalesce, Iter, T
 
+from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comicbox.schema import ARCS_KEY, NUMBER_KEY
-from comicbox.transforms.spec import MetaSpec
 
 
 def _story_arcs_to_arcs(

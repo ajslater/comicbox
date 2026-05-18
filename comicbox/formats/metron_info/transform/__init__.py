@@ -2,6 +2,12 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
 from comicbox.formats.comicbox.schema import (
     AGE_RATING_KEY,
     COLLECTION_TITLE_KEY,
@@ -54,12 +60,6 @@ from comicbox.formats.metron_info.transform.resources import (
     METRON_RESOURCES_TRANSFORMS_TO_CB,
     METRON_UNIVERSES_TRANSFORM_FROM_CB,
     METRON_UNIVERSES_TRANSFORM_TO_CB,
-)
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
 )
 
 SIMPLE_KEY_MAP = frozenbidict(

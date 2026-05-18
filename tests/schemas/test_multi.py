@@ -9,9 +9,9 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.json_schemas import JsonRenderModule
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
-from comicbox.schemas.json_schemas import JsonRenderModule
 from tests.const import (
     CBZ_MULTI_FN,
     TEST_DATETIME,

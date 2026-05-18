@@ -10,6 +10,29 @@ from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
 from comicbox.enums.comicinfo import ComicInfoRoleTagEnum
 from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.identifiers import (
+    identifiers_transform_from_cb,
+    identifiers_transform_to_cb,
+)
+from comicbox.formats.base.transforms.price import (
+    price_transform_from_cb,
+    price_transform_to_cb,
+)
+from comicbox.formats.base.transforms.publishing_tags import (
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
+)
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
+from comicbox.formats.base.transforms.xml_credits import (
+    xml_credits_transform_from_cb,
+    xml_credits_transform_to_cb,
+)
 from comicbox.formats.comet.schema import CoMetSchema
 from comicbox.formats.comet.transform.reprints import (
     comet_reprints_transform_from_cb,
@@ -35,29 +58,6 @@ from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_to_cb,
 )
 from comicbox.identifiers import DEFAULT_ID_SOURCE
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.identifiers import (
-    identifiers_transform_from_cb,
-    identifiers_transform_to_cb,
-)
-from comicbox.transforms.price import (
-    price_transform_from_cb,
-    price_transform_to_cb,
-)
-from comicbox.transforms.publishing_tags import (
-    PUBLISHER_NAME_KEYPATH,
-    SERIES_NAME_KEYPATH,
-    VOLUME_NUMBER_KEYPATH,
-)
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
-)
-from comicbox.transforms.xml_credits import (
-    xml_credits_transform_from_cb,
-    xml_credits_transform_to_cb,
-)
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {

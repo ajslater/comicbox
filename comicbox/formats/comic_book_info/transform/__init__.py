@@ -2,6 +2,19 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.publishing_tags import (
+    ISSUE_COUNT_KEYPATH,
+    PUBLISHER_NAME_KEYPATH,
+    SERIES_NAME_KEYPATH,
+    VOLUME_COUNT_KEYPATH,
+    VOLUME_NUMBER_KEYPATH,
+)
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
 from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
 from comicbox.formats.comic_book_info.transform.credits import (
     cbi_credits_primary_to_cb,
@@ -30,19 +43,6 @@ from comicbox.formats.comicbox.transform import (
 from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_from_cb,
     name_obj_to_cb,
-)
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.publishing_tags import (
-    ISSUE_COUNT_KEYPATH,
-    PUBLISHER_NAME_KEYPATH,
-    SERIES_NAME_KEYPATH,
-    VOLUME_COUNT_KEYPATH,
-    VOLUME_NUMBER_KEYPATH,
-)
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
 )
 
 TAGGER_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{TAGGER_KEY}"

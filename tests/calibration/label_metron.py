@@ -53,8 +53,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from comicbox.config import get_config
+from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
-from comicbox.online.retry import with_retry
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

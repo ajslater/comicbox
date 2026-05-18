@@ -9,8 +9,8 @@ from loguru import logger
 
 from comicbox.box.computed import ComicboxComputed
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from comicbox.schemas.cache import get_schema
 
 
 class ComicboxMetadata(ComicboxComputed):

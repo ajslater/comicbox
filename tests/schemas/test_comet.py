@@ -10,9 +10,9 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
 from comicbox.formats.comet.schema import CoMetSchema
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
@@ -110,12 +110,12 @@ COMET_TESTER = TestParser(
 
 
 def test_comet_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     COMET_TESTER.test_from_metadata()
 
 
 def test_comet_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     COMET_TESTER.test_from_dict()
 
 

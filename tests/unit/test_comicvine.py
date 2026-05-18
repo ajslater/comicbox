@@ -6,12 +6,12 @@ import sqlite3
 from typing import TYPE_CHECKING
 
 from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     CoverHashUrlCache,
 )
 from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
-from comicbox.online.profile import ComicProfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -107,8 +107,12 @@ def test_cover_hash_url_cache_creates_table(tmp_path: Path) -> None:
 
 def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
     """Matcher should call the fetcher for candidates without precomputed hash."""
-    from comicbox.online.matcher import OnlineMatcher
-    from comicbox.online.profile import Candidate, CandidateSummary, ComicProfile
+    from comicbox.formats.base.online.matcher import OnlineMatcher
+    from comicbox.formats.base.online.profile import (
+        Candidate,
+        CandidateSummary,
+        ComicProfile,
+    )
 
     fetcher_calls: list[str] = []
 

@@ -9,9 +9,9 @@ from loguru import logger
 
 from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
-from comicbox.fields.comicbox import NAME_KEY
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import DecimalField
+from comicbox.formats.base.fields.comicbox import NAME_KEY
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import DecimalField
 from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,

@@ -6,7 +6,7 @@ from argparse import Namespace
 
 from comicbox.config import get_config
 from comicbox.config.settings import OnlineSourceLimits
-from comicbox.online.rate_limits import (
+from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_HOUR,
     COMICVINE_DEFAULT_PER_SECOND,
     METRON_DEFAULT_PER_DAY,
@@ -115,7 +115,7 @@ def test_partial_rate_limit_override() -> None:
 
 def test_with_retry_honors_long_retry_after() -> None:
     """A server hint of 300s is honored, not capped at our 60s schedule."""
-    from comicbox.online.retry import with_retry
+    from comicbox.formats.base.online.retry import with_retry
 
     # mokkari-style RateLimitError with retry_after attribute.
     class FakeRateLimitError(Exception):
@@ -146,7 +146,7 @@ def test_with_retry_honors_long_retry_after() -> None:
 
 def test_with_retry_clamps_excessive_retry_after() -> None:
     """A wildly-large hint (e.g. 1 day) is clamped to the 1-hour ceiling."""
-    from comicbox.online.retry import with_retry
+    from comicbox.formats.base.online.retry import with_retry
 
     class FakeRateLimitError(Exception):
         def __init__(self) -> None:
@@ -172,7 +172,7 @@ def test_with_retry_clamps_excessive_retry_after() -> None:
 
 def test_with_retry_no_hint_uses_short_backoff() -> None:
     """Without a server hint, fall back to the short exponential schedule."""
-    from comicbox.online.retry import with_retry
+    from comicbox.formats.base.online.retry import with_retry
 
     sleeps: list[float] = []
 

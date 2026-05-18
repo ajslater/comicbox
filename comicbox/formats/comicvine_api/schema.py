@@ -9,7 +9,7 @@ the dict through unchanged.
 
 from marshmallow.fields import Raw
 
-from comicbox.schemas.json_schemas import JsonSchema, JsonSubSchema
+from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 
 class ComicVineApiSubSchema(JsonSubSchema):

@@ -18,7 +18,7 @@ from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
 from comicbox.box.validate.guess_format import guess_format
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 #: Derived from per-format `REGISTRATION.validator`. Formats whose
 #: registration has `validator=None` (PDF, PDF_XML, Filename, online APIs)

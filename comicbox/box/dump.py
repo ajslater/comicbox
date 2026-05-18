@@ -6,7 +6,7 @@ from loguru import logger
 
 from comicbox.box.pages import ComicboxPages
 from comicbox.formats import MetadataFormats
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats

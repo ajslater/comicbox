@@ -2,14 +2,14 @@
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import DecimalField, IntegerField
-from comicbox.fields.pycountry import LanguageField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import DecimalField, IntegerField
+from comicbox.formats.base.fields.pycountry import LanguageField
+from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedNameSchema,
     IdentifiedSchema,
 )
-from comicbox.schemas.base import BaseSubSchema
 
 
 class SeriesSchema(IdentifiedNameSchema):

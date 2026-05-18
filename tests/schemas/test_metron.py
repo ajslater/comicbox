@@ -13,9 +13,9 @@ from glom import Assign, glom
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.metron_info.schema import MetronInfoSchema
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
@@ -464,7 +464,7 @@ URL_PRIMARY_CONFIG = get_config(
 
 
 def test_metron_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     METRON_TESTER.test_from_metadata()
     SIMPLE_METRON_TESTER.test_from_metadata()
 

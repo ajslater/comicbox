@@ -15,8 +15,8 @@ from comicbox.config.settings import (
     OnlineSettings,
     OnlineSourceCredentials,
 )
+from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
-from comicbox.online.profile import ComicProfile
 
 if TYPE_CHECKING:
     import pytest

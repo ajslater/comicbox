@@ -2,9 +2,9 @@
 
 from marshmallow.fields import Nested
 
-from comicbox.fields.collection_fields import DictField
-from comicbox.fields.fields import StringField
-from comicbox.schemas.base import BaseSubSchema
+from comicbox.formats.base.fields.collection_fields import DictField
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.schemas.base import BaseSubSchema
 
 
 class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron

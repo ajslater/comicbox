@@ -6,7 +6,13 @@ from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.unparse import dict2comicfn
 from glom import glom
 
-from comicbox.fields.xml_fields import get_cdata
+from comicbox.formats.base.fields.xml_fields import get_cdata
+from comicbox.formats.base.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
+from comicbox.formats.base.transforms.spec import MetaSpec
+from comicbox.formats.base.transforms.xml_reprints import (
+    FILENAME_TO_REPRINT_SPECS,
+    REPRINT_TO_FILENAME_SPECS,
+)
 from comicbox.formats.comicbox.schema import (
     LANGUAGE_KEY,
     NAME_KEY,
@@ -20,12 +26,6 @@ from comicbox.formats.metron_info.transform.identifier_attribute import (
     metron_id_attribute_to_cb,
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
-from comicbox.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
-from comicbox.transforms.spec import MetaSpec
-from comicbox.transforms.xml_reprints import (
-    FILENAME_TO_REPRINT_SPECS,
-    REPRINT_TO_FILENAME_SPECS,
-)
 
 REPRINTS_TAGPATH = "Reprints.Reprint"
 

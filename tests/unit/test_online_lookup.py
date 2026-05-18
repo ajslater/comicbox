@@ -11,10 +11,10 @@ import pytest
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.formats import MetadataFormats
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from comicbox.online.profile import Candidate
+    from comicbox.formats.base.online.profile import Candidate
 
 _SAMPLE_ISSUE = {
     "id": 42,

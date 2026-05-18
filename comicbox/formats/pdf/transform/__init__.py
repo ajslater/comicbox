@@ -2,6 +2,12 @@
 
 from bidict import frozenbidict
 
+from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.spec import (
+    MetaSpec,
+    create_specs_from_comicbox,
+    create_specs_to_comicbox,
+)
 from comicbox.formats.comicbox.schema import (
     GENRES_KEY,
     SCAN_INFO_KEY,
@@ -18,12 +24,6 @@ from comicbox.formats.pdf.schema import MuPDFSchema, PDFXmlSchema
 from comicbox.formats.pdf.transform.credits import (
     authors_to_credits_transform_from_cb,
     authors_to_credits_transform_to_cb,
-)
-from comicbox.transforms.base import BaseTransform
-from comicbox.transforms.spec import (
-    MetaSpec,
-    create_specs_from_comicbox,
-    create_specs_to_comicbox,
 )
 
 XMLPDF_SIMPLE_KEY_MAP = frozenbidict(

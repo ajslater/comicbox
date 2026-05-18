@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from comicbox.box.validate.base import BaseValidator
-from comicbox.transforms.base import BaseTransform
+from comicbox.formats.base.transforms.base import BaseTransform
 
 
 @dataclass
@@ -47,7 +47,7 @@ class FormatRegistration:
 
     Each format package exports a `REGISTRATION: FormatRegistration` from
     its `__init__.py`. The central `comicbox.formats` package and
-    `comicbox.sources` module read from this instance to assemble the
+    `comicbox.formats.sources` module read from this instance to assemble the
     `MetadataFormats` and `MetadataSources` enums.
     """
 
