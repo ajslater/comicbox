@@ -8,7 +8,7 @@ code in this repository.
 Comicbox is a Python library for reading and writing comic book archive
 metadata. It supports CBZ, CBR, CBT, CB7, and PDF formats, and handles multiple
 metadata schemas: ComicInfo.xml (ComicRack), MetronInfo.xml (Metron),
-ComicBookInfo, CoMet, ComicTagger, PDF metadata, and native Comicbox YAML/JSON.
+ComicBookInfo, CoMet, PDF metadata, and native Comicbox YAML/JSON.
 
 ## Commands
 

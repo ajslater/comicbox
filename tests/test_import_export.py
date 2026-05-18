@@ -432,56 +432,6 @@ FNS = MappingProxyType(
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             "volume": {"issue_count": 7, "number": 1950},
         },
-        "comictagger.json": {
-            "credits": {
-                "Joe Orlando": {"roles": {"Writer": {}}},
-                "Wally Wood": {"roles": {"Penciller": {}}},
-            },
-            "country": "US",
-            "date": {
-                "cover_date": date(1950, 11, 1),
-                "day": 1,
-                "month": 11,
-                "year": 1950,
-            },
-            "genres": {"Science Fiction": {}},
-            "identifier_primary_source": {
-                "source": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
-            },
-            "identifiers": {
-                "comicvine": {
-                    "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
-                }
-            },
-            "issue": {
-                "name": "1",
-                "number": Decimal(1),
-            },
-            "language": "en",
-            "notes": (
-                "Tagged with comicbox dev on "
-                "1970-01-01T00:00:00Z [Issue ID 145269] "
-                "[CVDB145269]"
-            ),
-            "page_count": 0,
-            "publisher": {"name": "Youthful Adventure Stories"},
-            "series": {
-                "identifiers": {
-                    "comicvine": {
-                        "key": "45678",
-                        "url": "https://comicvine.gamespot.com/c/4050-45678/",
-                    }
-                },
-                "name": "Captain Science",
-            },
-            "stories": {"The Beginning": {}},
-            "tagger": "comicbox dev",
-            "title": "The Beginning",
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            "volume": {"issue_count": 7, "number": 1950},
-        },
         "metroninfo.xml": {
             "age_rating": "Teen Plus",
             "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},

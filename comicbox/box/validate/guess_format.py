@@ -15,7 +15,6 @@ _SUFFIX_SUBSTRINGS = MappingProxyType(
         "json": {
             "comicbox": MetadataFormats.COMICBOX_JSON,
             "pdf": MetadataFormats.PDF,
-            "comictagger": MetadataFormats.COMICTAGGER,
             **dict.fromkeys(_CBI_STEMS, MetadataFormats.COMIC_BOOK_INFO),
         },
         "xml": {

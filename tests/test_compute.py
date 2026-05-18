@@ -11,7 +11,7 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.comictagger import ComictaggerSchema
+from comicbox.schemas.comicinfo import ComicInfoSchema
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff
 
@@ -88,7 +88,7 @@ def test_compute_ids_from_tags() -> None:
 
 
 ISSUE_NAME_ONLY_MD = MappingProxyType(
-    {ComictaggerSchema.ROOT_TAG: {"issue": "1234SUFFIX"}}
+    {ComicInfoSchema.ROOT_TAG: {"Number": "1234SUFFIX"}}
 )
 ISSUE_WITH_PARTS = MappingProxyType(
     {
@@ -103,7 +103,7 @@ def test_compute_issue_suffix() -> None:
     """Test computing identifiers from tags."""
     with Comicbox(
         metadata=ISSUE_NAME_ONLY_MD,
-        fmt=MetadataFormats.COMICTAGGER,
+        fmt=MetadataFormats.COMIC_INFO,
         config=PRINT_CONFIG,
     ) as car:
         md = car.get_internal_metadata()
@@ -130,39 +130,3 @@ def test_compute_issue_name() -> None:
         md = car.get_internal_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
-
-
-UNKNOWN_URLS = MappingProxyType(
-    {
-        ComictaggerSchema.ROOT_TAG: {
-            "web_link": "http://foo.bar,https://google.com,https://bar.ct/?attr=1#tag"
-        }
-    }
-)
-
-IDENTIFIERS_FROM_URLS = MappingProxyType(
-    {
-        ComicboxSchemaMixin.ROOT_TAG: {
-            "identifiers": {
-                "bar.ct": {
-                    "key": "?attr=1#tag",
-                    "url": "https://bar.ct/?attr=1#tag",
-                },
-                "foo.bar": {"url": "http://foo.bar"},
-                "google.com": {"url": "https://google.com"},
-            }
-        }
-    }
-)
-
-
-def test_other_urls() -> None:
-    """Test non known source urls."""
-    with Comicbox(
-        metadata=UNKNOWN_URLS,
-        fmt=MetadataFormats.COMICTAGGER,
-        config=PRINT_CONFIG,
-    ) as car:
-        md = car.get_internal_metadata()
-
-    assert_diff(IDENTIFIERS_FROM_URLS, md)

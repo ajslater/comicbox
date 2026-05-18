@@ -19,7 +19,7 @@ CLI_METADATA_ARGS = (
     "-m",
     "Tags: 'a, b, c',Publisher: TestPub,StoryArc: 'd,e,f', StoryArcNumber: '1,3,5'",
     "-m",
-    "imprint: TestImprint",
+    "Imprint: TestImprint",
 )
 CLI_DICT = MappingProxyType(
     {

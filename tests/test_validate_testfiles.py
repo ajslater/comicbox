@@ -6,7 +6,7 @@ from pathlib import Path
 from comicbox.box.validate import validate_source
 from tests.const import TEST_EXPORT_DIR, TEST_METADATA_DIR
 
-_NUM_TEST_FILES = 16
+_NUM_TEST_FILES = 14
 _SUFFIXES = frozenset({"." + ext for ext in ("txt", "xml", "json", "yaml", "yml")})
 
 

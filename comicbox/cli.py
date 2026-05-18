@@ -299,7 +299,7 @@ def _get_help_format_table() -> Table:
         if not fmt.value.enabled:
             continue
         label = fmt.value.label
-        if label.startswith(("ComicTagger", "Comicbox")):
+        if label.startswith("Comicbox"):
             style = Style(dim=True)
             label = Text(label, style=style)
         keys = ", ".join(sorted(fmt.value.config_keys))

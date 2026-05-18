@@ -2,9 +2,10 @@
 
 **Branch:** `plugins` (off `online-tagging` @ 7fd1971) **Companion:**
 [01-current-state-survey.md](01-current-state-survey.md) **Scope (resolved):**
-All **13** format entries in `MetadataFormats` — the 8 named in
-[TODO.md §6](../online-tagging/TODO.md) plus `PDF_XML`, `FILENAME`,
-`COMICBOX_YAML`, `COMICBOX_JSON`, `COMICBOX_CLI_YAML`.
+All **12** format entries in `MetadataFormats` — the 7 named in
+[TODO.md §6](../online-tagging/TODO.md) (ComicTagger removed pre-Phase 1, see
+NEWS v4.0.0) plus `PDF_XML`, `FILENAME`, `COMICBOX_YAML`, `COMICBOX_JSON`,
+`COMICBOX_CLI_YAML`.
 
 ## 1. Goal
 
@@ -52,13 +53,6 @@ comicbox/formats/
 │       ├── pages.py
 │       ├── reprints.py
 │       └── storyarcs.py
-├── comictagger/
-│   ├── __init__.py
-│   ├── schema.py
-│   └── transform/
-│       ├── __init__.py      # ComictaggerTransform
-│       ├── identifiers.py
-│       └── reprints.py
 ├── comicvine_api/
 │   ├── __init__.py
 │   ├── schema.py
@@ -111,7 +105,7 @@ transform gets `transform.py` (file). Same rule applies to `schema/` vs
 [comicbox/schemas/](../../comicbox/schemas/) today — no invention of
 `transforms_<thing>.py` siblings.
 
-13 format entries map to **12 format packages** because `PDF` and `PDF_XML` ship
+12 format entries map to **11 format packages** because `PDF` and `PDF_XML` ship
 together (same `pdffile` dependency, same module today).
 
 ### 2.2 Per-format module contract
@@ -177,14 +171,14 @@ from comicbox.formats.comic_info import REGISTRATION as _COMIC_INFO
 # ... 11 more imports
 
 _ALL_REGISTRATIONS = (
-    _FILENAME, _COMICTAGGER, _PDF, _PDF_XML, _COMET, _COMIC_BOOK_INFO,
+    _FILENAME, _PDF, _PDF_XML, _COMET, _COMIC_BOOK_INFO,
     _COMIC_INFO, _METRON_INFO, _METRON_API, _COMICVINE_API,
     _COMICBOX_YAML, _COMICBOX_JSON, _COMICBOX_CLI_YAML,
 )  # order = masking precedence
 
 class MetadataFormats(Enum):
     FILENAME = _FILENAME.format
-    COMICTAGGER = _COMICTAGGER.format
+    PDF = _PDF.format
     # ... etc, one line per format
 ```
 
@@ -330,8 +324,8 @@ only to validate the module-shape decisions.
 
 ### Phase 1 — Migrate remaining file-based formats
 
-ComicInfo, MetronInfo, ComicBookInfo, ComicTagger, Filename, and the three
-native Comicbox formats. Six packages. Mechanical once Phase 0 locks the shape.
+ComicInfo, MetronInfo, ComicBookInfo, Filename, and the three native Comicbox
+formats. Five packages. Mechanical once Phase 0 locks the shape.
 
 PDF deferred to Phase 2 (it has the most hooks). Online deferred to Phase 3.
 

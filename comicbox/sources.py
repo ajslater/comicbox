@@ -32,7 +32,6 @@ class MetadataSources(Enum):
             MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.COMET,
             MetadataFormats.PDF,
-            MetadataFormats.COMICTAGGER,
             MetadataFormats.FILENAME,
         ),
     )
@@ -57,7 +56,6 @@ class MetadataSources(Enum):
             MetadataFormats.COMIC_INFO,
             MetadataFormats.COMET,
             MetadataFormats.COMIC_BOOK_INFO,
-            MetadataFormats.COMICTAGGER,
         ),
         from_archive=True,
     )
@@ -79,7 +77,6 @@ class MetadataSources(Enum):
             MetadataFormats.COMIC_BOOK_INFO,
             MetadataFormats.PDF,
             MetadataFormats.COMET,
-            MetadataFormats.COMICTAGGER,
         ),
     )
     API = MetadataSource(
@@ -94,7 +91,6 @@ class MetadataSources(Enum):
             MetadataFormats.COMET,
             MetadataFormats.PDF,
             MetadataFormats.PDF_XML,
-            MetadataFormats.COMICTAGGER,
             MetadataFormats.FILENAME,
         ),
     )

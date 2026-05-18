@@ -14,7 +14,6 @@ _FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
     {
         MetadataFormats.COMIC_BOOK_INFO,
         MetadataFormats.COMIC_INFO,
-        MetadataFormats.COMICTAGGER,
         MetadataFormats.PDF,
         MetadataFormats.PDF_XML,
     }

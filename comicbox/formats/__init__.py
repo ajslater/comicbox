@@ -17,7 +17,6 @@ from comicbox.transforms.comicbox.cli import ComicboxCLITransform
 from comicbox.transforms.comicbox.json import ComicboxJsonTransform
 from comicbox.transforms.comicbox.yaml import ComicboxYamlTransform
 from comicbox.transforms.comicinfo import ComicInfoTransform
-from comicbox.transforms.comictagger import ComictaggerTransform
 from comicbox.transforms.comicvine_api import ComicVineApiTransform
 from comicbox.transforms.filename import FilenameTransform
 from comicbox.transforms.metron_api import MetronApiTransform
@@ -36,14 +35,6 @@ class MetadataFormats(Enum):
         "comicbox-filename.txt",
         FilenameTransform,
         lexer="",
-    )
-    COMICTAGGER = MetadataFormat(
-        "ComicTagger",
-        frozenset({"comictagger", "ct"}),
-        "comictagger.json",
-        ComictaggerTransform,
-        has_pages=True,
-        lexer="json",
     )
     PDF = MetadataFormat(
         "MuPDF",

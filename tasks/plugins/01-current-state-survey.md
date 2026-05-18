@@ -13,19 +13,19 @@ this.
 
 ---
 
-## Scope note: 8 named vs. 13 in the registry
+## Scope note: 7 named vs. 12 in the registry
 
-[TODO.md §6](../online-tagging/TODO.md) names 8 formats: ComicInfo, MetronInfo,
-ComicBookInfo, CoMet, ComicTagger, PDF, Metron API, ComicVine API.
-`MetadataFormats` actually has **13 enum entries** — the extras are:
+[TODO.md §6](../online-tagging/TODO.md) originally named 8 formats: ComicInfo,
+MetronInfo, ComicBookInfo, CoMet, ComicTagger, PDF, Metron API, ComicVine API.
+**ComicTagger was removed pre-Phase 1** (see NEWS v4.0.0 Breaking Changes), so 7
+remain. `MetadataFormats` has **12 enum entries** total — the extras are:
 
 - `PDF_XML` (treated as a sub-variant of PDF; same module dir)
 - `FILENAME` (filename-only parser; no archive content)
 - `COMICBOX_YAML`, `COMICBOX_JSON`, `COMICBOX_CLI_YAML` (native serialization)
 
-All 13 have their own schema and transform code. **Open scope question:** does
-the refactor cover all 13, or only the 8 named? The `02-plan.md` doc needs to
-answer this before phasing.
+All 12 have their own schema and transform code. Scope resolved in `02-plan.md`:
+the refactor covers all 12 (was 13 — ComicTagger dropped before refactor began).
 
 ---
 
@@ -78,18 +78,6 @@ answer this before phasing.
 | Box mixin hooks              | [comicbox/box/sources.py:99-108](../../comicbox/box/sources.py) — `_get_source_comment_metadata` hardcodes "only one archive comment format exists"                      |
 | CLI / config                 | [comicbox/cli.py:298-306](../../comicbox/cli.py); [comicbox/config/computed.py:13-21](../../comicbox/config/computed.py) (`_FORMATS_WITH_TAGS_WITHOUT_IDS`)              |
 | Tests                        | [tests/schemas/test_cbi.py](../../tests/schemas/test_cbi.py)                                                                                                             |
-
-### ComicTagger
-
-| Aspect                       | Location                                                                                                                                                                                                                                                         |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Schema class(es)             | [comicbox/schemas/comictagger.py:54](../../comicbox/schemas/comictagger.py) `ComictaggerSubSchema`; `:42` `ComictaggerPageInfoSchema`; `:31` `DataOriginSchema`                                                                                                  |
-| Transform class(es)          | [comicbox/transforms/comictagger/\_\_init\_\_.py](../../comicbox/transforms/comictagger/__init__.py) `ComictaggerTransform`; sub-transforms: `identifiers.py`, `reprints.py`                                                                                     |
-| `MetadataFormats` entry      | [comicbox/formats.py:51-58](../../comicbox/formats.py) — `COMICTAGGER = MetadataFormat(..., ComictaggerTransform, has_pages=True, lexer="json")`                                                                                                                 |
-| `MetadataSources` membership | [comicbox/sources.py:35,60,82,97](../../comicbox/sources.py) — CONFIG, ARCHIVE_FILE, CLI, API                                                                                                                                                                    |
-| Box mixin hooks              | None format-specific                                                                                                                                                                                                                                             |
-| CLI / config                 | [comicbox/cli.py:298-306](../../comicbox/cli.py); [comicbox/config/computed.py:13-21](../../comicbox/config/computed.py) (`_FORMATS_WITH_TAGS_WITHOUT_IDS`); CLI help dims ComicTagger by label-prefix check at [comicbox/cli.py:302-303](../../comicbox/cli.py) |
-| Tests                        | [tests/schemas/test_ct.py](../../tests/schemas/test_ct.py)                                                                                                                                                                                                       |
 
 ### PDF (PDF + PDF_XML)
 
@@ -246,9 +234,9 @@ Consistently-touched files when adding/extending online formats:
 2. [comicbox/box/dump.py:11-14](../../comicbox/box/dump.py) — `ARCHIVE_FORMATS`
    derived from `ARCHIVE_FILE` + `ARCHIVE_COMMENT`.
 3. [comicbox/box/validate/\_\_init\_\_.py:26-44](../../comicbox/box/validate/__init__.py)
-   — `FMT_VALIDATOR_MAP` only covers 8 of 13 formats; 5 (ComicTagger, PDF,
-   PDF_XML, Filename, online API formats) have no validator. Comments at
-   `:39-42` acknowledge the gaps.
+   — `FMT_VALIDATOR_MAP` only covers 7 of 12 formats; 5 (PDF, PDF_XML, Filename,
+   Metron API, ComicVine API) have no validator. Comments at `:39-42`
+   acknowledge the gaps.
 4. [comicbox/box/sources.py:16-21](../../comicbox/box/sources.py) —
    `FILENAME_FORMAT_MAP` (archive filename detection) derived from
    `ARCHIVE_FILE`.
@@ -256,8 +244,8 @@ Consistently-touched files when adding/extending online formats:
    `_FORMATS_WITH_TAGS_WITHOUT_IDS` hardcoded set; missing METRON_INFO; missing
    online formats. Maintenance hazard.
 6. [comicbox/cli.py:298-306](../../comicbox/cli.py) — help table iterates
-   `MetadataFormats` but filter at `:302-303` dims ComicTagger/Comicbox formats
-   by label-prefix check.
+   `MetadataFormats` but filter at `:302-303` dims Comicbox formats by
+   label-prefix check.
 
 ### Two conditional-enabling patterns
 

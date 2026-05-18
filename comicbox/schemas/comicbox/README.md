@@ -32,21 +32,6 @@ are unique to one format.
 - store_date
 - universes
 
-### ComicTagger
-
-- alternate_images
-- series_id
-- issue_id
-
-#### ComicTagger and one other format
-
-- cover_image (CoMet)
-- last_mark (CoMet)
-- monochrome (ComicInfo)
-- pages (ComicInfo)
-- rights (CoMet)
-- series_groups (ComicInfo)
-
 # Filename
 
 - ext

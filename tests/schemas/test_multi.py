@@ -22,9 +22,7 @@ from tests.util import TestParser, create_write_dict, create_write_metadata
 
 READ_CONFIG = get_config(Namespace(comicbox=Namespace()))
 WRITE_CONFIG = get_config(
-    Namespace(
-        comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "ct", "cb"))
-    )
+    Namespace(comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "cb")))
 )
 READ_METADATA = MappingProxyType(
     {
@@ -77,10 +75,6 @@ READ_METADATA = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
-            "identifier_primary_source": {
-                "source": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
-            },
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
@@ -234,10 +228,6 @@ READ_MULTI_DICT = MappingProxyType(
             "prices": {"": Decimal("0.10")},
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
-            "identifier_primary_source": {
-                "source": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
-            },
             "identifiers": {
                 "comicvine": {
                     "key": "145269",

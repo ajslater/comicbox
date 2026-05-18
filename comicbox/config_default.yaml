@@ -19,7 +19,6 @@ comicbox:
     - metroninfo
     - comicbookinfo
     - comicinfo
-    - comictagger
     - filename
     - json
     - pdf

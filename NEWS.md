@@ -29,11 +29,10 @@
       counts.
     - Cross-source disagreement: when Metron's stored `cv_id` and our
       independent ComicVine match disagree, comicbox logs a WARNING.
-    - `-j N` runs online lookup across N files in parallel. Default 1
-      (serial); 4 is the recommended ceiling for cold-cache batch runs.
-      Higher values are not recommended for cold cache — wall time can
-      balloon 10x+ under sustained rate-limit contention. See `--help`
-      for details.
+    - `-j N` runs online lookup across N files in parallel. Default 1 (serial);
+      4 is the recommended ceiling for cold-cache batch runs. Higher values are
+      not recommended for cold cache — wall time can balloon 10x+ under
+      sustained rate-limit contention. See `--help` for details.
 - Breaking changes
     - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
       alias through 4.x and is removed in 5.0.
@@ -42,6 +41,11 @@
     - `--accept-only` and `--skip-multiple` are deprecated in favor of
       `--policy` and `--unattended`. The legacy flags still work but emit a
       deprecation warning and translate to the new flags. Removed in 5.0.
+    - The ComicTagger metadata format (comictagger.json) is removed. It was
+      never a real comic metadata standard, only an export of an internal
+      ComicTagger data structure with no stability guarantees. Interop with the
+      ComicTagger tool's notes-field stamping (the `Tagged with ComicTagger ...`
+      convention in ComicInfo.xml notes) is unaffected.
 
 ## v3.0.3
 

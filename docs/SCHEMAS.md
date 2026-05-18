@@ -111,27 +111,6 @@ I have interpreted the
 | Archive       | comet.xml |
 | Import/Export | comet.xml |
 
-### ComicTagger Schema
-
-The most useful general comic book metadata writer is
-[ComicTagger](https://github.com/comictagger/comictagger). It supports the
-ComicVine API, is extensible to other APIs, and features a nice desktop GUI.
-Internally, Comictagger keeps a metadata object to work with the schemas it
-supports. This schema allows the import and export of that schema.
-
-[Comictaggger genericmetadata.py](https://github.com/comictagger/comictagger/blob/develop/comicapi/genericmetadata.py)
-
-This schema is possibly only useful to developers using the API to import and
-export python dicts, but the capability to import an export this format json
-format as json exists. The author of ComicTagger offers no promises as to the
-stability of this API and I am very lazy, so the chances of this drifting out of
-date are anyone's guess. It was included because it was easy to do.
-
-| Location      | Name             |
-| ------------- | ---------------- |
-| Archive       | comictagger.json |
-| Import/Export | comictagger.json |
-
 ### Comicbox 2.0 Schema
 
 The comicbox internal data structure which acts as a superset of the above

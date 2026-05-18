@@ -36,7 +36,6 @@ FMT_VALIDATOR_MAP = MappingProxyType(
         MetadataFormats.COMICBOX_CLI_YAML: YamlValidator(
             "v2.0/comicbox-v2.0.schema.json"
         ),
-        # "comictagger":
         # "pdf":
         # "pdfxml":
         # "filename":

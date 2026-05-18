@@ -3,7 +3,7 @@
 set -euo pipefail
 FN=$1
 FILES=(
-  comet.xml comicbox-cli.yaml comicbox.yaml comictagger.json
+  comet.xml comicbox-cli.yaml comicbox.yaml
   comicbox.json comicinfo.xml
 )
 rm -f "$FN"
