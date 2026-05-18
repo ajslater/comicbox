@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from comicbox.formats.base.online.retry import _RATE_LIMIT_SCHEDULE, with_retry
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class _FakeRateLimitError(Exception):
@@ -26,7 +31,7 @@ class _FakeAuthError(Exception):
 _FakeAuthError.__name__ = "AuthenticationError"
 
 
-def _capture_sleeps() -> tuple[list[float], callable]:
+def _capture_sleeps() -> tuple[list[float], Callable[[float], None]]:
     sleeps: list[float] = []
 
     def _sleep(s: float) -> None:

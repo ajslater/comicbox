@@ -6,6 +6,7 @@ from typing import Any
 import simplejson
 from jsonschema.validators import Draft202012Validator
 from referencing import Registry, Resource
+from typing_extensions import override
 
 from comicbox.box.validate.base import SCHEMA_PATH, BaseValidator
 
@@ -38,6 +39,7 @@ class JsonValidator(BaseValidator):
             format_checker=Draft202012Validator.FORMAT_CHECKER,
         )
 
+    @override
     def validate(self, data: str | bytes | Path) -> None:
         """Validate source."""
         data = self.get_data_str(data)

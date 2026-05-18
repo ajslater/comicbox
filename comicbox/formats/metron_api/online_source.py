@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
+from typing_extensions import override
 
 from comicbox.config.settings import resolve_api_budget
 from comicbox.formats import MetadataFormats
@@ -44,6 +45,7 @@ class MetronOnlineSource(OnlineSource):
     metadata_source: ClassVar[MetadataSources] = MetadataSources.METRON_API
     metadata_format: ClassVar[MetadataFormats] = MetadataFormats.METRON_API
 
+    @override
     def is_configured(self) -> bool:
         """Metron requires both username and password."""
         return bool(self._credentials.username and self._credentials.password)
@@ -104,6 +106,9 @@ class MetronOnlineSource(OnlineSource):
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
+        if issue is None:
+            msg = f"metron: issue {issue_id} not found"
+            raise LookupError(msg)
         return issue.model_dump(mode="json")
 
     # Limit how many candidate series to expand into issue queries; each

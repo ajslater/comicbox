@@ -1,15 +1,10 @@
 """
 Metadata sources definitions.
 
-`MetadataSources` is assembled dynamically from `_SOURCE_DEFINITIONS`
-plus per-format `REGISTRATION.sources` declarations. Each format
-declares which sources it belongs to (and at what masking priority);
-the central enum's format tuples are derived rather than hand-written.
-
-Trade-off: pyright/mypy do not statically see the enum members. Typo'd
-`MetadataSources.NOSUCH` raises `AttributeError` at runtime instead of
-being flagged at type-check time. Acceptable because all consumers are
-internal and the source taxonomy is stable (~10 entries).
+`MetadataSources` is a static enum: members are declared in the class
+body so the type checker can resolve `MetadataSources.METRON_API` etc.
+The per-source `formats` tuple is still derived from each format's
+`REGISTRATION.sources` declaration — that part remains plugin-driven.
 """
 
 from dataclasses import dataclass
@@ -23,29 +18,8 @@ class MetadataSource:
     """Metadata source attributes."""
 
     label: str
-    formats: tuple[MetadataFormats, ...] = tuple(
-        fmt for fmt in MetadataFormats if fmt.value.enabled
-    )
+    formats: tuple[MetadataFormats, ...] = ()
     from_archive: bool = False
-
-
-# Source order = source-level masking precedence. Fourth field marks
-# sources that accept arbitrary enabled formats (today: IMPORT_FILE for
-# the `--import` CLI option, where the file's format is detected at
-# read time).
-#: Source definition rows: (enum_member_name, label, from_archive, accepts_any_format).
-_SOURCE_DEFINITIONS: tuple[tuple[str, str, bool, bool], ...] = (
-    ("CONFIG", "Config", False, False),
-    ("ARCHIVE_FILENAME", "Filename", True, False),
-    ("ARCHIVE_PDF", "Archive Header", True, False),
-    ("ARCHIVE_COMMENT", "Archive Comment", True, False),
-    ("ARCHIVE_FILE", "Archive File", True, False),
-    ("METRON_API", "Metron API", False, False),
-    ("COMICVINE_API", "ComicVine API", False, False),
-    ("IMPORT_FILE", "Imported File", False, True),
-    ("CLI", "Comicbox CLI", False, False),
-    ("API", "API", False, False),
-)
 
 
 def _formats_for_source(name: str) -> tuple[MetadataFormats, ...]:
@@ -62,28 +36,33 @@ def _formats_for_source(name: str) -> tuple[MetadataFormats, ...]:
     return tuple(fmt for _, fmt in sorted(pairs, key=lambda p: p[0]))
 
 
-def _build_source(
-    name: str,
-    label: str,
-    *,
-    from_archive: bool,
-    accepts_any: bool,
-) -> MetadataSource:
-    if accepts_any:
-        return MetadataSource(label, from_archive=from_archive)
-    return MetadataSource(
-        label,
-        formats=_formats_for_source(name),
-        from_archive=from_archive,
-    )
-
-
-MetadataSources = Enum(  # pyright: ignore[reportCallIssue]
-    "MetadataSources",
-    {
-        name: _build_source(
-            name, label, from_archive=from_archive, accepts_any=accepts_any
-        )
-        for name, label, from_archive, accepts_any in _SOURCE_DEFINITIONS
-    },
+# Sources that accept arbitrary enabled formats (today: IMPORT_FILE for the
+# `--import` CLI option, where the file's format is detected at read time).
+_ANY_FORMATS: tuple[MetadataFormats, ...] = tuple(
+    fmt for fmt in MetadataFormats if fmt.value.enabled
 )
+
+
+class MetadataSources(Enum):
+    """Metadata sources, ordered by source-level masking precedence."""
+
+    CONFIG = MetadataSource("Config", _formats_for_source("CONFIG"))
+    ARCHIVE_FILENAME = MetadataSource(
+        "Filename", _formats_for_source("ARCHIVE_FILENAME"), from_archive=True
+    )
+    ARCHIVE_PDF = MetadataSource(
+        "Archive Header", _formats_for_source("ARCHIVE_PDF"), from_archive=True
+    )
+    ARCHIVE_COMMENT = MetadataSource(
+        "Archive Comment", _formats_for_source("ARCHIVE_COMMENT"), from_archive=True
+    )
+    ARCHIVE_FILE = MetadataSource(
+        "Archive File", _formats_for_source("ARCHIVE_FILE"), from_archive=True
+    )
+    METRON_API = MetadataSource("Metron API", _formats_for_source("METRON_API"))
+    COMICVINE_API = MetadataSource(
+        "ComicVine API", _formats_for_source("COMICVINE_API")
+    )
+    IMPORT_FILE = MetadataSource("Imported File", _ANY_FORMATS)
+    CLI = MetadataSource("Comicbox CLI", _formats_for_source("CLI"))
+    API = MetadataSource("API", _formats_for_source("API"))

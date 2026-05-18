@@ -18,16 +18,18 @@ their own.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from comicbox.config.settings import ComicboxSettings
+    from comicbox.formats.base.online.profile import Candidate, ComicProfile
 
 
-SelectorAction = Literal["choose", "skip", "manual", "abort"]
-SelectorResult = tuple[SelectorAction, "int | str | None"]
+SelectorAction: TypeAlias = Literal["choose", "skip", "manual", "abort"]
+SelectorResult: TypeAlias = tuple[SelectorAction, "int | str | None"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +42,6 @@ class SelectorContext:
     triggered_hashing: bool
 
 
-SelectorCallback = (
+SelectorCallback: TypeAlias = (
     "Callable[[ComicProfile, Sequence[Candidate], SelectorContext], SelectorResult]"
 )

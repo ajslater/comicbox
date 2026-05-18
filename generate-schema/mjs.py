@@ -7,8 +7,8 @@ from pathlib import Path
 from marshmallow import fields
 from marshmallow_jsonschema import JSONSchema, base
 
-from comicbox.fields.enum_fields import EnumField
-from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
+from comicbox.formats.base.fields.enum_fields import EnumField
+from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
 
 schema = ComicboxJsonSchema()
 

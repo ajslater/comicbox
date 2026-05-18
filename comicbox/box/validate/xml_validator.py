@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from typing_extensions import override
 from xmlschema import XMLSchema11
 
 from comicbox.box.validate.base import BaseValidator
@@ -16,6 +17,7 @@ class XmlValidator(BaseValidator):
         super().__init__(*args, **kwargs)
         self._validator = XMLSchema11(self.schema_path)
 
+    @override
     def validate(self, data: str | bytes | Path) -> None:
         """Use is_valid on XMLSchema validator."""
         self._validator.validate(data)

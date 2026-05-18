@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from typing_extensions import override
+
 from comicbox.config.settings import (
     APIBudget,
     OnlineSettings,
@@ -142,7 +144,7 @@ def test_search_two_step_returns_candidates(
 
     # Both series got their own issue lookup.
     series_ids = [call.get("series_id") for call in fake.issues_list_calls]
-    assert sorted(series_ids) == [100, 101]
+    assert sorted(series_ids) == [100, 101]  # pyright: ignore[reportArgumentType]
 
     # Issue number flowed through stripped of leading zeros.
     assert all(call.get("number") == "7" for call in fake.issues_list_calls)
@@ -176,6 +178,7 @@ def test_search_continues_on_per_series_issue_failure(
     issues = {100: [_FakeBaseIssue(iid=5001, number="1", series_name="OK")]}
 
     class _FlakyMokkari(_FakeMokkari):
+        @override
         def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
             self.issues_list_calls.append(dict(params or {}))
             if (params or {}).get("series_id") == 101:
@@ -221,6 +224,7 @@ def test_search_retries_per_call_on_rate_limit(
             super().__init__(*args, **kwargs)
             self._fail_count = 0
 
+        @override
         def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
             if self._fail_count < 1:
                 # Record the failed attempt too so we can assert retry count.
@@ -267,6 +271,7 @@ def test_search_retries_series_list_on_rate_limit(
             super().__init__(*args, **kwargs)
             self._fail_count = 0
 
+        @override
         def series_list(self, params: dict | None = None) -> list[_FakeBaseSeries]:
             if self._fail_count < 1:
                 self.series_list_calls.append(dict(params or {}))
@@ -373,6 +378,7 @@ class _YearAwareMokkari(_FakeMokkari):
         super().__init__(series=series, issues_by_series={})
         self._issues_by_series_and_year = issues_by_series_and_year
 
+    @override
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)
@@ -479,6 +485,7 @@ class _VolumeAwareMokkari(_FakeMokkari):
         super().__init__(series=series, issues_by_series={})
         self._issues_by_match = issues_by_match
 
+    @override
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)

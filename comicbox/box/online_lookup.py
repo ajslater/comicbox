@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback
     from comicbox.formats.base.online.sources.base import OnlineSource
+    from comicbox.formats.comicvine_api.online_source import CoverHashUrlCache
 
 
 class OnlineLookupAbortedError(Exception):
@@ -234,12 +235,17 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # Per-instance selector override; falls back to the default CLI prompt.
     _online_selector: SelectorCallback | None = None
 
+    _online_lookup_done_flag: bool = False
+    _cover_hash_url_cache: CoverHashUrlCache | None = None
+    _local_cover_phash_computed: bool = False
+    _local_cover_phash_value: str | None = None
+
     def set_online_selector(self, selector: SelectorCallback | None) -> None:
         """Register a programmatic selector callback (codex / library users)."""
         self._online_selector = selector
 
     def _online_lookup_already_done(self) -> bool:
-        return getattr(self, "_online_lookup_done_flag", False)
+        return self._online_lookup_done_flag
 
     def _mark_online_lookup_done(self) -> None:
         self._online_lookup_done_flag = True
@@ -397,7 +403,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if not url:
             return None
 
-        cache = getattr(self, "_cover_hash_url_cache", None)
+        cache = self._cover_hash_url_cache
         if cache is None:
             cache_dir = self._config.online.cache_dir
             if cache_dir is None:
@@ -434,17 +440,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""
-        cached = getattr(self, "_local_cover_phash_value", "<unset>")
-        if cached != "<unset>":
-            return cached
+        if self._local_cover_phash_computed:
+            return self._local_cover_phash_value
+        self._local_cover_phash_computed = True
         try:
-            cover_bytes = self.get_cover_page(skip_metadata=True)
+            cover_bytes = self.get_cover_page(skip_metadata=True)  # pyright: ignore[reportAttributeAccessIssue]
         except Exception as exc:
             logger.debug(f"local cover: fetch failed: {exc}")
-            self._local_cover_phash_value = None
             return None
         if not cover_bytes:
-            self._local_cover_phash_value = None
             return None
         try:
             from comicbox.formats.base.online.cover_hash import compute_phash
@@ -452,7 +456,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._local_cover_phash_value = compute_phash(cover_bytes)
         except Exception as exc:
             logger.warning(f"local cover: pHash failed: {exc}")
-            self._local_cover_phash_value = None
         return self._local_cover_phash_value
 
     def _resolve_with_matcher(

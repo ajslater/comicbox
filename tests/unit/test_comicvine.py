@@ -5,6 +5,8 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING
 
+from typing_extensions import override
+
 from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import (
@@ -351,6 +353,7 @@ def test_narrow_failure_falls_back_to_fuzzy_only(
     issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="X")]}
 
     class _FailingNarrow(_FakeCV):
+        @override
         def list_volumes(self, params=None, max_results=500):
             self.list_volumes_calls.append(params or {})
             msg = "permanent narrow failure"
@@ -390,6 +393,7 @@ def test_search_retries_volume_search_on_rate_limit(
             super().__init__(*args, **kwargs)
             self._fail_count = 0
 
+        @override
         def search(self, resource, query, max_results=500):
             if self._fail_count < 1:
                 self.search_calls.append(
@@ -620,6 +624,7 @@ def test_get_retries_get_volume_on_rate_limit(
             super().__init__(*args, **kwargs)
             self._fail_count = 0
 
+        @override
         def get_volume(self, volume_id: int) -> _FakeFullVolume:
             if self._fail_count < 1:
                 self.get_volume_calls.append(volume_id)
@@ -685,6 +690,7 @@ def test_search_retries_without_year_when_year_filter_returns_empty(
     real_issue = _FakeBasicIssue(iid=42, number="1", volume_name="Lois Lane")
 
     class _YearFilterCV(_FakeCV):
+        @override
         def list_issues(self, params=None, max_results=500):
             params = params or {}
             self.list_issues_calls.append(params)
@@ -847,6 +853,7 @@ def test_list_issues_by_volume_retries_on_rate_limit(
             super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType]
             self._fail_count = 0
 
+        @override
         def list_issues(self, params=None, max_results=500):
             if self._fail_count < 1:
                 self.list_issues_calls.append(dict(params or {}))

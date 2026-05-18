@@ -25,6 +25,7 @@ def _solid_color_png(color: tuple[int, int, int], size: int = 64) -> bytes:
 def _gradient_png(size: int = 64) -> bytes:
     img = Image.new("RGB", (size, size), 0)
     pixels = img.load()
+    assert pixels is not None
     for x in range(size):
         for y in range(size):
             pixels[x, y] = (x * 4 % 256, y * 4 % 256, (x + y) * 2 % 256)

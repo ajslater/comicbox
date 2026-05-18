@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -79,17 +80,6 @@ def _build_cb(**comicbox_kwargs) -> Comicbox:
     return Comicbox(config=Namespace(comicbox=Namespace(**comicbox_kwargs)))
 
 
-def _config_with_metron_creds(**extra) -> dict:
-    return {
-        "comicbox": {
-            "online": {
-                "metron": {"username": "u", "password": "p"},
-            },
-            **extra,
-        }
-    }
-
-
 def test_lookup_disabled_when_online_off(patched_metron) -> None:
     cb = _build_cb(metadata={})
     cb.get_merged_metadata()
@@ -126,7 +116,9 @@ def test_explicit_id_payload_appears_as_metron_api_source(
     assert sd is not None
     assert len(sd) == 1
     # The payload was wrapped under the schema's ROOT_TAG.
-    assert "metron_api" in sd[0].data
+    payload = sd[0].data
+    assert isinstance(payload, Mapping)
+    assert "metron_api" in payload
 
 
 def test_unconfigured_source_skipped(patched_metron) -> None:

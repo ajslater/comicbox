@@ -12,6 +12,10 @@ class BaseValidator:
         """Set the full schema path."""
         self.schema_path = SCHEMA_PATH / schema_path
 
+    def validate(self, data: str | bytes | Path) -> None:
+        """Validate the data against this validator's schema."""
+        raise NotImplementedError
+
     @staticmethod
     def get_data_str(data: str | bytes | Path) -> str:
         """Get data string from bytes or a path."""

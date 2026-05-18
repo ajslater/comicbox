@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from comicbox.config.settings import OnlineSettings, Policy
@@ -53,8 +55,8 @@ def _candidate(
     )
 
 
-def _profile(**overrides) -> ComicProfile:
-    base = {
+def _profile(**overrides: Any) -> ComicProfile:
+    base: dict[str, Any] = {
         "series": "Foo Comics",
         "issue": "5",
         "issue_int": 5,

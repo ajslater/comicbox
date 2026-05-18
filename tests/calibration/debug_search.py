@@ -24,6 +24,8 @@ DB. Hit-list of suspicions this script will distinguish:
   - the API genuinely doesn't have it (no candidates at any variant)
 """
 
+# pyright: reportAttributeAccessIssue=false, reportArgumentType=false
+
 from __future__ import annotations
 
 import argparse

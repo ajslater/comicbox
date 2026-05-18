@@ -176,6 +176,7 @@ pythonVersion = "3.10"
 failOnWarnings = false
 reportAny = false
 reportExplicitAny = false
+reportImplicitStringConcatenation = false
 reportImportCycles = true
 reportIncompatibleUnannotatedOverride = true
 reportMissingParameterType = false

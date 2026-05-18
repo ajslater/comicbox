@@ -39,7 +39,9 @@ import traceback
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self
+from typing import TYPE_CHECKING, ClassVar, Protocol
+
+from typing_extensions import Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -690,7 +692,7 @@ def _format_report(reports: dict[str, _SourceReport]) -> str:
             lines.append(f"  accuracy on labeled fixtures: {pct:.1f}%")
         if rep.by_band:
             lines.append("  by score band:")
-            for low, _high, label in _SCORE_BANDS:  # noqa: B007
+            for _low, _high, label in _SCORE_BANDS:
                 bucket = rep.by_band.get(label)
                 if bucket is None:
                     continue

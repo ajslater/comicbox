@@ -17,6 +17,7 @@ import sqlite3
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
+from typing_extensions import override
 
 from comicbox.config.settings import resolve_api_budget
 from comicbox.formats import MetadataFormats
@@ -49,6 +50,7 @@ class ComicVineOnlineSource(OnlineSource):
     metadata_source: ClassVar[MetadataSources] = MetadataSources.COMICVINE_API
     metadata_format: ClassVar[MetadataFormats] = MetadataFormats.COMICVINE_API
 
+    @override
     def is_configured(self) -> bool:
         """ComicVine requires an api_key."""
         return bool(self._credentials.api_key)
@@ -390,6 +392,7 @@ class ComicVineOnlineSource(OnlineSource):
             return False
         return vol_start_year > comic_year + self._VOLUME_START_YEAR_SLOP
 
+    @override
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
         Search ComicVine for candidate issues matching the profile.
