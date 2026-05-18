@@ -63,7 +63,11 @@ def _formats_for_source(name: str) -> tuple[MetadataFormats, ...]:
 
 
 def _build_source(
-    name: str, label: str, from_archive: bool, accepts_any: bool
+    name: str,
+    label: str,
+    *,
+    from_archive: bool,
+    accepts_any: bool,
 ) -> MetadataSource:
     if accepts_any:
         return MetadataSource(label, from_archive=from_archive)
@@ -77,7 +81,9 @@ def _build_source(
 MetadataSources = Enum(  # pyright: ignore[reportCallIssue]
     "MetadataSources",
     {
-        name: _build_source(name, label, from_archive, accepts_any)
+        name: _build_source(
+            name, label, from_archive=from_archive, accepts_any=accepts_any
+        )
         for name, label, from_archive, accepts_any in _SOURCE_DEFINITIONS
     },
 )
