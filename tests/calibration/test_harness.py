@@ -279,7 +279,7 @@ def test_eta_rolling_average_responds_to_recent(
     fake_now[0] += 600.0
     eta.fixture_finished()
     # Average over the rolling window (last 11 fixtures): (10*1 + 600) / 11 ≈ 55s.
-    avg_per_fixture = eta.eta_seconds() / eta.remaining()  # pyright: ignore[reportOptionalOperand]
+    avg_per_fixture = eta.eta_seconds() / eta.remaining()  # pyright: ignore[reportOptionalOperand], # ty: ignore[unsupported-operator]
     assert 50.0 < avg_per_fixture < 60.0
 
 
@@ -335,7 +335,7 @@ def test_cost_estimate_warns_above_cv_hourly_cap(
     from tests.calibration.run import _print_cost_estimate
 
     # 50 fixtures x 21 calls = 1,050 CV calls = ~5.25 hours worst case.
-    _print_cost_estimate(50, [_FakeSource("comicvine")])  # pyright: ignore[reportArgumentType]
+    _print_cost_estimate(50, [_FakeSource("comicvine")])  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     out = capsys.readouterr().out
     assert "ComicVine" in out
     assert "wall time" in out
@@ -348,7 +348,7 @@ def test_cost_estimate_quiet_for_small_runs(
     from tests.calibration.run import _print_cost_estimate
 
     # 5 fixtures x 21 = 105 calls < 200 cap.
-    _print_cost_estimate(5, [_FakeSource("comicvine")])  # pyright: ignore[reportArgumentType]
+    _print_cost_estimate(5, [_FakeSource("comicvine")])  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     out = capsys.readouterr().out
     assert "ComicVine" in out
     # Pacing message, not the wall-time warning.
@@ -1432,7 +1432,7 @@ def test_calibrate_loop_invokes_checkpoint_every_n(
 
     _calibrate_loop(
         fixtures,
-        [_NoopSource()],  # pyright: ignore[reportArgumentType]
+        [_NoopSource()],  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         checkpoint=_capture,
         checkpoint_every=10,
     )
@@ -1471,7 +1471,7 @@ def test_calibrate_loop_skips_checkpoint_when_none(
     # No checkpoint passed; no exception, no callback fires.
     outcomes = _calibrate_loop(
         fixtures,
-        [_NoopSource()],  # pyright: ignore[reportArgumentType]
+        [_NoopSource()],  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     )
     assert len(outcomes) == 15
 

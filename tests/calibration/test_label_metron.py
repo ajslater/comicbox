@@ -354,12 +354,12 @@ def test_label_fixtures_writes_incrementally(
 
 def test_lookup_metron_by_cv_id_returns_int_id_on_hit() -> None:
     session = _FakeSession({100: 500})
-    assert lookup_metron_by_cv_id(session, 100) == 500  # pyright: ignore[reportArgumentType]
+    assert lookup_metron_by_cv_id(session, 100) == 500  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
 
 
 def test_lookup_metron_by_cv_id_returns_none_on_empty_result() -> None:
     session = _FakeSession({})
-    assert lookup_metron_by_cv_id(session, 999) is None  # pyright: ignore[reportArgumentType]
+    assert lookup_metron_by_cv_id(session, 999) is None  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
 
 
 def test_lookup_metron_by_cv_id_returns_first_on_ambiguous(
@@ -371,7 +371,7 @@ def test_lookup_metron_by_cv_id_returns_first_on_ambiguous(
         def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
             return [_FakeIssue(700), _FakeIssue(800)]
 
-    result = lookup_metron_by_cv_id(_MultiHitSession(), 100)  # pyright: ignore[reportArgumentType]
+    result = lookup_metron_by_cv_id(_MultiHitSession(), 100)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     assert result == 700
     captured = capsys.readouterr()
     assert "matched 2 Metron issues" in captured.err
@@ -394,7 +394,7 @@ def test_lookup_metron_by_cv_id_swallows_non_retriable_exception(
             msg = "bad param"
             raise ValueError(msg)
 
-    assert lookup_metron_by_cv_id(_BrokenSession(), 100) is None  # pyright: ignore[reportArgumentType]
+    assert lookup_metron_by_cv_id(_BrokenSession(), 100) is None  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     assert "Metron lookup failed" in capsys.readouterr().err
 
 

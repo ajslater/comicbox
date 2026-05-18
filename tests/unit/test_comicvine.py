@@ -850,7 +850,7 @@ def test_list_issues_by_volume_retries_on_rate_limit(
 
     class _RateLimitedCV(_FakeCV):
         def __init__(self, *args: object, **kwargs: object) -> None:
-            super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType]
+            super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
             self._fail_count = 0
 
         @override

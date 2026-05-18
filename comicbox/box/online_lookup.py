@@ -444,7 +444,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return self._local_cover_phash_value
         self._local_cover_phash_computed = True
         try:
-            cover_bytes = self.get_cover_page(skip_metadata=True)  # pyright: ignore[reportAttributeAccessIssue]
+            cover_bytes = self.get_cover_page(skip_metadata=True)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
         except Exception as exc:
             logger.debug(f"local cover: fetch failed: {exc}")
             return None

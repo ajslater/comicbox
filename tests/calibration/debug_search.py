@@ -82,7 +82,7 @@ def _print_issue(issue: object) -> None:
     )
     cover_date = getattr(issue, "cover_date", None)
     print(  # noqa: T201
-        f"      id={issue.id} series={issue_series_repr!r} "  # type: ignore[attr-defined]
+        f"      id={issue.id} series={issue_series_repr!r} "  # ty: ignore[unresolved-attribute]
         f"number={getattr(issue, 'number', '?')!r} "
         f"cover_date={cover_date}"
     )
@@ -99,7 +99,7 @@ def _probe_issues_list(
         params = _build_issues_list_params(profile, series_id)
         print(f"\n  [follow-up] issues_list(params={params!r})")  # noqa: T201
         try:
-            issues = list(session.issues_list(params=params))  # type: ignore[attr-defined]
+            issues = list(session.issues_list(params=params))  # ty: ignore[unresolved-attribute]
         except Exception as exc:
             print(f"    EXCEPTION: {exc!r}")  # noqa: T201
             continue
@@ -110,13 +110,13 @@ def _probe_issues_list(
 
 def _debug_metron(profile: object, online: object) -> None:
     print("\n=== Metron debug ===")  # noqa: T201
-    creds = online.sources.get("metron")  # type: ignore[attr-defined]
+    creds = online.sources.get("metron")  # ty: ignore[unresolved-attribute]
     if creds is None or not creds.username or not creds.password:
         print("  metron not configured; skipping")  # noqa: T201
         return
-    src = MetronOnlineSource(creds, online)  # type: ignore[arg-type]
+    src = MetronOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
     session = src._get_session()
-    series_name = profile.series  # type: ignore[attr-defined]
+    series_name = profile.series  # ty: ignore[unresolved-attribute]
 
     # 1. Exactly what production sends.
     print(f"\n  [as-is] series_list(name={series_name!r})")  # noqa: T201
@@ -134,7 +134,7 @@ def _debug_metron(profile: object, online: object) -> None:
     # 1b. The actual second-step issues_list per matching series — production's
     # next call. Surfaces "series_list found AR but issues_list returned NM"
     # bugs.
-    _probe_issues_list(session, profile, results[:5])
+    _probe_issues_list(session, profile, results[:5])  # ty: ignore[invalid-argument-type]
 
     # 2. Variant: word-by-word, dropping parens etc.
     cleaned = _clean_for_search(series_name)
@@ -163,15 +163,15 @@ def _debug_metron(profile: object, online: object) -> None:
 
 def _debug_comicvine(profile: object, online: object) -> None:
     print("\n=== ComicVine debug ===")  # noqa: T201
-    creds = online.sources.get("comicvine")  # type: ignore[attr-defined]
+    creds = online.sources.get("comicvine")  # ty: ignore[unresolved-attribute]
     if creds is None or not creds.api_key:
         print("  comicvine not configured; skipping")  # noqa: T201
         return
     from simyan.comicvine import ComicvineResource
 
-    src = ComicVineOnlineSource(creds, online)  # type: ignore[arg-type]
+    src = ComicVineOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
     session = src._get_session()
-    series_name = profile.series  # type: ignore[attr-defined]
+    series_name = profile.series  # ty: ignore[unresolved-attribute]
 
     print(f"\n  [as-is] search(VOLUME, query={series_name!r}, max_results=20)")  # noqa: T201
     try:

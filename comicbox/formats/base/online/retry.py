@@ -213,7 +213,7 @@ def with_retry(
                     delay, budget, is_rate_limit = plan
                     cause = "rate-limit" if is_rate_limit else type(exc).__name__
                     logger.info(
-                        f"{func.__name__}: {cause}, retrying in {delay:.1f}s ({budget})"
+                        f"{func.__name__}: {cause}, retrying in {delay:.1f}s ({budget})"  # ty: ignore[unresolved-attribute]
                     )
                     sleep(delay)
                     if is_rate_limit:
