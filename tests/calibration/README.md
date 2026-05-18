@@ -30,8 +30,8 @@ comic library.
 2. **Build a fixtures.json.**
 
     **Easy mode** — if your library is already tagged with metron / cv ids (from
-    previous metron-tagger / comictagger / comicbox runs), bootstrap the fixture
-    set automatically:
+    previous metron-tagger / comicbox runs), bootstrap the fixture set
+    automatically:
 
     ```sh
     # Walk a directory, extract existing tags, write fixtures.json:
@@ -70,7 +70,7 @@ comic library.
       correctness numbers.
     - `notes` — optional free text.
 
-    Aim for ~100–300 fixtures spanning eras, publishers, tagging quality. Mix:
+    Aim for \~100–300 fixtures spanning eras, publishers, tagging quality. Mix:
     - Cleanly-tagged comics (good metadata signal).
     - Filename-only comics (tests filename parser → matcher chain).
     - Comics where Metron/CV ids you know are correct, including borderline
@@ -157,7 +157,7 @@ if you want.
 The rationale: every issue from a given series exercises the same matcher code
 path (same volume-search, same per-volume issue-list filter). If `fast` mode
 flips the Watchmen series's verdict, ALL six Watchmen fixtures will flip
-together — running them all just confirms what one already showed at ~10x the
+together — running them all just confirms what one already showed at \~10x the
 wall-clock cost. Threshold tuning is the exception because each fixture is an
 independent score sample and the distribution shape matters.
 
@@ -192,10 +192,10 @@ uv run python -m tests.calibration.run --sources metron
 The upstream libraries enforce per-IP limits via SQLite-backed buckets that
 persist across runs. Plan your run accordingly:
 
-| Source    | Documented limit          | ~300-fixture cost (cold cache)                             |
-| --------- | ------------------------- | ---------------------------------------------------------- |
-| Metron    | 20 req/min, 5,000 req/day | ~15 min wall time                                          |
-| ComicVine | 1 req/sec, 200 req/hour   | ~50 min wall (forced 60-min waits between 200-req batches) |
+| Source    | Documented limit          | \~300-fixture cost (cold cache)                             |
+| --------- | ------------------------- | ----------------------------------------------------------- |
+| Metron    | 20 req/min, 5,000 req/day | \~15 min wall time                                          |
+| ComicVine | 1 req/sec, 200 req/hour   | \~50 min wall (forced 60-min waits between 200-req batches) |
 
 **Subsequent runs are near-instant** — the SQLite response cache (default 7-day
 TTL) replays previous responses without API calls. So the slow run is only the
@@ -208,7 +208,7 @@ If you have a higher API tier on either service, you can raise the caps via
 ### Periodic checkpointing
 
 The harness saves outcomes-so-far to disk every 10 fixtures during the loop.
-This bounds work lost to a `Ctrl-C` to at most ~10 fixtures — restart picks up
+This bounds work lost to a `Ctrl-C` to at most \~10 fixtures — restart picks up
 the API-cached calls fast (seconds each) and resumes on the remaining fixtures.
 
 Writes are atomic (temp file + rename), so a kill mid-write leaves either the
@@ -270,8 +270,8 @@ What to look at:
 - **Per-band correctness** — the auto-write band (0.85-0.95) should be ≥99%
   correct; if it's lower, the threshold is too low and comicbox is confidently
   writing wrong tags. Raise the `--confidence-threshold` default.
-- **Prompt-zone accuracy** — the 0.70-0.85 band is where users see prompts. ~50%
-  correct is fine here; users veto bad ones manually.
+- **Prompt-zone accuracy** — the 0.70-0.85 band is where users see prompts.
+  \~50% correct is fine here; users veto bad ones manually.
 - **No candidates** — comicbox found nothing. May indicate: bad filename parse,
   source doesn't have the issue, or query is too strict (year off, volume off).
   The "Outcomes worth a look" section lists each one for hand-investigation.

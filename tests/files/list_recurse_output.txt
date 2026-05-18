@@ -1,14 +1,13 @@
 ════════════════════════════════════════════════════════════════════════════════
 tests/files/Captain Science #001 (1950) The Beginning - multi.cbz
-┏━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Page ┃ Archive Path     ┃
-┡━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│      │ comet.xml        │
-│      │ comicbox.json    │
-│      │ comicbox.yaml    │
-│      │ comicinfo.xml    │
-│      │ comictagger.json │
-└──────┴──────────────────┘
+┏━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path  ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━┩
+│      │ comet.xml     │
+│      │ comicbox.json │
+│      │ comicbox.yaml │
+│      │ comicinfo.xml │
+└──────┴───────────────┘
 ════════════════════════════════════════════════════════════════════════════════
 tests/files/Captain Science #001 (1950) The Beginning - nothing.cbz
 ┏━━━━━━┳━━━━━━━━━━━━━━┓
@@ -254,7 +253,6 @@ tests/files/export.cbz
 │      │ comicbox.json     │
 │      │ comicbox.yaml     │
 │      │ comicinfo.xml     │
-│      │ comictagger.json  │
 └──────┴───────────────────┘
 ════════════════════════════════════════════════════════════════════════════════
 tests/files/macos_resource_fork.cbz

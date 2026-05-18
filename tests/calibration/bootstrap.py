@@ -6,7 +6,7 @@ emits fixture entries for any comic that has a Metron and/or ComicVine
 identifier already in its tags. Saves the manual labor of typing out
 hundreds of (file, expected_id) pairs by hand.
 
-The premise: comics tagged with metron-tagger / comictagger / a previous
+The premise: comics tagged with metron-tagger or a previous
 comicbox run already know their canonical ids. We trust those ids as
 ground truth for calibration. If your library is mostly hand-tagged, this
 gives you a starting fixture set for free; if your library is mostly
