@@ -237,16 +237,16 @@ status in [`06-api-budget-spec.md`](06-api-budget-spec.md) and
 
 ## 4. Search quality
 
-- 🔍 **Retry-relaxation order: volume vs year.** Current order is
-  `(year, volume) → year ±1 → drop volume → drop volume + year ±1`.
-  This treats volume as more reliable than year — but for an
-  undertagged comic the opposite might be true: scanners often drop
-  or guess volume entirely, while cover-date drift is a ±1 thing that
-  doesn't make the year *wrong*, just adjacent. Worth A/B-ing with
-  real-world miss data: try `(year, volume) → drop volume → year ±1
-  → drop both` and see which order finds more correct matches with
-  fewer API calls. Decision needs miss-rate telemetry from a
-  calibration set, not a guess.
+- ✅ **Retry-relaxation order: volume vs year — closed 2026-05-18,
+  won't fix.** Telemetry analysis of the 2026-05-17 bigmedia
+  run shows the A/B can't produce meaningful data: 246 of 247
+  fixtures have no volume marker in their filename, so
+  `profile.volume` is None and the drop-volume retry never fires.
+  Both orders are functionally identical for 99.6% of the
+  fixture set. Full analysis at
+  [`research-notes/retry-relaxation-order.md`](research-notes/retry-relaxation-order.md).
+  Re-test if a future calibration set is dominated by older
+  scanner conventions that DO encode volume markers.
 
 ## 5. Variants Exploration
 
