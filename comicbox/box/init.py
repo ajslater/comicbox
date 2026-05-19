@@ -12,8 +12,6 @@ from tarfile import open as tarfile_open
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from py7zr import SevenZipFile, is_7zfile
-from rarfile import RarFile, is_rarfile
 from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
@@ -164,6 +162,9 @@ class ComicboxInit:
         return False
 
     def _try_detect_7z(self, path: Path) -> bool:
+        # py7zr is imported lazily — CB7 is rare and the package is heavy.
+        from py7zr import SevenZipFile, is_7zfile
+
         if is_7zfile(path):
             self._archive_cls = SevenZipFile
             self._file_type = FileTypeEnum.CB7
@@ -178,6 +179,10 @@ class ComicboxInit:
         return False
 
     def _try_detect_rar(self, path: Path) -> bool:
+        # rarfile is imported lazily — defers the heavy package init for
+        # workers that only see CBZs (the common case at bulk-read scale).
+        from rarfile import RarFile, is_rarfile
+
         if is_rarfile(path):
             self._archive_cls = RarFile
             self._file_type = FileTypeEnum.CBR

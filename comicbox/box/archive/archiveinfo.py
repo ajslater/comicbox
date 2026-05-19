@@ -1,13 +1,23 @@
 """Get ZipInfo like attributes from all archive info types."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from tarfile import TarInfo
+from typing import TYPE_CHECKING, Any, cast
 from zipfile import ZipInfo
 
-from py7zr import FileInfo as SevenZipInfo
-from rarfile import RarInfo
+if TYPE_CHECKING:
+    from py7zr import FileInfo as SevenZipInfo
+    from rarfile import RarInfo
 
-InfoType = ZipInfo | SevenZipInfo | RarInfo | TarInfo
+    InfoType = ZipInfo | SevenZipInfo | RarInfo | TarInfo
+else:
+    InfoType = Any  # avoid pulling in py7zr / rarfile at module-load time
+
+
+# Dispatch by attribute presence rather than isinstance, so we don't trigger
+# the py7zr / rarfile imports on hot read paths that only see CBZ / CBT files.
 
 
 class ArchiveInfo:
@@ -17,17 +27,15 @@ class ArchiveInfo:
     def datetime(info: InfoType) -> datetime | None:
         """Return mtime as a datetime."""
         dttm = None
-        match info:
-            case ZipInfo():
-                if date_time := info.date_time:
-                    dttm = datetime(*date_time)  # noqa: DTZ001
-            case TarInfo():
-                dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
-            case SevenZipInfo():
-                dttm = info.creationtime
-            case _:  # RarInfo
-                if mtime := info.mtime:
-                    dttm = mtime
+        if isinstance(info, ZipInfo):
+            if date_time := info.date_time:
+                dttm = datetime(*date_time)  # noqa: DTZ001
+        elif isinstance(info, TarInfo):
+            dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
+        elif hasattr(info, "creationtime"):  # SevenZipInfo
+            dttm = cast("SevenZipInfo", info).creationtime
+        elif mtime := cast("RarInfo", info).mtime:
+            dttm = mtime
         if dttm and not dttm.tzinfo:
             dttm = dttm.replace(tzinfo=timezone.utc)
         return dttm
@@ -35,14 +43,12 @@ class ArchiveInfo:
     @staticmethod
     def is_dir(info: InfoType) -> bool:
         """Is a directory."""
-        match info:
-            case ZipInfo() | RarInfo():
-                is_dir = info.is_dir()
-            case TarInfo():
-                is_dir = info.isdir()
-            case _:  # SevenZipInfo
-                is_dir = bool(info.is_directory)
-        return is_dir
+        if isinstance(info, TarInfo):
+            return info.isdir()
+        if hasattr(info, "is_directory"):  # SevenZipInfo
+            return bool(cast("SevenZipInfo", info).is_directory)
+        # ZipInfo or RarInfo
+        return cast("ZipInfo | RarInfo", info).is_dir()
 
     @staticmethod
     def filename(info: InfoType) -> str:

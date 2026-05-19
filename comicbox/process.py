@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor, as_completed
+from functools import cache
 from pathlib import Path
 from tarfile import TarError
 from typing import TYPE_CHECKING, Any, TypedDict
 from zipfile import BadZipFile, LargeZipFile
-
-from py7zr.exceptions import ArchiveError as Py7zError
-from rarfile import Error as RarError
 
 from comicbox.box import Comicbox
 from comicbox.box.archive.filenames import EPOCH_START
@@ -23,15 +21,22 @@ if TYPE_CHECKING:
 
     from comicbox.config.settings import ComicboxSettings
 
-_ARCHIVE_ERRORS: tuple[type[BaseException], ...] = (
-    UnsupportedArchiveTypeError,
-    BadZipFile,
-    LargeZipFile,
-    RarError,
-    Py7zError,
-    TarError,
-    OSError,
-)
+
+@cache
+def _archive_errors() -> tuple[type[BaseException], ...]:
+    """Return the tuple of archive errors, deferring py7zr / rarfile imports."""
+    from py7zr.exceptions import ArchiveError as Py7zError
+    from rarfile import Error as RarError
+
+    return (
+        UnsupportedArchiveTypeError,
+        BadZipFile,
+        LargeZipFile,
+        RarError,
+        Py7zError,
+        TarError,
+        OSError,
+    )
 
 
 class ReadResult(TypedDict):
@@ -108,7 +113,7 @@ def _collect_result(
     """Collect one completed future; return (result, exception, pool_broken)."""
     try:
         return future.result(), None, False
-    except _ARCHIVE_ERRORS as exc:
+    except _archive_errors() as exc:
         logger.warning(f"Failed to import {path}: {exc}")
         return _empty_read_result(), exc, False
     except BrokenExecutor as exc:

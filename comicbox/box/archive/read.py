@@ -1,17 +1,21 @@
 """Comic archive read methods."""
 
+from __future__ import annotations
+
 import shutil
 from pathlib import Path
 from sys import maxsize
-
-from py7zr import SevenZipFile
-from py7zr.io import BytesIOFactory
-from rarfile import BadRarFile
+from typing import TYPE_CHECKING
 
 from comicbox.box.archive.archive import Archive
-from comicbox.box.archive.archiveinfo import InfoType
 from comicbox.box.archive.init import ComicboxArchiveInit
+from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
+
+if TYPE_CHECKING:
+    from py7zr.io import BytesIOFactory
+
+    from comicbox.box.archive.archiveinfo import InfoType
 
 
 class ComicboxArchiveRead(ComicboxArchiveInit):
@@ -80,7 +84,11 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             return False
 
     def _get_7zfactory(self) -> BytesIOFactory | None:
-        if not self._7zfactory and self._archive_cls == SevenZipFile:
+        # Use the file-type enum rather than `self._archive_cls == SevenZipFile`
+        # so the py7zr import only fires when we actually have a CB7.
+        if not self._7zfactory and self._file_type == FileTypeEnum.CB7:
+            from py7zr.io import BytesIOFactory
+
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
 
@@ -103,8 +111,14 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             data = Archive.read(
                 archive, filename, factory, pdf_format=pdf_format, props=props
             )
-        except BadRarFile:
-            self.check_unrar_executable()
+        except Exception as exc:
+            # BadRarFile only originates from CBR reads; the lazy import
+            # keeps rarfile off the CBZ-only critical path.
+            if self._file_type == FileTypeEnum.CBR:
+                from rarfile import BadRarFile
+
+                if isinstance(exc, BadRarFile):
+                    self.check_unrar_executable()
             raise
         return data
 
