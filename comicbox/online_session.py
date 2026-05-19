@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -103,16 +103,57 @@ class PromptResponse:
     payload: int | str | None = None
 
 
+@runtime_checkable
 class PromptHandler(Protocol):
     """
     Codex's prompt-resolution callback.
 
-    Single-prompt form. A batched form (``request_many``) is planned but
-    not exposed in v1 — see plan §3.4.
+    All handlers must implement :meth:`request` — the single-prompt form
+    used by every code path that ships today. Handlers MAY additionally
+    implement :meth:`request_many` to opt into the future batched-prompt
+    delivery path (plan §3.4 / step 8): when the engine grows the
+    per-session prompt queue, handlers exposing ``request_many`` get the
+    full pending window in one call; handlers without it continue to be
+    invoked one prompt at a time. v1 delivers prompts via ``request``
+    only — see ``tasks/prepare-for-codex-writing/03-batched-prompt-handler.md``
+    for the deferred implementation plan.
     """
 
     def request(self, prompt: OnlinePrompt) -> PromptResponse:
         """Resolve one prompt; return the chosen action/payload."""
+        ...
+
+    # request_many is intentionally omitted from this Protocol body so
+    # existing single-method handlers structurally match. Handlers that
+    # implement it should match BatchedPromptHandler below; callers detect
+    # support via isinstance() / hasattr("request_many").
+
+
+@runtime_checkable
+class BatchedPromptHandler(Protocol):
+    """
+    A PromptHandler that also supports batched prompt delivery.
+
+    Codex's defer-mode UI naturally yields a window of prompts the user
+    will resolve together. When the engine gains the per-session prompt
+    queue (step 8), it will prefer ``request_many`` over ``request`` for
+    handlers structurally matching this Protocol.
+    """
+
+    def request(self, prompt: OnlinePrompt) -> PromptResponse:
+        """Resolve one prompt; return the chosen action/payload."""
+        ...
+
+    def request_many(
+        self, prompts: Sequence[OnlinePrompt]
+    ) -> Sequence[PromptResponse]:
+        """
+        Resolve a window of prompts in one call.
+
+        Return one response per prompt, in the same order. The engine
+        will not interleave ``request`` and ``request_many`` calls
+        within a single drain window.
+        """
         ...
 
 

@@ -162,6 +162,25 @@ def test_prompt_handler_protocol_compiles() -> None:
     )
 
 
+def test_batched_prompt_handler_protocol_recognized() -> None:
+    """BatchedPromptHandler is runtime-checkable; an implementer matches."""
+    from comicbox.online_session import BatchedPromptHandler
+
+    class _BH:
+        def request(self, prompt: OnlinePrompt) -> PromptResponse:
+            return PromptResponse(action="skip")
+
+        def request_many(self, prompts):
+            return [PromptResponse(action="skip") for _ in prompts]
+
+    handler = _BH()
+    assert isinstance(handler, BatchedPromptHandler)
+    # Still accepted by OnlineSession via the base PromptHandler shape.
+    OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler
+    )
+
+
 # --- rate-limit status stub ---------------------------------------------------
 
 
