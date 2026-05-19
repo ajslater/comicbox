@@ -671,36 +671,46 @@ def _aggregate(outcomes: Iterable[_Outcome]) -> dict[str, _SourceReport]:
     return reports
 
 
+def _format_band_lines(rep: _SourceReport) -> list[str]:
+    """Per-band correct/total breakdown, in canonical score-band order."""
+    if not rep.by_band:
+        return []
+    lines = ["  by score band:"]
+    for _low, _high, label in _SCORE_BANDS:
+        bucket = rep.by_band.get(label)
+        if bucket is None:
+            continue
+        total = bucket["correct"] + bucket["wrong"]
+        pct = 100.0 * bucket["correct"] / total if total else 0.0
+        lines.append(f"    {label}: {bucket['correct']}/{total} correct ({pct:.0f}%)")
+    return lines
+
+
+def _format_source_report(source: str, rep: _SourceReport) -> list[str]:
+    """All lines for one source: header, counts, accuracy, score-band breakdown."""
+    lines = [
+        f"\n=== {source} ===",
+        f"  correct: {rep.correct}",
+        f"  wrong:   {rep.wrong}",
+    ]
+    if rep.no_candidates:
+        lines.append(f"  no candidates returned: {rep.no_candidates}")
+    if rep.no_expected_id:
+        lines.append(f"  fixtures missing expected {source} id: {rep.no_expected_id}")
+    if rep.errored:
+        lines.append(f"  errors: {rep.errored}")
+    total_with_expected = rep.correct + rep.wrong
+    if total_with_expected:
+        pct = 100.0 * rep.correct / total_with_expected
+        lines.append(f"  accuracy on labeled fixtures: {pct:.1f}%")
+    lines.extend(_format_band_lines(rep))
+    return lines
+
+
 def _format_report(reports: dict[str, _SourceReport]) -> str:
     lines: list[str] = []
     for source in sorted(reports):
-        rep = reports[source]
-        lines.append(f"\n=== {source} ===")
-        total_with_expected = rep.correct + rep.wrong
-        lines.append(f"  correct: {rep.correct}")
-        lines.append(f"  wrong:   {rep.wrong}")
-        if rep.no_candidates:
-            lines.append(f"  no candidates returned: {rep.no_candidates}")
-        if rep.no_expected_id:
-            lines.append(
-                f"  fixtures missing expected {source} id: {rep.no_expected_id}"
-            )
-        if rep.errored:
-            lines.append(f"  errors: {rep.errored}")
-        if total_with_expected:
-            pct = 100.0 * rep.correct / total_with_expected
-            lines.append(f"  accuracy on labeled fixtures: {pct:.1f}%")
-        if rep.by_band:
-            lines.append("  by score band:")
-            for _low, _high, label in _SCORE_BANDS:
-                bucket = rep.by_band.get(label)
-                if bucket is None:
-                    continue
-                total = bucket["correct"] + bucket["wrong"]
-                pct = 100.0 * bucket["correct"] / total if total else 0.0
-                lines.append(
-                    f"    {label}: {bucket['correct']}/{total} correct ({pct:.0f}%)"
-                )
+        lines.extend(_format_source_report(source, reports[source]))
     return "\n".join(lines)
 
 

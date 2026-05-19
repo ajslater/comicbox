@@ -140,6 +140,39 @@ def _drain_bulk_write_futures(
         yield result, ok
 
 
+def _submit_bulk_write_items(
+    pool: ThreadPoolExecutor,
+    items: list[BulkWriteItem],
+    *,
+    base_config: ComicboxSettings | None,
+    cancel: threading.Event | None,
+) -> dict[Any, tuple[int, BulkWriteItem]]:
+    """Submit every item to the pool, short-circuiting if ``cancel`` is already set."""
+    futures: dict[Any, tuple[int, BulkWriteItem]] = {}
+    for index, item in enumerate(items):
+        if cancel is not None and cancel.is_set():
+            break
+        future = pool.submit(_write_one, item, base_config)
+        futures[future] = (index, item)
+    return futures
+
+
+def _emit_batch_finished(
+    on_event: EventHandler | None, *, total: int, parsed: int, errored: int
+) -> None:
+    """No-op if no handler; else fire the per-batch summary event."""
+    if on_event is None:
+        return
+    on_event(
+        BatchFinished(
+            total=total,
+            parsed=parsed,
+            short_circuited=0,
+            errored=errored,
+        )
+    )
+
+
 def bulk_write(
     items: Iterable[BulkWriteItem],
     *,
@@ -167,13 +200,9 @@ def bulk_write(
     parsed = 0
     errored = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures: dict[Any, tuple[int, BulkWriteItem]] = {}
-        for index, item in enumerate(item_list):
-            if cancel is not None and cancel.is_set():
-                break
-            future = pool.submit(_write_one, item, base_config)
-            futures[future] = (index, item)
-
+        futures = _submit_bulk_write_items(
+            pool, item_list, base_config=base_config, cancel=cancel
+        )
         try:
             for result, ok in _drain_bulk_write_futures(
                 futures,
@@ -188,15 +217,7 @@ def bulk_write(
                     parsed += 1
                 yield result
         finally:
-            if on_event is not None:
-                on_event(
-                    BatchFinished(
-                        total=total,
-                        parsed=parsed,
-                        short_circuited=0,
-                        errored=errored,
-                    )
-                )
+            _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
 
 
 def _emit_write_event(

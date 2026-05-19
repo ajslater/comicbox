@@ -257,6 +257,21 @@ def _handle_manual_result(result: SelectorResult, source: str) -> SelectorResult
     return result
 
 
+def _resolve_cli_selector_input(
+    raw: str, candidates: Sequence[Candidate], source: str
+) -> SelectorResult | None:
+    """Translate one user reply into a SelectorResult. None means re-prompt."""
+    result = _interpret(raw, len(candidates[:_MAX_DISPLAYED]))
+    if result is None:
+        print(f"  unrecognized: {raw!r}")  # noqa: T201
+        return None
+    if result == _OPTIONS_SENTINEL:
+        return _ask_session_options()  # None when the user backs out of the submenu
+    if isinstance(result, tuple):
+        return _handle_manual_result(result, source)
+    return None
+
+
 def cli_selector(
     profile: ComicProfile,
     candidates: Sequence[Candidate],
@@ -279,17 +294,6 @@ def cli_selector(
         raw = _prompt_line("Choose:")
         if raw is None:
             return ("abort", None)
-        result = _interpret(raw, len(candidates[:_MAX_DISPLAYED]))
-        if result is None:
-            print(f"  unrecognized: {raw!r}")  # noqa: T201
-            continue
-        if result == _OPTIONS_SENTINEL:
-            sub = _ask_session_options()
-            if sub is None:
-                continue  # back to the main menu
-            return sub
-        if isinstance(result, tuple):
-            resolved = _handle_manual_result(result, ctx.source)
-            if resolved is None:
-                continue
+        resolved = _resolve_cli_selector_input(raw, candidates, ctx.source)
+        if resolved is not None:
             return resolved

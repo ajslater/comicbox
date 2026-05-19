@@ -167,6 +167,39 @@ def _plan_retry(
     return delay, budget, is_rate_limit
 
 
+def _handle_retry_exception(
+    exc: Exception,
+    *,
+    func_name: str,
+    attempt: int,
+    rate_limit_attempt: int,
+    max_retries: int,
+    sleep: Callable[[float], None],
+) -> bool:
+    """
+    Sleep through one retriable failure. Return True iff the budget remains.
+
+    Raises ``exc`` immediately when it's non-retriable (programmer / auth
+    errors); returns False when the applicable budget is exhausted so the
+    caller can break out of its retry loop.
+    """
+    if not _is_retriable(exc):
+        raise exc
+    plan = _plan_retry(
+        exc,
+        attempt=attempt,
+        rate_limit_attempt=rate_limit_attempt,
+        max_retries=max_retries,
+    )
+    if plan is None:
+        return False
+    delay, budget, is_rate_limit = plan
+    cause = "rate-limit" if is_rate_limit else type(exc).__name__
+    logger.info(f"{func_name}: {cause}, retrying in {delay:.1f}s ({budget})")
+    sleep(delay)
+    return True
+
+
 def with_retry(
     *,
     max_retries: int = 5,
@@ -198,25 +231,17 @@ def with_retry(
                 try:
                     return func(*args, **kwargs)
                 except Exception as exc:
-                    if not _is_retriable(exc):
-                        # Programmer errors, auth errors, etc.: surface immediately.
-                        raise
                     last_exc = exc
-                    plan = _plan_retry(
+                    if not _handle_retry_exception(
                         exc,
+                        func_name=func.__name__,  # ty: ignore[unresolved-attribute]
                         attempt=attempt,
                         rate_limit_attempt=rate_limit_attempt,
                         max_retries=max_retries,
-                    )
-                    if plan is None:
+                        sleep=sleep,
+                    ):
                         break
-                    delay, budget, is_rate_limit = plan
-                    cause = "rate-limit" if is_rate_limit else type(exc).__name__
-                    logger.info(
-                        f"{func.__name__}: {cause}, retrying in {delay:.1f}s ({budget})"  # ty: ignore[unresolved-attribute]
-                    )
-                    sleep(delay)
-                    if is_rate_limit:
+                    if _is_rate_limit(exc):
                         rate_limit_attempt += 1
                     else:
                         attempt += 1

@@ -147,6 +147,46 @@ def _worker_log_init(log_config: Mapping) -> None:
     )
 
 
+_OutcomeCounters = dict[str, int]
+
+
+def _classify_outcome(result: ReadResult, exc: BaseException | None) -> str:
+    """One of: 'errored', 'short_circuited', 'parsed'."""
+    if exc is not None:
+        return "errored"
+    if result["tags"] is None:
+        # tags is None when the worker either hit the embedded-mtime
+        # gate (metadata_mtime is set) or was asked for envelope-only
+        # data via full_metadata=False (metadata_mtime is None).
+        return "short_circuited"
+    return "parsed"
+
+
+def _emit_per_file_event(
+    path: Path,
+    *,
+    index: int,
+    total: int,
+    result: ReadResult,
+    exc: BaseException | None,
+    on_event: EventHandler,
+    counters: _OutcomeCounters,
+) -> None:
+    """Dispatch a single FileError / FileShortCircuited / FileParsed event."""
+    outcome = _classify_outcome(result, exc)
+    counters[outcome] += 1
+    if outcome == "errored":
+        assert exc is not None
+        on_event(FileError(path=path, index=index, total=total, error=str(exc)))
+    elif outcome == "short_circuited":
+        reason = (
+            "mtime_unchanged" if result["metadata_mtime"] is not None else "filtered"
+        )
+        on_event(FileShortCircuited(path=path, index=index, total=total, reason=reason))
+    else:
+        on_event(FileParsed(path=path, index=index, total=total))
+
+
 def _iter_completed(
     futures: Mapping[Any, Path],
     logger: Any,
@@ -155,17 +195,15 @@ def _iter_completed(
 ) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
     """Yield results as futures complete; mark subsequent paths broken once the pool fails."""
     pool_broken = False
-    parsed = 0
-    short_circuited = 0
-    errored = 0
+    counters: _OutcomeCounters = {"parsed": 0, "short_circuited": 0, "errored": 0}
     index = 0
     for future in as_completed(futures):
         path = futures[future]
         if pool_broken:
             exc = BrokenExecutor("Worker pool broken")
+            counters["errored"] += 1
             if on_event is not None:
                 on_event(FileError(path=path, index=index, total=total, error=str(exc)))
-            errored += 1
             yield path, (_empty_read_result(), exc)
             index += 1
             continue
@@ -173,36 +211,24 @@ def _iter_completed(
         if broken:
             pool_broken = True
         if on_event is not None:
-            if exc is not None:
-                on_event(FileError(path=path, index=index, total=total, error=str(exc)))
-                errored += 1
-            elif result["tags"] is None:
-                # tags is None when the worker either hit the embedded-mtime
-                # gate (metadata_mtime is set) or was asked for envelope-only
-                # data via full_metadata=False (metadata_mtime is None).
-                reason = (
-                    "mtime_unchanged"
-                    if result["metadata_mtime"] is not None
-                    else "filtered"
-                )
-                on_event(
-                    FileShortCircuited(
-                        path=path, index=index, total=total, reason=reason
-                    )
-                )
-                short_circuited += 1
-            else:
-                on_event(FileParsed(path=path, index=index, total=total))
-                parsed += 1
+            _emit_per_file_event(
+                path,
+                index=index,
+                total=total,
+                result=result,
+                exc=exc,
+                on_event=on_event,
+                counters=counters,
+            )
         yield path, (result, exc)
         index += 1
     if on_event is not None:
         on_event(
             BatchFinished(
                 total=total,
-                parsed=parsed,
-                short_circuited=short_circuited,
-                errored=errored,
+                parsed=counters["parsed"],
+                short_circuited=counters["short_circuited"],
+                errored=counters["errored"],
             )
         )
 

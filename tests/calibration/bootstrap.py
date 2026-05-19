@@ -88,26 +88,34 @@ def extract_identifiers(comic_path: Path) -> tuple[int | None, int | None]:
     return (metron, cv)
 
 
+def _is_comic_file(path: Path) -> bool:
+    """Return True for regular files with a comic-archive suffix."""
+    return path.is_file() and path.suffix.lower() in _COMIC_SUFFIXES
+
+
+def _walk_comic_paths(path: Path) -> Iterator[Path]:
+    """Yield comic-archive files under `path`, or `path` itself when it's a comic."""
+    if path.is_file():
+        if path.suffix.lower() in _COMIC_SUFFIXES:
+            yield path
+        return
+    if path.is_dir():
+        for f in sorted(path.rglob("*")):
+            if _is_comic_file(f):
+                yield f
+        return
+    logger.warning(f"{path}: not a file or directory, skipping")
+
+
 def iter_comics(paths: list[Path]) -> Iterator[Path]:
     """Yield comic paths under each input (file or directory), sorted, deduped."""
     seen: set[Path] = set()
     for raw in paths:
-        path = raw.expanduser()
-        if path.is_file():
-            if path.suffix.lower() in _COMIC_SUFFIXES and path not in seen:
-                seen.add(path)
-                yield path
-        elif path.is_dir():
-            for f in sorted(path.rglob("*")):
-                if (
-                    f.is_file()
-                    and f.suffix.lower() in _COMIC_SUFFIXES
-                    and f not in seen
-                ):
-                    seen.add(f)
-                    yield f
-        else:
-            logger.warning(f"{path}: not a file or directory, skipping")
+        for comic in _walk_comic_paths(raw.expanduser()):
+            if comic in seen:
+                continue
+            seen.add(comic)
+            yield comic
 
 
 def _build_fixture(
