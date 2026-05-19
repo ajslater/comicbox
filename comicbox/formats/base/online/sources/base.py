@@ -80,6 +80,28 @@ class OnlineSource(ABC):
         decides AUTO_WRITE / PROMPT / SKIP / NO_MATCH.
         """
 
+    def lookup_issue(
+        self, volume_id: int, issue_number: str | None
+    ) -> Candidate | None:
+        """
+        Direct volume-scoped issue lookup; bypasses the fuzzy search path.
+
+        Series-first batching (plan §3.10) caches a resolved ``volume_id``
+        per series fingerprint once per session. Subsequent comics in the
+        same series skip the expensive ``search`` call and ask the source
+        "what's issue N in volume V" directly — same rate-limit budget,
+        cheaper per-call and unambiguous on healthy data sources.
+
+        Return one Candidate when the lookup finds a matching issue, or
+        None when it doesn't. None signals the caller to fall back to the
+        normal search path (the cache entry stays unchanged so the
+        first-writer-wins discipline holds).
+
+        Sources that haven't implemented this raise NotImplementedError;
+        callers detect that via try/except and fall back to ``search``.
+        """
+        raise NotImplementedError
+
     def cache_db_path(self, suffix: str = "cache") -> Path:
         """
         Resolve the cache sqlite path for this source.

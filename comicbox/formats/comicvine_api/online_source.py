@@ -332,6 +332,31 @@ class ComicVineOnlineSource(OnlineSource):
             max_results=max_results,
         )
 
+    @override
+    def lookup_issue(
+        self, volume_id: int, issue_number: str | None
+    ) -> Candidate | None:
+        """
+        Volume-scoped issue lookup; cheaper than the fuzzy search path.
+
+        One ``list_issues`` call filtered by ``volume:`` + ``issue_number:``.
+        Used by series-first batching to amortize one search across every
+        issue of a resolved series (plan §3.10).
+        """
+        session = self._get_session()
+        try:
+            candidates = self._list_issues_by_volume(session, volume_id, issue_number)
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
+                f"number={issue_number!r}) failed: {exc}"
+            )
+            return None
+        if not candidates:
+            return None
+        # First-result-wins on variant collisions; same approach as Metron.
+        return candidates[0]
+
     @with_retry()
     def _list_issues_by_volume(
         self,

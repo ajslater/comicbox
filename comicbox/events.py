@@ -131,6 +131,22 @@ class AutoWritten(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class SeriesIdentified(Event):
+    """
+    A series was resolved and cached for series-first batching.
+
+    Fired when a cold-path search resolves a series and the session's
+    ``series_cache`` is populated for the first time. Subsequent issues
+    of the same series skip the search via :meth:`OnlineSource.lookup_issue`.
+    """
+
+    source: str = ""
+    series_fingerprint: str = ""
+    volume_id: int = 0
+    kind: Literal["series_identified"] = "series_identified"
+
+
+@dataclass(frozen=True, slots=True)
 class PromptQueued(Event):
     """Matcher needs human input; prompt dispatched to PromptHandler."""
 
@@ -230,6 +246,7 @@ OnlineEvent: TypeAlias = (
     | SearchStarted
     | SearchCompleted
     | AutoWritten
+    | SeriesIdentified
     | PromptQueued
     | PromptResolved
     | PromptResolvedFromCache

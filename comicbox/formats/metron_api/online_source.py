@@ -215,6 +215,38 @@ class MetronOnlineSource(OnlineSource):
             volume_id=resolved_series_id,
         )
 
+    @override
+    def lookup_issue(
+        self, volume_id: int, issue_number: str | None
+    ) -> Candidate | None:
+        """
+        Volume-scoped issue lookup; cheaper than the fuzzy search path.
+
+        Calls ``issues_list`` filtered by ``series_id`` + ``number`` — one
+        request, returns ≤1 result on healthy data. Used by the
+        series-first batching path to amortize one search across every
+        issue of a resolved series.
+        """
+        session = self._get_session()
+        params: dict[str, Any] = {"series_id": volume_id}
+        if number := strip_issue_leading_zeros(issue_number):
+            params["number"] = number
+        try:
+            issues = self._issues_list_with_retry(session, params)
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
+                f"number={issue_number!r}) failed: {exc}"
+            )
+            return None
+        issue_list = list(issues)
+        if not issue_list:
+            return None
+        # On the rare multi-result case (cover variants under one
+        # `number`), accept the first — caller would otherwise need to
+        # decide between variants which is a different problem.
+        return self._to_candidate(issue_list[0], series_id=volume_id)
+
     @with_retry()
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """

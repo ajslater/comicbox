@@ -41,6 +41,7 @@ from comicbox.events import (
     PromptResolved,
     SearchCompleted,
     SearchStarted,
+    SeriesIdentified,
     Skipped,
 )
 from comicbox.formats import FORMAT_REGISTRATIONS
@@ -63,6 +64,8 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from comicbox.config.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
     from comicbox.formats.base.online.profile import Candidate
@@ -149,6 +152,21 @@ class _NoTtyHintGuard:
 
 
 _no_tty_hint = _NoTtyHintGuard()
+
+
+def _series_fingerprint(profile: ComicProfile) -> str:
+    """
+    Deterministic series-level key for the series-cache (plan §3.10).
+
+    Profile-only, computed BEFORE we have candidates — distinct from the
+    step-6 prompt-cache fingerprint which incorporates candidate
+    volume_ids. Same series across different issues collapses to the
+    same string here.
+    """
+    series = (profile.series or "").strip().lower()
+    publisher = (profile.publisher or "").strip().lower()
+    year = str(profile.year or "")
+    return f"{series}|{year}|{publisher}"
 
 
 def _resolve_volume(md: dict) -> int | None:
@@ -252,6 +270,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # for callers driving online lookup programmatically (OnlineSession).
     _event_handler: EventHandler | None = None
 
+    # Per-instance series cache (series-first batching, plan §3.10). When
+    # set, the matcher consults it before the cold-path search: a cache
+    # hit triggers source.lookup_issue(volume_id, number) instead. The
+    # cache key is (source_name, series_fingerprint); the value is the
+    # resolved volume_id. Populated on each cold-path acceptance using
+    # ``setdefault`` so the first writer wins — falsy-group collisions
+    # don't get to overwrite the original.
+    _series_cache: MutableMapping[tuple[str, str], int] | None = None
+
     _online_lookup_done_flag: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
     _local_cover_phash_computed: bool = False
@@ -264,6 +291,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def set_event_handler(self, handler: EventHandler | None) -> None:
         """Register an event-stream callback for online-lookup progress."""
         self._event_handler = handler
+
+    def set_series_cache(
+        self, cache: MutableMapping[tuple[str, str], int] | None
+    ) -> None:
+        """Register a session-level series cache for series-first batching."""
+        self._series_cache = cache
 
     def _emit(self, event: Event) -> None:
         """No-op if no handler is registered, else forward the event."""
@@ -412,6 +445,36 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> None:
         """Fetch the full record for an accepted candidate and inject it."""
         self._fetch_explicit_id(source, candidate.issue_id)
+        self._maybe_populate_series_cache(source, candidate)
+
+    def _maybe_populate_series_cache(
+        self, source: OnlineSource, candidate: Candidate
+    ) -> None:
+        """
+        Cache the resolved series volume_id on cold-path acceptance.
+
+        First-writer-wins: a falsy-group collision (two unrelated comics
+        that happened to share a series fingerprint) can't overwrite an
+        already-resolved entry. Fires ``SeriesIdentified`` only on first
+        population for this fingerprint. Locking — when needed for
+        concurrent callers — is the OnlineSession's responsibility; the
+        cache passed in here can be a thread-safe wrapper.
+        """
+        if self._series_cache is None or candidate.volume_id is None:
+            return
+        fingerprint = _series_fingerprint(self._build_profile())
+        key = (source.name, fingerprint)
+        if key in self._series_cache:
+            return
+        self._series_cache[key] = candidate.volume_id
+        self._emit(
+            SeriesIdentified(
+                path=getattr(self, "_path", None),
+                source=source.name,
+                series_fingerprint=fingerprint,
+                volume_id=candidate.volume_id,
+            )
+        )
 
     def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
         """
@@ -800,10 +863,72 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 self._fetch_explicit_id(source, stored_id)
                 return True
 
+        # Series-first batching fast path (plan §3.10). When the session
+        # has cached a resolved volume_id for this comic's series
+        # fingerprint, skip the expensive search and ask the source
+        # directly for "issue N in volume V." --rematch bypasses this
+        # path too (consistent with its "don't trust prior verdict"
+        # intent).
+        if not online.lookup.rematch and self._try_series_cache_lookup(source):
+            return True
+
         before = len(self._sources.get(source.metadata_source) or ())
         self._search_path(source)
         after = len(self._sources.get(source.metadata_source) or ())
         return after > before
+
+    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
+        """
+        Attempt the volume-scoped issue lookup; return True on hit + accept.
+
+        Cache miss, source-side failure, or a stale-cache "issue not in
+        this volume" response → return False so the caller falls through
+        to the cold-path search. The cache entry is left alone in that
+        case (first-writer-wins).
+        """
+        if self._series_cache is None:
+            return False
+        profile = self._build_profile()
+        if not profile.series:
+            return False
+        key = (source.name, _series_fingerprint(profile))
+        volume_id = self._series_cache.get(key)
+        if volume_id is None:
+            return False
+        try:
+            candidate = source.lookup_issue(volume_id, profile.issue)
+        except NotImplementedError:
+            # Source hasn't implemented the fast path — fall through.
+            return False
+        except Exception as exc:
+            logger.warning(
+                f"online {source.name}: series-cache lookup_issue "
+                f"(volume_id={volume_id}, number={profile.issue!r}) "
+                f"failed: {exc}; falling back to search"
+            )
+            return False
+        if candidate is None:
+            logger.info(
+                f"online {source.name}: cached volume_id={volume_id} "
+                f"returned no match for issue#={profile.issue!r}; "
+                "falling back to search (cache entry preserved)"
+            )
+            return False
+        logger.info(
+            f"online {source.name}: series-cache hit; accepted "
+            f"id={candidate.issue_id} via volume_id={volume_id}"
+        )
+        outcome_stats.record_auto_write(source.name)
+        path = getattr(self, "_path", None)
+        self._emit(
+            AutoWritten(
+                path=path,
+                source=source.name,
+                candidate_summary=str(candidate.issue_id),
+            )
+        )
+        self._accept_candidate(source, candidate)
+        return True
 
     def _first_normalized(self, src: MetadataSources) -> dict | None:
         """First normalized metadata dict from `src`, or None if unset."""
