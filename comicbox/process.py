@@ -12,6 +12,13 @@ from zipfile import BadZipFile, LargeZipFile
 
 from comicbox.box import Comicbox
 from comicbox.box.archive.filenames import EPOCH_START
+from comicbox.events import (
+    BatchFinished,
+    BatchStarted,
+    FileError,
+    FileParsed,
+    FileShortCircuited,
+)
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 
@@ -20,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Mapping
 
     from comicbox.config.settings import ComicboxSettings
+    from comicbox.events import EventHandler
 
 
 @cache
@@ -142,21 +150,72 @@ def _worker_log_init(log_config: Mapping) -> None:
 def _iter_completed(
     futures: Mapping[Any, Path],
     logger: Any,
+    on_event: EventHandler | None,
+    total: int,
 ) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
     """Yield results as futures complete; mark subsequent paths broken once the pool fails."""
     pool_broken = False
+    parsed = 0
+    short_circuited = 0
+    errored = 0
+    index = 0
     for future in as_completed(futures):
         path = futures[future]
         if pool_broken:
-            yield path, (_empty_read_result(), BrokenExecutor("Worker pool broken"))
+            exc = BrokenExecutor("Worker pool broken")
+            if on_event is not None:
+                on_event(
+                    FileError(
+                        path=path, index=index, total=total, error=str(exc)
+                    )
+                )
+            errored += 1
+            yield path, (_empty_read_result(), exc)
+            index += 1
             continue
         result, exc, broken = _collect_result(future, path, logger)
         if broken:
             pool_broken = True
+        if on_event is not None:
+            if exc is not None:
+                on_event(
+                    FileError(
+                        path=path, index=index, total=total, error=str(exc)
+                    )
+                )
+                errored += 1
+            elif result["tags"] is None:
+                # tags is None when the worker either hit the embedded-mtime
+                # gate (metadata_mtime is set) or was asked for envelope-only
+                # data via full_metadata=False (metadata_mtime is None).
+                reason = (
+                    "mtime_unchanged"
+                    if result["metadata_mtime"] is not None
+                    else "filtered"
+                )
+                on_event(
+                    FileShortCircuited(
+                        path=path, index=index, total=total, reason=reason
+                    )
+                )
+                short_circuited += 1
+            else:
+                on_event(FileParsed(path=path, index=index, total=total))
+                parsed += 1
         yield path, (result, exc)
+        index += 1
+    if on_event is not None:
+        on_event(
+            BatchFinished(
+                total=total,
+                parsed=parsed,
+                short_circuited=short_circuited,
+                errored=errored,
+            )
+        )
 
 
-def iter_process_files(
+def iter_process_files(  # noqa: PLR0913
     paths: Iterable[Path | str],
     config: ComicboxSettings | Mapping | None = None,
     logger: Any = None,
@@ -166,6 +225,7 @@ def iter_process_files(
     worker_log_config: Mapping | None = None,
     *,
     full_metadata: bool = True,
+    on_event: EventHandler | None = None,
 ) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
     """
     Yield (path, (ReadResult, exception_or_None)) as each file completes.
@@ -176,16 +236,27 @@ def iter_process_files(
     ReadResult is the empty sentinel (all fields ``None``); inspect the
     exception, not the result, to detect failure.
 
-    worker_log_config: optional dict of {"level", "format", "sink"} used to
-        re-initialize loguru inside each worker so subprocess log output
-        matches the caller's format. The dict must be picklable; pass sink as
-        "stdout"/"stderr"/path string rather than a file object.
+    ``worker_log_config``: optional dict of ``{"level", "format", "sink"}``
+        used to re-initialize loguru inside each worker so subprocess log
+        output matches the caller's format. Must be picklable; pass sink
+        as ``"stdout"`` / ``"stderr"`` / path string, not a file object.
+
+    ``on_event``: optional handler invoked on the orchestrator thread with
+        each :class:`comicbox.events.Event`. Fires :class:`BatchStarted`
+        once before the first submit, one of :class:`FileParsed` /
+        :class:`FileShortCircuited` / :class:`FileError` per delivered
+        result, and :class:`BatchFinished` once with totals. Handler runs
+        on the orchestrator thread and must be thread-safe and quick.
     """
     if not logger:
         from loguru import logger
     if not old_mtime_map:
         old_mtime_map = {}
     path_list = [Path(p) for p in paths]
+    total = len(path_list)
+
+    if on_event is not None:
+        on_event(BatchStarted(total=total))
 
     executor_kwargs: dict[str, Any] = {"max_workers": max_workers}
     if worker_log_config:
@@ -194,6 +265,7 @@ def iter_process_files(
     executor = ProcessPoolExecutor(**executor_kwargs)
     try:
         futures: dict = {}
+        submit_failures: list[tuple[Path, BaseException]] = []
         for path in path_list:
             old_mtime = old_mtime_map.get(str(path), EPOCH_START)
             try:
@@ -207,11 +279,18 @@ def iter_process_files(
                 )
             except Exception as exc:
                 logger.exception(f"Failed to submit {path}")
-                yield path, (_empty_read_result(), exc)
+                submit_failures.append((path, exc))
                 continue
             futures[future] = path
 
-        yield from _iter_completed(futures, logger)
+        # Surface submit-time failures up front so the index sequence in
+        # events matches the yield order seen by the caller.
+        for path, exc in submit_failures:
+            if on_event is not None:
+                on_event(FileError(path=path, error=str(exc)))
+            yield path, (_empty_read_result(), exc)
+
+        yield from _iter_completed(futures, logger, on_event, total)
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 
@@ -223,6 +302,8 @@ def process_files(
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
     worker_log_config: Mapping | None = None,
+    *,
+    on_event: EventHandler | None = None,
 ) -> dict[Path, tuple[ReadResult, BaseException | None]]:
     """Process multiple comic files in parallel via ProcessPoolExecutor."""
     return dict(
@@ -233,6 +314,7 @@ def process_files(
             fmt,
             max_workers,
             worker_log_config=worker_log_config,
+            on_event=on_event,
         )
     )
 
