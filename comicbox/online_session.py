@@ -221,6 +221,7 @@ class OnlineSession:
         rematch: bool = False,
         all_sources: bool = False,
         defer_prompts: bool = False,
+        series_batching: bool = True,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
         self._sources = frozenset(sources)
@@ -234,6 +235,7 @@ class OnlineSession:
         self._rematch = rematch
         self._all_sources = all_sources
         self._defer_prompts = defer_prompts
+        self._series_batching = series_batching
 
         # Cancel token. Set when cancel() is called; checked between files
         # in tag_many(). Not propagated mid-file — the in-flight per-file
@@ -258,6 +260,15 @@ class OnlineSession:
         # back via ``preload_resolution()`` and re-run the affected files.
         self._deferred: list[DeferredPrompt] = []
         self._deferred_lock = threading.Lock()
+
+        # Series cache (plan §3.10). Keyed by (source_name, series
+        # fingerprint); value is the resolved volume_id. Populated by
+        # the matcher on each cold-path acceptance; consulted before the
+        # cold-path search on subsequent comics of the same series so
+        # we make one `search` call per series instead of one per issue.
+        # In-memory only per the resolved open question.
+        self._series_cache: dict[tuple[str, str], int] = {}
+        self._series_cache_lock = threading.Lock()
 
     # -- mutable session state ----------------------------------------------
 
@@ -337,6 +348,34 @@ class OnlineSession:
         with self._prompt_cache_lock:
             self._prompt_cache[fingerprint] = entry
 
+    # -- series-first batching ----------------------------------------------
+
+    def preload_series_resolution(
+        self, *, source: str, series_fingerprint: str, volume_id: int
+    ) -> None:
+        """
+        Seed the series cache from outside the session.
+
+        Codex's use case: persist resolved series across runs in its own
+        DB and replay them at session-start to skip the cold-path search
+        entirely on subsequent imports. Same first-writer-wins semantic
+        as in-batch population — if the key is already cached, this is
+        a no-op.
+        """
+        key = (source, series_fingerprint)
+        with self._series_cache_lock:
+            self._series_cache.setdefault(key, volume_id)
+
+    def series_cache_snapshot(self) -> dict[tuple[str, str], int]:
+        """Snapshot the current series cache. Useful for persistence."""
+        with self._series_cache_lock:
+            return dict(self._series_cache)
+
+    def clear_series_cache(self) -> None:
+        """Drop every series resolution from the cache."""
+        with self._series_cache_lock:
+            self._series_cache.clear()
+
     # -- rate limits --------------------------------------------------------
 
     def rate_limit_status(self) -> dict[str, dict[str, Any]]:
@@ -364,8 +403,22 @@ class OnlineSession:
         return OnlineResult(path=path, tags=tags)
 
     def tag_many(self, paths: Iterable[Path]) -> Iterator[OnlineResult]:
-        """Tag many files sequentially. Stops accepting new ones on cancel."""
-        for path in paths:
+        """
+        Tag many files sequentially. Stops accepting new ones on cancel.
+
+        When ``series_batching`` is on (the default), paths are reordered
+        upfront by a lightweight filename-derived fingerprint so issues of
+        the same series cluster together. The first issue of each cluster
+        triggers the cold-path search; the remaining issues hit the
+        per-session series cache and skip the search entirely. Order
+        within a cluster is the original input order; the cluster order
+        itself is deterministic (sorted by fingerprint) so re-runs
+        produce identical cache-key sequences.
+        """
+        path_list = list(paths)
+        if self._series_batching:
+            path_list = sorted(path_list, key=_filename_series_fingerprint)
+        for path in path_list:
             if self._cancel.is_set():
                 yield OnlineResult(path=path, cancelled=True)
                 continue
@@ -383,6 +436,8 @@ class OnlineSession:
                 cb.set_online_selector(self._bridged_selector())
             if self._on_event is not None:
                 cb.set_event_handler(self._on_event)
+            if self._series_batching:
+                cb.set_series_cache(self._series_cache)
             cb.run_online_lookup()
             payload = cb.to_dict()
         return payload.get("comicbox", {}) if isinstance(payload, dict) else {}
@@ -636,3 +691,24 @@ def _prompt_fingerprint(
         volume_ids = tuple(sorted(c.issue_id for c in candidates))
     parts = (source, series, str(profile.year or ""), publisher, repr(volume_ids))
     return "|".join(parts)
+
+
+def _filename_series_fingerprint(path: Path) -> str:
+    """
+    Lightweight series fingerprint derived from the filename alone.
+
+    Used by ``tag_many`` to group same-series comics together *before*
+    opening any archives. Falls back to the bare filename when comicfn2dict
+    can't extract a series — those files won't benefit from series
+    batching but won't break it either (they sort to a deterministic
+    "by filename" bucket).
+    """
+    from comicfn2dict import comicfn2dict
+
+    try:
+        parsed = comicfn2dict(path.name)
+    except Exception:  # pragma: no cover — comicfn2dict is permissive
+        return path.name.lower()
+    series = str(parsed.get("series") or "").strip().lower()
+    year = str(parsed.get("year") or "")
+    return f"{series}|{year}" if series else f"~{path.name.lower()}"
