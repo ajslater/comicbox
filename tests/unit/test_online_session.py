@@ -54,7 +54,7 @@ def test_rejects_unknown_mode() -> None:
         OnlineSession(
             sources={"metron"},
             credentials=VALID_METRON,
-            mode="aggressive",  # pyright: ignore[reportArgumentType]
+            mode="aggressive",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         )
 
 
@@ -73,7 +73,7 @@ def test_mode_maps_to_match_mode(session_mode: str, expected_match: MatchMode) -
     session = OnlineSession(
         sources={"metron"},
         credentials=VALID_METRON,
-        mode=session_mode,  # pyright: ignore[reportArgumentType]
+        mode=session_mode,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
     )
     cfg = session._build_config()
     assert cfg.online.lookup.match == expected_match

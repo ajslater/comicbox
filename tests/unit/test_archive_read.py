@@ -22,7 +22,7 @@ def test_namelist_derives_from_cached_infolist(monkeypatch) -> None:
     namelist_calls: list[object] = []
     real_namelist = archive_module.Archive.namelist
 
-    def spy_namelist(archive):  # type: ignore[no-untyped-def]
+    def spy_namelist(archive):
         namelist_calls.append(archive)
         return real_namelist(archive)
 

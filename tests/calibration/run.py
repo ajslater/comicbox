@@ -367,7 +367,7 @@ def _band_for(score: float) -> str:
 
 
 def _build_source(name: str, online: OnlineSettings) -> OnlineSource:
-    creds = online.sources.get(name)
+    creds = online.auth.sources.get(name)
     if creds is None:
         msg = f"no credentials for source {name!r}"
         raise RuntimeError(msg)
@@ -1188,16 +1188,17 @@ def _resolve_sources(
     Skip + warn on misconfigured sources. When `api_budget` is supplied
     (typically from the `--api-budget` CLI flag), the loaded online
     settings are rebuilt with that value applied globally so every
-    source's resolve_api_budget(...) reflects the experiment.
+    source's resolve_effort(...) reflects the experiment.
     """
     from dataclasses import replace
 
-    from comicbox.config.settings import APIBudget
+    from comicbox.config.settings import Effort
 
     cfg = get_config(None)
     online = cfg.online
     if api_budget is not None:
-        online = replace(online, api_budget=APIBudget(api_budget))
+        new_tuning = replace(online.tuning, effort=Effort(api_budget))
+        online = replace(online, tuning=new_tuning)
     enabled = {n.strip() for n in args_sources.split(",") if n.strip()}
     sources: list[OnlineSource] = []
     for name in enabled:
@@ -1293,13 +1294,13 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--api-budget",
-        choices=("exhaustive", "balanced", "fast"),
+        choices=("thorough", "balanced", "minimal"),
         default=None,
         help=(
-            "Override the api_budget for ALL queried sources. Default uses "
+            "Override the effort for ALL queried sources. Default uses "
             "whatever the config / built-in default specifies (today: "
             "'balanced'). Phase B calibration uses this to compare modes — "
-            "run the matrix with --label exhaustive, then --label fast, "
+            "run the matrix with --label thorough, then --label minimal, "
             "then diff with tests/calibration/compare.py. See "
             "tasks/online-tagging/06-api-budget-spec.md."
         ),

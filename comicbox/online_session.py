@@ -40,7 +40,11 @@ if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import EventHandler
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
-    from comicbox.formats.base.online.selector import SelectorContext, SelectorResult
+    from comicbox.formats.base.online.selector import (
+        SelectorAction,
+        SelectorContext,
+        SelectorResult,
+    )
 
 
 # --- public types -----------------------------------------------------------
@@ -169,7 +173,7 @@ class OnlineResult:
 class _CachedResolution:
     """A previously-handled prompt's outcome, keyed by series-level fingerprint."""
 
-    action: str
+    action: SelectorAction
     payload: int | str | None
     # For "choose", the candidate's volume_id at the time the user picked.
     # We re-map to whichever candidate in the new prompt shares it.
@@ -440,7 +444,7 @@ class OnlineSession:
                 cb.set_series_cache(self._series_cache)
             cb.run_online_lookup()
             payload = cb.to_dict()
-        return payload.get("comicbox", {}) if isinstance(payload, dict) else {}
+        return payload.get("comicbox", {})
 
     def _bridged_selector(self) -> Callable[..., SelectorResult]:
         """

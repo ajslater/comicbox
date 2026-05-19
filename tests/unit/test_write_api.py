@@ -149,7 +149,7 @@ def test_write_metadata_rejects_unknown_mode(tmp_cbz: Path) -> None:
         write_metadata(
             tmp_cbz,
             patch={"publisher": {"name": "x"}},
-            mode="bogus",  # pyright: ignore[reportArgumentType]
+            mode="bogus",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
             formats=["comic_info"],
         )
 

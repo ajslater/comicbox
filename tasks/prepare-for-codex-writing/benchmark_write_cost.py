@@ -35,7 +35,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 # Break the comicbox.formats <-> comicbox.box import cycle before
 # importing anything that depends on a fully-initialized comicbox.box.
-import comicbox.box  # noqa: F401  ensure comicbox.box is initialized
+import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from comicbox.box import Comicbox
 
 if TYPE_CHECKING:

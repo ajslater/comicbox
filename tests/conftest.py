@@ -9,4 +9,4 @@ up-front sets the import order so the cycle resolves cleanly. Test
 modules can then import ``comicbox.config.*`` directly.
 """
 
-import comicbox.box  # noqa: F401
+import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]

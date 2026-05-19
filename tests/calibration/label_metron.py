@@ -92,7 +92,7 @@ def _build_metron_session() -> Session:
     repeated lookups within the same session.
     """
     online = get_config(None).online
-    creds = online.sources.get("metron")
+    creds = online.auth.sources.get("metron")
     if creds is None:
         msg = "no Metron credentials configured (env or ~/.config/comicbox/config.yaml)"
         raise RuntimeError(msg)

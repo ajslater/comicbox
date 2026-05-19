@@ -24,7 +24,7 @@ class ArchiveInfo:
     """Get ZipInfo like attributes from all archive info types."""
 
     @staticmethod
-    def datetime(info: InfoType) -> datetime | None:
+    def mtime(info: InfoType) -> datetime | None:
         """Return mtime as a datetime."""
         dttm = None
         if isinstance(info, ZipInfo):

@@ -59,7 +59,7 @@ def test_documented_defaults_match_upstream() -> None:
     number when first writing this module. Either way the README and
     rate_limits.py docstrings need a look.
     """
-    from mokkari.session import (  # type: ignore[import-untyped]
+    from mokkari.session import (
         METRON_DAY_RATE_LIMIT,
         METRON_MINUTE_RATE_LIMIT,
     )

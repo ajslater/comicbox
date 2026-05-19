@@ -81,7 +81,7 @@ comicbox:
     cache:
       # Tri-state cache mode: on, off, refresh.
       # Quoted to avoid YAML 1.1 interpreting bare `on`/`off` as booleans.
-      mode: on
+      mode: "on"
       dir: null
       ttl: 7d
 
