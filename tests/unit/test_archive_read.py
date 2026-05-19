@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from comicbox.box import Comicbox
 from comicbox.box.archive import archive as archive_module
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CB7_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
 
 def test_namelist_derives_from_cached_infolist(monkeypatch) -> None:
@@ -46,6 +46,43 @@ def test_namelist_walks_archive_when_no_cached_infolist() -> None:
     assert namelist
     lower = [n.lower() for n in namelist]
     assert lower == sorted(lower)
+
+
+def test_close_releases_cached_archive_state() -> None:
+    """
+    close() releases _7zfactory, _namelist, _infolist.
+
+    Long-lived callers (Codex's per-archive cover cache) keep Comicbox
+    instances pinned across page reads; without this teardown the 7z
+    BytesIOFactory accumulates one Py7zBytesIO entry per page ever read.
+    """
+    cb = Comicbox(CB7_SOURCE_PATH)
+    # Trigger lazy initialisation of each cached field.
+    cb.infolist()
+    cb.namelist()
+    cb._get_7zfactory()  # noqa: SLF001
+    assert cb._namelist is not None  # noqa: SLF001
+    assert cb._infolist is not None  # noqa: SLF001
+    assert cb._7zfactory is not None  # noqa: SLF001
+
+    cb.close()
+
+    assert cb._archive is None  # noqa: SLF001
+    assert cb._namelist is None  # noqa: SLF001
+    assert cb._infolist is None  # noqa: SLF001
+    assert cb._7zfactory is None  # noqa: SLF001
+
+
+def test_context_manager_releases_cached_archive_state() -> None:
+    """The `with` form calls close() and therefore drops cached state."""
+    with Comicbox(CB7_SOURCE_PATH) as cb:
+        cb.infolist()
+        cb._get_7zfactory()  # noqa: SLF001
+        held = cb
+
+    assert held._archive is None  # noqa: SLF001
+    assert held._infolist is None  # noqa: SLF001
+    assert held._7zfactory is None  # noqa: SLF001
 
 
 def test_infolist_and_namelist_share_sort_order() -> None:
