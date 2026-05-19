@@ -26,11 +26,17 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         """Get list of files in the archive."""
         self._ensure_read_archive()
         if self._namelist is None:
-            archive = self._get_archive()
-            namelist = Archive.namelist(archive)
-            # SORTED CASE INSENSITIVELY
-            namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
-            self._namelist: tuple[str, ...] | None = namelist
+            if self._infolist:
+                # Derive from cached infolist - both are sorted by the same
+                # lowercased-filename key, so re-sort is unnecessary.
+                self._namelist: tuple[str, ...] | None = tuple(
+                    self._get_info_fn(i) for i in self._infolist
+                )
+            else:
+                archive = self._get_archive()
+                namelist = Archive.namelist(archive)
+                # SORTED CASE INSENSITIVELY
+                self._namelist = tuple(sorted(namelist, key=lambda x: x.lower()))
         return self._namelist
 
     def _get_info_fn(self, info: InfoType) -> str:
