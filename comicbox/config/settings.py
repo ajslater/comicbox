@@ -123,12 +123,39 @@ class ReadSettings:
     merge_order: "tuple[MetadataSources, ...] | None" = None
 
 
+class WriteMode(str, Enum):
+    """
+    How a write merges its patch against the comic's existing metadata.
+
+    - ``additive``: deep-merge via mergedeep ADDITIVE. Dicts recurse;
+      lists / tuples / sets at conflicting paths *concatenate*; scalars
+      and other leaves *replace*. Default.
+    - ``update``: ``dict.update()`` at ROOT_TAG. Replaces top-level keys
+      wholesale; siblings of a replaced key are dropped.
+    - ``replace``: deep-merge via mergedeep REPLACE. Dicts recurse;
+      everything else (scalars, lists, tuples, sets) *replaces*. Codex's
+      "rename publisher from `Foo Comics` to `Foo`" use case wants this
+      when paired with list-typed fields whose patch is meant to be the
+      new complete value rather than an append. For dict-of-dict
+      structures (most of comicbox's schema) ``additive`` and ``replace``
+      are indistinguishable.
+    """
+
+    ADDITIVE = "additive"
+    UPDATE = "update"
+    REPLACE = "replace"
+
+
 @dataclass(frozen=True, slots=True)
 class WriteSettings:
     """Which metadata formats to write back, and how."""
 
     formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
-    replace: bool = False
+    # Default merge behavior on write. The legacy ``replace`` bool is
+    # kept as a deprecated alias: ``replace=True`` maps to
+    # ``mode=WriteMode.UPDATE`` (its historical meaning — UpdateMerger).
+    mode: WriteMode = WriteMode.ADDITIVE
+    replace: bool = False  # DEPRECATED: alias for ``mode=update``.
     stamp: bool = False
     stamp_notes: bool = True
     delete_all_tags: bool = False

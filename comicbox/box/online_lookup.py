@@ -869,7 +869,5 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 won_any = True
         self._cross_source_cv_id_check()
         self._emit(
-            FileFinished(
-                path=path, outcome="written" if won_any else "no_change"
-            )
+            FileFinished(path=path, outcome="written" if won_any else "no_change")
         )
