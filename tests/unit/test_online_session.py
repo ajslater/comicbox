@@ -176,9 +176,7 @@ def test_batched_prompt_handler_protocol_recognized() -> None:
     handler = _BH()
     assert isinstance(handler, BatchedPromptHandler)
     # Still accepted by OnlineSession via the base PromptHandler shape.
-    OnlineSession(
-        sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler
-    )
+    OnlineSession(sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler)
 
 
 # --- rate-limit status stub ---------------------------------------------------

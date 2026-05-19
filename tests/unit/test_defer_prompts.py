@@ -46,9 +46,7 @@ def _cand(issue_id: int, volume_id: int | None) -> Candidate:
 
 def test_defer_mode_queues_prompt_and_returns_skip() -> None:
     """Under defer_prompts, the selector queues + returns ('skip', None)."""
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID, defer_prompts=True
-    )
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     selector = session._bridged_selector()
     profile = ComicProfile(series="Spider-Man", year=2020, publisher="Marvel")
     candidates = (_cand(1, 100), _cand(2, 200))
@@ -89,9 +87,7 @@ def test_defer_mode_emits_prompt_deferred_event() -> None:
 
 def test_defer_mode_works_without_prompt_handler() -> None:
     """Defer mode does not require a PromptHandler — that's its whole point."""
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID, defer_prompts=True
-    )
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     assert session._prompt_handler is None
     selector = session._bridged_selector()
     selector(
@@ -104,9 +100,7 @@ def test_defer_mode_works_without_prompt_handler() -> None:
 
 def test_preload_resolution_seeds_cache_for_re_run() -> None:
     """preload_resolution() makes the next prompt with that fingerprint cache-hit."""
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID, defer_prompts=True
-    )
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     selector = session._bridged_selector()
     profile = ComicProfile(series="S", year=2020, publisher="P")
     candidates = (_cand(1, 100), _cand(2, 200))
@@ -128,18 +122,14 @@ def test_preload_resolution_seeds_cache_for_re_run() -> None:
 
 def test_preload_resolution_remaps_index_on_re_run() -> None:
     """preload_resolution with chosen_volume_id maps to the new candidate index."""
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID, defer_prompts=True
-    )
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     selector = session._bridged_selector()
     profile = ComicProfile(series="S", year=2020, publisher="P")
 
     # First pass: vol 100 at index 0.
     selector(profile, (_cand(1, 100), _cand(2, 200)), _ctx())
     fp = session.deferred_prompts()[0].fingerprint
-    session.preload_resolution(
-        fp, action="choose", payload=0, chosen_volume_id=100
-    )
+    session.preload_resolution(fp, action="choose", payload=0, chosen_volume_id=100)
 
     # Re-run with candidates re-ordered — vol 100 is now at index 1.
     result = selector(profile, (_cand(3, 200), _cand(4, 100)), _ctx())
@@ -147,9 +137,7 @@ def test_preload_resolution_remaps_index_on_re_run() -> None:
 
 
 def test_clear_deferred_prompts_empties_queue() -> None:
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID, defer_prompts=True
-    )
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     selector = session._bridged_selector()
     selector(
         ComicProfile(series="S", year=2020, publisher="P"),

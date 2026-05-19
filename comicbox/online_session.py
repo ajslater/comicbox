@@ -144,9 +144,7 @@ class BatchedPromptHandler(Protocol):
         """Resolve one prompt; return the chosen action/payload."""
         ...
 
-    def request_many(
-        self, prompts: Sequence[OnlinePrompt]
-    ) -> Sequence[PromptResponse]:
+    def request_many(self, prompts: Sequence[OnlinePrompt]) -> Sequence[PromptResponse]:
         """
         Resolve a window of prompts in one call.
 

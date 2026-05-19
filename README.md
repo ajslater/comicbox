@@ -201,12 +201,13 @@ comicbox --online metron --series-id metron:100 "comic.cbz"
 Each source needs credentials before it can run. Resolution order is **CLI >
 env > config file > keyring**:
 
-| Source    | Required        | Env vars                                       |
-| --------- | --------------- | ---------------------------------------------- |
-| metron    | user + pass     | `COMICBOX_METRON_USER`, `COMICBOX_METRON_PASS` |
-| comicvine | key             | `COMICBOX_COMICVINE_KEY`                       |
+| Source    | Required    | Env vars                                       |
+| --------- | ----------- | ---------------------------------------------- |
+| metron    | user + pass | `COMICBOX_METRON_USER`, `COMICBOX_METRON_PASS` |
+| comicvine | key         | `COMICBOX_COMICVINE_KEY`                       |
 
-Or set them on the CLI with the repeatable `--auth <source>:<field>=<value>` flag:
+Or set them on the CLI with the repeatable `--auth <source>:<field>=<value>`
+flag:
 
 ```sh
 comicbox --online metron \
@@ -242,15 +243,15 @@ match mode decides whether to prompt, skip, or write anyway.
 #   eager   — auto-write any top above threshold, even with close runner-up
 
 # --prompts never: never prompt; turn would-be prompts into skips
-comicbox --online metron --prompts never --match careful ./comics/  # cautious cron
-comicbox --online metron --prompts never --match eager ./comics/    # trust the matcher
+comicbox --online metron --prompts never --match careful ./comics/ # cautious cron
+comicbox --online metron --prompts never --match eager ./comics/   # trust the matcher
 
 # The global auto-write threshold:
 comicbox --online all --auto-threshold 0.85 ...
 ```
 
-Per-source overrides for `auto_threshold` and per-source tuning knobs
-live in YAML (under `online.tuning.per_source.<source>.*`).
+Per-source overrides for `auto_threshold` and per-source tuning knobs live in
+YAML (under `online.tuning.per_source.<source>.*`).
 
 End-of-run summary distinguishes outcomes:
 
