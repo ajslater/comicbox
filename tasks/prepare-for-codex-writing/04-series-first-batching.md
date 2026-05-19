@@ -2,10 +2,11 @@
 
 ## Status
 
-Plan §3.10 / build-order step 9. **Design doc only — implementation deferred.**
-Greenlit in principle ("we'll do this too"). This doc captures the design so it
-can be picked up when API rate limits become the visible bottleneck for
-online-tagging batches.
+Plan §3.10 / build-order step 9. **Shipped** (commits 9a + 9b on
+`codex-api`). User decision: API rate limits are real for both CLI and
+library users today, so ship now rather than wait for visible breakage.
+This doc retains the design rationale; the "Phases" section below
+matches the as-built implementation.
 
 ## Problem
 
@@ -214,17 +215,25 @@ lookup_issue path doesn't pay the unbounded-search penalty (mokkari's
 series-scoped issue iterator is a different endpoint with its own — usually
 higher — limit).
 
-## When to ship this
+## As shipped
 
-Land when one of:
+Two commits on `codex-api`:
 
-- Codex's online-tagging dashboard shows users routinely waiting hours on big
-  batches and ComicVine 1 req/sec is the visible bottleneck.
-- An external user reports "I tried to tag my 50 000-comic library and it timed
-  out at the API limit."
-- We add a fanout/parallelism mode that turns API rate limits from "wall-time
-  bound" to "user-frustration bound."
-
-Until then: the prompt-dedup cache (step 6) + defer mode (step 7) already handle
-the user-attention bottleneck. The rate-limit bottleneck is real but bounded;
-users can run a batch overnight.
+- **9a — Core machinery.** `OnlineSource.lookup_issue(volume_id, number)`
+  abstract method + Metron + ComicVine implementations wrapping the
+  existing `_issues_list` / `_list_issues_by_volume` helpers. New
+  `_series_fingerprint` helper at the matcher boundary. ComicboxOnlineLookup
+  grows `set_series_cache(cache)` and a `_try_series_cache_lookup` warm
+  path that runs between the stored-id fast path and the cold-path
+  search. `_accept_candidate` populates the cache with first-writer-
+  wins semantics. New `SeriesIdentified` event fires once per
+  fingerprint. `--rematch` bypasses the cache (consistent with its
+  "don't trust prior verdict" intent).
+- **9b — Session orchestration.** `OnlineSession` owns a process-local
+  `series_cache` dict and threads it into each per-file Comicbox via
+  `set_series_cache`. `tag_many` sorts paths by a lightweight
+  comicfn2dict-derived fingerprint so same-series comics cluster.
+  New public surface: `series_batching=True` constructor flag,
+  `preload_series_resolution()` / `series_cache_snapshot()` /
+  `clear_series_cache()` for Codex to persist resolutions across
+  runs.
