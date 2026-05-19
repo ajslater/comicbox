@@ -559,6 +559,20 @@ def _build_online_settings(
     return OnlineSettings(lookup=lookup, auth=auth, cache=cache, tuning=tuning)
 
 
+def _resolve_runtime_sources(
+    online_arg: Any, explicit_id_sources: frozenset[str]
+) -> tuple[bool, frozenset[str] | None]:
+    """Decide (enabled, selected) from --online-sources + explicit-id presence."""
+    if online_arg is None:
+        if explicit_id_sources:
+            return True, explicit_id_sources
+        return False, None
+    normalized = frozenset(str(s).strip().lower() for s in online_arg if str(s).strip())
+    if not normalized or "all" in normalized:
+        return True, None
+    return True, normalized | explicit_id_sources
+
+
 def _runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
@@ -570,8 +584,6 @@ def _runtime_online_inputs(
     if not isinstance(cns, Namespace):
         cns = args
 
-    online_arg: Any = getattr(cns, "online_sources", None)
-
     ids = _parse_db_id_list(
         getattr(cns, "explicit_ids", None), "--id", _parse_explicit_id
     )
@@ -580,29 +592,12 @@ def _runtime_online_inputs(
         "--series-id",
         _parse_explicit_series_id,
     )
-
     explicit_id_sources = frozenset(ids.keys()) | frozenset(series_ids.keys())
-
-    selected: frozenset[str] | None
-    if online_arg is None:
-        if explicit_id_sources:
-            runtime_enabled = True
-            selected = explicit_id_sources
-        else:
-            runtime_enabled = False
-            selected = None
-    else:
-        runtime_enabled = True
-        normalized = frozenset(
-            str(s).strip().lower() for s in online_arg if str(s).strip()
-        )
-        if not normalized or "all" in normalized:
-            selected = None
-        else:
-            selected = normalized | explicit_id_sources
+    runtime_enabled, selected = _resolve_runtime_sources(
+        getattr(cns, "online_sources", None), explicit_id_sources
+    )
 
     cli_overrides = CliOverrides.from_auth_list(getattr(cns, "auth", None) or ())
-
     cache_cli = getattr(cns, "cache", None)
     cache_mode_cli = _parse_cache_mode_value(str(cache_cli)) if cache_cli else None
 
@@ -616,26 +611,17 @@ def _runtime_online_inputs(
     )
 
 
-def _build_settings(
-    ad: Any,
-    args: Namespace | Mapping | None = None,
-) -> ComicboxSettings:
-    """Convert a validated, computed confuse AttrDict into a ComicboxSettings dataclass."""
-    inner: Any = ad.comicbox
-    computed: Any = inner.computed
+def _cns_for_overrides(args: Namespace | Mapping | None) -> Namespace | None:
+    """Locate the inner `args.comicbox` Namespace for CLI overrides, when present."""
+    if not isinstance(args, Namespace):
+        return None
+    candidate = getattr(args, "comicbox", args)
+    return candidate if isinstance(candidate, Namespace) else args
 
-    runtime_inputs = _runtime_online_inputs(args)
 
-    cns_for_overrides: Namespace | None = None
-    if isinstance(args, Namespace):
-        candidate = getattr(args, "comicbox", args)
-        cns_for_overrides = candidate if isinstance(candidate, Namespace) else args
-
-    online = _build_online_settings(inner.online, runtime_inputs, cns=cns_for_overrides)
-
-    general_block = inner.general
+def _build_general_settings(general_block: Any) -> GeneralSettings:
     metadata_cli = general_block.metadata_cli
-    general = GeneralSettings(
+    return GeneralSettings(
         config=general_block.config,
         recurse=bool(general_block.recurse),
         dry_run=bool(general_block.dry_run),
@@ -651,19 +637,18 @@ def _build_settings(
         theme=general_block.theme,
     )
 
-    read_block = inner.read
-    read_settings = ReadSettings(
+
+def _build_read_settings(read_block: Any) -> ReadSettings:
+    except_raw = getattr(read_block, "except", None)
+    return ReadSettings(
         formats=frozenset(read_block.formats or ()),
-        except_formats=(
-            frozenset(getattr(read_block, "except"))
-            if getattr(read_block, "except", None)
-            else None
-        ),
+        except_formats=frozenset(except_raw) if except_raw else None,
         merge_order=_resolve_merge_order(read_block.merge_order),
     )
 
-    write_block = inner.write
-    write_settings = WriteSettings(
+
+def _build_write_settings(write_block: Any) -> WriteSettings:
+    return WriteSettings(
         formats=frozenset(write_block.formats or ()),
         replace=bool(write_block.replace),
         stamp=bool(write_block.stamp),
@@ -671,14 +656,9 @@ def _build_settings(
         delete_all_tags=bool(write_block.delete_all_tags),
     )
 
-    print_block = inner.print
-    print_settings = PrintSettings(
-        phases=frozenset(print_block.phases or ()),
-        validate=bool(print_block.validate),
-    )
 
-    convert_block = inner.convert
-    convert_settings = ConvertSettings(
+def _build_convert_settings(convert_block: Any) -> ConvertSettings:
+    return ConvertSettings(
         cbz=convert_block.cbz,
         rename=convert_block.rename,
         extract_pages_from=convert_block.extract_pages_from,
@@ -689,19 +669,35 @@ def _build_settings(
         pdf_pages=convert_block.pdf_pages,
     )
 
-    compute_block = inner.compute
-    compute_settings = ComputeSettings(
-        pages=bool(compute_block.pages),
-        page_count=bool(compute_block.page_count),
+
+def _build_settings(
+    ad: Any,
+    args: Namespace | Mapping | None = None,
+) -> ComicboxSettings:
+    """Convert a validated, computed confuse AttrDict into a ComicboxSettings dataclass."""
+    inner: Any = ad.comicbox
+    computed: Any = inner.computed
+
+    runtime_inputs = _runtime_online_inputs(args)
+    online = _build_online_settings(
+        inner.online, runtime_inputs, cns=_cns_for_overrides(args)
     )
 
+    print_block = inner.print
+    compute_block = inner.compute
     return ComicboxSettings(
-        general=general,
-        read=read_settings,
-        write=write_settings,
-        print=print_settings,
-        convert=convert_settings,
-        compute=compute_settings,
+        general=_build_general_settings(inner.general),
+        read=_build_read_settings(inner.read),
+        write=_build_write_settings(inner.write),
+        print=PrintSettings(
+            phases=frozenset(print_block.phases or ()),
+            validate=bool(print_block.validate),
+        ),
+        convert=_build_convert_settings(inner.convert),
+        compute=ComputeSettings(
+            pages=bool(compute_block.pages),
+            page_count=bool(compute_block.page_count),
+        ),
         online=online,
         paths=tuple(inner.paths or ()),
         all_write_formats=frozenset(computed.all_write_formats),

@@ -38,6 +38,22 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import ComicProfile
 
 
+def _bi_series_name(bi_series: Any) -> str | None:
+    """Pull a name off `BaseIssue.series` when the nested object exists."""
+    return getattr(bi_series, "name", None) if bi_series is not None else None
+
+
+def _bi_series_id(bi_series: Any) -> int | None:
+    """Pull an id off `BaseIssue.series` when the nested object exists."""
+    return getattr(bi_series, "id", None) if bi_series is not None else None
+
+
+def _bi_resource_url(base_issue: Any) -> str:
+    """Return the issue's resource URL as a string; "" when missing."""
+    url = getattr(base_issue, "resource_url", None)
+    return str(url) if url else ""
+
+
 class MetronOnlineSource(OnlineSource):
     """Wraps mokkari for the Metron API."""
 
@@ -180,39 +196,27 @@ class MetronOnlineSource(OnlineSource):
         object without `.id`; relying on it loses the link to the
         volume/series.
         """
-        cover_year = base_issue.cover_date.year if base_issue.cover_date else None
-        image_url = str(base_issue.image) if base_issue.image else None
         # `BaseIssue.series` may be a nested object or absent depending on
         # the endpoint. Prefer the resolved name passed in by `search`.
         bi_series = getattr(base_issue, "series", None)
-        series = (
-            series_name
-            or (getattr(bi_series, "name", None) if bi_series is not None else None)
-            or ""
-        )
         summary = CandidateSummary(
-            series=series,
+            series=series_name or _bi_series_name(bi_series) or "",
             issue=base_issue.number,
-            year=cover_year,
+            year=base_issue.cover_date.year if base_issue.cover_date else None,
             publisher=None,  # BaseIssue from search omits publisher
             page_count=None,
-            cover_url=image_url,
+            cover_url=str(base_issue.image) if base_issue.image else None,
             variant_label=None,
         )
-        # Prefer the explicit series_id from the two-step search; fall
-        # back to BaseIssue.series.id when it happens to be present.
-        resolved_series_id = series_id
-        if resolved_series_id is None and bi_series is not None:
-            resolved_series_id = getattr(bi_series, "id", None)
         return Candidate(
             source=self.name,
             issue_id=base_issue.id,
             summary=summary,
-            url=str(base_issue.resource_url)
-            if hasattr(base_issue, "resource_url") and base_issue.resource_url
-            else "",
+            url=_bi_resource_url(base_issue),
             precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
-            volume_id=resolved_series_id,
+            # Prefer the explicit series_id from the two-step search; fall
+            # back to BaseIssue.series.id when it happens to be present.
+            volume_id=series_id if series_id is not None else _bi_series_id(bi_series),
         )
 
     @override
@@ -248,54 +252,27 @@ class MetronOnlineSource(OnlineSource):
         return self._to_candidate(issue_list[0], series_id=volume_id)
 
     @with_retry()
-    def search(self, profile: ComicProfile) -> list[Candidate]:
-        """
-        Search Metron for candidate issues matching the profile.
-
-        The canonical two-step:
-
-        1. ``series_list({"name": profile.series})`` — Metron's name filter
-           is icontains+unaccent and splits on whitespace (AND-of-terms),
-           so it tolerates case, accents, and word-order quirks.
-        2. For each matched series, ``issues_list({"series_id": id,
-           "number": N, "cover_year": Y})`` — issue lookup constrained by
-           the resolved series id. Metron's `issue.number` is unpadded,
-           so we strip leading zeros on the way in.
-
-        The earlier single-call form passed `series_name` directly to
-        ``issues_list``, which Metron does accept (icontains too) but it's
-        an undocumented mokkari parameter and the two-step is what
-        metron-tagger uses.
-        """
-        session = self._get_session()
-        # Fast path: --series-id metron:<id> skips the discovery call and goes
-        # straight to issue lookup against the supplied series id. The series
-        # name on candidates falls back to whatever `BaseIssue.series.name` we
-        # get back; we don't pre-resolve it because that'd cost the call we
-        # just saved.
-        explicit_sid = self._settings.lookup.series_ids.get(self.name)
-        if explicit_sid is not None:
-            # The user has been explicit about the series id; the soft volume
-            # filter would just risk false-zero. Trust the supplied id.
-            params = self._build_issue_params(
-                profile, explicit_sid, include_volume=False
+    def _search_by_explicit_series_id(
+        self, session: Session, profile: ComicProfile, series_id: int
+    ) -> list[Candidate]:
+        """Single-call issue lookup against a user-supplied series id."""
+        # The user has been explicit about the series id; the soft volume
+        # filter would just risk false-zero. Trust the supplied id.
+        params = self._build_issue_params(profile, series_id, include_volume=False)
+        try:
+            issues = self._issues_list_with_retry(session, params)
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: issue-list for series id {series_id} "
+                f"failed: {exc}"
             )
-            try:
-                issues = self._issues_list_with_retry(session, params)
-            except Exception as exc:
-                logger.warning(
-                    f"online {self.name}: issue-list for series id "
-                    f"{explicit_sid} failed: {exc}"
-                )
-                raise
-            return [self._to_candidate(i, series_id=explicit_sid) for i in issues]
+            raise
+        return [self._to_candidate(i, series_id=series_id) for i in issues]
 
-        if not profile.series:
-            logger.debug(
-                f"online {self.name}: no series in profile; cannot search Metron "
-                "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
-            )
-            return []
+    def _resolve_series_results(
+        self, session: Session, profile: ComicProfile
+    ) -> list[Any]:
+        """Series-list discovery capped to the per-effort breadth limit."""
         try:
             series_results = self._series_list_with_retry(session, profile.series)
         except Exception as exc:
@@ -323,6 +300,48 @@ class MetronOnlineSource(OnlineSource):
             f"online {self.name}: {len(series_results)} candidate series for "
             f"{profile.series!r}: {sample}"
         )
+        return series_results
+
+    @with_retry()
+    @override
+    def search(self, profile: ComicProfile) -> list[Candidate]:
+        """
+        Search Metron for candidate issues matching the profile.
+
+        The canonical two-step:
+
+        1. ``series_list({"name": profile.series})`` — Metron's name filter
+           is icontains+unaccent and splits on whitespace (AND-of-terms),
+           so it tolerates case, accents, and word-order quirks.
+        2. For each matched series, ``issues_list({"series_id": id,
+           "number": N, "cover_year": Y})`` — issue lookup constrained by
+           the resolved series id. Metron's `issue.number` is unpadded,
+           so we strip leading zeros on the way in.
+
+        The earlier single-call form passed `series_name` directly to
+        ``issues_list``, which Metron does accept (icontains too) but it's
+        an undocumented mokkari parameter and the two-step is what
+        metron-tagger uses.
+        """
+        session = self._get_session()
+        # Fast path: --series-id metron:<id> skips the discovery call and goes
+        # straight to issue lookup against the supplied series id. The series
+        # name on candidates falls back to whatever `BaseIssue.series.name` we
+        # get back; we don't pre-resolve it because that'd cost the call we
+        # just saved.
+        explicit_sid = self._settings.lookup.series_ids.get(self.name)
+        if explicit_sid is not None:
+            return self._search_by_explicit_series_id(session, profile, explicit_sid)
+
+        if not profile.series:
+            logger.debug(
+                f"online {self.name}: no series in profile; cannot search Metron "
+                "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
+            )
+            return []
+        series_results = self._resolve_series_results(session, profile)
+        if not series_results:
+            return []
 
         candidates = self._search_with_year_retry(
             session, profile, series_results, include_volume=True

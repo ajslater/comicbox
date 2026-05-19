@@ -39,7 +39,10 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 from platformdirs import user_cache_path
 
@@ -224,6 +227,38 @@ class RunResult:
     log_path: Path
 
 
+def _per_source_rate_failures(r: RunResult) -> Iterator[str]:
+    """Yield human-readable rate-limit violations per source."""
+    if r.wall_seconds <= 0:
+        return
+    for source in _SOURCES:
+        per_min_cap, per_hour_cap, _ = _DOCUMENTED_CAPS.get(source, (None, None, None))
+        delta = r.after.rows.get(source, 0) - r.before.rows.get(source, 0)
+        observed_per_min = delta / r.wall_seconds * 60
+        if per_min_cap and observed_per_min > per_min_cap * 1.05:
+            yield (
+                f"{source} exceeded documented cap "
+                f"({observed_per_min:.1f}/min vs {per_min_cap}/min)."
+            )
+        if per_hour_cap and r.wall_seconds >= 3600 and delta > per_hour_cap * 1.05:
+            yield (
+                f"{source} exceeded hourly cap "
+                f"({delta} requests in {r.wall_seconds / 3600:.1f}h vs "
+                f"{per_hour_cap}/hr)."
+            )
+
+
+def _collect_failures(r: RunResult) -> list[str]:
+    """Gather the full pass/fail diagnostics list for the summary."""
+    failures: list[str] = []
+    if r.exit_code != 0:
+        failures.append(f"comicbox exited with non-zero status ({r.exit_code}).")
+    if r.metrics["exceptions"] > 0:
+        failures.append(f"{r.metrics['exceptions']} traceback(s) in the log.")
+    failures.extend(_per_source_rate_failures(r))
+    return failures
+
+
 def build_summary(r: RunResult) -> str:
     """Format the markdown summary."""
     lines = [
@@ -258,28 +293,7 @@ def build_summary(r: RunResult) -> str:
         "## Pass/fail",
         "",
     ]
-    failures: list[str] = []
-    if r.exit_code != 0:
-        failures.append(f"comicbox exited with non-zero status ({r.exit_code}).")
-    if r.metrics["exceptions"] > 0:
-        failures.append(f"{r.metrics['exceptions']} traceback(s) in the log.")
-    for source in _SOURCES:
-        per_min_cap, per_hour_cap, _ = _DOCUMENTED_CAPS.get(source, (None, None, None))
-        if r.wall_seconds <= 0:
-            continue
-        delta = r.after.rows.get(source, 0) - r.before.rows.get(source, 0)
-        observed_per_min = delta / r.wall_seconds * 60
-        if per_min_cap and observed_per_min > per_min_cap * 1.05:
-            failures.append(
-                f"{source} exceeded documented cap "
-                f"({observed_per_min:.1f}/min vs {per_min_cap}/min)."
-            )
-        if per_hour_cap and r.wall_seconds >= 3600 and delta > per_hour_cap * 1.05:
-            failures.append(
-                f"{source} exceeded hourly cap "
-                f"({delta} requests in {r.wall_seconds / 3600:.1f}h vs "
-                f"{per_hour_cap}/hr)."
-            )
+    failures = _collect_failures(r)
     if not failures:
         lines.append("**PASS** — no rate-limit violations, no exceptions.")
     else:

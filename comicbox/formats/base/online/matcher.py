@@ -129,9 +129,6 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
     `solo_confidence_threshold` is the load-bearing protection only on
     thumbnail-library calibration runs.
     """
-    weighted_sum = 0.0
-    total_weight = 0.0
-
     # Skip a signal only when BOTH sides are empty (truly no data on
     # either side). When asymmetric — profile has data, candidate doesn't
     # or vice versa — keep the signal so its function's missing-data
@@ -141,34 +138,40 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
     # candidates with year=None / publisher=None won over candidates that
     # actually matched the profile's year, because their missing-data
     # signals got dropped from the renormalisation denominator.
-
-    if profile.series or candidate.summary.series:
-        weighted_sum += W_SERIES * s_series(profile, candidate)
-        total_weight += W_SERIES
-
-    # Issue: profile carries either the raw string `issue` (e.g. "001")
-    # or the parsed `issue_int`. The candidate side just has `issue`.
-    profile_has_issue = bool(profile.issue) or profile.issue_int is not None
-    if profile_has_issue or candidate.summary.issue:
-        weighted_sum += W_ISSUE * s_issue(profile, candidate)
-        total_weight += W_ISSUE
-
-    if profile.year is not None or candidate.summary.year is not None:
-        weighted_sum += W_YEAR * s_year(profile, candidate)
-        total_weight += W_YEAR
-
-    if profile.publisher or candidate.summary.publisher:
-        weighted_sum += W_PUBLISHER * s_publisher(profile, candidate)
-        total_weight += W_PUBLISHER
-
-    if profile.page_count is not None or candidate.summary.page_count is not None:
-        weighted_sum += W_PAGES * s_pages(profile, candidate)
-        total_weight += W_PAGES
-
+    signals = _contributing_signals(profile, candidate)
+    weighted_sum = sum(
+        weight * scorer(profile, candidate) for weight, scorer in signals
+    )
+    total_weight = sum(weight for weight, _ in signals)
     if total_weight == 0.0:
         # No signal at all — neither side has data we can compare.
         return 0.0
     return weighted_sum / total_weight
+
+
+def _contributing_signals(
+    profile: ComicProfile, candidate: Candidate
+) -> tuple[tuple[float, Callable[..., float]], ...]:
+    """Yield (weight, scorer) for each signal where at least one side has data."""
+    # Issue: profile carries either the raw string `issue` (e.g. "001")
+    # or the parsed `issue_int`. The candidate side just has `issue`.
+    profile_has_issue = bool(profile.issue) or profile.issue_int is not None
+    summary = candidate.summary
+    return tuple(
+        (weight, scorer)
+        for contributes, weight, scorer in (
+            (bool(profile.series or summary.series), W_SERIES, s_series),
+            (profile_has_issue or bool(summary.issue), W_ISSUE, s_issue),
+            (profile.year is not None or summary.year is not None, W_YEAR, s_year),
+            (bool(profile.publisher or summary.publisher), W_PUBLISHER, s_publisher),
+            (
+                profile.page_count is not None or summary.page_count is not None,
+                W_PAGES,
+                s_pages,
+            ),
+        )
+        if contributes
+    )
 
 
 def final_score(candidate: Candidate, *, hash_used: bool) -> float:

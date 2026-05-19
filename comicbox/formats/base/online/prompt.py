@@ -200,10 +200,18 @@ def _prompt_line(message: str) -> str | None:
     return _read_input(message + " ")
 
 
+def _resolve_policy_input(s: str, *, key_to_name: dict[str, str]) -> str | None:
+    """Map a policy submenu input to a policy name; None when unrecognized."""
+    if name := key_to_name.get(s):
+        return name
+    if s in key_to_name.values():
+        return s
+    return None
+
+
 def _ask_policy_choice() -> SelectorResult | None:
     """Show the policy submenu. Return a SelectorResult or None for back."""
-    policy_keys = {key for key, _ in _POLICY_CHOICES}
-    policy_names = {name for _, name in _POLICY_CHOICES}
+    key_to_name = dict(_POLICY_CHOICES)
     while True:
         for line in _build_policy_lines():
             print(line)  # noqa: T201
@@ -213,12 +221,8 @@ def _ask_policy_choice() -> SelectorResult | None:
         s = raw.strip().lower()
         if s in {"b", "back", ""}:
             return None
-        if s in policy_keys:
-            for key, name in _POLICY_CHOICES:
-                if key == s:
-                    return ("set_policy", name)
-        if s in policy_names:
-            return ("set_policy", s)
+        if name := _resolve_policy_input(s, key_to_name=key_to_name):
+            return ("set_policy", name)
         print(f"  unrecognized: {raw!r}")  # noqa: T201
 
 
@@ -241,6 +245,16 @@ def _ask_session_options() -> SelectorResult | None:
                 return sub
             continue
         print(f"  unrecognized: {raw!r}")  # noqa: T201
+
+
+def _handle_manual_result(result: SelectorResult, source: str) -> SelectorResult | None:
+    """For ('manual', '') prompt for an id; None when the user backed out."""
+    if result[0] == "manual" and not result[1]:
+        manual = _ask_manual_id(source)
+        if not manual:
+            return None
+        return ("manual", manual)
+    return result
 
 
 def cli_selector(
@@ -275,9 +289,7 @@ def cli_selector(
                 continue  # back to the main menu
             return sub
         if isinstance(result, tuple):
-            if result[0] == "manual" and not result[1]:
-                manual = _ask_manual_id(ctx.source)
-                if not manual:
-                    continue
-                return ("manual", manual)
-            return result
+            resolved = _handle_manual_result(result, ctx.source)
+            if resolved is None:
+                continue
+            return resolved

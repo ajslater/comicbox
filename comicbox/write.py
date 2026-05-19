@@ -119,6 +119,27 @@ def write_metadata(
     return WriteResult(path=path, written=True)
 
 
+def _drain_bulk_write_futures(
+    futures: dict[Any, tuple[int, BulkWriteItem]],
+    *,
+    total: int,
+    on_event: EventHandler | None,
+    stop_on_error: bool,
+    cancel: threading.Event | None,
+) -> Iterator[tuple[WriteResult, bool]]:
+    """Iterate completed futures, emit events, signal cancel. Yields (result, ok)."""
+    for future in as_completed(futures):
+        index, item = futures[future]
+        try:
+            result = future.result()
+        except Exception as exc:
+            result = WriteResult(path=item.path, error=exc)
+        ok = _emit_write_event(result, index, total, on_event)
+        if result.error is not None and stop_on_error and cancel is not None:
+            cancel.set()
+        yield result, ok
+
+
 def bulk_write(
     items: Iterable[BulkWriteItem],
     *,
@@ -146,7 +167,7 @@ def bulk_write(
     parsed = 0
     errored = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {}
+        futures: dict[Any, tuple[int, BulkWriteItem]] = {}
         for index, item in enumerate(item_list):
             if cancel is not None and cancel.is_set():
                 break
@@ -154,17 +175,15 @@ def bulk_write(
             futures[future] = (index, item)
 
         try:
-            for future in as_completed(futures):
-                index, item = futures[future]
-                try:
-                    result = future.result()
-                except Exception as exc:
-                    result = WriteResult(path=item.path, error=exc)
-                ok = _emit_write_event(result, index, total, on_event)
+            for result, ok in _drain_bulk_write_futures(
+                futures,
+                total=total,
+                on_event=on_event,
+                stop_on_error=stop_on_error,
+                cancel=cancel,
+            ):
                 if result.error is not None:
                     errored += 1
-                    if stop_on_error and cancel is not None:
-                        cancel.set()
                 elif ok:
                     parsed += 1
                 yield result

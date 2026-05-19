@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -108,9 +109,26 @@ def _probe_issues_list(
             _print_issue(issue)
 
 
+def _print_metron_series_results(label: str, results: list[Any]) -> None:
+    """Render the first 5 series rows from a series_list call."""
+    print(f"    → {len(results)} result(s)")  # noqa: T201
+    for r in results[:5]:
+        display = getattr(r, "display_name", None) or getattr(r, "name", "?")
+        year = getattr(r, "year_began", "?")
+        print(f"      id={r.id} {display!r} year_began={year}")  # noqa: T201
+    del label  # unused — kept for caller readability
+
+
+def _metron_series_probe(session: Any, label: str, query: str) -> None:
+    """One series_list probe + result print, with a header line."""
+    print(f"\n  [{label}] series_list(name={query!r})")  # noqa: T201
+    results = list(session.series_list(params={"name": query}))
+    _print_metron_series_results(label, results)
+
+
 def _debug_metron(profile: object, online: object) -> None:
     print("\n=== Metron debug ===")  # noqa: T201
-    creds = online.sources.get("metron")  # ty: ignore[unresolved-attribute]
+    creds = online.auth.sources.get("metron")  # ty: ignore[unresolved-attribute]
     if creds is None or not creds.username or not creds.password:
         print("  metron not configured; skipping")  # noqa: T201
         return
@@ -125,11 +143,7 @@ def _debug_metron(profile: object, online: object) -> None:
     except Exception as exc:
         print(f"    EXCEPTION: {exc!r}")  # noqa: T201
         return
-    print(f"    → {len(results)} result(s)")  # noqa: T201
-    for r in results[:5]:
-        display = getattr(r, "display_name", None) or getattr(r, "name", "?")
-        year = getattr(r, "year_began", "?")
-        print(f"      id={r.id} {display!r} year_began={year}")  # noqa: T201
+    _print_metron_series_results("as-is", results)
 
     # 1b. The actual second-step issues_list per matching series — production's
     # next call. Surfaces "series_list found AR but issues_list returned NM"
@@ -139,31 +153,19 @@ def _debug_metron(profile: object, online: object) -> None:
     # 2. Variant: word-by-word, dropping parens etc.
     cleaned = _clean_for_search(series_name)
     if cleaned and cleaned != series_name:
-        print(f"\n  [cleaned] series_list(name={cleaned!r})")  # noqa: T201
-        results2 = list(session.series_list(params={"name": cleaned}))
-        print(f"    → {len(results2)} result(s)")  # noqa: T201
-        for r in results2[:5]:
-            display = getattr(r, "display_name", None) or getattr(r, "name", "?")
-            year = getattr(r, "year_began", "?")
-            print(f"      id={r.id} {display!r} year_began={year}")  # noqa: T201
+        _metron_series_probe(session, "cleaned", cleaned)
 
     # 3. Variant: just first two words.
     words = (series_name or "").split()
     if len(words) >= 2:
         short = " ".join(words[:2])
         if short != cleaned:
-            print(f"\n  [first-2-words] series_list(name={short!r})")  # noqa: T201
-            results3 = list(session.series_list(params={"name": short}))
-            print(f"    → {len(results3)} result(s)")  # noqa: T201
-            for r in results3[:5]:
-                display = getattr(r, "display_name", None) or getattr(r, "name", "?")
-                year = getattr(r, "year_began", "?")
-                print(f"      id={r.id} {display!r} year_began={year}")  # noqa: T201
+            _metron_series_probe(session, "first-2-words", short)
 
 
 def _debug_comicvine(profile: object, online: object) -> None:
     print("\n=== ComicVine debug ===")  # noqa: T201
-    creds = online.sources.get("comicvine")  # ty: ignore[unresolved-attribute]
+    creds = online.auth.sources.get("comicvine")  # ty: ignore[unresolved-attribute]
     if creds is None or not creds.api_key:
         print("  comicvine not configured; skipping")  # noqa: T201
         return

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from argparse import Namespace
 from types import MappingProxyType
+from typing import TypeVar
 
 import pytest
 
@@ -115,6 +116,14 @@ def _build_cb() -> Comicbox:
 # --- tests ------------------------------------------------------------------
 
 
+_E = TypeVar("_E", bound=Event)
+
+
+def _first(events: list[Event], cls: type[_E]) -> _E:
+    """Return the first event of the given type; raises StopIteration if absent."""
+    return next(e for e in events if isinstance(e, cls))
+
+
 def test_unambiguous_candidate_emits_search_and_auto_written(monkeypatch) -> None:
     """A single high-confidence candidate triggers SearchStarted→Completed→AutoWritten→FileFinished."""
     _patch_metron(monkeypatch, [_make_candidate(101, 2020)])
@@ -123,21 +132,17 @@ def test_unambiguous_candidate_emits_search_and_auto_written(monkeypatch) -> Non
     cb.set_event_handler(events.append)
     cb.run_online_lookup()
 
-    kinds = [type(e).__name__ for e in events]
-    assert "SearchStarted" in kinds
-    assert "SearchCompleted" in kinds
-    assert "AutoWritten" in kinds
-    assert "FileFinished" in kinds
+    kinds = {type(e).__name__ for e in events}
+    expected_kinds = {"SearchStarted", "SearchCompleted", "AutoWritten", "FileFinished"}
+    assert expected_kinds <= kinds
 
-    auto = next(e for e in events if isinstance(e, AutoWritten))
-    assert auto.source == "metron"
-    assert auto.candidate_summary == "101"
+    auto = _first(events, AutoWritten)
+    assert (auto.source, auto.candidate_summary) == ("metron", "101")
 
-    completed = next(e for e in events if isinstance(e, SearchCompleted))
-    assert completed.n_candidates == 1
-    assert completed.source == "metron"
+    completed = _first(events, SearchCompleted)
+    assert (completed.n_candidates, completed.source) == (1, "metron")
 
-    finished = next(e for e in events if isinstance(e, FileFinished))
+    finished = _first(events, FileFinished)
     assert finished.outcome == "written"
 
 

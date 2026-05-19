@@ -177,6 +177,43 @@ def _atomic_write_fixtures(path: Path, fixtures: list[dict[str, Any]]) -> None:
     tmp.replace(path)
 
 
+def _label_one_fixture(
+    session: Session,
+    i: int,
+    fixture: dict,
+    n: int,
+    total: int,
+    stats: _LabelStats,
+) -> bool:
+    """Look up + write one fixture's metron id. Return True when newly labeled."""
+    cv_id = int(fixture["comicvine"])
+    file_name = Path(str(fixture.get("file", ""))).name or f"#{i}"
+    print(  # noqa: T201
+        f"  [{n}/{total}] cv_id={cv_id} ({file_name}) ... ",
+        end="",
+        flush=True,
+    )
+    metron_id = lookup_metron_by_cv_id(session, cv_id)
+    if metron_id is None:
+        stats.not_found += 1
+        print("no metron coverage")  # noqa: T201
+        return False
+    fixture["metron"] = metron_id
+    stats.labeled += 1
+    print(f"→ metron={metron_id}")  # noqa: T201
+    return True
+
+
+def _initial_label_stats(raw: list[dict]) -> _LabelStats:
+    """Populate the running totals derived purely from the raw fixtures list."""
+    stats = _LabelStats(total=len(raw))
+    stats.already_labeled = sum(1 for f in raw if f.get("metron") is not None)
+    stats.skipped_no_cv = sum(
+        1 for f in raw if f.get("metron") is None and not f.get("comicvine")
+    )
+    return stats
+
+
 def label_fixtures(
     fixtures_path: Path,
     *,
@@ -196,12 +233,8 @@ def label_fixtures(
         raise TypeError(msg)
 
     session = _build_metron_session()
-    stats = _LabelStats(total=len(raw))
     pending = list(_iter_labelable(raw))
-    stats.already_labeled = sum(1 for f in raw if f.get("metron") is not None)
-    stats.skipped_no_cv = sum(
-        1 for f in raw if f.get("metron") is None and not f.get("comicvine")
-    )
+    stats = _initial_label_stats(raw)
 
     if not pending:
         print("No fixtures to label (all have Metron ids or no CV id).")  # noqa: T201
@@ -213,32 +246,18 @@ def label_fixtures(
         f"{stats.skipped_no_cv} skipped — no CV id)..."
     )
 
-    for n, (i, fixture) in enumerate(pending, start=1):
-        if limit is not None and n > limit:
-            print(f"  reached --limit {limit}, stopping early")  # noqa: T201
-            break
-        cv_id = int(fixture["comicvine"])
-        file_name = Path(str(fixture.get("file", ""))).name or f"#{i}"
-        print(  # noqa: T201
-            f"  [{n}/{len(pending)}] cv_id={cv_id} ({file_name}) ... ",
-            end="",
-            flush=True,
-        )
-        metron_id = lookup_metron_by_cv_id(session, cv_id)
-        if metron_id is None:
-            stats.not_found += 1
-            print("no metron coverage")  # noqa: T201
-            continue
-        fixture["metron"] = metron_id
-        stats.labeled += 1
-        print(f"→ metron={metron_id}")  # noqa: T201
+    capped = pending if limit is None else pending[:limit]
+    for n, (i, fixture) in enumerate(capped, start=1):
         # Persist incrementally so a Ctrl-C mid-run preserves what's
         # been learned so far. Atomic write means the file is never
         # left half-updated. Cost is small (a few KB rewritten per
         # lookup); benefit is huge (~25-minute runs stay safe).
-        if not dry_run:
+        newly = _label_one_fixture(session, i, fixture, n, len(pending), stats)
+        if newly and not dry_run:
             _atomic_write_fixtures(fixtures_path, raw)
 
+    if limit is not None and limit < len(pending):
+        print(f"  reached --limit {limit}, stopping early")  # noqa: T201
     if dry_run:
         print("\n[dry-run] no file changes written.")  # noqa: T201
     return stats

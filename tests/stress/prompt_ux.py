@@ -174,6 +174,32 @@ def run_with_recording_selector(
     )
 
 
+def _collect_prompt_ux_failures(
+    args: argparse.Namespace, result: PromptUXResult
+) -> list[str]:
+    """Build the per-criterion failure list for the prompt-UX summary."""
+    failures: list[str] = []
+    if not result.events:
+        failures.append(
+            "No prompts recorded — the test didn't actually exercise the "
+            "selector path. Check that the fixtures trigger online lookup."
+        )
+        return failures
+    if result.overlaps:
+        failures.append(
+            f"{len(result.overlaps)} overlapping prompt(s) detected — "
+            "`_PROMPT_LOCK` is not serialising correctly."
+        )
+    min_expected = len(result.events) * args.think_time
+    if result.wall_seconds < min_expected * 0.95:
+        failures.append(
+            f"Wall time {result.wall_seconds:.2f}s is shorter than the "
+            f"minimum serialised expectation {min_expected:.2f}s — "
+            "selectors may not be serialising."
+        )
+    return failures
+
+
 def format_summary(args: argparse.Namespace, result: PromptUXResult) -> str:
     """Build the markdown summary."""
     lines = [
@@ -211,25 +237,7 @@ def format_summary(args: argparse.Namespace, result: PromptUXResult) -> str:
         "## Pass/fail",
         "",
     ]
-    failures: list[str] = []
-    if not result.events:
-        failures.append(
-            "No prompts recorded — the test didn't actually exercise the "
-            "selector path. Check that the fixtures trigger online lookup."
-        )
-    if result.overlaps:
-        failures.append(
-            f"{len(result.overlaps)} overlapping prompt(s) detected — "
-            "`_PROMPT_LOCK` is not serialising correctly."
-        )
-    if result.events:
-        min_expected = len(result.events) * args.think_time
-        if result.wall_seconds < min_expected * 0.95:
-            failures.append(
-                f"Wall time {result.wall_seconds:.2f}s is shorter than the "
-                f"minimum serialised expectation {min_expected:.2f}s — "
-                "selectors may not be serialising."
-            )
+    failures = _collect_prompt_ux_failures(args, result)
     if not failures:
         lines.append(
             "**PASS** — all prompts serialised, no deadlocks, wall time "

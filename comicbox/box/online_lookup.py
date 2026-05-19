@@ -26,7 +26,7 @@ import sys
 import threading
 from dataclasses import replace
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from glom import glom
 from loguru import logger
@@ -65,6 +65,7 @@ from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
+    from pathlib import Path
 
     from comicbox.config.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
@@ -226,26 +227,25 @@ def _detect_cv_id_disagreement(
     return (metron_str, cv_str)
 
 
+_SIMPLE_PROFILE_PATHS: Final[tuple[tuple[str, str], ...]] = (
+    ("series", "comicbox.series.name"),
+    ("issue", "comicbox.issue.name"),
+    ("publisher", "comicbox.publisher.name"),
+    ("page_count", "comicbox.page_count"),
+)
+
+
 def _accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
     """First-wins accumulation of profile fields across normalized sources."""
-    if "series" not in fields and (v := glom(md, "comicbox.series.name", default=None)):
-        fields["series"] = v
-    if "issue" not in fields and (v := glom(md, "comicbox.issue.name", default=None)):
-        fields["issue"] = v
+    for field_name, path in _SIMPLE_PROFILE_PATHS:
+        if field_name not in fields and (v := glom(md, path, default=None)):
+            fields[field_name] = v
     if "year" not in fields:
         raw_year = glom(md, "comicbox.date.year", default=None) or glom(
             md, "comicbox.date.cover_date", default=None
         )
         if (parsed := parse_year(raw_year)) is not None:
             fields["year"] = parsed
-    if "publisher" not in fields and (
-        v := glom(md, "comicbox.publisher.name", default=None)
-    ):
-        fields["publisher"] = v
-    if "page_count" not in fields and (
-        v := glom(md, "comicbox.page_count", default=None)
-    ):
-        fields["page_count"] = v
     if "volume" not in fields and (v := _resolve_volume(md)) is not None:
         fields["volume"] = v
 
@@ -759,18 +759,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         logger.info(f"online {source.name}: skipped via prompt")
         outcome_stats.record_prompt_declined(source.name)
 
-    def _search_path(self, source: OnlineSource) -> None:
-        """Search → rank → resolve → fetch on accept."""
-        profile = self._build_profile()
-        path = getattr(self, "_path", None)
-        if not (profile.series or profile.issue or profile.year):
-            logger.warning(
-                f"online {source.name}: no search criteria — couldn't extract "
-                "series, issue#, or year from the comic's metadata or "
-                f"filename. Use --id {source.name}:<issue_id> to tag by id."
-            )
-            return
-        # Show what's actually sent: leading zeros stripped from issue#.
+    def _run_search(
+        self, source: OnlineSource, profile: ComicProfile, path: Path | None
+    ) -> tuple[list[Candidate] | None, str]:
+        """Emit SearchStarted, invoke source.search, emit SearchCompleted."""
         search_issue = strip_issue_leading_zeros(profile.issue)
         criteria_summary = (
             f"series={profile.series!r} issue={search_issue!r} year={profile.year}"
@@ -781,7 +773,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             candidates = source.search(profile)
         except Exception as exc:
             logger.warning(f"online {source.name}: search failed: {exc}")
-            return
+            return None, criteria_summary
         top_score = candidates[0].score if candidates else None
         self._emit(
             SearchCompleted(
@@ -791,13 +783,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 top_score=top_score,
             )
         )
-        if not candidates:
-            logger.info(
-                f"online {source.name}: 0 candidates for {criteria_summary} "
-                "(no matching issues in the database)"
-            )
-            return
-        resolution = self._resolve_with_matcher(source.name, candidates)
+        return candidates, criteria_summary
+
+    def _apply_resolution(
+        self,
+        source: OnlineSource,
+        resolution: Resolution,
+        path: Path | None,
+    ) -> None:
+        """Dispatch on resolution kind: auto-write, no-match, skip, or prompt."""
         if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
             logger.info(
                 f"online {source.name}: auto-writing "
@@ -831,6 +825,29 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         # ResolutionKind.PROMPT — invoke the selector callback.
         self._handle_prompt(source, resolution.candidates)
+
+    def _search_path(self, source: OnlineSource) -> None:
+        """Search → rank → resolve → fetch on accept."""
+        profile = self._build_profile()
+        path = getattr(self, "_path", None)
+        if not (profile.series or profile.issue or profile.year):
+            logger.warning(
+                f"online {source.name}: no search criteria — couldn't extract "
+                "series, issue#, or year from the comic's metadata or "
+                f"filename. Use --id {source.name}:<issue_id> to tag by id."
+            )
+            return
+        candidates, criteria_summary = self._run_search(source, profile, path)
+        if candidates is None:
+            return
+        if not candidates:
+            logger.info(
+                f"online {source.name}: 0 candidates for {criteria_summary} "
+                "(no matching issues in the database)"
+            )
+            return
+        resolution = self._resolve_with_matcher(source.name, candidates)
+        self._apply_resolution(source, resolution, path)
 
     def _lookup_one_source(self, source: OnlineSource) -> bool:
         """
@@ -965,6 +982,17 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             f"wrong identifier; review before accepting."
         )
 
+    def _should_skip_first_wins(
+        self, source: OnlineSource, online: OnlineSettings, *, won_any: bool
+    ) -> bool:
+        """First-wins skip; explicit-id sources always run."""
+        if not won_any or online.lookup.all_sources:
+            return False
+        has_explicit = (
+            source.name in online.lookup.ids or source.name in online.lookup.series_ids
+        )
+        return not has_explicit
+
     def run_online_lookup(self) -> None:
         """Idempotent: populate online MetadataSources once per box instance."""
         if self._online_lookup_already_done():
@@ -978,13 +1006,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
         won_any = False
         for source in self._build_active_online_sources():
-            # Explicit per-source flags always run — first-wins must not
-            # silently drop a source the user named on the CLI.
-            has_explicit = (
-                source.name in online.lookup.ids
-                or source.name in online.lookup.series_ids
-            )
-            if won_any and not online.lookup.all_sources and not has_explicit:
+            if self._should_skip_first_wins(source, online, won_any=won_any):
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "
                     f"use --tag-all-sources to query every source)"

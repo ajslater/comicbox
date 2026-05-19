@@ -258,6 +258,25 @@ def _build_fixture(comic: _Comic, cover_quality: str) -> dict[str, Any]:
     }
 
 
+def _scan_comics(paths: list[Path], *, scan_limit: int | None) -> list[_Comic]:
+    """Walk paths, extract metadata, return the usable comics with periodic logging."""
+    comics: list[_Comic] = []
+    scanned = 0
+    for comic_path in iter_comics(paths):
+        if scan_limit is not None and scanned >= scan_limit:
+            break
+        scanned += 1
+        if scanned % 200 == 0:
+            print(f"  scanned {scanned}, kept {len(comics)} usable")  # noqa: T201
+        meta = _extract_metadata(comic_path)
+        if meta is not None:
+            comics.append(meta)
+    print(  # noqa: T201
+        f"Scanned {scanned} comics; {len(comics)} have series + at least one id."
+    )
+    return comics
+
+
 def sample(
     paths: list[Path],
     *,
@@ -275,22 +294,7 @@ def sample(
     without waiting on a 17k-comic walk.
     """
     print(f"Walking comics under: {', '.join(str(p) for p in paths)}")  # noqa: T201
-    comics: list[_Comic] = []
-    scanned = 0
-    for comic_path in iter_comics(paths):
-        if scan_limit is not None and scanned >= scan_limit:
-            break
-        scanned += 1
-        if scanned % 200 == 0:
-            print(  # noqa: T201
-                f"  scanned {scanned}, kept {len(comics)} usable"
-            )
-        meta = _extract_metadata(comic_path)
-        if meta is not None:
-            comics.append(meta)
-    print(  # noqa: T201
-        f"Scanned {scanned} comics; {len(comics)} have series + at least one id."
-    )
+    comics = _scan_comics(paths, scan_limit=scan_limit)
     if not comics:
         return []
 
@@ -300,13 +304,9 @@ def sample(
         print(_format_bucket_report("Pre-sample buckets", _summarize_buckets(deduped)))  # noqa: T201
 
     sampled = _stratified_sample(deduped, count, seed=seed)
-    print(  # noqa: T201
-        f"Sampled {len(sampled)} comics (target {count}, seed {seed})."
-    )
+    print(f"Sampled {len(sampled)} comics (target {count}, seed {seed}).")  # noqa: T201
     if verbose:
-        print(  # noqa: T201
-            _format_bucket_report("Sampled buckets", _summarize_buckets(sampled))
-        )
+        print(_format_bucket_report("Sampled buckets", _summarize_buckets(sampled)))  # noqa: T201
 
     return [_build_fixture(c, cover_quality) for c in sampled]
 

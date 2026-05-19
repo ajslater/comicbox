@@ -77,6 +77,24 @@ def _stdin_is_tty() -> bool:
         return False
 
 
+def _engagement_reason(
+    source: str,
+    *,
+    batch_size: int,
+    is_unattended: bool,
+    is_tty: bool,
+) -> str | None:
+    """Return the trigger reason, or None when no trigger fires for `source`."""
+    unattended_threshold = _UNATTENDED_THRESHOLDS[source]
+    if is_unattended and batch_size >= unattended_threshold:
+        return f"batch={batch_size} >= {unattended_threshold}, unattended"
+    if not is_tty:
+        non_tty_threshold = _NON_TTY_THRESHOLDS[source]
+        if batch_size >= non_tty_threshold:
+            return f"batch={batch_size} >= {non_tty_threshold}, non-TTY stdin"
+    return None
+
+
 def resolve_auto_engaged_budget(
     online: OnlineSettings, batch_size: int
 ) -> OnlineSettings:
@@ -110,35 +128,31 @@ def resolve_auto_engaged_budget(
     if online.tuning.effort is not Effort.BALANCED:
         return online
 
-    is_tty = _stdin_is_tty()
-    new_per_source = dict(online.tuning.per_source)
-    is_unattended = online.lookup.prompts is Prompts.NEVER
+    from comicbox.config.settings import OnlineSourceTuning
 
+    is_tty = _stdin_is_tty()
+    is_unattended = online.lookup.prompts is Prompts.NEVER
+    new_per_source = dict(online.tuning.per_source)
     changed = False
-    for source, unattended_threshold in _UNATTENDED_THRESHOLDS.items():
+    for source in _UNATTENDED_THRESHOLDS:
         existing = new_per_source.get(source)
         if existing is not None and existing.effort is not None:
             # User pinned a per-source override; respect their choice.
             continue
-        fired_reason: str | None = None
-        if is_unattended and batch_size >= unattended_threshold:
-            fired_reason = f"batch={batch_size} >= {unattended_threshold}, unattended"
-        elif not is_tty:
-            non_tty_threshold = _NON_TTY_THRESHOLDS[source]
-            if batch_size >= non_tty_threshold:
-                fired_reason = (
-                    f"batch={batch_size} >= {non_tty_threshold}, non-TTY stdin"
-                )
-        if fired_reason is None:
+        reason = _engagement_reason(
+            source,
+            batch_size=batch_size,
+            is_unattended=is_unattended,
+            is_tty=is_tty,
+        )
+        if reason is None:
             continue
-        from comicbox.config.settings import OnlineSourceTuning
-
         base = existing or OnlineSourceTuning()
         new_per_source[source] = replace(base, effort=Effort.MINIMAL)
         changed = True
         logger.info(
             f"online: auto-engaging effort=minimal for {source} "
-            f"({fired_reason}). Override under "
+            f"({reason}). Override under "
             f"online.tuning.per_source.{source}.effort."
         )
 

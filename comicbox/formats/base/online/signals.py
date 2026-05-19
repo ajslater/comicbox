@@ -73,18 +73,23 @@ def s_series(profile: ComicProfile, candidate: Candidate) -> float:
     return float(fuzz.WRatio(a, b)) / 100.0
 
 
+def _candidate_issue_int(candidate: Candidate) -> int | None:
+    """Parse the candidate's issue as a non-negative int; None if non-numeric."""
+    if not candidate.summary.issue:
+        return None
+    cand_s = candidate.summary.issue.strip()
+    if not cand_s.isdigit():
+        return None
+    return int(cand_s.lstrip("0") or "0")
+
+
 def s_issue(profile: ComicProfile, candidate: Candidate) -> float:
     """Issue number match. Integer-equal first; fall back to string-equal."""
-    if profile.issue_int is not None and candidate.summary.issue:
-        cand_int = None
-        cand_s = candidate.summary.issue.strip()
-        if cand_s.isdigit():
-            cand_int = int(cand_s.lstrip("0") or "0")
+    if profile.issue_int is not None:
+        cand_int = _candidate_issue_int(candidate)
         if cand_int is not None:
             return 1.0 if cand_int == profile.issue_int else 0.0
 
-    if not profile.issue and not candidate.summary.issue:
-        return 0.5
     if not profile.issue or not candidate.summary.issue:
         return 0.5
 

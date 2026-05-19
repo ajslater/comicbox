@@ -39,7 +39,7 @@ import traceback
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from typing_extensions import Self
 
@@ -760,6 +760,40 @@ def _format_candidate_line(rank: int, c: _CandidateSummary, expected: object) ->
     )
 
 
+def _outcome_marker(outcome: _Outcome) -> str:
+    if outcome.error:
+        return "ERR"
+    return "MISS" if outcome.top_correct is False else "EMPTY"
+
+
+def _format_outcome_diagnostic(outcome: _Outcome, expected: Any) -> list[str]:
+    """Build the per-outcome metadata/cover/top-candidates detail lines."""
+    if outcome.top_metadata_score is None:
+        return []
+    # Diagnostic line: shows raw metadata score, cover score
+    # (or why it's missing), and the gap to the runner-up.
+    gap_repr = (
+        f"gap={outcome.top_score - outcome.runner_up_score:.2f}"
+        if outcome.runner_up_score is not None
+        else "no runner-up"
+    )
+    lines = [
+        f"      metadata={outcome.top_metadata_score:.2f} "
+        f"cover={_cover_score_repr(outcome)} {gap_repr}"
+    ]
+    if outcome.top_candidates:
+        # Show the top-K table for MISS cases. When gap is small
+        # (tied or near-tied), the runner-up is usually the right
+        # answer; printing its breakdown shows whether it lost on
+        # cover-score, metadata, or a tiebreak.
+        lines.append("      top candidates:")
+        lines.extend(
+            _format_candidate_line(rank, c, expected)
+            for rank, c in enumerate(outcome.top_candidates, start=1)
+        )
+    return lines
+
+
 def _print_failed_outcomes(outcomes: list[_Outcome]) -> None:
     """Show details on wrong / errored outcomes for hand-investigation."""
     bad = [
@@ -771,10 +805,9 @@ def _print_failed_outcomes(outcomes: list[_Outcome]) -> None:
         return
     print("\n--- Outcomes worth a look ---")  # noqa: T201
     for o in bad:
-        marker = "ERR" if o.error else ("MISS" if o.top_correct is False else "EMPTY")
         expected = o.fixture.expected.get(o.source_name, "?")
         lines = [
-            f"  [{marker}] {o.source_name}: {o.fixture.file_path.name}",
+            f"  [{_outcome_marker(o)}] {o.source_name}: {o.fixture.file_path.name}",
             (
                 f"      expected={expected} got={o.top_issue_id} "
                 f"score={o.top_score:.2f} n={o.n_candidates}"
@@ -782,26 +815,8 @@ def _print_failed_outcomes(outcomes: list[_Outcome]) -> None:
         ]
         if o.error:
             lines.append(f"      error: {o.error}")
-        elif o.top_metadata_score is not None:
-            # Diagnostic line: shows raw metadata score, cover score
-            # (or why it's missing), and the gap to the runner-up.
-            gap_repr = (
-                f"gap={o.top_score - o.runner_up_score:.2f}"
-                if o.runner_up_score is not None
-                else "no runner-up"
-            )
-            lines.append(
-                f"      metadata={o.top_metadata_score:.2f} "
-                f"cover={_cover_score_repr(o)} {gap_repr}"
-            )
-            if o.top_candidates:
-                # Show the top-K table for MISS cases. When gap is small
-                # (tied or near-tied), the runner-up is usually the right
-                # answer; printing its breakdown shows whether it lost on
-                # cover-score, metadata, or a tiebreak.
-                lines.append("      top candidates:")
-                for rank, c in enumerate(o.top_candidates, start=1):
-                    lines.append(_format_candidate_line(rank, c, expected))
+        else:
+            lines.extend(_format_outcome_diagnostic(o, expected))
         print("\n".join(lines))  # noqa: T201
 
 
@@ -855,20 +870,7 @@ def _calibrate_loop(
             continue
         eta.fixture_started()
         for source in sources:
-            print(  # noqa: T201
-                f"  [{i}/{len(fixtures)}] {source.name}: {fixture.file_path.name}",
-                end=" ... ",
-                flush=True,
-            )
-            try:
-                with _Heartbeat(f"{source.name}:{fixture.file_path.name}", eta=eta):
-                    outcome = _score_one(source, fixture)
-            except Exception:  # pragma: no cover — defensive
-                print("ERROR")  # noqa: T201
-                traceback.print_exc()
-                continue
-            _print_progress(outcome, fixture)
-            outcomes.append(outcome)
+            _score_fixture_source(source, fixture, i, len(fixtures), eta, outcomes)
         eta.fixture_finished()
         # After the first fixture, and at every 10th, print an overall
         # progress line so the user has a visible ETA without waiting
@@ -879,10 +881,33 @@ def _calibrate_loop(
         # more than `checkpoint_every` fixtures of work.
         if checkpoint is not None and i % checkpoint_every == 0 and outcomes:
             checkpoint(outcomes)
-            print(  # noqa: T201
-                f"  [checkpoint: {len(outcomes)} outcomes saved]"
-            )
+            print(f"  [checkpoint: {len(outcomes)} outcomes saved]")  # noqa: T201
     return outcomes
+
+
+def _score_fixture_source(
+    source: OnlineSource,
+    fixture: _Fixture,
+    i: int,
+    total: int,
+    eta: _ETA,
+    outcomes: list[_Outcome],
+) -> None:
+    """Score one (fixture, source); append to outcomes; print progress."""
+    print(  # noqa: T201
+        f"  [{i}/{total}] {source.name}: {fixture.file_path.name}",
+        end=" ... ",
+        flush=True,
+    )
+    try:
+        with _Heartbeat(f"{source.name}:{fixture.file_path.name}", eta=eta):
+            outcome = _score_one(source, fixture)
+    except Exception:  # pragma: no cover — defensive
+        print("ERROR")  # noqa: T201
+        traceback.print_exc()
+        return
+    _print_progress(outcome, fixture)
+    outcomes.append(outcome)
 
 
 def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
@@ -1319,29 +1344,29 @@ def _build_argparser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
-    args = _build_argparser().parse_args()
+def _apply_max_per_search_override(args: argparse.Namespace) -> None:
+    """Honor --max-per-search by patching the per-source class caps."""
+    if args.max_per_search is None:
+        return
+    from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
+    from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
-    # Honor --max-per-search by patching the class-level caps. Affects all
-    # sources constructed below.
-    if args.max_per_search is not None:
-        from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
-        from comicbox.formats.metron_api.online_source import MetronOnlineSource
+    ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH = args.max_per_search
+    MetronOnlineSource._MAX_SERIES_PER_SEARCH = args.max_per_search
 
-        ComicVineOnlineSource._MAX_VOLUMES_PER_SEARCH = args.max_per_search
-        MetronOnlineSource._MAX_SERIES_PER_SEARCH = args.max_per_search
 
-    fixtures_path: Path = args.fixtures
+def _load_and_filter_fixtures(
+    args: argparse.Namespace, fixtures_path: Path
+) -> list[_Fixture] | None:
+    """Load + apply filters; return None when nothing remains to calibrate."""
     if not fixtures_path.exists():
         sys.stderr.write(
             f"fixtures file not found: {fixtures_path}\n"
             f"Copy {fixtures_path.parent}/fixtures.example.json to "
             f"{fixtures_path.name} and populate it.\n"
         )
-        return 1
+        return None
     fixtures = _load_fixtures(fixtures_path)
-    outcomes_path = fixtures_path.with_suffix(".outcomes.json")
-
     try:
         fixtures = _apply_filters(
             fixtures,
@@ -1355,12 +1380,24 @@ def main() -> int:
         )
     except FileNotFoundError as exc:
         sys.stderr.write(f"{exc}\n")
-        return 1
+        return None
 
     print(f"Loaded {len(fixtures)} fixtures from {fixtures_path}")  # noqa: T201
     if not fixtures:
         sys.stderr.write("no fixtures to process after filtering; aborting\n")
+        return None
+    return fixtures
+
+
+def main() -> int:
+    args = _build_argparser().parse_args()
+    _apply_max_per_search_override(args)
+
+    fixtures_path: Path = args.fixtures
+    fixtures = _load_and_filter_fixtures(args, fixtures_path)
+    if fixtures is None:
         return 1
+    outcomes_path = fixtures_path.with_suffix(".outcomes.json")
 
     sources = _resolve_sources(args.sources, api_budget=args.api_budget)
     if not sources:
