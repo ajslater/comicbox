@@ -2,11 +2,10 @@
 
 ## Status
 
-Plan §3.10 / build-order step 9. **Shipped** (commits 9a + 9b on
-`codex-api`). User decision: API rate limits are real for both CLI and
-library users today, so ship now rather than wait for visible breakage.
-This doc retains the design rationale; the "Phases" section below
-matches the as-built implementation.
+Plan §3.10 / build-order step 9. **Shipped** (commits 9a + 9b on `codex-api`).
+User decision: API rate limits are real for both CLI and library users today, so
+ship now rather than wait for visible breakage. This doc retains the design
+rationale; the "Phases" section below matches the as-built implementation.
 
 ## Problem
 
@@ -29,7 +28,7 @@ The matcher already returns Candidates with `volume_id` set (the series-level
 container — Metron's `series.id`, ComicVine's `volume.id`). Two issues of the
 same series share a `volume_id`. Step 6's prompt-dedup cache
 (`comicbox.online_session._prompt_fingerprint`) already keys on the candidate
-volume_ids — so the _user_ sees one prompt per series. The API cost is still N
+volume*ids — so the \_user* sees one prompt per series. The API cost is still N
 searches per series.
 
 The fix: collapse those N searches into 1.
@@ -176,24 +175,24 @@ so the UI can render "Resolved series Spider-Man → ComicVine vol 12345; taggin
 ## Resolved decisions
 
 - **Cross-source resolution**: **cache per source.** Metron and CV have
-  different `volume_id` namespaces; a unified cache would collide. The
-  session cache key is `(source_name, series_fingerprint)`.
+  different `volume_id` namespaces; a unified cache would collide. The session
+  cache key is `(source_name, series_fingerprint)`.
 
-- **Falsy groups** (pre-pass groups two comics together that turn out to
-  belong to different series): **catch at issue-lookup time.** If
-  `source.lookup_issue(volume_id, number)` returns None for a comic whose
-  series we thought we'd resolved, fall back to a fresh `_search_path`
-  for that comic only. Mark the fingerprint as "ambiguous" so we don't
-  retry the bad grouping inside this session.
+- **Falsy groups** (pre-pass groups two comics together that turn out to belong
+  to different series): **catch at issue-lookup time.** If
+  `source.lookup_issue(volume_id, number)` returns None for a comic whose series
+  we thought we'd resolved, fall back to a fresh `_search_path` for that comic
+  only. Mark the fingerprint as "ambiguous" so we don't retry the bad grouping
+  inside this session.
 
-- **Group ordering**: **deterministic.** Sort input paths and process
-  series groups in that order so re-runs produce the same cache-key
-  sequence and the same prompt order.
+- **Group ordering**: **deterministic.** Sort input paths and process series
+  groups in that order so re-runs produce the same cache-key sequence and the
+  same prompt order.
 
-- **`--rematch`**: **bypasses the series cache as well.** Today
-  `--rematch` skips the stored-id fast path; under series-first it also
-  skips the session series cache and re-runs the cold-path search per
-  group. Consistent with the "I don't trust the prior verdict" intent.
+- **`--rematch`**: **bypasses the series cache as well.** Today `--rematch`
+  skips the stored-id fast path; under series-first it also skips the session
+  series cache and re-runs the cold-path search per group. Consistent with the
+  "I don't trust the prior verdict" intent.
 
 ## Cost model
 
@@ -220,20 +219,18 @@ higher — limit).
 Two commits on `codex-api`:
 
 - **9a — Core machinery.** `OnlineSource.lookup_issue(volume_id, number)`
-  abstract method + Metron + ComicVine implementations wrapping the
-  existing `_issues_list` / `_list_issues_by_volume` helpers. New
-  `_series_fingerprint` helper at the matcher boundary. ComicboxOnlineLookup
-  grows `set_series_cache(cache)` and a `_try_series_cache_lookup` warm
-  path that runs between the stored-id fast path and the cold-path
-  search. `_accept_candidate` populates the cache with first-writer-
-  wins semantics. New `SeriesIdentified` event fires once per
-  fingerprint. `--rematch` bypasses the cache (consistent with its
-  "don't trust prior verdict" intent).
+  abstract method + Metron + ComicVine implementations wrapping the existing
+  `_issues_list` / `_list_issues_by_volume` helpers. New `_series_fingerprint`
+  helper at the matcher boundary. ComicboxOnlineLookup grows
+  `set_series_cache(cache)` and a `_try_series_cache_lookup` warm path that runs
+  between the stored-id fast path and the cold-path search. `_accept_candidate`
+  populates the cache with first-writer- wins semantics. New `SeriesIdentified`
+  event fires once per fingerprint. `--rematch` bypasses the cache (consistent
+  with its "don't trust prior verdict" intent).
 - **9b — Session orchestration.** `OnlineSession` owns a process-local
   `series_cache` dict and threads it into each per-file Comicbox via
   `set_series_cache`. `tag_many` sorts paths by a lightweight
-  comicfn2dict-derived fingerprint so same-series comics cluster.
-  New public surface: `series_batching=True` constructor flag,
+  comicfn2dict-derived fingerprint so same-series comics cluster. New public
+  surface: `series_batching=True` constructor flag,
   `preload_series_resolution()` / `series_cache_snapshot()` /
-  `clear_series_cache()` for Codex to persist resolutions across
-  runs.
+  `clear_series_cache()` for Codex to persist resolutions across runs.
