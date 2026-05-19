@@ -151,6 +151,25 @@ class PromptResolved(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class PromptDeferred(Event):
+    """
+    OnlineSession is in defer_prompts mode and queued this prompt for later.
+
+    The batch continues; the deferred prompt is accessible via
+    ``OnlineSession.deferred_prompts()``. Codex's intended flow: surface
+    these in a "Review tagging" UI after the batch completes, collect the
+    user's decisions, seed them back into the session's dedup cache via
+    ``preload_resolution()``, then re-run the affected files.
+    """
+
+    source: str = ""
+    prompt_id: str = ""
+    fingerprint: str = ""
+    n_candidates: int = 0
+    kind: Literal["prompt_deferred"] = "prompt_deferred"
+
+
+@dataclass(frozen=True, slots=True)
 class PromptResolvedFromCache(Event):
     """
     OnlineSession auto-applied a cached choice instead of re-prompting.
@@ -214,6 +233,7 @@ OnlineEvent: TypeAlias = (
     | PromptQueued
     | PromptResolved
     | PromptResolvedFromCache
+    | PromptDeferred
     | Skipped
     | NoMatch
     | RateLimited

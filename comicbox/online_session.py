@@ -31,7 +31,7 @@ from comicbox.config.settings import (
     OnlineSourceCredentials,
     Prompts,
 )
-from comicbox.events import FileError, PromptResolvedFromCache
+from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -137,6 +137,26 @@ class _CachedResolution:
     chosen_volume_id: int | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class DeferredPrompt:
+    """
+    A prompt the session skipped under defer_prompts mode.
+
+    Captures everything Codex needs to render the prompt later in a
+    review-tagging UI: the file it came from, source, candidates, mode
+    context, and the fingerprint used to key the dedup cache. Codex
+    feeds the user's resolution back via :meth:`OnlineSession.preload_resolution`.
+    """
+
+    path: Path | None
+    source: str
+    fingerprint: str
+    profile_summary: dict[str, Any]
+    candidates: tuple[Candidate, ...]
+    mode: SessionMode
+    unattended: bool
+
+
 # --- session ---------------------------------------------------------------
 
 
@@ -150,7 +170,7 @@ class OnlineSession:
     the instance and may be updated from any thread.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         sources: Iterable[str] = ("metron", "comicvine"),
@@ -161,6 +181,7 @@ class OnlineSession:
         on_event: EventHandler | None = None,
         rematch: bool = False,
         all_sources: bool = False,
+        defer_prompts: bool = False,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
         self._sources = frozenset(sources)
@@ -173,6 +194,7 @@ class OnlineSession:
         self._on_event = on_event
         self._rematch = rematch
         self._all_sources = all_sources
+        self._defer_prompts = defer_prompts
 
         # Cancel token. Set when cancel() is called; checked between files
         # in tag_many(). Not propagated mid-file — the in-flight per-file
@@ -189,6 +211,14 @@ class OnlineSession:
         # in-memory only — disk persistence is out of scope for v1.
         self._prompt_cache: dict[str, _CachedResolution] = {}
         self._prompt_cache_lock = threading.Lock()
+
+        # Defer-prompts queue. When ``defer_prompts`` is set, the bridged
+        # selector skips the user's PromptHandler and queues the prompt
+        # here instead. Codex's flow: drain via ``deferred_prompts()`` at
+        # end-of-batch, present in a review UI, then seed resolutions
+        # back via ``preload_resolution()`` and re-run the affected files.
+        self._deferred: list[DeferredPrompt] = []
+        self._deferred_lock = threading.Lock()
 
     # -- mutable session state ----------------------------------------------
 
@@ -223,6 +253,50 @@ class OnlineSession:
     def cancelled(self) -> bool:
         """Whether cancel() has been called."""
         return self._cancel.is_set()
+
+    # -- deferred prompts ---------------------------------------------------
+
+    @property
+    def defer_prompts(self) -> bool:
+        """Whether the session is currently in defer-prompts mode."""
+        return self._defer_prompts
+
+    def set_defer_prompts(self, *, defer: bool) -> None:
+        """Toggle defer-prompts mode for subsequent file lookups."""
+        self._defer_prompts = defer
+
+    def deferred_prompts(self) -> tuple[DeferredPrompt, ...]:
+        """Snapshot the queued deferred prompts. Codex's review-UI input."""
+        with self._deferred_lock:
+            return tuple(self._deferred)
+
+    def clear_deferred_prompts(self) -> None:
+        """Drop the deferred-prompt queue without resolving them."""
+        with self._deferred_lock:
+            self._deferred.clear()
+
+    def preload_resolution(
+        self,
+        fingerprint: str,
+        *,
+        action: Literal["choose", "skip", "manual"],
+        payload: int | str | None = None,
+        chosen_volume_id: int | None = None,
+    ) -> None:
+        """
+        Seed the dedup cache so a re-run auto-resolves the fingerprint.
+
+        Codex's defer-mode flow: drain ``deferred_prompts()`` after the
+        batch, present them in a review UI, call ``preload_resolution()``
+        for each one the user resolves, then re-tag the affected files
+        (with defer_prompts toggled off if desired). The cache hit fires
+        the same way it does for in-batch dedup.
+        """
+        entry = _CachedResolution(
+            action=action, payload=payload, chosen_volume_id=chosen_volume_id
+        )
+        with self._prompt_cache_lock:
+            self._prompt_cache[fingerprint] = entry
 
     # -- rate limits --------------------------------------------------------
 
@@ -263,7 +337,10 @@ class OnlineSession:
     def _run_one(self, path: Path) -> dict[str, Any]:
         config = self._build_config()
         with Comicbox(path, config=config) as cb:
-            if self._prompt_handler is not None:
+            # Bridge the selector when we have a handler OR when defer
+            # mode is on — defer mode produces no handler call but still
+            # needs to intercept the prompt to queue it.
+            if self._prompt_handler is not None or self._defer_prompts:
                 cb.set_online_selector(self._bridged_selector())
             if self._on_event is not None:
                 cb.set_event_handler(self._on_event)
@@ -277,13 +354,12 @@ class OnlineSession:
 
         Translates Comicbox's positional SelectorCallback signature into
         a Codex-facing OnlinePrompt / PromptResponse pair. Consults the
-        per-session prompt cache first; cache miss falls through to the
-        user's handler and stores the result for next time.
+        per-session prompt cache first; on cache miss falls through to
+        defer-mode (queue + skip) or the user's handler, depending on
+        ``defer_prompts``. Resolutions from the handler path are stored
+        for next time.
         """
         handler = self._prompt_handler
-        if handler is None:  # pragma: no cover — guarded at call site
-            msg = "PromptHandler is required"
-            raise RuntimeError(msg)
 
         def _selector(
             profile: ComicProfile,
@@ -305,6 +381,15 @@ class OnlineSession:
                         )
                     )
                 return cached
+            if self._defer_prompts:
+                self._defer_prompt(fingerprint, profile, cand_tuple, ctx)
+                return ("skip", None)
+            if handler is None:
+                msg = (
+                    "OnlineSession has no PromptHandler and defer_prompts "
+                    "is disabled; cannot resolve an ambiguous match"
+                )
+                raise RuntimeError(msg)
             prompt = OnlinePrompt(
                 path=ctx.file_path,
                 source=ctx.source,
@@ -314,12 +399,40 @@ class OnlineSession:
                 unattended=self.unattended,
             )
             response = handler.request(prompt)
-            self._store_prompt_resolution(
-                fingerprint, response, cand_tuple
-            )
+            self._store_prompt_resolution(fingerprint, response, cand_tuple)
             return (response.action, response.payload)
 
         return _selector
+
+    def _defer_prompt(
+        self,
+        fingerprint: str,
+        profile: ComicProfile,
+        candidates: tuple[Candidate, ...],
+        ctx: SelectorContext,
+    ) -> None:
+        """Queue this prompt for later resolution and emit PromptDeferred."""
+        deferred = DeferredPrompt(
+            path=ctx.file_path,
+            source=ctx.source,
+            fingerprint=fingerprint,
+            profile_summary=_summarise_profile(profile),
+            candidates=candidates,
+            mode=self.mode,
+            unattended=self.unattended,
+        )
+        with self._deferred_lock:
+            self._deferred.append(deferred)
+        if self._on_event is not None:
+            self._on_event(
+                PromptDeferred(
+                    path=ctx.file_path,
+                    source=ctx.source,
+                    prompt_id=f"{ctx.source}:{id(candidates)}",
+                    fingerprint=fingerprint,
+                    n_candidates=len(candidates),
+                )
+            )
 
     def _lookup_cached_prompt(
         self, fingerprint: str, candidates: tuple[Candidate, ...]
