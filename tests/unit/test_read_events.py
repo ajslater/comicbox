@@ -34,9 +34,7 @@ def test_on_event_fires_batch_started_and_finished() -> None:
     """BatchStarted up-front, BatchFinished at the end, with totals."""
     events: list[Event] = []
     _drain(
-        iter_process_files(
-            [CIX_CBZ_SOURCE_PATH], config=CONFIG, on_event=events.append
-        )
+        iter_process_files([CIX_CBZ_SOURCE_PATH], config=CONFIG, on_event=events.append)
     )
     assert isinstance(events[0], BatchStarted)
     assert events[0].total == 1
@@ -49,9 +47,7 @@ def test_on_event_emits_file_parsed_when_metadata_changed() -> None:
     """Full parse emits FileParsed with index/total."""
     events: list[Event] = []
     _drain(
-        iter_process_files(
-            [CIX_CBZ_SOURCE_PATH], config=CONFIG, on_event=events.append
-        )
+        iter_process_files([CIX_CBZ_SOURCE_PATH], config=CONFIG, on_event=events.append)
     )
     parsed = [e for e in events if isinstance(e, FileParsed)]
     assert len(parsed) == 1

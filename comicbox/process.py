@@ -164,11 +164,7 @@ def _iter_completed(
         if pool_broken:
             exc = BrokenExecutor("Worker pool broken")
             if on_event is not None:
-                on_event(
-                    FileError(
-                        path=path, index=index, total=total, error=str(exc)
-                    )
-                )
+                on_event(FileError(path=path, index=index, total=total, error=str(exc)))
             errored += 1
             yield path, (_empty_read_result(), exc)
             index += 1
@@ -178,11 +174,7 @@ def _iter_completed(
             pool_broken = True
         if on_event is not None:
             if exc is not None:
-                on_event(
-                    FileError(
-                        path=path, index=index, total=total, error=str(exc)
-                    )
-                )
+                on_event(FileError(path=path, index=index, total=total, error=str(exc)))
                 errored += 1
             elif result["tags"] is None:
                 # tags is None when the worker either hit the embedded-mtime

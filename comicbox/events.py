@@ -98,5 +98,113 @@ ReadEvent: TypeAlias = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Online workflow
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class SearchStarted(Event):
+    """Worker is about to query an online source for this file."""
+
+    source: str = ""
+    kind: Literal["search_started"] = "search_started"
+
+
+@dataclass(frozen=True, slots=True)
+class SearchCompleted(Event):
+    """Online source returned candidate list."""
+
+    source: str = ""
+    n_candidates: int = 0
+    top_score: float | None = None
+    kind: Literal["search_completed"] = "search_completed"
+
+
+@dataclass(frozen=True, slots=True)
+class AutoWritten(Event):
+    """Matcher accepted a candidate without prompting."""
+
+    source: str = ""
+    candidate_summary: str = ""
+    kind: Literal["auto_written"] = "auto_written"
+
+
+@dataclass(frozen=True, slots=True)
+class PromptQueued(Event):
+    """Matcher needs human input; prompt dispatched to PromptHandler."""
+
+    source: str = ""
+    prompt_id: str = ""
+    n_candidates: int = 0
+    kind: Literal["prompt_queued"] = "prompt_queued"
+
+
+@dataclass(frozen=True, slots=True)
+class PromptResolved(Event):
+    """PromptHandler returned a decision."""
+
+    source: str = ""
+    prompt_id: str = ""
+    action: str = ""
+    kind: Literal["prompt_resolved"] = "prompt_resolved"
+
+
+@dataclass(frozen=True, slots=True)
+class Skipped(Event):
+    """Matcher declined to write metadata for this file."""
+
+    source: str = ""
+    reason: str = ""
+    kind: Literal["skipped"] = "skipped"
+
+
+@dataclass(frozen=True, slots=True)
+class NoMatch(Event):
+    """No candidate cleared min_confidence."""
+
+    source: str = ""
+    kind: Literal["no_match"] = "no_match"
+
+
+@dataclass(frozen=True, slots=True)
+class RateLimited(Event):
+    """
+    Source signaled a rate-limit hit.
+
+    ``retry_after_seconds`` is the server hint when available; otherwise
+    the per-source retry-schedule's next sleep.
+    """
+
+    source: str = ""
+    retry_after_seconds: float | None = None
+    kind: Literal["rate_limited"] = "rate_limited"
+
+
+@dataclass(frozen=True, slots=True)
+class FileFinished(Event):
+    """Per-file online tagging completed (success, skip, no-match, or error)."""
+
+    outcome: str = ""
+    kind: Literal["file_finished"] = "file_finished"
+
+
+# Convenience union for online events.
+OnlineEvent: TypeAlias = (
+    BatchStarted
+    | SearchStarted
+    | SearchCompleted
+    | AutoWritten
+    | PromptQueued
+    | PromptResolved
+    | Skipped
+    | NoMatch
+    | RateLimited
+    | FileFinished
+    | FileError
+    | BatchFinished
+)
+
+
 # Public handler shape exposed by every bulk workflow.
 EventHandler: TypeAlias = Callable[[Event], None]
