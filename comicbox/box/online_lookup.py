@@ -33,6 +33,16 @@ from loguru import logger
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.config.settings import MatchMode, Prompts
+from comicbox.events import (
+    AutoWritten,
+    FileFinished,
+    NoMatch,
+    PromptQueued,
+    PromptResolved,
+    SearchCompleted,
+    SearchStarted,
+    Skipped,
+)
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.matcher import (
@@ -54,6 +64,7 @@ from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
     from comicbox.config.settings import OnlineSettings
+    from comicbox.events import Event, EventHandler
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
@@ -237,6 +248,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # Per-instance selector override; falls back to the default CLI prompt.
     _online_selector: SelectorCallback | None = None
 
+    # Per-instance event handler; emits SearchStarted / AutoWritten / etc.
+    # for callers driving online lookup programmatically (OnlineSession).
+    _event_handler: EventHandler | None = None
+
     _online_lookup_done_flag: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
     _local_cover_phash_computed: bool = False
@@ -245,6 +260,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def set_online_selector(self, selector: SelectorCallback | None) -> None:
         """Register a programmatic selector callback (codex / library users)."""
         self._online_selector = selector
+
+    def set_event_handler(self, handler: EventHandler | None) -> None:
+        """Register an event-stream callback for online-lookup progress."""
+        self._event_handler = handler
+
+    def _emit(self, event: Event) -> None:
+        """No-op if no handler is registered, else forward the event."""
+        if self._event_handler is not None:
+            self._event_handler(event)
 
     def _online_lookup_already_done(self) -> bool:
         return self._online_lookup_done_flag
@@ -519,9 +543,27 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         candidate set immediately.
         """
         current = candidates
+        path = getattr(self, "_path", None)
+        prompt_id = f"{source.name}:{id(candidates)}"
         while True:
+            self._emit(
+                PromptQueued(
+                    path=path,
+                    source=source.name,
+                    prompt_id=prompt_id,
+                    n_candidates=len(current),
+                )
+            )
             result = self._invoke_selector(source, current)
             action, payload = result
+            self._emit(
+                PromptResolved(
+                    path=path,
+                    source=source.name,
+                    prompt_id=prompt_id,
+                    action=action,
+                )
+            )
             if action in {"set_unattended", "set_policy"}:
                 if not self._apply_session_action(source, action, payload):
                     return
@@ -657,6 +699,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _search_path(self, source: OnlineSource) -> None:
         """Search → rank → resolve → fetch on accept."""
         profile = self._build_profile()
+        path = getattr(self, "_path", None)
         if not (profile.series or profile.issue or profile.year):
             logger.warning(
                 f"online {source.name}: no search criteria — couldn't extract "
@@ -670,11 +713,21 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             f"series={profile.series!r} issue={search_issue!r} year={profile.year}"
         )
         logger.info(f"online {source.name}: searching with {criteria_summary}")
+        self._emit(SearchStarted(path=path, source=source.name))
         try:
             candidates = source.search(profile)
         except Exception as exc:
             logger.warning(f"online {source.name}: search failed: {exc}")
             return
+        top_score = candidates[0].score if candidates else None
+        self._emit(
+            SearchCompleted(
+                path=path,
+                source=source.name,
+                n_candidates=len(candidates),
+                top_score=top_score,
+            )
+        )
         if not candidates:
             logger.info(
                 f"online {source.name}: 0 candidates for {criteria_summary} "
@@ -690,17 +743,28 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
             outcome_stats.record_auto_write(source.name)
             self._accept_candidate(source, resolution.chosen)
+            self._emit(
+                AutoWritten(
+                    path=path,
+                    source=source.name,
+                    candidate_summary=str(resolution.chosen.issue_id),
+                )
+            )
             return
         if resolution.kind is ResolutionKind.NO_MATCH:
             logger.info(f"online {source.name}: no match cleared min_confidence")
             outcome_stats.record_no_match(source.name)
+            self._emit(NoMatch(path=path, source=source.name))
             return
         if resolution.kind is ResolutionKind.SKIP:
-            top_score = resolution.candidates[0].score if resolution.candidates else 0
+            top = resolution.candidates[0].score if resolution.candidates else 0
             logger.info(
-                f"online {source.name}: skipped (matcher declined; top={top_score:.2f})"
+                f"online {source.name}: skipped (matcher declined; top={top:.2f})"
             )
             outcome_stats.record_skip(source.name)
+            self._emit(
+                Skipped(path=path, source=source.name, reason="matcher_declined")
+            )
             return
         # ResolutionKind.PROMPT — invoke the selector callback.
         self._handle_prompt(source, resolution.candidates)
@@ -782,6 +846,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         self._mark_online_lookup_done()
         online = self._config.online
+        path = getattr(self, "_path", None)
         if not online.lookup.enabled:
             return
         if online.lookup.prompts is not Prompts.NEVER:
@@ -803,3 +868,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if self._lookup_one_source(source):
                 won_any = True
         self._cross_source_cv_id_check()
+        self._emit(
+            FileFinished(
+                path=path, outcome="written" if won_any else "no_change"
+            )
+        )

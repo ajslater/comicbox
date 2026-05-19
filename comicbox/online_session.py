@@ -244,6 +244,8 @@ class OnlineSession:
         with Comicbox(path, config=config) as cb:
             if self._prompt_handler is not None:
                 cb.set_online_selector(self._bridged_selector())
+            if self._on_event is not None:
+                cb.set_event_handler(self._on_event)
             cb.run_online_lookup()
             payload = cb.to_dict()
         return payload.get("comicbox", {}) if isinstance(payload, dict) else {}
