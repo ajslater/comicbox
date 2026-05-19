@@ -32,10 +32,10 @@ minutes and then waits a day before resuming, for **~100 days of total wall
 time**. CV at the same library size: years. Both sources need this lever at
 sufficient scale; the boundaries are different but the shape is the same.
 
-The Match Resolution (`careful`/`auto`/`eager`/`ask`) controls
-how _the matcher's verdict gets applied_ — but it has zero effect on how many
-API calls were spent producing the candidate set in the first place. That's the
-gap this spec fills.
+The Match Resolution (`careful`/`auto`/`eager`/`ask`) controls how _the
+matcher's verdict gets applied_ — but it has zero effect on how many API calls
+were spent producing the candidate set in the first place. That's the gap this
+spec fills.
 
 ## Two orthogonal dials
 
@@ -43,7 +43,7 @@ This was the design correction that prompted this spec. Conflating
 unattended-vs-attended with fast-vs-exhaustive was wrong — they're independent
 axes with four legitimate quadrants:
 
-|                | **Attended (prompts allowed)**                                                                                               | **Unattended (`--prompts never`)**                                                                                                                    |
+|                | **Attended (prompts allowed)**                                                                                               | **Unattended (`--prompts never`)**                                                                                                                 |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Exhaustive** | Tagging a single comic interactively; user accepts prompts; wants the most accurate result available regardless of API cost. | Overnight cron on a small library where accuracy matters more than wall time. User wants 200 high-confidence tags, not 2000 "probably right" ones. |
 | **Fast**       | Power user crunching a few hundred comics interactively, will prompt for ambiguity but wants throughput; OK losing a few.    | The headline use case: thousands of comics, unattended job, willing to skip ambiguous cases to stay under the hourly cap.                          |
@@ -118,29 +118,29 @@ call per non-matching volume. Filtering at search time using `rapidfuzz` against
 
 `minimal` raises the bar so borderline matches get classified as NO_MATCH
 (unattended) or PROMPT (attended) rather than auto-write. This is a fail-closed
-orientation: in `minimal`, "we're not sure" should become "skip and move on" rather
-than risk writing wrong tags into hundreds of files.
+orientation: in `minimal`, "we're not sure" should become "skip and move on"
+rather than risk writing wrong tags into hundreds of files.
 
-Cover hashing in `minimal` is _configurable_ rather than hard-off. Cover downloads
-from CV count against the rate-limit budget. In `minimal` mode the user can opt out
-via `fast.skip_cover_hash: true` if they want to push throughput further;
-default stays "hash when ambiguous" because the cost is amortized via the
-URL→pHash SQLite cache after first hit.
+Cover hashing in `minimal` is _configurable_ rather than hard-off. Cover
+downloads from CV count against the rate-limit budget. In `minimal` mode the
+user can opt out via `fast.skip_cover_hash: true` if they want to push
+throughput further; default stays "hash when ambiguous" because the cost is
+amortized via the URL→pHash SQLite cache after first hit.
 
 ### Post-accept fetches
 
 `get_issue(id)` after an AUTO_WRITE always runs — it's the only way to get full
 issue metadata. Same in all modes. `get_volume(volume_id)` for the
-publisher-injection trick on CV gets skipped in `minimal` (the matcher already has
-the series name from the candidate; the publisher we'd be missing is recoverable
-from local metadata or future runs).
+publisher-injection trick on CV gets skipped in `minimal` (the matcher already
+has the series name from the candidate; the publisher we'd be missing is
+recoverable from local metadata or future runs).
 
 ### What stays the same in all modes
 
 - The matcher's signal weights (`W_SERIES`, `W_ISSUE`, etc.) — those are the
   _quality_ of the ranking, not the _quantity_ of API calls.
-- The Match Resolution (`careful`/`auto`/`eager`/`ask`) —
-  that's how a verdict gets applied, orthogonal to budget.
+- The Match Resolution (`careful`/`auto`/`eager`/`ask`) — that's how a verdict
+  gets applied, orthogonal to budget.
 - Cache and rate-limit infrastructure — both modes use the same SQLite buckets
   and response caches.
 - `--id`, `--series-id` short-circuits — explicit ids skip the discovery
@@ -154,13 +154,14 @@ Auto-detection should be **conservative and verbose**, not silent and clever.
 Triggers fire per-source — Metron's looser cap means its auto-engagement
 threshold is much higher than ComicVine's, but **both sources auto-engage at
 some library size**. At the extreme — a 500,000-comic collection — even Metron's
-5,000/day daily cap means a full sweep takes 100 days under `balanced`; `minimal`
-matters everywhere if you're tagging enough.
+5,000/day daily cap means a full sweep takes 100 days under `balanced`;
+`minimal` matters everywhere if you're tagging enough.
 
 Triggers, both logged loudly when they fire:
 
-1. **`--prompts never` + batch size ≥ per-source threshold**: auto-suggest `minimal`
-   for that source. Thresholds are per-source because the caps are per-source:
+1. **`--prompts never` + batch size ≥ per-source threshold**: auto-suggest
+   `minimal` for that source. Thresholds are per-source because the caps are
+   per-source:
     - ComicVine: 200/hr → threshold ~50 comics (≈ 2.5 hours of waiting under
       `balanced`).
     - Metron: 1,200/hr but 5,000/day → threshold ~500 comics (≈ a day of waiting
@@ -215,16 +216,16 @@ at end of Phase A; the new code is dormant on the default `balanced` budget.
 
 6. **`online/matcher.py`**: `OnlineMatcher.resolve(...)` reads
    `resolve_confidence_threshold(settings, source_name)` already; per-source
-   override pattern flexes here naturally — `minimal` just sets a higher default.
-   No code change required, only config wiring.
+   override pattern flexes here naturally — `minimal` just sets a higher
+   default. No code change required, only config wiring.
 
 7. **`box/online_lookup.py`**: stub out orchestrator-level auto-detection. Wire
    the inputs (batch size, `unattended`, TTY) but keep the trigger thresholds as
    `None` until Phase B confirms them. No auto-engagement actually fires from
    this PR.
 
-8. **Calibration harness**: add `--effort` pass-through so we can measure
-   each setting empirically. Also add `--label` so we can name runs and compare
+8. **Calibration harness**: add `--effort` pass-through so we can measure each
+   setting empirically. Also add `--label` so we can name runs and compare
    across them (`fixtures.outcomes.fast-threshold-0.5.json`, etc.). Outcomes
    files merge cleanly via the existing `--retry-misses` plumbing.
 
@@ -239,18 +240,18 @@ numbers grounded in observed data, plus a writeup. Lives in
 
 The experiment matrix:
 
-| Run | Budget       | Pre-filter threshold | `_MAX_VOLUMES_PER_SEARCH` | `_TOP_K_FOR_HASHING` | Purpose                    |
-| --- | ------------ | -------------------- | ------------------------- | -------------------- | -------------------------- |
-| B0  | `balanced`   | n/a (off)            | 20                        | 5                    | Current-behavior baseline. |
+| Run | Budget     | Pre-filter threshold | `_MAX_VOLUMES_PER_SEARCH` | `_TOP_K_FOR_HASHING` | Purpose                    |
+| --- | ---------- | -------------------- | ------------------------- | -------------------- | -------------------------- |
+| B0  | `balanced` | n/a (off)            | 20                        | 5                    | Current-behavior baseline. |
 | B1  | `thorough` | off                  | 20                        | 5                    | Accuracy ceiling.          |
-| B2  | `minimal`       | 0.4                  | 5                         | 5                    | Conservative fast.         |
-| B3  | `minimal`       | 0.5                  | 5                         | 5                    | Tighter pre-filter.        |
-| B4  | `minimal`       | 0.6                  | 5                         | 5                    | Tighter still.             |
-| B5  | `minimal`       | 0.7                  | 5                         | 5                    | Aggressive pre-filter.     |
-| B6  | `minimal`       | _winner from B2-B5_  | 3                         | 5                    | Lower max-per-search.      |
-| B7  | `minimal`       | _winner_             | 10                        | 5                    | Higher max-per-search.     |
-| B8  | `minimal`       | _winner_             | _winner_                  | 2                    | Lower top-K hashing.       |
-| B9  | `minimal`       | _winner_             | _winner_                  | 3                    | Mid top-K hashing.         |
+| B2  | `minimal`  | 0.4                  | 5                         | 5                    | Conservative fast.         |
+| B3  | `minimal`  | 0.5                  | 5                         | 5                    | Tighter pre-filter.        |
+| B4  | `minimal`  | 0.6                  | 5                         | 5                    | Tighter still.             |
+| B5  | `minimal`  | 0.7                  | 5                         | 5                    | Aggressive pre-filter.     |
+| B6  | `minimal`  | _winner from B2-B5_  | 3                         | 5                    | Lower max-per-search.      |
+| B7  | `minimal`  | _winner_             | 10                        | 5                    | Higher max-per-search.     |
+| B8  | `minimal`  | _winner_             | _winner_                  | 2                    | Lower top-K hashing.       |
+| B9  | `minimal`  | _winner_             | _winner_                  | 3                    | Mid top-K hashing.         |
 
 Per-run measurements (all in the outcomes JSON for post-hoc grep):
 
@@ -352,8 +353,8 @@ Shipped as commit e7bfdbd.
 ## What's NOT in this spec
 
 - **Adaptive mid-run downgrade.** Tempting design: notice we're rate-limited for
-  the 3rd time in 10 minutes and auto-switch from `thorough` to `minimal` for the
-  rest of the batch. Too much hidden state. Out of scope.
+  the 3rd time in 10 minutes and auto-switch from `thorough` to `minimal` for
+  the rest of the batch. Too much hidden state. Out of scope.
 - **Cost telemetry.** "You spent 187/200 hourly budget on this run" is useful
   but separate. Worth a follow-up spec; not in this one.
 - **Cross-source budget pooling.** If Metron's bucket is empty but CV's is full,

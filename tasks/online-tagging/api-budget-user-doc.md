@@ -1,7 +1,7 @@
 # Effort — User Doc
 
-User-facing description of `--effort` — comicbox's lever for trading
-matching accuracy against per-comic API call cost. Composes with `--match` and
+User-facing description of `--effort` — comicbox's lever for trading matching
+accuracy against per-comic API call cost. Composes with `--match` and
 `--prompts never`; orthogonal to both. See
 [`match-resolution-user-doc.md`](match-resolution-user-doc.md) for the related
 "what does comicbox do once it has candidates" decision.
@@ -27,14 +27,14 @@ Celebration", "The Adventures of Basil & Moebius" for a "Moebius Library"
 comic). The matcher would score them near-zero and ignore them — but the API
 call to confirm has already been spent.
 
-`--effort` controls how aggressively comicbox pre-filters those
-obvious-mismatch volumes BEFORE step 2 fires. The trade-off:
+`--effort` controls how aggressively comicbox pre-filters those obvious-mismatch
+volumes BEFORE step 2 fires. The trade-off:
 
 | Mode                 | Pre-filter strictness                | API cost           | Accuracy on validated set                                                     |
 | -------------------- | ------------------------------------ | ------------------ | ----------------------------------------------------------------------------- |
-| `thorough`         | off                                  | highest            | 99.7%                                                                         |
+| `thorough`           | off                                  | highest            | 99.7%                                                                         |
 | `balanced` (default) | conservative (drops obvious garbage) | −18% vs exhaustive | 99.7% (identical)                                                             |
-| `minimal`               | aggressive                           | −60% vs exhaustive | 100% — and correctly says "I don't know" on the one case `balanced` got wrong |
+| `minimal`            | aggressive                           | −60% vs exhaustive | 100% — and correctly says "I don't know" on the one case `balanced` got wrong |
 
 The validated numbers come from a 339-fixture calibration run against a real
 comic library. Your library may behave differently — the lever's defaults aim to
@@ -93,7 +93,7 @@ would meaningfully reduce your wait time:
 
 | Signal                        | ComicVine threshold | Metron threshold    |
 | ----------------------------- | ------------------- | ------------------- |
-| `--prompts never` set            | batch ≥ 50 comics   | batch ≥ 500 comics  |
+| `--prompts never` set         | batch ≥ 50 comics   | batch ≥ 500 comics  |
 | stdin not a TTY (cron / pipe) | batch ≥ 200 comics  | batch ≥ 2000 comics |
 
 Why different thresholds:
@@ -145,16 +145,15 @@ file.)
 
 ## Interaction with other settings
 
-- **`--match`**: orthogonal. `--effort` controls how candidates are
-  produced; `--match` controls what happens once they exist. Example:
-  `--effort fast --match strict` is a sensible unattended-batch
-  combination.
+- **`--match`**: orthogonal. `--effort` controls how candidates are produced;
+  `--match` controls what happens once they exist. Example:
+  `--effort fast --match strict` is a sensible unattended-batch combination.
 
 - **`--prompts never`**: triggers auto-engagement (see above) but is otherwise
   independent.
 
-- **`--auto-threshold`**: independent — same threshold applies regardless
-  of budget. (Phase B preserved this for simplicity; a per-budget confidence
+- **`--auto-threshold`**: independent — same threshold applies regardless of
+  budget. (Phase B preserved this for simplicity; a per-budget confidence
   threshold could be a future enhancement.)
 
 - **`--id` / `--series-id`**: short-circuit the entire discovery flow;
@@ -174,19 +173,20 @@ validated 339-comic set:
 
 - **Moebius Library (2016) #001**: `balanced` returns a wrong-volume candidate
   at score 0.76 (below the 0.95 auto-write threshold, so it would have prompted
-  you anyway). `minimal` correctly returns no candidates — its pre-filter drops the
-  "Adventures of Basil & Moebius" volume that `balanced` admits.
+  you anyway). `minimal` correctly returns no candidates — its pre-filter drops
+  the "Adventures of Basil & Moebius" volume that `balanced` admits.
 
 User-visible behavior: under both modes you don't get a wrong auto-write. Under
-`balanced` you might see a prompt that you would reject; under `minimal` you don't
-see the prompt. Both end up with the comic untagged unless you supply
+`balanced` you might see a prompt that you would reject; under `minimal` you
+don't see the prompt. Both end up with the comic untagged unless you supply
 `--id comicvine:555444` directly.
 
-This pattern generalizes: `minimal`'s "false negatives" are cases where the matcher
-would have prompted under `balanced` and you'd have declined. The savings come
-from skipping the prompt-or-skip dance entirely. If your workflow auto-accepts
-prompts, you may see slightly fewer suggestions under `minimal`; if you reject most
-prompts (the common case for ambiguous matches), the difference is invisible.
+This pattern generalizes: `minimal`'s "false negatives" are cases where the
+matcher would have prompted under `balanced` and you'd have declined. The
+savings come from skipping the prompt-or-skip dance entirely. If your workflow
+auto-accepts prompts, you may see slightly fewer suggestions under `minimal`; if
+you reject most prompts (the common case for ambiguous matches), the difference
+is invisible.
 
 ---
 
@@ -202,6 +202,6 @@ Use `--effort exhaustive` (or `balanced` per-source) when:
   batches anyway, but explicit `--effort exhaustive` guarantees nothing's
   hidden.
 
-There's no scenario where `minimal` is _strictly_ wrong on the validated set — the
-only deviation is the strictly-better Moebius case described above. But your
+There's no scenario where `minimal` is _strictly_ wrong on the validated set —
+the only deviation is the strictly-better Moebius case described above. But your
 library may exercise the pre-filter in ways the calibration set didn't.
