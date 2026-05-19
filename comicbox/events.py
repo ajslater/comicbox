@@ -151,6 +151,22 @@ class PromptResolved(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class PromptResolvedFromCache(Event):
+    """
+    OnlineSession auto-applied a cached choice instead of re-prompting.
+
+    Fingerprint matched a previously-resolved prompt in the per-session
+    dedup cache; the user's handler was not invoked.
+    """
+
+    source: str = ""
+    prompt_id: str = ""
+    action: str = ""
+    fingerprint: str = ""
+    kind: Literal["prompt_resolved_from_cache"] = "prompt_resolved_from_cache"
+
+
+@dataclass(frozen=True, slots=True)
 class Skipped(Event):
     """Matcher declined to write metadata for this file."""
 
@@ -197,6 +213,7 @@ OnlineEvent: TypeAlias = (
     | AutoWritten
     | PromptQueued
     | PromptResolved
+    | PromptResolvedFromCache
     | Skipped
     | NoMatch
     | RateLimited

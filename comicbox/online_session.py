@@ -31,7 +31,7 @@ from comicbox.config.settings import (
     OnlineSourceCredentials,
     Prompts,
 )
-from comicbox.events import FileError
+from comicbox.events import FileError, PromptResolvedFromCache
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -126,6 +126,17 @@ class OnlineResult:
     cancelled: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class _CachedResolution:
+    """A previously-handled prompt's outcome, keyed by series-level fingerprint."""
+
+    action: str
+    payload: int | str | None
+    # For "choose", the candidate's volume_id at the time the user picked.
+    # We re-map to whichever candidate in the new prompt shares it.
+    chosen_volume_id: int | None = None
+
+
 # --- session ---------------------------------------------------------------
 
 
@@ -168,6 +179,16 @@ class OnlineSession:
         # lookup runs to completion before the batch stops.
         self._cancel = threading.Event()
         self._state_lock = threading.Lock()
+
+        # Prompt-dedup cache. Keyed by fingerprint of (source, normalized
+        # series, sorted distinct candidate volume_ids); the stored entry
+        # is the PromptResponse the handler returned the first time we
+        # saw this fingerprint. For "choose" actions we also record the
+        # candidate's volume_id so we can re-map the index when the new
+        # prompt's candidate list is ordered differently. Per-session,
+        # in-memory only — disk persistence is out of scope for v1.
+        self._prompt_cache: dict[str, _CachedResolution] = {}
+        self._prompt_cache_lock = threading.Lock()
 
     # -- mutable session state ----------------------------------------------
 
@@ -255,7 +276,9 @@ class OnlineSession:
         Adapt the user's PromptHandler into a SelectorCallback.
 
         Translates Comicbox's positional SelectorCallback signature into
-        a Codex-facing OnlinePrompt / PromptResponse pair.
+        a Codex-facing OnlinePrompt / PromptResponse pair. Consults the
+        per-session prompt cache first; cache miss falls through to the
+        user's handler and stores the result for next time.
         """
         handler = self._prompt_handler
         if handler is None:  # pragma: no cover — guarded at call site
@@ -267,18 +290,84 @@ class OnlineSession:
             candidates: Sequence[Candidate],
             ctx: SelectorContext,
         ) -> SelectorResult:
+            cand_tuple = tuple(candidates)
+            fingerprint = _prompt_fingerprint(ctx.source, profile, cand_tuple)
+            cached = self._lookup_cached_prompt(fingerprint, cand_tuple)
+            if cached is not None:
+                if self._on_event is not None:
+                    self._on_event(
+                        PromptResolvedFromCache(
+                            path=ctx.file_path,
+                            source=ctx.source,
+                            prompt_id=f"{ctx.source}:{id(candidates)}",
+                            action=cached[0],
+                            fingerprint=fingerprint,
+                        )
+                    )
+                return cached
             prompt = OnlinePrompt(
                 path=ctx.file_path,
                 source=ctx.source,
                 profile_summary=_summarise_profile(profile),
-                candidates=tuple(candidates),
+                candidates=cand_tuple,
                 mode=self.mode,
                 unattended=self.unattended,
             )
             response = handler.request(prompt)
+            self._store_prompt_resolution(
+                fingerprint, response, cand_tuple
+            )
             return (response.action, response.payload)
 
         return _selector
+
+    def _lookup_cached_prompt(
+        self, fingerprint: str, candidates: tuple[Candidate, ...]
+    ) -> SelectorResult | None:
+        """
+        Match a fingerprint against the cache and re-map the choice.
+
+        For ``choose`` we re-map the cached volume_id to whichever candidate
+        in this prompt's list shares it. If no candidate matches, treat
+        this as a cache miss and let the handler fire fresh.
+        """
+        with self._prompt_cache_lock:
+            cached = self._prompt_cache.get(fingerprint)
+        if cached is None:
+            return None
+        if cached.action != "choose":
+            return (cached.action, cached.payload)
+        if cached.chosen_volume_id is None:
+            return None
+        for i, cand in enumerate(candidates):
+            if cand.volume_id is not None and cand.volume_id == cached.chosen_volume_id:
+                return ("choose", i)
+        return None
+
+    def _store_prompt_resolution(
+        self,
+        fingerprint: str,
+        response: PromptResponse,
+        candidates: tuple[Candidate, ...],
+    ) -> None:
+        """Cache a fresh resolution under its fingerprint."""
+        chosen_volume_id: int | None = None
+        if response.action == "choose" and isinstance(response.payload, int):
+            try:
+                chosen_volume_id = candidates[response.payload].volume_id
+            except IndexError:
+                chosen_volume_id = None
+        # Session-level actions (set_unattended / set_policy / abort) are
+        # not cached: they apply once, not as a deferred decision.
+        if response.action in {"set_unattended", "set_policy", "abort"}:
+            return
+        entry = _CachedResolution(
+            action=response.action,
+            payload=response.payload,
+            chosen_volume_id=chosen_volume_id,
+        )
+        with self._prompt_cache_lock:
+            self._prompt_cache[fingerprint] = entry
 
     def _build_config(self) -> ComicboxSettings:
         """
@@ -369,3 +458,29 @@ def _summarise_profile(profile: ComicProfile) -> dict[str, Any]:
         "filename",
     )
     return {f: getattr(profile, f, None) for f in fields_of_interest}
+
+
+def _prompt_fingerprint(
+    source: str, profile: ComicProfile, candidates: tuple[Candidate, ...]
+) -> str:
+    """
+    Build a deterministic key identifying the disambiguation question.
+
+    Composed of the source name, series-level profile fields, and the sorted
+    set of candidate volume_ids. Different issues of the same series collapse
+    to the same fingerprint because their candidate volume_ids match —
+    enabling the cache to auto-apply the user's prior series choice to
+    every subsequent issue of that run.
+    """
+    series = (profile.series or "").strip().lower()
+    publisher = (profile.publisher or "").strip().lower()
+    volume_ids = tuple(
+        sorted({c.volume_id for c in candidates if c.volume_id is not None})
+    )
+    # Fall back to candidate issue_ids when no volume_id is present (some
+    # sources don't expose one) — this gives a strictly stricter
+    # fingerprint, equivalent to "same exact candidate list."
+    if not volume_ids:
+        volume_ids = tuple(sorted(c.issue_id for c in candidates))
+    parts = (source, series, str(profile.year or ""), publisher, repr(volume_ids))
+    return "|".join(parts)
