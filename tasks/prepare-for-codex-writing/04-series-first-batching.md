@@ -172,27 +172,27 @@ so the UI can render "Resolved series Spider-Man → ComicVine vol 12345; taggin
    calls, and that step-6's prompt dedup still fires correctly on the cold-path
    prompt.
 
-## Open questions
+## Resolved decisions
 
-- **Cross-source resolution**: if the cold-path search returns candidates from
-  multiple sources, do we cache per-source or unified? Probably per-source —
-  Metron and CV have different `volume_id` namespaces. The session cache is
-  keyed by `(source, series_fingerprint)`.
+- **Cross-source resolution**: **cache per source.** Metron and CV have
+  different `volume_id` namespaces; a unified cache would collide. The
+  session cache key is `(source_name, series_fingerprint)`.
 
-- **Falsy groups**: what if pre-pass grouping is wrong and two comics that look
-  like the same series turn out to be different? Catch this at issue-lookup time
-  — if `source.lookup_issue` returns None for an issue whose series we thought
-  we'd resolved, fall back to a fresh `_search_path` for that comic. Mark the
-  fingerprint as "ambiguous" so we don't waste budget retrying it.
+- **Falsy groups** (pre-pass groups two comics together that turn out to
+  belong to different series): **catch at issue-lookup time.** If
+  `source.lookup_issue(volume_id, number)` returns None for a comic whose
+  series we thought we'd resolved, fall back to a fresh `_search_path`
+  for that comic only. Mark the fingerprint as "ambiguous" so we don't
+  retry the bad grouping inside this session.
 
-- **Group ordering**: the representative we pick for the cold-path search
-  affects whether the prompt-dedup cache will hit on later groups whose
-  fingerprints land near it. Pick deterministically (sort by path) so re-runs of
-  the same batch produce the same cache key sequence.
+- **Group ordering**: **deterministic.** Sort input paths and process
+  series groups in that order so re-runs produce the same cache-key
+  sequence and the same prompt order.
 
-- **`--rematch`**: today `--rematch` skips the stored-id fast path to force a
-  re-search per comic. Should it also bypass the series cache? Probably yes —
-  `--rematch` is "I don't trust the prior verdict." Bypass both caches.
+- **`--rematch`**: **bypasses the series cache as well.** Today
+  `--rematch` skips the stored-id fast path; under series-first it also
+  skips the session series cache and re-runs the cold-path search per
+  group. Consistent with the "I don't trust the prior verdict" intent.
 
 ## Cost model
 
