@@ -176,7 +176,6 @@ pythonVersion = "3.10"
 failOnWarnings = false
 reportAny = false
 reportExplicitAny = false
-reportImplicitStringConcatenation = false
 reportImportCycles = true
 reportIncompatibleUnannotatedOverride = true
 reportMissingParameterType = false
@@ -191,6 +190,7 @@ reportUnknownParameterType = false
 reportUnknownVariableType = false
 reportUnusedCallResult = false
 reportUnusedParameter = false
+reportImplicitStringConcatenation = false
 reportUntypedBaseClass = false
 
 [tool.codespell]
@@ -202,17 +202,12 @@ skip = "*.svg,*~,.*,.*/*,./.venv/*,./bun.lock,./dist,./node_modules,./node_modul
 [tool.complexipy]
 failed = true
 paths = ["comicbox", "tests"]
-# Note: don't use `**/.*` or `*/.*` here. complexipy matches exclude
-# patterns against the absolute path, so a glob that catches dot-prefixed
-# directories at any depth silently excludes the whole project when run
-# from a git worktree under `.claude/worktrees/...`. List dot-dirs
-# explicitly instead.
 exclude = [
+  "**/__pycache__",
   ".cache",
   ".git",
   ".github",
   ".venv",
-  "**/__pycache__",
   "frontend",
   "node_modules",
   "site",
