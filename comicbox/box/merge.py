@@ -31,7 +31,8 @@ class ComicboxMerge(ComicboxOnlineLookup):
         if normalized_md_list := self.get_normalized_metadata(source):
             # load the mds into the format dict by format.
             for loaded in normalized_md_list:
-                format_dict[loaded.fmt] += [loaded.metadata]
+                if loaded.fmt:
+                    format_dict[loaded.fmt] += [loaded.metadata]
             # load the mds into the source list in format order.
             for format_normalized_md_list in format_dict.values():
                 for normalized_md in format_normalized_md_list:
