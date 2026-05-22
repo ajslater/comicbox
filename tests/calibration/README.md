@@ -27,7 +27,7 @@ comic library.
 
     Or set env vars (`COMICBOX_METRON_USERNAME`, etc.).
 
-2. **Build a fixtures.json.**
+2. Build a fixtures.json.
 
     **Easy mode** — if your library is already tagged with metron / cv ids (from
     previous metron-tagger / comicbox runs), bootstrap the fixture set
@@ -233,7 +233,7 @@ runs. Two display points:
 
 Example:
 
-```
+```log
   [12/343] comicvine: Watchmen (1986) #005.cbz ... OK  score=0.99
   [overall 12/343 fixtures, 14.7m elapsed, ETA 6.7h]
 ```
@@ -249,7 +249,7 @@ there's no data to project from.
 
 Sample output:
 
-```
+```log
 === metron ===
   correct: 178
   wrong:   8

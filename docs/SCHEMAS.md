@@ -2,7 +2,7 @@
 
 Comicbox supports reading and writing several comic book metadata schemas.
 
-### Filename Schema
+## Filename Schema
 
 Comicbox includes a pretty good comic archive filename parser. It can extract a
 number of common fields from comic archive filenames.
@@ -15,7 +15,7 @@ The filename parser is available as a separate library:
 | Archive       | The archive filename  |
 | Import/Export | comicbox-filename.txt |
 
-### ComicInfo Schema v2.1 Draft (Comic Rack)
+## ComicInfo Schema v2.1 Draft (Comic Rack)
 
 This schema used by the defunct Comic Rack reader is the de facto standard for
 comic book metadata on the internet. The
@@ -23,7 +23,7 @@ comic book metadata on the internet. The
 [ComicInfo Schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
 and has compatibly and conservatively extended it.
 
-#### ComicInfo StoryArcs
+### ComicInfo StoryArcs
 
 Comicbox also supports an unofficial, undocumented Mylar extension to
 ComicInfo.xml that encodes multiple Story Arcs and Story Arc Numbers as CSV
@@ -34,7 +34,7 @@ values.
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-### MetronInfo Schema v1.0
+## MetronInfo Schema v1.0
 
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
@@ -46,7 +46,7 @@ deficiencies that exist with the ComicInfo.xml schema.
 | Archive       | metroninfo.xml |
 | Import/Export | metroninfo.xml |
 
-#### Metron MangaVolume
+### Metron MangaVolume
 
 The MangaVolume tag is interpreted not as an arbitrary string, but as a range of
 integers delineated by a "-". e.g "1-3".

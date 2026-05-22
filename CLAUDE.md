@@ -19,7 +19,7 @@ Refer to @\~/.claude/rules/python-devenv.md
 The `Comicbox` class is assembled via a deep mixin inheritance chain in
 `comicbox/box/`. Each mixin layer adds a focused concern:
 
-```
+```log
 ComicboxInit → ComicboxArchive* (read/write/pages) → ComicboxSources
   → ComicboxLoad → ComicboxNormalize → ComicboxMerge
   → ComicboxComputed* (computed fields) → ComicboxMetadata

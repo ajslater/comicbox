@@ -5,6 +5,7 @@ __snapshots__
 .*cache
 .*cache/
 .circleci
+tasks
 .claude
 .coverage*
 .dmypy.json

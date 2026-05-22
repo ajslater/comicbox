@@ -94,7 +94,7 @@ packages installed on on your Linux.
 
 ## ⌨️ Use
 
-##### Related Projects
+### Related Projects
 
 Comicbox makes use of two of my other small projects:
 
@@ -255,7 +255,7 @@ YAML (under `online.tuning.per_source.<source>.*`).
 
 End-of-run summary distinguishes outcomes:
 
-```
+```log
 Online tagging summary (24 comics × sources):
   16 auto-written
    3 prompted (chose 2, declined 1)
@@ -268,7 +268,7 @@ For the full algorithm and worked examples, see
 
 #### Quirks
 
-##### --metadata parses all formats.
+##### --metadata parses all formats
 
 The comicbox.yaml format represents the ComicInfo.xml Web tag as sub an
 `identifiers.<NID>.url` tag. But fear not, you don't have to remember this. The
@@ -291,7 +291,7 @@ identifiers:
 
 You don't even need the root tag.
 
-##### Setting Title when Stories are present.
+##### Setting Title when Stories are present
 
 If the metadata contains Stories (MetronInfo.xml only) the title is computed
 from the Stories. If you wish to set the title regardless, use the --replace
