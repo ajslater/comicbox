@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "fix": "eslint_d --cache --fix . && prettier --write .",
-    "lint": "eslint_d --cache . && prettier --check ."
+    "lint": "eslint_d --cache . && prettier --check . && bin/remark-for-claude.sh"
   },
   "browserslist": [
     "> 1%",
@@ -100,7 +100,6 @@
     "prettier": "^3.8.3",
     "prettier-plugin-nginx": "^1.0.3",
     "prettier-plugin-packagejson": "^3.0.2",
-    "prettier-plugin-sh": "^0.18.1",
     "prettier-plugin-toml": "^2.0.6",
     "remark-cli": "^12.0.1",
     "remark-gfm": "^4.0.1",
