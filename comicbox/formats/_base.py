@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from comicbox.box.validate.base import BaseValidator
 from comicbox.formats.base.transforms.base import BaseTransform
+from comicbox.validate.base import BaseValidator
 
 
 @dataclass

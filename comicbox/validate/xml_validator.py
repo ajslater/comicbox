@@ -6,7 +6,7 @@ from typing import Any
 from typing_extensions import override
 from xmlschema import XMLSchema11
 
-from comicbox.box.validate.base import BaseValidator
+from comicbox.validate.base import BaseValidator
 
 
 class XmlValidator(BaseValidator):

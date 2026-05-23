@@ -7,7 +7,6 @@ from glom import glom
 from ruamel.yaml import YAML
 from typing_extensions import override
 
-from comicbox.box.validate.json_validator import JsonValidator
 from comicbox.constants import (
     COVER_DATE_KEY,
     COVER_DATE_KEYPATH,
@@ -20,6 +19,7 @@ from comicbox.constants import (
     UPDATED_AT_KEY,
 )
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
+from comicbox.validate.json_validator import JsonValidator
 
 _KEYPATH_PREFIX = ROOT_KEYPATH + "."
 _FULL_UPDATED_AT_KEYPATH = _KEYPATH_PREFIX + UPDATED_AT_KEY

@@ -2,9 +2,9 @@
 
 from types import MappingProxyType
 
-from comicbox.box.validate.xml_validator import XmlValidator
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comic_info.transform import ComicInfoTransform
+from comicbox.validate.xml_validator import XmlValidator
 
 REGISTRATION = FormatRegistration(
     format=MetadataFormat(

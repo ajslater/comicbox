@@ -8,7 +8,7 @@ from jsonschema.validators import Draft202012Validator
 from referencing import Registry, Resource
 from typing_extensions import override
 
-from comicbox.box.validate.base import SCHEMA_PATH, BaseValidator
+from comicbox.validate.base import SCHEMA_PATH, BaseValidator
 
 _SCHEMA_ID_ROOT = "https://github.com/ajslater/comicbox/blob/main/schemas/"
 

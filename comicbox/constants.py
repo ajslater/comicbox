@@ -2,7 +2,7 @@
 Cross-package data-model constants.
 
 These live in a top-level module (not under `comicbox.formats.*`) so
-that low-level consumers like `comicbox.box.validate.yaml_validator`
+that low-level consumers like `comicbox.validate.yaml_validator`
 can import them without re-entering the formats package during its
 own initialization. The `comicbox-native schema and transform packages
 re-export them so existing call sites continue to work.

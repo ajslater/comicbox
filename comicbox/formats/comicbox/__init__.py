@@ -9,12 +9,12 @@ Three REGISTRATIONs share schema + transform helpers in this package:
 
 from types import MappingProxyType
 
-from comicbox.box.validate.json_validator import JsonValidator
-from comicbox.box.validate.yaml_validator import YamlValidator
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comicbox.transform.cli import ComicboxCLITransform
 from comicbox.formats.comicbox.transform.json import ComicboxJsonTransform
 from comicbox.formats.comicbox.transform.yaml import ComicboxYamlTransform
+from comicbox.validate.json_validator import JsonValidator
+from comicbox.validate.yaml_validator import YamlValidator
 
 _COMICBOX_SCHEMA_FILE = "v2.0/comicbox-v2.0.schema.json"
 
