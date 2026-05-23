@@ -2715,11 +2715,11 @@ wheels = [
 
 [[package]]
 name = "pyclean"
-version = "3.6.0"
+version = "3.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/0d/7690e519b66101c41c114e2ddbf144f9b4ff6ea938fb199c09ed958f3970/pyclean-3.6.0.tar.gz", hash = "sha256:a46c179be187999d50d2d3362b2c94856e60f77de32ca7ec2db4eeb16bc39199", size = 27000, upload-time = "2026-03-30T17:34:30.509Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/cc/1039d7423a4fe961a36c41c985cf7c1a84270de922d4cc82e16494c7a8b5/pyclean-3.7.0.tar.gz", hash = "sha256:f4605562684fe721d79cfb92842d9d993d1aa7e9a1d13f316e45b29d02d9946b", size = 27580, upload-time = "2026-05-23T01:44:06.561Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/2a/1797004bb000db555bd45e38550b3ca10699f87e22a78e6753882e0ac2cf/pyclean-3.6.0-py3-none-any.whl", hash = "sha256:3e5f9c83f2472df5bdafa78ed533bd38690756e0a7b3b6f11c8b29c9affc728b", size = 27750, upload-time = "2026-03-30T17:34:29.034Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/5d/38264b704ed3dd35c765dda435118cf9a249048bd638fbd46d3fd51a9146/pyclean-3.7.0-py3-none-any.whl", hash = "sha256:76c1688c1a976889d526c1a2623107f4bc746ce26538f184f041422d91653858", size = 28374, upload-time = "2026-05-23T01:44:05.483Z" },
 ]
 
 [[package]]
