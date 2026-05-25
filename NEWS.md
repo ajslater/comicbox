@@ -6,10 +6,10 @@
   auto-write, interactive disambiguation, and unattended bulk modes.
     - `--online <sources>` enables lookup. `--id <db>:<id>` and
       `--series-id <db>:<id>` for direct fetch / search constraint.
-    - `--match {ask | careful | auto | eager}` controls how
-      aggressively comicbox writes a match without asking. Default `auto`
-      auto-writes obvious wins and sole plausible matches, prompts on close
-      calls. Per-source overrides via `--match metron:eager`.
+    - `--match {ask | careful | auto | eager}` controls how aggressively
+      comicbox writes a match without asking. Default `auto` auto-writes obvious
+      wins and sole plausible matches, prompts on close calls. Per-source
+      overrides via `--match metron:eager`.
     - `--unattended` turns prompts into skips for cron / batch use.
     - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally or
       per source. Default 0.95 (calibrated against a real fixture set; lower
@@ -34,11 +34,11 @@
       not recommended for cold cache — wall time can balloon 10x+ under
       sustained rate-limit contention. See `--help` for details.
 - Breaking changes
-    - `OnlineSession.mode` now takes a `comicbox.config.settings.MatchMode`
-      enum directly; the string aliases (`"strict"` / `"normal"` / `"fast"`)
-      and the `SessionMode` TypeAlias are removed. `MatchMode.ASK` is rejected
-      at session construction since the session has no built-in prompt
-      resolver; use a `PromptHandler` or `defer_prompts=True` instead.
+    - `OnlineSession.mode` now takes a `comicbox.config.settings.MatchMode` enum
+      directly; the string aliases (`"strict"` / `"normal"` / `"fast"`) and the
+      `SessionMode` TypeAlias are removed. `MatchMode.ASK` is rejected at
+      session construction since the session has no built-in prompt resolver;
+      use a `PromptHandler` or `defer_prompts=True` instead.
     - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
       alias through 4.x and is removed in 5.0.
     - PDFs that hid comicbox metadata as JSON or XML inside their `keywords`

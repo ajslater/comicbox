@@ -287,8 +287,8 @@ session = OnlineSession(
 | `EAGER`     | `"eager"`   | Auto-write on anything > min_confidence            |
 
 `MatchMode.ASK` is rejected at session construction — the session has no
-built-in prompt resolver for it; use a `PromptHandler` or
-`defer_prompts=True` for interactive review instead.
+built-in prompt resolver for it; use a `PromptHandler` or `defer_prompts=True`
+for interactive review instead.
 
 `unattended=True` separately maps to `Prompts.NEVER` — no prompts ever fire;
 ambiguous matches just skip.
