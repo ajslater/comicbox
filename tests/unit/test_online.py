@@ -153,6 +153,36 @@ def test_resolve_credentials_returns_all_sources() -> None:
     assert creds["comicvine"].key is None
 
 
+def test_credentials_repr_redacts_secrets() -> None:
+    """repr() must never expose password or api key — log-safety invariant."""
+    from comicbox.config.settings import OnlineSourceCredentials
+
+    creds = OnlineSourceCredentials(
+        user="ajslater",
+        password="hunter2",
+        key="sk_live_abc123def456",
+        url="https://example.com",
+    )
+    rendered = repr(creds)
+    assert "hunter2" not in rendered
+    assert "sk_live_abc123def456" not in rendered
+    assert "***" in rendered
+    # Non-secret fields stay visible for debugging.
+    assert "ajslater" in rendered
+    assert "https://example.com" in rendered
+
+
+def test_credentials_repr_shows_none_for_unset_secrets() -> None:
+    """An unset secret renders as None, distinct from a redacted '***'."""
+    from comicbox.config.settings import OnlineSourceCredentials
+
+    creds = OnlineSourceCredentials(user="ajslater")
+    rendered = repr(creds)
+    assert "password=None" in rendered
+    assert "key=None" in rendered
+    assert "***" not in rendered
+
+
 # --------------------------------------------------------- full config flow
 
 

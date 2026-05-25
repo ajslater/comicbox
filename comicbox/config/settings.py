@@ -223,6 +223,16 @@ class OnlineSourceCredentials:
     key: str | None = None
     url: str | None = None
 
+    def __repr__(self) -> str:
+        """Redact secret-bearing fields so this object is log-safe."""
+        return (
+            "OnlineSourceCredentials("
+            f"user={self.user!r}, "
+            f"password={'***' if self.password else None}, "
+            f"key={'***' if self.key else None}, "
+            f"url={self.url!r})"
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class OnlineAuthSettings:

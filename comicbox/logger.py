@@ -69,6 +69,11 @@ def init_logging(
     kwargs: dict[str, Any] = {
         "level": loglevel,
         "backtrace": True,
+        # diagnose=True renders each frame's local variables on
+        # logger.exception(...), which leaks api_key / password strings
+        # held as locals in our online-source frames (and in simyan /
+        # mokkari frames we can't modify). Keep this off.
+        "diagnose": False,
         "catch": True,
         "format": fmt,
         "enqueue": True,
