@@ -976,9 +976,14 @@ def test_solo_viable_below_floor_prompts_under_normal() -> None:
     assert 0.85 < ranked[0].score < 0.95
     # Use confidence_threshold=0.99 so `unambig` is False (top<threshold) —
     # forces the policy decision through the solo_viable carve-out path.
+    # Pin the solo floor at 0.95 explicitly: this test documents the
+    # gating mechanism, not whatever the global default happens to be.
     res = matcher.resolve(
         ranked,
-        _settings(confidence_threshold=0.99),
+        _settings(
+            confidence_threshold=0.99,
+            solo_confidence_threshold_per_source={"metron": 0.95},
+        ),
         source_name="metron",
     )
     # Pre-Phase-E this would have been AUTO_WRITE (solo_viable=True).
@@ -1022,13 +1027,18 @@ def test_solo_confidence_threshold_per_source_override_relaxes_floor() -> None:
     ranked = matcher.rank(_profile(), candidates)
     assert 0.85 < ranked[0].score < 0.95
 
-    settings_strict = _settings(confidence_threshold=0.99)
+    # Pin the strict floor at 0.95 explicitly — this test contrasts a
+    # strict floor against a relaxed one, not the global default.
+    settings_strict = _settings(
+        confidence_threshold=0.99,
+        solo_confidence_threshold_per_source={"metron": 0.95},
+    )
     settings_relaxed = _settings(
         confidence_threshold=0.99,
         solo_confidence_threshold_per_source={"metron": 0.50},
     )
 
-    # Default floor (0.95): solo below → PROMPT.
+    # Strict floor (0.95): solo below → PROMPT.
     assert matcher.resolve(ranked, settings_strict, "metron").kind is (
         ResolutionKind.PROMPT
     )
@@ -1073,9 +1083,12 @@ def test_solo_confidence_floor_gates_eager_solo_carve_out() -> None:
     matcher = OnlineMatcher()
     candidates = [_candidate(issue_id=1, year=2018, page_count=20)]
     ranked = matcher.rank(_profile(), candidates)
+    # Pin the solo floor at 0.95 explicitly — this test documents that
+    # EAGER's carve-out is gated by the floor, not the floor's default.
     settings_eager = _settings(
         policy=Policy.EAGER,
         confidence_threshold=0.99,  # so top_score>=threshold isn't met
+        solo_confidence_threshold_per_source={"metron": 0.95},
     )
     # 0.88 < 0.95 floor AND 0.88 < 0.99 confidence_threshold → PROMPT.
     res = matcher.resolve(ranked, settings_eager, "metron")
