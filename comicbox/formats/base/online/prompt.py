@@ -27,7 +27,7 @@ Display rules:
 
 Session options (nested under `o`) let the user switch the rest of
 this run to unattended mode or change the match policy
-(always-prompt / strict / normal / eager). These exist as flat
+(ask / careful / auto / eager). These exist as flat
 SelectorResult actions in the API but are tucked behind a submenu
 in the CLI so the primary prompt stays uncluttered.
 """
@@ -47,9 +47,9 @@ if TYPE_CHECKING:
 _MAX_DISPLAYED = 9
 
 _POLICY_CHOICES: tuple[tuple[str, str], ...] = (
-    ("1", "always-prompt"),
-    ("2", "strict"),
-    ("3", "normal"),
+    ("1", "ask"),
+    ("2", "careful"),
+    ("3", "auto"),
     ("4", "eager"),
 )
 

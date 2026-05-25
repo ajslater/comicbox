@@ -24,7 +24,7 @@ VALID_BOTH = OnlineCredentials(metron_user="u", metron_password="p", comicvine_k
 def test_construct_with_valid_creds() -> None:
     """Construction works when every enabled source has its required fields."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert session.mode == "normal"
+    assert session.mode is MatchMode.AUTO
     assert session.unattended is False
     assert session.cancelled is False
 
@@ -49,34 +49,39 @@ def test_rejects_comicvine_without_key() -> None:
         OnlineSession(sources={"comicvine"}, credentials=VALID_METRON)
 
 
-def test_rejects_unknown_mode() -> None:
-    with pytest.raises(OnlineConfigurationError, match="Unknown mode"):
+def test_rejects_non_enum_mode() -> None:
+    with pytest.raises(OnlineConfigurationError, match="must be a MatchMode"):
         OnlineSession(
             sources={"metron"},
             credentials=VALID_METRON,
-            mode="aggressive",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+            mode="normal",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         )
 
 
-# --- mode + alias mapping -----------------------------------------------------
+def test_rejects_ask_mode() -> None:
+    with pytest.raises(OnlineConfigurationError, match=r"MatchMode\.ASK"):
+        OnlineSession(
+            sources={"metron"},
+            credentials=VALID_METRON,
+            mode=MatchMode.ASK,
+        )
+
+
+# --- mode propagation ---------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("session_mode", "expected_match"),
-    [
-        ("strict", MatchMode.CAREFUL),
-        ("normal", MatchMode.AUTO),
-        ("fast", MatchMode.EAGER),
-    ],
+    "mode",
+    [MatchMode.CAREFUL, MatchMode.AUTO, MatchMode.EAGER],
 )
-def test_mode_maps_to_match_mode(session_mode: str, expected_match: MatchMode) -> None:
+def test_mode_propagates_to_match_setting(mode: MatchMode) -> None:
     session = OnlineSession(
         sources={"metron"},
         credentials=VALID_METRON,
-        mode=session_mode,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+        mode=mode,
     )
     cfg = session._build_config()
-    assert cfg.online.lookup.match == expected_match
+    assert cfg.online.lookup.match is mode
 
 
 def test_unattended_maps_to_prompts_never() -> None:
@@ -90,7 +95,7 @@ def test_unattended_maps_to_prompts_never() -> None:
 def test_set_mode_changes_subsequent_config() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert session._build_config().online.lookup.match == MatchMode.AUTO
-    session.set_mode("fast")
+    session.set_mode(MatchMode.EAGER)
     assert session._build_config().online.lookup.match == MatchMode.EAGER
 
 

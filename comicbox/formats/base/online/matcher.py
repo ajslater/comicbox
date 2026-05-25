@@ -205,10 +205,10 @@ def _policy_auto_writes(
     """
     Encode the four policy levels' auto-write rules.
 
-    Containment holds: `strict ⊂ normal ⊂ eager`. `always-prompt` never
+    Containment holds: `careful ⊂ auto ⊂ eager`. `ask` never
     auto-writes (the deferred path falls to PROMPT or SKIP).
 
-    The `solo_viable` carve-out under NORMAL/EAGER is gated by
+    The `solo_viable` carve-out under AUTO/EAGER is gated by
     `solo_confidence_threshold` (Phase E). Below the floor, a lone
     viable candidate does NOT auto-write — it falls through to PROMPT.
     The pre-Phase-E behavior is recoverable by setting the threshold
@@ -217,8 +217,8 @@ def _policy_auto_writes(
     """
     unambig = top_score >= confidence_threshold and gap >= disambiguation_margin
     # Solo-viable auto-write requires the lone candidate clear the floor.
-    # Default floor = global confidence threshold, so NORMAL/EAGER's solo
-    # path is no more permissive than STRICT unless the user opts in
+    # Default floor = global confidence threshold, so AUTO/EAGER's solo
+    # path is no more permissive than CAREFUL unless the user opts in
     # by lowering the per-source override.
     solo_viable_confident = solo_viable and top_score >= solo_confidence_threshold
     match policy:

@@ -5,8 +5,8 @@ Wraps the existing Comicbox.run_online_lookup() per-file flow with a
 Codex-friendly surface:
 
 - Per-source credential validation up front (fail-fast).
-- Mode aliases (strict / normal / fast / unattended) → the internal
-  MatchMode + Prompts enums.
+- Direct :class:`MatchMode` API (no string alias layer; ``ASK`` is
+  rejected since the session has no built-in prompt resolver for it).
 - One programmatic PromptHandler per session that the matcher calls
   whenever it would otherwise hit the CLI questionary prompt.
 - Event stream via on_event= for UI feedback.
@@ -47,19 +47,27 @@ if TYPE_CHECKING:
     )
 
 
+__all__ = (
+    "BatchedPromptHandler",
+    "DeferredPrompt",
+    "MatchMode",
+    "OnlineConfigurationError",
+    "OnlineCredentials",
+    "OnlinePrompt",
+    "OnlineResult",
+    "OnlineSession",
+    "PromptHandler",
+    "PromptResponse",
+    "SourceName",
+)
+
+
 # --- public types -----------------------------------------------------------
 
 
-SessionMode: TypeAlias = Literal["strict", "normal", "fast"]
 SourceName: TypeAlias = Literal["metron", "comicvine"]
 
 _KNOWN_SOURCES: frozenset[str] = frozenset({"metron", "comicvine"})
-
-_MODE_TO_MATCH_MODE: dict[str, MatchMode] = {
-    "strict": MatchMode.CAREFUL,
-    "normal": MatchMode.AUTO,
-    "fast": MatchMode.EAGER,
-}
 
 
 class OnlineConfigurationError(Exception):
@@ -89,7 +97,7 @@ class OnlinePrompt:
     source: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: SessionMode
+    mode: MatchMode
     unattended: bool
 
 
@@ -99,8 +107,9 @@ class PromptResponse:
     Codex-side decision for one prompt.
 
     ``action`` mirrors :data:`SelectorAction`; ``payload`` is the index for
-    ``choose``, the ``"<source>:<id>"`` string for ``manual``, the new mode
-    string for ``set_policy``, or ``None`` otherwise.
+    ``choose``, the ``"<source>:<id>"`` string for ``manual``, the new
+    :class:`MatchMode` value (e.g. ``"auto"``) for ``set_policy``, or
+    ``None`` otherwise.
     """
 
     action: Literal["choose", "skip", "manual", "abort", "set_unattended", "set_policy"]
@@ -196,7 +205,7 @@ class DeferredPrompt:
     fingerprint: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: SessionMode
+    mode: MatchMode
     unattended: bool
 
 
@@ -218,7 +227,7 @@ class OnlineSession:
         *,
         sources: Iterable[str] = ("metron", "comicvine"),
         credentials: OnlineCredentials | None = None,
-        mode: SessionMode = "normal",
+        mode: MatchMode = MatchMode.AUTO,
         unattended: bool = False,
         prompt_handler: PromptHandler | None = None,
         on_event: EventHandler | None = None,
@@ -232,7 +241,7 @@ class OnlineSession:
         self._validate_sources(self._sources)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
-        self._mode: SessionMode = self._validate_mode(mode)
+        self._mode: MatchMode = self._validate_mode(mode)
         self._unattended = unattended
         self._prompt_handler = prompt_handler
         self._on_event = on_event
@@ -277,7 +286,7 @@ class OnlineSession:
     # -- mutable session state ----------------------------------------------
 
     @property
-    def mode(self) -> SessionMode:
+    def mode(self) -> MatchMode:
         """Current session mode (read-only; mutate via set_mode())."""
         with self._state_lock:
             return self._mode
@@ -288,7 +297,7 @@ class OnlineSession:
         with self._state_lock:
             return self._unattended
 
-    def set_mode(self, mode: SessionMode) -> None:
+    def set_mode(self, mode: MatchMode) -> None:
         """Change the session mode for subsequent file lookups."""
         validated = self._validate_mode(mode)
         with self._state_lock:
@@ -593,7 +602,7 @@ class OnlineSession:
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=frozenset(self._sources),
-            match=_MODE_TO_MATCH_MODE[self.mode],
+            match=self.mode,
             prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
             rematch=self._rematch,
             all_sources=self._all_sources,
@@ -649,10 +658,17 @@ class OnlineSession:
             raise OnlineConfigurationError(msg)
 
     @staticmethod
-    def _validate_mode(mode: SessionMode) -> SessionMode:
-        if mode not in _MODE_TO_MATCH_MODE:
+    def _validate_mode(mode: MatchMode) -> MatchMode:
+        if not isinstance(mode, MatchMode):
             msg = (
-                f"Unknown mode {mode!r}. Expected one of {sorted(_MODE_TO_MATCH_MODE)}."
+                f"OnlineSession.mode must be a MatchMode enum value; got {mode!r}."
+            )
+            raise OnlineConfigurationError(msg)
+        if mode is MatchMode.ASK:
+            msg = (
+                "OnlineSession.mode does not accept MatchMode.ASK; "
+                "the session has no built-in prompt resolver. Use a "
+                "PromptHandler or defer_prompts=True instead."
             )
             raise OnlineConfigurationError(msg)
         return mode

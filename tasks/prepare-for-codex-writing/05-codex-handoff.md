@@ -260,7 +260,7 @@ creds = OnlineCredentials(
 session = OnlineSession(
     sources={"metron", "comicvine"},
     credentials=creds,
-    mode="normal",          # "strict" | "normal" | "fast"
+    mode=MatchMode.AUTO,    # CAREFUL | AUTO (default) | EAGER
     unattended=False,
     prompt_handler=MyCodexHandler(),  # implements .request()
     on_event=codex_event_sink,
@@ -276,15 +276,19 @@ session = OnlineSession(
 - Enabled source missing required credentials
 - Unknown mode value
 
-### Mode aliases
+### Match modes
 
-Codex's UI vocabulary maps onto the internal enums:
+`OnlineSession.mode` takes a `MatchMode` enum directly:
 
-| Codex UI | OnlineSession `mode` | Internal `MatchMode` | Notes                                              |
-| -------- | -------------------- | -------------------- | -------------------------------------------------- |
-| Strict   | `"strict"`           | `CAREFUL`            | Auto-write only on unambiguous top                 |
-| Normal   | `"normal"`           | `AUTO`               | Auto-write on unambiguous or solo viable (default) |
-| Fast     | `"fast"`             | `EAGER`              | Auto-write on anything > min_confidence            |
+| `MatchMode` | Value       | Notes                                              |
+| ----------- | ----------- | -------------------------------------------------- |
+| `CAREFUL`   | `"careful"` | Auto-write only on unambiguous top                 |
+| `AUTO`      | `"auto"`    | Auto-write on unambiguous or solo viable (default) |
+| `EAGER`     | `"eager"`   | Auto-write on anything > min_confidence            |
+
+`MatchMode.ASK` is rejected at session construction — the session has no
+built-in prompt resolver for it; use a `PromptHandler` or
+`defer_prompts=True` for interactive review instead.
 
 `unattended=True` separately maps to `Prompts.NEVER` — no prompts ever fire;
 ambiguous matches just skip.
@@ -405,7 +409,7 @@ for (source, fp), volume_id in stored_resolutions.items():
 
 ```python
 session.cancel()                      # stops tag_many between files
-session.set_mode("fast")              # mode changes apply to next file
+session.set_mode(MatchMode.EAGER)     # mode changes apply to next file
 session.set_unattended(unattended=True)  # ditto
 session.rate_limit_status()           # v1 stub: returns {source: {}}
 ```
@@ -473,7 +477,7 @@ from comicbox.events import (
    the round-trip working.
 3. **Bulk-write background task** for "rename publisher" etc. Reuse Codex's
    existing task-orchestration infra; events drive the UI.
-4. **OnlineSession plumbing without prompts**: `mode="normal"` +
+4. **OnlineSession plumbing without prompts**: `mode=MatchMode.AUTO` +
    `unattended=True` first. Tag a few comics end-to-end with auto-write only.
    Validate events, error paths, credentials.
 5. **PromptHandler + interactive UI**. Modal or queue. Resolve a real ambiguous

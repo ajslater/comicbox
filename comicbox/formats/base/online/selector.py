@@ -14,11 +14,11 @@ A `SelectorCallback` receives a profile and a list of ranked
   collapses to SKIP under unattended) without auto-writing this
   prompt's selection.
 - `("set_policy", "<name>")` — switch the rest of the session's match
-  policy to one of `always-prompt | strict | normal | eager`. The box
-  re-resolves the current candidates under the new policy; if the new
-  policy auto-writes, the current candidate set's top is written;
-  otherwise the user is re-prompted (or the run goes silent under
-  unattended).
+  policy to one of `ask | careful | auto | eager` (a
+  :class:`MatchMode` value). The box re-resolves the current
+  candidates under the new policy; if the new policy auto-writes,
+  the current candidate set's top is written; otherwise the user is
+  re-prompted (or the run goes silent under unattended).
 
 The `set_*` actions are flat in the API so programmatic callers
 (codex, library consumers) can drive session state from one return
