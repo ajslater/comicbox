@@ -107,13 +107,37 @@ def _build_issue_block(issue: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+# Metron returns ISO 4217 currency codes (e.g. "USD") for `price_currency`,
+# but the comicbox native price dict — and the MetronInfo XSD `@country`
+# attribute it round-trips through — keys by ISO 3166-1 alpha-2 country
+# code. Map the currencies we expect from Metron's primarily-US dataset;
+# unknown currencies fall back to an empty key (loses the geographic
+# attribution but keeps the price value).
+_CURRENCY_TO_COUNTRY: MappingProxyType[str, str] = MappingProxyType(
+    {
+        "AUD": "AU",
+        "BRL": "BR",
+        "CAD": "CA",
+        "CHF": "CH",
+        "CNY": "CN",
+        "GBP": "GB",
+        "INR": "IN",
+        "JPY": "JP",
+        "KRW": "KR",
+        "MXN": "MX",
+        "USD": "US",
+    }
+)
+
+
 def _build_prices(issue: Mapping[str, Any]) -> dict[str, Any]:
-    """Single price → keyed by ISO currency code (or empty key fallback)."""
+    """Single price → keyed by ISO country code (or empty key fallback)."""
     price = issue.get("price")
     if price is None or price == "":
         return {}
-    currency = issue.get("price_currency") or ""
-    return {currency: price}
+    currency = (issue.get("price_currency") or "").upper()
+    country = _CURRENCY_TO_COUNTRY.get(currency, "")
+    return {country: price}
 
 
 def _build_stories(issue: Mapping[str, Any]) -> dict[str, dict]:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from comicbox.formats.metron_api.transform import MetronApiTransform
 
 
@@ -67,3 +69,30 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     assert cb["series"]["name"] == "S"
     # Missing fields don't crash; they're just absent.
     assert "summary" not in cb or not cb.get("summary")
+
+
+def test_prices_currency_mapped_to_country_code() -> None:
+    """USD → US so the country-keyed comicbox price dict accepts it."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["price"] = "4.99"
+    payload["metron_api"]["price_currency"] = "USD"
+    result = dict(transform.to_comicbox(payload))
+    assert result["comicbox"]["prices"] == {"US": Decimal("4.99")}
+
+
+def test_prices_unknown_currency_falls_back_to_empty_key() -> None:
+    """Unrecognized currency code yields an empty country key, not a warning."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["price"] = "4.99"
+    payload["metron_api"]["price_currency"] = "XYZ"
+    result = dict(transform.to_comicbox(payload))
+    assert result["comicbox"]["prices"] == {"": Decimal("4.99")}
+
+
+def test_prices_missing_returns_empty_dict() -> None:
+    """No price means no prices entry."""
+    transform = MetronApiTransform()
+    result = dict(transform.to_comicbox(_sample_issue_dict()))
+    assert result["comicbox"].get("prices", {}) == {}
