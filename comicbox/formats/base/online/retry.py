@@ -200,6 +200,72 @@ def _handle_retry_exception(
     return True
 
 
+def _notify_rate_limit_listener(
+    exc: BaseException,
+    args: tuple[Any, ...],
+    *,
+    attempt: int,
+    rate_limit_attempt: int,
+    max_retries: int,
+) -> None:
+    """Invoke ``instance.on_rate_limit`` for rate-limit failures, if defined."""
+    if not args or not _is_rate_limit(exc):
+        return
+    instance_cb = getattr(args[0], "on_rate_limit", None)
+    if instance_cb is None:
+        return
+    plan = _plan_retry(
+        exc,
+        attempt=attempt,
+        rate_limit_attempt=rate_limit_attempt,
+        max_retries=max_retries,
+    )
+    delay = plan[0] if plan else None
+    source_name = getattr(args[0], "name", "")
+    instance_cb(source_name, delay)
+
+
+def _run_with_retries(
+    func: Callable[..., T],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    *,
+    max_retries: int,
+    sleep: Callable[[float], None],
+) -> T:
+    """Drive ``func`` through the retry budget; re-raise on exhaustion."""
+    last_exc: BaseException | None = None
+    attempt = 0
+    rate_limit_attempt = 0
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            last_exc = exc
+            _notify_rate_limit_listener(
+                exc,
+                args,
+                attempt=attempt,
+                rate_limit_attempt=rate_limit_attempt,
+                max_retries=max_retries,
+            )
+            if not _handle_retry_exception(
+                exc,
+                func_name=func.__name__,  # ty: ignore[unresolved-attribute]
+                attempt=attempt,
+                rate_limit_attempt=rate_limit_attempt,
+                max_retries=max_retries,
+                sleep=sleep,
+            ):
+                break
+            if _is_rate_limit(exc):
+                rate_limit_attempt += 1
+            else:
+                attempt += 1
+    assert last_exc is not None
+    raise last_exc
+
+
 def with_retry(
     *,
     max_retries: int = 5,
@@ -224,40 +290,9 @@ def with_retry(
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_exc: BaseException | None = None
-            attempt = 0
-            rate_limit_attempt = 0
-            instance_cb = getattr(args[0], "on_rate_limit", None) if args else None
-            while True:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as exc:
-                    last_exc = exc
-                    if _is_rate_limit(exc) and instance_cb is not None:
-                        plan = _plan_retry(
-                            exc,
-                            attempt=attempt,
-                            rate_limit_attempt=rate_limit_attempt,
-                            max_retries=max_retries,
-                        )
-                        delay = plan[0] if plan else None
-                        source_name = getattr(args[0], "name", "") if args else ""
-                        instance_cb(source_name, delay)
-                    if not _handle_retry_exception(
-                        exc,
-                        func_name=func.__name__,  # ty: ignore[unresolved-attribute]
-                        attempt=attempt,
-                        rate_limit_attempt=rate_limit_attempt,
-                        max_retries=max_retries,
-                        sleep=sleep,
-                    ):
-                        break
-                    if _is_rate_limit(exc):
-                        rate_limit_attempt += 1
-                    else:
-                        attempt += 1
-            assert last_exc is not None
-            raise last_exc
+            return _run_with_retries(
+                func, args, kwargs, max_retries=max_retries, sleep=sleep
+            )
 
         return wrapper
 
