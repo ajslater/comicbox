@@ -215,6 +215,53 @@ def test_explicit_id_for_unconfigured_source_warns(
     )
 
 
+def test_online_all_with_no_configured_sources_warns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`--online all` with no creds for any source should warn loudly."""
+
+    class _UnconfiguredSource:
+        name = "metron"
+        metadata_source = MetadataSources.METRON_API
+        metadata_format = MetadataFormats.METRON_API
+
+        def __init__(self, credentials, settings) -> None:
+            self._credentials = credentials
+
+        def is_configured(self) -> bool:
+            return False
+
+        def get(self, issue_id: int) -> dict:
+            return {}
+
+        def search(self, profile) -> list[Candidate]:
+            return []
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"metron": _UnconfiguredSource}),
+    )
+
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        "comicbox.box.online_lookup.logger.warning",
+        warnings.append,
+    )
+
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["all"],
+            auth=[],
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert any("no sources are configured" in m for m in warnings), (
+        f"expected 'no sources are configured' warning; got {warnings}"
+    )
+
+
 # ----------------------------------------- cross-source cv_id disagreement
 
 

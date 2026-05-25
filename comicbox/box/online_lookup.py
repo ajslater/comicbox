@@ -1010,8 +1010,14 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return
         if online.lookup.prompts is not Prompts.NEVER:
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
+        active_sources = self._build_active_online_sources()
+        if not active_sources and online.lookup.sources is None:
+            logger.warning(
+                "online: --online all requested but no sources are configured "
+                "(no credentials available for any known source)"
+            )
         won_any = False
-        for source in self._build_active_online_sources():
+        for source in active_sources:
             if self._should_skip_first_wins(source, online, won_any=won_any):
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "
