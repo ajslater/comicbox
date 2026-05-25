@@ -659,10 +659,8 @@ class OnlineSession:
 
     @staticmethod
     def _validate_mode(mode: MatchMode) -> MatchMode:
-        if not isinstance(mode, MatchMode):
-            msg = (
-                f"OnlineSession.mode must be a MatchMode enum value; got {mode!r}."
-            )
+        if not isinstance(mode, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
+            msg = f"OnlineSession.mode must be a MatchMode enum value; got {mode!r}."  # pyright: ignore[reportUnreachable]
             raise OnlineConfigurationError(msg)
         if mode is MatchMode.ASK:
             msg = (

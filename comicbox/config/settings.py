@@ -23,6 +23,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typing_extensions import override
+
 if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
     from comicbox.formats.sources import MetadataSources
@@ -223,6 +225,7 @@ class OnlineSourceCredentials:
     key: str | None = None
     url: str | None = None
 
+    @override
     def __repr__(self) -> str:
         """Redact secret-bearing fields so this object is log-safe."""
         return (
