@@ -90,7 +90,7 @@ DEFAULT_DISAMBIGUATION_MARGIN = 0.10
 # auto-write only if it also clears this floor. Default equals the
 # global confidence threshold (0.95), so solo cases need the same bar
 # as multi-candidate unambiguous wins.
-DEFAULT_SOLO_THRESHOLD = 0.95
+DEFAULT_SOLO_THRESHOLD = 0.85
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,7 +287,7 @@ class OnlineTuningSettings:
     """Global tuning defaults plus per-source overrides."""
 
     # Global defaults.
-    auto_threshold: float = 0.95
+    auto_threshold: float = 0.85
     effort: Effort = Effort.BALANCED
     retry_budget: int = 5
 
