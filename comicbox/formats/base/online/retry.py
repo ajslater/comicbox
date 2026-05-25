@@ -227,11 +227,22 @@ def with_retry(
             last_exc: BaseException | None = None
             attempt = 0
             rate_limit_attempt = 0
+            instance_cb = getattr(args[0], "on_rate_limit", None) if args else None
             while True:
                 try:
                     return func(*args, **kwargs)
                 except Exception as exc:
                     last_exc = exc
+                    if _is_rate_limit(exc) and instance_cb is not None:
+                        plan = _plan_retry(
+                            exc,
+                            attempt=attempt,
+                            rate_limit_attempt=rate_limit_attempt,
+                            max_retries=max_retries,
+                        )
+                        delay = plan[0] if plan else None
+                        source_name = getattr(args[0], "name", "") if args else ""
+                        instance_cb(source_name, delay)
                     if not _handle_retry_exception(
                         exc,
                         func_name=func.__name__,  # ty: ignore[unresolved-attribute]

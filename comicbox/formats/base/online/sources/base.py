@@ -51,6 +51,7 @@ class OnlineSource(ABC):
         # runs by the cache-hit fraction. Good enough for Phase B
         # comparison; refine later if needed.
         self.api_call_counts: dict[str, int] = {}
+        self.on_rate_limit: Any = None
 
     def _record_api_call(self, method: str) -> None:
         """Bump `api_call_counts[method]`. Called by source-internal wrappers."""

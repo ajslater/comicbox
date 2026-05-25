@@ -39,6 +39,7 @@ from comicbox.events import (
     NoMatch,
     PromptQueued,
     PromptResolved,
+    RateLimited,
     SearchCompleted,
     SearchStarted,
     SeriesIdentified,
@@ -303,6 +304,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if self._event_handler is not None:
             self._event_handler(event)
 
+    def _on_source_rate_limit(self, source_name: str, delay: float | None) -> None:
+        """Emit a RateLimited event when a source hits a rate limit."""
+        self._emit(RateLimited(source=source_name, retry_after_seconds=delay))
+
     def _online_lookup_already_done(self) -> bool:
         return self._online_lookup_done_flag
 
@@ -355,6 +360,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if not source.is_configured():
                 self._warn_unconfigured_source(name)
                 continue
+            source.on_rate_limit = self._on_source_rate_limit
             active.append(source)
         return active
 
