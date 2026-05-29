@@ -21,9 +21,12 @@ from comicbox.formats.comic_book_info.transform.credits import (
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
+from comicbox.formats.comic_book_info.transform.rating import (
+    cbi_rating_from_cb,
+    cbi_rating_to_cb,
+)
 from comicbox.formats.comicbox.schema import (
     COUNTRY_KEY,
-    CRITICAL_RATING_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
     PAGE_COUNT_KEY,
@@ -68,7 +71,6 @@ SIMPLE_KEYPATHS = frozenbidict(
         "publicationMonth": MONTH_KEYPATH,
         "publicationYear": YEAR_KEYPATH,
         "publisher": PUBLISHER_NAME_KEYPATH,
-        "rating": CRITICAL_RATING_KEY,
         "series": SERIES_NAME_KEYPATH,
         "title": TITLE_KEY,
         "volume": VOLUME_NUMBER_KEYPATH,
@@ -96,6 +98,7 @@ class ComicBookInfoTransform(BaseTransform):
         ),
         cbi_credits_transform_to_cb("credits"),
         cbi_credits_primary_to_cb("credits"),
+        cbi_rating_to_cb(),
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )
@@ -108,6 +111,7 @@ class ComicBookInfoTransform(BaseTransform):
             key_map=SIMPLE_KEYPATHS,
         ),
         cbi_credits_transform_from_cb("credits"),
+        cbi_rating_from_cb(),
         name_obj_from_cb(NAME_OBJ_KEYPATHS),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,
     )

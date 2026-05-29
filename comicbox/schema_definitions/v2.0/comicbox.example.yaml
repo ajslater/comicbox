@@ -23,7 +23,6 @@ comicbox:
           key: 345
   collection_title: The Big Omnibus
   country: US
-  community_rating: 5.0
   credits:
     Joe Orlando:
       roles:
@@ -34,7 +33,7 @@ comicbox:
   credit_primaries:
     Joe Orlando: Writer
     Wally Wood: Penciller
-  critical_rating: 10.0
+  critical_rating: 5.0
   date:
     cover_date: 1950-11-01
     store_date: 1950-11-28

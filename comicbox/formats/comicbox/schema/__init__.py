@@ -193,7 +193,9 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         values=Nested(PersonSchema)
     )
     credit_primaries = DictField(keys=RoleField)  # CBI ONLY
-    critical_rating = DecimalField(places=2)  # CBI, CIX
+    critical_rating = DecimalField(  # CBI, CIX
+        places=1, minimum=Decimal(0), maximum=Decimal(5)
+    )
     date = Nested(DateSchema)
     ext = StringField()  # Filename ONLY
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron
