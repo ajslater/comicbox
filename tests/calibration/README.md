@@ -36,12 +36,12 @@ comic library.
     ```sh
     # Walk a directory, extract existing tags, write fixtures.json:
     uv run python -m tests.calibration.bootstrap ~/Milliways/Comics/Test
-    
+
     # Mark all entries as thumbnail-quality (e.g. for slimlib):
     uv run python -m tests.calibration.bootstrap ~/Milliways/slimlib \
         --cover-quality thumbnail \
         --output tests/calibration/fixtures-slim.json
-    
+
     # Cross-source calibration only — both ids required:
     uv run python -m tests.calibration.bootstrap \
         ~/Milliways/Comics/Test --require-both
