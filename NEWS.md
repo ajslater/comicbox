@@ -2,55 +2,42 @@
 
 ## v4.0.0 - Online Metadata Tagging
 
-- Online metadata lookup from Metron and ComicVine, with confidence-based
-  auto-write, interactive disambiguation, and unattended bulk modes.
-    - `--online <sources>` enables lookup. `--id <db>:<id>` and
-      `--series-id <db>:<id>` for direct fetch / search constraint.
-    - `--match {ask | careful | auto | eager}` controls how aggressively
-      comicbox writes a match without asking. Default `auto` auto-writes obvious
-      wins and sole plausible matches, prompts on close calls. Per-source
-      overrides via `--match metron:eager`.
-    - `--unattended` turns prompts into skips for cron / batch use.
-    - `--confidence-threshold <DB:>FLOAT` tunes the auto-write bar globally or
-      per source. Default 0.95 (calibrated against a real fixture set; lower
-      values produced too many wrong-volume false positives).
-    - `--api-budget {exhaustive | balanced | fast}` trades matching accuracy for
-      API throughput. Default `balanced` runs today's algorithm with a
-      conservative pre-filter (\~18% fewer calls, zero accuracy change in
-      calibration). `fast` cuts \~60% of calls with a stricter pre-filter,
-      validated to 100% accuracy on the calibration set. `exhaustive` disables
-      the pre-filter for maximum recall. Per-source overrides via
-      `--api-budget metron:fast`. Auto-engages `fast` for batches ≥ 50
-      (ComicVine) or ≥ 500 (Metron) when `--unattended` is set; the suggestion
-      is logged and can be overridden with
-      `--api-budget-per-source <source>:balanced`. See
-      `tasks/online-tagging/api-budget-user-doc.md`.
-    - End-of-run summary shows distinct AUTO_WRITE / PROMPT / SKIP / NO_MATCH
-      counts.
-    - Cross-source disagreement: when Metron's stored `cv_id` and our
-      independent ComicVine match disagree, comicbox logs a WARNING.
-    - `-j N` runs online lookup across N files in parallel. Default 1 (serial);
-      4 is the recommended ceiling for cold-cache batch runs. Higher values are
-      not recommended for cold cache — wall time can balloon 10x+ under
-      sustained rate-limit contention. See `--help` for details.
-- Breaking changes
-    - `OnlineSession.mode` now takes a `comicbox.config.settings.MatchMode` enum
-      directly; the string aliases (`"strict"` / `"normal"` / `"fast"`) and the
-      `SessionMode` TypeAlias are removed. `MatchMode.ASK` is rejected at
-      session construction since the session has no built-in prompt resolver;
-      use a `PromptHandler` or `defer_prompts=True` instead.
-    - Short flag for dry-run is now `-n`. `-y` stays as a deprecation-warned
-      alias through 4.x and is removed in 5.0.
-    - PDFs that hid comicbox metadata as JSON or XML inside their `keywords`
-      field are no longer auto-decoded.
-    - `--accept-only` and `--skip-multiple` are deprecated in favor of
-      `--policy` and `--unattended`. The legacy flags still work but emit a
-      deprecation warning and translate to the new flags. Removed in 5.0.
-    - The ComicTagger metadata format (comictagger.json) is removed. It was
-      never a real comic metadata standard, only an export of an internal
-      ComicTagger data structure with no stability guarantees. Interop with the
-      ComicTagger tool's notes-field stamping (the `Tagged with ComicTagger ...`
-      convention in ComicInfo.xml notes) is unaffected.
+- 🚨 Breaking Changes
+    - Removed the ComicTagger (`comictagger.json`) format. It was never a
+      published standard, only a dump of ComicTagger's internal data structure.
+      Reading ComicTagger's stamps from the ComicInfo.xml notes field is
+      unaffected.
+    - Reorganized config files into nested groups (`general`, `read`, `write`,
+      `convert`, `online`, …). Flat v3 config files must be migrated.
+    - Dry-run is now `-n` (was `-y`).
+    - PDFs no longer decode comicbox metadata hidden in the PDF `keywords`
+      field; `keywords` now reads as plain tags. Metadata embedded as files
+      inside a PDF still reads normally.
+- Fixes
+    - Normalize ComicBookInfo `rating` to the canonical 0-5 scale.
+    - Map Metron price currencies to the correct country.
+    - Harden credentials against accidental leaks into logs.
+- Features
+    - Online metadata tagging from Metron and ComicVine with `--online`.
+      Comicbox searches by the comic's series, issue, and year, ranks the
+      candidates, breaks close calls with cover-image matching, and writes the
+      best match.
+        - `--match {ask | careful | auto | eager}` sets how confidently a match
+          is written without asking; `--prompts never` turns prompts into skips
+          for cron and batch runs.
+        - `--id <db>:<id>` tags by an exact upstream id; `--series-id <db>:<id>`
+          constrains a search to a known series.
+        - Credentials resolve from `--auth`, `COMICBOX_*` environment variables,
+          the config file, or the system keyring.
+        - Online responses are cached on disk (`--cache`, `--cache-ttl`);
+          `--effort` trades API calls for matching accuracy.
+    - Process many files in parallel with `-j N`, including batch online
+      tagging.
+    - New public write API: `comicbox.write.write_metadata` and `bulk_write`.
+- Performance
+    - Faster archive reads: the 7z and RAR backends load lazily, the page list
+      is derived from cached archive state, and that state is released on
+      `close()`.
 
 ## v3.0.3
 
