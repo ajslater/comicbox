@@ -3,8 +3,8 @@
 set -euo pipefail
 FN=$1
 FILES=(
-	comet.xml comicbox-cli.yaml comicbox.yaml
-	comicbox.json comicinfo.xml
+  comet.xml comicbox-cli.yaml comicbox.yaml
+  comicbox.json comicinfo.xml
 )
 rm -f "$FN"
 zip -9 "$FN" "${FILES[@]}" -z <comic-book-info.json
