@@ -3,10 +3,7 @@
 ## v4.0.0 - Online Metadata Tagging
 
 - 🚨 Breaking Changes
-    - Removed the ComicTagger (`comictagger.json`) format. It was never a
-      published standard, only a dump of ComicTagger's internal data structure.
-      Reading ComicTagger's stamps from the ComicInfo.xml notes field is
-      unaffected.
+    - Removed the ComicTagger (`comictagger.json`) format.
     - Reorganized config files into nested groups (`general`, `read`, `write`,
       `convert`, `online`, …). Flat v3 config files must be migrated.
     - Dry-run is now `-n` (was `-y`).
