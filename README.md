@@ -33,13 +33,10 @@ The command line can perform most of comicbox's functions including reading and
 writing metadata recursively, converting between metadata formats and extracting
 pages.
 
-### Limitations and Alternatives
+### Online Taggings
 
-Comicbox does _not_ use popular metadata database APIs or have a GUI!
-
-[Comictagger](https://github.com/comictagger/comictagger) probably the most
-useful comicbook tagger. It does most of what Comicbox does but also
-automatically tags comics with the ComicVine API and has a desktop UI.
+Comicbox can identify and tag comics automatically with online databases. Metron
+and Comic Vine are currently supported.
 
 ## 📜 News
 
