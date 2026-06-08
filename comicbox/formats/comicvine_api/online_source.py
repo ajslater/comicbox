@@ -14,6 +14,7 @@ when needed. Downloaded hashes are cached in
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
@@ -35,7 +36,7 @@ from comicbox.formats.base.online.series_filter import (
 )
 from comicbox.formats.base.online.sources.base import OnlineSource
 from comicbox.formats.sources import MetadataSources
-from comicbox.version import PACKAGE_NAME, VERSION
+from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from simyan.comicvine import Comicvine
@@ -77,7 +78,7 @@ class ComicVineOnlineSource(OnlineSource):
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.key,
             "cache": self._get_cache(),
-            "user_agent": f"{PACKAGE_NAME}/{VERSION}",
+            "user_agent": USER_AGENT,
         }
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
@@ -608,7 +609,10 @@ class CoverHashUrlCache:
     def __init__(self, db_path: Any) -> None:
         """Open / create the sqlite cache file at `db_path`."""
         self._db_path = str(db_path)
-        with self._connect() as conn:
+        # `with conn:` only manages the transaction; sqlite3 context managers
+        # never close the connection, so closing() is needed to avoid leaking
+        # one per call (each method reconnects to stay thread-safe under -j).
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS cover_hashes "
                 "(url TEXT PRIMARY KEY, phash TEXT NOT NULL)"
@@ -619,7 +623,7 @@ class CoverHashUrlCache:
 
     def get(self, url: str) -> str | None:
         """Return the cached pHash for a cover URL, or None if absent."""
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             row = conn.execute(
                 "SELECT phash FROM cover_hashes WHERE url = ?", (url,)
             ).fetchone()
@@ -627,7 +631,7 @@ class CoverHashUrlCache:
 
     def set(self, url: str, phash: str) -> None:
         """Store a pHash for a cover URL, overwriting any previous value."""
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "INSERT OR REPLACE INTO cover_hashes(url, phash) VALUES (?, ?)",
                 (url, phash),
