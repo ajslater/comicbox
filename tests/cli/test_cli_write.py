@@ -239,7 +239,7 @@ def test_cli_action_cbz() -> None:
     new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
     new_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     new_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
-    # In v5, --no-compute-page-count is YAML-only. The CLI conversion path
+    # In v4, --no-compute-page-count is YAML-only. The CLI conversion path
     # therefore computes page_count and writes it into the converted CBZ;
     # the original CBR had no embedded page_count. Normalize both before
     # diffing so the test continues to exercise the actual conversion

@@ -30,7 +30,7 @@ from comicbox.formats.base.online.series_filter import (
 )
 from comicbox.formats.base.online.sources.base import OnlineSource
 from comicbox.formats.sources import MetadataSources
-from comicbox.version import PACKAGE_NAME, VERSION
+from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from mokkari.session import Session
@@ -105,7 +105,7 @@ class MetronOnlineSource(OnlineSource):
                 username=self._credentials.user,  # mokkari keyword
                 passwd=self._credentials.password,
                 cache=self._get_cache(),
-                user_agent=f"{PACKAGE_NAME}/{VERSION}",
+                user_agent=USER_AGENT,
             )
         # Override: mokkari's `api()` factory doesn't expose `bucket`, so
         # construct the Session directly and pass our custom bucket. The
@@ -117,7 +117,7 @@ class MetronOnlineSource(OnlineSource):
             username=username,
             passwd=password,
             cache=self._get_cache(),
-            user_agent=f"{PACKAGE_NAME}/{VERSION}",
+            user_agent=USER_AGENT,
             bucket=bucket,
         )
 

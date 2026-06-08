@@ -38,10 +38,10 @@ from comicbox.formats.base.online.signals import (
 
 # Back-compat alias: legacy tests still spell the resolution policy as
 # ``Policy.ALWAYS_PROMPT / STRICT / NORMAL / EAGER``. Provide a shim that
-# maps each spelling to its v5 ``MatchMode`` so existing test bodies need
+# maps each spelling to its v4 ``MatchMode`` so existing test bodies need
 # no changes beyond the import.
 class Policy:
-    """Shim mapping legacy ``Policy.*`` names to v5 ``MatchMode`` members."""
+    """Shim mapping legacy ``Policy.*`` names to v4 ``MatchMode`` members."""
 
     ALWAYS_PROMPT = MatchMode.ASK
     STRICT = MatchMode.CAREFUL
@@ -469,11 +469,11 @@ def _settings(**overrides) -> OnlineSettings:
     """
     Build OnlineSettings from legacy-shaped kwargs.
 
-    Accepts v4-era keyword names (``confidence_threshold``, ``policy``,
+    Accepts legacy keyword names (``confidence_threshold``, ``policy``,
     ``unattended``, ``policy_per_source``,
     ``confidence_threshold_per_source``,
     ``solo_confidence_threshold_per_source``) and translates them to the
-    v5 nested dataclass tree. Existing test bodies in this file can keep
+    v4 nested dataclass tree. Existing test bodies in this file can keep
     their original phrasing.
     """
     confidence_threshold = overrides.pop("confidence_threshold", 0.85)
@@ -486,9 +486,9 @@ def _settings(**overrides) -> OnlineSettings:
         reason = f"_settings: unexpected kwargs {sorted(overrides)}"
         raise TypeError(reason)
     if policy_per_source:
-        # v5 dropped per-source match-mode overrides. Tests that asserted
+        # v4 dropped per-source match-mode overrides. Tests that asserted
         # them should be skipped / rewritten.
-        reason = "policy_per_source is not supported in v5"
+        reason = "policy_per_source is not supported in v4"
         raise NotImplementedError(reason)
 
     per_source: dict[str, OnlineSourceTuning] = {}
@@ -624,7 +624,7 @@ def test_always_prompt_never_auto_writes() -> None:
     assert res.kind is ResolutionKind.PROMPT
 
 
-@pytest.mark.skip(reason="v5 removed per-source match-mode overrides")
+@pytest.mark.skip(reason="v4 removed per-source match-mode overrides")
 def test_per_source_policy_override() -> None:
     """`policy_per_source['comicvine'] = strict` overrides the global policy."""
     matcher = OnlineMatcher()

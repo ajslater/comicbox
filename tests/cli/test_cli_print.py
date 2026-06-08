@@ -144,37 +144,6 @@ tests/files/Captain Science #001-cix-cbi.cbr
 │   2  │ Captain Science 001/CaptainScience#1_03.jpg │
 │   3  │ Captain Science 001/CaptainScience#1_04.jpg │
 │   4  │ Captain Science 001/CaptainScience#1_05.jpg │
-│   5  │ Captain Science 001/CaptainScience#1_06.jpg │
-│   6  │ Captain Science 001/CaptainScience#1_07.jpg │
-│   7  │ Captain Science 001/CaptainScience#1_08.jpg │
-│   8  │ Captain Science 001/CaptainScience#1_09.jpg │
-│   9  │ Captain Science 001/CaptainScience#1_10.jpg │
-│  10  │ Captain Science 001/CaptainScience#1_11.jpg │
-│  11  │ Captain Science 001/CaptainScience#1_12.jpg │
-│  12  │ Captain Science 001/CaptainScience#1_13.jpg │
-│  13  │ Captain Science 001/CaptainScience#1_14.jpg │
-│  14  │ Captain Science 001/CaptainScience#1_15.jpg │
-│  15  │ Captain Science 001/CaptainScience#1_16.jpg │
-│  16  │ Captain Science 001/CaptainScience#1_17.jpg │
-│  17  │ Captain Science 001/CaptainScience#1_18.jpg │
-│  18  │ Captain Science 001/CaptainScience#1_19.jpg │
-│  19  │ Captain Science 001/CaptainScience#1_20.jpg │
-│  20  │ Captain Science 001/CaptainScience#1_21.jpg │
-│  21  │ Captain Science 001/CaptainScience#1_22.jpg │
-│  22  │ Captain Science 001/CaptainScience#1_23.jpg │
-│  23  │ Captain Science 001/CaptainScience#1_24.jpg │
-│  24  │ Captain Science 001/CaptainScience#1_25.jpg │
-│  25  │ Captain Science 001/CaptainScience#1_26.jpg │
-│  26  │ Captain Science 001/CaptainScience#1_27.jpg │
-│  27  │ Captain Science 001/CaptainScience#1_28.jpg │
-│  28  │ Captain Science 001/CaptainScience#1_29.jpg │
-│  29  │ Captain Science 001/CaptainScience#1_30.jpg │
-│  30  │ Captain Science 001/CaptainScience#1_31.jpg │
-│  31  │ Captain Science 001/CaptainScience#1_32.jpg │
-│  32  │ Captain Science 001/CaptainScience#1_33.jpg │
-│  33  │ Captain Science 001/CaptainScience#1_34.jpg │
-│  34  │ Captain Science 001/CaptainScience#1_35.jpg │
-│  35  │ Captain Science 001/CaptainScience#1_36.jpg │
 │      │ comicinfo.xml                               │
 └──────┴─────────────────────────────────────────────┘
 """
