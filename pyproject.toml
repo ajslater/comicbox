@@ -374,6 +374,8 @@ ignore-overlong-task-comments = true
 ]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/test_import.py" = ["DTZ001"]
+"tests/files/create_cs_archives.py" = ["S603", "S607", "T201"]
+"tests/files/create_macos_resource_fork.py" = ["T201"]
 "tests/validate/cli.py" = ["T201"]
 
 [tool.ruff.lint.pylint]

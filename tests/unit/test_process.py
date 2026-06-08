@@ -30,11 +30,11 @@ from tests.const import (
 CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=True)))
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 FUTURE = datetime(2999, 1, 1, tzinfo=timezone.utc)
-_CIX_CBZ_PAGES = 36
+_CIX_CBZ_PAGES = 5
 
 FIXTURES = (
     (CIX_CBZ_SOURCE_PATH, "CBZ", _CIX_CBZ_PAGES),
-    (CIX_CBI_CBR_SOURCE_PATH, "CBR", 36),
+    (CIX_CBI_CBR_SOURCE_PATH, "CBR", 5),
     (CIX_CBT_SOURCE_PATH, "CBT", 5),
     (CB7_SOURCE_PATH, "CB7", 5),
     (PDF_SOURCE_PATH, "PDF", 4),

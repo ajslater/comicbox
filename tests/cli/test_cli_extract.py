@@ -78,11 +78,10 @@ def test_cli_action_extract_from() -> None:
 def test_cli_action_extract_from_forward() -> None:
     """Test extract files."""
     test_files = (
-        "CaptainScience#1_34.jpg",
-        "CaptainScience#1_35.jpg",
-        "CaptainScience#1_36.jpg",
+        "CaptainScience#1_04.jpg",
+        "CaptainScience#1_05.jpg",
     )
-    _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "33:", test_files)
+    _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "3:", test_files)
 
 
 def test_cli_action_extract_to_backward() -> None:
@@ -98,7 +97,7 @@ def test_cli_action_extract_to_backward() -> None:
 def test_cli_action_extract_from_to() -> None:
     """Test extract files."""
     test_files = [
-        "CaptainScience#1_17.jpg",
-        "CaptainScience#1_18.jpg",
+        "CaptainScience#1_03.jpg",
+        "CaptainScience#1_04.jpg",
     ]
-    _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "16:17", test_files)
+    _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "2:3", test_files)
