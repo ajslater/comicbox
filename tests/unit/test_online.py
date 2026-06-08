@@ -1,4 +1,4 @@
-"""Online credentials / settings resolution tests (v5)."""
+"""Online credentials / settings resolution tests (v4)."""
 
 from argparse import Namespace
 

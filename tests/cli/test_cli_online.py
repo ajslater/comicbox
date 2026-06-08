@@ -1,4 +1,4 @@
-"""CLI flag parsing tests for online tagging options (v5)."""
+"""CLI flag parsing tests for online tagging options (v4)."""
 
 from argparse import Namespace
 
