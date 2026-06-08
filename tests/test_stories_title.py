@@ -1,6 +1,5 @@
 """Test getting pages."""
 
-from argparse import Namespace
 from pprint import pprint
 from types import MappingProxyType
 
@@ -8,8 +7,8 @@ import pytest
 from deepdiff import DeepDiff
 
 from comicbox.box import Comicbox
-from comicbox.config import get_config
 from comicbox.formats.comicbox.schema import STORIES_KEY, TITLE_KEY
+from tests.const import PRINT_CONFIG
 
 STORIES = {"a": {"identifiers": {"comicvine": {"key": "123"}}}, "d": {}}
 TITLE = "a; b; c"
@@ -43,9 +42,6 @@ FIXTURES = MappingProxyType(
             ),
         ),
     }
-)
-PRINT_CONFIG = get_config(
-    Namespace(comicbox=Namespace(print=Namespace(phases="snmcp")))
 )
 
 

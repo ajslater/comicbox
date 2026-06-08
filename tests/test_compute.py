@@ -8,17 +8,11 @@ from types import MappingProxyType
 from dateutil.tz import tzutc
 
 from comicbox.box import Comicbox
-from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comic_info.schema import ComicInfoSchema
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
-from tests.const import TEST_METADATA_DIR
+from tests.const import PRINT_CONFIG, TEST_METADATA_DIR
 from tests.util import assert_diff
-
-PRINT_CONFIG = get_config(
-    Namespace(comicbox=Namespace(print=Namespace(phases="snmcp")))
-)
-
 
 DATE_FROM_NOTES_IMPORT = TEST_METADATA_DIR / "comicinfo-notes-date.xml"
 DATE_FROM_NOTES_MD = MappingProxyType(

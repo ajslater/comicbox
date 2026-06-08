@@ -4,8 +4,6 @@ from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
 
-from ruamel.yaml.timestamp import TimeStamp
-
 from comicbox.config import get_config
 from comicbox.version import PACKAGE_NAME, VERSION
 
@@ -15,7 +13,6 @@ TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
 TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"
 TMP_ROOT_DIR = Path("/tmp")
-SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 
 # SOURCE PATHS
 EMPTY_FN = "empty.cbz"
@@ -42,6 +39,9 @@ PDF_SOURCE_PATH = TEST_FILES_DIR / PDF_FN
 
 # CONFIGS
 READ_CONFIG_EMPTY = get_config(Namespace(comicbox=Namespace()))
+PRINT_CONFIG = get_config(
+    Namespace(comicbox=Namespace(print=Namespace(phases="snmcp")))
+)
 
 TEST_DTTM_STR = "1970-01-01T00:00:00Z"
 _D_TUPLE = (1970, 1, 1)
@@ -55,5 +55,3 @@ TEST_WRITE_NOTES = (
     f"Tagged with {PACKAGE_NAME} {VERSION} on {TEST_DTTM_STR} "
     f"[Issue ID {_IDENT}] urn:comicvine:issue:145269"
 )
-
-TEST_TIMESTAMP = TimeStamp(*_D_TUPLE)
