@@ -60,7 +60,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "4.0.0a1"
+version = "4.0.0a2"
 [[project.authors]]
 name = "AJ Slater"
 email = "aj@slater.net"
@@ -385,14 +385,6 @@ max-args = 8
 python = "./.venv"
 python-version = "3.10"
 
-[tool.ty.rules]
-# Marshmallow's SchemaMeta metaclass annotates `Meta: type`, so ty resolves
-# `<Schema>.Meta` to the opaque `type` instead of the concrete nested class and
-# cannot compute an MRO for `class Meta(<Schema>.Meta)`. That subclassing is the
-# documented Marshmallow idiom and basedpyright accepts it, so the warning is a
-# false positive.
-unsupported-base = "ignore"
-
 [tool.ty.src]
 exclude = [
   "**/.*",
@@ -405,6 +397,14 @@ exclude = [
   "typings",
   "vulture_ignorelist.py",
 ]
+
+[tool.ty.rules]
+# Marshmallow's SchemaMeta metaclass annotates `Meta: type`, so ty resolves
+# `<Schema>.Meta` to the opaque `type` instead of the concrete nested class and
+# cannot compute an MRO for `class Meta(<Schema>.Meta)`. That subclassing is the
+# documented Marshmallow idiom and basedpyright accepts it, so the warning is a
+# false positive.
+unsupported-base = "ignore"
 
 [tool.vulture]
 exclude = [
