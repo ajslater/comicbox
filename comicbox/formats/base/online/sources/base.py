@@ -52,6 +52,11 @@ class OnlineSource(ABC):
         # comparison; refine later if needed.
         self.api_call_counts: dict[str, int] = {}
         self.on_rate_limit: Any = None
+        # Optional retry-sleep override consumed by the with_retry decorator
+        # at call time (see retry._resolve_sleep). OnlineSession wires this
+        # to its cancel event so callers can interrupt rate-limit waits; the
+        # callable may raise to abort the retry loop.
+        self.retry_sleep: Any = None
 
     def _record_api_call(self, method: str) -> None:
         """Bump `api_call_counts[method]`. Called by source-internal wrappers."""

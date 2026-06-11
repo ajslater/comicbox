@@ -10,7 +10,7 @@ from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from zipremove import ZipFile, is_zipfile
 
@@ -18,7 +18,6 @@ from comicbox._pdf import PDF_ENABLED
 from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -79,7 +78,6 @@ class ComicboxInit:
         config: ComicboxSettings | Namespace | Mapping | None = None,
         metadata: Mapping | None = None,
         fmt: MetadataFormats | None = None,
-        logger: Any = None,
     ) -> None:
         """
         Initialize the archive with a path to the archive.
@@ -87,8 +85,16 @@ class ComicboxInit:
         path: the path to the comic archive
         config: a ComicboxSettings dataclass. If None, Comicbox generates its own from the
             environment.
-        metadata: a comicbox.formats.base.schemas dict to use instead of gathering the metadata
-            from the path.
+        metadata: a comicbox-schema-shaped dict (the root-wrapped form, e.g.
+            ``{"comicbox": {...}}``) to layer onto the metadata gathered from
+            the path.
+        fmt: the MetadataFormats member describing the format of ``metadata``;
+            None means the comicbox format.
+
+        Logging is never (re)configured here: comicbox is a library, and its
+        modules log through whatever loguru sinks the host application
+        configured. The comicbox CLI and worker entry points call
+        ``comicbox.logger.init_logging`` themselves.
         """
         self._path = self._validate_path(path)
         if isinstance(config, ComicboxSettings):
@@ -100,7 +106,6 @@ class ComicboxInit:
             from comicbox.config import get_config
 
             self._config = get_config(config, path=self._path, box=True)
-        init_logging(self._config.general.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:

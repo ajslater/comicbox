@@ -65,7 +65,7 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
+    from collections.abc import Callable, MutableMapping
     from pathlib import Path
 
     from comicbox.config.settings import OnlineSettings
@@ -280,6 +280,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # don't get to overwrite the original.
     _series_cache: MutableMapping[tuple[str, str], int] | None = None
 
+    # Session-supplied retry-sleep override propagated to every active
+    # online source (see set_retry_sleep).
+    _retry_sleep: Callable[[float], None] | None = None
+
     _online_lookup_done_flag: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
     _local_cover_phash_computed: bool = False
@@ -298,6 +302,17 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     ) -> None:
         """Register a session-level series cache for series-first batching."""
         self._series_cache = cache
+
+    def set_retry_sleep(self, sleep: Callable[[float], None] | None) -> None:
+        """
+        Register a retry-sleep override for this box's online sources.
+
+        OnlineSession wires this to a cancel-event wait so a caller's
+        cancel() can interrupt multi-minute rate-limit sleeps instead of
+        blocking until the retry budget plays out. The callable may raise
+        (e.g. OnlineLookupAbortedError) to abort the in-flight lookup.
+        """
+        self._retry_sleep = sleep
 
     def _emit(self, event: Event) -> None:
         """No-op if no handler is registered, else forward the event."""
@@ -361,6 +376,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 self._warn_unconfigured_source(name)
                 continue
             source.on_rate_limit = self._on_source_rate_limit
+            source.retry_sleep = self._retry_sleep
             active.append(source)
         return active
 
@@ -410,14 +426,17 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         schema_class = source.metadata_format.value.schema_class
         return {schema_class.ROOT_TAG: payload}
 
-    def _fetch_explicit_id(self, source: OnlineSource, issue_id: int) -> None:
+    def _fetch_explicit_id(self, source: OnlineSource, issue_id: int) -> bool:
+        """Fetch one issue by id and inject it as a source. True on success."""
         try:
             payload = source.get(issue_id)
+        except OnlineLookupAbortedError:
+            raise
         except Exception as exc:
             logger.warning(
                 f"online {source.name}: fetch by id={issue_id} failed: {exc}"
             )
-            return
+            return False
         wrapped = self._wrap_payload(source, payload)
         self.add_source(
             source.metadata_source,
@@ -425,6 +444,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             fmt=source.metadata_format,
         )
         logger.debug(f"online {source.name}: added id={issue_id}")
+        return True
 
     def _build_profile(self) -> ComicProfile:
         """Read the non-online merged-so-far metadata into a ComicProfile."""
@@ -448,10 +468,16 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             volume=fields.get("volume"),
         )
 
-    def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> None:
-        """Fetch the full record for an accepted candidate and inject it."""
-        self._fetch_explicit_id(source, candidate.issue_id)
+    def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> bool:
+        """
+        Fetch the full record for an accepted candidate and inject it.
+
+        Returns True when the fetch succeeded and metadata was added —
+        acceptance alone isn't a "win" if the follow-up fetch fails.
+        """
+        added = self._fetch_explicit_id(source, candidate.issue_id)
         self._maybe_populate_series_cache(source, candidate)
+        return added
 
     def _maybe_populate_series_cache(
         self, source: OnlineSource, candidate: Candidate
@@ -600,7 +626,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
-    ) -> None:
+    ) -> bool:
         """
         Drive the selector callback for the PROMPT case.
 
@@ -610,6 +636,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         requests a session-level setting change (`set_unattended` /
         `set_policy`) so the new setting takes effect on the current
         candidate set immediately.
+
+        Returns True when the prompt led to accepted metadata.
         """
         current = candidates
         path = getattr(self, "_path", None)
@@ -635,14 +663,18 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
             if action in {"set_unattended", "set_policy"}:
                 if not self._apply_session_action(source, action, payload):
-                    return
+                    return False
                 resolution = self._resolve_existing(source.name, list(current))
-                if self._dispatch_resolution(source, resolution):
-                    return
+                terminal = self._apply_terminal_resolution(
+                    source, resolution, path, context="after session change"
+                )
+                if terminal is not None:
+                    return terminal
                 current = resolution.candidates
                 continue
-            self._dispatch_terminal_prompt_action(source, current, action, payload)
-            return
+            return self._dispatch_terminal_prompt_action(
+                source, current, action, payload
+            )
 
     def _invoke_selector(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
@@ -699,34 +731,61 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """Re-apply policy to an already-ranked candidate list."""
         return OnlineMatcher().resolve(ranked, self._config.online, source_name)
 
-    def _dispatch_resolution(
-        self, source: OnlineSource, resolution: Resolution
-    ) -> bool:
+    def _apply_terminal_resolution(
+        self,
+        source: OnlineSource,
+        resolution: Resolution,
+        path: Path | None,
+        context: str = "",
+    ) -> bool | None:
         """
-        Handle a fresh resolution after a session change.
+        Handle the terminal resolution kinds with logging, stats, and events.
 
-        Returns True when the resolution was terminal (auto-write, skip,
-        no-match) and the prompt loop should exit. Returns False when the
-        resolution is still PROMPT and the caller should loop.
+        The single implementation for both the cold path and the
+        re-resolution after a session change (``context`` only varies the
+        log suffix) so programmatic event consumers see AutoWritten /
+        Skipped / NoMatch on every path.
+
+        Returns None when the resolution is still PROMPT (caller decides
+        how to prompt); True when terminal and the candidate's metadata
+        was added; False when terminal without an accepted result.
         """
+        suffix = f" {context}" if context else ""
         if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
             logger.info(
                 f"online {source.name}: auto-writing "
                 f"id={resolution.chosen.issue_id} "
-                f"(score={resolution.chosen.score:.2f}) after session change"
+                f"(score={resolution.chosen.score:.2f}){suffix}"
             )
             outcome_stats.record_auto_write(source.name)
-            self._accept_candidate(source, resolution.chosen)
-            return True
-        if resolution.kind is ResolutionKind.SKIP:
-            logger.info(f"online {source.name}: skipped after session change")
-            outcome_stats.record_skip(source.name)
-            return True
+            accepted = self._accept_candidate(source, resolution.chosen)
+            self._emit(
+                AutoWritten(
+                    path=path,
+                    source=source.name,
+                    candidate_summary=str(resolution.chosen.issue_id),
+                )
+            )
+            return accepted
         if resolution.kind is ResolutionKind.NO_MATCH:
-            logger.info(f"online {source.name}: no match after session change")
+            logger.info(
+                f"online {source.name}: no match cleared min_confidence{suffix}"
+            )
             outcome_stats.record_no_match(source.name)
-            return True
-        return False
+            self._emit(NoMatch(path=path, source=source.name))
+            return False
+        if resolution.kind is ResolutionKind.SKIP:
+            top = resolution.candidates[0].score if resolution.candidates else 0
+            logger.info(
+                f"online {source.name}: skipped "
+                f"(matcher declined; top={top:.2f}){suffix}"
+            )
+            outcome_stats.record_skip(source.name)
+            self._emit(
+                Skipped(path=path, source=source.name, reason="matcher_declined")
+            )
+            return False
+        return None
 
     def _dispatch_terminal_prompt_action(
         self,
@@ -734,13 +793,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         candidates: tuple[Candidate, ...],
         action: str,
         payload: int | str | None,
-    ) -> None:
+    ) -> bool:
+        """Apply a terminal prompt action. True when metadata was accepted."""
         if action == "choose" and isinstance(payload, int):
             chosen = candidates[payload]
             logger.info(f"online {source.name}: prompt-chose id={chosen.issue_id}")
             outcome_stats.record_prompt_accepted(source.name)
-            self._accept_candidate(source, chosen)
-            return
+            return self._accept_candidate(source, chosen)
         if action == "manual" and isinstance(payload, str):
             try:
                 src_name, _, raw_id = payload.partition(":")
@@ -748,22 +807,22 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             except ValueError:
                 logger.warning(f"online: manual id {payload!r} is not <source>:<int>")
                 outcome_stats.record_prompt_declined(source.name)
-                return
+                return False
             if src_name.strip().lower() != source.name:
                 logger.warning(
                     f"online {source.name}: manual id {payload!r} routes to "
                     f"a different source; skipping"
                 )
                 outcome_stats.record_prompt_declined(source.name)
-                return
+                return False
             outcome_stats.record_prompt_accepted(source.name)
-            self._fetch_explicit_id(source, issue_id)
-            return
+            return self._fetch_explicit_id(source, issue_id)
         if action == "abort":
             reason = "online: aborted by user from prompt"
             raise OnlineLookupAbortedError(reason)
         logger.info(f"online {source.name}: skipped via prompt")
         outcome_stats.record_prompt_declined(source.name)
+        return False
 
     def _run_search(
         self, source: OnlineSource, profile: ComicProfile, path: Path | None
@@ -777,6 +836,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         self._emit(SearchStarted(path=path, source=source.name))
         try:
             candidates = source.search(profile)
+        except OnlineLookupAbortedError:
+            # A cancelled retry sleep aborts the whole lookup, not just
+            # this search.
+            raise
         except Exception as exc:
             logger.warning(f"online {source.name}: search failed: {exc}")
             return None, criteria_summary
@@ -796,44 +859,20 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         source: OnlineSource,
         resolution: Resolution,
         path: Path | None,
-    ) -> None:
-        """Dispatch on resolution kind: auto-write, no-match, skip, or prompt."""
-        if resolution.kind is ResolutionKind.AUTO_WRITE and resolution.chosen:
-            logger.info(
-                f"online {source.name}: auto-writing "
-                f"id={resolution.chosen.issue_id} "
-                f"(score={resolution.chosen.score:.2f})"
-            )
-            outcome_stats.record_auto_write(source.name)
-            self._accept_candidate(source, resolution.chosen)
-            self._emit(
-                AutoWritten(
-                    path=path,
-                    source=source.name,
-                    candidate_summary=str(resolution.chosen.issue_id),
-                )
-            )
-            return
-        if resolution.kind is ResolutionKind.NO_MATCH:
-            logger.info(f"online {source.name}: no match cleared min_confidence")
-            outcome_stats.record_no_match(source.name)
-            self._emit(NoMatch(path=path, source=source.name))
-            return
-        if resolution.kind is ResolutionKind.SKIP:
-            top = resolution.candidates[0].score if resolution.candidates else 0
-            logger.info(
-                f"online {source.name}: skipped (matcher declined; top={top:.2f})"
-            )
-            outcome_stats.record_skip(source.name)
-            self._emit(
-                Skipped(path=path, source=source.name, reason="matcher_declined")
-            )
-            return
-        # ResolutionKind.PROMPT — invoke the selector callback.
-        self._handle_prompt(source, resolution.candidates)
+    ) -> bool:
+        """
+        Dispatch on resolution kind: auto-write, no-match, skip, or prompt.
 
-    def _search_path(self, source: OnlineSource) -> None:
-        """Search → rank → resolve → fetch on accept."""
+        Returns True when the resolution led to accepted metadata.
+        """
+        terminal = self._apply_terminal_resolution(source, resolution, path)
+        if terminal is not None:
+            return terminal
+        # ResolutionKind.PROMPT — invoke the selector callback.
+        return self._handle_prompt(source, resolution.candidates)
+
+    def _search_path(self, source: OnlineSource) -> bool:
+        """Search → rank → resolve → fetch on accept. True when accepted."""
         profile = self._build_profile()
         path = getattr(self, "_path", None)
         if not (profile.series or profile.issue or profile.year):
@@ -842,18 +881,18 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 "series, issue#, or year from the comic's metadata or "
                 f"filename. Use --id {source.name}:<issue_id> to tag by id."
             )
-            return
+            return False
         candidates, criteria_summary = self._run_search(source, profile, path)
         if candidates is None:
-            return
+            return False
         if not candidates:
             logger.info(
                 f"online {source.name}: 0 candidates for {criteria_summary} "
                 "(no matching issues in the database)"
             )
-            return
+            return False
         resolution = self._resolve_with_matcher(source.name, candidates)
-        self._apply_resolution(source, resolution, path)
+        return self._apply_resolution(source, resolution, path)
 
     def _lookup_one_source(self, source: OnlineSource) -> bool:
         """
@@ -895,10 +934,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if not online.lookup.rematch and self._try_series_cache_lookup(source):
             return True
 
-        before = len(self._sources.get(source.metadata_source) or ())
-        self._search_path(source)
-        after = len(self._sources.get(source.metadata_source) or ())
-        return after > before
+        return self._search_path(source)
 
     def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
         """
@@ -923,6 +959,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         except NotImplementedError:
             # Source hasn't implemented the fast path — fall through.
             return False
+        except OnlineLookupAbortedError:
+            raise
         except Exception as exc:
             logger.warning(
                 f"online {source.name}: series-cache lookup_issue "
@@ -950,8 +988,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 candidate_summary=str(candidate.issue_id),
             )
         )
-        self._accept_candidate(source, candidate)
-        return True
+        return self._accept_candidate(source, candidate)
 
     def _first_normalized(self, src: MetadataSources) -> dict | None:
         """First normalized metadata dict from `src`, or None if unset."""

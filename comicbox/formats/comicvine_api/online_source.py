@@ -84,7 +84,10 @@ class ComicVineOnlineSource(OnlineSource):
             kwargs["base_url"] = self._credentials.url
         from comicbox.config.settings import resolve_rate_limit
 
-        limiter = build_comicvine_limiter(resolve_rate_limit(self._settings, self.name))
+        limiter = build_comicvine_limiter(
+            resolve_rate_limit(self._settings, self.name),
+            self.cache_db_path("rate_limit"),
+        )
         if limiter is not None:
             kwargs["limiter"] = limiter
         return Comicvine(**kwargs)

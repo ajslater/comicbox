@@ -160,13 +160,13 @@ def run_with_recording_hook(
     chosen_lock = threading.Lock()
     original = _lookup_module.ComicboxOnlineLookup._accept_candidate
 
-    def recording_accept(self, source, candidate) -> None:
+    def recording_accept(self, source, candidate) -> bool:
         if source.name == "metron":
             path = getattr(self, "_path", None)
             if path is not None:
                 with chosen_lock:
                     chosen[str(path)] = candidate.issue_id
-        original(self, source, candidate)
+        return original(self, source, candidate)
 
     _lookup_module.ComicboxOnlineLookup._accept_candidate = recording_accept  # ty: ignore[invalid-assignment]
     started = time.monotonic()

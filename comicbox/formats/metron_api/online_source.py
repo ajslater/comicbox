@@ -97,7 +97,10 @@ class MetronOnlineSource(OnlineSource):
             )
         from comicbox.config.settings import resolve_rate_limit
 
-        bucket = build_metron_bucket(resolve_rate_limit(self._settings, self.name))
+        bucket = build_metron_bucket(
+            resolve_rate_limit(self._settings, self.name),
+            self.cache_db_path("rate_limit"),
+        )
         if bucket is None:
             # No override: defer to mokkari's default (a process-wide SQLite
             # bucket at the documented 20/min and 5,000/day limits).
@@ -251,11 +254,17 @@ class MetronOnlineSource(OnlineSource):
         # decide between variants which is a different problem.
         return self._to_candidate(issue_list[0], series_id=volume_id)
 
-    @with_retry()
     def _search_by_explicit_series_id(
         self, session: Session, profile: ComicProfile, series_id: int
     ) -> list[Candidate]:
-        """Single-call issue lookup against a user-supplied series id."""
+        """
+        Single-call issue lookup against a user-supplied series id.
+
+        Not decorated with ``@with_retry()``: the API call inside
+        (`_issues_list_with_retry`) carries its own retry budget, and an
+        outer decorator would multiply budgets (8x8 attempts) by replaying
+        the whole lookup after the inner budget is already exhausted.
+        """
         # The user has been explicit about the series id; the soft volume
         # filter would just risk false-zero. Trust the supplied id.
         params = self._build_issue_params(profile, series_id, include_volume=False)
@@ -302,11 +311,16 @@ class MetronOnlineSource(OnlineSource):
         )
         return series_results
 
-    @with_retry()
     @override
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
         Search Metron for candidate issues matching the profile.
+
+        Not decorated with ``@with_retry()``: every API call inside is
+        individually retried by its leaf wrapper (`_series_list_with_retry`,
+        `_issues_list_with_retry`), matching the ComicVine source. An outer
+        decorator here multiplied retry budgets (8x8 whole-search replays of
+        already-exhausted inner budgets — hours of worst-case sleep).
 
         The canonical two-step:
 

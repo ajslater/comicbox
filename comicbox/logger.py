@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from loguru import logger  # noqa: F401
+from loguru import logger
 from typing_extensions import Any
 
 DEBUG = os.environ.get("DEBUG", "")
@@ -38,24 +38,23 @@ def _resolve_sink(sink: Any) -> Any:
 
 def init_logging(
     loglevel: str | int = "INFO",
-    logger_: Any = None,
     log_format: str | None = None,
     sink: Any = None,
 ) -> None:
     """
-    Initialize logging.
+    Initialize logging for comicbox EXECUTABLE entry points.
+
+    Replaces every configured loguru sink with comicbox's own, so this must
+    only run from processes comicbox owns (the CLI Runner, worker
+    initializers, scripts) — never from library code. Library consumers
+    configure loguru themselves; comicbox modules log through whatever
+    sinks the host application set up.
 
     sink: "stdout", "stderr", a file path (str|Path), or any loguru-compatible
         sink. Defaults to sys.stdout. Strings are preferred over file objects
         when this config will travel across processes (file objects don't pickle).
     """
     global _initialized_key  # noqa: PLW0603
-
-    if logger_:
-        global logger  # noqa: PLW0603
-        logger = logger_
-        _initialized_key = (loglevel, log_format, sink)
-        return
 
     key = (loglevel, log_format, sink)
     if _initialized_key == key:

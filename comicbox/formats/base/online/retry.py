@@ -4,7 +4,8 @@ Exponential-backoff retry decorator for online API calls.
 Wraps a callable that talks to an upstream API. Retries transient errors
 (rate-limit, 5xx) with exponential backoff up to `max_retries`. Honors the
 upstream's `retry_after` hint when present (mokkari sets this on
-`RateLimitError`). Auth errors are not retried.
+`RateLimitError`). Permanent failures — auth errors and not-found
+responses — are never retried.
 """
 
 from __future__ import annotations
@@ -75,11 +76,38 @@ def _is_rate_limit(exc: BaseException) -> bool:
     return type(exc).__name__ == "RateLimitError"
 
 
+_AUTH_MARKERS = (
+    "auth",
+    "401",
+    "403",
+    "forbidden",
+    # mokkari raises its generic ApiError with the server's message for
+    # bad Metron credentials; simyan's AuthenticationError carries CV's
+    # marker-less "Invalid API Key".
+    "invalid username",
+    "invalid password",
+    "api key",
+)
+
+
 def _is_auth_error(exc: BaseException) -> bool:
     name = type(exc).__name__
-    return name in {"AuthenticationError", "ApiError"} and any(
-        marker in str(exc).lower() for marker in ("auth", "401", "403", "forbidden")
+    if name == "AuthenticationError":
+        # The class name alone is conclusive; the message is whatever the
+        # server sent (CV: "Invalid API Key", no recognizable marker).
+        return True
+    return name == "ApiError" and any(
+        marker in str(exc).lower() for marker in _AUTH_MARKERS
     )
+
+
+def _is_not_found_error(exc: BaseException) -> bool:
+    """Permanent not-found responses (bad explicit id) — never retriable."""
+    if type(exc).__name__ != "ServiceError":
+        return False
+    if getattr(exc.__cause__, "status_code", None) == 404:  # noqa: PLR2004
+        return True
+    return "not found" in str(exc).lower()
 
 
 # Exceptions that signal programmer errors / bad config — NOT retriable. The
@@ -92,6 +120,7 @@ _NON_RETRIABLE: tuple[type[BaseException], ...] = (
     NameError,
     SyntaxError,
     ValueError,  # bad URL, bad arg, etc.
+    LookupError,  # "issue N not found" from sources; incl. KeyError/IndexError
 )
 
 
@@ -99,9 +128,10 @@ def _is_retriable(exc: BaseException) -> bool:
     """
     Return True for transient errors worth retrying.
 
-    Auth errors and programmer/config errors raise immediately without retry.
+    Auth errors, not-found responses, and programmer/config errors raise
+    immediately without retry.
     """
-    if _is_auth_error(exc):
+    if _is_auth_error(exc) or _is_not_found_error(exc):
         return False
     return not isinstance(exc, _NON_RETRIABLE)
 
@@ -225,6 +255,25 @@ def _notify_rate_limit_listener(
     instance_cb(source_name, delay)
 
 
+def _resolve_sleep(
+    args: tuple[Any, ...], default_sleep: Callable[[float], None]
+) -> Callable[[float], None]:
+    """
+    Prefer a ``retry_sleep`` supplied by the instance at call time.
+
+    The decorator's ``sleep`` argument binds at class-definition time, so a
+    per-session cancellable sleep (OnlineSession wires waits to its cancel
+    event) can only be injected through the instance — the same pattern as
+    the ``on_rate_limit`` listener above. The instance sleep may raise to
+    abort the retry loop; the exception propagates to the caller unchanged.
+    """
+    if args:
+        instance_sleep = getattr(args[0], "retry_sleep", None)
+        if instance_sleep is not None:
+            return instance_sleep
+    return default_sleep
+
+
 def _run_with_retries(
     func: Callable[..., T],
     args: tuple[Any, ...],
@@ -234,6 +283,7 @@ def _run_with_retries(
     sleep: Callable[[float], None],
 ) -> T:
     """Drive ``func`` through the retry budget; re-raise on exhaustion."""
+    sleep = _resolve_sleep(args, sleep)
     last_exc: BaseException | None = None
     attempt = 0
     rate_limit_attempt = 0

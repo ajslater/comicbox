@@ -244,7 +244,8 @@ from comicbox.write import write_metadata
 
 result = write_metadata(
     "comic.cbz",
-    # The patch is the same shape Comicbox.to_dict() returns.
+    # The patch is the contents under the "comicbox" root tag. The
+    # root-wrapped dict Comicbox.to_dict() returns is also accepted.
     {"publisher": {"name": "SmallComics"}, "genres": ["Science Fiction"]},
     formats=["COMIC_INFO"],  # MetadataFormats names; e.g. COMIC_INFO, METRON_INFO
 )

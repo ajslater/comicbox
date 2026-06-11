@@ -149,6 +149,70 @@ def test_cancel_skips_subsequent_files(tmp_path) -> None:
     assert all(r.tags is None for r in results)
 
 
+def test_abort_from_lookup_cancels_the_batch(tmp_path, monkeypatch) -> None:
+    """An 'abort' answer aborts the entire run, not just the current file."""
+    from comicbox.box.online_lookup import OnlineLookupAbortedError
+
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+
+    def raise_abort(self, path):
+        msg = "online: aborted by user from prompt"
+        raise OnlineLookupAbortedError(msg)
+
+    monkeypatch.setattr(OnlineSession, "_run_one", raise_abort)
+    paths = [tmp_path / f"f{i}.cbz" for i in range(3)]
+    results = list(session.tag_many(paths))
+    assert len(results) == 3
+    # The aborting file and every later file come back cancelled, not errored.
+    assert all(r.cancelled for r in results)
+    assert all(r.error is None for r in results)
+    assert session.cancelled is True
+
+
+def test_retry_sleep_wait_aborts_when_cancelled() -> None:
+    """The wired retry sleep aborts the in-flight lookup on cancel()."""
+    from comicbox.box.online_lookup import OnlineLookupAbortedError
+
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session.cancel()
+    with pytest.raises(OnlineLookupAbortedError):
+        session._retry_sleep_wait(0.01)
+
+
+def test_retry_sleep_wait_passes_when_not_cancelled() -> None:
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session._retry_sleep_wait(0.001)  # waits out the delay, no exception
+
+
+# --- session-level prompt actions ----------------------------------------------
+
+
+def test_set_policy_via_handler_persists_across_files() -> None:
+    """A handler's set_policy must outlive the in-flight file's config."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session._sync_session_state(PromptResponse(action="set_policy", payload="eager"))
+    assert session.mode is MatchMode.EAGER
+    assert session._build_config().online.lookup.match == MatchMode.EAGER
+
+
+def test_set_unattended_via_handler_persists_across_files() -> None:
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session._sync_session_state(PromptResponse(action="set_unattended", payload=None))
+    assert session.unattended is True
+    assert session._build_config().online.lookup.prompts == Prompts.NEVER
+
+
+def test_sync_session_state_ignores_malformed_or_ask_policy() -> None:
+    """Bad payloads and ASK (rejected by set_mode) must not raise or stick."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session._sync_session_state(PromptResponse(action="set_policy", payload="bogus"))
+    assert session.mode is MatchMode.AUTO
+    session._sync_session_state(PromptResponse(action="set_policy", payload="ask"))
+    assert session.mode is MatchMode.AUTO
+    session._sync_session_state(PromptResponse(action="choose", payload=0))
+    assert session.mode is MatchMode.AUTO
+
+
 # --- prompt-handler bridging --------------------------------------------------
 
 
