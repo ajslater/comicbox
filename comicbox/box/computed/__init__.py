@@ -114,9 +114,13 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
 
         # Set values
         self._computed = tuple(computed_list)
+        self._computed_dict_formats = self._dict_formats
 
     def get_computed_metadata(self) -> tuple:
         """Get the computed metadata for printing."""
-        if not self._computed:
+        # Recompute when the dict-format context changed: pages/page_count
+        # computation consults _dict_formats, so a result memoized under
+        # one to_dict() format must not leak into calls under another.
+        if not self._computed or self._computed_dict_formats != self._dict_formats:
             self._set_computed_metadata()
         return self._computed

@@ -40,6 +40,7 @@ class ComicboxMetadata(ComicboxComputed):
                 )
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
+        self._metadata_dict_formats = self._dict_formats
 
     def get_internal_metadata(self) -> MappingProxyType:
         """
@@ -47,13 +48,24 @@ class ComicboxMetadata(ComicboxComputed):
 
         Most external applications should use box.to_dict()
         """
-        if not self._metadata:
+        # Recompute when the dict-format context changed — without this,
+        # the first to_dict() format's computed pages froze into the
+        # cache for every later call under a different format. None is
+        # the set_internal_metadata wildcard: pinned for every context.
+        stale = (
+            self._metadata_dict_formats is not None
+            and self._metadata_dict_formats != self._dict_formats
+        )
+        if not self._metadata or stale:
             self._set_computed_merged_metadata()
         return self._metadata
 
     def set_internal_metadata(self, metadata: Mapping) -> None:
         """Programmatically set the raw metadata."""
         self._metadata = MappingProxyType(metadata)
+        # Wildcard: pinned metadata is never recomputed for a different
+        # dict-format context.
+        self._metadata_dict_formats = None
 
     def _to_dict(
         self,

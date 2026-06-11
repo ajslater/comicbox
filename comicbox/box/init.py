@@ -110,6 +110,11 @@ class ComicboxInit:
 
     def _reset_loaded_forward_caches(self) -> None:
         self._merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
+        # The _dict_formats context each cache below was computed under.
+        # None is a wildcard: set_internal_metadata pins metadata for every
+        # context. See get_internal_metadata / get_computed_metadata.
+        self._computed_dict_formats: frozenset | None = frozenset()  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._metadata_dict_formats: frozenset | None = frozenset()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]

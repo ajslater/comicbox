@@ -251,8 +251,11 @@ class ComicboxSources(ComicboxArchive):
         sd = SourceData(metadata, Path(path), fmt)
         self._sources[source].append(sd)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
-        # Clear forward caches
+        # Clear forward caches. _normalized must go too: its getter
+        # skips re-normalization whenever the source key exists, so a
+        # stale entry would silently swallow the metadata just added.
         self._loaded.pop(source, None)
+        self._normalized.pop(source, None)
         self._reset_loaded_forward_caches()
 
     def add_metadata(

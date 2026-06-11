@@ -25,5 +25,8 @@ def get_schema(
     if key not in _schema_cache:
         _schema_cache[key] = cls(path=path, exclude=exclude)
     schema = _schema_cache[key]
+    # Safe on a shared cached instance: set_path writes a thread-local
+    # ContextVar (the warning-prefix path), not instance state, so
+    # concurrent -j N workers don't relabel each other's warnings.
     schema.set_path(path)
     return schema

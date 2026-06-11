@@ -619,10 +619,17 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Runner. Replacing the nested slot via ``object.__setattr__``
         propagates the change to every in-flight worker thread without
         breaking the dataclass invariants for other callers.
+
+        The read-replace-write swap runs under the class-level
+        ``_PROMPT_LOCK`` (never held here — callers run after the locked
+        selector call returns) so two workers resolving prompts
+        back-to-back under ``-j N`` can't lose one of the two changes to
+        a stale snapshot.
         """
-        new_lookup = replace(self._config.online.lookup, **changes)
-        new_online = replace(self._config.online, lookup=new_lookup)
-        object.__setattr__(self._config, "online", new_online)
+        with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
+            new_lookup = replace(self._config.online.lookup, **changes)
+            new_online = replace(self._config.online, lookup=new_lookup)
+            object.__setattr__(self._config, "online", new_online)
 
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
