@@ -112,3 +112,37 @@ def test_on_event_optional_keeps_legacy_behavior() -> None:
     assert path == CIX_CBZ_SOURCE_PATH
     assert exc is None
     assert result["tags"] is not None
+
+
+def test_submit_failures_keep_batch_finished_invariant(monkeypatch) -> None:
+    """
+    Submit-time failures carry index/total and count toward errored.
+
+    They used to bypass the BatchFinished counters and restart the index
+    at 0 for the surviving futures, breaking the documented
+    parsed + short_circuited + errored == total invariant.
+    """
+
+    class _FailingExecutor:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def submit(self, *_args, **_kwargs):
+            msg = "submit failed"
+            raise RuntimeError(msg)
+
+        def shutdown(self, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr("comicbox.process.ProcessPoolExecutor", _FailingExecutor)
+    events: list[Event] = []
+    paths = [CIX_CBZ_SOURCE_PATH, CIX_CBZ_SOURCE_PATH]
+    _drain(iter_process_files(paths, config=CONFIG, on_event=events.append))
+
+    file_errors = [e for e in events if isinstance(e, FileError)]
+    assert [e.index for e in file_errors] == [0, 1]
+    assert all(e.total == 2 for e in file_errors)
+    finished = events[-1]
+    assert isinstance(finished, BatchFinished)
+    assert finished.errored == 2
+    assert finished.parsed + finished.short_circuited + finished.errored == 2

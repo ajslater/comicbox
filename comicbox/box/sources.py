@@ -9,6 +9,7 @@ from loguru import logger
 
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
+from comicbox.exceptions import MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.formats.sources import MetadataSources
@@ -217,7 +218,7 @@ class ComicboxSources(ComicboxArchive):
             source_data_list = func(self)
         else:
             reason = f"{source} not a valid source metadata key."
-            raise ValueError(reason)
+            raise MetadataError(reason)
 
         if source_data_list:
             source_data_list = tuple(source_data_list)

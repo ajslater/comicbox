@@ -37,11 +37,15 @@ from comicbox.events import (
     FileParsed,
     FileShortCircuited,
 )
+
+# Historical import path for WriteValidationError; the definition lives in
+# comicbox.exceptions so it shares the ComicboxError base without cycles.
+from comicbox.exceptions import WriteValidationError as WriteValidationError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable, Generator, Iterable, Iterator
     from pathlib import Path
 
     from comicbox.config.settings import ComicboxSettings
@@ -56,10 +60,6 @@ FormatName: TypeAlias = str  # Matches MetadataFormats.name; e.g. "COMIC_INFO".
 # on disk IO. Codex can bump this if its workload calls for it.
 _MAX_CONCURRENT_WRITES = 8
 _write_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT_WRITES)
-
-
-class WriteValidationError(Exception):
-    """Raised when write_metadata inputs are inconsistent or invalid."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,9 +220,16 @@ def bulk_write(
     stop_on_error: bool = False,
     cancel: threading.Event | None = None,
     base_config: ComicboxSettings | None = None,
-) -> Iterator[WriteResult]:
+) -> Generator[WriteResult, None, None]:
     """
     Write metadata to many files in parallel.
+
+    Returns an iterator that MUST be drained: writes are submitted in a
+    bounded window as results are consumed, so discarding the iterator
+    without iterating performs no writes. Input handling, the
+    ``BatchStarted`` event, and pool creation happen eagerly at call
+    time. Abandoning the iterator midway never blocks: queued writes are
+    cancelled and in-flight ones finish in their worker threads.
 
     Yields :class:`WriteResult` per file in *completion* order, not
     submission order. Caller may pass a ``cancel`` :class:`threading.Event`;
@@ -242,31 +249,60 @@ def bulk_write(
         cancel = threading.Event()
     if on_event is not None:
         on_event(BatchStarted(total=total))
-
-    parsed = 0
-    errored = 0
+    # Eager pool creation; its threads only spawn on first submit, so a
+    # never-iterated iterator leaks nothing.
+    pool = ThreadPoolExecutor(max_workers=workers)
     # Submission window matches the pool width so the pool stays saturated
     # while no item waits in the pool's internal queue beyond cancel's reach.
     window = workers or _MAX_CONCURRENT_WRITES
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        try:
-            for result, ok in _run_bulk_write(
-                pool,
-                item_list,
-                window=window,
-                base_config=base_config,
-                total=total,
-                on_event=on_event,
-                stop_on_error=stop_on_error,
-                cancel=cancel,
-            ):
-                if result.error is not None:
-                    errored += 1
-                elif ok:
-                    parsed += 1
-                yield result
-        finally:
-            _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
+    return _drain_bulk_write(
+        pool,
+        item_list,
+        window=window,
+        base_config=base_config,
+        total=total,
+        on_event=on_event,
+        stop_on_error=stop_on_error,
+        cancel=cancel,
+    )
+
+
+def _drain_bulk_write(
+    pool: ThreadPoolExecutor,
+    items: list[BulkWriteItem],
+    *,
+    window: int,
+    base_config: ComicboxSettings | None,
+    total: int,
+    on_event: EventHandler | None,
+    stop_on_error: bool,
+    cancel: threading.Event | None,
+) -> Generator[WriteResult, None, None]:
+    """Drain the bulk-write pipeline; owns the pool's lifecycle."""
+    parsed = 0
+    errored = 0
+    try:
+        for result, ok in _run_bulk_write(
+            pool,
+            items,
+            window=window,
+            base_config=base_config,
+            total=total,
+            on_event=on_event,
+            stop_on_error=stop_on_error,
+            cancel=cancel,
+        ):
+            if result.error is not None:
+                errored += 1
+            elif ok:
+                parsed += 1
+            yield result
+    finally:
+        # Never block here: on abandonment this runs from the generator's
+        # close(), and waiting out queued CBZ repacks would stall the
+        # caller's error handling. Mirrors iter_process_files.
+        pool.shutdown(wait=False, cancel_futures=True)
+        _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
 
 
 def _emit_write_event(

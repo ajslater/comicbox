@@ -45,6 +45,10 @@ from comicbox.events import (
     SeriesIdentified,
     Skipped,
 )
+
+# Historical import path for OnlineLookupAbortedError; defined in
+# comicbox.exceptions so it shares the ComicboxError base.
+from comicbox.exceptions import OnlineLookupAbortedError as OnlineLookupAbortedError
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.matcher import (
@@ -74,10 +78,6 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
     from comicbox.formats.comicvine_api.online_source import CoverHashUrlCache
-
-
-class OnlineLookupAbortedError(Exception):
-    """Raised when the selector callback returns ('abort', None)."""
 
 
 # Source factories let tests substitute mocks without monkey-patching imports.

@@ -34,7 +34,10 @@ from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,
 )
-from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.base.online.sources.base import (
+    OnlineSource,
+    refresh_cache_unlink_once,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -65,14 +68,19 @@ class ComicVineOnlineSource(OnlineSource):
         from simyan.cache.sqlite_cache import SQLiteCache
 
         cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH and cache_path.exists():
-            cache_path.unlink()
-            logger.debug(f"refresh-cache: removed {cache_path}")
+        if cache_mode is CacheMode.REFRESH:
+            refresh_cache_unlink_once(cache_path)
         ttl = self._settings.cache.ttl
         expiry = ttl if ttl.total_seconds() > 0 else None
         return SQLiteCache(path=cache_path, expiry=expiry)
 
     def _get_session(self) -> Comicvine:
+        """Build the simyan client once per source lifetime, then reuse it."""
+        if self._client is None:
+            self._client = self._build_session()
+        return self._client
+
+    def _build_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
         kwargs: dict[str, Any] = {

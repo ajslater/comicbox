@@ -332,6 +332,46 @@ def test_bulk_write_cancel_mid_batch_stops_queued_writes(tmp_path: Path) -> None
     assert all(r.cancelled for r in results[1:])
 
 
+def test_bulk_write_emits_batch_started_eagerly(tmp_cbz: Path) -> None:
+    """BatchStarted fires at call time, before the iterator is touched."""
+    items = [
+        BulkWriteItem(
+            path=tmp_cbz,
+            patch={"publisher": {"name": "X"}},
+            mode="replace",
+            formats=frozenset({"COMICBOX_JSON"}),
+        )
+    ]
+    events: list[Event] = []
+    iterator = bulk_write(items, on_event=events.append)
+    assert any(isinstance(e, BatchStarted) for e in events)
+    list(iterator)  # drain so the pool shuts down
+
+
+def test_bulk_write_abandonment_skips_queued_writes(tmp_path: Path) -> None:
+    """Closing the iterator midway leaves unsubmitted files untouched."""
+    items = []
+    for i in range(4):
+        target = tmp_path / f"f{i}.cbz"
+        shutil.copy(CIX_CBZ_SOURCE_PATH, target)
+        items.append(
+            BulkWriteItem(
+                path=target,
+                patch={"publisher": {"name": "Changed"}},
+                mode="replace",
+                formats=frozenset({"COMICBOX_JSON"}),
+            )
+        )
+    iterator = bulk_write(items, workers=1)
+    first = next(iterator)
+    iterator.close()  # must not block on the queued repacks
+    assert first.written is True
+    written = [
+        i.path for i in items if _read_publisher(i.path).get("name") == "Changed"
+    ]
+    assert written == [first.path]
+
+
 def test_bulk_write_reports_per_file_errors(tmp_path: Path) -> None:
     """A bad file in the batch produces a WriteResult.error, others succeed."""
     bad = tmp_path / "bad.cbz"

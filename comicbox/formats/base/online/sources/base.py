@@ -7,10 +7,12 @@ behind a uniform contract the lookup mixin can drive.
 
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from loguru import logger
 from platformdirs import user_cache_path
 
 if TYPE_CHECKING:
@@ -18,6 +20,30 @@ if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
     from comicbox.formats.sources import MetadataSources
+
+# Cache paths already wiped this process under CacheMode.REFRESH.
+_refreshed_cache_paths: set[str] = set()
+_refresh_lock = threading.Lock()
+
+
+def refresh_cache_unlink_once(cache_path: Path) -> None:
+    """
+    Delete a response-cache file once per process for CacheMode.REFRESH.
+
+    REFRESH means "discard stale state at run start", not "disable
+    caching". Clients are rebuilt during a run (and sources per file), so
+    an unguarded unlink wiped the response cache between calls — e.g.
+    between search() and get() of the same file — defeating the
+    +1-API-call-per-unique-volume amortization get() relies on and
+    re-spending API budget on every file of a --refresh-cache batch.
+    """
+    with _refresh_lock:
+        if str(cache_path) in _refreshed_cache_paths:
+            return
+        _refreshed_cache_paths.add(str(cache_path))
+    if cache_path.exists():
+        cache_path.unlink()
+        logger.debug(f"refresh-cache: removed {cache_path}")
 
 
 class OnlineSource(ABC):
@@ -57,6 +83,10 @@ class OnlineSource(ABC):
         # to its cancel event so callers can interrupt rate-limit waits; the
         # callable may raise to abort the retry loop.
         self.retry_sleep: Any = None
+        # Lazily-built upstream client (simyan/mokkari), one per source
+        # lifetime. Without this, every public method call constructed a
+        # fresh client — new HTTP session, sqlite connection, limiter.
+        self._client: Any = None
 
     def _record_api_call(self, method: str) -> None:
         """Bump `api_call_counts[method]`. Called by source-internal wrappers."""

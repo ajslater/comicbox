@@ -23,7 +23,6 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
 from comicbox.box import Comicbox
-from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.config import get_config
 from comicbox.config.settings import (
     MatchMode,
@@ -33,6 +32,11 @@ from comicbox.config.settings import (
     Prompts,
 )
 from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
+
+# OnlineConfigurationError keeps its historical comicbox.online_session
+# import path; the definition lives in comicbox.exceptions so it shares
+# the ComicboxError base.
+from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -69,10 +73,6 @@ __all__ = (
 SourceName: TypeAlias = Literal["metron", "comicvine"]
 
 _KNOWN_SOURCES: frozenset[str] = frozenset({"metron", "comicvine"})
-
-
-class OnlineConfigurationError(Exception):
-    """Raised when OnlineSession inputs are inconsistent or incomplete."""
 
 
 @dataclass(frozen=True, slots=True)

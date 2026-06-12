@@ -252,6 +252,13 @@ result = write_metadata(
 print(result.written)
 ```
 
+Every operational error these APIs raise derives from
+`comicbox.exceptions.ComicboxError` — `ArchiveError`, `ArchiveWriteError`,
+`MetadataError`, `ExportError`, `WriteValidationError`,
+`OnlineConfigurationError`, `OnlineLookupAbortedError`, and
+`UnsupportedArchiveTypeError` — so consumers can `except ComicboxError` without
+swallowing unrelated programming errors.
+
 ## ⚙️ Configuration
 
 Comicbox is configured by command line arguments, an optional config file, and

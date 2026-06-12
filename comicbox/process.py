@@ -192,11 +192,20 @@ def _iter_completed(
     logger: Any,
     on_event: EventHandler | None,
     total: int,
+    *,
+    counters: _OutcomeCounters,
+    start_index: int = 0,
 ) -> Generator[tuple[Path, tuple[ReadResult, BaseException | None]], None, None]:
-    """Yield results as futures complete; mark subsequent paths broken once the pool fails."""
+    """
+    Yield results as futures complete; mark subsequent paths broken once the pool fails.
+
+    ``counters`` and ``start_index`` arrive pre-seeded with any submit-time
+    failures so BatchFinished totals satisfy the documented invariant
+    (parsed + short_circuited + errored == total) and the per-file index
+    sequence matches yield order across both failure kinds.
+    """
     pool_broken = False
-    counters: _OutcomeCounters = {"parsed": 0, "short_circuited": 0, "errored": 0}
-    index = 0
+    index = start_index
     for future in as_completed(futures):
         path = futures[future]
         if pool_broken:
@@ -302,13 +311,24 @@ def iter_process_files(  # noqa: PLR0913
             futures[future] = path
 
         # Surface submit-time failures up front so the index sequence in
-        # events matches the yield order seen by the caller.
-        for path, exc in submit_failures:
+        # events matches the yield order seen by the caller. They seed the
+        # counters and starting index that _iter_completed continues from,
+        # keeping the BatchFinished invariant intact.
+        counters: _OutcomeCounters = {"parsed": 0, "short_circuited": 0, "errored": 0}
+        for index, (path, exc) in enumerate(submit_failures):
+            counters["errored"] += 1
             if on_event is not None:
-                on_event(FileError(path=path, error=str(exc)))
+                on_event(FileError(path=path, index=index, total=total, error=str(exc)))
             yield path, (_empty_read_result(), exc)
 
-        yield from _iter_completed(futures, logger, on_event, total)
+        yield from _iter_completed(
+            futures,
+            logger,
+            on_event,
+            total,
+            counters=counters,
+            start_index=len(submit_failures),
+        )
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 

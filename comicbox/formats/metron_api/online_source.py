@@ -28,7 +28,10 @@ from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,
 )
-from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.base.online.sources.base import (
+    OnlineSource,
+    refresh_cache_unlink_once,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -75,14 +78,19 @@ class MetronOnlineSource(OnlineSource):
         from mokkari.sqlite_cache import SqliteCache
 
         cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH and cache_path.exists():
-            cache_path.unlink()
-            logger.debug(f"refresh-cache: removed {cache_path}")
+        if cache_mode is CacheMode.REFRESH:
+            refresh_cache_unlink_once(cache_path)
         ttl = self._settings.cache.ttl
         expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
         return SqliteCache(db_name=str(cache_path), expire=expire)
 
     def _get_session(self) -> Session:
+        """Build the mokkari client once per source lifetime, then reuse it."""
+        if self._client is None:
+            self._client = self._build_session()
+        return self._client
+
+    def _build_session(self) -> Session:
         from mokkari import api
         from mokkari.session import Session as _MokkariSession
 
