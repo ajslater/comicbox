@@ -168,7 +168,7 @@ def _parse_db_id_list(
 
 @dataclass(frozen=True, slots=True)
 class _RuntimeOnlineInputs:
-    """Bag of CLI-derived online inputs for `_build_online_settings`."""
+    """Bag of CLI-derived online inputs for `build_online_settings`."""
 
     cli_overrides: CliOverrides | None = None
     enabled: bool = False
@@ -354,7 +354,7 @@ def _build_tuning(
     )
 
 
-def _build_online_settings(
+def build_online_settings(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
     *,
@@ -391,7 +391,7 @@ def _resolve_runtime_sources(
     return True, normalized | explicit_id_sources
 
 
-def _runtime_online_inputs(
+def runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
     """Extract online-related runtime values from CLI args (Namespace only)."""
@@ -433,7 +433,7 @@ def _runtime_online_inputs(
     )
 
 
-def _cns_for_overrides(args: Namespace | Mapping | None) -> Namespace | None:
+def cns_for_overrides(args: Namespace | Mapping | None) -> Namespace | None:
     """Locate the inner `args.comicbox` Namespace for CLI overrides, when present."""
     if not isinstance(args, Namespace):
         return None

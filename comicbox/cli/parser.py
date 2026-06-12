@@ -573,7 +573,8 @@ def _add_target_group(parser: ArgumentParser) -> None:
     )
 
 
-def _build_parser() -> ArgumentParser:
+def build_parser() -> ArgumentParser:
+    """Assemble the full comicbox argument parser from the group builders."""
     description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
     if not PDF_ENABLED:
         description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"

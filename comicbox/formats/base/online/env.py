@@ -35,7 +35,7 @@ _CRED_FIELDS = ("user", "pass", "key", "url")
 
 # Online settings env-var suffix → resolved field name.
 # Keep the field names in sync with the per-knob keys
-# ``comicbox.config.online._build_online_settings`` reads from
+# ``comicbox.config.online.build_online_settings`` reads from
 # ``read_online_env()``.
 _BOOL_FIELDS = frozenset({"rematch", "all_sources"})
 _FLOAT_FIELDS = frozenset({"auto_threshold"})

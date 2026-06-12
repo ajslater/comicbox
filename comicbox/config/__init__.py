@@ -22,9 +22,9 @@ from loguru import logger
 from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.online import (
-    _build_online_settings,
-    _cns_for_overrides,
-    _runtime_online_inputs,
+    build_online_settings,
+    cns_for_overrides,
+    runtime_online_inputs,
 )
 from comicbox.config.paths import (
     expand_glob_paths,
@@ -281,9 +281,9 @@ def _build_settings(
     inner: Any = ad.comicbox
     computed: Any = inner.computed
 
-    runtime_inputs = _runtime_online_inputs(args)
-    online = _build_online_settings(
-        inner.online, runtime_inputs, cns=_cns_for_overrides(args)
+    runtime_inputs = runtime_online_inputs(args)
+    online = build_online_settings(
+        inner.online, runtime_inputs, cns=cns_for_overrides(args)
     )
 
     print_block = inner.print

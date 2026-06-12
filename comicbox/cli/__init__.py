@@ -9,7 +9,7 @@ from typing import Any
 from rich import print as rich_print
 
 from comicbox.box.online_lookup import OnlineLookupAbortedError
-from comicbox.cli.parser import _build_parser
+from comicbox.cli.parser import build_parser
 from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.run import Runner
 
@@ -91,7 +91,7 @@ def post_process_args(cns: Namespace) -> None:
 
     Online runtime fields (``--online``, ``--id``, ``--match``, ...)
     stay flat at the top of ``cns`` — they're consumed by
-    ``_runtime_online_inputs`` / ``_build_online_settings`` directly,
+    ``runtime_online_inputs`` / ``build_online_settings`` directly,
     not via confuse layering.
     """
     # General — fold -Q into loglevel.
@@ -118,7 +118,7 @@ def get_args(params: Sequence[str] | None = None) -> Namespace:
     program name and dropped before parsing, mirroring ``sys.argv``. Pass
     ``None`` to parse ``sys.argv`` itself.
     """
-    parser = _build_parser()
+    parser = build_parser()
     if params is not None:
         params = params[1:]
     cns = parser.parse_args(params)

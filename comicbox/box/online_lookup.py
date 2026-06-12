@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from glom import glom
 from loguru import logger
+from typing_extensions import override
 
 from comicbox.box.normalize import ComicboxNormalize
 from comicbox.config.settings import MatchMode, Prompts
@@ -240,6 +241,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # source caches reset because the profile reads non-online sources.
     _profile_cache: ComicProfile | None = None
 
+    @override
     def _reset_loaded_forward_caches(self) -> None:
         super()._reset_loaded_forward_caches()
         self._profile_cache = None
