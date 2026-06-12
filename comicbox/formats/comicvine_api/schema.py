@@ -3,22 +3,13 @@ ComicVine API response schema.
 
 Pass-through schema mirroring the simyan `Issue.model_dump(mode="json")`
 shape under the `comicvine_api` root tag. Field-level mapping happens
-in `comicbox/transforms/comicvine_api/`; the schema here only carries
+in `comicbox/formats/comicvine_api/transform.py`; the schema here only carries
 the dict through unchanged.
 """
 
 from marshmallow.fields import Raw
 
-from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
-
-
-class ComicVineApiSubSchema(JsonSubSchema):
-    """Pass-through holder for simyan issue dicts."""
-
-    class Meta(JsonSubSchema.Meta):
-        """Accept any field the upstream library returns."""
-
-        unknown = "include"
+from comicbox.formats.base.schemas.json_schemas import JsonSchema
 
 
 class ComicVineApiSchema(JsonSchema):

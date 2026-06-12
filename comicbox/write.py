@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import WriteMode, WriteSettings
+from comicbox.config.settings import WriteMode
 from comicbox.events import (
     BatchFinished,
     BatchStarted,
@@ -45,7 +45,7 @@ from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable, Iterator
+    from collections.abc import Generator, Iterable, Iterator
     from pathlib import Path
 
     from comicbox.config.settings import ComicboxSettings
@@ -328,12 +328,15 @@ def _emit_write_event(
         )
         return False
     if result.dry_run_payload is not None:
+        # "dry_run", not "filtered": the latter is the read-workflow
+        # meaning (caller passed full_metadata=False) and misled event
+        # consumers matching on the shared stream.
         on_event(
             FileShortCircuited(
                 path=result.path,
                 index=index,
                 total=total,
-                reason="filtered",
+                reason="dry_run",
             )
         )
         return False
@@ -415,17 +418,8 @@ def _build_write_settings(
 ) -> ComicboxSettings:
     """Layer write.mode / write.formats over a base config."""
     base = base_config or get_config()
-    new_write = WriteSettings(
-        formats=formats,
-        mode=mode,
-        # Carry forward the rest of the base's WriteSettings so callers
-        # who want stamp/etc. via base_config aren't clobbered.
-        stamp=base.write.stamp,
-        stamp_notes=base.write.stamp_notes,
-        delete_all_tags=base.write.delete_all_tags,
-    )
+    # replace() carries every other WriteSettings field forward; the old
+    # field-by-field copy silently reset any newly added field to its
+    # default for every caller passing base_config.
+    new_write = replace(base.write, formats=formats, mode=mode)
     return replace(base, write=new_write)
-
-
-# Default workers for bulk_write — exposed for tests that want to inspect.
-DEFAULT_WORKERS: Callable[[], int] | None = None

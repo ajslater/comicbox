@@ -76,7 +76,7 @@ class ComicboxInit:
         self,
         path: Path | str | None = None,
         config: ComicboxSettings | Namespace | Mapping | None = None,
-        metadata: Mapping | None = None,
+        metadata: Mapping | str | bytes | None = None,
         fmt: MetadataFormats | None = None,
     ) -> None:
         """
@@ -87,7 +87,8 @@ class ComicboxInit:
             environment.
         metadata: a comicbox-schema-shaped dict (the root-wrapped form, e.g.
             ``{"comicbox": {...}}``) to layer onto the metadata gathered from
-            the path.
+            the path. A raw string/bytes blob in any supported format is
+            also accepted (pass ``fmt`` to skip detection).
         fmt: the MetadataFormats member describing the format of ``metadata``;
             None means the comicbox format.
 
