@@ -89,7 +89,6 @@ def test_schema_path_is_thread_local(tmp_path: Path) -> None:
 
 
 def test_mupdf_config_key_present() -> None:
-    """The natural spelling works alongside the legacy 'mudpdf' typo alias."""
+    """The natural spelling."""
     keys = MetadataFormats.PDF.value.config_keys
     assert "mupdf" in keys
-    assert "mudpdf" in keys  # legacy alias retained

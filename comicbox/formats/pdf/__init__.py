@@ -15,9 +15,7 @@ from comicbox.formats.pdf.transform import MuPDFTransform, PDFXmlTransform
 PDF_REGISTRATION = FormatRegistration(
     format=MetadataFormat(
         "MuPDF",
-        # "mudpdf" is a legacy typo alias (shipped since 1.0.0); "mupdf"
-        # is the spelling users actually type.
-        frozenset({"pdf", "mupdf", "mudpdf"}),
+        frozenset({"pdf", "mupdf"}),
         "mupdf.json",
         MuPDFTransform,
         lexer="json",
