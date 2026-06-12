@@ -1,6 +1,7 @@
 """Get Metadata mixin."""
 
 from collections.abc import Mapping
+from copy import deepcopy
 from types import MappingProxyType
 from typing import Any
 
@@ -29,7 +30,10 @@ class ComicboxMetadata(ComicboxComputed):
     def _set_computed_merged_metadata(self) -> None:
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
-        merged_md = dict(merged_md)
+        # Deep copy, not dict(): the mergers below recurse into nested
+        # dicts, and a shallow copy would share (and mutate) the same
+        # nested objects the _merged_metadata cache still references.
+        merged_md = deepcopy(dict(merged_md))
 
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
@@ -40,6 +44,7 @@ class ComicboxMetadata(ComicboxComputed):
                 )
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
+        self._metadata_dict_formats = self._dict_formats
 
     def get_internal_metadata(self) -> MappingProxyType:
         """
@@ -47,13 +52,24 @@ class ComicboxMetadata(ComicboxComputed):
 
         Most external applications should use box.to_dict()
         """
-        if not self._metadata:
+        # Recompute when the dict-format context changed — without this,
+        # the first to_dict() format's computed pages froze into the
+        # cache for every later call under a different format. None is
+        # the set_internal_metadata wildcard: pinned for every context.
+        stale = (
+            self._metadata_dict_formats is not None
+            and self._metadata_dict_formats != self._dict_formats
+        )
+        if not self._metadata or stale:
             self._set_computed_merged_metadata()
         return self._metadata
 
     def set_internal_metadata(self, metadata: Mapping) -> None:
         """Programmatically set the raw metadata."""
         self._metadata = MappingProxyType(metadata)
+        # Wildcard: pinned metadata is never recomputed for a different
+        # dict-format context.
+        self._metadata_dict_formats = None
 
     def _to_dict(
         self,

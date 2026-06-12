@@ -151,7 +151,7 @@ def _arc_to_cb(
         metron_arc, id_type, primary_id_source
     )
     if name:
-        number = metron_arc.get(NUMBER_TAG)  # ty: ignore[invalid-argument-type]
+        number = metron_arc.get(NUMBER_TAG)
         if number is not None:
             comicbox_arc[NUMBER_KEY] = number
     return name, comicbox_arc

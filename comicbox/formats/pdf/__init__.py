@@ -15,7 +15,7 @@ from comicbox.formats.pdf.transform import MuPDFTransform, PDFXmlTransform
 PDF_REGISTRATION = FormatRegistration(
     format=MetadataFormat(
         "MuPDF",
-        frozenset({"pdf", "mudpdf"}),
+        frozenset({"pdf", "mupdf"}),
         "mupdf.json",
         MuPDFTransform,
         lexer="json",

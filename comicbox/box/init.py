@@ -10,7 +10,7 @@ from pathlib import Path
 from tarfile import is_tarfile
 from tarfile import open as tarfile_open
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from zipremove import ZipFile, is_zipfile
 
@@ -18,7 +18,6 @@ from comicbox._pdf import PDF_ENABLED
 from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
-from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -77,9 +76,8 @@ class ComicboxInit:
         self,
         path: Path | str | None = None,
         config: ComicboxSettings | Namespace | Mapping | None = None,
-        metadata: Mapping | None = None,
+        metadata: Mapping | str | bytes | None = None,
         fmt: MetadataFormats | None = None,
-        logger: Any = None,
     ) -> None:
         """
         Initialize the archive with a path to the archive.
@@ -87,8 +85,17 @@ class ComicboxInit:
         path: the path to the comic archive
         config: a ComicboxSettings dataclass. If None, Comicbox generates its own from the
             environment.
-        metadata: a comicbox.formats.base.schemas dict to use instead of gathering the metadata
-            from the path.
+        metadata: a comicbox-schema-shaped dict (the root-wrapped form, e.g.
+            ``{"comicbox": {...}}``) to layer onto the metadata gathered from
+            the path. A raw string/bytes blob in any supported format is
+            also accepted (pass ``fmt`` to skip detection).
+        fmt: the MetadataFormats member describing the format of ``metadata``;
+            None means the comicbox format.
+
+        Logging is never (re)configured here: comicbox is a library, and its
+        modules log through whatever loguru sinks the host application
+        configured. The comicbox CLI and worker entry points call
+        ``comicbox.logger.init_logging`` themselves.
         """
         self._path = self._validate_path(path)
         if isinstance(config, ComicboxSettings):
@@ -100,11 +107,15 @@ class ComicboxInit:
             from comicbox.config import get_config
 
             self._config = get_config(config, path=self._path, box=True)
-        init_logging(self._config.general.loglevel, logger)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:
         self._merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
+        # The _dict_formats context each cache below was computed under.
+        # None is a wildcard: set_internal_metadata pins metadata for every
+        # context. See get_internal_metadata / get_computed_metadata.
+        self._computed_dict_formats: frozenset | None = frozenset()  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._metadata_dict_formats: frozenset | None = frozenset()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed: tuple = ()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -150,6 +161,9 @@ class ComicboxInit:
             return self._archive_is_pdf
         with suppress(OSError):
             if PDFFile.is_pdffile(str(self._path)):
+                # Both attributes get unconditional defaults at the top of
+                # _set_archive_cls; the suppressions cover the documented
+                # init-in-reset-method pattern, not a real lifecycle gap.
                 self._archive_is_pdf = True  # pyright: ignore[reportUninitializedInstanceVariable]
                 self._archive_cls = PDFFile
                 self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -232,18 +246,24 @@ class ComicboxInit:
 
     def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
+        # Every attribute is assigned unconditionally before the early
+        # return so a pathless box has a complete, safe attribute set.
+        # The suppressions cover the documented init-in-reset-method
+        # pattern (__init__ → _reset_archive → here), not a lifecycle gap.
         self._archive_is_pdf: bool = False
         self._pdf_suffix: str = ""
+        self._info_size_attr: str = "file_size"  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._info_fn_attr: str = "filename"  # pyright: ignore[reportUninitializedInstanceVariable]
         if not self._path:
             return
         path = self._path
 
         self._detect_archive_cls(path)
 
-        self._info_size_attr = (  # pyright: ignore[reportUninitializedInstanceVariable]
-            "size" if self._archive_cls == tarfile_open else "file_size"
-        )
-        self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"  # pyright: ignore[reportUninitializedInstanceVariable]
+        if self._archive_cls == tarfile_open:
+            # Tarfile info objects use different attribute names.
+            self._info_size_attr = "size"
+            self._info_fn_attr = "name"
 
     def get_path(self) -> Path | None:
         """Get the path for the archive."""

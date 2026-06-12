@@ -21,13 +21,15 @@ big batch can't starve other disk traffic.
 from __future__ import annotations
 
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import deque
+from collections.abc import Mapping
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import WriteMode, WriteSettings
+from comicbox.config.settings import WriteMode
 from comicbox.events import (
     BatchFinished,
     BatchStarted,
@@ -35,11 +37,15 @@ from comicbox.events import (
     FileParsed,
     FileShortCircuited,
 )
+
+# Historical import path for WriteValidationError; the definition lives in
+# comicbox.exceptions so it shares the ComicboxError base without cycles.
+from comicbox.exceptions import WriteValidationError as WriteValidationError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Mapping
+    from collections.abc import Generator, Iterable, Iterator
     from pathlib import Path
 
     from comicbox.config.settings import ComicboxSettings
@@ -56,10 +62,6 @@ _MAX_CONCURRENT_WRITES = 8
 _write_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT_WRITES)
 
 
-class WriteValidationError(Exception):
-    """Raised when write_metadata inputs are inconsistent or invalid."""
-
-
 @dataclass(frozen=True, slots=True)
 class WriteResult:
     """Per-file outcome of a write."""
@@ -68,6 +70,9 @@ class WriteResult:
     written: bool = False
     dry_run_payload: dict[str, str] | None = None
     error: BaseException | None = None
+    # True when the batch was cancelled before this file's write started
+    # (stop_on_error tripped, or the caller set the cancel event).
+    cancelled: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,14 +97,16 @@ def write_metadata(
     """
     Write metadata to one comic archive.
 
-    ``patch`` is a comicbox-shaped dict (the same shape ``Comicbox.to_dict``
-    returns under the ``"comicbox"`` root); it is wrapped in ``{"comicbox": …}``
-    before being layered onto the merge pipeline.
+    ``patch`` is a comicbox-shaped dict — either the contents *under* the
+    ``"comicbox"`` root tag, or the root-wrapped form ``Comicbox.to_dict``
+    returns (``{"comicbox": {...}}``); the wrapper is detected and
+    unwrapped so the natural round-trip works.
 
     With ``dry_run=True`` no archive is touched; the result's
     ``dry_run_payload`` carries the serialized would-be-written content
     per requested format (keyed by format name).
     """
+    patch = _unwrap_root_tag(patch)
     if not patch:
         msg = "write_metadata(): patch must be a non-empty mapping"
         raise WriteValidationError(msg)
@@ -119,42 +126,74 @@ def write_metadata(
     return WriteResult(path=path, written=True)
 
 
-def _drain_bulk_write_futures(
-    futures: dict[Any, tuple[int, BulkWriteItem]],
+def _run_bulk_write(
+    pool: ThreadPoolExecutor,
+    items: list[BulkWriteItem],
+    *,
+    window: int,
+    base_config: ComicboxSettings | None,
+    total: int,
+    on_event: EventHandler | None,
+    stop_on_error: bool,
+    cancel: threading.Event | None,
+) -> Iterator[tuple[WriteResult, bool]]:
+    """
+    Submit a bounded window of items, drain completions, refill.
+
+    Draining leads submission so a tripped ``cancel`` event genuinely stops
+    work: unsubmitted items are never handed to the pool and are yielded as
+    cancelled results. Yields (result, ok) pairs.
+    """
+    queue = deque(enumerate(items))
+    pending: dict[Future, tuple[int, BulkWriteItem]] = {}
+    while pending or queue:
+        if cancel is not None and cancel.is_set():
+            yield from _flush_cancelled(queue)
+        else:
+            while queue and len(pending) < window:
+                index, item = queue.popleft()
+                future = pool.submit(_write_one, item, base_config, cancel)
+                pending[future] = (index, item)
+        if not pending:
+            break
+        yield from _drain_completed(
+            pending,
+            total=total,
+            on_event=on_event,
+            stop_on_error=stop_on_error,
+            cancel=cancel,
+        )
+
+
+def _flush_cancelled(
+    queue: deque[tuple[int, BulkWriteItem]],
+) -> Iterator[tuple[WriteResult, bool]]:
+    """Drain unsubmitted items as cancelled results."""
+    while queue:
+        _index, item = queue.popleft()
+        yield WriteResult(path=item.path, cancelled=True), False
+
+
+def _drain_completed(
+    pending: dict[Future, tuple[int, BulkWriteItem]],
     *,
     total: int,
     on_event: EventHandler | None,
     stop_on_error: bool,
     cancel: threading.Event | None,
 ) -> Iterator[tuple[WriteResult, bool]]:
-    """Iterate completed futures, emit events, signal cancel. Yields (result, ok)."""
-    for future in as_completed(futures):
-        index, item = futures[future]
+    """Wait for at least one completion; yield and signal cancel on error."""
+    done, _running = wait(pending, return_when=FIRST_COMPLETED)
+    for future in done:
+        index, item = pending.pop(future)
         try:
             result = future.result()
         except Exception as exc:
             result = WriteResult(path=item.path, error=exc)
-        ok = _emit_write_event(result, index, total, on_event)
         if result.error is not None and stop_on_error and cancel is not None:
             cancel.set()
+        ok = _emit_write_event(result, index, total, on_event)
         yield result, ok
-
-
-def _submit_bulk_write_items(
-    pool: ThreadPoolExecutor,
-    items: list[BulkWriteItem],
-    *,
-    base_config: ComicboxSettings | None,
-    cancel: threading.Event | None,
-) -> dict[Any, tuple[int, BulkWriteItem]]:
-    """Submit every item to the pool, short-circuiting if ``cancel`` is already set."""
-    futures: dict[Any, tuple[int, BulkWriteItem]] = {}
-    for index, item in enumerate(items):
-        if cancel is not None and cancel.is_set():
-            break
-        future = pool.submit(_write_one, item, base_config)
-        futures[future] = (index, item)
-    return futures
 
 
 def _emit_batch_finished(
@@ -181,43 +220,89 @@ def bulk_write(
     stop_on_error: bool = False,
     cancel: threading.Event | None = None,
     base_config: ComicboxSettings | None = None,
-) -> Iterator[WriteResult]:
+) -> Generator[WriteResult, None, None]:
     """
     Write metadata to many files in parallel.
 
+    Returns an iterator that MUST be drained: writes are submitted in a
+    bounded window as results are consumed, so discarding the iterator
+    without iterating performs no writes. Input handling, the
+    ``BatchStarted`` event, and pool creation happen eagerly at call
+    time. Abandoning the iterator midway never blocks: queued writes are
+    cancelled and in-flight ones finish in their worker threads.
+
     Yields :class:`WriteResult` per file in *completion* order, not
     submission order. Caller may pass a ``cancel`` :class:`threading.Event`;
-    if set, no new files are submitted (in-flight writes run to
-    completion). ``on_event`` receives the shared :class:`comicbox.events`
+    once set, no new writes start: in-flight writes run to completion and
+    every queued file is reported with ``cancelled=True``. With
+    ``stop_on_error=True`` the first failed write trips the same
+    cancellation (an internal event is created if the caller didn't pass
+    one). ``on_event`` receives the shared :class:`comicbox.events`
     stream (``BatchStarted`` / ``FileParsed`` / ``FileError`` /
-    ``BatchFinished``).
+    ``BatchFinished``); cancelled files emit no per-file event.
     """
     item_list = list(items)
     total = len(item_list)
+    if stop_on_error and cancel is None:
+        # stop_on_error signals through the cancel event; make one if the
+        # caller didn't supply their own.
+        cancel = threading.Event()
     if on_event is not None:
         on_event(BatchStarted(total=total))
+    # Eager pool creation; its threads only spawn on first submit, so a
+    # never-iterated iterator leaks nothing.
+    pool = ThreadPoolExecutor(max_workers=workers)
+    # Submission window matches the pool width so the pool stays saturated
+    # while no item waits in the pool's internal queue beyond cancel's reach.
+    window = workers or _MAX_CONCURRENT_WRITES
+    return _drain_bulk_write(
+        pool,
+        item_list,
+        window=window,
+        base_config=base_config,
+        total=total,
+        on_event=on_event,
+        stop_on_error=stop_on_error,
+        cancel=cancel,
+    )
 
+
+def _drain_bulk_write(
+    pool: ThreadPoolExecutor,
+    items: list[BulkWriteItem],
+    *,
+    window: int,
+    base_config: ComicboxSettings | None,
+    total: int,
+    on_event: EventHandler | None,
+    stop_on_error: bool,
+    cancel: threading.Event | None,
+) -> Generator[WriteResult, None, None]:
+    """Drain the bulk-write pipeline; owns the pool's lifecycle."""
     parsed = 0
     errored = 0
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = _submit_bulk_write_items(
-            pool, item_list, base_config=base_config, cancel=cancel
-        )
-        try:
-            for result, ok in _drain_bulk_write_futures(
-                futures,
-                total=total,
-                on_event=on_event,
-                stop_on_error=stop_on_error,
-                cancel=cancel,
-            ):
-                if result.error is not None:
-                    errored += 1
-                elif ok:
-                    parsed += 1
-                yield result
-        finally:
-            _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
+    try:
+        for result, ok in _run_bulk_write(
+            pool,
+            items,
+            window=window,
+            base_config=base_config,
+            total=total,
+            on_event=on_event,
+            stop_on_error=stop_on_error,
+            cancel=cancel,
+        ):
+            if result.error is not None:
+                errored += 1
+            elif ok:
+                parsed += 1
+            yield result
+    finally:
+        # Never block here: on abandonment this runs from the generator's
+        # close(), and waiting out queued CBZ repacks would stall the
+        # caller's error handling. Mirrors iter_process_files.
+        pool.shutdown(wait=False, cancel_futures=True)
+        _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
 
 
 def _emit_write_event(
@@ -227,6 +312,9 @@ def _emit_write_event(
     on_event: EventHandler | None,
 ) -> bool:
     """Pick + emit the right event for a result. Return True if it was a parse."""
+    if result.cancelled:
+        # Cancelled files never started; they get no per-file event.
+        return False
     if on_event is None:
         return result.error is None and result.dry_run_payload is None
     if result.error is not None:
@@ -240,12 +328,15 @@ def _emit_write_event(
         )
         return False
     if result.dry_run_payload is not None:
+        # "dry_run", not "filtered": the latter is the read-workflow
+        # meaning (caller passed full_metadata=False) and misled event
+        # consumers matching on the shared stream.
         on_event(
             FileShortCircuited(
                 path=result.path,
                 index=index,
                 total=total,
-                reason="filtered",
+                reason="dry_run",
             )
         )
         return False
@@ -256,11 +347,31 @@ def _emit_write_event(
 # --- internals --------------------------------------------------------------
 
 
+def _unwrap_root_tag(patch: Mapping[str, Any]) -> Mapping[str, Any]:
+    """
+    Accept a root-wrapped patch (the exact shape ``Comicbox.to_dict`` returns).
+
+    Without this, the wrapper key would be silently dropped as unknown by
+    the schema and the write would no-op while reporting success.
+    """
+    if set(patch) == {ComicboxSchemaMixin.ROOT_TAG}:
+        inner = patch[ComicboxSchemaMixin.ROOT_TAG]
+        if isinstance(inner, Mapping):
+            return inner
+    return patch
+
+
 def _write_one(
-    item: BulkWriteItem, base_config: ComicboxSettings | None
+    item: BulkWriteItem,
+    base_config: ComicboxSettings | None,
+    cancel: threading.Event | None = None,
 ) -> WriteResult:
     """Per-thread worker. Acquires the global write semaphore."""
     with _write_semaphore:
+        # Re-check after the semaphore wait: the batch may have been
+        # cancelled while this item was queued behind other writes.
+        if cancel is not None and cancel.is_set():
+            return WriteResult(path=item.path, cancelled=True)
         return write_metadata(
             item.path,
             item.patch,
@@ -307,17 +418,8 @@ def _build_write_settings(
 ) -> ComicboxSettings:
     """Layer write.mode / write.formats over a base config."""
     base = base_config or get_config()
-    new_write = WriteSettings(
-        formats=formats,
-        mode=mode,
-        # Carry forward the rest of the base's WriteSettings so callers
-        # who want stamp/etc. via base_config aren't clobbered.
-        stamp=base.write.stamp,
-        stamp_notes=base.write.stamp_notes,
-        delete_all_tags=base.write.delete_all_tags,
-    )
+    # replace() carries every other WriteSettings field forward; the old
+    # field-by-field copy silently reset any newly added field to its
+    # default for every caller passing base_config.
+    new_write = replace(base.write, formats=formats, mode=mode)
     return replace(base, write=new_write)
-
-
-# Default workers for bulk_write — exposed for tests that want to inspect.
-DEFAULT_WORKERS: Callable[[], int] | None = None

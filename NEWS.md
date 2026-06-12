@@ -10,10 +10,23 @@
     - PDFs no longer decode comicbox metadata hidden in the PDF `keywords`
       field; `keywords` now reads as plain tags. Metadata embedded as files
       inside a PDF still reads normally.
+    - Library API: `Comicbox(...)` no longer accepts a `logger=` argument and
+      never reconfigures the host application's logging. Host apps keep their
+      own loguru sinks; the CLI configures its own.
+    - Library API: operational errors derive from
+      `comicbox.exceptions.ComicboxError` (`ArchiveError`, `MetadataError`,
+      `ExportError`, …) instead of raising bare `ValueError`. Consumers can
+      `except ComicboxError`.
 - Fixes
     - Normalize ComicBookInfo `rating` to the canonical 0-5 scale.
     - Map Metron price currencies to the correct country.
     - Harden credentials against accidental leaks into logs.
+    - `write_metadata()` accepts the root-wrapped dict `to_dict()` returns;
+      passing it used to silently write nothing while reporting success.
+    - Metadata added with `add_metadata()` after a read is no longer ignored.
+    - `to_dict()` computes pages and page count correctly when one instance
+      dumps multiple formats.
+    - Exported metadata files no longer end with a trailing blank line.
 - Features
     - Online metadata tagging from Metron and ComicVine with `--online`.
       Comicbox searches by the comic's series, issue, and year, ranks the

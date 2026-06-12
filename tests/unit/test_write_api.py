@@ -144,6 +144,38 @@ def test_write_metadata_rejects_empty_patch(tmp_cbz: Path) -> None:
         write_metadata(tmp_cbz, patch={}, formats=["comic_info"])
 
 
+def test_write_metadata_unwraps_root_wrapped_patch(tmp_cbz: Path) -> None:
+    """The root-wrapped shape to_dict() returns round-trips instead of no-opping."""
+    wrapped = {"comicbox": {"publisher": {"name": "Wrapped"}}}
+    result = write_metadata(
+        tmp_cbz, patch=wrapped, mode="replace", formats=["comicbox_json"]
+    )
+    assert result.written is True
+    assert _read_publisher(tmp_cbz)["name"] == "Wrapped"
+
+
+def test_write_metadata_round_trips_to_dict(tmp_cbz: Path) -> None:
+    """write_metadata(path, cb.to_dict()) must not silently drop the patch."""
+    write_metadata(
+        tmp_cbz,
+        patch={"publisher": {"name": "RoundTrip"}},
+        mode="replace",
+        formats=["comicbox_json"],
+    )
+    with Comicbox(tmp_cbz) as cb:
+        full = cb.to_dict()
+    result = write_metadata(
+        tmp_cbz, patch=full, mode="replace", formats=["comicbox_json"]
+    )
+    assert result.written is True
+    assert _read_publisher(tmp_cbz)["name"] == "RoundTrip"
+
+
+def test_write_metadata_rejects_empty_root_wrapped_patch(tmp_cbz: Path) -> None:
+    with pytest.raises(WriteValidationError, match="non-empty"):
+        write_metadata(tmp_cbz, patch={"comicbox": {}}, formats=["comic_info"])
+
+
 def test_write_metadata_rejects_unknown_mode(tmp_cbz: Path) -> None:
     with pytest.raises(WriteValidationError, match="Unknown mode"):
         write_metadata(
@@ -214,7 +246,7 @@ def test_bulk_write_emits_events(tmp_cbz: Path) -> None:
 
 
 def test_bulk_write_respects_cancel_token(tmp_path: Path) -> None:
-    """Cancelling before submit means no items run."""
+    """Cancelling before submit means no items run; all report cancelled."""
     items = []
     for i in range(3):
         target = tmp_path / f"f{i}.cbz"
@@ -222,7 +254,7 @@ def test_bulk_write_respects_cancel_token(tmp_path: Path) -> None:
         items.append(
             BulkWriteItem(
                 path=target,
-                patch={"publisher": {"name": "x"}},
+                patch={"publisher": {"name": "Changed"}},
                 mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
@@ -230,7 +262,114 @@ def test_bulk_write_respects_cancel_token(tmp_path: Path) -> None:
     cancel = threading.Event()
     cancel.set()
     results = list(bulk_write(items, cancel=cancel))
-    assert results == []
+    assert len(results) == 3
+    assert all(r.cancelled for r in results)
+    assert not any(r.written for r in results)
+    for item in items:
+        assert _read_publisher(item.path).get("name") != "Changed"
+
+
+def test_bulk_write_stop_on_error_cancels_queued_writes(tmp_path: Path) -> None:
+    """A failing first item prevents queued items from being written."""
+    bad = tmp_path / "bad.cbz"
+    bad.write_bytes(b"not a zip")
+    items = [
+        BulkWriteItem(
+            path=bad,
+            patch={"publisher": {"name": "x"}},
+            mode="replace",
+            formats=frozenset({"COMICBOX_JSON"}),
+        )
+    ]
+    good_paths = []
+    for i in range(3):
+        target = tmp_path / f"good{i}.cbz"
+        shutil.copy(CIX_CBZ_SOURCE_PATH, target)
+        good_paths.append(target)
+        items.append(
+            BulkWriteItem(
+                path=target,
+                patch={"publisher": {"name": "Changed"}},
+                mode="replace",
+                formats=frozenset({"COMICBOX_JSON"}),
+            )
+        )
+    # workers=1 guarantees the bad item fails before any good item starts.
+    results = list(bulk_write(items, workers=1, stop_on_error=True))
+    assert len(results) == 4
+    by_path = {r.path: r for r in results}
+    assert by_path[bad].error is not None
+    for path in good_paths:
+        assert by_path[path].cancelled is True
+        assert by_path[path].written is False
+        # And the archives really were left untouched.
+        assert _read_publisher(path).get("name") != "Changed"
+
+
+def test_bulk_write_cancel_mid_batch_stops_queued_writes(tmp_path: Path) -> None:
+    """Setting the caller's cancel event mid-drain cancels queued items."""
+    items = []
+    for i in range(4):
+        target = tmp_path / f"f{i}.cbz"
+        shutil.copy(CIX_CBZ_SOURCE_PATH, target)
+        items.append(
+            BulkWriteItem(
+                path=target,
+                patch={"publisher": {"name": "Changed"}},
+                mode="replace",
+                formats=frozenset({"COMICBOX_JSON"}),
+            )
+        )
+    cancel = threading.Event()
+    results = []
+    for result in bulk_write(items, workers=1, cancel=cancel):
+        results.append(result)
+        cancel.set()
+    assert len(results) == 4
+    # workers=1 means the submission window is 1: the first file finishes,
+    # cancel is set, and the remaining three are never submitted.
+    assert results[0].written is True
+    assert all(r.cancelled for r in results[1:])
+
+
+def test_bulk_write_emits_batch_started_eagerly(tmp_cbz: Path) -> None:
+    """BatchStarted fires at call time, before the iterator is touched."""
+    items = [
+        BulkWriteItem(
+            path=tmp_cbz,
+            patch={"publisher": {"name": "X"}},
+            mode="replace",
+            formats=frozenset({"COMICBOX_JSON"}),
+        )
+    ]
+    events: list[Event] = []
+    iterator = bulk_write(items, on_event=events.append)
+    assert any(isinstance(e, BatchStarted) for e in events)
+    list(iterator)  # drain so the pool shuts down
+
+
+def test_bulk_write_abandonment_skips_queued_writes(tmp_path: Path) -> None:
+    """Closing the iterator midway leaves unsubmitted files untouched."""
+    items = []
+    for i in range(4):
+        target = tmp_path / f"f{i}.cbz"
+        shutil.copy(CIX_CBZ_SOURCE_PATH, target)
+        items.append(
+            BulkWriteItem(
+                path=target,
+                patch={"publisher": {"name": "Changed"}},
+                mode="replace",
+                formats=frozenset({"COMICBOX_JSON"}),
+            )
+        )
+    iterator = bulk_write(items, workers=1)
+    first = next(iterator)
+    iterator.close()  # must not block on the queued repacks
+    assert first.written is True
+    written = [
+        i.path for i in items if _read_publisher(i.path).get("name") == "Changed"
+    ]
+    assert written == [first.path]
 
 
 def test_bulk_write_reports_per_file_errors(tmp_path: Path) -> None:

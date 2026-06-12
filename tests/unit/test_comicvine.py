@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 from typing_extensions import override
 
 from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
-    CoverHashUrlCache,
 )
 from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
 

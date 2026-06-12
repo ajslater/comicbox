@@ -3,6 +3,7 @@
 from pathlib import Path
 from types import MappingProxyType
 
+from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 
 _CBI_STEMS = tuple(
@@ -48,5 +49,5 @@ def guess_format(path: Path | str) -> MetadataFormats | None:
             break
     else:
         reason = f"Can't guess format for {path} suffix {suffix}"
-        raise ValueError(reason)
+        raise MetadataError(reason)
     return fmt

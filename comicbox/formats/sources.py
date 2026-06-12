@@ -13,9 +13,9 @@ from enum import Enum
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MetadataSource:
-    """Metadata source attributes."""
+    """Metadata source attributes. Frozen: these become enum values."""
 
     label: str
     formats: tuple[MetadataFormats, ...] = ()
@@ -66,3 +66,24 @@ class MetadataSources(Enum):
     IMPORT_FILE = MetadataSource("Imported File", _ANY_FORMATS)
     CLI = MetadataSource("Comicbox CLI", _formats_for_source("CLI"))
     API = MetadataSource("API", _formats_for_source("API"))
+
+
+def _validate_registration_source_keys() -> None:
+    """
+    Fail at import when a REGISTRATION declares an unknown source key.
+
+    Source membership is declared with string keys in each format
+    package; a typo would otherwise silently drop the format from that
+    source's masking order.
+    """
+    valid = {member.name for member in MetadataSources}
+    for fmt, registration in FORMAT_REGISTRATIONS.items():
+        if unknown := set(registration.sources) - valid:
+            reason = (
+                f"{fmt.name} REGISTRATION declares unknown source "
+                f"keys {sorted(unknown)}"
+            )
+            raise RuntimeError(reason)
+
+
+_validate_registration_source_keys()

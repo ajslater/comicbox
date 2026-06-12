@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.init import ComicboxArchiveInit
 from comicbox.enums.comicbox import FileTypeEnum
-from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.exceptions import ArchiveError, UnsupportedArchiveTypeError
 
 if TYPE_CHECKING:
     from py7zr.io import BytesIOFactory
@@ -24,7 +24,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
     def _ensure_read_archive(self) -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot read archive without a path."
-            raise ValueError(reason)
+            raise ArchiveError(reason)
 
     def namelist(self) -> tuple[str, ...]:
         """Get list of files in the archive."""

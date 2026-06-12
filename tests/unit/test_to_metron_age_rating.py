@@ -34,6 +34,8 @@ DC_ENUM_PARAMS = [
     (DCAgeRatingEnum.MATURE, MetronAgeRatingEnum.MATURE),
 ]
 COMICINFO_ENUM_PARAMS = [
+    (ComicInfoAgeRatingEnum.UNKNOWN, MetronAgeRatingEnum.UNKNOWN),
+    (ComicInfoAgeRatingEnum.PENDING, MetronAgeRatingEnum.UNKNOWN),
     (ComicInfoAgeRatingEnum.EVERYONE, MetronAgeRatingEnum.EVERYONE),
     (ComicInfoAgeRatingEnum.TEEN, MetronAgeRatingEnum.TEEN),
     (ComicInfoAgeRatingEnum.MA_15_PLUS, MetronAgeRatingEnum.TEEN_PLUS),
@@ -64,6 +66,8 @@ STRING_PARAMS = [
     ("R18+", MetronAgeRatingEnum.MATURE),
     ("X18+", MetronAgeRatingEnum.EXPLICIT),
     ("Adults Only 18+", MetronAgeRatingEnum.ADULT),
+    ("Rating Pending", MetronAgeRatingEnum.UNKNOWN),
+    ("rating pending", MetronAgeRatingEnum.UNKNOWN),
 ]
 NONE_PARAMS = [
     "not a rating",

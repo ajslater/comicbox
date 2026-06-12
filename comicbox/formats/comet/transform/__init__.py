@@ -128,11 +128,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
             MetronRoleEnum.STORY,
             MetronRoleEnum.PLOT,
             MetronRoleEnum.INTERVIEWER,
-            MetronRoleEnum.WRITER,
-            MetronRoleEnum.SCRIPT,
-            MetronRoleEnum.STORY,
-            MetronRoleEnum.PLOT,
-            MetronRoleEnum.INTERVIEWER,
+            # CoMet has no translator tag; writer is its closest credit.
             MetronRoleEnum.TRANSLATOR,
         ),
     }

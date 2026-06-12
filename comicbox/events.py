@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Event:
     """
     Base for all workflow events.
@@ -40,14 +40,14 @@ class Event:
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class BatchStarted(Event):
     """Fired once before the first file is submitted."""
 
     kind: Literal["batch_started"] = "batch_started"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FileShortCircuited(Event):
     """
     Worker decided the embedded metadata had not changed and skipped parse.
@@ -57,18 +57,18 @@ class FileShortCircuited(Event):
                                    the worker only collected envelope fields.
     """
 
-    reason: Literal["mtime_unchanged", "filtered"] = "mtime_unchanged"
+    reason: Literal["mtime_unchanged", "filtered", "dry_run"] = "mtime_unchanged"
     kind: Literal["file_short_circuited"] = "file_short_circuited"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FileParsed(Event):
     """Worker fully parsed embedded metadata."""
 
     kind: Literal["file_parsed"] = "file_parsed"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FileError(Event):
     """Worker raised an exception. ``error`` is the str(exception)."""
 
@@ -76,7 +76,7 @@ class FileError(Event):
     kind: Literal["file_error"] = "file_error"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class BatchFinished(Event):
     """
     Fired once after every file has been delivered.
@@ -103,7 +103,7 @@ ReadEvent: TypeAlias = (
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SearchStarted(Event):
     """Worker is about to query an online source for this file."""
 
@@ -111,7 +111,7 @@ class SearchStarted(Event):
     kind: Literal["search_started"] = "search_started"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SearchCompleted(Event):
     """Online source returned candidate list."""
 
@@ -121,7 +121,7 @@ class SearchCompleted(Event):
     kind: Literal["search_completed"] = "search_completed"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AutoWritten(Event):
     """Matcher accepted a candidate without prompting."""
 
@@ -130,7 +130,7 @@ class AutoWritten(Event):
     kind: Literal["auto_written"] = "auto_written"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SeriesIdentified(Event):
     """
     A series was resolved and cached for series-first batching.
@@ -146,7 +146,7 @@ class SeriesIdentified(Event):
     kind: Literal["series_identified"] = "series_identified"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PromptQueued(Event):
     """Matcher needs human input; prompt dispatched to PromptHandler."""
 
@@ -156,7 +156,7 @@ class PromptQueued(Event):
     kind: Literal["prompt_queued"] = "prompt_queued"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PromptResolved(Event):
     """PromptHandler returned a decision."""
 
@@ -166,7 +166,7 @@ class PromptResolved(Event):
     kind: Literal["prompt_resolved"] = "prompt_resolved"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PromptDeferred(Event):
     """
     OnlineSession is in defer_prompts mode and queued this prompt for later.
@@ -185,7 +185,7 @@ class PromptDeferred(Event):
     kind: Literal["prompt_deferred"] = "prompt_deferred"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class PromptResolvedFromCache(Event):
     """
     OnlineSession auto-applied a cached choice instead of re-prompting.
@@ -201,7 +201,7 @@ class PromptResolvedFromCache(Event):
     kind: Literal["prompt_resolved_from_cache"] = "prompt_resolved_from_cache"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Skipped(Event):
     """Matcher declined to write metadata for this file."""
 
@@ -210,7 +210,7 @@ class Skipped(Event):
     kind: Literal["skipped"] = "skipped"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class NoMatch(Event):
     """No candidate cleared min_confidence."""
 
@@ -218,7 +218,7 @@ class NoMatch(Event):
     kind: Literal["no_match"] = "no_match"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RateLimited(Event):
     """
     Source signaled a rate-limit hit.
@@ -232,7 +232,7 @@ class RateLimited(Event):
     kind: Literal["rate_limited"] = "rate_limited"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FileFinished(Event):
     """Per-file online tagging completed (success, skip, no-match, or error)."""
 

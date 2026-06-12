@@ -6,13 +6,14 @@ from pathlib import Path
 from loguru import logger
 
 from comicbox.box.pages.covers import ComicboxPagesCovers
+from comicbox.exceptions import ExportError
 
 
 def _validate_extract_path(path: Path, dest_dir: Path) -> None:
     """Validate that the extract path doesn't escape the destination directory."""
     if not path.resolve().is_relative_to(dest_dir.resolve()):
         reason = f"Unsafe archive path escapes destination: {path}"
-        raise ValueError(reason)
+        raise ExportError(reason)
 
 
 class ComicboxExtractPages(ComicboxPagesCovers):
@@ -77,7 +78,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                     f"Must extract pages to a directory. {resolved_path!s} "
                     "is not a directory"
                 )
-                raise ValueError(reason)
+                raise ExportError(reason)
             self._extract_all_pagenames(pagenames, resolved_path)
 
     def _extract_pagenames(

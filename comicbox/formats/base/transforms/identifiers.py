@@ -160,14 +160,6 @@ def urls_to_cb(urls: Any) -> dict:
     return comicbox_identifiers
 
 
-def urls_transform_to_cb(urls_tag: str) -> MetaSpec:
-    """Transform urls tags to comicbox identifiers."""
-    return MetaSpec(
-        key_map={IDENTIFIERS_KEY: urls_tag},
-        spec=urls_to_cb,
-    )
-
-
 def url_from_cb(
     id_source_str: str,
     comicbox_identifier: dict,

@@ -9,6 +9,7 @@ from loguru import logger
 
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
+from comicbox.exceptions import MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.formats.sources import MetadataSources
@@ -217,7 +218,7 @@ class ComicboxSources(ComicboxArchive):
             source_data_list = func(self)
         else:
             reason = f"{source} not a valid source metadata key."
-            raise ValueError(reason)
+            raise MetadataError(reason)
 
         if source_data_list:
             source_data_list = tuple(source_data_list)
@@ -251,8 +252,20 @@ class ComicboxSources(ComicboxArchive):
         sd = SourceData(metadata, Path(path), fmt)
         self._sources[source].append(sd)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
-        # Clear forward caches
+        self._invalidate_source(source)
+
+    def _invalidate_source(self, source: MetadataSources) -> None:
+        """
+        Invalidate one source's parse caches and everything downstream.
+
+        The single chokepoint for mid-chain invalidation: per-source
+        _loaded AND _normalized entries (the normalize getter skips
+        re-normalization whenever its key exists, so a stale entry would
+        silently swallow newly added metadata), then the merged /
+        computed / final-metadata caches via the shared reset.
+        """
         self._loaded.pop(source, None)
+        self._normalized.pop(source, None)
         self._reset_loaded_forward_caches()
 
     def add_metadata(

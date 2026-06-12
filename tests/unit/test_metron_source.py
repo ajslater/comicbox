@@ -628,3 +628,21 @@ def test_series_id_path_omits_volume_filter(
     assert [c.issue_id for c in candidates] == [700]
     assert len(fake.issues_list_calls) == 1
     assert "series_volume" not in fake.issues_list_calls[0]
+
+
+def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The upstream client is built once per source lifetime, then reused."""
+    creds = OnlineSourceCredentials(user="u", password="p")
+    settings = OnlineSettings()
+    src = MetronOnlineSource(creds, settings)
+    builds = {"n": 0}
+
+    def fake_build():
+        builds["n"] += 1
+        return object()
+
+    monkeypatch.setattr(src, "_build_session", fake_build)
+    first = src._get_session()
+    second = src._get_session()
+    assert first is second
+    assert builds["n"] == 1

@@ -1,6 +1,7 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
 from collections.abc import Mapping
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,15 @@ from loguru import logger
 from marshmallow import Schema
 from marshmallow.error_store import ErrorStore, merge_errors
 from typing_extensions import override
+
+# The archive path of the file currently being loaded/dumped, used to
+# prefix warning messages. A ContextVar rather than schema instance state:
+# schema instances are cached process-wide (see schemas/cache.py) and
+# shared across the -j N worker threads, so an instance attribute would
+# race — one thread's set_path would relabel another thread's in-flight
+# warnings. Each thread (and each task in an event loop) sees its own
+# value.
+_current_path: ContextVar[str | None] = ContextVar("comicbox_schema_path", default=None)
 
 
 class ClearingErrorStore(ErrorStore):
@@ -64,9 +74,14 @@ class ClearingErrorStoreSchema(Schema):
     SUPPRESS_ERRORS: bool = True
     _IGNORE_ERRORS: frozenset[str] = frozenset({"Field may not be null."})
 
+    @property
+    def _path(self) -> str | None:
+        """Current thread's file-path log prefix (see _current_path)."""
+        return _current_path.get()
+
     def set_path(self, path: Path | str | None) -> None:
-        """Set the path for error messages."""
-        self._path = str(path) if path else None
+        """Set this thread's path prefix for error messages."""
+        _current_path.set(str(path) if path else None)
 
     def __init__(
         self,
@@ -75,7 +90,11 @@ class ClearingErrorStoreSchema(Schema):
         **kwargs: Any,
     ) -> None:
         """Initialize path and always use partial."""
-        self._path = path = str(path) if path else path
+        if path is not None:
+            # Only set when explicitly supplied: marshmallow lazily
+            # constructs Nested sub-schemas with no path mid-load, and
+            # that must not clear the in-flight file's prefix.
+            self.set_path(path)
         kwargs["partial"] = True
         ignore_errors = (
             frozenset() if ignore_errors is None else frozenset(ignore_errors)

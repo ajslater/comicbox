@@ -1,12 +1,14 @@
 """Computed metadata methods."""
 
 from collections.abc import Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
+from loguru import logger
 
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
 from comicbox.formats.base.fields.enum_fields import OriginalFormatField
@@ -44,9 +46,20 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         match = ORIGINAL_FORMAT_RE.search(scan_info)
         if not match:
             return None
-        original_format = match.group(ORIGINAL_FORMAT_KEY)
-        original_format = OriginalFormatField().deserialize(original_format)
-        return {ORIGINAL_FORMAT_KEY: match.group(ORIGINAL_FORMAT_KEY)}
+        try:
+            # Normalize through the field so the computed value matches the
+            # canonical enum form every other original_format path uses.
+            original_format = OriginalFormatField().deserialize(
+                match.group(ORIGINAL_FORMAT_KEY)
+            )
+        except Exception as exc:
+            # Garbage scan_info must not abort the whole computed pass —
+            # warn-and-skip matches the other computed actions.
+            logger.warning(f"Could not normalize original_format from scan_info: {exc}")
+            return None
+        if not original_format:
+            return None
+        return {ORIGINAL_FORMAT_KEY: original_format}
 
     def _get_computed_from_reprints(
         self, sub_data: dict[str, Any]
@@ -99,7 +112,10 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
     def _set_computed_metadata(self) -> None:
         computed_list = []
         merged_md = self.get_merged_metadata()
-        sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})
+        # Deep copy: actions receive sub_data and some (reprints) merge
+        # entries in place; without the copy they'd silently mutate the
+        # cached merged metadata they're supposed to derive from.
+        sub_data = deepcopy(dict(merged_md.get(ComicboxSchemaMixin.ROOT_TAG, {})))
 
         # Compute each
         for label, actions in self.COMPUTED_ACTIONS.items():
@@ -114,9 +130,13 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
 
         # Set values
         self._computed = tuple(computed_list)
+        self._computed_dict_formats = self._dict_formats
 
     def get_computed_metadata(self) -> tuple:
         """Get the computed metadata for printing."""
-        if not self._computed:
+        # Recompute when the dict-format context changed: pages/page_count
+        # computation consults _dict_formats, so a result memoized under
+        # one to_dict() format must not leak into calls under another.
+        if not self._computed or self._computed_dict_formats != self._dict_formats:
             self._set_computed_metadata()
         return self._computed

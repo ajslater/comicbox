@@ -71,3 +71,37 @@ FORMAT_REGISTRATIONS: MappingProxyType[MetadataFormats, FormatRegistration] = (
         }
     )
 )
+
+
+def _validate_registrations() -> None:
+    """
+    Fail at import when the hand-maintained format listings drift.
+
+    The enum and the reverse-lookup map above are maintained by hand from
+    the per-package REGISTRATIONs; without this check a sync mistake
+    (missing entry, mismatched registration, config-key collision)
+    degrades silently into wrong masking order or wrong format selection
+    instead of an immediate error.
+    """
+    seen_keys: dict[str, str] = {}
+    for member in MetadataFormats:
+        registration = FORMAT_REGISTRATIONS.get(member)
+        if registration is None:
+            reason = f"FORMAT_REGISTRATIONS is missing {member.name}"
+            raise RuntimeError(reason)
+        if registration.format is not member.value:
+            reason = (
+                f"FORMAT_REGISTRATIONS[{member.name}] holds a different "
+                "registration than the enum value was built from"
+            )
+            raise RuntimeError(reason)
+        for key in member.value.config_keys:
+            if (other := seen_keys.get(key)) is not None:
+                reason = (
+                    f"config key {key!r} is claimed by both {other} and {member.name}"
+                )
+                raise RuntimeError(reason)
+            seen_keys[key] = member.name
+
+
+_validate_registrations()

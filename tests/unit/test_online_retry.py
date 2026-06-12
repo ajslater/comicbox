@@ -179,6 +179,138 @@ def test_auth_error_does_not_retry() -> None:
     assert sleeps == []
 
 
+def test_auth_error_terminal_without_message_marker() -> None:
+    """Simyan's AuthenticationError carries CV's marker-less 'Invalid API Key'."""
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+    msg = "Invalid API Key"
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise _FakeAuthError(msg)
+
+    with pytest.raises(_FakeAuthError):
+        fn()
+    assert calls == 1
+    assert sleeps == []
+
+
+def test_api_error_with_credential_message_does_not_retry() -> None:
+    """Mokkari raises generic ApiError with the server's credential message."""
+
+    class _FakeApiError(Exception):
+        pass
+
+    _FakeApiError.__name__ = "ApiError"
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+    msg = "Invalid username/password."
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise _FakeApiError(msg)
+
+    with pytest.raises(_FakeApiError):
+        fn()
+    assert calls == 1
+    assert sleeps == []
+
+
+def test_lookup_error_does_not_retry() -> None:
+    """'issue N not found' is permanent — retrying burns budget for nothing."""
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+    msg = "metron: issue 999999 not found"
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise LookupError(msg)
+
+    with pytest.raises(LookupError):
+        fn()
+    assert calls == 1
+    assert sleeps == []
+
+
+def test_service_error_not_found_does_not_retry() -> None:
+    """Simyan maps upstream 404s to ServiceError('Resource not found')."""
+
+    class _FakeServiceError(Exception):
+        pass
+
+    _FakeServiceError.__name__ = "ServiceError"
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+    msg = "Resource not found"
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise _FakeServiceError(msg)
+
+    with pytest.raises(_FakeServiceError):
+        fn()
+    assert calls == 1
+    assert sleeps == []
+
+
+def test_instance_retry_sleep_overrides_decorator_sleep() -> None:
+    """A retry_sleep attribute on the instance wins over the bound sleep."""
+    decorator_sleeps, decorator_sleep = _capture_sleeps()
+    instance_sleeps: list[float] = []
+
+    class _Source:
+        def __init__(self) -> None:
+            self.retry_sleep = instance_sleeps.append
+            self.calls = 0
+
+        @with_retry(max_retries=2, sleep=decorator_sleep)
+        def fetch(self) -> str:
+            self.calls += 1
+            if self.calls == 1:
+                msg = "transient"
+                raise RuntimeError(msg)
+            return "ok"
+
+    source = _Source()
+    assert source.fetch() == "ok"
+    assert decorator_sleeps == []
+    assert instance_sleeps == [1.0]
+
+
+def test_instance_retry_sleep_can_abort_the_retry_loop() -> None:
+    """A raising retry_sleep (cancelled session) propagates immediately."""
+
+    class _CancelledError(Exception):
+        pass
+
+    def cancelled_sleep(_delay: float) -> None:
+        raise _CancelledError
+
+    class _Source:
+        def __init__(self) -> None:
+            self.retry_sleep = cancelled_sleep
+            self.calls = 0
+
+        @with_retry(max_retries=5)
+        def fetch(self) -> str:
+            self.calls += 1
+            msg = "transient"
+            raise RuntimeError(msg)
+
+    source = _Source()
+    with pytest.raises(_CancelledError):
+        source.fetch()
+    assert source.calls == 1
+
+
 def test_generic_delay_caps_at_60s() -> None:
     """Non-rate-limit retries cap at 60s/attempt regardless of attempt count."""
     sleeps, fake_sleep = _capture_sleeps()

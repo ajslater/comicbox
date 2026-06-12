@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.config.settings import resolve_effort
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -24,11 +23,11 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.rate_limits import build_metron_bucket
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.series_filter import (
-    max_results_for,
     should_keep_volume_name,
-    threshold_for,
 )
-from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.base.online.sources.base import (
+    OnlineSource,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -67,22 +66,22 @@ class MetronOnlineSource(OnlineSource):
         return bool(self._credentials.user and self._credentials.password)
 
     def _get_cache(self) -> Any:
-        from comicbox.config.settings import CacheMode
-
-        cache_mode = self._settings.cache.mode
-        if cache_mode is CacheMode.OFF:
+        resolved = self._resolve_response_cache()
+        if resolved is None:
             return None
         from mokkari.sqlite_cache import SqliteCache
 
-        cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH and cache_path.exists():
-            cache_path.unlink()
-            logger.debug(f"refresh-cache: removed {cache_path}")
-        ttl = self._settings.cache.ttl
+        cache_path, ttl = resolved
         expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
         return SqliteCache(db_name=str(cache_path), expire=expire)
 
     def _get_session(self) -> Session:
+        """Build the mokkari client once per source lifetime, then reuse it."""
+        if self._client is None:
+            self._client = self._build_session()
+        return self._client
+
+    def _build_session(self) -> Session:
         from mokkari import api
         from mokkari.session import Session as _MokkariSession
 
@@ -97,7 +96,10 @@ class MetronOnlineSource(OnlineSource):
             )
         from comicbox.config.settings import resolve_rate_limit
 
-        bucket = build_metron_bucket(resolve_rate_limit(self._settings, self.name))
+        bucket = build_metron_bucket(
+            resolve_rate_limit(self._settings, self.name),
+            self.cache_db_path("rate_limit"),
+        )
         if bucket is None:
             # No override: defer to mokkari's default (a process-wide SQLite
             # bucket at the documented 20/min and 5,000/day limits).
@@ -220,29 +222,21 @@ class MetronOnlineSource(OnlineSource):
         )
 
     @override
-    def lookup_issue(
+    def _lookup_issue_in_volume(
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:
         """
         Volume-scoped issue lookup; cheaper than the fuzzy search path.
 
         Calls ``issues_list`` filtered by ``series_id`` + ``number`` — one
-        request, returns ≤1 result on healthy data. Used by the
-        series-first batching path to amortize one search across every
-        issue of a resolved series.
+        request, returns ≤1 result on healthy data. The base class's
+        ``lookup_issue`` wrapper owns the failure semantics.
         """
         session = self._get_session()
         params: dict[str, Any] = {"series_id": volume_id}
         if number := strip_issue_leading_zeros(issue_number):
             params["number"] = number
-        try:
-            issues = self._issues_list_with_retry(session, params)
-        except Exception as exc:
-            logger.warning(
-                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
-                f"number={issue_number!r}) failed: {exc}"
-            )
-            return None
+        issues = self._issues_list_with_retry(session, params)
         issue_list = list(issues)
         if not issue_list:
             return None
@@ -251,11 +245,17 @@ class MetronOnlineSource(OnlineSource):
         # decide between variants which is a different problem.
         return self._to_candidate(issue_list[0], series_id=volume_id)
 
-    @with_retry()
     def _search_by_explicit_series_id(
         self, session: Session, profile: ComicProfile, series_id: int
     ) -> list[Candidate]:
-        """Single-call issue lookup against a user-supplied series id."""
+        """
+        Single-call issue lookup against a user-supplied series id.
+
+        Not decorated with ``@with_retry()``: the API call inside
+        (`_issues_list_with_retry`) carries its own retry budget, and an
+        outer decorator would multiply budgets (8x8 attempts) by replaying
+        the whole lookup after the inner budget is already exhausted.
+        """
         # The user has been explicit about the series id; the soft volume
         # filter would just risk false-zero. Trust the supplied id.
         params = self._build_issue_params(profile, series_id, include_volume=False)
@@ -285,28 +285,26 @@ class MetronOnlineSource(OnlineSource):
         # aggressively than the class default (20 → 5). Mirrors the CV
         # side; cuts the per-series `issues_list` fan-out further at
         # scale.
-        max_series = max_results_for(
-            resolve_effort(self._settings, self.name),
-            default=self._MAX_SERIES_PER_SEARCH,
-        )
+        max_series = self._effort_max_results(self._MAX_SERIES_PER_SEARCH)
         series_results = list(series_results)[:max_series]
-        sample_size = 5
-        sample = ", ".join(
-            f"{_series_display_name(s)} ({s.id})" for s in series_results[:sample_size]
-        )
-        if len(series_results) > sample_size:
-            sample += " ..."
-        logger.debug(
-            f"online {self.name}: {len(series_results)} candidate series for "
-            f"{profile.series!r}: {sample}"
+        self._log_discovery_sample(
+            series_results,
+            lambda s: f"{_series_display_name(s)} ({s.id})",
+            noun="series",
+            query=f"{profile.series!r}",
         )
         return series_results
 
-    @with_retry()
     @override
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
         Search Metron for candidate issues matching the profile.
+
+        Not decorated with ``@with_retry()``: every API call inside is
+        individually retried by its leaf wrapper (`_series_list_with_retry`,
+        `_issues_list_with_retry`), matching the ComicVine source. An outer
+        decorator here multiplied retry budgets (8x8 whole-search replays of
+        already-exhausted inner budgets — hours of worst-case sleep).
 
         The canonical two-step:
 
@@ -454,7 +452,7 @@ class MetronOnlineSource(OnlineSource):
         # `balanced` default this resolves to 0.0 (filter is a no-op),
         # so Phase A behaviour is identical to today's. Phase B
         # calibration picks the real values for `fast`.
-        name_threshold = threshold_for(resolve_effort(self._settings, self.name))
+        name_threshold = self._effort_name_threshold()
 
         candidates: list[Candidate] = []
         for series in series_results:

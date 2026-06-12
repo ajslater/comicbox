@@ -33,6 +33,11 @@ from comicbox.config.settings import (
 )
 from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 
+# OnlineConfigurationError keeps its historical comicbox.online_session
+# import path; the definition lives in comicbox.exceptions so it shares
+# the ComicboxError base.
+from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Sequence
     from pathlib import Path
@@ -68,10 +73,6 @@ __all__ = (
 SourceName: TypeAlias = Literal["metron", "comicvine"]
 
 _KNOWN_SOURCES: frozenset[str] = frozenset({"metron", "comicvine"})
-
-
-class OnlineConfigurationError(Exception):
-    """Raised when OnlineSession inputs are inconsistent or incomplete."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,10 +250,15 @@ class OnlineSession:
         self._all_sources = all_sources
         self._defer_prompts = defer_prompts
         self._series_batching = series_batching
+        # Read config files / env exactly once per session. _build_config
+        # used to call get_config() per file — wasted disk I/O on big
+        # batches plus a behavioral surprise where a config-file edit
+        # mid-batch changed settings for the remaining files.
+        self._base_settings: ComicboxSettings = get_config()
 
         # Cancel token. Set when cancel() is called; checked between files
-        # in tag_many(). Not propagated mid-file — the in-flight per-file
-        # lookup runs to completion before the batch stops.
+        # in tag_many() and consulted by the wired retry sleep
+        # (_retry_sleep_wait), which aborts an in-flight rate-limit wait.
         self._cancel = threading.Event()
         self._state_lock = threading.Lock()
 
@@ -409,6 +415,13 @@ class OnlineSession:
             return OnlineResult(path=path, cancelled=True)
         try:
             tags = self._run_one(path)
+        except OnlineLookupAbortedError:
+            # The handler answered "abort" (or a cancelled retry sleep
+            # aborted an in-flight lookup). Abort means "abort the entire
+            # run", not "skip this file": trip the cancel token so
+            # tag_many drains the remaining paths as cancelled.
+            self.cancel()
+            return OnlineResult(path=path, cancelled=True)
         except Exception as exc:
             if self._on_event is not None:
                 self._on_event(FileError(path=path, error=str(exc)))
@@ -451,9 +464,24 @@ class OnlineSession:
                 cb.set_event_handler(self._on_event)
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
+            cb.set_retry_sleep(self._retry_sleep_wait)
             cb.run_online_lookup()
             payload = cb.to_dict()
         return payload.get("comicbox", {})
+
+    def _retry_sleep_wait(self, delay: float) -> None:
+        """
+        Wait out a retry delay, aborting the lookup when cancel() fires.
+
+        Rate-limit recovery can sleep for minutes per attempt; plain
+        time.sleep would make cancel() wait out the whole budget while
+        the archive sits open. Waiting on the cancel event instead lets
+        a caller interrupt mid-retry; raising aborts the in-flight
+        lookup, which tag() converts into a cancelled result.
+        """
+        if self._cancel.wait(delay):
+            reason = "online: session cancelled during retry wait"
+            raise OnlineLookupAbortedError(reason)
 
     def _bridged_selector(self) -> Callable[..., SelectorResult]:
         """
@@ -506,10 +534,37 @@ class OnlineSession:
                 unattended=self.unattended,
             )
             response = handler.request(prompt)
+            self._sync_session_state(response)
             self._store_prompt_resolution(fingerprint, response, cand_tuple)
             return (response.action, response.payload)
 
         return _selector
+
+    def _sync_session_state(self, response: PromptResponse) -> None:
+        """
+        Mirror session-level prompt actions into the session's own state.
+
+        The box applies set_policy / set_unattended to its per-file config,
+        but _run_one rebuilds that config for every file from the session's
+        _mode / _unattended — without this sync the handler's decision
+        would silently revert on the next file, despite PromptResponse
+        documenting these as session-level actions.
+        """
+        if response.action == "set_unattended":
+            self.set_unattended(unattended=True)
+            return
+        if response.action != "set_policy" or not isinstance(response.payload, str):
+            return
+        try:
+            mode = MatchMode(response.payload)
+        except ValueError:
+            # Malformed payload: the box logs and declines it; nothing to sync.
+            return
+        if mode is MatchMode.ASK:
+            # The session's set_mode rejects ASK (no built-in CLI prompt);
+            # the box still honors it for the in-flight file.
+            return
+        self.set_mode(mode)
 
     def _defer_prompt(
         self,
@@ -597,8 +652,12 @@ class OnlineSession:
         through ``get_config(Namespace(...))`` because some of the fields
         we need to set (``enabled``, ``sources``, per-source auth dict)
         live on runtime-only fields the CLI namespace parser ignores.
+
+        ``mode`` / ``unattended`` are session-mutable, so the cheap
+        ``replace`` layering stays per-file; the disk read happened once
+        in ``__init__``.
         """
-        base = get_config()
+        base = self._base_settings
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=frozenset(self._sources),

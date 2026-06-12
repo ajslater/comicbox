@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+from typing import TYPE_CHECKING
 
 from comicbox.config import get_config
 from comicbox.config.settings import OnlineSourceLimits
@@ -15,39 +16,77 @@ from comicbox.formats.base.online.rate_limits import (
     build_metron_bucket,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 # ----------------------------------------------------- bucket builders
 
 
-def test_metron_bucket_returns_none_without_overrides() -> None:
+def test_metron_bucket_returns_none_without_overrides(tmp_path: Path) -> None:
     """No overrides → upstream library default in use."""
-    assert build_metron_bucket(None) is None
-    assert build_metron_bucket(OnlineSourceLimits()) is None
+    db = tmp_path / "metron_rl.sqlite"
+    assert build_metron_bucket(None, db) is None
+    assert build_metron_bucket(OnlineSourceLimits(), db) is None
 
 
-def test_metron_bucket_built_when_per_minute_set() -> None:
-    """Any override triggers a custom bucket."""
-    bucket = build_metron_bucket(OnlineSourceLimits(per_minute=30))
+def test_metron_bucket_built_when_per_minute_set(tmp_path: Path) -> None:
+    """Any override triggers a custom bucket persisted at db_path."""
+    db = tmp_path / "metron_rl.sqlite"
+    bucket = build_metron_bucket(OnlineSourceLimits(per_minute=30), db)
+    assert bucket is not None
+    # The bucket must persist at the supplied path, not a fresh tempfile.
+    assert db.exists()
+
+
+def test_metron_bucket_built_when_per_day_set(tmp_path: Path) -> None:
+    bucket = build_metron_bucket(
+        OnlineSourceLimits(per_day=10_000), tmp_path / "m.sqlite"
+    )
     assert bucket is not None
 
 
-def test_metron_bucket_built_when_per_day_set() -> None:
-    bucket = build_metron_bucket(OnlineSourceLimits(per_day=10_000))
-    assert bucket is not None
+def test_comicvine_limiter_returns_none_without_overrides(tmp_path: Path) -> None:
+    db = tmp_path / "cv_rl.sqlite"
+    assert build_comicvine_limiter(None, db) is None
+    assert build_comicvine_limiter(OnlineSourceLimits(), db) is None
 
 
-def test_comicvine_limiter_returns_none_without_overrides() -> None:
-    assert build_comicvine_limiter(None) is None
-    assert build_comicvine_limiter(OnlineSourceLimits()) is None
-
-
-def test_comicvine_limiter_built_when_per_second_set() -> None:
-    limiter = build_comicvine_limiter(OnlineSourceLimits(per_second=2))
+def test_comicvine_limiter_built_when_per_second_set(tmp_path: Path) -> None:
+    limiter = build_comicvine_limiter(
+        OnlineSourceLimits(per_second=2), tmp_path / "cv.sqlite"
+    )
     assert limiter is not None
 
 
-def test_comicvine_limiter_built_when_per_hour_set() -> None:
-    limiter = build_comicvine_limiter(OnlineSourceLimits(per_hour=500))
+def test_comicvine_limiter_built_when_per_hour_set(tmp_path: Path) -> None:
+    limiter = build_comicvine_limiter(
+        OnlineSourceLimits(per_hour=500), tmp_path / "cv.sqlite"
+    )
     assert limiter is not None
+
+
+def test_override_buckets_memoized_across_session_builds(tmp_path: Path) -> None:
+    """
+    Same (db_path, limits) → the same bucket object, not a fresh empty one.
+
+    Sessions are rebuilt per API call and sources per file; without
+    memoization every call started a brand-new bucket and the configured
+    override never accumulated state — it limited nothing.
+    """
+    db = tmp_path / "memo_rl.sqlite"
+    limits = OnlineSourceLimits(per_minute=30)
+    first = build_metron_bucket(limits, db)
+    second = build_metron_bucket(OnlineSourceLimits(per_minute=30), db)
+    assert first is second
+    # Different limits → a distinct bucket.
+    third = build_metron_bucket(OnlineSourceLimits(per_minute=10), db)
+    assert third is not first
+
+    cv_limits = OnlineSourceLimits(per_hour=500)
+    cv_db = tmp_path / "memo_cv.sqlite"
+    assert build_comicvine_limiter(cv_limits, cv_db) is build_comicvine_limiter(
+        cv_limits, cv_db
+    )
 
 
 def test_documented_defaults_match_upstream() -> None:

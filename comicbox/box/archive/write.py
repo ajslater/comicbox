@@ -8,6 +8,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.read import ComicboxArchiveRead
+from comicbox.exceptions import ArchiveWriteError
 from comicbox.formats.sources import MetadataSources
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
@@ -27,17 +28,17 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     def _get_new_archive_path(self) -> Path:
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         new_path = self._path.with_suffix(_CBZ_SUFFIX)
         if new_path.is_file() and new_path != self._path:
             reason = f"{new_path} already exists."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         return new_path
 
     def _cleanup_tmp_archive(self, tmp_path: Path, new_path: Path) -> None:
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         old_path = self._path
         tmp_path.replace(new_path)
         self._path: Path | None = new_path
@@ -104,7 +105,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         # copy all files that are *not* metadata files into new archive.
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         infolist = self.infolist()
         for info in infolist:
             filename = self._get_filename_from_info(info)
@@ -132,7 +133,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """In place remove and append to existing zipfile."""
         if not self._path:
             reason = "No zipfile path to write to."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         self.close()
         with ZipFile(self._path, "a") as zf:
             self._archive_remove_metadata_files(zf)
@@ -143,7 +144,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """Create new zipfile."""
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         new_path = self._get_new_archive_path()
         tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)
         tmp_path.unlink(missing_ok=True)
@@ -160,10 +161,10 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:
             reason = "No pdfile path to write to."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         if not self._archive_cls:
             reason = "PDF archive class not initialized."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         self.close()
         delete_all_tags = self._config.write.delete_all_tags
         with self._archive_cls(self._path) as pf:
@@ -176,21 +177,15 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     def write_archive_metadata(
         self, files: Mapping, comment: bytes, mupdf_metadata: Mapping
     ) -> None:
-        """Write the metadata files and comment to an archive."""
+        """
+        Write the metadata files and comment to an archive.
+
+        Pure file I/O: cache invalidation after the rewrite is the dump
+        layer's job (ComicboxDump._reset_caches_after_write).
+        """
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
         elif self._archive_is_pdf and not self._config.convert.cbz:
             self._update_pdffile(files, mupdf_metadata)
         else:
             self._create_zipfile(files, comment)
-
-        # Clear Caches
-        old_api_source_data_list = self._sources.get(MetadataSources.API)
-        if old_api_source_data_list:
-            old_api_source_data = old_api_source_data_list[0]
-            old_api_source_metadata = old_api_source_data.data
-            old_api_source_format = old_api_source_data.fmt
-        else:
-            old_api_source_metadata = None
-            old_api_source_format = None
-        self._reset_archive(old_api_source_format, old_api_source_metadata)

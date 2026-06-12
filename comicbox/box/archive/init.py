@@ -7,6 +7,7 @@ from typing_extensions import Self
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType
+from comicbox.exceptions import ArchiveError
 
 
 class ComicboxArchiveInit(ComicboxInit):
@@ -47,5 +48,5 @@ class ComicboxArchiveInit(ComicboxInit):
             self._archive = self._archive_cls(self._path)
         if not self._archive:
             reason = f"Unable to make archive from class {self._archive_cls}"
-            raise ValueError(reason)
+            raise ArchiveError(reason)
         return self._archive

@@ -32,6 +32,7 @@ real defaults — just nothing from the user's machine.
 from __future__ import annotations
 
 import os
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -40,6 +41,26 @@ import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _scrub_environ_at_collection() -> None:
+    """
+    Apply the hermetic scrub at conftest import (collection) time.
+
+    The autouse fixture below only protects test BODIES. A couple dozen
+    test modules call ``get_config()`` at module level, which runs during
+    collection — before any fixture — and used to capture the
+    developer's real env and ``~/.config/comicbox/config.yaml``.
+    conftest imports before every test module, so scrubbing here makes
+    those module-level configs hermetic too.
+    """
+    for key in list(os.environ):
+        if key.startswith("COMICBOX"):
+            del os.environ[key]
+    os.environ["COMICBOXDIR"] = tempfile.mkdtemp(prefix="comicbox-tests-confuse-")
+
+
+_scrub_environ_at_collection()
 
 
 @pytest.fixture(autouse=True)

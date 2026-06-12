@@ -18,12 +18,14 @@ def metron_id_attribute_to_cb(
     """Create a metron tag identifier from a metron identifier attribute."""
     try:
         if not (
-            isinstance(metron_obj, Mapping) and (id_key := metron_obj.get(ID_ATTRIBUTE))  # ty: ignore[invalid-argument-type]
+            isinstance(metron_obj, Mapping) and (id_key := metron_obj.get(ID_ATTRIBUTE))
         ):
             return
         comicbox_identifier = create_identifier(
             id_source_str,
-            id_key,
+            # Mapping.get is untyped here; metron @id attributes arrive as
+            # str from xmltodict but int from API dicts — coerce.
+            str(id_key),
             id_type=id_type,
             default_id_source_str=DEFAULT_ID_SOURCE.value,
         )

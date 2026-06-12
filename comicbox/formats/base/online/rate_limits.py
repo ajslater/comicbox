@@ -30,9 +30,12 @@ Sources:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+import threading
+from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from comicbox.config.settings import OnlineSourceLimits
 
 
@@ -43,15 +46,24 @@ METRON_DEFAULT_PER_DAY: Final[int] = 5_000
 COMICVINE_DEFAULT_PER_SECOND: Final[int] = 1
 COMICVINE_DEFAULT_PER_HOUR: Final[int] = 200
 
+# Override buckets/limiters memoized per (source, db_path, rates) for the
+# life of the process. Sessions are rebuilt per API call and sources per
+# file, so without memoization every call would start a brand-new bucket
+# (with no db_path, pyrate_limiter even creates a fresh temp sqlite file
+# per call) and the configured limit would never accumulate state — the
+# override would silently not limit anything.
+_override_cache: dict[tuple, Any] = {}
+_override_lock = threading.Lock()
 
-def build_metron_bucket(limits: OnlineSourceLimits | None):
+
+def build_metron_bucket(limits: OnlineSourceLimits | None, db_path: Path | str):
     """
     Construct a custom mokkari bucket from override values, or None.
 
     Returns None when no overrides are set so mokkari uses its default
     SQLite-backed bucket (preserving cross-process / cross-run state). When
-    any override is set, returns a fresh `SQLiteBucket` configured with the
-    per-minute and per-day rates.
+    any override is set, returns a process-wide memoized `SQLiteBucket`
+    persisted at ``db_path`` with the per-minute and per-day rates.
 
     Lazy-imports `pyrate_limiter` so callers without the override don't pay
     the import cost at module load.
@@ -60,27 +72,42 @@ def build_metron_bucket(limits: OnlineSourceLimits | None):
         return None
     from pyrate_limiter import Duration, Rate, SQLiteBucket
 
-    rates = [
-        Rate(limits.per_minute or METRON_DEFAULT_PER_MINUTE, Duration.MINUTE),
-        Rate(limits.per_day or METRON_DEFAULT_PER_DAY, Duration.DAY),
-    ]
-    return SQLiteBucket.init_from_file(rates)
+    key = ("metron", str(db_path), limits.per_minute, limits.per_day)
+    with _override_lock:
+        if key not in _override_cache:
+            rates = [
+                Rate(limits.per_minute or METRON_DEFAULT_PER_MINUTE, Duration.MINUTE),
+                Rate(limits.per_day or METRON_DEFAULT_PER_DAY, Duration.DAY),
+            ]
+            _override_cache[key] = SQLiteBucket.init_from_file(
+                rates, db_path=str(db_path)
+            )
+        return _override_cache[key]
 
 
-def build_comicvine_limiter(limits: OnlineSourceLimits | None):
+def build_comicvine_limiter(limits: OnlineSourceLimits | None, db_path: Path | str):
     """
     Construct a custom simyan limiter from override values, or None.
 
     Returns None when no overrides are set so simyan uses its default. When
-    any override is set, returns a fresh `Limiter` over a `SQLiteBucket`
-    configured with the per-second and per-hour rates.
+    any override is set, returns a process-wide memoized `Limiter` over a
+    `SQLiteBucket` persisted at ``db_path`` with the per-second and
+    per-hour rates.
     """
     if limits is None or (limits.per_second is None and limits.per_hour is None):
         return None
     from pyrate_limiter import Duration, Limiter, Rate, SQLiteBucket
 
-    rates = [
-        Rate(limits.per_second or COMICVINE_DEFAULT_PER_SECOND, Duration.SECOND),
-        Rate(limits.per_hour or COMICVINE_DEFAULT_PER_HOUR, Duration.HOUR),
-    ]
-    return Limiter(SQLiteBucket.init_from_file(rates))
+    key = ("comicvine", str(db_path), limits.per_second, limits.per_hour)
+    with _override_lock:
+        if key not in _override_cache:
+            rates = [
+                Rate(
+                    limits.per_second or COMICVINE_DEFAULT_PER_SECOND, Duration.SECOND
+                ),
+                Rate(limits.per_hour or COMICVINE_DEFAULT_PER_HOUR, Duration.HOUR),
+            ]
+            _override_cache[key] = Limiter(
+                SQLiteBucket.init_from_file(rates, db_path=str(db_path))
+            )
+        return _override_cache[key]

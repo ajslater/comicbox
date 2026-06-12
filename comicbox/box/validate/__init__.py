@@ -17,6 +17,7 @@ from xmlschema.exceptions import XMLSchemaException
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
 from comicbox.box.validate.guess_format import guess_format
+from comicbox.exceptions import MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.sources import MetadataSources
 
@@ -48,7 +49,7 @@ def validate_source(
 
     if not fmt:
         reason = "Cannot determine format for source. Can't validate."
-        raise ValueError(reason)
+        raise MetadataError(reason)
 
     validator = FMT_VALIDATOR_MAP.get(fmt)
     if not validator:

@@ -27,7 +27,7 @@ from .diff import assert_diff, assert_diff_strings
 from .metadata import read_metadata
 from .tmp import my_cleanup, my_setup
 
-PRINT_CONFIG = get_config(
+ROUND_TRIP_PRINT_CONFIG = get_config(
     Namespace(comicbox=Namespace(print=Namespace(phases="slmncd")))
 )
 
@@ -63,8 +63,6 @@ class TestParser:
             self.write_reference_metadata = write_reference_metadata
         else:
             self.write_reference_metadata = self.read_reference_metadata
-
-        self.saved_wrm = deepcopy(dict(self.write_reference_metadata))
 
         if write_native_dict:
             self.write_reference_native_dict = write_native_dict
@@ -111,7 +109,9 @@ class TestParser:
         """Test assign metadata."""
         pruned = self.read_reference_metadata
         with Comicbox(
-            metadata=pruned, fmt=MetadataFormats.COMICBOX_YAML, config=PRINT_CONFIG
+            metadata=pruned,
+            fmt=MetadataFormats.COMICBOX_YAML,
+            config=ROUND_TRIP_PRINT_CONFIG,
         ) as car:
             # car.print_out() debug
             md = car.get_internal_metadata()
@@ -119,7 +119,7 @@ class TestParser:
 
     def test_from_dict(self) -> None:
         """Test load from native dict."""
-        with Comicbox(config=PRINT_CONFIG) as car:
+        with Comicbox(config=ROUND_TRIP_PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_native_dict, self.fmt)
             car.print_out()
             md = car.get_internal_metadata()
@@ -127,7 +127,7 @@ class TestParser:
 
     def test_from_string(self) -> None:
         """Test load from string."""
-        with Comicbox(config=PRINT_CONFIG) as car:
+        with Comicbox(config=ROUND_TRIP_PRINT_CONFIG) as car:
             car.add_metadata(self.read_reference_string, self.fmt)
             # car.print_out() debug
             md = car.get_internal_metadata()
@@ -135,7 +135,7 @@ class TestParser:
 
     def test_from_file(self, page_count: int | None = None) -> None:
         """Test load from an export file."""
-        with Comicbox(config=PRINT_CONFIG) as car:
+        with Comicbox(config=ROUND_TRIP_PRINT_CONFIG) as car:
             car.add_metadata_file(self.reference_export_path, self.fmt)
             # car.print_out() debug
             md = car.get_internal_metadata()

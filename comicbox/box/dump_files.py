@@ -6,6 +6,7 @@ from typing import Any
 from loguru import logger
 
 from comicbox.box.dump import ComicboxDump
+from comicbox.exceptions import ArchiveWriteError, ExportError
 from comicbox.formats import MetadataFormats
 
 
@@ -26,7 +27,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         path = dest_path / fn
         if not path.resolve().is_relative_to(dest_path.resolve()):
             reason = f"Unsafe path escapes destination: {path}"
-            raise ValueError(reason)
+            raise ExportError(reason)
         try:
             schema, denormalized_metadata = self._to_dict(fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
@@ -51,7 +52,7 @@ class ComicboxDumpToFiles(ComicboxDump):
         """Rename the archive."""
         if not self._path:
             reason = "Cannot rename archive without a path."
-            raise ValueError(reason)
+            raise ArchiveWriteError(reason)
         schema, filename_md = self._to_dict(MetadataFormats.FILENAME)
         fn = schema.dumps(filename_md)
         old_path = self._path

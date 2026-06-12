@@ -13,14 +13,11 @@ when needed. Downloaded hashes are cached in
 
 from __future__ import annotations
 
-import sqlite3
-from contextlib import closing
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.config.settings import resolve_effort
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -30,11 +27,11 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.rate_limits import build_comicvine_limiter
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.series_filter import (
-    max_results_for,
     should_keep_volume_name,
-    threshold_for,
 )
-from comicbox.formats.base.online.sources.base import OnlineSource
+from comicbox.formats.base.online.sources.base import (
+    OnlineSource,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -57,22 +54,22 @@ class ComicVineOnlineSource(OnlineSource):
         return bool(self._credentials.key)
 
     def _get_cache(self) -> Any:
-        from comicbox.config.settings import CacheMode
-
-        cache_mode = self._settings.cache.mode
-        if cache_mode is CacheMode.OFF:
+        resolved = self._resolve_response_cache()
+        if resolved is None:
             return None
         from simyan.cache.sqlite_cache import SQLiteCache
 
-        cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH and cache_path.exists():
-            cache_path.unlink()
-            logger.debug(f"refresh-cache: removed {cache_path}")
-        ttl = self._settings.cache.ttl
+        cache_path, ttl = resolved
         expiry = ttl if ttl.total_seconds() > 0 else None
         return SQLiteCache(path=cache_path, expiry=expiry)
 
     def _get_session(self) -> Comicvine:
+        """Build the simyan client once per source lifetime, then reuse it."""
+        if self._client is None:
+            self._client = self._build_session()
+        return self._client
+
+    def _build_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
         kwargs: dict[str, Any] = {
@@ -84,7 +81,10 @@ class ComicVineOnlineSource(OnlineSource):
             kwargs["base_url"] = self._credentials.url
         from comicbox.config.settings import resolve_rate_limit
 
-        limiter = build_comicvine_limiter(resolve_rate_limit(self._settings, self.name))
+        limiter = build_comicvine_limiter(
+            resolve_rate_limit(self._settings, self.name),
+            self.cache_db_path("rate_limit"),
+        )
         if limiter is not None:
             kwargs["limiter"] = limiter
         return Comicvine(**kwargs)
@@ -334,25 +334,18 @@ class ComicVineOnlineSource(OnlineSource):
         )
 
     @override
-    def lookup_issue(
+    def _lookup_issue_in_volume(
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:
         """
         Volume-scoped issue lookup; cheaper than the fuzzy search path.
 
         One ``list_issues`` call filtered by ``volume:`` + ``issue_number:``.
-        Used by series-first batching to amortize one search across every
-        issue of a resolved series (plan §3.10).
+        The base class's ``lookup_issue`` wrapper owns the failure
+        semantics (plan §3.10).
         """
         session = self._get_session()
-        try:
-            candidates = self._list_issues_by_volume(session, volume_id, issue_number)
-        except Exception as exc:
-            logger.warning(
-                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
-                f"number={issue_number!r}) failed: {exc}"
-            )
-            return None
+        candidates = self._list_issues_by_volume(session, volume_id, issue_number)
         if not candidates:
             return None
         # First-result-wins on variant collisions; same approach as Metron.
@@ -485,30 +478,25 @@ class ComicVineOnlineSource(OnlineSource):
         # `list_issues` fan-out further at scale; the pre-filter already
         # drops obvious mismatches but the long tail of weakly-matching
         # volumes adds up across thousands of comics.
-        max_volumes = max_results_for(
-            resolve_effort(self._settings, self.name),
-            default=self._MAX_VOLUMES_PER_SEARCH,
-        )
+        max_volumes = self._effort_max_results(self._MAX_VOLUMES_PER_SEARCH)
         volumes = self._discover_volumes(session, profile, max_volumes)
         if not volumes:
             logger.info(
                 f"online {self.name}: no volumes match series {profile.series!r}"
             )
             return []
-        sample_size = 5
-        sample = ", ".join(f"{v.name} ({v.id})" for v in volumes[:sample_size])
-        if len(volumes) > sample_size:
-            sample += " ..."
-        logger.debug(
-            f"online {self.name}: {len(volumes)} candidate volumes for "
-            f"series={profile.series!r}: {sample}"
+        self._log_discovery_sample(
+            volumes,
+            lambda v: f"{v.name} ({v.id})",
+            noun="volumes",
+            query=f"series={profile.series!r}",
         )
 
         # Pre-call filter threshold from the resolved API budget. At the
         # `balanced` default this resolves to 0.0 (filter is a no-op), so
         # Phase A behaviour is identical to today's. Phase B calibration
         # picks the real values for `fast` (currently 0.7 placeholder).
-        name_threshold = threshold_for(resolve_effort(self._settings, self.name))
+        name_threshold = self._effort_name_threshold()
 
         candidates: list[Candidate] = []
         for vol in volumes:
@@ -598,41 +586,3 @@ class ComicVineOnlineSource(OnlineSource):
         return self._list_issues_by_volume(
             session, volume_id, issue_number, volume_name, year=None
         )
-
-
-# ----------------------------------------------------- cover-hash URL cache
-
-
-class CoverHashUrlCache:
-    """Tiny SQLite cache mapping cover URLs to their pHash strings."""
-
-    def __init__(self, db_path: Any) -> None:
-        """Open / create the sqlite cache file at `db_path`."""
-        self._db_path = str(db_path)
-        # `with conn:` only manages the transaction; sqlite3 context managers
-        # never close the connection, so closing() is needed to avoid leaking
-        # one per call (each method reconnects to stay thread-safe under -j).
-        with closing(self._connect()) as conn, conn:
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS cover_hashes "
-                "(url TEXT PRIMARY KEY, phash TEXT NOT NULL)"
-            )
-
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._db_path)
-
-    def get(self, url: str) -> str | None:
-        """Return the cached pHash for a cover URL, or None if absent."""
-        with closing(self._connect()) as conn:
-            row = conn.execute(
-                "SELECT phash FROM cover_hashes WHERE url = ?", (url,)
-            ).fetchone()
-        return row[0] if row else None
-
-    def set(self, url: str, phash: str) -> None:
-        """Store a pHash for a cover URL, overwriting any previous value."""
-        with closing(self._connect()) as conn, conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO cover_hashes(url, phash) VALUES (?, ?)",
-                (url, phash),
-            )

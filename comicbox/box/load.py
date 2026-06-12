@@ -14,6 +14,7 @@ from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
+from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.sources import MetadataSources
@@ -111,7 +112,7 @@ class ComicboxLoad(ComicboxSources):
                 self._except_on_load(source, fmt, exc, level="DEBUG")
         if not success_md:
             reason = f"Unable to load {source.value.label}."
-            raise ValueError(reason)
+            raise MetadataError(reason)
         return success_md, fmt
 
     def _load_metadata(
