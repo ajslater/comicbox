@@ -250,10 +250,15 @@ class OnlineSession:
         self._all_sources = all_sources
         self._defer_prompts = defer_prompts
         self._series_batching = series_batching
+        # Read config files / env exactly once per session. _build_config
+        # used to call get_config() per file — wasted disk I/O on big
+        # batches plus a behavioral surprise where a config-file edit
+        # mid-batch changed settings for the remaining files.
+        self._base_settings: ComicboxSettings = get_config()
 
         # Cancel token. Set when cancel() is called; checked between files
-        # in tag_many(). Not propagated mid-file — the in-flight per-file
-        # lookup runs to completion before the batch stops.
+        # in tag_many() and consulted by the wired retry sleep
+        # (_retry_sleep_wait), which aborts an in-flight rate-limit wait.
         self._cancel = threading.Event()
         self._state_lock = threading.Lock()
 
@@ -647,8 +652,12 @@ class OnlineSession:
         through ``get_config(Namespace(...))`` because some of the fields
         we need to set (``enabled``, ``sources``, per-source auth dict)
         live on runtime-only fields the CLI namespace parser ignores.
+
+        ``mode`` / ``unattended`` are session-mutable, so the cheap
+        ``replace`` layering stays per-file; the disk read happened once
+        in ``__init__``.
         """
-        base = get_config()
+        base = self._base_settings
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=frozenset(self._sources),

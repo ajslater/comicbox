@@ -160,6 +160,9 @@ class ComicboxInit:
             return self._archive_is_pdf
         with suppress(OSError):
             if PDFFile.is_pdffile(str(self._path)):
+                # Both attributes get unconditional defaults at the top of
+                # _set_archive_cls; the suppressions cover the documented
+                # init-in-reset-method pattern, not a real lifecycle gap.
                 self._archive_is_pdf = True  # pyright: ignore[reportUninitializedInstanceVariable]
                 self._archive_cls = PDFFile
                 self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
@@ -242,18 +245,24 @@ class ComicboxInit:
 
     def _set_archive_cls(self) -> None:
         """Set the path and determine the archive type."""
+        # Every attribute is assigned unconditionally before the early
+        # return so a pathless box has a complete, safe attribute set.
+        # The suppressions cover the documented init-in-reset-method
+        # pattern (__init__ → _reset_archive → here), not a lifecycle gap.
         self._archive_is_pdf: bool = False
         self._pdf_suffix: str = ""
+        self._info_size_attr: str = "file_size"  # pyright: ignore[reportUninitializedInstanceVariable]
+        self._info_fn_attr: str = "filename"  # pyright: ignore[reportUninitializedInstanceVariable]
         if not self._path:
             return
         path = self._path
 
         self._detect_archive_cls(path)
 
-        self._info_size_attr = (  # pyright: ignore[reportUninitializedInstanceVariable]
-            "size" if self._archive_cls == tarfile_open else "file_size"
-        )
-        self._info_fn_attr = "name" if self._archive_cls == tarfile_open else "filename"  # pyright: ignore[reportUninitializedInstanceVariable]
+        if self._archive_cls == tarfile_open:
+            # Tarfile info objects use different attribute names.
+            self._info_size_attr = "size"
+            self._info_fn_attr = "name"
 
     def get_path(self) -> Path | None:
         """Get the path for the archive."""

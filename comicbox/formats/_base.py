@@ -3,13 +3,21 @@
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.validate.base import BaseValidator
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MetadataFormat:
-    """Metadata format attributes."""
+    """
+    Metadata format attributes.
+
+    Frozen like its FormatRegistration sibling: these become enum values,
+    so mutability would make them unhashable (CPython falls back to a
+    linear value scan) and would let runtime mutation silently
+    desynchronize derived snapshots like sources._ANY_FORMATS.
+    """
 
     label: str
     config_keys: frozenset
@@ -19,9 +27,10 @@ class MetadataFormat:
     lexer: str = "yaml"
     enabled: bool = True
 
-    def __post_init__(self) -> None:
-        """Hoist the schema class."""
-        self.schema_class = self.transform_class.SCHEMA_CLASS  # pyright: ignore[reportUninitializedInstanceVariable]
+    @property
+    def schema_class(self) -> type[BaseSchema]:
+        """The transform's schema class (call sites use fmt.value.schema_class)."""
+        return self.transform_class.SCHEMA_CLASS
 
 
 @dataclass(frozen=True, slots=True)

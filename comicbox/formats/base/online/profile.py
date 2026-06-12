@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
+
+from glom import glom
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,3 +126,55 @@ def parse_year(raw: Any) -> int | None:
     s = str(raw).strip()
     m = re.search(r"\b(\d{4})\b", s)
     return int(m.group(1)) if m else None
+
+
+def _resolve_volume(md: dict) -> int | None:
+    """
+    Extract `comicbox.volume.number` as an int, defensively.
+
+    Rejects 4-digit year-shaped values (1900-2100). The
+    [ComicInfo.xml convention](https://anansi-project.github.io/docs/comicinfo/documentation#volume)
+    of using the year-of-first-issue as the volume number is widespread
+    (comictagger writes it that way), but Metron's `series_volume`
+    filter expects an ordinal (1, 2, 3 — "Vol. N of M"). Sending the
+    year as `series_volume` matches no issues and wastes API budget on
+    the drop-volume retry.
+
+    A real volume "Vol. 2019 of 9999" doesn't exist in the wild —
+    real ordinal volumes are well under 50 in practice. Treating
+    1900-2100 as "year masquerading as volume" is safe and matches the
+    failure mode we actually see.
+    """
+    raw = glom(md, "comicbox.volume.number", default=None)
+    if raw is None:
+        return None
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if 1900 <= v <= 2100:  # noqa: PLR2004 — year range, not a magic threshold
+        return None
+    return v
+
+
+_SIMPLE_PROFILE_PATHS: Final[tuple[tuple[str, str], ...]] = (
+    ("series", "comicbox.series.name"),
+    ("issue", "comicbox.issue.name"),
+    ("publisher", "comicbox.publisher.name"),
+    ("page_count", "comicbox.page_count"),
+)
+
+
+def accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
+    """First-wins accumulation of profile fields across normalized sources."""
+    for field_name, path in _SIMPLE_PROFILE_PATHS:
+        if field_name not in fields and (v := glom(md, path, default=None)):
+            fields[field_name] = v
+    if "year" not in fields:
+        raw_year = glom(md, "comicbox.date.year", default=None) or glom(
+            md, "comicbox.date.cover_date", default=None
+        )
+        if (parsed := parse_year(raw_year)) is not None:
+            fields["year"] = parsed
+    if "volume" not in fields and (v := _resolve_volume(md)) is not None:
+        fields["volume"] = v

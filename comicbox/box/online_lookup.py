@@ -26,7 +26,7 @@ import sys
 import threading
 from dataclasses import replace
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from glom import glom
 from loguru import logger
@@ -58,8 +58,8 @@ from comicbox.formats.base.online.matcher import (
 )
 from comicbox.formats.base.online.profile import (
     ComicProfile,
+    accumulate_profile_fields,
     parse_issue_int,
-    parse_year,
     strip_issue_leading_zeros,
 )
 from comicbox.formats.base.online.prompt import cli_selector
@@ -74,10 +74,10 @@ if TYPE_CHECKING:
 
     from comicbox.config.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
+    from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
-    from comicbox.formats.comicvine_api.online_source import CoverHashUrlCache
 
 
 # Source factories let tests substitute mocks without monkey-patching imports.
@@ -171,35 +171,6 @@ def _series_fingerprint(profile: ComicProfile) -> str:
     return f"{series}|{year}|{publisher}"
 
 
-def _resolve_volume(md: dict) -> int | None:
-    """
-    Extract `comicbox.volume.number` as an int, defensively.
-
-    Rejects 4-digit year-shaped values (1900-2100). The
-    [ComicInfo.xml convention](https://anansi-project.github.io/docs/comicinfo/documentation#volume)
-    of using the year-of-first-issue as the volume number is widespread
-    (comictagger writes it that way), but Metron's `series_volume`
-    filter expects an ordinal (1, 2, 3 — "Vol. N of M"). Sending the
-    year as `series_volume` matches no issues and wastes API budget on
-    the drop-volume retry.
-
-    A real volume "Vol. 2019 of 9999" doesn't exist in the wild —
-    real ordinal volumes are well under 50 in practice. Treating
-    1900-2100 as "year masquerading as volume" is safe and matches the
-    failure mode we actually see.
-    """
-    raw = glom(md, "comicbox.volume.number", default=None)
-    if raw is None:
-        return None
-    try:
-        v = int(raw)
-    except (TypeError, ValueError):
-        return None
-    if 1900 <= v <= 2100:  # noqa: PLR2004 — year range, not a magic threshold
-        return None
-    return v
-
-
 def _detect_cv_id_disagreement(
     metron_md: dict | None, cv_md: dict | None
 ) -> tuple[str, str] | None:
@@ -226,29 +197,6 @@ def _detect_cv_id_disagreement(
     if metron_str == cv_str:
         return None
     return (metron_str, cv_str)
-
-
-_SIMPLE_PROFILE_PATHS: Final[tuple[tuple[str, str], ...]] = (
-    ("series", "comicbox.series.name"),
-    ("issue", "comicbox.issue.name"),
-    ("publisher", "comicbox.publisher.name"),
-    ("page_count", "comicbox.page_count"),
-)
-
-
-def _accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
-    """First-wins accumulation of profile fields across normalized sources."""
-    for field_name, path in _SIMPLE_PROFILE_PATHS:
-        if field_name not in fields and (v := glom(md, path, default=None)):
-            fields[field_name] = v
-    if "year" not in fields:
-        raw_year = glom(md, "comicbox.date.year", default=None) or glom(
-            md, "comicbox.date.cover_date", default=None
-        )
-        if (parsed := parse_year(raw_year)) is not None:
-            fields["year"] = parsed
-    if "volume" not in fields and (v := _resolve_volume(md)) is not None:
-        fields["volume"] = v
 
 
 class ComicboxOnlineLookup(ComicboxNormalize):
@@ -288,6 +236,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     _cover_hash_url_cache: CoverHashUrlCache | None = None
     _local_cover_phash_computed: bool = False
     _local_cover_phash_value: str | None = None
+    # Built once per lookup run (5 call sites); invalidated whenever the
+    # source caches reset because the profile reads non-online sources.
+    _profile_cache: ComicProfile | None = None
+
+    def _reset_loaded_forward_caches(self) -> None:
+        super()._reset_loaded_forward_caches()
+        self._profile_cache = None
 
     def set_online_selector(self, selector: SelectorCallback | None) -> None:
         """Register a programmatic selector callback (codex / library users)."""
@@ -447,7 +402,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         return True
 
     def _build_profile(self) -> ComicProfile:
-        """Read the non-online merged-so-far metadata into a ComicProfile."""
+        """
+        Read the non-online merged-so-far metadata into a ComicProfile.
+
+        Memoized per run: the lookup flow consults the profile several
+        times and only non-online sources feed it, so it can't change
+        mid-lookup (cache invalidation rides _reset_loaded_forward_caches).
+        """
+        if self._profile_cache is not None:
+            return self._profile_cache
         # Collect from non-online normalized sources, first-wins.
         fields: dict[str, Any] = {}
         for src in MetadataSources:
@@ -457,8 +420,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if not normalized:
                 continue
             for loaded in normalized:
-                _accumulate_profile_fields(fields, dict(loaded.metadata))
-        return ComicProfile(
+                accumulate_profile_fields(fields, dict(loaded.metadata))
+        profile = ComicProfile(
             series=fields.get("series"),
             issue=fields.get("issue"),
             issue_int=parse_issue_int(fields.get("issue")),
@@ -467,6 +430,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             page_count=fields.get("page_count"),
             volume=fields.get("volume"),
         )
+        self._profile_cache = profile
+        return profile
 
     def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> bool:
         """
@@ -516,9 +481,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         (ComicVine, GCD). Local writes go through the shared
         cover-hashes sqlite cache.
         """
-        from comicbox.formats.base.online.cover_hash import compute_phash
-        from comicbox.formats.comicvine_api.online_source import (
+        from comicbox.formats.base.online.cover_hash import (
             CoverHashUrlCache,
+            compute_phash,
         )
 
         if not url:

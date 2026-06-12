@@ -97,8 +97,29 @@ class ComicboxDump(ComicboxPages):
             for fmt in formats:
                 self._dump_format_to_archive(fmt, files, pdf_md, comment)
 
-        # write to the archive.
-        return self.write_archive_metadata(files, comment["c"], pdf_md)
+        # write to the archive, then re-seed caches from the new bytes.
+        self.write_archive_metadata(files, comment["c"], pdf_md)
+        self._reset_caches_after_write()
+
+    def _reset_caches_after_write(self) -> None:
+        """
+        Re-seed the box caches from the now-rewritten archive.
+
+        Everything parsed from the old archive bytes is stale after a
+        write; only the caller-injected API source survives (it didn't
+        come from the file). Lives here rather than in the archive write
+        layer so file I/O stays decoupled from the source-cache
+        lifecycle.
+        """
+        old_api_source_data_list = self._sources.get(MetadataSources.API)
+        if old_api_source_data_list:
+            old_api_source_data = old_api_source_data_list[0]
+            old_api_source_metadata = old_api_source_data.data
+            old_api_source_format = old_api_source_data.fmt
+        else:
+            old_api_source_metadata = None
+            old_api_source_format = None
+        self._reset_archive(old_api_source_format, old_api_source_metadata)
 
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""

@@ -430,7 +430,7 @@ def test_cross_source_no_warning_when_cv_ids_match(
 
 
 def test_resolve_volume_extracts_real_ordinal() -> None:
-    from comicbox.box.online_lookup import _resolve_volume
+    from comicbox.formats.base.online.profile import _resolve_volume
 
     assert _resolve_volume({"comicbox": {"volume": {"number": 2}}}) == 2
     assert _resolve_volume({"comicbox": {"volume": {"number": "5"}}}) == 5
@@ -444,7 +444,7 @@ def test_resolve_volume_rejects_year_shape() -> None:
     matches no issues. We drop year-shaped values (1900-2100) so they
     don't poison the search.
     """
-    from comicbox.box.online_lookup import _resolve_volume
+    from comicbox.formats.base.online.profile import _resolve_volume
 
     assert _resolve_volume({"comicbox": {"volume": {"number": 2019}}}) is None
     assert _resolve_volume({"comicbox": {"volume": {"number": "1986"}}}) is None
@@ -454,7 +454,7 @@ def test_resolve_volume_rejects_year_shape() -> None:
 
 def test_resolve_volume_keeps_pre_1900_values() -> None:
     """Pre-1900 volume numbers can't be year-shaped; keep them."""
-    from comicbox.box.online_lookup import _resolve_volume
+    from comicbox.formats.base.online.profile import _resolve_volume
 
     assert _resolve_volume({"comicbox": {"volume": {"number": 1899}}}) == 1899
     assert _resolve_volume({"comicbox": {"volume": {"number": 50}}}) == 50
@@ -462,13 +462,13 @@ def test_resolve_volume_keeps_pre_1900_values() -> None:
 
 def test_resolve_volume_keeps_post_2100_values() -> None:
     """Post-2100 volume numbers can't be year-shaped (sci-fi aside); keep them."""
-    from comicbox.box.online_lookup import _resolve_volume
+    from comicbox.formats.base.online.profile import _resolve_volume
 
     assert _resolve_volume({"comicbox": {"volume": {"number": 2101}}}) == 2101
 
 
 def test_resolve_volume_handles_missing_or_garbage() -> None:
-    from comicbox.box.online_lookup import _resolve_volume
+    from comicbox.formats.base.online.profile import _resolve_volume
 
     assert _resolve_volume({}) is None
     assert _resolve_volume({"comicbox": {}}) is None

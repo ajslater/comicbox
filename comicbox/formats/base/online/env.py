@@ -34,8 +34,9 @@ _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
 _CRED_FIELDS = ("user", "pass", "key", "url")
 
 # Online settings env-var suffix → resolved field name.
-# Keep the field names in sync with the per-knob keys ``_build_online_settings``
-# reads from ``read_online_env()``.
+# Keep the field names in sync with the per-knob keys
+# ``comicbox.config.online._build_online_settings`` reads from
+# ``read_online_env()``.
 _BOOL_FIELDS = frozenset({"rematch", "all_sources"})
 _FLOAT_FIELDS = frozenset({"auto_threshold"})
 _INT_FIELDS = frozenset({"retry_budget"})

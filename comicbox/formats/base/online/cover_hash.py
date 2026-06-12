@@ -16,8 +16,10 @@ The matcher invocation policy decides *when* hashing runs:
 
 from __future__ import annotations
 
+import sqlite3
+from contextlib import closing
 from io import BytesIO
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from imagehash import ImageHash
@@ -57,3 +59,44 @@ def cover_score(local_hash: str, candidate_hash: str) -> float:
     distance = hamming_distance(local_hash, candidate_hash)
     raw = 1.0 - (distance / HASH_BITS)
     return max(0.0, min(1.0, raw))
+
+
+# ----------------------------------------------------- cover-hash URL cache
+# Generic infrastructure (serves any source whose candidates carry cover
+# URLs: ComicVine today, GCD later) — lives here beside compute_phash, not
+# in a format package.
+
+
+class CoverHashUrlCache:
+    """Tiny SQLite cache mapping cover URLs to their pHash strings."""
+
+    def __init__(self, db_path: Any) -> None:
+        """Open / create the sqlite cache file at `db_path`."""
+        self._db_path = str(db_path)
+        # `with conn:` only manages the transaction; sqlite3 context managers
+        # never close the connection, so closing() is needed to avoid leaking
+        # one per call (each method reconnects to stay thread-safe under -j).
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cover_hashes "
+                "(url TEXT PRIMARY KEY, phash TEXT NOT NULL)"
+            )
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self._db_path)
+
+    def get(self, url: str) -> str | None:
+        """Return the cached pHash for a cover URL, or None if absent."""
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT phash FROM cover_hashes WHERE url = ?", (url,)
+            ).fetchone()
+        return row[0] if row else None
+
+    def set(self, url: str, phash: str) -> None:
+        """Store a pHash for a cover URL, overwriting any previous value."""
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO cover_hashes(url, phash) VALUES (?, ?)",
+                (url, phash),
+            )

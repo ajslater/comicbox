@@ -15,7 +15,13 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from platformdirs import user_cache_path
 
+from comicbox.exceptions import OnlineLookupAbortedError
+from comicbox.formats.base.online.series_filter import max_results_for, threshold_for
+
 if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Callable, Sequence
+
     from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
@@ -135,8 +141,81 @@ class OnlineSource(ABC):
 
         Sources that haven't implemented this raise NotImplementedError;
         callers detect that via try/except and fall back to ``search``.
+
+        Failure semantics live here so each source only implements the
+        actual API call (`_lookup_issue_in_volume`): source-side errors
+        are logged and degrade to None (fall back to search), abort
+        signals propagate, NotImplementedError propagates.
         """
+        try:
+            return self._lookup_issue_in_volume(volume_id, issue_number)
+        except NotImplementedError:
+            raise
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
+                f"number={issue_number!r}) failed: {exc}"
+            )
+            return None
+
+    def _lookup_issue_in_volume(
+        self, volume_id: int, issue_number: str | None
+    ) -> Candidate | None:
+        """One volume-scoped API call; sources without a fast path omit it."""
         raise NotImplementedError
+
+    # -- shared scaffolding ---------------------------------------------------
+
+    def _resolve_response_cache(self) -> tuple[Path, datetime.timedelta] | None:
+        """
+        Apply the response-cache mode policy shared by every source.
+
+        Returns None when caching is OFF; otherwise (cache_path, ttl).
+        REFRESH unlinks the cache once per process (discard at run
+        start). The source wraps the result in its vendor cache class.
+        """
+        from comicbox.config.settings import CacheMode
+
+        cache_mode = self._settings.cache.mode
+        if cache_mode is CacheMode.OFF:
+            return None
+        cache_path = self.cache_db_path()
+        if cache_mode is CacheMode.REFRESH:
+            refresh_cache_unlink_once(cache_path)
+        return cache_path, self._settings.cache.ttl
+
+    def _effort_max_results(self, default: int) -> int:
+        """Resolve the per-effort discovery breadth cap for this source."""
+        from comicbox.config.settings import resolve_effort
+
+        return max_results_for(
+            resolve_effort(self._settings, self.name), default=default
+        )
+
+    def _effort_name_threshold(self) -> float:
+        """Resolve the per-effort pre-call name-filter threshold."""
+        from comicbox.config.settings import resolve_effort
+
+        return threshold_for(resolve_effort(self._settings, self.name))
+
+    def _log_discovery_sample(
+        self,
+        items: Sequence[Any],
+        labeler: Callable[[Any], str],
+        *,
+        noun: str,
+        query: str,
+    ) -> None:
+        """Debug-log a sample of discovery results (shared wording)."""
+        sample_size = 5
+        sample = ", ".join(labeler(i) for i in items[:sample_size])
+        if len(items) > sample_size:
+            sample += " ..."
+        logger.debug(
+            f"online {self.name}: {len(items)} candidate {noun} for {query}: {sample}"
+        )
 
     def cache_db_path(self, suffix: str = "cache") -> Path:
         """

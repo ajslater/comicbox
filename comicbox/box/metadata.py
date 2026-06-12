@@ -1,6 +1,7 @@
 """Get Metadata mixin."""
 
 from collections.abc import Mapping
+from copy import deepcopy
 from types import MappingProxyType
 from typing import Any
 
@@ -29,7 +30,10 @@ class ComicboxMetadata(ComicboxComputed):
     def _set_computed_merged_metadata(self) -> None:
         merged_md = self.get_merged_metadata()
         computed_md = self.get_computed_metadata()
-        merged_md = dict(merged_md)
+        # Deep copy, not dict(): the mergers below recurse into nested
+        # dicts, and a shallow copy would share (and mutate) the same
+        # nested objects the _merged_metadata cache still references.
+        merged_md = deepcopy(dict(merged_md))
 
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)

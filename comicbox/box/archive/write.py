@@ -177,21 +177,15 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
     def write_archive_metadata(
         self, files: Mapping, comment: bytes, mupdf_metadata: Mapping
     ) -> None:
-        """Write the metadata files and comment to an archive."""
+        """
+        Write the metadata files and comment to an archive.
+
+        Pure file I/O: cache invalidation after the rewrite is the dump
+        layer's job (ComicboxDump._reset_caches_after_write).
+        """
         if self._archive_cls == ZipFile:
             self._patch_zipfile(files, comment)
         elif self._archive_is_pdf and not self._config.convert.cbz:
             self._update_pdffile(files, mupdf_metadata)
         else:
             self._create_zipfile(files, comment)
-
-        # Clear Caches
-        old_api_source_data_list = self._sources.get(MetadataSources.API)
-        if old_api_source_data_list:
-            old_api_source_data = old_api_source_data_list[0]
-            old_api_source_metadata = old_api_source_data.data
-            old_api_source_format = old_api_source_data.fmt
-        else:
-            old_api_source_metadata = None
-            old_api_source_format = None
-        self._reset_archive(old_api_source_format, old_api_source_metadata)

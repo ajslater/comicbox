@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.config.settings import resolve_effort
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -24,13 +23,10 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.rate_limits import build_metron_bucket
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.series_filter import (
-    max_results_for,
     should_keep_volume_name,
-    threshold_for,
 )
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
-    refresh_cache_unlink_once,
 )
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
@@ -70,17 +66,12 @@ class MetronOnlineSource(OnlineSource):
         return bool(self._credentials.user and self._credentials.password)
 
     def _get_cache(self) -> Any:
-        from comicbox.config.settings import CacheMode
-
-        cache_mode = self._settings.cache.mode
-        if cache_mode is CacheMode.OFF:
+        resolved = self._resolve_response_cache()
+        if resolved is None:
             return None
         from mokkari.sqlite_cache import SqliteCache
 
-        cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH:
-            refresh_cache_unlink_once(cache_path)
-        ttl = self._settings.cache.ttl
+        cache_path, ttl = resolved
         expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
         return SqliteCache(db_name=str(cache_path), expire=expire)
 
@@ -231,29 +222,21 @@ class MetronOnlineSource(OnlineSource):
         )
 
     @override
-    def lookup_issue(
+    def _lookup_issue_in_volume(
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:
         """
         Volume-scoped issue lookup; cheaper than the fuzzy search path.
 
         Calls ``issues_list`` filtered by ``series_id`` + ``number`` — one
-        request, returns ≤1 result on healthy data. Used by the
-        series-first batching path to amortize one search across every
-        issue of a resolved series.
+        request, returns ≤1 result on healthy data. The base class's
+        ``lookup_issue`` wrapper owns the failure semantics.
         """
         session = self._get_session()
         params: dict[str, Any] = {"series_id": volume_id}
         if number := strip_issue_leading_zeros(issue_number):
             params["number"] = number
-        try:
-            issues = self._issues_list_with_retry(session, params)
-        except Exception as exc:
-            logger.warning(
-                f"online {self.name}: lookup_issue(volume_id={volume_id}, "
-                f"number={issue_number!r}) failed: {exc}"
-            )
-            return None
+        issues = self._issues_list_with_retry(session, params)
         issue_list = list(issues)
         if not issue_list:
             return None
@@ -302,20 +285,13 @@ class MetronOnlineSource(OnlineSource):
         # aggressively than the class default (20 → 5). Mirrors the CV
         # side; cuts the per-series `issues_list` fan-out further at
         # scale.
-        max_series = max_results_for(
-            resolve_effort(self._settings, self.name),
-            default=self._MAX_SERIES_PER_SEARCH,
-        )
+        max_series = self._effort_max_results(self._MAX_SERIES_PER_SEARCH)
         series_results = list(series_results)[:max_series]
-        sample_size = 5
-        sample = ", ".join(
-            f"{_series_display_name(s)} ({s.id})" for s in series_results[:sample_size]
-        )
-        if len(series_results) > sample_size:
-            sample += " ..."
-        logger.debug(
-            f"online {self.name}: {len(series_results)} candidate series for "
-            f"{profile.series!r}: {sample}"
+        self._log_discovery_sample(
+            series_results,
+            lambda s: f"{_series_display_name(s)} ({s.id})",
+            noun="series",
+            query=f"{profile.series!r}",
         )
         return series_results
 
@@ -476,7 +452,7 @@ class MetronOnlineSource(OnlineSource):
         # `balanced` default this resolves to 0.0 (filter is a no-op),
         # so Phase A behaviour is identical to today's. Phase B
         # calibration picks the real values for `fast`.
-        name_threshold = threshold_for(resolve_effort(self._settings, self.name))
+        name_threshold = self._effort_name_threshold()
 
         candidates: list[Candidate] = []
         for series in series_results:

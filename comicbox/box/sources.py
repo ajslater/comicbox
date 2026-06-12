@@ -252,9 +252,18 @@ class ComicboxSources(ComicboxArchive):
         sd = SourceData(metadata, Path(path), fmt)
         self._sources[source].append(sd)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
-        # Clear forward caches. _normalized must go too: its getter
-        # skips re-normalization whenever the source key exists, so a
-        # stale entry would silently swallow the metadata just added.
+        self._invalidate_source(source)
+
+    def _invalidate_source(self, source: MetadataSources) -> None:
+        """
+        Invalidate one source's parse caches and everything downstream.
+
+        The single chokepoint for mid-chain invalidation: per-source
+        _loaded AND _normalized entries (the normalize getter skips
+        re-normalization whenever its key exists, so a stale entry would
+        silently swallow newly added metadata), then the merged /
+        computed / final-metadata caches via the shared reset.
+        """
         self._loaded.pop(source, None)
         self._normalized.pop(source, None)
         self._reset_loaded_forward_caches()
