@@ -124,7 +124,10 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         self, data: MappingProxyType[str, Any], path: Path, **kwargs: Any
     ) -> None:
         """Write the string in the designated file."""
-        str_data = self.dumps(data, **kwargs) + "\n"
+        # Exactly one trailing newline: YAML dumps already ends with one,
+        # XML/JSON don't — a blind "+ newline" wrote a trailing blank line
+        # that the old truncation-tolerant comparator masked.
+        str_data = self.dumps(data, **kwargs).rstrip("\n") + "\n"
         with Path(path).open("w") as f:
             f.write(str_data)
 

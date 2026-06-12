@@ -6,7 +6,26 @@ from pathlib import Path
 from comicbox.box.validate import validate_source
 from tests.const import TEST_EXPORT_DIR, TEST_METADATA_DIR
 
-_NUM_TEST_FILES = 14
+# Explicit expected set: a bare count tripwire broke on any fixture add
+# and the failure message never named the offending file.
+_EXPECTED_TEST_FILES = frozenset(
+    {
+        "comet-write.xml",
+        "comet.xml",
+        "comic-book-info.json",
+        "comicbox-cli.yaml",
+        "comicbox-write.json",
+        "comicbox-write.yaml",
+        "comicbox.json",
+        "comicbox.yaml",
+        "comicinfo-write.xml",
+        "comicinfo.xml",
+        "metroninfo-write.xml",
+        "metroninfo.xml",
+        "mupdf.json",
+        "pdf-metadata.xml",
+    }
+)
 _SUFFIXES = frozenset({"." + ext for ext in ("txt", "xml", "json", "yaml", "yml")})
 
 
@@ -29,4 +48,5 @@ def test_testfiles() -> None:
     """Validate test metadata files used for comparing writes."""
     validated = _test_dir(TEST_EXPORT_DIR)
     validated |= _test_dir(TEST_METADATA_DIR, substring="write")
-    assert len(validated) == _NUM_TEST_FILES
+    names = frozenset(path.name for path in validated)
+    assert names == _EXPECTED_TEST_FILES

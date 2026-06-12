@@ -22,10 +22,13 @@ from .diff import assert_diff
 
 _NOTES_TAGS = ("notes:", r'"notes":', "<Notes>", "<pdf:Producer>", "&lt;Notes&gt;")
 _LAST_MODIFIED_TAGS = (rf'"{CBI_LAST_MODIFIED_TAG}":', rf"<{METRON_LAST_MODIFIED_TAG}>")
-_TMP_IGNORE_SUBSTRINGS = ("<identifier>", "pages:", '"pages":')
 _MOD_DATE_TAGS = ('"modDate":', "<pdf:ModDate>")
-_PAGE_COUNT_TAGS = ('"page_count:"', "<pages>")
-_IDENTIFIERS_TAGS = ('"identifiers:"',)
+# NB: key-colon order matters — JSON renders '"page_count":', not
+# '"page_count:"'. The old misquoted patterns could never match, so these
+# ignore flags silently compared nothing; the pages/<identifier> lines were
+# instead pruned unconditionally by a "temporary" always-on list.
+_PAGE_COUNT_TAGS = ('"page_count":', "page_count:", "<pages>", "pages:", '"pages":')
+_IDENTIFIERS_TAGS = ('"identifiers":', "identifiers:", "<identifier>")
 _TAGGER_TAGS = ('"appID":',)
 
 
@@ -40,30 +43,21 @@ def _prune_lines(
     ignore_identifiers: bool,
     ignore_tagger: bool,
 ) -> list[str]:
-    skip_substrings = [*_TMP_IGNORE_SUBSTRINGS]
-    if ignore_updated_at:
-        skip_substrings += [UPDATED_AT_KEY]
-    if ignore_mod_date:
-        skip_substrings += _MOD_DATE_TAGS
-    if ignore_last_modified:
-        skip_substrings += _LAST_MODIFIED_TAGS
-    if ignore_notes:
-        skip_substrings += _NOTES_TAGS
-    if ignore_page_count:
-        skip_substrings += _PAGE_COUNT_TAGS
-    if ignore_identifiers:
-        skip_substrings += _IDENTIFIERS_TAGS
-    if ignore_tagger:
-        skip_substrings += _TAGGER_TAGS
-
-    skipped_line_re = re.compile("|".join(skip_substrings))
-
-    pruned_lines = []
-    for line in lines:
-        if skipped_line_re.search(line):
-            continue
-        pruned_lines.append(line)
-    return pruned_lines
+    flagged_tags = (
+        (ignore_updated_at, (UPDATED_AT_KEY,)),
+        (ignore_mod_date, _MOD_DATE_TAGS),
+        (ignore_last_modified, _LAST_MODIFIED_TAGS),
+        (ignore_notes, _NOTES_TAGS),
+        (ignore_page_count, _PAGE_COUNT_TAGS),
+        (ignore_identifiers, _IDENTIFIERS_TAGS),
+        (ignore_tagger, _TAGGER_TAGS),
+    )
+    skip_substrings = [tag for flag, tags in flagged_tags if flag for tag in tags]
+    if not skip_substrings:
+        # An empty alternation would match (and prune) every line.
+        return lines
+    skipped_line_re = re.compile("|".join(re.escape(s) for s in skip_substrings))
+    return [line for line in lines if not skipped_line_re.search(line)]
 
 
 def _prune_same_lines(  # noqa: PLR0913
@@ -157,7 +151,15 @@ def compare_files(  # noqa: PLR0913
         ignore_tagger=ignore_tagger,
     )
 
-    for line_a, line_b in zip(a_lines, b_lines, strict=False):
+    if len(a_lines) != len(b_lines):
+        # Strict length check: zip(strict=False) silently passed
+        # truncated output.
+        print(  # noqa: T201
+            f"line count differs: {path_a}={len(a_lines)} {path_b}={len(b_lines)}"
+        )
+        print("".join(b_lines))  # noqa: T201
+        return False
+    for line_a, line_b in zip(a_lines, b_lines, strict=True):
         if line_a != line_b:
             print(f"{path_a}: {line_a}")  # noqa: T201
             print(f"{path_b}: {line_b}")  # noqa: T201

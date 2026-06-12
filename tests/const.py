@@ -1,5 +1,6 @@
 """Constants and paths for tests."""
 
+import tempfile
 from argparse import Namespace
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +13,9 @@ TEST_FILES_DIR = Path("tests/files")
 TEST_METADATA_DIR = TEST_FILES_DIR / "metadata"
 TEST_EXPORT_DIR = TEST_FILES_DIR / "export"
 TEST_CS_DIR = TEST_FILES_DIR / "Captain Science 001"
-TMP_ROOT_DIR = Path("/tmp")
+# Unique per process: fixed /tmp paths collided across parallel runs from
+# multiple worktrees / xdist workers, and failed runs left debris behind.
+TMP_ROOT_DIR = Path(tempfile.mkdtemp(prefix="comicbox-tests-"))
 
 # SOURCE PATHS
 EMPTY_FN = "empty.cbz"
