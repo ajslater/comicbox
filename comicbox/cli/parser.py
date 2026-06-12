@@ -395,8 +395,11 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         help=(
             "Enable online metadata lookup. Pass [green]all[/green] to use "
             "every configured source, or a comma-separated list of sources "
-            "to filter (e.g. [green]--online metron,comicvine[/green]). See "
-            "the [cyan]Online sources[/cyan] table below."
+            "to filter (e.g. [green]--online metron,comicvine[/green]). "
+            "List order is run priority: the first source that matches "
+            "wins unless [cyan]--all-sources[/cyan] is set. A durable "
+            "order can be set via the [cyan]online.lookup.sources[/cyan] "
+            "config key. See the [cyan]Online sources[/cyan] table below."
         ),
     )
     group.add_argument(
@@ -474,10 +477,12 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         dest="all_sources",
         help=(
             "Query every configured online source instead of stopping after "
-            "the first one that contributes data. Sources are tried in "
-            "priority order ([green]metron[/green], then "
-            "[green]comicvine[/green]); per-source [cyan]--id[/cyan] / "
-            "[cyan]--series-id[/cyan] flags always run regardless."
+            "the first one that contributes data (overrides the "
+            "[cyan]online.lookup.first_wins[/cyan] config key). Sources run "
+            "in [cyan]--online[/cyan] / config-key order, defaulting to "
+            "[green]metron[/green] then [green]comicvine[/green]; per-source "
+            "[cyan]--id[/cyan] / [cyan]--series-id[/cyan] flags always run "
+            "regardless."
         ),
     )
 

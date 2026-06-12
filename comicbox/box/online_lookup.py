@@ -320,12 +320,25 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
 
     def _build_active_online_sources(self) -> list[OnlineSource]:
-        """Resolve which configured online sources participate in this run."""
+        """
+        Resolve which configured online sources participate in this run.
+
+        The selection's order is the run order: under first-wins, the
+        first source that contributes data ends the lookup, so an admin
+        listing ``[comicvine, metron]`` makes Comic Vine the primary and
+        Metron the fallback. An empty/None selection runs every
+        configured source in the factory map's default order.
+        """
         online: OnlineSettings = self._config.online
         selected = online.lookup.sources
+        names = selected or tuple(self._ONLINE_SOURCE_FACTORIES)
         active: list[OnlineSource] = []
-        for name, factory in self._ONLINE_SOURCE_FACTORIES.items():
-            if selected is not None and name not in selected:
+        for name in names:
+            factory = self._ONLINE_SOURCE_FACTORIES.get(name)
+            if factory is None:
+                # Config-layer normalization warns and drops unknown names;
+                # this guards programmatic settings that bypass it.
+                logger.warning(f"online: unknown source {name!r}; skipping")
                 continue
             creds = online.auth.sources.get(name)
             if creds is None:
@@ -1006,7 +1019,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         self, source: OnlineSource, online: OnlineSettings, *, won_any: bool
     ) -> bool:
         """First-wins skip; explicit-id sources always run."""
-        if not won_any or online.lookup.all_sources:
+        if not won_any or not online.lookup.first_wins:
             return False
         has_explicit = (
             source.name in online.lookup.ids or source.name in online.lookup.series_ids
@@ -1043,7 +1056,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             if self._should_skip_first_wins(source, online, won_any=won_any):
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "
-                    f"use --tag-all-sources to query every source)"
+                    f"use --all-sources to query every source)"
                 )
                 continue
             if self._lookup_one_source(source):

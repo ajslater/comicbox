@@ -242,12 +242,14 @@ class OnlineSession:
         prompt_handler: PromptHandler | None = None,
         on_event: EventHandler | None = None,
         rematch: bool = False,
-        all_sources: bool = False,
+        first_wins: bool = True,
         defer_prompts: bool = False,
         series_batching: bool = True,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
-        self._sources = frozenset(sources)
+        # Order is run priority: the first source runs first and, under
+        # first_wins, its match ends the lookup for that comic.
+        self._sources = tuple(dict.fromkeys(sources))
         self._validate_sources(self._sources)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
@@ -256,7 +258,7 @@ class OnlineSession:
         self._prompt_handler = prompt_handler
         self._on_event = on_event
         self._rematch = rematch
-        self._all_sources = all_sources
+        self._first_wins = first_wins
         self._defer_prompts = defer_prompts
         self._series_batching = series_batching
         # Read config files / env exactly once per session. _build_config
@@ -680,11 +682,11 @@ class OnlineSession:
         base = self._base_settings
         new_lookup = OnlineLookupSettings(
             enabled=True,
-            sources=frozenset(self._sources),
+            sources=self._sources,
             match=self.mode,
             prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
             rematch=self._rematch,
-            all_sources=self._all_sources,
+            first_wins=self._first_wins,
         )
         new_auth = OnlineAuthSettings(sources=self._build_auth_sources())
         new_online = replace(base.online, lookup=new_lookup, auth=new_auth)
@@ -709,11 +711,11 @@ class OnlineSession:
     # -- validation ---------------------------------------------------------
 
     @staticmethod
-    def _validate_sources(sources: frozenset[str]) -> None:
+    def _validate_sources(sources: tuple[str, ...]) -> None:
         if not sources:
             msg = "OnlineSession requires at least one source"
             raise OnlineConfigurationError(msg)
-        unknown = sources - _KNOWN_SOURCES
+        unknown = set(sources) - _KNOWN_SOURCES
         if unknown:
             msg = (
                 f"Unknown online sources: {sorted(unknown)}. "
@@ -723,7 +725,7 @@ class OnlineSession:
 
     @staticmethod
     def _validate_credentials(
-        sources: frozenset[str], creds: OnlineCredentials
+        sources: tuple[str, ...], creds: OnlineCredentials
     ) -> None:
         missing: list[str] = []
         if "metron" in sources and not (creds.metron_user and creds.metron_password):

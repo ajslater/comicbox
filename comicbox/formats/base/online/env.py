@@ -37,11 +37,13 @@ _CRED_FIELDS = ("user", "pass", "key", "url")
 # Keep the field names in sync with the per-knob keys
 # ``comicbox.config.online.build_online_settings`` reads from
 # ``read_online_env()``.
-_BOOL_FIELDS = frozenset({"rematch", "all_sources"})
+_BOOL_FIELDS = frozenset({"rematch", "first_wins"})
 _FLOAT_FIELDS = frozenset({"auto_threshold"})
 _INT_FIELDS = frozenset({"retry_budget"})
+# `sources` stays a raw CSV string here; the config layer
+# (`_normalize_sources`) parses, orders, and validates it.
 _STRING_FIELDS = frozenset(
-    {"match", "prompts", "effort", "cache", "cache_dir", "cache_ttl"}
+    {"match", "prompts", "effort", "cache", "cache_dir", "cache_ttl", "sources"}
 )
 _ALL_FIELDS = _BOOL_FIELDS | _FLOAT_FIELDS | _INT_FIELDS | _STRING_FIELDS
 
