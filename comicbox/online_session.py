@@ -171,12 +171,21 @@ class BatchedPromptHandler(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class OnlineResult:
-    """Per-file outcome of an online tagging call."""
+    """
+    Per-file outcome of an online tagging call.
+
+    ``tags`` is the file's full merged metadata, present even when the
+    lookup applied nothing new (skip, no-match, deferred prompt) — it is
+    NOT evidence of a match. ``matched`` is: it's True only when an
+    online source actually contributed metadata, so writers should gate
+    on it to avoid re-writing a file with its own existing tags.
+    """
 
     path: Path
     tags: dict[str, Any] | None = None
     error: BaseException | None = None
     cancelled: bool = False
+    matched: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -359,7 +368,11 @@ class OnlineSession:
         batch, present them in a review UI, call ``preload_resolution()``
         for each one the user resolves, then re-tag the affected files
         (with defer_prompts toggled off if desired). The cache hit fires
-        the same way it does for in-batch dedup.
+        the same way it does for in-batch dedup. A non-empty cache is
+        enough to install the bridged selector — but with no handler and
+        defer_prompts off, a cache MISS (the re-search produced a
+        different candidate set than the fingerprint was minted from)
+        raises rather than falling back to the interactive CLI prompt.
         """
         entry = _CachedResolution(
             action=action, payload=payload, chosen_volume_id=chosen_volume_id
@@ -414,7 +427,7 @@ class OnlineSession:
         if self._cancel.is_set():
             return OnlineResult(path=path, cancelled=True)
         try:
-            tags = self._run_one(path)
+            tags, matched = self._run_one(path)
         except OnlineLookupAbortedError:
             # The handler answered "abort" (or a cancelled retry sleep
             # aborted an in-flight lookup). Abort means "abort the entire
@@ -426,7 +439,7 @@ class OnlineSession:
             if self._on_event is not None:
                 self._on_event(FileError(path=path, error=str(exc)))
             return OnlineResult(path=path, error=exc)
-        return OnlineResult(path=path, tags=tags)
+        return OnlineResult(path=path, tags=tags, matched=matched)
 
     def tag_many(self, paths: Iterable[Path]) -> Iterator[OnlineResult]:
         """
@@ -452,22 +465,29 @@ class OnlineSession:
 
     # -- internals ----------------------------------------------------------
 
-    def _run_one(self, path: Path) -> dict[str, Any]:
+    def _run_one(self, path: Path) -> tuple[dict[str, Any], bool]:
         config = self._build_config()
         with Comicbox(path, config=config) as cb:
-            # Bridge the selector when we have a handler OR when defer
-            # mode is on — defer mode produces no handler call but still
-            # needs to intercept the prompt to queue it.
-            if self._prompt_handler is not None or self._defer_prompts:
+            # Bridge the selector when we have a handler, when defer
+            # mode is on (defer produces no handler call but still needs
+            # to intercept the prompt to queue it), or when resolutions
+            # were preloaded — the bridged selector is the only consumer
+            # of the prompt cache, so a preload-only replay session
+            # (codex's resolve flow) needs it too.
+            if (
+                self._prompt_handler is not None
+                or self._defer_prompts
+                or self._prompt_cache
+            ):
                 cb.set_online_selector(self._bridged_selector())
             if self._on_event is not None:
                 cb.set_event_handler(self._on_event)
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
             cb.set_retry_sleep(self._retry_sleep_wait)
-            cb.run_online_lookup()
+            matched = cb.run_online_lookup()
             payload = cb.to_dict()
-        return payload.get("comicbox", {})
+        return payload.get("comicbox", {}), matched
 
     def _retry_sleep_wait(self, delay: float) -> None:
         """

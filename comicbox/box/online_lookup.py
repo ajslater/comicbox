@@ -234,6 +234,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     _retry_sleep: Callable[[float], None] | None = None
 
     _online_lookup_done_flag: bool = False
+    # Whether the completed lookup applied online metadata; repeat
+    # run_online_lookup() calls report this first-run outcome.
+    _online_lookup_won: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
     _local_cover_phash_computed: bool = False
     _local_cover_phash_value: str | None = None
@@ -1010,15 +1013,23 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         )
         return not has_explicit
 
-    def run_online_lookup(self) -> None:
-        """Idempotent: populate online MetadataSources once per box instance."""
+    def run_online_lookup(self) -> bool:
+        """
+        Idempotent: populate online MetadataSources once per box instance.
+
+        Returns whether any source won — i.e. whether online metadata was
+        actually applied to this box. A repeat call returns the first
+        run's outcome. ``False`` means the comic's metadata is unchanged
+        (disabled, no sources, no match, skipped, or deferred prompt), so
+        callers can avoid pointless re-writes of existing tags.
+        """
         if self._online_lookup_already_done():
-            return
+            return self._online_lookup_won
         self._mark_online_lookup_done()
         online = self._config.online
         path = getattr(self, "_path", None)
         if not online.lookup.enabled:
-            return
+            return False
         if online.lookup.prompts is not Prompts.NEVER:
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
         active_sources = self._build_active_online_sources()
@@ -1037,7 +1048,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 continue
             if self._lookup_one_source(source):
                 won_any = True
+        self._online_lookup_won = won_any
         self._cross_source_cv_id_check()
         self._emit(
             FileFinished(path=path, outcome="written" if won_any else "no_change")
         )
+        return won_any

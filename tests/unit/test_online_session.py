@@ -248,6 +248,83 @@ def test_batched_prompt_handler_protocol_recognized() -> None:
     OnlineSession(sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler)
 
 
+# --- matched contract ----------------------------------------------------------
+
+
+class _FakeBox:
+    """Stand-in for Comicbox recording the wiring _run_one performs."""
+
+    last: _FakeBox | None = None
+
+    def __init__(self, path, config=None) -> None:
+        self.selector = None
+        self.won = type(self).next_won
+        type(self).last = self
+
+    next_won = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def set_online_selector(self, selector) -> None:
+        self.selector = selector
+
+    def set_event_handler(self, handler) -> None:
+        pass
+
+    def set_series_cache(self, cache) -> None:
+        pass
+
+    def set_retry_sleep(self, sleep) -> None:
+        pass
+
+    def run_online_lookup(self) -> bool:
+        return self.won
+
+    def to_dict(self) -> dict:
+        return {"comicbox": {"series": "Existing Series"}}
+
+
+@pytest.fixture
+def fake_box(monkeypatch):
+    import comicbox.online_session as mod
+
+    monkeypatch.setattr(mod, "Comicbox", _FakeBox)
+    _FakeBox.last = None
+    _FakeBox.next_won = False
+    return _FakeBox
+
+
+def test_unmatched_lookup_yields_matched_false(tmp_path, fake_box) -> None:
+    """A lookup that applied nothing still carries tags but matched=False."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    result = session.tag(tmp_path / "f.cbz")
+    assert result.error is None
+    assert result.tags  # merged existing metadata is still returned
+    assert result.matched is False
+
+
+def test_matched_lookup_yields_matched_true(tmp_path, fake_box) -> None:
+    fake_box.next_won = True
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    result = session.tag(tmp_path / "f.cbz")
+    assert result.matched is True
+
+
+def test_preloaded_resolution_installs_selector(tmp_path, fake_box) -> None:
+    """A preload-only replay session (no handler, defer off) bridges the selector."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session.tag(tmp_path / "f.cbz")
+    assert fake_box.last is not None
+    assert fake_box.last.selector is None  # nothing to consult — not installed
+    session.preload_resolution("metron|x|2026||(1,)", action="manual", payload="m:1")
+    session.tag(tmp_path / "f.cbz")
+    assert fake_box.last.selector is not None  # cache non-empty — installed
+
+
 # --- rate-limit status stub ---------------------------------------------------
 
 
