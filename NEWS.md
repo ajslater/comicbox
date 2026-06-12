@@ -10,10 +10,42 @@
     - PDFs no longer decode comicbox metadata hidden in the PDF `keywords`
       field; `keywords` now reads as plain tags. Metadata embedded as files
       inside a PDF still reads normally.
+    - Library API: `Comicbox(...)` no longer accepts a `logger=` argument and
+      never reconfigures the host application's logging. Host apps keep their
+      own loguru sinks; the CLI configures its own.
+    - Library API: operational errors derive from
+      `comicbox.exceptions.ComicboxError` (`ArchiveError`, `MetadataError`,
+      `ExportError`, …) instead of raising bare `ValueError`. Consumers can
+      `except ComicboxError`.
+    - Library API: `comicbox.events` dataclasses are keyword-only.
+    - The misspelled `mudpdf` format alias was removed; use `mupdf` (or `pdf`).
 - Fixes
     - Normalize ComicBookInfo `rating` to the canonical 0-5 scale.
     - Map Metron price currencies to the correct country.
     - Harden credentials against accidental leaks into logs.
+    - `write_metadata()` accepts the root-wrapped dict `to_dict()` returns;
+      passing it used to silently write nothing while reporting success.
+    - `bulk_write()` honors `stop_on_error` and its cancel event: queued files
+      are no longer written after the batch is stopped and report
+      `cancelled=True` in their results.
+    - Online tagging reliability:
+        - Hard authentication failures and unknown ids are no longer retried.
+        - A Metron search no longer stacks retry budgets into worst-case hours
+          of waiting on rate limits.
+        - Configured `rate_limit` overrides are actually enforced and persist
+          across runs.
+        - `--cache refresh` discards the response cache once at run start
+          instead of effectively disabling caching for the whole run.
+        - Answering a prompt with abort aborts the whole run, and `set_policy` /
+          `set_unattended` persist for the rest of the session.
+        - Cancelling a programmatic batch interrupts an in-flight rate-limit
+          wait instead of sleeping out the full retry budget.
+    - Metadata added with `add_metadata()` after a read is no longer ignored.
+    - `to_dict()` computes pages and page count correctly when one instance
+      dumps multiple formats.
+    - Exported metadata files no longer end with a trailing blank line.
+    - `import comicbox` no longer crashes under `PYTHONDEVMODE=1` on installs
+      without dev dependencies.
 - Features
     - Online metadata tagging from Metron and ComicVine with `--online`.
       Comicbox searches by the comic's series, issue, and year, ranks the
@@ -35,6 +67,9 @@
     - Faster archive reads: the 7z and RAR backends load lazily, the page list
       is derived from cached archive state, and that state is released on
       `close()`.
+    - Online tagging reuses its API client within a run instead of rebuilding it
+      for every call, and batch sessions read config files once instead of per
+      file.
 
 ## v3.0.3
 
