@@ -60,7 +60,7 @@ def test_read_online_env_parses_typed_values() -> None:
         "COMICBOX_ONLINE_MATCH": "eager",
         "COMICBOX_ONLINE_PROMPTS": "never",
         "COMICBOX_ONLINE_REMATCH": "true",
-        "COMICBOX_ONLINE_ALL_SOURCES": "0",
+        "COMICBOX_ONLINE_FIRST_WINS": "1",
         "COMICBOX_ONLINE_AUTO_THRESHOLD": "0.92",
         "COMICBOX_ONLINE_EFFORT": "thorough",
         "COMICBOX_ONLINE_CACHE": "refresh",
@@ -73,7 +73,7 @@ def test_read_online_env_parses_typed_values() -> None:
         "match": "eager",
         "prompts": "never",
         "rematch": True,
-        "all_sources": False,
+        "first_wins": True,
         "auto_threshold": 0.92,
         "effort": "thorough",
         "cache": "refresh",
@@ -203,7 +203,60 @@ def test_online_filter_via_cli() -> None:
     cli = Namespace(online_sources=["metron"])
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.lookup.enabled is True
-    assert cfg.online.lookup.sources == frozenset({"metron"})
+    assert cfg.online.lookup.sources == ("metron",)
+
+
+def test_online_sources_cli_order_is_preserved() -> None:
+    """--online list order is run priority; comicvine-first survives."""
+    cli = Namespace(online_sources=["comicvine", "metron"])
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.lookup.sources == ("comicvine", "metron")
+
+
+def test_online_sources_env_sets_durable_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """COMICBOX_ONLINE_SOURCES orders sources without enabling lookups."""
+    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine, metron")
+    cfg = get_config()
+    assert cfg.online.lookup.sources == ("comicvine", "metron")
+    assert cfg.online.lookup.enabled is False
+
+
+def test_online_cli_all_overrides_durable_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """--online all means every configured source, not the env/file list."""
+    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine")
+    cli = Namespace(online_sources=["all"])
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.lookup.enabled is True
+    assert cfg.online.lookup.sources is None
+
+
+def test_online_sources_unknown_names_warn_and_drop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine,grand_comics_db")
+    cfg = get_config()
+    assert cfg.online.lookup.sources == ("comicvine",)
+
+
+def test_first_wins_defaults_true() -> None:
+    cfg = get_config()
+    assert cfg.online.lookup.first_wins is True
+
+
+def test_all_sources_flag_inverts_first_wins() -> None:
+    cli = Namespace(online_sources=["all"], all_sources=True)
+    cfg = get_config(Namespace(comicbox=cli))
+    assert cfg.online.lookup.first_wins is False
+
+
+def test_first_wins_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE_FIRST_WINS", "false")
+    cfg = get_config()
+    assert cfg.online.lookup.first_wins is False
 
 
 def test_explicit_id_parses() -> None:
@@ -281,7 +334,7 @@ def test_explicit_id_implicitly_activates_online() -> None:
     cli = Namespace(explicit_ids=["comicvine:42"])
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.lookup.enabled is True
-    assert cfg.online.lookup.sources == frozenset({"comicvine"})
+    assert cfg.online.lookup.sources == ("comicvine",)
     assert cfg.online.lookup.ids == {"comicvine": 42}
 
 
@@ -293,7 +346,7 @@ def test_explicit_id_union_with_online_filter() -> None:
     )
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.lookup.enabled is True
-    assert cfg.online.lookup.sources == frozenset({"metron", "comicvine"})
+    assert cfg.online.lookup.sources == ("metron", "comicvine")
 
 
 def test_explicit_id_with_online_all_keeps_all() -> None:

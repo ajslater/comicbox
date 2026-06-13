@@ -59,9 +59,15 @@ class ComicVineOnlineSource(OnlineSource):
             return None
         from simyan.cache.sqlite_cache import SQLiteCache
 
+        from comicbox.formats.base.online.vacuum import vacuum_if_bloated
+
         cache_path, ttl = resolved
         expiry = ttl if ttl.total_seconds() > 0 else None
-        return SQLiteCache(path=cache_path, expiry=expiry)
+        # simyan's SQLiteCache cleans up expired rows on open; reclaim the
+        # freed pages if the file has gotten bloated.
+        cache = SQLiteCache(path=cache_path, expiry=expiry)
+        vacuum_if_bloated(cache_path)
+        return cache
 
     def _get_session(self) -> Comicvine:
         """Build the simyan client once per source lifetime, then reuse it."""

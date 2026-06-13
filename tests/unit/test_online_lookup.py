@@ -544,8 +544,43 @@ def test_first_wins_skips_second_source_on_metron_explicit_id(
     assert cv_instances[0].search_calls == []
 
 
+def test_sources_order_is_run_priority(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    A comicvine-first selection runs Comic Vine first; its win skips Metron.
+
+    Before sources became ordered, the factory map's order (metron first)
+    always won: Metron would have attempted its search before Comic Vine
+    got a turn. With Comic Vine listed first and contributing via --id,
+    first-wins must skip Metron entirely — no search call at all.
+    """
+    metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(factories),
+    )
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["comicvine", "metron"],
+            explicit_ids=["comicvine:1234"],
+            # Searchable profile so Metron WOULD search if it ran first.
+            general=Namespace(
+                metadata={
+                    "comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}
+                }
+            ),
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+        )
+    )
+    cb = Comicbox(config=args)
+    cb.run_online_lookup()
+    assert cv_instances[0].get_calls == [1234]
+    assert metron_instances[0].get_calls == []
+    assert metron_instances[0].search_calls == []
+
+
 def test_tag_all_sources_runs_both(monkeypatch: pytest.MonkeyPatch) -> None:
-    """--tag-all-sources lets CV run even after metron contributed."""
+    """--all-sources lets CV run even after metron contributed."""
     metron_instances, cv_instances, factories = _dual_factories_for_first_wins()
     monkeypatch.setattr(
         ComicboxOnlineLookup,

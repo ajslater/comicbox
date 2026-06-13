@@ -90,7 +90,8 @@ _ONLINE_TEMPLATE = MappingTemplate(
                 "match": String(),
                 "prompts": String(),
                 "rematch": bool,
-                "all_sources": bool,
+                "sources": Optional(_NON_MAPPING_CONTAINER),
+                "first_wins": bool,
             }
         ),
         "auth": MappingTemplate(

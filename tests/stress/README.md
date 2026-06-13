@@ -20,7 +20,7 @@ before declaring an M7-touching change shipped.
 
 ## `run.py` — rate-limiter compliance
 
-### What it measures
+### What `run.py` measures
 
 | Signal                                  | Source                                                                                                 |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -30,7 +30,7 @@ before declaring an M7-touching change shipped.
 | Rate-limit retries                      | parsed from `retry.py` INFO log lines                                                                  |
 | Exceptions                              | parsed from log (traceback markers)                                                                    |
 
-### What it doesn't measure
+### What `run.py` doesn't measure
 
 - **Prompt-lock contention.** `--unattended` makes the matcher SKIP instead of
   prompting → `_PROMPT_LOCK` is never acquired. Covered by `prompt_ux.py`
@@ -40,7 +40,7 @@ before declaring an M7-touching change shipped.
 
 ## `prompt_ux.py` — prompt serialisation
 
-### What it measures
+### What `prompt_ux.py` measures
 
 | Signal                           | Source                                    |
 | -------------------------------- | ----------------------------------------- |
@@ -49,7 +49,7 @@ before declaring an M7-touching change shipped.
 | Distinct worker threads observed | `threading.get_ident()` per call          |
 | Wall time vs serialised baseline | `N_prompts × think_time` as lower bound   |
 
-### How it works
+### How `prompt_ux.py` works
 
 Drives `comicbox.cli.main(argv)` in-process (NOT via subprocess) so it can
 monkeypatch `comicbox.box.online_lookup.cli_selector` for the run's duration.
@@ -59,7 +59,7 @@ records the event, and returns `("skip", None)` — no archive writes happen.
 The real `Runner._run_parallel` runs the ThreadPoolExecutor + the
 `_PROMPT_LOCK`-protected selector path end-to-end.
 
-### What it doesn't measure
+### What `prompt_ux.py` doesn't measure
 
 - **Real user think-time variability.** Fixed think-time is uniform; real users
   take 1-30+ seconds. The lock is fair regardless, but UX considerations like
@@ -70,7 +70,7 @@ The real `Runner._run_parallel` runs the ThreadPoolExecutor + the
 
 ## `jobs_accuracy.py` — does parallelism change matcher decisions
 
-### What it measures
+### What `jobs_accuracy.py` measures
 
 | Signal                              | Source                                              |
 | ----------------------------------- | --------------------------------------------------- |
@@ -79,7 +79,7 @@ The real `Runner._run_parallel` runs the ThreadPoolExecutor + the
 | Decided vs SKIPPED counts           | per jobs value, from the chosen dict                |
 | Wall time + Metron cache-row delta  | per jobs value                                      |
 
-### How it works
+### How `jobs_accuracy.py` works
 
 Same in-process pattern as `prompt_ux.py`: drives `comicbox.cli.main(argv)` and
 monkeypatches `ComicboxOnlineLookup._accept_candidate` to record
@@ -94,7 +94,7 @@ matcher path (without it, the explicit-id shortcut skips search entirely → -j 
 moot). Use `--threshold 0.50` to force decisions when the labeled fixture set is
 too thin for auto-writes to land naturally at the production 0.95 default.
 
-### What it doesn't measure
+### What `jobs_accuracy.py` doesn't measure
 
 - **Absolute correctness.** Uses jobs=1 as the baseline, not labels. Tells you
   "did -j N change the answer?" not "is jobs=N's answer right?". The labeled

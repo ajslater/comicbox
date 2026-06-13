@@ -199,15 +199,24 @@ class OnlineLookupSettings:
 
     # Runtime-only (CLI-derived; never lives in the config file).
     enabled: bool = False
-    sources: frozenset[str] | None = None
     ids: Mapping[str, int] = field(default_factory=dict)
     series_ids: Mapping[str, int] = field(default_factory=dict)
+
+    # Ordered source selection AND run priority: the first listed source
+    # runs first, and with ``first_wins`` its match ends the lookup.
+    # None = every configured source in SOURCE_NAMES order. Durable via
+    # the ``online.lookup.sources`` config-file key; CLI --online and
+    # COMICBOX_ONLINE_SOURCES override it.
+    sources: tuple[str, ...] | None = None
 
     # Behavior toggles.
     match: MatchMode = MatchMode.AUTO
     prompts: Prompts = Prompts.ASK
     rematch: bool = False
-    all_sources: bool = False
+    # Stop after the first source that contributes data (the cheap,
+    # default mode). False = query every selected source and merge
+    # (CLI: --all-sources).
+    first_wins: bool = True
 
 
 @dataclass(frozen=True, slots=True)

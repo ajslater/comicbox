@@ -166,13 +166,19 @@ def _parse_db_id_list(
     return out
 
 
+# Sentinel for an explicit "all": select every configured source in
+# default order, skipping the env/config-file fallback. Distinct from
+# None, which means "not specified here — fall through".
+ALL_SOURCES: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True, slots=True)
 class _RuntimeOnlineInputs:
     """Bag of CLI-derived online inputs for `build_online_settings`."""
 
     cli_overrides: CliOverrides | None = None
     enabled: bool = False
-    sources: frozenset[str] | None = None
+    sources: tuple[str, ...] | None = None
     ids: Mapping[str, int] = field(default_factory=dict)
     series_ids: Mapping[str, int] = field(default_factory=dict)
     cache_mode_cli: CacheMode | None = None
@@ -231,13 +237,26 @@ def _build_lookup(
             online_block.lookup.rematch,
         )
     )
-    all_sources = bool(
+    # The --all-sources flag asserts "query everything" (first_wins off);
+    # absent, the first_wins key coalesces env > config file.
+    all_sources_cli = cli("all_sources")
+    first_wins = bool(
         _coalesce(
-            cli("all_sources"),
-            online_env.get("all_sources"),
-            online_block.lookup.all_sources,
+            None if all_sources_cli is None else not all_sources_cli,
+            online_env.get("first_wins"),
+            online_block.lookup.first_wins,
         )
     )
+    # Ordered selection: CLI > env > config file. ALL_SOURCES (or an
+    # empty/all-containing list at any layer) collapses to None = every
+    # configured source in default order.
+    selected = _coalesce(
+        runtime.sources,
+        _normalize_sources(online_env.get("sources"), origin="env"),
+        _normalize_sources(online_block.lookup.sources, origin="config"),
+    )
+    if not selected:
+        selected = None
     match_mode = (
         _parse_enum(MatchMode, "--match", str(match_raw))
         if match_raw
@@ -251,13 +270,13 @@ def _build_lookup(
 
     return OnlineLookupSettings(
         enabled=runtime.enabled,
-        sources=runtime.sources,
+        sources=selected,
         ids=dict(runtime.ids),
         series_ids=dict(runtime.series_ids),
         match=match_mode,
         prompts=prompts_value,
         rematch=rematch,
-        all_sources=all_sources,
+        first_wins=first_wins,
     )
 
 
@@ -377,18 +396,51 @@ def build_online_settings(
     )
 
 
+def _normalize_sources(value: Any, *, origin: str) -> tuple[str, ...] | None:
+    """
+    Normalize a sources list from env/config into an ordered tuple.
+
+    Returns None when the value is absent (fall through to the next
+    layer), ALL_SOURCES when it's empty or contains the ``all``
+    sentinel, and otherwise an order-preserving dedupe of the listed
+    names. Unknown names warn and drop rather than failing the run.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.split(",")
+    names = tuple(
+        dict.fromkeys(s for s in (str(v).strip().lower() for v in value) if s)
+    )
+    if not names or "all" in names:
+        return ALL_SOURCES
+    unknown = tuple(n for n in names if n not in SOURCE_NAMES)
+    if unknown:
+        logger.warning(
+            f"online: ignoring unknown source(s) {', '.join(unknown)} from "
+            f"{origin}; known: {', '.join(SOURCE_NAMES)}"
+        )
+    return tuple(n for n in names if n in SOURCE_NAMES)
+
+
 def _resolve_runtime_sources(
-    online_arg: Any, explicit_id_sources: frozenset[str]
-) -> tuple[bool, frozenset[str] | None]:
-    """Decide (enabled, selected) from --online-sources + explicit-id presence."""
+    online_arg: Any, explicit_id_sources: tuple[str, ...]
+) -> tuple[bool, tuple[str, ...] | None]:
+    """
+    Decide (enabled, selected) from --online-sources + explicit-id presence.
+
+    ``selected`` is ordered (run priority). None = the CLI didn't choose,
+    so selection falls through to env/config; ALL_SOURCES = an explicit
+    ``--online all``, which overrides the lower layers.
+    """
     if online_arg is None:
         if explicit_id_sources:
             return True, explicit_id_sources
         return False, None
-    normalized = frozenset(str(s).strip().lower() for s in online_arg if str(s).strip())
-    if not normalized or "all" in normalized:
-        return True, None
-    return True, normalized | explicit_id_sources
+    normalized = _normalize_sources(online_arg, origin="--online")
+    if not normalized:
+        return True, ALL_SOURCES
+    return True, tuple(dict.fromkeys((*normalized, *explicit_id_sources)))
 
 
 def runtime_online_inputs(
@@ -410,7 +462,7 @@ def runtime_online_inputs(
         "--series-id",
         _parse_explicit_series_id,
     )
-    explicit_id_sources = frozenset(ids.keys()) | frozenset(series_ids.keys())
+    explicit_id_sources = tuple(dict.fromkeys((*ids, *series_ids)))
     runtime_enabled, selected = _resolve_runtime_sources(
         getattr(cns, "online_sources", None), explicit_id_sources
     )

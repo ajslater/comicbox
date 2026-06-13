@@ -171,12 +171,21 @@ class BatchedPromptHandler(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class OnlineResult:
-    """Per-file outcome of an online tagging call."""
+    """
+    Per-file outcome of an online tagging call.
+
+    ``tags`` is the file's full merged metadata, present even when the
+    lookup applied nothing new (skip, no-match, deferred prompt) — it is
+    NOT evidence of a match. ``matched`` is: it's True only when an
+    online source actually contributed metadata, so writers should gate
+    on it to avoid re-writing a file with its own existing tags.
+    """
 
     path: Path
     tags: dict[str, Any] | None = None
     error: BaseException | None = None
     cancelled: bool = False
+    matched: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,12 +242,14 @@ class OnlineSession:
         prompt_handler: PromptHandler | None = None,
         on_event: EventHandler | None = None,
         rematch: bool = False,
-        all_sources: bool = False,
+        first_wins: bool = True,
         defer_prompts: bool = False,
         series_batching: bool = True,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
-        self._sources = frozenset(sources)
+        # Order is run priority: the first source runs first and, under
+        # first_wins, its match ends the lookup for that comic.
+        self._sources = tuple(dict.fromkeys(sources))
         self._validate_sources(self._sources)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
@@ -247,7 +258,7 @@ class OnlineSession:
         self._prompt_handler = prompt_handler
         self._on_event = on_event
         self._rematch = rematch
-        self._all_sources = all_sources
+        self._first_wins = first_wins
         self._defer_prompts = defer_prompts
         self._series_batching = series_batching
         # Read config files / env exactly once per session. _build_config
@@ -359,7 +370,11 @@ class OnlineSession:
         batch, present them in a review UI, call ``preload_resolution()``
         for each one the user resolves, then re-tag the affected files
         (with defer_prompts toggled off if desired). The cache hit fires
-        the same way it does for in-batch dedup.
+        the same way it does for in-batch dedup. A non-empty cache is
+        enough to install the bridged selector — but with no handler and
+        defer_prompts off, a cache MISS (the re-search produced a
+        different candidate set than the fingerprint was minted from)
+        raises rather than falling back to the interactive CLI prompt.
         """
         entry = _CachedResolution(
             action=action, payload=payload, chosen_volume_id=chosen_volume_id
@@ -414,7 +429,7 @@ class OnlineSession:
         if self._cancel.is_set():
             return OnlineResult(path=path, cancelled=True)
         try:
-            tags = self._run_one(path)
+            tags, matched = self._run_one(path)
         except OnlineLookupAbortedError:
             # The handler answered "abort" (or a cancelled retry sleep
             # aborted an in-flight lookup). Abort means "abort the entire
@@ -426,7 +441,7 @@ class OnlineSession:
             if self._on_event is not None:
                 self._on_event(FileError(path=path, error=str(exc)))
             return OnlineResult(path=path, error=exc)
-        return OnlineResult(path=path, tags=tags)
+        return OnlineResult(path=path, tags=tags, matched=matched)
 
     def tag_many(self, paths: Iterable[Path]) -> Iterator[OnlineResult]:
         """
@@ -452,22 +467,43 @@ class OnlineSession:
 
     # -- internals ----------------------------------------------------------
 
-    def _run_one(self, path: Path) -> dict[str, Any]:
+    def _run_one(self, path: Path) -> tuple[dict[str, Any], bool]:
         config = self._build_config()
         with Comicbox(path, config=config) as cb:
-            # Bridge the selector when we have a handler OR when defer
-            # mode is on — defer mode produces no handler call but still
-            # needs to intercept the prompt to queue it.
-            if self._prompt_handler is not None or self._defer_prompts:
+            # Bridge the selector when we have a handler, when defer
+            # mode is on (defer produces no handler call but still needs
+            # to intercept the prompt to queue it), or when resolutions
+            # were preloaded — the bridged selector is the only consumer
+            # of the prompt cache, so a preload-only replay session
+            # (codex's resolve flow) needs it too.
+            if (
+                self._prompt_handler is not None
+                or self._defer_prompts
+                or self._prompt_cache
+            ):
                 cb.set_online_selector(self._bridged_selector())
             if self._on_event is not None:
                 cb.set_event_handler(self._on_event)
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
             cb.set_retry_sleep(self._retry_sleep_wait)
-            cb.run_online_lookup()
+            matched = cb.run_online_lookup()
             payload = cb.to_dict()
-        return payload.get("comicbox", {})
+        return payload.get("comicbox", {}), matched
+
+    def _retry_sleep_wait(self, delay: float) -> None:
+        """
+        Wait out a retry delay, aborting the lookup when cancel() fires.
+
+        Rate-limit recovery can sleep for minutes per attempt; plain
+        time.sleep would make cancel() wait out the whole budget while
+        the archive sits open. Waiting on the cancel event instead lets
+        a caller interrupt mid-retry; raising aborts the in-flight
+        lookup, which tag() converts into a cancelled result.
+        """
+        if self._cancel.wait(delay):
+            reason = "online: session cancelled during retry wait"
+            raise OnlineLookupAbortedError(reason)
 
     def _retry_sleep_wait(self, delay: float) -> None:
         """
@@ -660,11 +696,11 @@ class OnlineSession:
         base = self._base_settings
         new_lookup = OnlineLookupSettings(
             enabled=True,
-            sources=frozenset(self._sources),
+            sources=self._sources,
             match=self.mode,
             prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
             rematch=self._rematch,
-            all_sources=self._all_sources,
+            first_wins=self._first_wins,
         )
         new_auth = OnlineAuthSettings(sources=self._build_auth_sources())
         new_online = replace(base.online, lookup=new_lookup, auth=new_auth)
@@ -689,11 +725,11 @@ class OnlineSession:
     # -- validation ---------------------------------------------------------
 
     @staticmethod
-    def _validate_sources(sources: frozenset[str]) -> None:
+    def _validate_sources(sources: tuple[str, ...]) -> None:
         if not sources:
             msg = "OnlineSession requires at least one source"
             raise OnlineConfigurationError(msg)
-        unknown = sources - _KNOWN_SOURCES
+        unknown = set(sources) - _KNOWN_SOURCES
         if unknown:
             msg = (
                 f"Unknown online sources: {sorted(unknown)}. "
@@ -703,7 +739,7 @@ class OnlineSession:
 
     @staticmethod
     def _validate_credentials(
-        sources: frozenset[str], creds: OnlineCredentials
+        sources: tuple[str, ...], creds: OnlineCredentials
     ) -> None:
         missing: list[str] = []
         if "metron" in sources and not (creds.metron_user and creds.metron_password):

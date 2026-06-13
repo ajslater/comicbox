@@ -65,9 +65,16 @@ comicbox:
       # Force a fresh search even if the comic has a stored upstream id
       # and skip files already tagged from this source.
       rematch: False
-      # When False (default), stop after the first online source that
-      # contributes data. Set True to query every configured source.
-      all_sources: False
+      # Ordered source selection and run priority. The first listed
+      # source runs first; with first_wins True its match ends the
+      # lookup (e.g. [comicvine, metron] tries Comic Vine first and
+      # falls back to Metron). null = every configured source in the
+      # built-in order (metron, comicvine). Overridden by --online.
+      sources: null
+      # When True (default), stop after the first online source that
+      # contributes data. Set False to query every selected source and
+      # merge their metadata (CLI: --all-sources).
+      first_wins: True
 
     auth:
       metron:
