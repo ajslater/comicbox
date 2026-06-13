@@ -81,6 +81,11 @@ class CoverHashUrlCache:
                 "CREATE TABLE IF NOT EXISTS cover_hashes "
                 "(url TEXT PRIMARY KEY, phash TEXT NOT NULL)"
             )
+        # Insert-or-replace only, so this rarely accumulates free pages, but
+        # reclaim them if it ever does (e.g. churned cover URLs).
+        from comicbox.formats.base.online.vacuum import vacuum_if_bloated
+
+        vacuum_if_bloated(self._db_path)
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._db_path)

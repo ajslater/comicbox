@@ -9,6 +9,7 @@ and merge. M3 adds search.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
@@ -71,9 +72,21 @@ class MetronOnlineSource(OnlineSource):
             return None
         from mokkari.sqlite_cache import SqliteCache
 
+        from comicbox.formats.base.online.vacuum import vacuum_if_bloated
+
         cache_path, ttl = resolved
-        expire = int(ttl.total_seconds()) if ttl.total_seconds() > 0 else None
-        return SqliteCache(db_name=str(cache_path), expire=expire)
+        # mokkari's SqliteCache treats `expire` as a number of *days*
+        # (timedelta(days=expire)), not seconds. Round up so a sub-day TTL
+        # still expires after at least one day rather than collapsing toward
+        # 0 (which mokkari reads as "no expiry").
+        expire = (
+            math.ceil(ttl.total_seconds() / 86400) if ttl.total_seconds() > 0 else None
+        )
+        # mokkari's SqliteCache cleans up expired rows on open; reclaim the
+        # freed pages if the file has gotten bloated.
+        cache = SqliteCache(db_name=str(cache_path), expire=expire)
+        vacuum_if_bloated(cache_path)
+        return cache
 
     def _get_session(self) -> Session:
         """Build the mokkari client once per source lifetime, then reuse it."""
