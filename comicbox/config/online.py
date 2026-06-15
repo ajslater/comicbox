@@ -396,6 +396,14 @@ def build_online_settings(
     )
 
 
+def _split_source_names(value: Any) -> tuple[str, ...]:
+    """Normalize raw input into an ordered, deduped tuple of lowercase names."""
+    if isinstance(value, str):
+        value = value.split(",")
+    cleaned = (str(v).strip().lower() for v in value)
+    return tuple(dict.fromkeys(s for s in cleaned if s))
+
+
 def _normalize_sources(value: Any, *, origin: str) -> tuple[str, ...] | None:
     """
     Normalize a sources list from env/config into an ordered tuple.
@@ -407,11 +415,7 @@ def _normalize_sources(value: Any, *, origin: str) -> tuple[str, ...] | None:
     """
     if value is None:
         return None
-    if isinstance(value, str):
-        value = value.split(",")
-    names = tuple(
-        dict.fromkeys(s for s in (str(v).strip().lower() for v in value) if s)
-    )
+    names = _split_source_names(value)
     if not names or "all" in names:
         return ALL_SOURCES
     unknown = tuple(n for n in names if n not in SOURCE_NAMES)

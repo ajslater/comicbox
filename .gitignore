@@ -1,5 +1,3 @@
-# Personal smoke-test comic archives at the repo root. Anchored to root
-# only — fixture archives under tests/ stay tracked.
 __pycache__
 __pypackages__
 __snapshots__
