@@ -61,6 +61,7 @@
           }
         },
         "credits": {
+          "type": "object",
           "additionalProperties": {
             "$ref": "credit.schema.json"
           }
@@ -156,13 +157,13 @@
           "type": "string"
         },
         "publisher": {
-          "$ref": "identified-object.schema.json"
+          "$ref": "named-identified-object.schema.json"
         },
         "reading_direction": {
           "type": "string",
           "enum": ["rtl", "ltr", "ttb", "btt"]
         },
-        "remainder": {
+        "remainders": {
           "type": "array",
           "items": {
             "type": "string"
@@ -193,10 +194,7 @@
           }
         },
         "stories": {
-          "type": "object",
-          "values": {
-            "$ref": "identified-objects.schema.json"
-          }
+          "$ref": "identified-objects.schema.json"
         },
         "summary": {
           "type": "string"
@@ -210,14 +208,20 @@
         "teams": {
           "$ref": "identified-objects.schema.json"
         },
+        "title": {
+          "type": "string"
+        },
         "universes": {
           "type": "object",
           "additionalProperties": {
-            "designation": {
-              "type": "string"
-            },
-            "identifiers": {
-              "$ref": "identifiers.schema.json"
+            "type": "object",
+            "properties": {
+              "designation": {
+                "type": "string"
+              },
+              "identifiers": {
+                "$ref": "identifiers.schema.json"
+              }
             }
           }
         },

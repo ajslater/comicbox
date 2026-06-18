@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-SCHEMA_PATH = Path(__file__).parent.parent / "schema_definitions"
+SCHEMA_PATH = Path(__file__).parent.parent / "schemas"
 
 
 class BaseValidator:

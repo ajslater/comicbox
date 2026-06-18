@@ -4,13 +4,13 @@
   "title": "Comicbox Credit",
   "type": "object",
   "properties": {
-    "$ref": "identified-object.schema.json",
-    "properties": {
-      "roles": {
-        "type": "object",
-        "additionalProperties": {
-          "$ref": "identified-object.schema.json"
-        }
+    "identifiers": {
+      "$ref": "identifiers.schema.json"
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "identified-object.schema.json"
       }
     }
   }

@@ -27,7 +27,7 @@
       "type": "integer"
     },
     "key": {
-      "type": "integer"
+      "type": "string"
     },
     "bookmark": {
       "type": "string"
