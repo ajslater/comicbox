@@ -189,6 +189,39 @@ def test_no_search_criteria_skips_silently(monkeypatch) -> None:
     assert finished[-1].outcome == "no_change"
 
 
+def test_stored_id_refresh_emits_auto_written(monkeypatch) -> None:
+    """A previously-tagged comic refreshes via its stored id and still emits AutoWritten (no search)."""
+    instances = _patch_metron(monkeypatch, [])
+    cli_md = {
+        "comicbox": {
+            "series": {"name": "Foo Comics"},
+            "issue": {"name": "5"},
+            "identifiers": {"metron": {"key": "777"}},
+        }
+    }
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            general=Namespace(metadata=cli_md),
+            auth=["metron:user=u", "metron:pass=p"],
+        )
+    )
+    events: list[Event] = []
+    with Comicbox(config=args) as cb:
+        cb.set_event_handler(events.append)
+        cb.run_online_lookup()
+
+    # Stored-id fast path: a direct get() by the stored id, no search.
+    assert instances[0].get_calls == [777]
+    assert not any(isinstance(e, SearchStarted) for e in events)
+
+    auto = _first(events, AutoWritten)
+    assert (auto.source, auto.candidate_summary) == ("metron", "777")
+
+    finished = _first(events, FileFinished)
+    assert finished.outcome == "written"
+
+
 def test_event_handler_absent_is_a_noop(monkeypatch) -> None:
     """Without a handler the lookup still works; no exceptions, no recorded events."""
     _patch_metron(monkeypatch, [_make_candidate(101, 2020)])
