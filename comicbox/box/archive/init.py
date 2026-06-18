@@ -7,6 +7,7 @@ from typing_extensions import Self
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType
+from comicbox.exceptions import ArchiveError
 
 
 class ComicboxArchiveInit(ComicboxInit):
@@ -23,7 +24,7 @@ class ComicboxArchiveInit(ComicboxInit):
         self.close()
 
     def close(self) -> None:
-        """Close the open archive."""
+        """Close the open archive and release cached archive state."""
         try:
             if self._archive and hasattr(self._archive, "close"):
                 self._archive.close()
@@ -31,6 +32,15 @@ class ComicboxArchiveInit(ComicboxInit):
             logger.warning(f"closing archive {self._path}: {exc}")
         finally:
             self._archive = None
+            # Release the 7z page-buffer factory — Py7zBytesIO objects
+            # accumulate one entry per page ever read and are otherwise
+            # only freed when the Comicbox instance is GC'd. Long-lived
+            # callers (Codex's ArchiveCache) need explicit release.
+            self._7zfactory = None
+            # Drop cached archive directory listings as well; they can
+            # be many KB on archives with hundreds of pages.
+            self._namelist = None
+            self._infolist = None
 
     def _get_archive(self) -> ArchiveType:
         """Set archive instance open for reading."""
@@ -38,5 +48,5 @@ class ComicboxArchiveInit(ComicboxInit):
             self._archive = self._archive_cls(self._path)
         if not self._archive:
             reason = f"Unable to make archive from class {self._archive_cls}"
-            raise ValueError(reason)
+            raise ArchiveError(reason)
         return self._archive

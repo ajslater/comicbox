@@ -5,7 +5,6 @@ set -euo pipefail
 # zip -9 ../cli.cbz comicbox.yaml
 zip -9 ../comicbox-cli.cbz comicbox-cli.yaml
 zip -9 ../comicbox.cbz comicbox.json
-zip -9 ../comictagger.cbz comictagger.json
 zip -9 ../xml.cbz comicbox.xml
 zip -9 ../yaml.cbz comicbox.yaml
 zip -9 "../Captain Science #001-metron.cbz" metroninfo.xml

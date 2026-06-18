@@ -1,12 +1,13 @@
 __pycache__
-.*cache/
+.*cache
 .circleci
 .claude
 .git
 .venv
+*.sh
 *Dockerfile
 bun.lock
-comicbox/schema_definitions/*Info*.xsd
+comicbox/schemas/*Info*.xsd
 dist
 Dockerfile
 node_modules

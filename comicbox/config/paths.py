@@ -4,8 +4,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from glob import glob
 from pathlib import Path
-from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from confuse import Subview
 from loguru import logger
@@ -18,17 +17,6 @@ if TYPE_CHECKING:
 
 
 _SINGLE_NO_PATH: tuple[str | Path | None, ...] = (None,)
-_NO_PATH_ATTRS: MappingProxyType[str, object] = MappingProxyType(
-    {
-        "index_from": None,
-        "index_to": None,
-        "write": None,
-        "covers": False,
-        "cbz": False,
-        "delete_all_tags": False,
-        "rename": False,
-    }
-)
 _NO_PATH_PRINT_PHASES = (PrintPhases.FILE_TYPE, PrintPhases.FILE_NAMES)
 
 
@@ -41,7 +29,7 @@ def clean_paths(config: Subview) -> None:
         for path in paths:
             if not path:
                 continue
-            if Path(path).is_dir() and not config["recurse"].get(bool):
+            if Path(path).is_dir() and not config["general"]["recurse"].get(bool):
                 logger.warning(f"{path} is a directory. Ignored without --recurse.")
                 paths_removed = True
                 continue
@@ -56,20 +44,70 @@ def clean_paths(config: Subview) -> None:
     config["paths"].set(final_paths)
 
 
+# Per-group field → (need_file_opts label, replacement value, "truthy" predicate).
+# When the predicate fires on the current settings, we record the label and
+# overlay the replacement onto the group's replace() kwargs.
+_CONVERT_NO_PATH_FIELDS: tuple[tuple[str, str, Any], ...] = (
+    ("extract_pages_from", "extract_pages_from", None),
+    ("extract_pages_to", "extract_pages_to", None),
+    ("extract_covers", "extract_covers", False),
+    ("cbz", "cbz", False),
+    ("rename", "rename", False),
+)
+
+_WRITE_NO_PATH_FIELDS: tuple[tuple[str, str, Any], ...] = (
+    ("formats", "write", frozenset()),
+    ("delete_all_tags", "delete_all_tags", False),
+)
+
+
+def _collect_overrides(
+    section: Any,
+    fields: tuple[tuple[str, str, Any], ...],
+    need_file_opts: list[str],
+) -> dict[str, Any]:
+    """Gather the per-section replace() kwargs for fields blocked by no-path."""
+    overrides: dict[str, Any] = {}
+    for attr, label, replacement in fields:
+        current = getattr(section, attr)
+        if (replacement is None and current is not None) or (
+            replacement is not None and current
+        ):
+            need_file_opts.append(label)
+            overrides[attr] = replacement
+    return overrides
+
+
 def _no_path_changes(
     settings: ComicboxSettings,
-) -> tuple[dict[str, object], list[str]]:
-    """Compute the per-field overrides that apply when no archive path is set."""
-    changes: dict[str, object] = {}
+) -> tuple[dict[str, Any], list[str]]:
+    """
+    Compute the per-field overrides that apply when no archive path is set.
+
+    Returns a (changes, need_file_opts) pair. ``changes`` maps top-level
+    ``ComicboxSettings`` attribute names to replacement values; callers
+    apply them with ``dataclasses.replace``.
+    """
+    changes: dict[str, Any] = {}
     need_file_opts: list[str] = []
-    blocked_print = frozenset(_NO_PATH_PRINT_PHASES) & settings.print
+
+    # Print phases that can't run without a file (file-type, file-names).
+    blocked_print = frozenset(_NO_PATH_PRINT_PHASES) & settings.print.phases
     if blocked_print:
         need_file_opts.extend(f"print {p.name.lower()}" for p in blocked_print)
-        changes["print"] = settings.print - blocked_print
-    for attr, val in _NO_PATH_ATTRS.items():
-        if getattr(settings, attr):
-            need_file_opts.append(attr)
-            changes[attr] = val
+        changes["print"] = replace(
+            settings.print, phases=settings.print.phases - blocked_print
+        )
+
+    if convert_overrides := _collect_overrides(
+        settings.convert, _CONVERT_NO_PATH_FIELDS, need_file_opts
+    ):
+        changes["convert"] = replace(settings.convert, **convert_overrides)
+    if write_overrides := _collect_overrides(
+        settings.write, _WRITE_NO_PATH_FIELDS, need_file_opts
+    ):
+        changes["write"] = replace(settings.write, **write_overrides)
+
     return changes, need_file_opts
 
 

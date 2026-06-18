@@ -1,5 +1,54 @@
 # 📰 News
 
+## v4.0.0 - Online Metadata Tagging
+
+- 🚨 Breaking Changes
+    - Removed the ComicTagger (`comictagger.json`) format.
+    - Reorganized config files into nested groups (`general`, `read`, `write`,
+      `convert`, `online`, …). Flat v3 config files must be migrated.
+    - Dry-run is now `-n` (was `-y`).
+    - PDFs no longer decode comicbox metadata hidden in the PDF `keywords`
+      field; `keywords` now reads as plain tags. Metadata embedded as files
+      inside a PDF still reads normally.
+    - Library API: `Comicbox(...)` no longer accepts a `logger=` argument and
+      never reconfigures the host application's logging. Host apps keep their
+      own loguru sinks; the CLI configures its own.
+    - Library API: operational errors derive from
+      `comicbox.exceptions.ComicboxError` (`ArchiveError`, `MetadataError`,
+      `ExportError`, …) instead of raising bare `ValueError`. Consumers can
+      `except ComicboxError`.
+- Fixes
+    - Normalize ComicBookInfo `rating` to the canonical 0-5 scale.
+    - Map Metron price currencies to the correct country.
+    - Harden credentials against accidental leaks into logs.
+    - `write_metadata()` accepts the root-wrapped dict `to_dict()` returns;
+      passing it used to silently write nothing while reporting success.
+    - Metadata added with `add_metadata()` after a read is no longer ignored.
+    - `to_dict()` computes pages and page count correctly when one instance
+      dumps multiple formats.
+    - Exported metadata files no longer end with a trailing blank line.
+- Features
+    - Online metadata tagging from Metron and ComicVine with `--online`.
+      Comicbox searches by the comic's series, issue, and year, ranks the
+      candidates, breaks close calls with cover-image matching, and writes the
+      best match.
+        - `--match {ask | careful | auto | eager}` sets how confidently a match
+          is written without asking; `--prompts never` turns prompts into skips
+          for cron and batch runs.
+        - `--id <db>:<id>` tags by an exact upstream id; `--series-id <db>:<id>`
+          constrains a search to a known series.
+        - Credentials resolve from `--auth`, `COMICBOX_*` environment variables,
+          the config file, or the system keyring.
+        - Online responses are cached on disk (`--cache`, `--cache-ttl`);
+          `--effort` trades API calls for matching accuracy.
+    - Process many files in parallel with `-j N`, including batch online
+      tagging.
+    - New public write API: `comicbox.write.write_metadata` and `bulk_write`.
+- Performance
+    - Faster archive reads: the 7z and RAR backends load lazily, the page list
+      is derived from cached archive state, and that state is released on
+      `close()`.
+
 ## v3.0.3
 
 - Fix small crashes with metron credits and comicbox with no path

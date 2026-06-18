@@ -1,48 +1,109 @@
 comicbox:
-  # Options
-  compute_pages: False
-  compute_page_count: True
-  config: null
-  delete_all_tags: False
-  delete_keys: []
-  delete_orig: False
-  dest_path: .
-  dry_run: False
-  loglevel: INFO
-  metadata: {}
-  metadata_format: null
-  metadata_cli: null
-  pdf_page_format: ""
+  general:
+    config: null
+    recurse: False
+    dry_run: False
+    loglevel: INFO
+    dest_path: .
+    delete_keys: []
+    delete_orig: False
+    metadata: {}
+    metadata_cli: null
+    metadata_format: null
+    # Parallel workers across files (1 = serial). Useful with --online for
+    # batch tagging; respects per-API rate limits via process-wide token bucket.
+    jobs: 1
+    tagger: null
+    theme: gruvbox-dark
+
   read:
-    - cli
-    - comet
-    - metroninfo
-    - comicbookinfo
-    - comicinfo
-    - comictagger
-    - filename
-    - json
-    - pdf
-    - yaml
-  theme: gruvbox-dark
-  replace_metadata: False
-  read_ignore: []
-  recurse: False
-  stamp: False
-  stamp_notes: True
-  tagger: null
+    formats:
+      - cli
+      - comet
+      - metroninfo
+      - comicbookinfo
+      - comicinfo
+      - filename
+      - json
+      - pdf
+      - yaml
+    except: []
+    # Merge precedence (null = MetadataSources enum order).
+    merge_order: null
 
-  # Actions
-  cbz: False
-  covers: False
-  export: []
-  import_paths: []
-  index_from: null
-  index_to: null
-  print: ""
-  rename: False
-  validate: False
-  write: []
+  write:
+    formats: []
+    replace: False
+    stamp: False
+    stamp_notes: True
+    delete_all_tags: False
 
-  # Targets
+  print:
+    phases: ""
+    validate: False
+
+  convert:
+    cbz: False
+    rename: False
+    extract_pages_from: null
+    extract_pages_to: null
+    extract_covers: False
+    import_paths: []
+    export_formats: []
+    pdf_pages: ""
+
+  compute:
+    pages: False
+    page_count: True
+
+  online:
+    lookup:
+      # Match-resolution aggressiveness. One of: ask, careful, auto, eager.
+      match: auto
+      # Whether prompts are allowed. One of: ask, never.
+      prompts: ask
+      # Force a fresh search even if the comic has a stored upstream id
+      # and skip files already tagged from this source.
+      rematch: False
+      # Ordered source selection and run priority. The first listed
+      # source runs first; with first_wins True its match ends the
+      # lookup (e.g. [comicvine, metron] tries Comic Vine first and
+      # falls back to Metron). null = every configured source in the
+      # built-in order (metron, comicvine). Overridden by --online.
+      sources: null
+      # When True (default), stop after the first online source that
+      # contributes data. Set False to query every selected source and
+      # merge their metadata (CLI: --all-sources).
+      first_wins: True
+
+    auth:
+      metron:
+        user: null
+        pass: null
+        url: null
+      comicvine:
+        key: null
+        url: null
+
+    cache:
+      # Tri-state cache mode: on, off, refresh.
+      # Quoted to avoid YAML 1.1 interpreting bare `on`/`off` as booleans.
+      mode: "on"
+      dir: null
+      ttl: 7d
+
+    tuning:
+      # Auto-write threshold (0-1) — top match must clear this to auto-write.
+      auto_threshold: 0.95
+      # Per-comic API effort: minimal, balanced, thorough.
+      effort: balanced
+      # Retry budget for transient API failures.
+      retry_budget: 5
+      # Per-source overrides — keyed by source name (metron, comicvine).
+      # Each entry may override auto_threshold, effort, min_confidence,
+      # disambiguation_margin, solo_threshold, or rate_limit.* (per_minute,
+      # per_day, per_second, per_hour). See settings.py for shape.
+      per_source: {}
+
+  # Targets (CLI positional args).
   paths: null

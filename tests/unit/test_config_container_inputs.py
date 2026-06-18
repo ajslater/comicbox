@@ -1,8 +1,8 @@
 """
 Set-like config fields accept set / frozenset / tuple / list, but not Mapping.
 
-The five fields `read`, `write`, `export`, `delete_keys`, `read_ignore` and
-the special `print` field all hold a frozenset post-compute. The template
+`read.formats`, `read.except`, `write.formats`, `convert.export_formats`,
+`general.delete_keys` all hold a frozenset post-compute. The template
 accepts any non-mapping container as input; `_build_settings` normalizes
 into the right immutable type.
 """
@@ -28,11 +28,17 @@ from comicbox.formats import MetadataFormats
 def test_read_write_export_accept_any_container(value: object) -> None:
     """read/write/export accept any non-mapping container of config keys."""
     cfg = get_config(
-        Namespace(comicbox=Namespace(read=value, write=value, export=value))
+        Namespace(
+            comicbox=Namespace(
+                read=Namespace(formats=value),
+                write=Namespace(formats=value),
+                convert=Namespace(export_formats=value),
+            )
+        )
     )
-    assert cfg.read == frozenset({MetadataFormats.COMIC_INFO})
-    assert cfg.write == frozenset({MetadataFormats.COMIC_INFO})
-    assert cfg.export == frozenset({MetadataFormats.COMIC_INFO})
+    assert cfg.read.formats == frozenset({MetadataFormats.COMIC_INFO})
+    assert cfg.write.formats == frozenset({MetadataFormats.COMIC_INFO})
+    assert cfg.convert.export_formats == frozenset({MetadataFormats.COMIC_INFO})
 
 
 @pytest.mark.parametrize(
@@ -47,8 +53,10 @@ def test_read_write_export_accept_any_container(value: object) -> None:
 )
 def test_delete_keys_accepts_any_container(value: object) -> None:
     """delete_keys accepts any non-mapping container of keypaths."""
-    cfg = get_config(Namespace(comicbox=Namespace(delete_keys=value)))
-    assert cfg.delete_keys == frozenset({"notes", "tagger"})
+    cfg = get_config(
+        Namespace(comicbox=Namespace(general=Namespace(delete_keys=value)))
+    )
+    assert cfg.general.delete_keys == frozenset({"notes", "tagger"})
 
 
 def test_read_rejects_mapping() -> None:
@@ -59,7 +67,7 @@ def test_read_rejects_mapping() -> None:
     surprising "the keys became my read formats" behavior.
     """
     with pytest.raises(Exception, match="non-mapping"):
-        get_config(Namespace(comicbox=Namespace(read={"cix": True})))
+        get_config(Namespace(comicbox=Namespace(read=Namespace(formats={"cix": True}))))
 
 
 @pytest.mark.parametrize(
@@ -77,8 +85,8 @@ def test_print_accepts_str_or_container(value: object) -> None:
     """Print accepts a phase-char string OR any iterable of phase chars."""
     from comicbox.print import PrintPhases
 
-    cfg = get_config(Namespace(comicbox=Namespace(print=value)))
-    assert cfg.print == frozenset(
+    cfg = get_config(Namespace(comicbox=Namespace(print=Namespace(phases=value))))
+    assert cfg.print.phases == frozenset(
         {
             PrintPhases.SOURCE,
             PrintPhases.NORMALIZED,

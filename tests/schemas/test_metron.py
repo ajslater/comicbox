@@ -13,9 +13,9 @@ from glom import Assign, glom
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.metroninfo import MetronInfoSchema
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.metron_info.schema import MetronInfoSchema
 from tests.const import METRON_CBZ_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import (
     TestParser,
@@ -24,8 +24,14 @@ from tests.util import (
     create_write_metadata,
 )
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["mi"])))
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["mi"], read=["mi"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["mi"]))))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["mi"]), write=Namespace(formats=["mi"])
+        )
+    )
+)
 
 METRON_NOTES = (
     "Tagged with "
@@ -455,16 +461,16 @@ URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
 URL_PRIMARY_CONFIG = get_config(
     Namespace(
         comicbox=Namespace(
-            metadata=URL_PRIMARY_READ_METRON_DICT,
             metadat_format=MetadataFormats.METRON_INFO,
-            print="sncmp",
+            general=Namespace(metadata=URL_PRIMARY_READ_METRON_DICT),
+            print=Namespace(phases="sncmp"),
         )
     )
 )
 
 
 def test_metron_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     METRON_TESTER.test_from_metadata()
     SIMPLE_METRON_TESTER.test_from_metadata()
 

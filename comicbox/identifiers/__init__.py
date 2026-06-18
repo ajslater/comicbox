@@ -8,6 +8,10 @@ ID_SOURCE_VALUES = (id_source.value for id_source in IdSources)
 DEFAULT_ID_SOURCE = IdSources.COMICVINE
 DEFAULT_ID_TYPE = "issue"
 
+# Field names inside the comicbox identifier dict shape.
+ID_KEY_KEY = "key"
+ID_URL_KEY = "url"
+
 
 _ALL_ID_SOURCES = (
     *ID_SOURCE_VALUES,

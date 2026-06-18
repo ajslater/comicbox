@@ -8,21 +8,11 @@ from types import MappingProxyType
 from dateutil.tz import tzutc
 
 from comicbox.box import Comicbox
-from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.comictagger import ComictaggerSchema
-from tests.const import TEST_METADATA_DIR
+from comicbox.formats.comic_info.schema import ComicInfoSchema
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from tests.const import PRINT_CONFIG, TEST_METADATA_DIR
 from tests.util import assert_diff
-
-PRINT_CONFIG = get_config(
-    Namespace(
-        comicbox=Namespace(
-            print="snmcp",
-        )
-    )
-)
-
 
 DATE_FROM_NOTES_IMPORT = TEST_METADATA_DIR / "comicinfo-notes-date.xml"
 DATE_FROM_NOTES_MD = MappingProxyType(
@@ -50,7 +40,9 @@ DATE_FROM_NOTES_MD = MappingProxyType(
 
 def test_compute_date_from_notes() -> None:
     """Test getting the cover image."""
-    config = Namespace(comicbox=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
+    config = Namespace(
+        comicbox=Namespace(convert=Namespace(import_paths=(DATE_FROM_NOTES_IMPORT,)))
+    )
     with Comicbox(config=config) as car:
         md = car.get_internal_metadata()
     assert_diff(DATE_FROM_NOTES_MD, md)
@@ -79,7 +71,10 @@ IDS_FROM_TAGS_MD = MappingProxyType(
 def test_compute_ids_from_tags() -> None:
     """Test computing identifiers from tags."""
     config = Namespace(
-        comicbox=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,), print="snmcp")
+        comicbox=Namespace(
+            print=Namespace(phases="snmcp"),
+            convert=Namespace(import_paths=(IDS_FROM_TAGS_IMPORT,)),
+        )
     )
     with Comicbox(config=config) as car:
         md = car.get_internal_metadata()
@@ -88,7 +83,7 @@ def test_compute_ids_from_tags() -> None:
 
 
 ISSUE_NAME_ONLY_MD = MappingProxyType(
-    {ComictaggerSchema.ROOT_TAG: {"issue": "1234SUFFIX"}}
+    {ComicInfoSchema.ROOT_TAG: {"Number": "1234SUFFIX"}}
 )
 ISSUE_WITH_PARTS = MappingProxyType(
     {
@@ -103,7 +98,7 @@ def test_compute_issue_suffix() -> None:
     """Test computing identifiers from tags."""
     with Comicbox(
         metadata=ISSUE_NAME_ONLY_MD,
-        fmt=MetadataFormats.COMICTAGGER,
+        fmt=MetadataFormats.COMIC_INFO,
         config=PRINT_CONFIG,
     ) as car:
         md = car.get_internal_metadata()
@@ -130,39 +125,3 @@ def test_compute_issue_name() -> None:
         md = car.get_internal_metadata()
 
     assert_diff(ISSUE_WITH_PARTS, md)
-
-
-UNKNOWN_URLS = MappingProxyType(
-    {
-        ComictaggerSchema.ROOT_TAG: {
-            "web_link": "http://foo.bar,https://google.com,https://bar.ct/?attr=1#tag"
-        }
-    }
-)
-
-IDENTIFIERS_FROM_URLS = MappingProxyType(
-    {
-        ComicboxSchemaMixin.ROOT_TAG: {
-            "identifiers": {
-                "bar.ct": {
-                    "key": "?attr=1#tag",
-                    "url": "https://bar.ct/?attr=1#tag",
-                },
-                "foo.bar": {"url": "http://foo.bar"},
-                "google.com": {"url": "https://google.com"},
-            }
-        }
-    }
-)
-
-
-def test_other_urls() -> None:
-    """Test non known source urls."""
-    with Comicbox(
-        metadata=UNKNOWN_URLS,
-        fmt=MetadataFormats.COMICTAGGER,
-        config=PRINT_CONFIG,
-    ) as car:
-        md = car.get_internal_metadata()
-
-    assert_diff(IDENTIFIERS_FROM_URLS, md)

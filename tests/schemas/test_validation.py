@@ -12,14 +12,14 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import (
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
+from comicbox.formats.comic_info.schema import ComicInfoSchema
+from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.schemas.comicinfo import ComicInfoSchema
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
 from tests.const import TEST_DATETIME, TEST_READ_NOTES
 from tests.util import (
     TestParser,
@@ -28,8 +28,14 @@ from tests.util import (
 )
 
 EXPORT_FN = "comicinfo-validation.xml"
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cix"], read=["cix"])))
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cix"])))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["cix"]), write=Namespace(formats=["cix"])
+        )
+    )
+)
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["cix"]))))
 READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -224,7 +230,7 @@ CIX_FILE_TESTER = TestParser(
 
 
 def test_cix_validation_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     CIX_TESTER.test_from_metadata()
 
 

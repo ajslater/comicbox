@@ -8,13 +8,19 @@ import simplejson as json
 
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbookinfo import ComicBookInfoSchema
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
+from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from tests.const import CBI_CBR_FN, TEST_DATETIME, TEST_DTTM_STR
 from tests.util import TestParser
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cbi"])))
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cbi"], read=["cbi"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["cbi"]))))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["cbi"]), write=Namespace(formats=["cbi"])
+        )
+    )
+)
 METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
@@ -34,7 +40,7 @@ METADATA = MappingProxyType(
                 "year": 1950,
                 "month": 11,
             },
-            "page_count": 36,
+            "page_count": 5,
             "publisher": {"name": "Youthful Adventure Stories"},
             "series": {"name": "Captain Science", "volume_count": 1},
             "stories": {"The Beginning": {}},
@@ -68,7 +74,7 @@ CBI_DICT = MappingProxyType(
             "language": "English",
             "numberOfIssues": 7,
             "numberOfVolumes": 1,
-            "pages": 36,
+            "pages": 5,
             "publicationMonth": 11,
             "publicationYear": 1950,
             "publisher": "Youthful Adventure Stories",
@@ -99,7 +105,7 @@ def test_cbi_from_metadata() -> None:
 
 
 def test_cbi_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     CBI_TESTER.test_from_dict()
 
 

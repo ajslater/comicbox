@@ -6,11 +6,11 @@ import asyncio
 from argparse import Namespace
 from datetime import datetime, timezone
 from pathlib import Path
-from zipfile import BadZipFile
 
 import pytest
 
 from comicbox.config import get_config
+from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 from comicbox.process import (
     _read_one,
@@ -30,11 +30,11 @@ from tests.const import (
 CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=True)))
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 FUTURE = datetime(2999, 1, 1, tzinfo=timezone.utc)
-_CIX_CBZ_PAGES = 36
+_CIX_CBZ_PAGES = 5
 
 FIXTURES = (
     (CIX_CBZ_SOURCE_PATH, "CBZ", _CIX_CBZ_PAGES),
-    (CIX_CBI_CBR_SOURCE_PATH, "CBR", 36),
+    (CIX_CBI_CBR_SOURCE_PATH, "CBR", 5),
     (CIX_CBT_SOURCE_PATH, "CBT", 5),
     (CB7_SOURCE_PATH, "CB7", 5),
     (PDF_SOURCE_PATH, "PDF", 4),
@@ -130,7 +130,10 @@ def test_iter_process_files_bad_path_is_yielded_not_raised(
     assert bad_result["tags"] is None
     assert bad_result["file_type"] is None
     assert bad_result["page_count"] is None
-    assert isinstance(bad_exc, (BadZipFile, OSError, Exception))
+    # The old vacuous (..., Exception) tuple masked the REAL type:
+    # content-sniffing a garbage .cbz fails every detector and raises
+    # UnsupportedArchiveTypeError, never reaching the zip layer.
+    assert isinstance(bad_exc, UnsupportedArchiveTypeError)
 
 
 def test_iter_process_files_missing_file(tmp_path: Path) -> None:

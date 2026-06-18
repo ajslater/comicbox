@@ -1,0 +1,52 @@
+"""CoMet Reprints Transforms."""
+
+from comicfn2dict.parse import comicfn2dict
+from comicfn2dict.unparse import dict2comicfn
+from glom import SKIP, Coalesce, Invoke, T
+
+from comicbox.formats.base.transforms.base import skip_not
+from comicbox.formats.base.transforms.spec import MetaSpec
+from comicbox.formats.base.transforms.xml_reprints import (
+    FILENAME_TO_REPRINT_SPECS,
+    REPRINT_TO_FILENAME_SPECS,
+)
+from comicbox.formats.comicbox.schema import REPRINTS_KEY
+
+
+def comet_reprints_transform_to_cb(is_version_of_tag: str) -> MetaSpec:
+    """Transform comet is_version_of to reprints."""
+    return MetaSpec(
+        key_map={REPRINTS_KEY: is_version_of_tag},
+        spec=(
+            [
+                Coalesce(
+                    (
+                        comicfn2dict,
+                        dict(FILENAME_TO_REPRINT_SPECS),
+                    ),
+                    skip=skip_not,
+                    default=SKIP,
+                )
+            ],
+        ),
+    )
+
+
+def comet_reprints_transform_from_cb(is_version_of_tag: str) -> MetaSpec:
+    """Transform comet is_version_of to reprints."""
+    return MetaSpec(
+        key_map={is_version_of_tag: REPRINTS_KEY},
+        spec=(
+            [
+                Coalesce(
+                    (
+                        dict(REPRINT_TO_FILENAME_SPECS),
+                        Invoke(dict2comicfn).specs(T).constants(ext=False),
+                    ),
+                    skip=skip_not,
+                    default=SKIP,
+                ),
+            ],
+            set,
+        ),
+    )

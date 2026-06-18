@@ -10,7 +10,7 @@ from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox.cli import ComicboxCLISchema
+from comicbox.formats.comicbox.schema.cli import ComicboxCLISchema
 from tests.const import (
     CBZ_MULTI_SOURCE_PATH,
     CIX_CBI_CBR_SOURCE_PATH,
@@ -19,12 +19,25 @@ from tests.const import (
 )
 from tests.util import assert_diff, get_tmp_dir, my_cleanup, my_setup
 
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["cli"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["cli"]))))
 READ_CONFIG_IGNORE_FN = get_config(
-    Namespace(comicbox=Namespace(read_ignore=["fn"], print="sp"))
+    {
+        "comicbox": {
+            "read": {"except": ["fn"]},
+            "print": {"phases": "sp"},
+        }
+    }
 )
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(write=["cli"], read=["cli"])))
-CBZ_CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=False)))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["cli"]), write=Namespace(formats=["cli"])
+        )
+    )
+)
+CBZ_CONFIG = get_config(
+    Namespace(comicbox=Namespace(compute=Namespace(page_count=False)))
+)
 METADATA = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
@@ -164,7 +177,7 @@ def test_cli_action_write() -> None:
         md = car.get_internal_metadata()
     md = MappingProxyType(md)
 
-    args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "-P", "sld")
+    args = (*CLI_METADATA_ARGS, "-w", "cr", str(TMP_PATH), "--print", "sld")
     cli.main(args)
 
     with Comicbox(TMP_PATH) as car:
@@ -191,9 +204,9 @@ def test_cli_action_write_replace() -> None:
         "tags: {d: {},e: {},f: {}}",
         "-m",
         "{ title: bozo_title }",
-        "-R",
+        "--replace",
         str(TMP_PATH),
-        "-P",
+        "--print",
         "nmcp",
     )
     cli.main(args)
@@ -217,9 +230,7 @@ def test_cli_action_cbz() -> None:
     old_md = MappingProxyType(old_md)
 
     _setup(CIX_CBI_CBR_SOURCE_PATH)
-    cli.main(
-        (ComicboxCLISchema.ROOT_TAG, "--cbz", "-A", "--delete-orig", str(TMP_CBR_PATH))
-    )
+    cli.main((ComicboxCLISchema.ROOT_TAG, "--cbz", "--delete-orig", str(TMP_CBR_PATH)))
     assert not TMP_CBR_PATH.exists()
 
     with Comicbox(TMP_CBZ_PATH, config=CBZ_CONFIG) as car:
@@ -228,8 +239,20 @@ def test_cli_action_cbz() -> None:
     new_md[ComicboxCLISchema.ROOT_TAG]["ext"] = "cbr"
     new_md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     new_md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
+    # In v4, --no-compute-page-count is YAML-only. The CLI conversion path
+    # therefore computes page_count and writes it into the converted CBZ;
+    # the original CBR had no embedded page_count. Normalize both before
+    # diffing so the test continues to exercise the actual conversion
+    # behavior (formats round-trip), not the compute setting.
+    new_md[ComicboxCLISchema.ROOT_TAG].pop("page_count", None)
+    md_dict = dict(old_md)
+    md_dict[ComicboxCLISchema.ROOT_TAG] = {
+        k: v
+        for k, v in md_dict[ComicboxCLISchema.ROOT_TAG].items()
+        if k != "page_count"
+    }
     new_md = MappingProxyType(new_md)
-    assert_diff(old_md, new_md)
+    assert_diff(MappingProxyType(md_dict), new_md)
     _cleanup()
 
 
@@ -271,10 +294,11 @@ def test_cli_action_delete_tags_add_metadata() -> None:
             *MD_ARGS,
             "-w",
             "cix",
-            "-r",
+            "--read",
             "cix,cli",
-            "-N",
-            "-pP",
+            "--no-stamp-notes",
+            "-p",
+            "--print",
             "sncd",
         )
     )
@@ -307,8 +331,9 @@ def test_cli_action_delete_keys() -> None:
             "age_rating,arcs.Captain Arc,credits.Joe Orlando CBI.roles,credits.Wally Wood CBI.roles,pages,series,reprints.0.series",
             "-w",
             "cix",
-            "-N",
-            "-pP",
+            "--no-stamp-notes",
+            "-p",
+            "--print",
             "mcd",
         )
     )

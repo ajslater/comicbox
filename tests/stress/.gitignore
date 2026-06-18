@@ -1,0 +1,3 @@
+# Per-run subprocess logs and summary markdown. Per-developer (paths
+# point at local comic libraries) and large; never tracked.
+output/

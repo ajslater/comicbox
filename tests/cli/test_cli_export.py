@@ -15,7 +15,7 @@ from tests.util import (
 )
 
 _TMP_DIR = get_tmp_dir(__file__)
-_FORMATS = "comet,comicbookinfo,cli,json,yaml,comicinfo,comictagger,pdf,metroninfo"
+_FORMATS = "comet,comicbookinfo,cli,json,yaml,comicinfo,pdf,metroninfo"
 
 
 def _test_cli_action_export_util(path: Path, args: tuple[str, str]) -> None:
@@ -45,4 +45,4 @@ def _test_cli_action_export_util(path: Path, args: tuple[str, str]) -> None:
 
 def test_cli_action_export() -> None:
     """Test cli metadata write to file."""
-    _test_cli_action_export_util(EXPORT_SOURCE_PATH, ("-x", _FORMATS))
+    _test_cli_action_export_util(EXPORT_SOURCE_PATH, ("--export", _FORMATS))

@@ -9,9 +9,9 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.comicbox.json_schema import ComicboxJsonSchema
-from comicbox.schemas.json_schemas import JsonRenderModule
+from comicbox.formats.base.schemas.json_schemas import JsonRenderModule
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
 from tests.const import (
     CBZ_MULTI_FN,
     TEST_DATETIME,
@@ -23,7 +23,9 @@ from tests.util import TestParser, create_write_dict, create_write_metadata
 READ_CONFIG = get_config(Namespace(comicbox=Namespace()))
 WRITE_CONFIG = get_config(
     Namespace(
-        comicbox=Namespace(write=("cix", "cbi", "comet", "fn", "cli", "ct", "cb"))
+        comicbox=Namespace(
+            write=Namespace(formats=("cix", "cbi", "comet", "fn", "cli", "cb"))
+        )
     )
 )
 READ_METADATA = MappingProxyType(
@@ -77,10 +79,6 @@ READ_METADATA = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "age_rating": "Teen",
             "cover_image": "CaptainScience#1_01.jpg",
-            "identifier_primary_source": {
-                "source": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
-            },
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
@@ -88,45 +86,14 @@ READ_METADATA = MappingProxyType(
                 }
             },
             "summary": "A long example description",
-            "bookmark": 12,
+            "bookmark": 4,
             "original_format": "Comic",
             "pages": {
-                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
-                1: {"size": 332936},
-                2: {"size": 458657},
-                3: {"size": 450456},
-                4: {"size": 436648},
-                5: {"size": 443725},
-                6: {"size": 469526},
-                7: {"size": 429811},
-                8: {"size": 445513},
-                9: {"size": 446292},
-                10: {"size": 458589},
-                11: {"size": 417623},
-                12: {"bookmark": "true", "size": 445302},
-                13: {"size": 413271},
-                14: {"size": 434201},
-                15: {"size": 439049},
-                16: {"size": 485957},
-                17: {"size": 388379},
-                18: {"size": 368138},
-                19: {"size": 427874},
-                20: {"size": 422522},
-                21: {"size": 442529},
-                22: {"size": 423785},
-                23: {"size": 427980},
-                24: {"size": 445631},
-                25: {"size": 413615},
-                26: {"size": 417605},
-                27: {"size": 439120},
-                28: {"size": 451598},
-                29: {"size": 451550},
-                30: {"size": 438346},
-                31: {"size": 454914},
-                32: {"size": 428461},
-                33: {"size": 438091},
-                34: {"size": 353013},
-                35: {"size": 340840},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 4542},
+                1: {"size": 4065},
+                2: {"size": 4081},
+                3: {"size": 4157},
+                4: {"bookmark": "true", "size": 4108},
             },
             "reprints": [
                 {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
@@ -176,44 +143,13 @@ READ_MULTI_DICT = MappingProxyType(
             "notes": TEST_READ_NOTES,
             "language": "en",
             "page_count": 0,
-            "bookmark": 12,
+            "bookmark": 4,
             "pages": {
-                "00": {"page_type": "FrontCover", "size": 429985},
-                "01": {"size": 332936},
-                "02": {"size": 458657},
-                "03": {"size": 450456},
-                "04": {"size": 436648},
-                "05": {"size": 443725},
-                "06": {"size": 469526},
-                "07": {"size": 429811},
-                "08": {"size": 445513},
-                "09": {"size": 446292},
-                "10": {"size": 458589},
-                "11": {"size": 417623},
-                "12": {"bookmark": "true", "size": 445302},
-                "13": {"size": 413271},
-                "14": {"size": 434201},
-                "15": {"size": 439049},
-                "16": {"size": 485957},
-                "17": {"size": 388379},
-                "18": {"size": 368138},
-                "19": {"size": 427874},
-                "20": {"size": 422522},
-                "21": {"size": 442529},
-                "22": {"size": 423785},
-                "23": {"size": 427980},
-                "24": {"size": 445631},
-                "25": {"size": 413615},
-                "26": {"size": 417605},
-                "27": {"size": 439120},
-                "28": {"size": 451598},
-                "29": {"size": 451550},
-                "30": {"size": 438346},
-                "31": {"size": 454914},
-                "32": {"size": 428461},
-                "33": {"size": 438091},
-                "34": {"size": 353013},
-                "35": {"size": 340840},
+                "0": {"page_type": "FrontCover", "size": 4542},
+                "1": {"size": 4065},
+                "2": {"size": 4081},
+                "3": {"size": 4157},
+                "4": {"bookmark": "true", "size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "imprint": {"name": "CLIImprint"},
@@ -234,10 +170,6 @@ READ_MULTI_DICT = MappingProxyType(
             "prices": {"": Decimal("0.10")},
             "ext": "cbz",
             "cover_image": "CaptainScience#1_01.jpg",
-            "identifier_primary_source": {
-                "source": "comicvine",
-                "url": "https://comicvine.gamespot.com/",
-            },
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
@@ -289,7 +221,7 @@ def test_multi_to_dict() -> None:
 
 def test_multi_read() -> None:
     """Test read from file."""
-    MULTI_TESTER.test_md_read(ignore_pages=True, page_count=36)
+    MULTI_TESTER.test_md_read(ignore_pages=True, page_count=5)
 
 
 def test_multi_write() -> None:

@@ -13,8 +13,8 @@ import pytest
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.merge import AdditiveMerger
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
 from comicbox.version import VERSION
 from tests.const import (
     CB7_SOURCE_PATH,
@@ -29,7 +29,14 @@ from tests.const import (
 )
 from tests.util import assert_diff
 
-CONFIG = get_config(Namespace(comicbox=Namespace(print="sc", compute_page_count=False)))
+CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            print=Namespace(phases="sc"),
+            compute=Namespace(page_count=False),
+        )
+    )
+)
 
 
 @dataclass
@@ -74,44 +81,13 @@ TEMPLATE_MD = MappingProxyType(
             },
             "language": "en",
             "notes": TEST_READ_NOTES,
-            "page_count": 36,
+            "page_count": 5,
             "pages": {
-                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 429985},
-                1: {"size": 332936},
-                2: {"size": 458657},
-                3: {"size": 450456},
-                4: {"size": 436648},
-                5: {"size": 443725},
-                6: {"size": 469526},
-                7: {"size": 429811},
-                8: {"size": 445513},
-                9: {"size": 446292},
-                10: {"size": 458589},
-                11: {"size": 417623},
-                12: {"size": 445302},
-                13: {"size": 413271},
-                14: {"size": 434201},
-                15: {"size": 439049},
-                16: {"size": 485957},
-                17: {"size": 388379},
-                18: {"size": 368138},
-                19: {"size": 427874},
-                20: {"size": 422522},
-                21: {"size": 442529},
-                22: {"size": 423785},
-                23: {"size": 427980},
-                24: {"size": 445631},
-                25: {"size": 413615},
-                26: {"size": 417605},
-                27: {"size": 439120},
-                28: {"size": 451598},
-                29: {"size": 451550},
-                30: {"size": 438346},
-                31: {"size": 454914},
-                32: {"size": 428461},
-                33: {"size": 438091},
-                34: {"size": 353013},
-                35: {"size": 340840},
+                0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 4542},
+                1: {"size": 4065},
+                2: {"size": 4081},
+                3: {"size": 4157},
+                4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
             "reprints": [
@@ -249,10 +225,10 @@ CS_COVER_PATH_LIST = (CS_COVER,)
 FIXTURES = MappingProxyType(
     {
         "CBZ": Fixture(
-            CIX_CBZ_SOURCE_PATH, 36, CBZ_MD, CS, CS_COVER, CS_COVER_PATH_LIST
+            CIX_CBZ_SOURCE_PATH, 5, CBZ_MD, CS, CS_COVER, CS_COVER_PATH_LIST
         ),
         "CBR": Fixture(
-            CIX_CBI_CBR_SOURCE_PATH, 36, CBR_MD, CS, CS_COVER, CS_COVER_PATH_LIST
+            CIX_CBI_CBR_SOURCE_PATH, 5, CBR_MD, CS, CS_COVER, CS_COVER_PATH_LIST
         ),
         "CBT": Fixture(
             CIX_CBT_SOURCE_PATH, 5, CBT_MD, CS, CS_COVER, CS_COVER_PATH_LIST
@@ -311,7 +287,9 @@ _COVER_PATH_LIST_IMPORTS = (
 
 def test_cover_paths() -> None:
     """Test codex cover path lists."""
-    config = Namespace(comicbox=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
+    config = Namespace(
+        comicbox=Namespace(convert=Namespace(import_paths=_COVER_PATH_LIST_IMPORTS))
+    )
     with Comicbox(CIX_CBZ_SOURCE_PATH, config=config) as car:
         cover_path_list = car.get_cover_paths()
     assert_diff(_COVER_PATH_LIST, cover_path_list)
