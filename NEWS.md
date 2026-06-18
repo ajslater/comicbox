@@ -1,5 +1,11 @@
 # 📰 News
 
+## v4.0.1
+
+- Fixes
+    - The `AutoWritten` event now fires for matches resolved by explicit id or
+      stored id, so it reports a source for every auto-written comic.
+
 ## v4.0.0 - Online Metadata Tagging
 
 - 🚨 Breaking Changes
