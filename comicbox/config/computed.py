@@ -1,47 +1,51 @@
 """Compute values for config before template load."""
 
+from functools import cache
+
 from confuse import Subview
 from loguru import logger
 
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
-from comicbox.formats import MetadataFormats
 from comicbox.print import PrintPhases
-from comicbox.sources import MetadataSources
 from comicbox.version import DEFAULT_TAGGER
 
-_FORMATS_WITH_TAGS_WITHOUT_IDS = frozenset(
-    {
-        MetadataFormats.COMIC_BOOK_INFO,
-        MetadataFormats.COMIC_INFO,
-        MetadataFormats.COMICTAGGER,
-        MetadataFormats.PDF,
-        MetadataFormats.PDF_XML,
-    }
-)
+
+@cache
+def _formats_with_tags_without_ids() -> frozenset:
+    # Lazy: ``comicbox.formats`` pulls in the full box module graph at import
+    # time, which would create a cycle if ``comicbox.config`` is imported
+    # before the box graph has finished loading.
+    from comicbox.formats import FORMAT_REGISTRATIONS
+
+    return frozenset(
+        fmt
+        for fmt, registration in FORMAT_REGISTRATIONS.items()
+        if registration.has_tags_without_ids
+    )
 
 
 def _ensure_cli_yaml(config: Subview) -> None:
     """Wrap all cli yaml in brackets if its bare."""
-    mds = config["metadata_cli"].get()
+    mds = config["general"]["metadata_cli"].get()
     if not mds:
         return
     wrapped_md_list = [("{" + md + "}" if md[0] != "{" else md) for md in mds if md]
 
-    config["metadata_cli"].set(tuple(wrapped_md_list))
+    config["general"]["metadata_cli"].set(tuple(wrapped_md_list))
 
 
 def _deduplicate_delete_keys(config: Subview) -> None:
     """Transform delete keys to a set."""
-    raw = _raw_or_empty(config["delete_keys"])
+    raw = _raw_or_empty(config["general"]["delete_keys"])
     delete_keys = frozenset(str(kp).removeprefix("comicbox.") for kp in raw)
-    config["delete_keys"].set(delete_keys)
+    config["general"]["delete_keys"].set(delete_keys)
 
 
 def _parse_print(config: Subview) -> None:
-    raw = _raw_or_empty(config["print"])
+    raw = _raw_or_empty(config["print"]["phases"])
     if not raw:
-        config["print"].set(frozenset())
+        config["print"]["phases"].set(frozenset())
         return
     # Accept a string ("snmcp") or any iterable of strings (["s", "n", ...])
     # — concatenate into a single phase-char string.
@@ -52,21 +56,23 @@ def _parse_print(config: Subview) -> None:
             enum_print_phases.add(PrintPhases(phase))
         except ValueError as exc:
             logger.warning(exc)
-    config["print"].set(frozenset(enum_print_phases))
+    config["print"]["phases"].set(frozenset(enum_print_phases))
 
 
 def _set_tagger(config: Subview) -> None:
-    tagger = config["tagger"].get()
+    tagger = config["general"]["tagger"].get()
     if not tagger:
-        config["tagger"].set(DEFAULT_TAGGER)
+        config["general"]["tagger"].set(DEFAULT_TAGGER)
 
 
 def _set_computed(config: Subview) -> None:
-    write: frozenset = config["write"].get(frozenset)
-    export: frozenset = config["export"].get(frozenset)
+    from comicbox.formats.sources import MetadataSources
+
+    write: frozenset = config["write"]["formats"].get(frozenset)
+    export: frozenset = config["convert"]["export_formats"].get(frozenset)
     all_write_fmts = frozenset(write | export)
     config["computed"]["all_write_formats"].set(all_write_fmts)
-    read: frozenset = config["read"].get(frozenset)
+    read: frozenset = config["read"]["formats"].get(frozenset)
     rfnf = frozenset(frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats) & read)
     config["computed"]["read_filename_formats"].set(rfnf)
     rff = frozenset(frozenset(MetadataSources.ARCHIVE_FILE.value.formats) & read)
@@ -77,7 +83,7 @@ def _set_computed(config: Subview) -> None:
         frozenset(frozenset(MetadataSources.ARCHIVE_COMMENT.value.formats) & read)
     )
     config["computed"]["is_read_comments"].set(irc)
-    iscft = not bool(_FORMATS_WITH_TAGS_WITHOUT_IDS & read)
+    iscft = not bool(_formats_with_tags_without_ids() & read)
     config["computed"]["is_skip_computed_from_tags"].set(iscft)
 
 

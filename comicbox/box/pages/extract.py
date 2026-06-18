@@ -6,13 +6,14 @@ from pathlib import Path
 from loguru import logger
 
 from comicbox.box.pages.covers import ComicboxPagesCovers
+from comicbox.exceptions import ExportError
 
 
 def _validate_extract_path(path: Path, dest_dir: Path) -> None:
     """Validate that the extract path doesn't escape the destination directory."""
     if not path.resolve().is_relative_to(dest_dir.resolve()):
         reason = f"Unsafe archive path escapes destination: {path}"
-        raise ValueError(reason)
+        raise ExportError(reason)
 
 
 class ComicboxExtractPages(ComicboxPagesCovers):
@@ -57,14 +58,14 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         if not pagenames:
             logger.warning("No pages to extract.")
             return None
-        if self._config.dry_run:
+        if self._config.general.dry_run:
             if isinstance(pagenames, Sequence):
                 logger.info(f"Not extracting {len(pagenames)} pages")
             else:
                 logger.info("Not extracting pages")
             return None
 
-        resolved_path = path or self._config.dest_path
+        resolved_path = path or self._config.general.dest_path
         return Path(resolved_path)
 
     def _extract_pagenames_to_dir(
@@ -77,7 +78,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                     f"Must extract pages to a directory. {resolved_path!s} "
                     "is not a directory"
                 )
-                raise ValueError(reason)
+                raise ExportError(reason)
             self._extract_all_pagenames(pagenames, resolved_path)
 
     def _extract_pagenames(
@@ -98,8 +99,11 @@ class ComicboxExtractPages(ComicboxPagesCovers):
 
     def extract_pages_config(self) -> None:
         """Extract pages from archive as configured and write to a path."""
+        convert = self._config.convert
         return self.extract_pages(
-            self._config.index_from, self._config.index_to, self._config.dest_path
+            convert.extract_pages_from,
+            convert.extract_pages_to,
+            self._config.general.dest_path,
         )
 
     def extract_covers(self, path: Path | None = None) -> None:

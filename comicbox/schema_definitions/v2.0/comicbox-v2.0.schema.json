@@ -67,7 +67,9 @@
         },
         "critical_rating": {
           "type": "number",
-          "format": "decimal"
+          "format": "decimal",
+          "minimum": 0,
+          "maximum": 5
         },
         "date": {
           "$ref": "date.schema.json"

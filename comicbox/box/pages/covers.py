@@ -7,7 +7,11 @@ from loguru import logger
 
 from comicbox.box.metadata import ComicboxMetadata
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
-from comicbox.schemas.comicbox import COVER_IMAGE_KEY, PAGES_KEY, ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import (
+    COVER_IMAGE_KEY,
+    PAGES_KEY,
+    ComicboxSchemaMixin,
+)
 
 PAGES_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{PAGES_KEY}"
 _COVER_IMAGE_KEYPATH = f"{ComicboxSchemaMixin.ROOT_KEYPATH}.{COVER_IMAGE_KEY}"

@@ -5,12 +5,12 @@ from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.date import ComicboxComputedDate
+from comicbox.formats.comicbox.schema import STORIES_KEY, TITLE_KEY
 from comicbox.merge import (
     AdditiveMerger,
     Merger,
     ReplaceMerger,
 )
-from comicbox.schemas.comicbox import STORIES_KEY, TITLE_KEY
 
 _TITLE_STORIES_DELIMITER = ";"
 _TITLE_STORIES_JOIN_DELIMITER = f"{_TITLE_STORIES_DELIMITER} "

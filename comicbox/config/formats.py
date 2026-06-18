@@ -7,8 +7,6 @@ from typing import Any
 from confuse import Subview, exceptions
 from loguru import logger
 
-from comicbox.formats import MetadataFormats
-
 
 def _raw_or_empty(view: Subview) -> Iterable[Any]:
     """
@@ -42,6 +40,8 @@ def _raw_or_empty(view: Subview) -> Iterable[Any]:
 
 def _get_formats_from_keys(keys: frozenset[str], ignore_keys: frozenset[Any]) -> tuple:
     """Get sources from keys."""
+    from comicbox.formats import MetadataFormats
+
     fmts = []
     for fmt in MetadataFormats:
         format_keys = fmt.value.config_keys
@@ -52,42 +52,49 @@ def _get_formats_from_keys(keys: frozenset[str], ignore_keys: frozenset[Any]) ->
     return fmts, keys
 
 
-def _get_config_formats_from_keys(config: Subview, key: str) -> frozenset:
-    """Return a set of schemas from a sequence of config keys."""
-    # Keys to set — pull raw value to support set/frozenset/tuple/list inputs.
-    raw_keys = _raw_or_empty(config[key])
+def _resolve_formats(
+    config_view: Subview, label: str, *, ignore_view: Subview | None = None
+) -> frozenset:
+    """Resolve a set of config-key strings into a frozenset of MetadataFormats."""
+    raw_keys = _raw_or_empty(config_view)
     keys = frozenset({str(k).strip() for k in raw_keys})
 
-    # Ignore list to set
-    attr = f"{key}_ignore"
-    ignore_list = getattr(config, attr, ())
-    ignore_keys = frozenset({str(k).strip() for k in ignore_list})
+    ignore_keys: frozenset[Any] = frozenset()
+    if ignore_view is not None:
+        raw_ignore = _raw_or_empty(ignore_view)
+        ignore_keys = frozenset({str(k).strip() for k in raw_ignore})
+
     fmts, keys = _get_formats_from_keys(keys, ignore_keys)
 
     # Report on invalid formats.
     if keys:
         plural = "s" if len(keys) > 1 else ""
         keys_str = ", ".join(sorted(keys))
-        logger.warning(f"Action '{key}' received invalid format{plural}: {keys_str}")
+        logger.warning(f"Action '{label}' received invalid format{plural}: {keys_str}")
 
     return frozenset(fmts)
 
 
 def transform_keys_to_formats(config: Subview) -> None:
     """Transform schema config keys to format enums."""
-    if config["delete_all_tags"].get(bool):
-        config["read"].set(frozenset())
-        config["write"].set(frozenset())
-        config["export"].set(frozenset())
-    else:
-        read_fmts = _get_config_formats_from_keys(config, "read")
-        read_ignore = config["read_ignore"].get()
-        if read_ignore and (
-            read_ignore_fmts := _get_config_formats_from_keys(config, "read_ignore")
-        ):
-            read_fmts -= read_ignore_fmts
-        config["read"].set(read_fmts)
-        write_fmts = _get_config_formats_from_keys(config, "write")
-        config["write"].set(write_fmts)
-        export_fmts = _get_config_formats_from_keys(config, "export")
-        config["export"] = export_fmts
+    if config["write"]["delete_all_tags"].get(bool):
+        config["read"]["formats"].set(frozenset())
+        config["write"]["formats"].set(frozenset())
+        config["convert"]["export_formats"].set(frozenset())
+        return
+
+    read_fmts = _resolve_formats(config["read"]["formats"], "read")
+    read_except = config["read"]["except"].get()
+    if read_except and (
+        except_fmts := _resolve_formats(config["read"]["except"], "read-except")
+    ):
+        read_fmts -= except_fmts
+    config["read"]["formats"].set(read_fmts)
+
+    write_fmts = _resolve_formats(config["write"]["formats"], "write")
+    config["write"]["formats"].set(write_fmts)
+
+    export_fmts = _resolve_formats(
+        config["convert"]["export_formats"], "convert.export_formats"
+    )
+    config["convert"]["export_formats"].set(export_fmts)

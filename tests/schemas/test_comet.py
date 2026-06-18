@@ -10,15 +10,21 @@ import xmltodict
 from comicbox.config import get_config
 from comicbox.enums.comicbox import ReadingDirectionEnum
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comet import CoMetSchema
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.xml_schemas import XML_UNPARSE_ARGS
+from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
+from comicbox.formats.comet.schema import CoMetSchema
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from tests.util import TestParser
 
 FN = "Captain Science #001-comet.cbz"
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["comet"])))
+READ_CONFIG = get_config(
+    Namespace(comicbox=Namespace(read=Namespace(formats=["comet"])))
+)
 WRITE_CONFIG = get_config(
-    Namespace(comicbox=Namespace(write=["comet"], read=["comet"]))
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["comet"]), write=Namespace(formats=["comet"])
+        )
+    )
 )
 
 METADATA = MappingProxyType(
@@ -46,10 +52,10 @@ METADATA = MappingProxyType(
             },
             "issue": {"name": "1", "number": Decimal(1)},
             "language": "en",
-            "bookmark": 12,
+            "bookmark": 4,
             "publisher": {"name": "Bell Features"},
             "original_format": "Comic",
-            "page_count": 36,
+            "page_count": 5,
             "prices": {"": Decimal("0.10").quantize(Decimal("0.01"))},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
@@ -82,8 +88,8 @@ COMET_DICT = MappingProxyType(
             "isVersionOf": "Captain Science Alternate #001",
             "issue": "1",
             "language": "en",
-            "lastMark": 12,
-            "pages": 36,
+            "lastMark": 4,
+            "pages": 5,
             "penciller": ["Wally Wood"],
             "price": Decimal("0.10").quantize(Decimal("0.01")),
             "publisher": "Bell Features",
@@ -110,12 +116,12 @@ COMET_TESTER = TestParser(
 
 
 def test_comet_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     COMET_TESTER.test_from_metadata()
 
 
 def test_comet_from_dict() -> None:
-    """Test native dict import from comicbox.schemas."""
+    """Test native dict import from comicbox.formats.base.schemas."""
     COMET_TESTER.test_from_dict()
 
 

@@ -22,10 +22,10 @@ from rich.table import Table
 from rich.text import Text
 
 from comicbox.box.validate import ComicboxValidate
+from comicbox.formats.base.schemas.yaml import YamlRenderModule
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+from comicbox.formats.sources import MetadataSources
 from comicbox.print import PrintPhases
-from comicbox.schemas.comicbox.yaml import ComicboxYamlSchema
-from comicbox.schemas.yaml import YamlRenderModule
-from comicbox.sources import MetadataSources
 from comicbox.version import VERSION
 
 _SOURCES_LOADED_NORMALIZED = frozenset(
@@ -75,7 +75,7 @@ class ComicboxPrint(ComicboxValidate):
     _CONSOLE = Console()
 
     def _set_pygments_style(self) -> None:
-        style_name = self._config.theme
+        style_name = self._config.general.theme
         if not style_name:
             style_name = DEFAULT_STYLE_NAME
         elif style_name.lower() == "none":
@@ -134,7 +134,7 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_version(self) -> None:
         """Print package version."""
-        if PrintPhases.VERSION not in self._config.print:
+        if PrintPhases.VERSION not in self._config.print.phases:
             return
         self._print(VERSION)
 
@@ -150,14 +150,14 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_file_type(self) -> None:
         """Print the file type."""
-        if PrintPhases.FILE_TYPE not in self._config.print:
+        if PrintPhases.FILE_TYPE not in self._config.print.phases:
             return
         ft = self.get_file_type()
         self._print(ft)
 
     def _print_file_names(self) -> None:
         """Print archive namelist."""
-        if PrintPhases.FILE_NAMES not in self._config.print:
+        if PrintPhases.FILE_NAMES not in self._config.print.phases:
             return
         namelist = self.namelist()
         pagenames = self.get_page_filenames()
@@ -238,7 +238,7 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_loaded(self, source: MetadataSources) -> None:
         """Print loaded metadata."""
-        if PrintPhases.LOADED not in self._config.print:
+        if PrintPhases.LOADED not in self._config.print.phases:
             return
         loaded_md_list = self.get_loaded_metadata(source)
         if not loaded_md_list:
@@ -257,7 +257,7 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_normalized(self, source: MetadataSources) -> None:
         """Print normalized metadata."""
-        if PrintPhases.NORMALIZED not in self._config.print:
+        if PrintPhases.NORMALIZED not in self._config.print.phases:
             return
         normalized_md_list = self.get_normalized_metadata(source)
         if not normalized_md_list:
@@ -280,18 +280,18 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_sources_loaded_normalized(self) -> None:
         """Print sources, loaded, and normalized metadata."""
-        if not _SOURCES_LOADED_NORMALIZED & self._config.print:
+        if not _SOURCES_LOADED_NORMALIZED & self._config.print.phases:
             return
         for source in MetadataSources:
-            if PrintPhases.SOURCE in self._config.print:
+            if PrintPhases.SOURCE in self._config.print.phases:
                 self._print_sources(source)
-            if PrintPhases.LOADED in self._config.print:
+            if PrintPhases.LOADED in self._config.print.phases:
                 self._print_loaded(source)
-            if PrintPhases.NORMALIZED in self._config.print:
+            if PrintPhases.NORMALIZED in self._config.print.phases:
                 self._print_normalized(source)
 
     def _print_merged(self, schema: ComicboxYamlSchema) -> None:
-        if PrintPhases.MERGED not in self._config.print:
+        if PrintPhases.MERGED not in self._config.print.phases:
             return
         md = self.get_merged_metadata()
         str_data = schema.dumps(md)
@@ -301,7 +301,7 @@ class ComicboxPrint(ComicboxValidate):
 
     def _print_computed(self, schema: ComicboxYamlSchema) -> None:
         """Print computed metadata."""
-        if PrintPhases.COMPUTED not in self._config.print:
+        if PrintPhases.COMPUTED not in self._config.print.phases:
             return
         computed = self.get_computed_metadata()
         for computed_md in computed:
@@ -319,8 +319,8 @@ class ComicboxPrint(ComicboxValidate):
     def _print_metadata(self) -> None:
         """Pretty print the metadata."""
         if (
-            PrintPhases.METADATA in self._config.print
-            or PrintPhases.METADATA_OLD in self._config.print
+            PrintPhases.METADATA in self._config.print.phases
+            or PrintPhases.METADATA_OLD in self._config.print.phases
         ):
             md = self.to_string()
             syntax = self._syntax(md, "yaml")

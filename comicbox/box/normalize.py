@@ -7,7 +7,7 @@ from loguru import logger
 
 from comicbox.box.init import LoadedMetadata
 from comicbox.box.load import ComicboxLoad
-from comicbox.sources import MetadataSources
+from comicbox.formats.sources import MetadataSources
 
 
 class ComicboxNormalize(ComicboxLoad):

@@ -14,10 +14,10 @@ from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
-from comicbox.fields.collection_fields import LegacyNestedMDStringSetField
+from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.cache import get_schema
-from comicbox.sources import MetadataSources
+from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.sources import MetadataSources
 
 
 class ComicboxLoad(ComicboxSources):
@@ -51,7 +51,7 @@ class ComicboxLoad(ComicboxSources):
         """Load string or dict."""
         schema_class = fmt.value.schema_class
         schema = get_schema(
-            schema_class, path=self._path, exclude=self._config.delete_keys
+            schema_class, path=self._path, exclude=self._config.general.delete_keys
         )
         if source == MetadataSources.CLI:
             return self._load_cli_yaml(fmt, schema, source_md)
@@ -112,7 +112,7 @@ class ComicboxLoad(ComicboxSources):
                 self._except_on_load(source, fmt, exc, level="DEBUG")
         if not success_md:
             reason = f"Unable to load {source.value.label}."
-            raise ValueError(reason)
+            raise MetadataError(reason)
         return success_md, fmt
 
     def _load_metadata(
@@ -127,14 +127,6 @@ class ComicboxLoad(ComicboxSources):
             else:
                 md, fmt = self._load_unknown_metadata(source, source_data.data)
             if md and fmt:
-                schema_class = fmt.value.schema_class
-                legacy_nested_source = glom(
-                    md, schema_class.LEGACY_NESTED_MD_KEYPATH, default=None
-                )
-                if LegacyNestedMDStringSetField.is_nested_metadata(
-                    legacy_nested_source
-                ):
-                    self.add_source(MetadataSources.LEGACY_NESTED, legacy_nested_source)
                 return MappingProxyType(md), fmt
         except Exception as exc:
             self._except_on_load(source, fmt, exc)

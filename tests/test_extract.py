@@ -23,7 +23,11 @@ COVER_PATH_DEST = TMP_DIR / "CaptainScience#1_01.jpg"
 PDF_COVER_PATH_SOURCE = TEST_FILES_DIR / "pdf" / "0.pdf"
 PDF_COVER_PATH_DEST = TMP_DIR / "0.pdf"
 PAGES_CONFIG = get_config(
-    Namespace(comicbox=Namespace(index_from=2, index_to=3, dest_path=str(TMP_DIR)))
+    Namespace(
+        comicbox=Namespace(
+            index_from=2, index_to=3, general=Namespace(dest_path=str(TMP_DIR))
+        )
+    )
 )
 
 

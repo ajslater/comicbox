@@ -6,16 +6,16 @@ from typing import Any
 
 from comicbox.box.computed.pages import ComicboxComputedPages
 from comicbox.enums.comicbox import IdSources
-from comicbox.fields.time_fields import DateTimeField
-from comicbox.identifiers.urns import to_urn_string
-from comicbox.merge import ReplaceMerger
-from comicbox.schemas.comicbox import (
-    ID_KEY_KEY,
+from comicbox.formats.base.fields.time_fields import DateTimeField
+from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     NOTES_KEY,
     TAGGER_KEY,
     UPDATED_AT_KEY,
 )
+from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers.urns import to_urn_string
+from comicbox.merge import ReplaceMerger
 
 
 class ComicboxComputedStamp(ComicboxComputedPages):
@@ -66,7 +66,10 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         self, sub_data: dict[str, Any], stamp_md: dict[str, Any]
     ) -> str | None:
         """Write comicbox notes to notes field if present."""
-        if not self._config.stamp_notes or NOTES_KEY in self._config.delete_keys:
+        if (
+            not self._config.write.stamp_notes
+            or NOTES_KEY in self._config.general.delete_keys
+        ):
             return None
         if identifiers := sub_data.get(IDENTIFIERS_KEY):
             stamp_md[IDENTIFIERS_KEY] = identifiers
@@ -79,18 +82,19 @@ class ComicboxComputedStamp(ComicboxComputedPages):
     def _get_tagger_stamp(self, sub_data: dict[str, Any]) -> dict | None:
         """Stamp when writing or explicitly told to."""
         if not (
-            self._config.stamp
+            self._config.write.stamp
             or self._config.all_write_formats
-            or self._config.cbz
-            or self._config.export
+            or self._config.convert.cbz
+            or self._config.convert.export_formats
         ):
             return None
 
+        delete_keys = self._config.general.delete_keys
         stamp_md = {}
-        if TAGGER_KEY not in self._config.delete_keys:
-            stamp_md[TAGGER_KEY] = self._config.tagger
+        if TAGGER_KEY not in delete_keys:
+            stamp_md[TAGGER_KEY] = self._config.general.tagger
 
-        if UPDATED_AT_KEY not in self._config.delete_keys:
+        if UPDATED_AT_KEY not in delete_keys:
             # Deprecated method needed for python 3.10
             # Update after 2026-11
             stamp_md[UPDATED_AT_KEY] = datetime.now(tz=timezone.utc)

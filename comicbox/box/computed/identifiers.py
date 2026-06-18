@@ -5,24 +5,11 @@ from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.issue import ComicboxComputedIssue
-from comicbox.identifiers.identifiers import (
-    create_identifier,
-    get_identifier_url,
-)
-from comicbox.identifiers.other import (
-    parse_identifier_other_str,
-)
-from comicbox.identifiers.urns import (
-    parse_urn_identifier,
-)
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.comicbox.schema import (
     ARCS_KEY,
     CHARACTERS_KEY,
     CREDITS_KEY,
     GENRES_KEY,
-    ID_KEY_KEY,
-    ID_URL_KEY,
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
     LOCATIONS_KEY,
@@ -34,6 +21,18 @@ from comicbox.schemas.comicbox import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
+from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
+from comicbox.identifiers.identifiers import (
+    create_identifier,
+    get_identifier_url,
+)
+from comicbox.identifiers.other import (
+    parse_identifier_other_str,
+)
+from comicbox.identifiers.urns import (
+    parse_urn_identifier,
+)
+from comicbox.merge import AdditiveMerger, Merger
 
 _IDENTIFIED_KEYS = (PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY)
 _IDENTIFIED_TAG_KEYS = (
@@ -76,7 +75,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         if (
             not sub_data
             or self._config.is_skip_computed_from_tags
-            or _PARSE_AS_IDENTIFIERS.issubset(self._config.delete_keys)
+            or _PARSE_AS_IDENTIFIERS.issubset(self._config.general.delete_keys)
         ):
             return None
         identifiers = {}
@@ -90,83 +89,83 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         return {IDENTIFIERS_KEY: identifiers}
 
     @staticmethod
-    def _add_url_to_tag_identifiers(id_type: str, identifiers: Mapping | None) -> list:
-        all_urls = []
+    def _url_deltas_for_tag_identifiers(
+        id_type: str, identifiers: Mapping | None
+    ) -> dict[str, dict[str, str]]:
+        """
+        Compute missing urls for one identifiers map.
+
+        Returns ``{source: {"url": ...}}`` deltas instead of writing into
+        the input: computed actions must not mutate the merged metadata
+        they derive from (it's cached); the action's return value is
+        merged by its declared merger like every other action.
+        """
+        deltas: dict[str, dict[str, str]] = {}
         if not identifiers:
-            return all_urls
+            return deltas
         for id_source_str, identifier in identifiers.items():
             if identifier.get(ID_URL_KEY):
                 continue
             if (id_key := identifier.get(ID_KEY_KEY)) and (
                 url := get_identifier_url(id_source_str, id_type, id_key)
             ):
-                identifier[ID_URL_KEY] = url
-                all_urls.append(url)
-        return all_urls
+                deltas[id_source_str] = {ID_URL_KEY: url}
+        return deltas
 
     @classmethod
-    def _add_urls_to_identifiers(
-        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
-    ) -> None:
-        identifiers = sub_data.get(IDENTIFIERS_KEY)
-        if urls := cls._add_url_to_tag_identifiers("issue", identifiers):
-            all_urls[IDENTIFIERS_KEY] = urls
-
-    @classmethod
-    def _add_urls_to_tag(
-        cls, key: str, id_type: str, tag: dict | None, all_urls: dict
-    ) -> None:
+    def _url_deltas_for_tag(cls, id_type: str, tag: Mapping | None) -> dict | None:
+        """Delta subtree for one identified tag, or None when complete."""
         if not tag:
-            return
-        identifiers = tag.get(IDENTIFIERS_KEY)
-        if urls := cls._add_url_to_tag_identifiers(
-            id_type,
-            identifiers,
+            return None
+        deltas = cls._url_deltas_for_tag_identifiers(id_type, tag.get(IDENTIFIERS_KEY))
+        return {IDENTIFIERS_KEY: deltas} if deltas else None
+
+    @classmethod
+    def _url_deltas_for_multiple_tags(cls, key: str, all_tags: Mapping) -> dict:
+        """Delta subtrees for a name-keyed tag map (credits incl. roles)."""
+        id_type = _IRREGULAR_SINGULAR_ID_TYPES.get(key, key[:-1])
+        tag_deltas: dict[str, Any] = {}
+        for name, tag in all_tags.items():
+            delta = cls._url_deltas_for_tag(id_type, tag) or {}
+            if key == CREDITS_KEY and tag and (roles := tag.get(ROLES_KEY)):
+                role_deltas = {
+                    role_name: role_delta
+                    for role_name, role in roles.items()
+                    if (role_delta := cls._url_deltas_for_tag(id_type, role))
+                }
+                if role_deltas:
+                    delta = {**delta, ROLES_KEY: role_deltas}
+            if delta:
+                tag_deltas[name] = delta
+        return tag_deltas
+
+    def _add_urls_to_all_identifiers(self, sub_data: dict[str, Any]) -> dict | None:
+        """Compute missing identifier urls as a mergeable delta tree."""
+        tree: dict[str, Any] = {}
+        if deltas := self._url_deltas_for_tag_identifiers(
+            "issue", sub_data.get(IDENTIFIERS_KEY)
         ):
-            if key not in all_urls:
-                all_urls[key] = []
-            all_urls[key].extend(urls)
-
-    @classmethod
-    def _add_urls_to_single_tags(
-        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
-    ) -> None:
+            tree[IDENTIFIERS_KEY] = deltas
         for key in _IDENTIFIED_KEYS:
-            tag = sub_data.get(key)
-            cls._add_urls_to_tag(key, key, tag, all_urls)
-
-    @classmethod
-    def _add_urls_to_multiple_tags(
-        cls, sub_data: dict[str, Any], all_urls: dict[Any, Any]
-    ) -> None:
+            if delta := self._url_deltas_for_tag(key, sub_data.get(key)):
+                tree[key] = delta
         for key in _IDENTIFIED_TAG_KEYS:
             all_tags = sub_data.get(key)
             if not all_tags:
                 continue
-            id_type = _IRREGULAR_SINGULAR_ID_TYPES.get(key, key[:-1])
-            for tag in all_tags.values():
-                cls._add_urls_to_tag(key, id_type, tag, all_urls)
-                if key == CREDITS_KEY and (roles := tag.get(ROLES_KEY)):
-                    for role in roles.values():
-                        cls._add_urls_to_tag(ROLES_KEY, id_type, role, all_urls)
-
-    def _add_urls_to_all_identifiers(self, sub_data: dict[str, Any]) -> dict | None:
-        """Add missing urls to identifiers."""
-        all_urls = {}
-        self._add_urls_to_identifiers(sub_data, all_urls)
-        self._add_urls_to_single_tags(sub_data, all_urls)
-        self._add_urls_to_multiple_tags(sub_data, all_urls)
-
-        if not all_urls:
-            return None
-        return all_urls
+            if tag_deltas := self._url_deltas_for_multiple_tags(key, all_tags):
+                tree[key] = tag_deltas
+        return tree or None
 
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
             {
                 **ComicboxComputedIssue.COMPUTED_ACTIONS,
                 "from tags": (_get_computed_from_tags, AdditiveMerger),
-                "add urls to identifiers": (_add_urls_to_all_identifiers, None),
+                "add urls to identifiers": (
+                    _add_urls_to_all_identifiers,
+                    AdditiveMerger,
+                ),
             }
         )
     )

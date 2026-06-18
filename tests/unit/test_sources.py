@@ -8,9 +8,24 @@ from comicbox.formats import MetadataFormats
 _MD = {"series": {"name": "Test"}, "issue": {"number": 1}}
 
 
-def _sources(**comicbox_kwargs):
-    cb = Comicbox(config=Namespace(comicbox=Namespace(**comicbox_kwargs)))
-    return cb._get_source_config_metadata()  # noqa: SLF001
+def _sources(
+    *,
+    metadata: dict | None = None,
+    metadata_format: str | None = None,
+    read: list | None = None,
+):
+    general_kwargs: dict = {}
+    if metadata is not None:
+        general_kwargs["metadata"] = metadata
+    if metadata_format is not None:
+        general_kwargs["metadata_format"] = metadata_format
+    cb_kwargs: dict = {}
+    if general_kwargs:
+        cb_kwargs["general"] = Namespace(**general_kwargs)
+    if read is not None:
+        cb_kwargs["read"] = Namespace(formats=read)
+    cb = Comicbox(config=Namespace(comicbox=Namespace(**cb_kwargs)))
+    return cb._get_source_config_metadata()
 
 
 def test_format_in_read_returns_source() -> None:

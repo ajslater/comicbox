@@ -10,13 +10,19 @@ from glom import glom
 
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
-from comicbox.schemas.comicbox import ComicboxSchemaMixin
-from comicbox.schemas.filename import FilenameSchema
+from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.filename.schema import FilenameSchema
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
-READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"])))
-WRITE_CONFIG = get_config(Namespace(comicbox=Namespace(read=["fn"], write=["fn"])))
+READ_CONFIG = get_config(Namespace(comicbox=Namespace(read=Namespace(formats=["fn"]))))
+WRITE_CONFIG = get_config(
+    Namespace(
+        comicbox=Namespace(
+            read=Namespace(formats=["fn"]), write=Namespace(formats=["fn"])
+        )
+    )
+)
 
 SUB_DATA: Mapping[str, Any] = {
     "ext": "cbz",
@@ -66,7 +72,7 @@ FN_TESTER = TestParser(
 
 
 def test_filename_from_metadata() -> None:
-    """Test metadata import from comicbox.schemas."""
+    """Test metadata import from comicbox.formats.base.schemas."""
     FN_TESTER.test_from_metadata()
 
 

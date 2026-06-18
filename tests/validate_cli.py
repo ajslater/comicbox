@@ -14,7 +14,7 @@ def main(argv):
     else:
         reason = "no path given"
         raise ValueError(reason)
-    if len(argv) > 2:  # noqa: PLR2004
+    if len(argv) > 2:
         fmt_str = argv[2]
         fmt = guess_format(fmt_str)
     else:

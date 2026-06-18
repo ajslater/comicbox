@@ -93,6 +93,8 @@ METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
         GenericAgeRatingEnum.SEXUALLY_EXPLICIT: MetronAgeRatingEnum.ADULT,
         GenericAgeRatingEnum.VIOLENT: MetronAgeRatingEnum.EXPLICIT,
         GenericAgeRatingEnum.VIOLENCE: MetronAgeRatingEnum.EXPLICIT,
+        ComicInfoAgeRatingEnum.UNKNOWN: MetronAgeRatingEnum.UNKNOWN,
+        ComicInfoAgeRatingEnum.PENDING: MetronAgeRatingEnum.UNKNOWN,
         ComicInfoAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
         ComicInfoAgeRatingEnum.EARLY_CHILDHOOD: MetronAgeRatingEnum.EVERYONE,
         ComicInfoAgeRatingEnum.E_10_PLUS: MetronAgeRatingEnum.EVERYONE,

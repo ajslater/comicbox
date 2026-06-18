@@ -1,22 +1,31 @@
 """Get ZipInfo like attributes from all archive info types."""
 
-from tarfile import TarFile
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-from py7zr import SevenZipFile
-from py7zr.io import BytesIOFactory
-from rarfile import RarFile
-from zipremove import ZipFile
+from tarfile import TarFile
+from typing import TYPE_CHECKING, Any, cast
 
 from comicbox._pdf import PDF_ENABLED
-from comicbox.box.archive.archiveinfo import InfoType
 
 if TYPE_CHECKING:
     from pdffile import PDFFile
+    from py7zr import SevenZipFile
+    from py7zr.io import BytesIOFactory
+    from rarfile import RarFile
+    from zipremove import ZipFile
+
+    from comicbox.box.archive.archiveinfo import InfoType
+
+    ArchiveType = ZipFile | SevenZipFile | RarFile | TarFile | PDFFile
 else:
     from comicbox._pdf import PDFFile
 
-ArchiveType = ZipFile | SevenZipFile | RarFile | TarFile | PDFFile
+    ArchiveType = Any  # avoid pulling in py7zr / rarfile at module-load time
+
+
+# Dispatch by attribute presence rather than isinstance — keeps the heavy
+# py7zr / rarfile imports off the hot read path for CBZ-only workers.
+# `reset` is unique to py7zr.SevenZipFile among the archive types we accept.
 
 
 class Archive:
@@ -32,13 +41,12 @@ class Archive:
     @staticmethod
     def infolist(archive: ArchiveType) -> tuple[InfoType, ...]:
         """Return infolist."""
-        match archive:
-            case TarFile():
-                infolist = archive.getmembers()
-            case SevenZipFile():
-                infolist = archive.list()
-            case _:
-                infolist = archive.infolist()
+        if isinstance(archive, TarFile):
+            infolist = archive.getmembers()
+        elif hasattr(archive, "reset"):  # SevenZipFile
+            infolist = cast("SevenZipFile", archive).list()
+        else:
+            infolist = cast("ZipFile | RarFile | PDFFile", archive).infolist()
         return tuple(infolist)
 
     @staticmethod
@@ -71,11 +79,8 @@ class Archive:
         """Read one file in the archive's data."""
         if PDF_ENABLED and isinstance(archive, PDFFile):
             return archive.read(filename, fmt=pdf_format, props=props)
-        match archive:
-            case TarFile():
-                data = cls._read_tarfile(archive, filename)
-            case SevenZipFile():
-                data = cls._read_7zipfile(archive, factory, filename)
-            case _:
-                data = archive.read(filename)
-        return data
+        if isinstance(archive, TarFile):
+            return cls._read_tarfile(archive, filename)
+        if hasattr(archive, "reset"):  # SevenZipFile
+            return cls._read_7zipfile(cast("SevenZipFile", archive), factory, filename)
+        return cast("ZipFile | RarFile | PDFFile", archive).read(filename)

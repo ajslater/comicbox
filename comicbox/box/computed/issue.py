@@ -9,15 +9,15 @@ from loguru import logger
 
 from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
-from comicbox.fields.comicbox import NAME_KEY
-from comicbox.fields.fields import StringField
-from comicbox.fields.number_fields import DecimalField
-from comicbox.merge import AdditiveMerger, Merger
-from comicbox.schemas.comicbox import (
+from comicbox.formats.base.fields.comicbox import NAME_KEY
+from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.number_fields import DecimalField
+from comicbox.formats.comicbox.schema import (
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,
     NUMBER_KEY,
 )
+from comicbox.merge import AdditiveMerger, Merger
 
 ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
@@ -79,7 +79,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, Any] | None:
         """Build issue from parts before dump if issue doesn't already exist."""
-        if not sub_data or ISSUE_KEY in self._config.delete_keys:
+        if not sub_data or ISSUE_KEY in self._config.general.delete_keys:
             return None
         issue = sub_data.get(ISSUE_KEY)
         if not issue:

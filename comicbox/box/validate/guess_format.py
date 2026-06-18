@@ -3,6 +3,7 @@
 from pathlib import Path
 from types import MappingProxyType
 
+from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 
 _CBI_STEMS = tuple(
@@ -15,7 +16,6 @@ _SUFFIX_SUBSTRINGS = MappingProxyType(
         "json": {
             "comicbox": MetadataFormats.COMICBOX_JSON,
             "pdf": MetadataFormats.PDF,
-            "comictagger": MetadataFormats.COMICTAGGER,
             **dict.fromkeys(_CBI_STEMS, MetadataFormats.COMIC_BOOK_INFO),
         },
         "xml": {
@@ -49,5 +49,5 @@ def guess_format(path: Path | str) -> MetadataFormats | None:
             break
     else:
         reason = f"Can't guess format for {path} suffix {suffix}"
-        raise ValueError(reason)
+        raise MetadataError(reason)
     return fmt

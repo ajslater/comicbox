@@ -44,7 +44,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
                 continue
 
             # mtime
-            mtime = ArchiveInfo.datetime(info)
+            mtime = ArchiveInfo.mtime(info)
             if not mtime:
                 mtime = self.get_path_mtime_dttm()
             if mtime and (max_mtime is None or (max_mtime < mtime)):

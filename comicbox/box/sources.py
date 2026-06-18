@@ -9,9 +9,10 @@ from loguru import logger
 
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
-from comicbox.formats import MetadataFormats
-from comicbox.schemas.pdf import MuPDFSchema
-from comicbox.sources import MetadataSources
+from comicbox.exceptions import MetadataError
+from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
+from comicbox.formats.pdf.schema import MuPDFSchema
+from comicbox.formats.sources import MetadataSources
 
 FILENAME_FORMAT_MAP = MappingProxyType(
     {
@@ -26,14 +27,15 @@ class ComicboxSources(ComicboxArchive):
 
     def _get_source_config_metadata(self) -> list[SourceData]:
         source_data_list = []
-        if not self._config.metadata:
+        general = self._config.general
+        if not general.metadata:
             return source_data_list
-        fmt = self._config.metadata_format
+        fmt = general.metadata_format
         try:
             if isinstance(fmt, str):
                 fmt = MetadataFormats[fmt.upper()]
-            if not fmt or fmt in self._config.read:
-                source_data_list = [SourceData(self._config.metadata, fmt=fmt)]
+            if not fmt or fmt in self._config.read.formats:
+                source_data_list = [SourceData(general.metadata, fmt=fmt)]
         except Exception as exc:
             logger.warning(f"Error reading metadata from config: {exc}")
         return source_data_list
@@ -41,9 +43,10 @@ class ComicboxSources(ComicboxArchive):
     def _get_source_cli_metadata(self) -> list[SourceData]:
         """Get metadatas from cli."""
         source_data_list = []
-        if not self._config.metadata_cli:
+        metadata_cli = self._config.general.metadata_cli
+        if not metadata_cli:
             return source_data_list
-        for source_string in self._config.metadata_cli:
+        for source_string in metadata_cli:
             try:
                 sd = SourceData(source_string)
                 source_data_list.append(sd)
@@ -56,7 +59,7 @@ class ComicboxSources(ComicboxArchive):
     def _get_source_import_metadata(self) -> list[SourceData]:
         """Read multiple import paths into strings."""
         source_data_list = []
-        paths = self._config.import_paths
+        paths = self._config.convert.import_paths
         if not paths:
             return source_data_list
         for path_str in paths:
@@ -65,7 +68,7 @@ class ComicboxSources(ComicboxArchive):
                 with path.open("r") as f:
                     source_string = f.read()
                 fmt = FILENAME_FORMAT_MAP.get(path.name.lower())
-                if not fmt or fmt in self._config.read:
+                if not fmt or fmt in self._config.read.formats:
                     sd = SourceData(source_string, path, fmt)
                     source_data_list.append(sd)
             except Exception as exc:
@@ -97,7 +100,7 @@ class ComicboxSources(ComicboxArchive):
         try:
             # Only one archive comment format exists, so assume it.
             only_comment_format = MetadataSources.ARCHIVE_COMMENT.value.formats[0]
-            formats = only_comment_format in self._config.read
+            formats = only_comment_format in self._config.read.formats
             if formats and (comment := self._get_comment()):
                 comment = comment.decode(errors="replace")
                 source_data_list = [
@@ -108,11 +111,13 @@ class ComicboxSources(ComicboxArchive):
         return source_data_list
 
     def _get_source_pdf_metadata(self) -> list[SourceData]:
+        """If an archive is a pdf and we're configured to read pdf metadata, get the pdf metadata as source."""
         source_data_list = []
         if not self._path:
             return source_data_list
         pdf_fmts = (
-            frozenset(MetadataSources.ARCHIVE_PDF.value.formats) & self._config.read
+            frozenset(MetadataSources.ARCHIVE_PDF.value.formats)
+            & self._config.read.formats
         )
         if not pdf_fmts:
             return source_data_list
@@ -134,7 +139,9 @@ class ComicboxSources(ComicboxArchive):
     ) -> None:
         path = Path(fn)
         lower_name = path.name.lower()
-        if (fmt := FILENAME_FORMAT_MAP.get(lower_name)) and fmt in self._config.read:
+        if (
+            fmt := FILENAME_FORMAT_MAP.get(lower_name)
+        ) and fmt in self._config.read.formats:
             old_entry = files_dict.get(fmt)
             path_level = len(path.parents)
             if not old_entry or old_entry[1] > path_level:
@@ -184,15 +191,24 @@ class ComicboxSources(ComicboxArchive):
             MetadataSources.ARCHIVE_FILE: _get_source_archive_files_metadata,
         }
     )
+    # API is set by the public Comicbox(...) constructor; online sources are
+    # set by the online-lookup pipeline. Either way, the standard
+    # SOURCE_METHOD_MAP dispatch does not apply.
     SOURCES_SET_ELSEWHERE = frozenset(
-        {MetadataSources.API, MetadataSources.LEGACY_NESTED}
+        {MetadataSources.API}
+        | {
+            MetadataSources[source_name]
+            for registration in FORMAT_REGISTRATIONS.values()
+            if registration.is_online
+            for source_name in registration.sources
+        }
     )
 
     def _set_source_metadata(
         self, source: MetadataSources
     ) -> list[SourceData] | tuple[SourceData, ...] | None:
         """Set source metadata by source."""
-        if self._config.delete_all_tags:
+        if self._config.write.delete_all_tags:
             return
         if source in self.SOURCES_SET_ELSEWHERE:
             # Set by init & add metadata below.
@@ -202,7 +218,7 @@ class ComicboxSources(ComicboxArchive):
             source_data_list = func(self)
         else:
             reason = f"{source} not a valid source metadata key."
-            raise ValueError(reason)
+            raise MetadataError(reason)
 
         if source_data_list:
             source_data_list = tuple(source_data_list)
@@ -236,8 +252,20 @@ class ComicboxSources(ComicboxArchive):
         sd = SourceData(metadata, Path(path), fmt)
         self._sources[source].append(sd)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
-        # Clear forward caches
+        self._invalidate_source(source)
+
+    def _invalidate_source(self, source: MetadataSources) -> None:
+        """
+        Invalidate one source's parse caches and everything downstream.
+
+        The single chokepoint for mid-chain invalidation: per-source
+        _loaded AND _normalized entries (the normalize getter skips
+        re-normalization whenever its key exists, so a stale entry would
+        silently swallow newly added metadata), then the merged /
+        computed / final-metadata caches via the shared reset.
+        """
         self._loaded.pop(source, None)
+        self._normalized.pop(source, None)
         self._reset_loaded_forward_caches()
 
     def add_metadata(

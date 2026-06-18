@@ -58,11 +58,11 @@ def test_get_random_page() -> None:
 
 def test_get_pages_after() -> None:
     """Test getting many pages."""
-    page_num = 33
+    page_num = 3
     with Comicbox(ARCHIVE_PATH) as car:
         pages = car.get_pages(page_num)
     for page in pages:
-        path = Path(PAGE_TMPL.format(page_num=page_num + 1))
+        path = Path(PAGE_TMPL.format(page_num=f"{page_num + 1:02d}"))
         with path.open("rb") as cif:
             image = cif.read()
         assert image == page
