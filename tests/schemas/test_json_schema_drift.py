@@ -116,50 +116,76 @@ def _schema_class(field: fields.Field) -> type[Schema] | None:
     return None
 
 
+def _check_scalar_type(
+    field: fields.Field, node: dict, path: str, failures: list[str]
+) -> None:
+    """Assert the property's declared JSON ``type`` matches the field."""
+    expected = _expected_type(field)
+    declared = node.get("type")
+    if expected and declared and declared != expected:
+        failures.append(f"{path}: model type {expected!r} != schema type {declared!r}")
+
+
+def _check_enum(
+    field: fields.Field, node: dict, path: str, failures: list[str]
+) -> None:
+    """Assert an enum property's declared values match the field's enum members."""
+    if not (isinstance(field, fields.Enum) and "enum" in node):
+        return
+    members = cast("Iterable[Enum]", field.enum)
+    model_values = {member.value for member in members}
+    declared_values = set(node["enum"])
+    if model_values != declared_values:
+        failures.append(
+            f"{path}: model enum {sorted(model_values)}"
+            f" != schema enum {sorted(declared_values)}"
+        )
+
+
+def _check_array_items(
+    field: fields.Field, node: dict, path: str, failures: list[str]
+) -> None:
+    """Assert an array property's ``items`` type matches the field's inner element."""
+    if not isinstance(field, fields.List):
+        return
+    expected = _expected_type(field.inner)
+    declared = _resolve(node.get("items", {})).get("type")
+    if expected and declared and declared != expected:
+        failures.append(
+            f"{path}[]: model item type {expected!r} != schema type {declared!r}"
+        )
+
+
+def _check_map_values(
+    field: fields.Field, node: dict, path: str, failures: list[str]
+) -> None:
+    """
+    Assert a plain map's scalar value type matches the field's value.
+
+    Named-dict Unions carry object values, which are verified by descent instead.
+    """
+    if not (isinstance(field, fields.Dict) and field.value_field is not None):
+        return
+    expected = _expected_type(field.value_field)
+    additional = node.get("additionalProperties")
+    if not (expected and expected != "object" and isinstance(additional, dict)):
+        return
+    declared = _resolve(additional).get("type")
+    if declared and declared != expected:
+        failures.append(
+            f"{path}{{}}: model value type {expected!r} != schema type {declared!r}"
+        )
+
+
 def _check_type(
     field: fields.Field, prop: dict, path: str, failures: list[str]
 ) -> None:
     """Assert a property's declared JSON type matches the field, including elements."""
     node = _resolve(prop)
-    expected = _expected_type(field)
-    declared = node.get("type")
-    if expected and declared and declared != expected:
-        failures.append(f"{path}: model type {expected!r} != schema type {declared!r}")
-    # Enum value membership.
-    if isinstance(field, fields.Enum) and "enum" in node:
-        members = cast("Iterable[Enum]", field.enum)
-        model_values = {member.value for member in members}
-        declared_values = set(node["enum"])
-        if model_values != declared_values:
-            failures.append(
-                f"{path}: model enum {sorted(model_values)}"
-                f" != schema enum {sorted(declared_values)}"
-            )
-    # Array element type.
-    if isinstance(field, fields.List):
-        item_expected = _expected_type(field.inner)
-        item_declared = _resolve(node.get("items", {})).get("type")
-        if item_expected and item_declared and item_declared != item_expected:
-            failures.append(
-                f"{path}[]: model item type {item_expected!r}"
-                f" != schema type {item_declared!r}"
-            )
-    # Scalar values of a plain map (named-dict Unions carry object values, handled
-    # by descent instead).
-    elif isinstance(field, fields.Dict) and field.value_field is not None:
-        value_expected = _expected_type(field.value_field)
-        additional = node.get("additionalProperties")
-        if (
-            value_expected
-            and value_expected != "object"
-            and isinstance(additional, dict)
-        ):
-            value_declared = _resolve(additional).get("type")
-            if value_declared and value_declared != value_expected:
-                failures.append(
-                    f"{path}{{}}: model value type {value_expected!r}"
-                    f" != schema type {value_declared!r}"
-                )
+    _check_scalar_type(field, node, path, failures)
+    _check_enum(field, node, path, failures)
+    _check_array_items(field, node, path, failures)
+    _check_map_values(field, node, path, failures)
 
 
 def _walk(schema: Schema, node: dict, path: str, failures: list[str]) -> None:
