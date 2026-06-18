@@ -141,6 +141,7 @@ class EnumBooleanField(EnumField):
 class ComicInfoMangaEnum(Enum):
     """Manga enum for ComicInfo."""
 
+    YES = "Yes"
     YES_RTL = "YesAndRightToLeft"
     NO = "No"
 
