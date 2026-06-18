@@ -77,8 +77,6 @@ comicbox = "comicbox.cli:main"
 [dependency-groups]
 dev = [
   "icecream~=2.1",
-  # generate-schema/mjs.py only — dev tooling, not a runtime dependency.
-  "marshmallow-jsonschema>=0.15.0",
   "infer-types~=1.0.0",
   "marshmallow-jsonschema>=0.15.0",
   "neovim~=0.3",
@@ -108,7 +106,6 @@ lint = [
 ]
 test = [
   "coverage[toml]~=7.0",
-  "pytest~=9.0",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
   "pytest~=9.0",
@@ -122,9 +119,6 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = ""
-# Every path here exists; missing entries copy-pasted from another
-# project's template were dropped (the build backend ignores them
-# silently). cfg/** is load-bearing: the bundled Makefile includes it.
 source-include = [
   ".*ignore",
   ".env.platforms",
@@ -139,11 +133,16 @@ source-include = [
   "cfg/**",
   "check-jsonschema.sh",
   "compose.yaml",
+  "docs/DOCKER.md",
+  "docs/NEWS",
   "docs/NEWS.md",
   "docs/README.md",
+  "docs/WINDOWS.md",
   "docs/requirements.txt",
   "docs/style.css",
+  "docs/style.material.css",
   "docs/style.mkdocs.css",
+  "docs/style.readthedocs.css",
   "eslint.config.js",
   "frontend/**",
   "generate-schema/**",
@@ -156,7 +155,7 @@ source-include = [
   "validate-schema.sh",
   "vulture_ignorelist.py",
 ]
-source-exclude = ["**/*\\~", "**/.DS_Store"]
+source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
 
 [tool.basedpyright]
