@@ -3,12 +3,12 @@
 from comicbox.enums.comicbox import IdSources
 from comicbox.formats.base.transforms.identifiers import (
     identifiers_to_cb,
+    merge_url_and_explicit_identifiers,
     urls_to_cb,
 )
 from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comic_info.schema import GTIN_TAG, WEB_TAG
 from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
-from comicbox.merge import AdditiveMerger
 
 
 def _to_cb(values: dict[str, set[str] | None]) -> dict:
@@ -21,8 +21,10 @@ def _to_cb(values: dict[str, set[str] | None]) -> dict:
     cix_web = values.get(WEB_TAG)
     comicbox_web_identifiers = urls_to_cb(cix_web)
 
-    AdditiveMerger.merge(comicbox_identifiers, comicbox_web_identifiers)
-    return comicbox_identifiers
+    # GTIN ids are authoritative; a <Web> URL slug must not clobber them.
+    return merge_url_and_explicit_identifiers(
+        comicbox_web_identifiers, comicbox_identifiers
+    )
 
 
 COMICINFO_IDENTIFIERS_TO_CB = MetaSpec(

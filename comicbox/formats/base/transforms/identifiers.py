@@ -23,8 +23,41 @@ from comicbox.identifiers.urns import (
     parse_string_identifier,
     to_urn_string,
 )
+from comicbox.merge import AdditiveMerger
 
 PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
+
+
+def merge_url_and_explicit_identifiers(
+    url_identifiers: dict, *explicit_identifier_dicts: dict
+) -> dict:
+    """
+    Merge URL-derived and explicit-id identifiers with per-field precedence.
+
+    A web URL's path is not a reliable canonical id — for sources like Metron
+    it's a slug, not the numeric issue id carried by an ``<ID>``/GTIN tag — so an
+    explicit identifier's ``key`` must win over a URL-derived one. Conversely a
+    real URL must win over the ``url`` that ``create_identifier`` synthesizes
+    from a bare id. Naively additive-merging the two (URL last) clobbers the
+    authoritative numeric key with the slug, which breaks downstream id lookups;
+    this restores the right precedence one field at a time.
+    """
+    merged: dict[str, dict] = {}
+    # URL-derived identifiers own the canonical ``url`` and supply a fallback
+    # ``key`` for files that carry only a web link.
+    AdditiveMerger.merge(merged, url_identifiers)
+    # Explicit identifiers (later dicts win) override the ``key`` with the
+    # authoritative id, but keep an already-present real ``url``.
+    for explicit_identifiers in explicit_identifier_dicts:
+        for id_source_str, identifier in explicit_identifiers.items():
+            dest = merged.setdefault(id_source_str, {})
+            for field, value in identifier.items():
+                if not value:
+                    continue
+                if field == ID_URL_KEY and dest.get(ID_URL_KEY):
+                    continue
+                dest[field] = value
+    return merged
 
 
 def create_identifier_primary_source(

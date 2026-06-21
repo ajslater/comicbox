@@ -215,7 +215,9 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
                 team="team",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\S+)/?",
+            # id_key is a single path segment ([^/]+), so a trailing slash in
+            # the url (…/issue/123495/) isn't swallowed into the captured id.
+            url_path_regex=r"(?P<id_type>[^/]+)/(?P<id_key>[^/]+)/?",
             url_path_template="{id_type}/{id_key}",
         ),
         IdSources.MYANIMELIST: IdentifierParts(
