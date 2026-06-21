@@ -44,6 +44,7 @@ def _round_trip_metron_key(fmt: MetadataFormats) -> str | None:
         comicbox_md = cb2.to_dict().get("comicbox", {})
     return comicbox_md.get("identifiers", {}).get("metron", {}).get("key")
 
+
 ###################
 # create_identifier
 ###################
