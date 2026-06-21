@@ -8,7 +8,7 @@
       round trip in ComicInfo and MetronInfo, so already-tagged comics refresh
       via their stored id instead of falling through to a full online search.
     - Metron url parsing no longer captures a trailing slash into the id key
-      (`.../issue/123495/` → `123495`, not `123495/`).
+      (`.../issue/123495/` -> `123495`, not `123495/`).
     - The `AutoWritten` event now fires for matches resolved by explicit id or
       stored id, so it reports a source for every auto-written comic.
 
