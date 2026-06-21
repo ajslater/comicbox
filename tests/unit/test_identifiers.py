@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from comicbox.box import Comicbox
 from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import get_id_source_by_alias
+from comicbox.formats import MetadataFormats
+from comicbox.formats.base.transforms.identifiers import (
+    merge_url_and_explicit_identifiers,
+)
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -16,6 +21,29 @@ from comicbox.identifiers.urns import (
     parse_urn_identifier,
     to_urn_string,
 )
+
+# A Metron-tagged issue carrying both the numeric id and the slug web url —
+# the shape that exposed the url-clobbers-key bug.
+_METRON_SOURCE_YAML = """
+comicbox:
+  issue: "0"
+  identifiers:
+    metron:
+      key: "123495"
+      url: https://metron.cloud/issue/batman-2016-0/
+"""
+
+
+def _round_trip_metron_key(fmt: MetadataFormats) -> str | None:
+    """Render the sample to ``fmt`` then read it back; return identifiers.metron.key."""
+    with Comicbox() as cb:
+        cb.add_metadata(_METRON_SOURCE_YAML, MetadataFormats.COMICBOX_YAML)
+        rendered = cb.to_string(fmt)
+    with Comicbox() as cb2:
+        cb2.add_metadata(rendered, fmt)
+        comicbox_md = cb2.to_dict().get("comicbox", {})
+    return comicbox_md.get("identifiers", {}).get("metron", {}).get("key")
+
 
 ###################
 # create_identifier
@@ -97,6 +125,25 @@ def test_url_path_parses_back_to_type_and_key() -> None:
     parts = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE]
     url = parts.unparse_url("issue", "12345")
     assert parts.parse_url_path(url) == ("issue", "12345")
+
+
+def test_metron_url_path_strips_trailing_slash() -> None:
+    """
+    A trailing slash in a metron url is not captured into the id key.
+
+    Metron issue urls carry a trailing slash (…/issue/123495/). The id key
+    regex must stop at the path separator so the key stays a bare id and not
+    '123495/', which would fail an int() parse on the stored-id fast path.
+    """
+    parts = IDENTIFIER_PARTS_MAP[IdSources.METRON]
+    assert parts.parse_url_path("https://metron.cloud/issue/123495/") == (
+        "issue",
+        "123495",
+    )
+    assert parts.parse_url_path("https://metron.cloud/issue/batman-2016-0/") == (
+        "issue",
+        "batman-2016-0",
+    )
 
 
 def test_get_id_source_from_url_unknown_domain_returns_netloc() -> None:
@@ -236,3 +283,57 @@ def test_get_id_source_by_alias_unknown_uses_default() -> None:
     """Unknown aliases return the passed default (comicvine when omitted)."""
     assert get_id_source_by_alias("never-heard-of-it") == IdSources.COMICVINE
     assert get_id_source_by_alias("never-heard-of-it", None) is None
+
+
+####################################
+# merge_url_and_explicit_identifiers
+####################################
+
+
+def test_merge_explicit_id_key_beats_url_slug_but_keeps_real_url() -> None:
+    """An explicit numeric key wins over a url slug; the real url is kept."""
+    url_identifiers = {
+        "metron": {"key": "batman-2016-0", "url": "https://metron.cloud/issue/b/"}
+    }
+    explicit_identifiers = {
+        "metron": {"key": "123495", "url": "https://metron.cloud/issue/123495"}
+    }
+    merged = merge_url_and_explicit_identifiers(url_identifiers, explicit_identifiers)
+    assert merged == {
+        "metron": {"key": "123495", "url": "https://metron.cloud/issue/b/"}
+    }
+
+
+def test_merge_url_only_supplies_fallback_key_and_url() -> None:
+    """With no explicit id, the url-derived key and url survive as a fallback."""
+    url_identifiers = {
+        "metron": {"key": "batman-2016-0", "url": "https://metron.cloud/issue/b/"}
+    }
+    assert merge_url_and_explicit_identifiers(url_identifiers) == url_identifiers
+
+
+def test_merge_explicit_only_passes_through() -> None:
+    """With no url identifiers the explicit identifiers pass through intact."""
+    explicit = {"metron": {"key": "123495", "url": "https://metron.cloud/issue/123495"}}
+    assert merge_url_and_explicit_identifiers({}, explicit) == explicit
+
+
+#####################################################
+# write -> read round trip preserves the numeric key
+#####################################################
+
+
+def test_metron_id_survives_comic_info_round_trip() -> None:
+    """
+    A Metron issue id written to ComicInfo reads back as the numeric key.
+
+    Regression guard: a <Web> url slug used to clobber the authoritative GTIN
+    id on read-back, breaking comicbox's stored-id fast path so already-tagged
+    comics fell through to a full online search.
+    """
+    assert _round_trip_metron_key(MetadataFormats.COMIC_INFO) == "123495"
+
+
+def test_metron_id_survives_metron_info_round_trip() -> None:
+    """A Metron issue id written to MetronInfo reads back as the numeric key."""
+    assert _round_trip_metron_key(MetadataFormats.METRON_INFO) == "123495"

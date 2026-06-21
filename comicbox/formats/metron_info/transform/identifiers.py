@@ -13,6 +13,7 @@ from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.base.transforms.identifiers import (
     PRIMARY_ID_SOURCE_KEYPATH,
     create_identifier_primary_source,
+    merge_url_and_explicit_identifiers,
     url_from_cb,
     urls_to_cb,
 )
@@ -28,7 +29,6 @@ from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
 )
-from comicbox.merge import AdditiveMerger
 
 PRIMARY_ATTRIBUTE = "@primary"
 SOURCE_ATTRIBUTE = "@source"
@@ -172,11 +172,11 @@ def identifiers_to_cb(values: dict) -> dict:
     id_identifiers = _identifiers_to_cb_identifiers(values)
     gtin_identifiers = _identifers_to_cb_gtin(values)
     url_identifiers = _identifiers_to_cb_urls(values)
-    comicbox_identifiers = {}
-    AdditiveMerger.merge(
-        comicbox_identifiers, id_identifiers, gtin_identifiers, url_identifiers
+    # Explicit <ID>/GTIN ids are authoritative; a <URL> slug must not clobber
+    # the numeric key. GTIN then IDS layer on last so the issue id wins.
+    return merge_url_and_explicit_identifiers(
+        url_identifiers, gtin_identifiers, id_identifiers
     )
-    return comicbox_identifiers
 
 
 METRON_IDENTIFIERS_TRANSFORM_TO_CB = MetaSpec(

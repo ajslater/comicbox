@@ -884,6 +884,25 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         resolution = self._resolve_with_matcher(source.name, candidates)
         return self._apply_resolution(source, resolution, path)
 
+    def _emit_auto_written(self, source: OnlineSource, issue_id: int) -> None:
+        """
+        Emit AutoWritten for an id-fetch fast-path win.
+
+        The cold-path search and series-cache wins emit AutoWritten directly,
+        but the explicit ``--id`` fetch and the stored-id refresh used to win
+        silently — leaving event consumers (e.g. Codex's status table) unable
+        to attribute the matched source for previously-tagged comics. Emitting
+        it here means every auto-write carries its source and path, however the
+        issue id was obtained.
+        """
+        self._emit(
+            AutoWritten(
+                path=getattr(self, "_path", None),
+                source=source.name,
+                candidate_summary=str(issue_id),
+            )
+        )
+
     def _lookup_one_source(self, source: OnlineSource) -> bool:
         """
         Drive the lookup for one source; return True iff the source "won".
@@ -899,7 +918,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         issue_id = explicit_ids.get(source.name)
         if issue_id is not None:
             outcome_stats.record_explicit_id(source.name)
-            self._fetch_explicit_id(source, issue_id)
+            if self._fetch_explicit_id(source, issue_id):
+                self._emit_auto_written(source, issue_id)
             return True
 
         # Fast refresh: a stored upstream id from a prior tag lets us
@@ -912,7 +932,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 logger.info(
                     f"online {source.name}: refreshing via stored id={stored_id}"
                 )
-                self._fetch_explicit_id(source, stored_id)
+                if self._fetch_explicit_id(source, stored_id):
+                    self._emit_auto_written(source, stored_id)
                 return True
 
         # Series-first batching fast path (plan §3.10). When the session
