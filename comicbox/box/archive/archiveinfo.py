@@ -36,8 +36,25 @@ class ArchiveInfo:
             dttm = cast("SevenZipInfo", info).creationtime
         elif mtime := cast("RarInfo", info).mtime:
             dttm = mtime
-        if dttm and not dttm.tzinfo:
-            dttm = dttm.replace(tzinfo=timezone.utc)
+        if dttm:
+            if not dttm.tzinfo:
+                dttm = dttm.replace(tzinfo=timezone.utc)
+            if type(dttm) is not datetime:
+                # rarfile returns an nsdatetime (a datetime subclass) that has
+                # no __reduce__, so pickling it across a ProcessPoolExecutor
+                # boundary breaks on unpickle and poisons the worker pool.
+                # Coerce any datetime subclass to a plain, picklable datetime.
+                dttm = datetime(
+                    dttm.year,
+                    dttm.month,
+                    dttm.day,
+                    dttm.hour,
+                    dttm.minute,
+                    dttm.second,
+                    dttm.microsecond,
+                    dttm.tzinfo,
+                    fold=dttm.fold,
+                )
         return dttm
 
     @staticmethod
