@@ -5,16 +5,18 @@ from __future__ import annotations
 import pickle
 from datetime import datetime, timezone
 
-from rarfile import nsdatetime
+from rarfile import RarInfo, nsdatetime
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 
 
-class _FakeRarInfo:
-    """Quacks like rarfile.RarInfo for ArchiveInfo dispatch."""
-
-    def __init__(self, mtime: datetime | None) -> None:
-        self.mtime = mtime
+def _rar_info(mtime: datetime | None) -> RarInfo:
+    """Build a bare RarInfo carrying just the mtime ArchiveInfo dispatches on."""
+    info = RarInfo.__new__(RarInfo)
+    # rarfile annotates RarInfo.mtime as None (its class default), so the
+    # assignment trips basedpyright though it is valid at runtime.
+    info.mtime = mtime  # pyright: ignore[reportAttributeAccessIssue]
+    return info
 
 
 def test_rar_nsdatetime_is_coerced_to_picklable_datetime() -> None:
@@ -28,7 +30,7 @@ def test_rar_nsdatetime_is_coerced_to_picklable_datetime() -> None:
     ns = nsdatetime(2007, 5, 1, 12, 30, 15, nanosecond=123456789, tzinfo=timezone.utc)
     assert type(ns) is nsdatetime  # real subclass instance
 
-    out = ArchiveInfo.mtime(_FakeRarInfo(ns))
+    out = ArchiveInfo.mtime(_rar_info(ns))
 
     assert type(out) is datetime
     assert out == datetime(2007, 5, 1, 12, 30, 15, 123456, tzinfo=timezone.utc)
@@ -40,7 +42,7 @@ def test_naive_rar_nsdatetime_gets_utc_and_is_picklable() -> None:
     """A naive nsdatetime is made tz-aware and still coerced to datetime."""
     ns = nsdatetime(2007, 5, 1, 12, 30, 15, nanosecond=500_000_000)
 
-    out = ArchiveInfo.mtime(_FakeRarInfo(ns))
+    out = ArchiveInfo.mtime(_rar_info(ns))
 
     assert type(out) is datetime
     assert out.tzinfo == timezone.utc
@@ -49,4 +51,4 @@ def test_naive_rar_nsdatetime_gets_utc_and_is_picklable() -> None:
 
 def test_none_rar_mtime_passes_through() -> None:
     """A missing mtime stays None."""
-    assert ArchiveInfo.mtime(_FakeRarInfo(None)) is None
+    assert ArchiveInfo.mtime(_rar_info(None)) is None
