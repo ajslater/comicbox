@@ -1,5 +1,13 @@
 # 📰 News
 
+## v4.0.2
+
+- Fixes
+    - CBR files whose RAR entries carry sub-microsecond timestamps no longer
+      break the `ProcessPoolExecutor` worker pool. `rarfile`'s `nsdatetime` is
+      an unpicklable `datetime` subclass; its mtime is now coerced to a plain
+      `datetime` so results survive transfer back from worker processes.
+
 ## v4.0.1
 
 - Fixes
