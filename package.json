@@ -95,7 +95,7 @@
     "eslint-plugin-sonarjs": "^4.1.0",
     "eslint-plugin-toml": "^1.4.0",
     "eslint-plugin-unicorn": "^68.0.0",
-    "eslint-plugin-yml": "^3.4.0",
+    "eslint-plugin-yml": "^3.5.0",
     "prettier": "^3.8.4",
     "prettier-plugin-nginx": "^1.0.3",
     "prettier-plugin-packagejson": "^3.0.2",

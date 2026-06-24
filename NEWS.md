@@ -1,5 +1,15 @@
 # 📰 News
 
+## v4.0.3
+
+- Features
+    - Add Sweet Shop kebab case filename format. Courtesy of @bpepple.
+
+- Fixes
+    - Security release for dependencies.
+
+- Fixes
+
 ## v4.0.2
 
 - Fixes
