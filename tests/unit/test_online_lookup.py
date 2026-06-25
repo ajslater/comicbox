@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from argparse import Namespace
 from collections.abc import Mapping
+from io import BytesIO
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
+from PIL import Image
 
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup
@@ -797,3 +800,88 @@ def test_stored_identifier_helper_returns_parsed_int(patched_metron) -> None:
     cb = Comicbox(config=args)
     cb.get_normalized_metadata(MetadataSources.CONFIG)
     assert cb._stored_identifier("metron") == 42
+
+
+# ----------------------------------------- _local_cover_phash PDF fix
+
+
+def _solid_png(color: tuple[int, int, int] = (255, 0, 0), size: int = 64) -> bytes:
+    img = Image.new("RGB", (size, size), color)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_local_cover_phash_passes_pixmap_format() -> None:
+    """get_cover_page must be called with pdf_format='pixmap' for PDF support."""
+    cb = _build_cb()
+    calls: list[dict] = []
+
+    def fake_get_cover_page(
+        self, pdf_format: str = "", *, skip_metadata: bool = False
+    ) -> bytes:
+        calls.append({"pdf_format": pdf_format, "skip_metadata": skip_metadata})
+        return _solid_png()
+
+    with patch.object(type(cb), "get_cover_page", fake_get_cover_page):
+        cb._local_cover_phash()
+
+    assert calls, "get_cover_page was not called"
+    assert calls[0]["pdf_format"] == "pixmap"
+    assert calls[0]["skip_metadata"] is True
+
+
+def test_local_cover_phash_succeeds_with_image_bytes() -> None:
+    """Valid image bytes produce a hex pHash string."""
+    cb = _build_cb()
+
+    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: _solid_png()):
+        result = cb._local_cover_phash()
+
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_local_cover_phash_fails_with_pdf_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Raw PDF bytes cause a warning and return None (pre-fix regression guard)."""
+    cb = _build_cb()
+    raw_pdf = b"%PDF-1.4 fake pdf bytes"
+
+    warnings: list[str] = []
+    monkeypatch.setattr("comicbox.box.online_lookup.logger.warning", warnings.append)
+
+    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: raw_pdf):
+        result = cb._local_cover_phash()
+
+    assert result is None
+    assert any("pHash failed" in w for w in warnings)
+
+
+def test_local_cover_phash_returns_none_for_empty_bytes() -> None:
+    """Empty cover bytes short-circuit before hashing."""
+    cb = _build_cb()
+
+    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: b""):
+        result = cb._local_cover_phash()
+
+    assert result is None
+
+
+def test_local_cover_phash_is_cached() -> None:
+    """Second call returns cached result without calling get_cover_page again."""
+    cb = _build_cb()
+    call_count = 0
+
+    def counting_get_cover_page(*args, **kwargs) -> bytes:
+        nonlocal call_count
+        call_count += 1
+        return _solid_png()
+
+    with patch.object(type(cb), "get_cover_page", counting_get_cover_page):
+        first = cb._local_cover_phash()
+        second = cb._local_cover_phash()
+
+    assert first == second
+    assert call_count == 1
