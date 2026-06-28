@@ -168,7 +168,7 @@ def run_with_recording_hook(
                     chosen[str(path)] = candidate.issue_id
         return original(self, source, candidate)
 
-    _lookup_module.ComicboxOnlineLookup._accept_candidate = recording_accept  # ty: ignore[invalid-assignment]
+    _lookup_module.ComicboxOnlineLookup._accept_candidate = recording_accept
     started = time.monotonic()
     try:
         _cli_module.main(build_cli_argv(fixtures, jobs, threshold))

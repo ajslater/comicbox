@@ -1,5 +1,16 @@
 # 📰 News
 
+## v4.0.3
+
+- Features
+    - Add Sweet Shop kebab case filename format. Courtesy of @bpepple.
+
+- Fixes
+    - Online cover matching now works for PDFs; the cover page is rasterized
+      before perceptual hashing instead of handing raw PDF bytes to the image
+      hasher. Courtesy of @bpepple.
+    - Security release for dependencies.
+
 ## v4.0.2
 
 - Fixes
