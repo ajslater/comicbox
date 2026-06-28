@@ -835,7 +835,7 @@ def test_local_cover_phash_succeeds_with_image_bytes() -> None:
     """Valid image bytes produce a hex pHash string."""
     cb = _build_cb()
 
-    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: _solid_png()):
+    with patch.object(type(cb), "get_cover_page", lambda *_a, **_kw: _solid_png()):
         result = cb._local_cover_phash()
 
     assert isinstance(result, str)
@@ -852,7 +852,7 @@ def test_local_cover_phash_fails_with_pdf_bytes(
     warnings: list[str] = []
     monkeypatch.setattr("comicbox.box.online_lookup.logger.warning", warnings.append)
 
-    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: raw_pdf):
+    with patch.object(type(cb), "get_cover_page", lambda *_a, **_kw: raw_pdf):
         result = cb._local_cover_phash()
 
     assert result is None
@@ -863,7 +863,7 @@ def test_local_cover_phash_returns_none_for_empty_bytes() -> None:
     """Empty cover bytes short-circuit before hashing."""
     cb = _build_cb()
 
-    with patch.object(type(cb), "get_cover_page", lambda *a, **kw: b""):
+    with patch.object(type(cb), "get_cover_page", lambda *_a, **_kw: b""):
         result = cb._local_cover_phash()
 
     assert result is None

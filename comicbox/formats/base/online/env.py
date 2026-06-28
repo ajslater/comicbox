@@ -22,7 +22,7 @@ Both groups are read explicitly here (rather than via confuse's set_env)
 so behavior is predictable across nested template depths.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from comicbox.formats.base.online import SOURCE_NAMES
@@ -45,7 +45,10 @@ _INT_FIELDS = frozenset({"retry_budget"})
 _STRING_FIELDS = frozenset(
     {"match", "prompts", "effort", "cache", "cache_dir", "cache_ttl", "sources"}
 )
-_ALL_FIELDS = _BOOL_FIELDS | _FLOAT_FIELDS | _INT_FIELDS | _STRING_FIELDS
+
+# Sentinel returned by a field parser when the value is present but
+# unparseable, signalling ``read_online_env`` to drop it.
+_DROP: Any = object()
 
 
 def parse_bool(value: str) -> bool | None:
@@ -56,6 +59,39 @@ def parse_bool(value: str) -> bool | None:
     if lowered in _FALSE_VALUES:
         return False
     return None
+
+
+def _parse_bool_field(raw: str) -> Any:
+    parsed = parse_bool(raw)
+    return _DROP if parsed is None else parsed
+
+
+def _parse_float_field(raw: str) -> Any:
+    try:
+        return float(raw)
+    except ValueError:
+        return _DROP
+
+
+def _parse_int_field(raw: str) -> Any:
+    try:
+        return int(raw)
+    except ValueError:
+        return _DROP
+
+
+def _parse_str_field(raw: str) -> str:
+    return raw
+
+
+# Field name → parser. Each parser returns the parsed value, or ``_DROP``
+# when the env var is set but its value can't be parsed.
+_FIELD_PARSERS: Mapping[str, Callable[[str], Any]] = {
+    **dict.fromkeys(_BOOL_FIELDS, _parse_bool_field),
+    **dict.fromkeys(_FLOAT_FIELDS, _parse_float_field),
+    **dict.fromkeys(_INT_FIELDS, _parse_int_field),
+    **dict.fromkeys(_STRING_FIELDS, _parse_str_field),
+}
 
 
 def read_credential_env(env: Mapping[str, str]) -> dict[str, dict[str, str]]:
@@ -86,24 +122,11 @@ def read_online_env(env: Mapping[str, str]) -> dict[str, Any]:
     as-is. Unparseable values are dropped.
     """
     result: dict[str, Any] = {}
-    for field_name in _ALL_FIELDS:
+    for field_name, parser in _FIELD_PARSERS.items():
         raw = env.get(f"COMICBOX_ONLINE_{field_name.upper()}")
         if raw is None:
             continue
-        if field_name in _BOOL_FIELDS:
-            parsed_bool = parse_bool(raw)
-            if parsed_bool is not None:
-                result[field_name] = parsed_bool
-        elif field_name in _FLOAT_FIELDS:
-            try:
-                result[field_name] = float(raw)
-            except ValueError:
-                continue
-        elif field_name in _INT_FIELDS:
-            try:
-                result[field_name] = int(raw)
-            except ValueError:
-                continue
-        else:
-            result[field_name] = raw
+        value = parser(raw)
+        if value is not _DROP:
+            result[field_name] = value
     return result
