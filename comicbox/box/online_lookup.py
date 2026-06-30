@@ -429,7 +429,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """
         if self._profile_cache is not None:
             return self._profile_cache
-        # Collect from non-online normalized sources, first-wins.
+        # Collect from non-online normalized sources, last-wins, so the
+        # profile's precedence matches the main merge (embedded archive
+        # files beat the filename parse). See accumulate_profile_fields.
         fields: dict[str, Any] = {}
         for src in MetadataSources:
             if src in _ONLINE_SOURCE_ENUMS:

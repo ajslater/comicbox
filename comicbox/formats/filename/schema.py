@@ -7,7 +7,8 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
-from typing import Any
+import os
+from typing import Any, Final
 
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
@@ -34,17 +35,32 @@ ISSUE_COUNT_TAG = VOLUME_ISSUE_COUNT_KEY
 ISSUE_TAG = ISSUE_KEY
 _OTHER_SCHEMA_STARTS = ("<?", "<!")
 _OTHER_SCHEMA_ENDS = ("{", ":")
+# Path separators on the current platform (POSIX: "/"; Windows: "\\" and "/").
+# A field value containing one of these would otherwise turn the generated
+# basename into a multi-component path and break rename/export.
+_PATH_SEPARATORS: Final[tuple[str, ...]] = tuple(
+    sep for sep in (os.sep, os.altsep) if sep
+)
+_PATH_SEPARATOR_REPLACEMENT: Final[str] = "_"
 
 
 class FilenameRenderModule(BaseRenderModule):
     """Filename Render module."""
+
+    @staticmethod
+    def _sanitize_separators(fn: str) -> str:
+        """Replace path separators so the result is a single safe filename."""
+        for sep in _PATH_SEPARATORS:
+            fn = fn.replace(sep, _PATH_SEPARATOR_REPLACEMENT)
+        return fn
 
     @override
     @classmethod
     def dumps(cls, obj: dict, *args: Any, **kwargs: Any) -> str:
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
-        return dict2comicfn(data, *args, **kwargs)
+        fn = dict2comicfn(data, *args, **kwargs)
+        return cls._sanitize_separators(fn)
 
     @staticmethod
     def _is_non_filename_format(s: str | bytes | bytearray) -> bool:

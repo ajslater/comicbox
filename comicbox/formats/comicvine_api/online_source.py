@@ -2,8 +2,11 @@
 ComicVine API source via simyan.
 
 Wraps simyan's `Comicvine` client. simyan ships its own SQLite-backed
-rate-limit bucket (1/sec, 200/hr) and response cache; we configure both
-through `online.cache_dir` and `cache_ttl`.
+rate-limit bucket (1/sec, 200/hr) and response cache. We configure the
+cache through `online.cache_dir` / `cache_ttl`, and always replace the
+limiter with our own bounded one (`build_comicvine_limiter`) — simyan's
+default blocks indefinitely on an hourly-cap hit, which reads as a hang;
+ours caps the wait and routes long waits through comicbox's retry layer.
 
 ComicVine candidates do *not* arrive with a precomputed cover hash, so
 the matcher's hashing path downloads the candidate's `image.thumb_url`

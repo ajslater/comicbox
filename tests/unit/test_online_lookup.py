@@ -478,6 +478,44 @@ def test_resolve_volume_handles_missing_or_garbage() -> None:
     assert _resolve_volume({"comicbox": {"volume": {"number": "abc"}}}) is None
 
 
+# ----------------------------------------- accumulate_profile_fields precedence
+
+
+def _md(**comicbox_fields: object) -> dict:
+    """Wrap fields under the comicbox root tag the profile paths expect."""
+    return {"comicbox": comicbox_fields}
+
+
+def test_accumulate_profile_fields_embedded_beats_filename() -> None:
+    """
+    Later (higher-precedence) source overwrites earlier — matches the merge.
+
+    `_build_profile` feeds sources in `MetadataSources` order, where
+    `ARCHIVE_FILENAME` precedes `ARCHIVE_FILE`. The online search must use
+    the embedded series, not the filename parse, just like the merged
+    metadata does. Regression for the first-wins precedence inversion.
+    """
+    from comicbox.formats.base.online.profile import accumulate_profile_fields
+
+    fields: dict = {}
+    # Filename parse first (earlier source) ...
+    accumulate_profile_fields(fields, _md(series={"name": "Spider-Man"}))
+    # ... then the embedded ComicInfo.xml (later, higher-precedence source).
+    accumulate_profile_fields(fields, _md(series={"name": "The Amazing Spider-Man"}))
+    assert fields["series"] == "The Amazing Spider-Man"
+
+
+def test_accumulate_profile_fields_keeps_earlier_when_later_absent() -> None:
+    """A later source that lacks the field leaves the filename value intact."""
+    from comicbox.formats.base.online.profile import accumulate_profile_fields
+
+    fields: dict = {}
+    accumulate_profile_fields(fields, _md(series={"name": "Spider-Man"}))
+    accumulate_profile_fields(fields, _md(publisher={"name": "Marvel"}))
+    assert fields["series"] == "Spider-Man"
+    assert fields["publisher"] == "Marvel"
+
+
 # ----------------------------------------- first-wins, tag-all, stored-id, force-search
 
 
