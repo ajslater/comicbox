@@ -1,5 +1,12 @@
 # 📰 News
 
+## v4.0.4
+
+- Fixes
+    - Online tagging now searches using embedded metadata (e.g. series name)
+      instead of the filename when both are present, so already-tagged comics
+      match more accurately.
+
 ## v4.0.3
 
 - Features
