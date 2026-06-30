@@ -166,15 +166,27 @@ _SIMPLE_PROFILE_PATHS: Final[tuple[tuple[str, str], ...]] = (
 
 
 def accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
-    """First-wins accumulation of profile fields across normalized sources."""
+    """
+    Last-wins accumulation of profile fields across normalized sources.
+
+    Callers feed sources in `MetadataSources` enum order, which is the
+    same order the main merge overlays them (`box/merge.py`,
+    `_set_merged_metadata`) — and that merge is last-wins: a
+    higher-precedence source overwrites an earlier one. So a later source
+    that supplies a field overwrites the value already collected, which
+    is why embedded archive files (`ARCHIVE_FILE`) beat the filename
+    parse (`ARCHIVE_FILENAME`) here, matching the merged metadata the rest
+    of comicbox produces. A later source that *lacks* the field leaves the
+    earlier value intact (the truthiness guards below), so absent embedded
+    fields still fall back to the filename.
+    """
     for field_name, path in _SIMPLE_PROFILE_PATHS:
-        if field_name not in fields and (v := glom(md, path, default=None)):
+        if v := glom(md, path, default=None):
             fields[field_name] = v
-    if "year" not in fields:
-        raw_year = glom(md, "comicbox.date.year", default=None) or glom(
-            md, "comicbox.date.cover_date", default=None
-        )
-        if (parsed := parse_year(raw_year)) is not None:
-            fields["year"] = parsed
-    if "volume" not in fields and (v := _resolve_volume(md)) is not None:
+    raw_year = glom(md, "comicbox.date.year", default=None) or glom(
+        md, "comicbox.date.cover_date", default=None
+    )
+    if (parsed := parse_year(raw_year)) is not None:
+        fields["year"] = parsed
+    if (v := _resolve_volume(md)) is not None:
         fields["volume"] = v
