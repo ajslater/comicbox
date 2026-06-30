@@ -6,6 +6,8 @@
     - Online tagging now searches using embedded metadata (e.g. series name)
       instead of the filename when both are present, so already-tagged comics
       match more accurately.
+    - Renaming no longer crashes when metadata contains a path separator (e.g.
+      a slash in the series or title); the separator becomes `_` in the name.
 
 ## v4.0.3
 

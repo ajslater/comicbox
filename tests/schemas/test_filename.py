@@ -1,8 +1,10 @@
 """Test CIX module."""
 
+import os
 from argparse import Namespace
 from collections.abc import Mapping
 from decimal import Decimal
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
@@ -109,3 +111,24 @@ def test_filename_to_file() -> None:
 def test_filename_read() -> None:
     """Read comet metadata."""
     FN_TESTER.test_md_read()
+
+
+def test_filename_dumps_sanitizes_path_separators() -> None:
+    """A field value with a path separator must not escape the basename."""
+    obj = {
+        FilenameSchema.ROOT_TAG: {
+            "ext": "cbz",
+            "issue": "001",
+            "series": f"Foo{os.sep}Bar",
+            "year": 1950,
+        }
+    }
+    fn = FilenameSchema().dumps(obj)
+
+    assert os.sep not in fn
+    if os.altsep:
+        assert os.altsep not in fn
+    assert "Foo_Bar" in fn
+    assert fn.endswith(".cbz")
+    # The result is a single path component, not a nested path.
+    assert Path(fn).name == fn

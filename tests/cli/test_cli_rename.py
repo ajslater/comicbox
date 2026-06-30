@@ -39,3 +39,28 @@ def test_cli_action_rename() -> None:
             print(fn)  # noqa: T201
     assert name == RENAMED_NAME
     _cleanup()
+
+
+def test_cli_action_rename_path_separator() -> None:
+    """A metadata field with a path separator must not break rename."""
+    _setup()
+
+    cli.main(
+        (
+            "comicbox",
+            "-m",
+            "series: 'Foo / Bar'",
+            "--rename",
+            str(TMP_PATH),
+        )
+    )
+
+    list_dir = sorted(TMP_DIR.iterdir())
+    # Exactly one renamed file in a single directory level (no nested dirs).
+    assert len(list_dir) == 1
+    name = list_dir[0].name
+    assert list_dir[0].is_file()
+    assert "/" not in name
+    assert name.startswith("Foo _ Bar ")
+    assert name.endswith(".cbz")
+    _cleanup()
