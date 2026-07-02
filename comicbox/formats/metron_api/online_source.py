@@ -23,9 +23,6 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.rate_limits import build_metron_bucket
 from comicbox.formats.base.online.retry import with_retry
-from comicbox.formats.base.online.series_filter import (
-    should_keep_volume_name,
-)
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
 )
@@ -147,20 +144,15 @@ class MetronOnlineSource(OnlineSource):
             raise LookupError(msg)
         return issue.model_dump(mode="json")
 
-    # Limit how many candidate series to expand into issue queries; each
-    # series → one extra `issues_list` API call.
-    _MAX_SERIES_PER_SEARCH: ClassVar[int] = 20
-
-    def _build_issue_params(
+    def _build_common_issue_filters(
         self,
         profile: ComicProfile,
-        series_id: int,
         *,
-        cover_year_override: int | None = None,
-        include_volume: bool = True,
+        cover_year_override: int | None,
+        include_volume: bool,
     ) -> dict[str, Any]:
         """
-        Build the `issues_list` params filtering on a resolved series id.
+        Build filters shared by the series_id-keyed and series_name-keyed builders.
 
         ``cover_year_override`` lets the ±1 retry-on-miss path supply a
         neighboring year. When None, ``profile.year`` is used as-is.
@@ -168,17 +160,8 @@ class MetronOnlineSource(OnlineSource):
         ``include_volume`` is the toggle for the drop-volume retry path:
         passing False omits Metron's ``series_volume`` filter even when
         ``profile.volume`` is set.
-
-        IMPORTANT: the FK filter param is ``series_id``, NOT ``series``.
-        Mokkari's docstring example (`{"series": 1}`) is misleading —
-        Metron's DRF backend silently ignores `series` as an unknown
-        filter and returns issues matched only by the remaining params
-        (number + cover_year), leaking thousands of unrelated 2020 #1s
-        when querying for AR #1 (2020). Confirmed empirically against
-        the live Metron API on 2026-05-13. See
-        `tasks/online-tagging/calibration-notes/2026-05-13-metron-series-filter-bug.md`.
         """
-        params: dict[str, Any] = {"series_id": series_id}
+        params: dict[str, Any] = {}
         # Strip leading zeros — Metron stores `number` without padding.
         if number := strip_issue_leading_zeros(profile.issue):
             params["number"] = number
@@ -191,31 +174,83 @@ class MetronOnlineSource(OnlineSource):
             params["series_volume"] = profile.volume
         return params
 
+    def _build_issue_params(
+        self,
+        profile: ComicProfile,
+        series_id: int,
+        *,
+        cover_year_override: int | None = None,
+        include_volume: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Build the `issues_list` params filtering on a resolved series id.
+
+        IMPORTANT: the FK filter param is ``series_id``, NOT ``series``.
+        Mokkari's docstring example (`{"series": 1}`) is misleading —
+        Metron's DRF backend silently ignores `series` as an unknown
+        filter and returns issues matched only by the remaining params
+        (number + cover_year), leaking thousands of unrelated 2020 #1s
+        when querying for AR #1 (2020). Confirmed empirically against
+        the live Metron API on 2026-05-13.
+        """
+        params: dict[str, Any] = {"series_id": series_id}
+        params.update(
+            self._build_common_issue_filters(
+                profile,
+                cover_year_override=cover_year_override,
+                include_volume=include_volume,
+            )
+        )
+        return params
+
+    def _build_issue_params_by_name(
+        self,
+        profile: ComicProfile,
+        *,
+        cover_year_override: int | None = None,
+        include_volume: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Build the `issues_list` params filtering directly on series_name.
+
+        Confirmed against Metron's live `IssueFilter`
+        (`comicsdb/filters/issue.py`): `series_name` reuses the identical
+        `unaccent__icontains` whitespace-AND-of-terms predicate that
+        `series_list`'s own `name` filter applies to `Series.name` — so
+        this has the same recall as the old "discover series by name,
+        then filter issues by series id" two-step, at one call instead of
+        up to 21.
+        """
+        params: dict[str, Any] = {"series_name": profile.series}
+        params.update(
+            self._build_common_issue_filters(
+                profile,
+                cover_year_override=cover_year_override,
+                include_volume=include_volume,
+            )
+        )
+        return params
+
     def _to_candidate(
         self,
         base_issue: Any,
-        series_name: str | None = None,
         *,
         series_id: int | None = None,
     ) -> Candidate:
         """
         Map a mokkari `BaseIssue` to a Candidate.
 
-        ``series_name`` overrides the issue's series field when supplied — the
-        two-step search has already resolved the series so we use its
-        canonical name, since `BaseIssue.series` is sparse.
-
-        ``series_id`` is the parent container's id from the two-step
-        search (`series.id` at the discovery step). Passed in explicitly
-        because mokkari's `BaseIssue.series` is often missing or a thin
-        object without `.id`; relying on it loses the link to the
-        volume/series.
+        ``series_id`` lets a caller that already knows the series id
+        (the explicit `--series-id` fast path, or the volume-scoped
+        `lookup_issue` fast path) supply it directly. The by-name search
+        path doesn't need to — since mokkari 3.28.0 / Metron server
+        commit 3b1e46b, `BaseIssue.series` (`BasicSeries`) carries a real
+        `.id`, so `_bi_series_id` recovers it from the search result
+        itself.
         """
-        # `BaseIssue.series` may be a nested object or absent depending on
-        # the endpoint. Prefer the resolved name passed in by `search`.
         bi_series = getattr(base_issue, "series", None)
         summary = CandidateSummary(
-            series=series_name or _bi_series_name(bi_series) or "",
+            series=_bi_series_name(bi_series) or "",
             issue=base_issue.number,
             year=base_issue.cover_date.year if base_issue.cover_date else None,
             publisher=None,  # BaseIssue from search omits publisher
@@ -229,8 +264,6 @@ class MetronOnlineSource(OnlineSource):
             summary=summary,
             url=_bi_resource_url(base_issue),
             precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
-            # Prefer the explicit series_id from the two-step search; fall
-            # back to BaseIssue.series.id when it happens to be present.
             volume_id=series_id if series_id is not None else _bi_series_id(bi_series),
         )
 
@@ -282,64 +315,33 @@ class MetronOnlineSource(OnlineSource):
             raise
         return [self._to_candidate(i, series_id=series_id) for i in issues]
 
-    def _resolve_series_results(
-        self, session: Session, profile: ComicProfile
-    ) -> list[Any]:
-        """Series-list discovery capped to the per-effort breadth limit."""
-        try:
-            series_results = self._series_list_with_retry(session, profile.series)
-        except Exception as exc:
-            logger.warning(f"online {self.name}: series search failed: {exc}")
-            raise
-        if not series_results:
-            logger.info(f"online {self.name}: no series match {profile.series!r}")
-            return []
-        # Phase D: `fast` budget caps the series-search breadth more
-        # aggressively than the class default (20 → 5). Mirrors the CV
-        # side; cuts the per-series `issues_list` fan-out further at
-        # scale.
-        max_series = self._effort_max_results(self._MAX_SERIES_PER_SEARCH)
-        series_results = list(series_results)[:max_series]
-        self._log_discovery_sample(
-            series_results,
-            lambda s: f"{_series_display_name(s)} ({s.id})",
-            noun="series",
-            query=f"{profile.series!r}",
-        )
-        return series_results
-
     @override
     def search(self, profile: ComicProfile) -> list[Candidate]:
         """
-        Search Metron for candidate issues matching the profile.
+        Search Metron via a direct issues_list(series_name=...) call.
+
+        No series-discovery step, no per-series fan-out.
 
         Not decorated with ``@with_retry()``: every API call inside is
-        individually retried by its leaf wrapper (`_series_list_with_retry`,
-        `_issues_list_with_retry`), matching the ComicVine source. An outer
-        decorator here multiplied retry budgets (8x8 whole-search replays of
-        already-exhausted inner budgets — hours of worst-case sleep).
+        individually retried by its leaf wrapper (`_issues_list_with_retry`),
+        matching the ComicVine source. An outer decorator here would
+        multiply retry budgets (8x8 whole-search replays of already-
+        exhausted inner budgets — hours of worst-case sleep).
 
-        The canonical two-step:
+        Metron's `series_name` issue-list filter (`comicsdb/filters/issue.py`,
+        `IssueFilter.series_name`) reuses the identical icontains+unaccent,
+        whitespace-AND-of-terms predicate that `series_list`'s own `name`
+        filter applies — same recall as the old series_list → issues_list
+        two-step, at 1 call instead of up to 21. Since mokkari 3.28.0 /
+        Metron server commit 3b1e46b, `BaseIssue.series.id` is populated
+        directly on `issues_list` results, so `Candidate.volume_id` no
+        longer requires a separate series-discovery step to resolve
+        either.
 
-        1. ``series_list({"name": profile.series})`` — Metron's name filter
-           is icontains+unaccent and splits on whitespace (AND-of-terms),
-           so it tolerates case, accents, and word-order quirks.
-        2. For each matched series, ``issues_list({"series_id": id,
-           "number": N, "cover_year": Y})`` — issue lookup constrained by
-           the resolved series id. Metron's `issue.number` is unpadded,
-           so we strip leading zeros on the way in.
-
-        The earlier single-call form passed `series_name` directly to
-        ``issues_list``, which Metron does accept (icontains too) but it's
-        an undocumented mokkari parameter and the two-step is what
-        metron-tagger uses.
+        ``--series-id metron:<id>`` still short-circuits straight to a
+        single `issues_list({series_id: ...})` call — unchanged.
         """
         session = self._get_session()
-        # Fast path: --series-id metron:<id> skips the discovery call and goes
-        # straight to issue lookup against the supplied series id. The series
-        # name on candidates falls back to whatever `BaseIssue.series.name` we
-        # get back; we don't pre-resolve it because that'd cost the call we
-        # just saved.
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
             return self._search_by_explicit_series_id(session, profile, explicit_sid)
@@ -350,13 +352,8 @@ class MetronOnlineSource(OnlineSource):
                 "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
             )
             return []
-        series_results = self._resolve_series_results(session, profile)
-        if not series_results:
-            return []
 
-        candidates = self._search_with_year_retry(
-            session, profile, series_results, include_volume=True
-        )
+        candidates = self._search_with_year_retry(session, profile, include_volume=True)
 
         # Drop-volume retry on miss. Filename-parsed `Vol. N` is moderately
         # reliable but inconsistent — some scanners drop it, some get the
@@ -369,16 +366,32 @@ class MetronOnlineSource(OnlineSource):
                 f"{profile.volume}, retrying without the volume filter"
             )
             candidates = self._search_with_year_retry(
-                session, profile, series_results, include_volume=False
+                session, profile, include_volume=False
             )
 
         return candidates
+
+    def _fetch_candidates_by_name(
+        self,
+        session: Session,
+        profile: ComicProfile,
+        *,
+        cover_year_override: int | None,
+        include_volume: bool,
+    ) -> list[Candidate]:
+        """One issues_list call filtered by series_name (+ number/year/volume)."""
+        params = self._build_issue_params_by_name(
+            profile,
+            cover_year_override=cover_year_override,
+            include_volume=include_volume,
+        )
+        issues = self._issues_list_with_retry(session, params)
+        return [self._to_candidate(i) for i in issues]
 
     def _search_with_year_retry(
         self,
         session: Session,
         profile: ComicProfile,
-        series_results: list[Any],
         *,
         include_volume: bool,
     ) -> list[Candidate]:
@@ -388,14 +401,28 @@ class MetronOnlineSource(OnlineSource):
         Cover-date drift is real: a comic published in late 2019 can be
         cover-dated 2020-01. When the year-exact pass returns zero, retry
         with Y-1 then Y+1. Skipped if there's no year to relax.
+
+        Failure semantics are deliberately asymmetric: the year-exact
+        (primary) call's exception is logged and re-raised — a hard
+        failure here means the whole search failed, not "0 results."
+        Each ±1 retry attempt's exception is logged and swallowed so its
+        sibling still gets a chance, mirroring the old per-series fan-out's
+        "one bad target doesn't kill the others" resilience at the new
+        unit of fan-out (retry attempts instead of series).
         """
-        candidates = self._fetch_candidates_across_series(
-            session,
-            profile,
-            series_results,
-            cover_year_override=None,
-            include_volume=include_volume,
-        )
+        try:
+            candidates = self._fetch_candidates_by_name(
+                session,
+                profile,
+                cover_year_override=None,
+                include_volume=include_volume,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: issue-list for series_name="
+                f"{profile.series!r} failed: {exc}"
+            )
+            raise
         if not candidates and profile.year is not None:
             for delta in (-1, 1):
                 retry_year = profile.year + delta
@@ -403,29 +430,21 @@ class MetronOnlineSource(OnlineSource):
                     f"online {self.name}: 0 candidates at year={profile.year}, "
                     f"retrying with cover_year={retry_year}"
                 )
-                retry = self._fetch_candidates_across_series(
-                    session,
-                    profile,
-                    series_results,
-                    cover_year_override=retry_year,
-                    include_volume=include_volume,
-                )
+                try:
+                    retry = self._fetch_candidates_by_name(
+                        session,
+                        profile,
+                        cover_year_override=retry_year,
+                        include_volume=include_volume,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"online {self.name}: issue-list retry at "
+                        f"cover_year={retry_year} failed: {exc}"
+                    )
+                    continue
                 candidates.extend(retry)
         return candidates
-
-    @with_retry()
-    def _series_list_with_retry(self, session: Session, name: str) -> Any:
-        """
-        Per-call retry wrapper around `session.series_list`.
-
-        The series search runs once per fixture; under -j N batch
-        contention the call competes with workers' issue-list calls
-        for the same 20/min Metron bucket. Pre-fix, this call was
-        un-retried — see the 2026-05-15-stress-100 calibration note
-        for the WARNING count it generated.
-        """
-        self._record_api_call("series_list")
-        return session.series_list(params={"name": name})
 
     @with_retry()
     def _issues_list_with_retry(
@@ -434,77 +453,19 @@ class MetronOnlineSource(OnlineSource):
         """
         Per-call retry wrapper around `session.issues_list`.
 
-        The `_fetch_candidates_across_series` loop fires up to
-        `_MAX_SERIES_PER_SEARCH` (= 20) issues_list calls in quick
-        succession. Mokkari's pyrate_limiter SQLite bucket caps Metron
-        at 20 req/min; the 21st call in the same window raises
-        `RateLimitError` with a `retry_after` hint.
+        `search()`'s year-retry cascade fires at most 3 calls per
+        `include_volume` cycle (year-exact + Y-1 + Y+1), times at most 2
+        cycles (with-volume, drop-volume) — at most 6 `issues_list` calls
+        per search. Mokkari's pyrate_limiter SQLite bucket caps Metron at
+        20 req/min; under -j N batch contention several workers' calls can
+        still collide in the same window and raise `RateLimitError` with a
+        `retry_after` hint.
 
         Decorating this method with `@with_retry()` means the retry
         decorator catches that error, honors the server-side
-        `retry_after`, sleeps, and replays the single failed call
-        rather than spamming "issue-list … failed: Rate limit exceeded"
-        warnings and dropping the data. Without this, the loop's
-        `except Exception: continue` silently swallowed every
-        rate-limited call.
+        `retry_after`, sleeps, and replays the single failed call rather
+        than spamming "issue-list … failed" warnings and dropping the
+        data.
         """
         self._record_api_call("issues_list")
         return session.issues_list(params=params)
-
-    def _fetch_candidates_across_series(
-        self,
-        session: Session,
-        profile: ComicProfile,
-        series_results: list[Any],
-        *,
-        cover_year_override: int | None,
-        include_volume: bool = True,
-    ) -> list[Candidate]:
-        """Run `issues_list` once per series, accumulating candidates."""
-        # Pre-call filter threshold from the resolved API budget. At the
-        # `balanced` default this resolves to 0.0 (filter is a no-op),
-        # so Phase A behaviour is identical to today's. Phase B
-        # calibration picks the real values for `fast`.
-        name_threshold = self._effort_name_threshold()
-
-        candidates: list[Candidate] = []
-        for series in series_results:
-            display = _series_display_name(series)
-            if not should_keep_volume_name(profile.series, display, name_threshold):
-                logger.debug(
-                    f"online {self.name}: skipping series {series.id} "
-                    f"({display!r}); name dissimilar to "
-                    f"profile.series={profile.series!r} (threshold="
-                    f"{name_threshold:.2f}, api_budget pre-filter)."
-                )
-                continue
-            params = self._build_issue_params(
-                profile,
-                series.id,
-                cover_year_override=cover_year_override,
-                include_volume=include_volume,
-            )
-            try:
-                issues = self._issues_list_with_retry(session, params)
-            except Exception as exc:
-                logger.warning(
-                    f"online {self.name}: issue-list for series {series.id} "
-                    f"({display!r}) failed: {exc}"
-                )
-                continue
-            candidates.extend(
-                self._to_candidate(i, display, series_id=series.id) for i in issues
-            )
-        return candidates
-
-
-def _series_display_name(series: Any) -> str:
-    """
-    Pull the human-readable name out of a mokkari series-shaped object.
-
-    `BaseSeries` exposes `display_name` (alias from `series` in the JSON);
-    full `Series` and our test fakes expose `name`. Prefer `display_name`
-    so this works against the real `series_list` response while still
-    accommodating either shape.
-    """
-    return getattr(series, "display_name", None) or getattr(series, "name", None) or ""
