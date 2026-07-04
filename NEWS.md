@@ -1,5 +1,12 @@
 # 📰 News
 
+## v4.0.5
+
+- Performance
+    - Metron online tagging now identifies an issue in far fewer API requests —
+      often one or two instead of dozens — so tagging is faster and more
+      reliable. Courtesy of @bpepple.
+
 ## v4.0.4
 
 - Fixes
