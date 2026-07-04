@@ -122,27 +122,23 @@ def test_unattended_below_cv_threshold_does_not_engage_cv(
     assert "comicvine" not in result.tuning.per_source
 
 
-def test_unattended_metron_threshold_higher_than_cv(
+def test_metron_never_auto_engages_unattended(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """CV engages at 50; Metron only at 500 (more forgiving rate cap)."""
+    """
+    Metron never auto-engages, at any batch size.
+
+    Its single-call search costs the same at every effort (PR #143), so
+    `fast` can't reduce it — auto-engaging would be a misleading no-op.
+    Only fan-out sources (ComicVine) are eligible.
+    """
     _force_tty(monkeypatch, is_tty=True)
     settings = _settings(unattended=True)
-    # Batch 100 — over CV's 50, under Metron's 500.
-    result = resolve_auto_engaged_budget(settings, batch_size=100)
+    # A batch far past any historical Metron threshold.
+    result = resolve_auto_engaged_budget(settings, batch_size=100_000)
     assert _cv_effort(result) == Effort.MINIMAL
+    assert _metron_effort(result) is None
     assert "metron" not in result.tuning.per_source
-
-
-def test_unattended_engages_metron_at_threshold(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`--prompts never` + batch ≥ 500 → engage minimal for Metron too."""
-    _force_tty(monkeypatch, is_tty=True)
-    settings = _settings(unattended=True)
-    result = resolve_auto_engaged_budget(settings, batch_size=500)
-    assert _cv_effort(result) == Effort.MINIMAL
-    assert _metron_effort(result) == Effort.MINIMAL
 
 
 # --------------------------------------------------------- non-TTY trigger
@@ -163,12 +159,13 @@ def test_non_tty_uses_stricter_thresholds(
     assert _cv_effort(result) == Effort.MINIMAL
 
 
-def test_non_tty_engages_metron_at_2000(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Metron's non-TTY threshold is 500*4 = 2000."""
+def test_metron_never_auto_engages_non_tty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Metron stays out of auto-engagement on the non-TTY path too."""
     _force_tty(monkeypatch, is_tty=False)
     settings = _settings(unattended=False)
-    result = resolve_auto_engaged_budget(settings, batch_size=2000)
-    assert _metron_effort(result) == Effort.MINIMAL
+    result = resolve_auto_engaged_budget(settings, batch_size=100_000)
+    assert _cv_effort(result) == Effort.MINIMAL
+    assert _metron_effort(result) is None
 
 
 # --------------------------------------------------------- user overrides
@@ -191,8 +188,8 @@ def test_per_source_override_blocks_engagement(
     result = resolve_auto_engaged_budget(settings, batch_size=500)
     # CV override is preserved (not bumped to minimal).
     assert _cv_effort(result) == Effort.BALANCED
-    # Metron still engages (no per-source override blocks it).
-    assert _metron_effort(result) == Effort.MINIMAL
+    # Metron is never a candidate for auto-engagement.
+    assert _metron_effort(result) is None
 
 
 def test_logs_engagement_decision(
@@ -215,7 +212,8 @@ def test_logs_engagement_decision(
         loguru_logger.remove(handler_id)
     messages = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "auto-engaging effort=minimal for comicvine" in messages
-    assert "auto-engaging effort=minimal for metron" in messages
+    # Metron never auto-engages, so it's never logged.
+    assert "for metron" not in messages
     # Override hint is present.
     assert "online.tuning.per_source.comicvine.effort" in messages
 

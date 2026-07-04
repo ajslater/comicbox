@@ -20,7 +20,7 @@ dependencies = [
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari>=3.25.4,<4",
+  "mokkari>=3.28.0,<4",
   "nh3>=0.3.5",
   "pillow>=12.2.0",
   "platformdirs>=4.9.6",
@@ -58,7 +58,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "4.0.4"
+version = "4.0.5"
 [[project.authors]]
 name = "AJ Slater"
 email = "aj@slater.net"

@@ -95,7 +95,8 @@ comicbox:
     tuning:
       # Auto-write threshold (0-1) — top match must clear this to auto-write.
       auto_threshold: 0.95
-      # Per-comic API effort: minimal, balanced, thorough.
+      # Per-comic API effort for fan-out sources (ComicVine): minimal,
+      # balanced, thorough. Metron doesn't fan out, so it ignores this.
       effort: balanced
       # Retry budget for transient API failures.
       retry_budget: 5

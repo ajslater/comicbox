@@ -1,5 +1,13 @@
 # 📰 News
 
+## v4.0.5
+
+- Performance
+    - Metron online tagging now identifies an issue in far fewer API requests —
+      often one or two instead of dozens — so tagging is faster and more
+      reliable. Courtesy of @bpepple. The --effort option no longer applies to
+      Metron due to this improved API.
+
 ## v4.0.4
 
 - Fixes
@@ -107,7 +115,7 @@
 ## v3.0.0 - Config Dataclass & Parallel Reads
 
 - Breaking Changes
-    - get_config() now returns a ComicboxSettings dataclass, not a Confuse
+    - get\_config() now returns a ComicboxSettings dataclass, not a Confuse
       AttrDict. Comicbox constructor now accepts this dataclass instead of an
       AttrDict
 - Fixes
@@ -121,15 +129,15 @@
     - Reducing startup time for new instances of comicbox.
     - General performance improvements for reading metadata from many files.
     - Special multiprocessing and async methods
-      comicbox.process.iter_process_files() and
-      comicbox.process.aread_metadata() for reading large batches of files at
+      comicbox.process.iter\_process\_files() and
+      comicbox.process.aread\_metadata() for reading large batches of files at
       once.
     - `Comicbox.get_cover_page(skip_metadata=True)` skips metadata parsing for
       callers that just need the first archive image as a thumbnail. Removes
       per-call schema instantiation and Union resolution overhead.
 - Features
     - Add Age Rating conversion function
-      comicbox.enums.maps.to_metron_age_rating(value: str | Enum) ->
+      comicbox.enums.maps.to\_metron\_age\_rating(value: str | Enum) ->
       MetronAgeRatingEnum | None
 
 ## v2.2.3
@@ -186,7 +194,7 @@
 ## v2.0.3
 
 - Fix ComicInfo.xml coercing Age Rating to wrong value.
-- Normalize more original_format names.
+- Normalize more original\_format names.
 - Update xmltodict. Removes much comicbox fix code.
 
 ## v2.0.2
@@ -221,7 +229,7 @@
 - PDF `modDate` is now read and written.
 - URNs as serialized identifiers in `notes` tag gain an optional tag type
   attribute in the nss: e.g. `urn:comicvine:series:1234`
-- Comictagger schema supports series_aliases and title_aliases as reprints
+- Comictagger schema supports series\_aliases and title\_aliases as reprints
 - Parse PDF datetime format.
 - Many enum fields now accept caseless and slightly fuzzy value lookups that are
   coerced to correct types for the specified output metadata format.
@@ -233,7 +241,7 @@
 - `--delete action` becomes `--delete-all-tags`.
 - `--compute-pages` is off by default. Turn on to recompute ComicInfo style
   `Pages` structures
-- `--no-compute-page-count` prevents recomputing page_count.
+- `--no-compute-page-count` prevents recomputing page\_count.
 - `--delete_keys` now excludes keys from loading entirely.
 - Syntax highlighting used on output. Change or remove with `--theme` option.
 
@@ -266,8 +274,8 @@
 
 ## v1.2.0
 
-- Add -R --replace_metadata option. Default behavior is to merge keys.
-- Add -D --delete_keys option.
+- Add -R --replace\_metadata option. Default behavior is to merge keys.
+- Add -D --delete\_keys option.
 - Faster metadata writing. Replace files in zipfiles instead of rewriting the
   entire archive.
 
@@ -320,7 +328,7 @@
 ## v1.1.0
 
 - Fix `--import` option crash.
-- Fix parsing tagger and updated_at from notes.
+- Fix parsing tagger and updated\_at from notes.
 - PDFs read all metadata formats from the keywords field.
 - PDFs write ComicInfo.xml to keywords field.
 - ComicInfo.xml accepts spaces as web field separator.
@@ -342,7 +350,7 @@
 ## v0.10.2
 
 - Sophisticated cli metadata parsing. See cli help and README.
-    - config.metadata_cli holds the new string format.
+    - config.metadata\_cli holds the new string format.
 - Writing xml and json metadata to files is now pretty printed.
 - Fix some instances where falsey values were not written.
 - Fix comicinfo.xml ComicPageInfo typing.
@@ -371,8 +379,8 @@
 
 ## v0.8.0
 
-- Add close_fd & check_unrar config options for API use.
-- Add ComicArchive.check_unrar_executable() public method.
+- Add close\_fd & check\_unrar config options for API use.
+- Add ComicArchive.check\_unrar\_executable() public method.
 - Remove closefd constructor option.
 
 ## v0.7.1
@@ -396,10 +404,10 @@
 ## v0.6.6
 
 - Features
-    - Print filetype cli option. get_archive_type() api method.
+    - Print filetype cli option. get\_archive\_type() api method.
     - Use unrar.cffi if it's available.
 - Dev
-    - Use importlib instead of deprecated pkg_resources.
+    - Use importlib instead of deprecated pkg\_resources.
 
 ## v0.6.5
 
@@ -466,7 +474,7 @@
 
 - Features
     - ComicArchive class now has a context manager
-    - Removed as_pil() methods for pages and covers
+    - Removed as\_pil() methods for pages and covers
 
 ## v0.5.1
 
@@ -482,7 +490,7 @@
 - Features
     - Issues numbers are now strings.
     - Separate read metadata option from print metadata action.
-    - Added dry_run option.
+    - Added dry\_run option.
     - Namespace config under "comicbox" map to allow inclusion in caller
       configs.
     - Allow modnames for local config sources, useful when comicbox is a
@@ -517,7 +525,7 @@
 
 ## v0.3.2
 
-- issue_count type change from decimal to int
+- issue\_count type change from decimal to int
 
 ## v0.3.1
 
@@ -561,7 +569,7 @@
 
 ## v0.1.5
 
-- Fix parsing and writing genre, story_arc, series_groups tags
+- Fix parsing and writing genre, story\_arc, series\_groups tags
 
 ## v0.1.4
 
