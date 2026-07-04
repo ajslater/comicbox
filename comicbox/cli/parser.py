@@ -562,9 +562,10 @@ def _add_online_tuning_group(parser: ArgumentParser) -> None:
         metavar="MODE",
         dest="effort",
         help=(
-            "Per-comic API effort: [green]minimal[/green], [green]balanced[/green] "
-            "(default), [green]thorough[/green]. Controls how aggressively pre-call "
-            "algorithms trade accuracy for API throughput. Per-source overrides via YAML only."
+            "Per-comic API effort for fan-out sources: [green]minimal[/green], "
+            "[green]balanced[/green] (default), [green]thorough[/green]. Trades "
+            "accuracy for fewer API calls on ComicVine; Metron doesn't fan out, so "
+            "it ignores this. Per-source overrides via YAML only."
         ),
     )
 

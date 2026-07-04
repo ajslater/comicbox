@@ -59,11 +59,13 @@ class Prompts(str, Enum):
 
 class Effort(str, Enum):
     """
-    API-call effort per comic.
+    API-call effort per comic, for fan-out sources.
 
     Orthogonal to ``MatchMode`` (which controls how the matcher's
     verdict is applied). ``Effort`` controls how aggressively pre-call
-    algorithms trade accuracy for API throughput.
+    algorithms trade accuracy for API throughput — it only bites on
+    sources that fan out per candidate (ComicVine). Single-call sources
+    (Metron since PR #143) have no fan-out to throttle and ignore it.
 
     - ``MINIMAL``: aggressive pre-filtering; trade accuracy for throughput.
     - ``BALANCED``: today's behavior; the default.

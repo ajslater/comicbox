@@ -101,9 +101,12 @@ comicbox --online all --recurse --prompts never -j 4 ./comics/
 ```
 
 `--match` controls how confidently comicbox writes without asking (`ask` ·
-`careful` · `auto` · `eager`), and credentials come from `--auth`, `COMICBOX_*`
-environment variables, the config file, or your system keyring. See
-`comicbox -h` for the full set of online, caching, and tuning options.
+`careful` · `auto` · `eager`), and `--effort` (`minimal` · `balanced` ·
+`thorough`) trades matching accuracy for fewer API calls on fan-out sources like
+ComicVine — Metron doesn't fan out, so it ignores effort and always searches at
+full strength. Credentials come from `--auth`, `COMICBOX_*` environment
+variables, the config file, or your system keyring. See `comicbox -h` for the
+full set of online, caching, and tuning options.
 
 ### 🖼️ Pages, Covers & Conversion
 
