@@ -1,5 +1,12 @@
 # 📰 News
 
+## v4.1.0
+
+- Features
+    - Batch API callers can project the API-request count and duration of an
+      online-tag run via `comicbox.online_session.estimate_run()`, so the
+      request model lives with the search flow it describes.
+
 ## v4.0.5
 
 - Performance

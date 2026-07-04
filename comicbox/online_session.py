@@ -38,6 +38,15 @@ from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 # the ComicboxError base.
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
 
+# Re-exported so batch callers get the run estimator off the same Codex-facing
+# façade as the session it estimates; the implementation lives in
+# comicbox.online_estimate.
+from comicbox.online_estimate import (
+    SOURCE_RATE_PER_MINUTE,
+    RunEstimate,
+    estimate_run,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Sequence
     from pathlib import Path
@@ -53,6 +62,7 @@ if TYPE_CHECKING:
 
 
 __all__ = (
+    "SOURCE_RATE_PER_MINUTE",
     "BatchedPromptHandler",
     "DeferredPrompt",
     "MatchMode",
@@ -63,7 +73,9 @@ __all__ = (
     "OnlineSession",
     "PromptHandler",
     "PromptResponse",
+    "RunEstimate",
     "SourceName",
+    "estimate_run",
 )
 
 
