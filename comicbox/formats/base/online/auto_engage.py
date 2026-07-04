@@ -3,8 +3,18 @@ Auto-engagement of `api_budget=fast` for large unattended runs.
 
 Comicbox's online lookup is fast enough on small libraries that the
 default `balanced` budget is the right pick. At scale — hundreds of
-comics on ComicVine, thousands on Metron — `balanced` blows past the
-documented rate caps and stretches into multi-hour or multi-day waits.
+comics against ComicVine — `balanced` fans out enough per-comic API
+calls to blow past the documented rate caps and stretch into
+multi-hour waits.
+
+`fast` (`Effort.MINIMAL`) only cuts cost for sources that FAN OUT per
+comic — it caps discovery breadth and name-filters candidates before
+their per-item API call. ComicVine works that way. Metron does NOT:
+since PR #143 it resolves a comic in a single
+`issues_list(series_name=...)` call whose cost is effort-invariant, so
+auto-engaging `fast` for it would be a no-op. Auto-engagement therefore
+targets fan-out sources only (see `_UNATTENDED_THRESHOLDS`); single-call
+sources rely on the rate limiter + retry for pacing, not on effort.
 
 This module's `resolve_auto_engaged_budget` watches for two signals,
 both of which indicate the user is unlikely to want a multi-hour
@@ -42,19 +52,19 @@ if TYPE_CHECKING:
 
 
 # Batch-size threshold at which to auto-engage `fast` for a source
-# under `--unattended`. Per-source because each source's rate cap is
-# different (CV: 200/hr; Metron: 1,200/hr + 5,000/day daily cap).
+# under `--unattended`. Keyed by source and intentionally listing only
+# FAN-OUT sources — the ones where `fast` actually reduces per-comic API
+# calls. Metron is excluded: its single-call search (PR #143) costs the
+# same at any effort, so auto-engaging `fast` for it would be a
+# misleading no-op.
 #
 # Rationale:
 # - ComicVine: at ~10 calls/comic under `balanced` (post-Watchmen fixes),
 #   200/hr → ~20 comics/hr. Threshold 50 ≈ 2.5 hours of waiting; a
 #   tolerable upper bound on attended use.
-# - Metron: at ~6 calls/comic, 1,200/hr → ~200 comics/hr. Threshold
-#   500 ≈ 2.5 hours. Day cap (5,000) starts to matter beyond ~800.
 _UNATTENDED_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(
     {
         "comicvine": 50,
-        "metron": 500,
     }
 )
 
