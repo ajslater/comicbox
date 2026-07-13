@@ -5,8 +5,6 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import TYPE_CHECKING
 
-import pytest
-
 from comicbox.config import get_config
 from comicbox.config.settings import OnlineSourceLimits
 from comicbox.formats.base.online.rate_limits import (
@@ -14,7 +12,6 @@ from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_SECOND,
     METRON_DEFAULT_PER_DAY,
     METRON_DEFAULT_PER_MINUTE,
-    build_comicvine_limiter,
     build_metron_bucket,
 )
 
@@ -47,89 +44,6 @@ def test_metron_bucket_built_when_per_day_set(tmp_path: Path) -> None:
     assert bucket is not None
 
 
-def test_comicvine_limiter_always_built(tmp_path: Path) -> None:
-    """
-    Unlike Metron, ComicVine always gets our own bounded limiter.
-
-    simyan's default limiter blocks indefinitely on an hourly-cap hit; we
-    always wrap it so the wait is bounded (see `_BoundedComicVineLimiter`).
-    """
-    db = tmp_path / "cv_rl.sqlite"
-    assert build_comicvine_limiter(None, db) is not None
-    assert build_comicvine_limiter(OnlineSourceLimits(), db) is not None
-    # The bucket must persist at the supplied path, not a fresh tempfile.
-    assert db.exists()
-
-
-def test_comicvine_limiter_built_when_per_second_set(tmp_path: Path) -> None:
-    limiter = build_comicvine_limiter(
-        OnlineSourceLimits(per_second=2), tmp_path / "cv.sqlite"
-    )
-    assert limiter is not None
-
-
-def test_comicvine_limiter_built_when_per_hour_set(tmp_path: Path) -> None:
-    limiter = build_comicvine_limiter(
-        OnlineSourceLimits(per_hour=500), tmp_path / "cv.sqlite"
-    )
-    assert limiter is not None
-
-
-def test_comicvine_limiter_raises_instead_of_blocking_on_cap(tmp_path: Path) -> None:
-    """
-    A wait longer than the ceiling becomes a RateLimitError, not an endless block.
-
-    Build the bounded limiter directly with a tiny ceiling over a
-    1-per-hour bucket: the first acquire takes the slot, the second would
-    have to wait ~1 hour for simyan's default limiter — ours raises
-    RateLimitError within the ceiling instead, so comicbox's retry layer
-    (which keys on the `RateLimitError` type name) can own the wait.
-    """
-    import time
-
-    from pyrate_limiter import Duration, Rate, SQLiteBucket
-    from simyan.errors import RateLimitError
-
-    from comicbox.formats.base.online.rate_limits import (
-        _bounded_comicvine_limiter_cls,
-    )
-
-    limiter_cls = _bounded_comicvine_limiter_cls()
-    bucket = SQLiteBucket.init_from_file(
-        [Rate(1, Duration.HOUR)], db_path=str(tmp_path / "cap.sqlite")
-    )
-    limiter = limiter_cls(bucket, wait_ceiling_s=0.2)
-
-    assert limiter.try_acquire("x") is True  # first slot, no wait
-    start = time.monotonic()
-    with pytest.raises(RateLimitError):
-        limiter.try_acquire("x")  # would wait ~1h; raises within the ceiling
-    # Proves it didn't actually block for the hour — bailed near the ceiling.
-    assert time.monotonic() - start < 5.0
-
-
-def test_comicvine_limiter_absorbs_short_pacing_wait(tmp_path: Path) -> None:
-    """
-    A wait under the ceiling is absorbed in-limiter, not raised.
-
-    Two quick calls against a 2/sec bucket both fit inside the window, so
-    no RateLimitError is raised — normal pacing is untouched.
-    """
-    from pyrate_limiter import Duration, Rate, SQLiteBucket
-
-    from comicbox.formats.base.online.rate_limits import (
-        _bounded_comicvine_limiter_cls,
-    )
-
-    limiter_cls = _bounded_comicvine_limiter_cls()
-    bucket = SQLiteBucket.init_from_file(
-        [Rate(2, Duration.SECOND)], db_path=str(tmp_path / "pace.sqlite")
-    )
-    limiter = limiter_cls(bucket, wait_ceiling_s=5.0)
-    assert limiter.try_acquire("x") is True
-    assert limiter.try_acquire("x") is True
-
-
 def test_override_buckets_memoized_across_session_builds(tmp_path: Path) -> None:
     """
     Same (db_path, limits) → the same bucket object, not a fresh empty one.
@@ -146,12 +60,6 @@ def test_override_buckets_memoized_across_session_builds(tmp_path: Path) -> None
     # Different limits → a distinct bucket.
     third = build_metron_bucket(OnlineSourceLimits(per_minute=10), db)
     assert third is not first
-
-    cv_limits = OnlineSourceLimits(per_hour=500)
-    cv_db = tmp_path / "memo_cv.sqlite"
-    assert build_comicvine_limiter(cv_limits, cv_db) is build_comicvine_limiter(
-        cv_limits, cv_db
-    )
 
 
 def test_documented_defaults_match_upstream() -> None:
@@ -170,8 +78,8 @@ def test_documented_defaults_match_upstream() -> None:
 
     assert METRON_DEFAULT_PER_MINUTE == METRON_MINUTE_RATE_LIMIT
     assert METRON_DEFAULT_PER_DAY == METRON_DAY_RATE_LIMIT
-    # simyan exposes its rates inside the bucket; we sanity-check the
-    # documented numbers stayed at 1/sec and 200/hr.
+    # simyan 3.x hardcodes its rates as literals in Comicvine.__init__ with
+    # no importable constant; pin the documented numbers it ships with.
     assert COMICVINE_DEFAULT_PER_SECOND == 1
     assert COMICVINE_DEFAULT_PER_HOUR == 200
 

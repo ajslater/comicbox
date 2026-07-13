@@ -271,7 +271,7 @@ class OnlineSourceLimits:
 
     All fields default to None, in which case comicbox lets the upstream
     library (mokkari / simyan) apply its own documented rate limits.
-    Set any field to override that source's bucket — useful when the
+    Set a Metron field to override that source's bucket — useful when the
     user has a higher API tier or wants to be more conservative.
 
     Documented defaults live in
@@ -281,7 +281,9 @@ class OnlineSourceLimits:
     # Used by Metron (mokkari).
     per_minute: int | None = None
     per_day: int | None = None
-    # Used by ComicVine (simyan).
+    # Historical ComicVine overrides. simyan 3.x builds its rate limiter
+    # internally (1/sec, 200/hr) with no injection point; these are
+    # accepted but ignored with a warning at client build.
     per_second: int | None = None
     per_hour: int | None = None
 

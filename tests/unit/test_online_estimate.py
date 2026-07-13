@@ -48,32 +48,49 @@ def test_metron_requests_are_mode_independent() -> None:
 
 
 def test_comicvine_requests_scale_with_mode() -> None:
-    """Comic Vine's per-comic requests scale with match mode."""
+    """Comic Vine's per-comic requests scale with match mode; pacing per pool."""
     careful = estimate_run(10, "careful", ("comicvine",))
     eager = estimate_run(10, "eager", ("comicvine",))
     assert careful.requests == 50  # 10 x 5
     assert eager.requests == 20  # 10 x 2
-    assert careful.seconds == pytest.approx(1000.0)  # 50 / 3 per-minute
-    assert eager.seconds == pytest.approx(400.0)  # 20 / 3 per-minute
+    # Wall-clock tracks the busiest resource pool (careful 2, eager 1) over
+    # the 3/min per-pool rate, not the request total.
+    assert careful.seconds == pytest.approx(400.0)  # 10 x 60 x 2/3
+    assert eager.seconds == pytest.approx(200.0)  # 10 x 60 x 1/3
+
+
+def test_comicvine_pacing_binds_on_busiest_pool_not_total() -> None:
+    """
+    Simyan 3.x paces per resource pool (CV's per-resource limit).
+
+    Auto costs more requests than eager, but the extras land in different
+    pools, so both sustain the same pace.
+    """
+    eager = estimate_run(10, "eager", ("comicvine",))
+    auto = estimate_run(10, "auto", ("comicvine",))
+    assert auto.requests > eager.requests
+    assert auto.seconds == eager.seconds
 
 
 def test_slowest_source_binds_the_rate() -> None:
     """
-    Comic Vine (3/min) is slower than Metron (20/min) and binds the rate.
+    Comic Vine is slower than Metron and binds the pace.
 
-    First-match-wins bills the costliest source: max(metron 2, comicvine 3) = 3.
-    10 x 3 requests / 3 per-minute = 10 min = 600s.
+    First-match-wins bills the costliest source's requests
+    (max(metron 2, comicvine 3) = 3) and the slowest source's pace
+    (comicvine: 60s x 1-pool-request / 3-per-minute = 20s/comic).
     """
     est = estimate_run(10, "auto", ("metron", "comicvine"))
     assert est.requests == 30
-    assert est.seconds == 600.0
+    assert est.seconds == pytest.approx(200.0)
 
 
 def test_merge_sums_per_source_requests() -> None:
-    """Merging queries every source per comic, so per-comic requests are summed."""
+    """Merging queries every source per comic: requests and paces both sum."""
     est = estimate_run(10, "auto", ("metron", "comicvine"), merge_all_sources=True)
     assert est.requests == 50  # 10 x (metron 2 + comicvine 3)
-    assert est.seconds == pytest.approx(1000.0)  # 50 / 3 per-minute (slowest)
+    # 10 x (metron 6s + comicvine 20s)
+    assert est.seconds == pytest.approx(260.0)
 
 
 def test_merge_single_source_is_noop() -> None:
