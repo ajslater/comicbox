@@ -20,12 +20,15 @@ the run is billed the costliest single selected source; merging all sources
 (``first_wins=False``) queries every source per comic, so their per-comic
 costs are summed.
 
-Wall-clock is that request total over the slowest enabled source's sustained
-throughput: Metron's per-minute cap binds a bounded run directly, while
-Comic Vine's hourly cap is the real ceiling for any run longer than a few
-minutes, so it is spread over the minute (see ``rate_limits``). first-match-
-wins means a comic isn't done until the binding source answers, so the
-slowest source sets the pace.
+Wall-clock paces each source at its sustained throughput: Metron's
+per-minute cap binds a bounded run directly. Comic Vine limits **per
+resource pool** — 200/hour for each endpoint (simyan 3.x keeps a separate
+bucket per endpoint, mirroring CV's documented "200 requests per resource
+per hour") — so a run is bound by its busiest single pool, not by the
+request total: discovery and the final fetches land in different pools
+while the per-volume issue lookups stack in one. first-match-wins means a
+comic isn't done until the binding source answers, so the slowest source
+sets the pace; merging pays every source per comic, so their paces sum.
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 __all__ = (
+    "COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE",
     "COMICVINE_REQUESTS_BY_MODE",
     "DEFAULT_RATE_PER_MINUTE",
     "DEFAULT_REQUESTS_PER_COMIC",
@@ -55,9 +59,10 @@ __all__ = (
 )
 
 # Sustained requests/minute used to pace a bounded run. Metron's per-minute
-# cap binds directly; Comic Vine's 200/hour cap is the real ceiling for any
-# run longer than a few minutes, so we spread it over the minute rather than
-# use its 1/second burst. Derived from ``rate_limits`` so both move together.
+# cap binds directly. Comic Vine's entry is the 200/hour cap of ONE resource
+# pool spread over the minute (rather than its 1/second burst) — see
+# ``COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE`` for how a run draws on it.
+# Derived from ``rate_limits`` so both move together.
 SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
     {
         "metron": METRON_DEFAULT_PER_MINUTE,
@@ -73,6 +78,21 @@ COMICVINE_REQUESTS_BY_MODE: Final = MappingProxyType(
         MatchMode.EAGER.value: 2,
         MatchMode.AUTO.value: 3,
         MatchMode.CAREFUL.value: 5,
+    }
+)
+
+# How many of one comic's Comic Vine requests land in its BUSIEST resource
+# pool. CV rate-limits per resource, and simyan 3.x enforces that client-side
+# with a separate bucket per endpoint (search / volumes / issues / get_issue /
+# get_volume), so wall-clock is bound by the fullest single pool rather than
+# the request total. Discovery and the final issue/volume fetches each land
+# in their own pool; the per-volume ``issues`` lookups stack in one, and
+# careful mode verifies more volumes there.
+COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE: Final = MappingProxyType(
+    {
+        MatchMode.EAGER.value: 1,
+        MatchMode.AUTO.value: 1,
+        MatchMode.CAREFUL.value: 2,
     }
 )
 
@@ -100,9 +120,19 @@ def requests_per_comic(source: str, mode: str) -> int:
     return DEFAULT_REQUESTS_PER_COMIC
 
 
-def _slowest_rate_per_minute(sources: tuple[str, ...]) -> int:
-    rates = [SOURCE_RATE_PER_MINUTE[s] for s in sources if s in SOURCE_RATE_PER_MINUTE]
-    return min(rates) if rates else DEFAULT_RATE_PER_MINUTE
+def _seconds_per_comic(source: str, mode: str) -> float:
+    """
+    Return the seconds one comic costs against ``source`` at its sustained pace.
+
+    Comic Vine paces per resource pool, so its wall-clock cost is the busiest
+    pool's share of the comic's requests over that pool's rate — not the
+    request total. Metron's single per-minute bucket paces the total directly.
+    """
+    if source == "comicvine":
+        pool_requests = COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE.get(mode, 1)
+        return 60.0 * pool_requests / SOURCE_RATE_PER_MINUTE[source]
+    rate = SOURCE_RATE_PER_MINUTE.get(source, DEFAULT_RATE_PER_MINUTE)
+    return 60.0 * requests_per_comic(source, mode) / rate
 
 
 def estimate_run(
@@ -129,5 +159,8 @@ def estimate_run(
     # costliest single source the run might hit.
     per_comic = sum(per_source) if merge_all_sources else max(per_source)
     requests = comics * per_comic
-    minutes = requests / _slowest_rate_per_minute(sources)
-    return RunEstimate(requests=requests, seconds=minutes * 60.0)
+    # Merge pays every source per comic; first-match-wins isn't done until
+    # the binding (slowest) source answers.
+    paces = [_seconds_per_comic(source, mode) for source in sources]
+    seconds_per_comic = sum(paces) if merge_all_sources else max(paces)
+    return RunEstimate(requests=requests, seconds=comics * seconds_per_comic)

@@ -3,17 +3,29 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
+from datetime import timedelta
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from typing_extensions import override
 
-from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+from comicbox.config.settings import (
+    CacheMode,
+    OnlineCacheSettings,
+    OnlineSettings,
+    OnlineSourceCredentials,
+    OnlineSourceLimits,
+    OnlineSourceTuning,
+    OnlineTuningSettings,
+)
 from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
 )
 from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
+from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -872,3 +884,163 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     assert [c.issue_id for c in candidates] == [5001]
     # Two list_issues calls: failed + replay.
     assert len(fake.list_issues_calls) == 2
+
+
+# ------------------------------------------------------- client construction
+
+
+class _FakeComicvine:
+    """Captures simyan v3 constructor kwargs; stands in for the client."""
+
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+        self.cache_deletes: list[dict] = []
+        self._session = SimpleNamespace(
+            cache=SimpleNamespace(delete=lambda **kw: self.cache_deletes.append(kw)),
+            settings=SimpleNamespace(disabled=False),
+        )
+
+
+def _make_cache_settings(
+    tmp_path: Path,
+    mode: CacheMode = CacheMode.ON,
+    ttl: timedelta | None = None,
+) -> OnlineSettings:
+    if ttl is None:
+        ttl = timedelta(days=7)
+    cache = OnlineCacheSettings(mode=mode, dir=tmp_path, ttl=ttl)
+    return OnlineSettings(cache=cache)
+
+
+def _build_with_fake(
+    monkeypatch: pytest.MonkeyPatch, settings: OnlineSettings
+) -> _FakeComicvine:
+    creds = OnlineSourceCredentials(key="test-key")
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
+    client = src._build_session()
+    assert isinstance(client, _FakeComicvine)
+    return client
+
+
+def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The upstream client is built once per source lifetime, then reused."""
+    creds = OnlineSourceCredentials(key="test-key")
+    settings = OnlineSettings()
+    src = ComicVineOnlineSource(creds, settings)
+    builds = {"n": 0}
+
+    def fake_build() -> object:
+        builds["n"] += 1
+        return object()
+
+    monkeypatch.setattr(src, "_build_session", fake_build)
+    first = src._get_session()
+    second = src._get_session()
+    assert first is second
+    assert builds["n"] == 1
+
+
+def test_build_session_passes_v3_kwargs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cache and rate-limit files land in comicbox's cache dir, ttl → expiry."""
+    settings = _make_cache_settings(tmp_path)
+    client = _build_with_fake(monkeypatch, settings)
+    kw = client.kwargs
+    assert kw["api_key"] == "test-key"
+    assert kw["user_agent"] == USER_AGENT
+    assert kw["cache_path"] == tmp_path / "comicvine_cache.sqlite"
+    assert kw["ratelimit_path"] == tmp_path / "comicvine_rate_limit.sqlite"
+    assert kw["cache_expiry"] == timedelta(days=7)  # ttl flows through as-is
+    assert "base_url" not in kw  # no creds.url set
+    # v2 kwargs must be gone.
+    assert "cache" not in kw
+    assert "limiter" not in kw
+
+
+def test_build_session_cache_off_uses_do_not_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """OFF pins cache_path (never ~/.cache/simyan) and disables the session cache."""
+    from requests_cache import DO_NOT_CACHE
+
+    settings = _make_cache_settings(tmp_path, mode=CacheMode.OFF)
+    client = _build_with_fake(monkeypatch, settings)
+    assert client.kwargs["cache_expiry"] == DO_NOT_CACHE
+    assert client.kwargs["cache_path"] == tmp_path / "comicvine_cache.sqlite"
+    # DO_NOT_CACHE alone still allows header-driven writes; the settings
+    # flag makes OFF mean no reads AND no writes.
+    assert client._session.settings.disabled is True
+
+
+def test_build_session_zero_ttl_never_expires(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from requests_cache import NEVER_EXPIRE
+
+    settings = _make_cache_settings(tmp_path, ttl=timedelta(0))
+    client = _build_with_fake(monkeypatch, settings)
+    assert client.kwargs["cache_expiry"] == NEVER_EXPIRE
+
+
+def test_build_session_maintains_cache_once_per_process(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The expired-row purge runs once per process per cache file."""
+    cache_path = tmp_path / "comicvine_cache.sqlite"
+    with closing(sqlite3.connect(cache_path)) as conn:
+        conn.execute("CREATE TABLE t (x)")
+        conn.commit()
+
+    settings = _make_cache_settings(tmp_path)
+    first = _build_with_fake(monkeypatch, settings)
+    assert first.cache_deletes == [{"expired": True, "vacuum": False}]
+    # A second source over the same cache file skips the housekeeping.
+    second = _build_with_fake(monkeypatch, settings)
+    assert second.cache_deletes == []
+
+
+def test_build_session_drops_v2_queries_table(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Simyan v2's `queries` table is dropped from the shared cache file."""
+    cache_path = tmp_path / "comicvine_cache.sqlite"
+    with closing(sqlite3.connect(cache_path)) as conn:
+        conn.execute("CREATE TABLE queries (query, response, query_date)")
+        conn.commit()
+
+    settings = _make_cache_settings(tmp_path)
+    _build_with_fake(monkeypatch, settings)
+
+    with closing(sqlite3.connect(cache_path)) as conn:
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert "queries" not in tables
+
+
+def test_build_session_warns_on_ignored_rate_limit_override(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """CV per_second/per_hour overrides can't flow into simyan 3.x — warn."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        tuning = OnlineTuningSettings(
+            per_source={
+                "comicvine": OnlineSourceTuning(
+                    rate_limit=OnlineSourceLimits(per_second=2)
+                )
+            }
+        )
+        settings = OnlineSettings(
+            cache=OnlineCacheSettings(dir=tmp_path), tuning=tuning
+        )
+        _build_with_fake(monkeypatch, settings)
+    finally:
+        loguru_logger.remove(handler_id)
+    assert any("ignored" in message for message in messages)
