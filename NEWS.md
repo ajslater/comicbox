@@ -1,5 +1,17 @@
 # 📰 News
 
+## v4.1.1
+
+- Performance
+    - Upgraded Simyan, the ComicVine API library, for more accurate wait-time
+      estimates, fewer hangs, and automatic background cleanup of old cached
+      data.
+
+- Config
+    - Custom ComicVine rate limits (per\_second/per\_hour) in the config are no
+      longer supported and will be ignored in favor of the official limits. You
+      will see a warning if you still have them set.
+
 ## v4.1.0
 
 - Features
