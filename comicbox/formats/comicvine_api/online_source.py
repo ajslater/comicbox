@@ -1,21 +1,25 @@
 """
 ComicVine API source via simyan.
 
-Wraps simyan's `Comicvine` client. simyan ships its own SQLite-backed
-rate-limit bucket (1/sec, 200/hr) and response cache. We configure the
-cache through `online.cache_dir` / `cache_ttl`, and always replace the
-limiter with our own bounded one (`build_comicvine_limiter`) — simyan's
-default blocks indefinitely on an hourly-cap hit, which reads as a hang;
-ours caps the wait and routes long waits through comicbox's retry layer.
+Wraps simyan's `Comicvine` client. simyan 3.x manages its own response
+cache (requests_cache; `api_key` stripped from cache keys) and rate
+limiting (1/sec, 200/hr in per-endpoint buckets) with a *bounded*
+blocking wait (`max_delay = timeout * 2`); waits past that bound surface
+as errors that comicbox's logged, cancellable retry layer handles. We
+point the cache and rate-limit bucket files into comicbox's cache dir
+via `online.cache_dir` / `cache_ttl`.
 
 ComicVine candidates do *not* arrive with a precomputed cover hash, so
-the matcher's hashing path downloads the candidate's `image.thumb_url`
+the matcher's hashing path downloads the candidate's `image.thumbnail`
 when needed. Downloaded hashes are cached in
 `${cache_dir}/cover_hashes.sqlite` keyed by URL.
 """
 
 from __future__ import annotations
 
+import sqlite3
+import threading
+from contextlib import closing, suppress
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
@@ -27,7 +31,6 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.formats.base.online.rate_limits import build_comicvine_limiter
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
@@ -39,9 +42,33 @@ from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+    from pathlib import Path
+
     from simyan.comicvine import Comicvine
 
     from comicbox.formats.base.online.profile import ComicProfile
+
+# Cache files already housekept this process; sources (and thus clients)
+# are rebuilt per file, and re-running the same purge/drop/vacuum SQL for
+# every file of a batch would be pure overhead.
+_maintained_cache_paths: set[str] = set()
+_maintenance_lock = threading.Lock()
+
+
+def _drop_v2_cache_table(cache_path: Path) -> None:
+    """
+    Drop simyan v2's `queries` table from the shared cache file.
+
+    simyan 3.x (requests_cache) creates its own tables alongside; the old
+    blob rows would otherwise sit as dead weight forever. A no-op once
+    dropped. Best-effort — a locked/busy db just skips until next build.
+    """
+    with (
+        suppress(sqlite3.Error),
+        closing(sqlite3.connect(cache_path, isolation_level=None)) as conn,
+    ):
+        conn.execute("DROP TABLE IF EXISTS queries")
 
 
 class ComicVineOnlineSource(OnlineSource):
@@ -56,22 +83,6 @@ class ComicVineOnlineSource(OnlineSource):
         """ComicVine requires an api_key."""
         return bool(self._credentials.key)
 
-    def _get_cache(self) -> Any:
-        resolved = self._resolve_response_cache()
-        if resolved is None:
-            return None
-        from simyan.cache.sqlite_cache import SQLiteCache
-
-        from comicbox.formats.base.online.vacuum import vacuum_if_bloated
-
-        cache_path, ttl = resolved
-        expiry = ttl if ttl.total_seconds() > 0 else None
-        # simyan's SQLiteCache cleans up expired rows on open; reclaim the
-        # freed pages if the file has gotten bloated.
-        cache = SQLiteCache(path=cache_path, expiry=expiry)
-        vacuum_if_bloated(cache_path)
-        return cache
-
     def _get_session(self) -> Comicvine:
         """Build the simyan client once per source lifetime, then reuse it."""
         if self._client is None:
@@ -81,22 +92,92 @@ class ComicVineOnlineSource(OnlineSource):
     def _build_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
+        self._warn_ignored_rate_limit_overrides()
+        # Both paths are always passed explicitly — simyan's defaults land
+        # in ~/.cache/simyan, outside comicbox's cache dir.
+        cache_path = self.cache_db_path()
+        resolved = self._resolve_response_cache()  # REFRESH unlinks in here
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.key,
-            "cache": self._get_cache(),
             "user_agent": USER_AGENT,
+            "cache_path": cache_path,
+            "cache_expiry": self._cache_expiry(resolved),
+            "ratelimit_path": self.cache_db_path("rate_limit"),
         }
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
+        client = Comicvine(**kwargs)
+        if resolved is None:  # CacheMode.OFF
+            self._disable_response_cache(client)
+        else:
+            self._maintain_cache(client, cache_path)
+        return client
+
+    @staticmethod
+    def _cache_expiry(resolved: tuple[Path, timedelta] | None) -> Any:
+        """Map comicbox's resolved cache mode/ttl onto simyan's `cache_expiry`."""
+        from requests_cache import DO_NOT_CACHE, NEVER_EXPIRE
+
+        if resolved is None:  # CacheMode.OFF
+            return DO_NOT_CACHE
+        _, ttl = resolved
+        return ttl if ttl.total_seconds() > 0 else NEVER_EXPIRE
+
+    def _disable_response_cache(self, client: Comicvine) -> None:
+        """
+        Make CacheMode.OFF mean no cache reads AND no cache writes.
+
+        `DO_NOT_CACHE` alone skips reads, but simyan enables
+        `cache_control`, which lets a response carrying explicit cache
+        headers re-derive an expiry and get written anyway. The settings
+        flag turns the session into a plain requests one. Best-effort
+        private reach-in; `DO_NOT_CACHE` remains as the fallback signal.
+        """
+        try:
+            client._session.settings.disabled = True  # noqa: SLF001
+        except Exception as exc:
+            logger.debug(f"online {self.name}: cache disable skipped: {exc}")
+
+    def _warn_ignored_rate_limit_overrides(self) -> None:
         from comicbox.config.settings import resolve_rate_limit
 
-        limiter = build_comicvine_limiter(
-            resolve_rate_limit(self._settings, self.name),
-            self.cache_db_path("rate_limit"),
-        )
-        if limiter is not None:
-            kwargs["limiter"] = limiter
-        return Comicvine(**kwargs)
+        limits = resolve_rate_limit(self._settings, self.name)
+        if limits.per_second is not None or limits.per_hour is not None:
+            logger.warning(
+                f"online {self.name}: rate_limit.per_second/per_hour "
+                "overrides are ignored — simyan 3.x manages ComicVine "
+                "rates internally (1/sec, 200/hr)"
+            )
+
+    def _maintain_cache(self, client: Comicvine, cache_path: Path) -> None:
+        """
+        Purge expired rows, drop the v2 table, and vacuum if bloated.
+
+        requests_cache never deletes expired rows on its own (simyan v2's
+        cache did, on open) — without the purge the freelist-based vacuum
+        trigger would rarely fire and the cache would grow unbounded.
+        Runs once per process per cache file.
+        """
+        from comicbox.formats.base.online.vacuum import vacuum_if_bloated
+
+        if not cache_path.exists():
+            return
+        with _maintenance_lock:
+            if str(cache_path) in _maintained_cache_paths:
+                return
+            _maintained_cache_paths.add(str(cache_path))
+        try:
+            # The session and its cache are private simyan surface (typed
+            # Any accordingly); degrade to "no purge" on a rename.
+            cache: Any = client._session.cache  # noqa: SLF001
+            # vacuum=False: requests_cache's SQLite backend would otherwise
+            # rewrite the whole file on every purge; vacuum_if_bloated below
+            # only does so when the freelist justifies it.
+            cache.delete(expired=True, vacuum=False)
+        except Exception as exc:
+            logger.debug(f"online {self.name}: cache purge skipped: {exc}")
+        _drop_v2_cache_table(cache_path)
+        vacuum_if_bloated(cache_path)
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:
@@ -385,8 +466,8 @@ class ComicVineOnlineSource(OnlineSource):
         issue number) from polluting the candidate set in the first place.
 
         Decorated with ``@with_retry()`` so a rate-limit hit on this
-        single call honors simyan's `retry_after` hint and replays just
-        the failed call. The outer ``search`` loop catches and continues
+        single call waits out the rate-limit backoff schedule and replays
+        just the failed call. The outer ``search`` loop catches and continues
         on the FINAL failure after retries are exhausted, so transient
         rate-limit hits inside the loop no longer silently drop the
         per-volume issue data.

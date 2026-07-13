@@ -392,3 +392,111 @@ def test_mixed_failures_track_budgets_independently() -> None:
     assert calls == 4
     # Sleeps observed: generic 0 (1s), rate-limit 0 (30s), generic 1 (2s).
     assert sleeps == [1.0, _RATE_LIMIT_SCHEDULE[0], 2.0]
+
+
+def test_simyan_client_cap_timeout_uses_rate_limit_schedule() -> None:
+    """
+    Simyan 3.x client-side cap exhaustion routes to the rate-limit schedule.
+
+    When the bounded in-limiter wait expires, requests_ratelimiter raises
+    Timeout("Rate limit not cleared within max_delay=...") and simyan
+    wraps it in ServiceError("Service took too long to respond"). That is
+    a rate-limit condition — the generic 31s budget can't outlast an
+    hourly cap. Uses the real simyan/requests classes to pin the shape.
+    """
+    from requests.exceptions import Timeout
+    from simyan.errors import ServiceError
+
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            msg = "Service took too long to respond"
+            cause = "Rate limit not cleared within max_delay=40.0s"
+            raise ServiceError(msg) from Timeout(cause)
+        return "ok"
+
+    assert fn() == "ok"
+    assert sleeps == [_RATE_LIMIT_SCHEDULE[0]]
+
+
+def test_genuine_timeout_stays_on_generic_schedule() -> None:
+    """A real HTTP timeout (same ServiceError text) is not a rate limit."""
+    from requests.exceptions import Timeout
+    from simyan.errors import ServiceError
+
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @with_retry(max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            msg = "Service took too long to respond"
+            cause = (
+                "HTTPSConnectionPool(host='comicvine.gamespot.com'): Read timed out."
+            )
+            raise ServiceError(msg) from Timeout(cause)
+        return "ok"
+
+    assert fn() == "ok"
+    assert sleeps == [1.0]
+
+
+def test_api_key_redacted_from_exception_chain() -> None:
+    """
+    The retry boundary scrubs `api_key=` values from chained messages.
+
+    simyan 3.x sends the ComicVine key as a query param; requests embeds
+    the full URL in the HTTPError that becomes `__cause__` of every
+    simyan error. A full-traceback log of that chain must not print the
+    key. Uses the real simyan/requests classes to pin the shape.
+    """
+    import traceback
+
+    from requests.exceptions import HTTPError
+    from simyan.errors import AuthenticationError
+
+    @with_retry(max_retries=1, sleep=lambda _s: None)
+    def fn() -> None:
+        err = HTTPError(
+            "401 Client Error: Unauthorized for url: "
+            "https://comicvine.gamespot.com/api/issue/4000-1/"
+            "?api_key=SECRETKEY123&format=json"
+        )
+        msg = "Invalid API Key"
+        raise AuthenticationError(msg) from err
+
+    with pytest.raises(AuthenticationError) as excinfo:
+        fn()
+    chain = "".join(traceback.format_exception(excinfo.value))
+    assert "SECRETKEY123" not in chain
+    assert "api_key=REDACTED" in chain
+
+
+def test_api_key_redacted_inside_nested_exception_args() -> None:
+    """Exception objects nested in args (ConnectionError style) are scrubbed."""
+    import traceback
+
+    from requests.exceptions import ConnectionError as RequestsConnectionError
+    from simyan.errors import ServiceError
+
+    @with_retry(max_retries=0, sleep=lambda _s: None)
+    def fn() -> None:
+        inner = OSError(
+            "Max retries exceeded with url: /api/issues/?api_key=SECRETKEY123"
+        )
+        err = RequestsConnectionError(inner)
+        msg = "Unable to connect to comicvine"
+        raise ServiceError(msg) from err
+
+    with pytest.raises(ServiceError) as excinfo:
+        fn()
+    chain = "".join(traceback.format_exception(excinfo.value))
+    assert "SECRETKEY123" not in chain
+    assert "api_key=REDACTED" in chain

@@ -10,6 +10,7 @@ responses — are never retried.
 
 from __future__ import annotations
 
+import re
 import time
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Final, TypeVar
@@ -20,6 +21,48 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 T = TypeVar("T")
+
+# ComicVine sends the API key as a query param (simyan 3.x), and requests
+# embeds the full URL — key included — in HTTPError/ConnectionError
+# messages that ride along as ``__cause__`` of every simyan error.
+_API_KEY_RE: Final = re.compile(r"(api_key=)[^&\s'\"]+")
+
+
+def _scrub_node_and_link(node: BaseException) -> list[BaseException]:
+    """Redact one exception's string args in place; return linked nodes."""
+    node.args = tuple(
+        _API_KEY_RE.sub(r"\1REDACTED", arg) if isinstance(arg, str) else arg
+        for arg in node.args
+    )
+    links = [arg for arg in node.args if isinstance(arg, BaseException)]
+    if node.__cause__ is not None:
+        links.append(node.__cause__)
+    if node.__context__ is not None and not node.__suppress_context__:
+        links.append(node.__context__)
+    return links
+
+
+def _redact_api_keys(exc: BaseException) -> None:
+    """
+    Scrub ``api_key=`` query values from an exception chain, in place.
+
+    Message-only logging (``f"{exc}"``) never prints the chain, but a
+    full traceback (``logger.exception``, or an embedding application's
+    error handler) renders every ``__cause__``/``__context__`` message.
+    Scrubbing here — every online API call passes through the retry
+    wrapper — protects all downstream consumers. Nested exception
+    objects inside ``args`` (e.g. urllib3's ``MaxRetryError`` carried by
+    requests' ``ConnectionError``) are scrubbed too.
+    """
+    stack: list[BaseException] = [exc]
+    seen: set[int] = set()
+    while stack:
+        node = stack.pop()
+        if id(node) in seen:
+            continue
+        seen.add(id(node))
+        stack.extend(_scrub_node_and_link(node))
+
 
 _BASE_DELAY_S = 1.0
 # Cap our own exponential-backoff schedule at 60s. Server-supplied
@@ -73,7 +116,16 @@ _MAX_RATE_LIMIT_RETRIES: Final[int] = len(_RATE_LIMIT_SCHEDULE)
 
 
 def _is_rate_limit(exc: BaseException) -> bool:
-    return type(exc).__name__ == "RateLimitError"
+    if type(exc).__name__ == "RateLimitError":
+        return True
+    # simyan 3.x client-side cap exhaustion surfaces as ServiceError whose
+    # __cause__ is requests' Timeout("Rate limit not cleared within
+    # max_delay=..."). Route it to the rate-limit schedule — the generic
+    # 31s budget can't outlast an hourly cap.
+    return (
+        type(exc).__name__ == "ServiceError"
+        and "rate limit not cleared" in str(exc.__cause__ or "").lower()
+    )
 
 
 _AUTH_MARKERS = (
@@ -291,6 +343,7 @@ def _run_with_retries(
         try:
             return func(*args, **kwargs)
         except Exception as exc:
+            _redact_api_keys(exc)
             last_exc = exc
             _notify_rate_limit_listener(
                 exc,

@@ -1,11 +1,12 @@
 """
 Conditional SQLite VACUUM for the online caches.
 
-mokkari and simyan both delete expired rows when their cache opens, but
-neither ever VACUUMs — a DELETE only moves pages onto the free list, it
-doesn't return them to the OS, so the file keeps its high-water-mark size.
-This reclaims that space, but only when there's enough of it to justify
-rewriting the whole file.
+mokkari deletes expired rows when its cache opens, and the ComicVine
+source purges simyan's requests_cache explicitly at client build — but
+neither path ever VACUUMs. A DELETE only moves pages onto the free list,
+it doesn't return them to the OS, so the file keeps its high-water-mark
+size. This reclaims that space, but only when there's enough of it to
+justify rewriting the whole file.
 
 The trigger is the free-page ratio, not the calendar or the raw file size:
 VACUUM exists to reclaim free pages, so we vacuum exactly when there are
@@ -35,7 +36,8 @@ def vacuum_if_bloated(db_path: Path | str) -> bool:
 
     Returns True if a VACUUM ran. A cheap no-op (one PRAGMA pair, or less)
     for missing, small, or already-compact files. Best-effort housekeeping:
-    a locked/busy db is skipped rather than allowed to fail a lookup.
+    a locked, busy, or corrupt db is skipped rather than allowed to fail
+    a lookup.
     """
     path = Path(db_path)
     if not path.exists():
@@ -51,7 +53,9 @@ def vacuum_if_bloated(db_path: Path | str) -> bool:
             if freelist < page_count * _FREELIST_RATIO:
                 return False
             conn.execute("VACUUM")
-    except sqlite3.OperationalError:
-        # Another connection holds the write lock, or the db is busy.
+    except sqlite3.Error:
+        # Another connection holds the write lock, the db is busy, or the
+        # file is corrupt ("database disk image is malformed" is a
+        # DatabaseError, not an OperationalError).
         return False
     return True
