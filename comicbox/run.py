@@ -13,6 +13,7 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
+from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
@@ -98,15 +99,37 @@ class Runner:
             except Exception:
                 logger.exception(full_path)
 
+    def _metron_is_active(self) -> bool:
+        """Best-effort check: could this run actually hit Metron via mokkari."""
+        online = self._config.online
+        if not online.lookup.enabled:
+            return False
+        sources = online.lookup.sources
+        if sources is not None and "metron" not in sources:
+            return False
+        creds = online.auth.sources.get("metron")
+        return bool(creds and creds.user and creds.password)
+
     def _run_parallel(self, paths: list[Path], jobs: int) -> None:
         """
         Run files via a thread pool. Online prompts serialize via a class-level lock.
 
-        Threads (not processes): online lookup is I/O-bound and the
-        upstream rate limiters (mokkari/simyan via pyrate_limiter) are
-        process-wide and thread-safe, so workers share the rate budget
-        without coordination from us.
+        Threads (not processes): online lookup is I/O-bound, and
+        `MetronOnlineSource` shares one mokkari `Session` per credential
+        set (comicbox/formats/metron_api/online_source.py) so every worker
+        here sees the same `rate_limit_status` mokkari reads off Metron's
+        response headers, instead of each file's source starting cold.
+
+        That check is advisory, not a hard gate — mokkari can't serialize
+        "check the last known headers" with "send the request" across
+        threads, so a burst of workers can each pass the check before any
+        of their responses land. mokkari's own guidance for a shared
+        Session is to cap the pool at the burst limit rather than rely on
+        the header check alone, so we do that here when Metron is an
+        active source for this run.
         """
+        if self._metron_is_active():
+            jobs = min(jobs, METRON_DEFAULT_PER_MINUTE)
         logger.info(f"Running {len(paths)} files with {jobs} workers")
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
