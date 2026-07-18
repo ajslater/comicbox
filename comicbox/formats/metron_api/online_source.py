@@ -10,6 +10,7 @@ and merge. M3 adds search.
 from __future__ import annotations
 
 import math
+import threading
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
@@ -21,7 +22,6 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.formats.base.online.rate_limits import build_metron_bucket
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
@@ -33,6 +33,16 @@ if TYPE_CHECKING:
     from mokkari.session import Session
 
     from comicbox.formats.base.online.profile import ComicProfile
+
+# Sessions are shared across the credential set that built them (see
+# `_get_session`), keyed by (user, password) — not `db_path` like the old
+# pyrate_limiter override cache, since there's no bucket to key by anymore.
+# A shared `Session` is what lets `Runner._run_parallel`'s thread pool
+# (comicbox/run.py) see one consistent `rate_limit_status` across workers
+# instead of each file's source starting cold; mokkari>=4.0.1 makes this
+# safe (thread-safe `SqliteCache`, `rate_limit_status` lock).
+_session_cache: dict[tuple[str, str], Any] = {}
+_session_cache_lock = threading.Lock()
 
 
 def _bi_series_name(bi_series: Any) -> str | None:
@@ -86,14 +96,35 @@ class MetronOnlineSource(OnlineSource):
         return cache
 
     def _get_session(self) -> Session:
-        """Build the mokkari client once per source lifetime, then reuse it."""
+        """
+        Return the process-wide mokkari client shared by this credential set.
+
+        Sources are rebuilt per file (see `MetronOnlineSource.__init__` via
+        `OnlineSource`), so without sharing at module scope every file's
+        source would get its own `Session` with its own blank
+        `rate_limit_status` — none of them would ever see another worker's
+        rate-limit state. Memoizing by (user, password) lets every thread in
+        `Runner._run_parallel`'s pool (comicbox/run.py) that logs in with the
+        same credentials observe one shared, continuously-updated
+        `rate_limit_status`, which is what actually makes sharing threads
+        (not processes) worthwhile under mokkari>=4.0.1's reactive,
+        header-driven rate limiting.
+        """
         if self._client is None:
-            self._client = self._build_session()
+            self._client = self._get_or_build_shared_session()
         return self._client
+
+    def _get_or_build_shared_session(self) -> Session:
+        key = (self._credentials.user or "", self._credentials.password or "")
+        with _session_cache_lock:
+            session = _session_cache.get(key)
+            if session is None:
+                session = self._build_session()
+                _session_cache[key] = session
+            return session
 
     def _build_session(self) -> Session:
         from mokkari import api
-        from mokkari.session import Session as _MokkariSession
 
         if self._credentials.url:
             # mokkari's api() factory has no URL-override parameter (only
@@ -104,34 +135,25 @@ class MetronOnlineSource(OnlineSource):
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}"
             )
-        from comicbox.config.settings import resolve_rate_limit
-
-        bucket = build_metron_bucket(
-            resolve_rate_limit(self._settings, self.name),
-            self.cache_db_path("rate_limit"),
-        )
-        if bucket is None:
-            # No override: defer to mokkari's default (a process-wide SQLite
-            # bucket at the documented 20/min and 5,000/day limits).
-            return api(
-                username=self._credentials.user,  # mokkari keyword
-                passwd=self._credentials.password,
-                cache=self._get_cache(),
-                user_agent=USER_AGENT,
-            )
-        # Override: mokkari's `api()` factory doesn't expose `bucket`, so
-        # construct the Session directly and pass our custom bucket. The
-        # username / password are guaranteed non-None on this path —
-        # `is_configured()` is checked before any source is used.
-        username = self._credentials.user or ""
-        password = self._credentials.password or ""
-        return _MokkariSession(
-            username=username,
-            passwd=password,
+        self._warn_ignored_rate_limit_overrides()
+        return api(
+            username=self._credentials.user,  # mokkari keyword
+            passwd=self._credentials.password,
             cache=self._get_cache(),
             user_agent=USER_AGENT,
-            bucket=bucket,
         )
+
+    def _warn_ignored_rate_limit_overrides(self) -> None:
+        from comicbox.config.settings import resolve_rate_limit
+
+        limits = resolve_rate_limit(self._settings, self.name)
+        if limits.per_minute is not None or limits.per_day is not None:
+            logger.warning(
+                f"online {self.name}: rate_limit.per_minute/per_day "
+                "overrides are ignored — mokkari>=4.0.1 tracks Metron's "
+                "actual per-user rate limits from response headers instead "
+                "of a fixed local bucket"
+            )
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:
@@ -456,10 +478,13 @@ class MetronOnlineSource(OnlineSource):
         `search()`'s year-retry cascade fires at most 3 calls per
         `include_volume` cycle (year-exact + Y-1 + Y+1), times at most 2
         cycles (with-volume, drop-volume) — at most 6 `issues_list` calls
-        per search. Mokkari's pyrate_limiter SQLite bucket caps Metron at
-        20 req/min; under -j N batch contention several workers' calls can
-        still collide in the same window and raise `RateLimitError` with a
-        `retry_after` hint.
+        per search. Metron caps every user at 20 req/min; mokkari tracks
+        that from response headers and only pre-empts a request once it
+        already knows the window is exhausted (a shared `Session` makes
+        that check advisory, not a hard gate — see `Runner._run_parallel`
+        in comicbox/run.py), so under -j N batch contention several
+        workers' calls can still collide in the same window and raise
+        `RateLimitError` with a `retry_after` hint.
 
         Decorating this method with `@with_retry()` means the retry
         decorator catches that error, honors the server-side
