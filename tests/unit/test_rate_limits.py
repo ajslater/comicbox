@@ -3,85 +3,161 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from typing import TYPE_CHECKING
+from dataclasses import replace
+
+import pytest
 
 from comicbox.config import get_config
-from comicbox.config.settings import OnlineSourceLimits
+from comicbox.config.settings import (
+    CacheMode,
+    OnlineCacheSettings,
+    OnlineSettings,
+    OnlineSourceCredentials,
+    OnlineSourceLimits,
+    OnlineSourceTuning,
+    OnlineTuningSettings,
+)
 from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_HOUR,
     COMICVINE_DEFAULT_PER_SECOND,
-    METRON_DEFAULT_PER_DAY,
     METRON_DEFAULT_PER_MINUTE,
-    build_metron_bucket,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-# ----------------------------------------------------- bucket builders
-
-
-def test_metron_bucket_returns_none_without_overrides(tmp_path: Path) -> None:
-    """No overrides → upstream library default in use."""
-    db = tmp_path / "metron_rl.sqlite"
-    assert build_metron_bucket(None, db) is None
-    assert build_metron_bucket(OnlineSourceLimits(), db) is None
-
-
-def test_metron_bucket_built_when_per_minute_set(tmp_path: Path) -> None:
-    """Any override triggers a custom bucket persisted at db_path."""
-    db = tmp_path / "metron_rl.sqlite"
-    bucket = build_metron_bucket(OnlineSourceLimits(per_minute=30), db)
-    assert bucket is not None
-    # The bucket must persist at the supplied path, not a fresh tempfile.
-    assert db.exists()
-
-
-def test_metron_bucket_built_when_per_day_set(tmp_path: Path) -> None:
-    bucket = build_metron_bucket(
-        OnlineSourceLimits(per_day=10_000), tmp_path / "m.sqlite"
-    )
-    assert bucket is not None
-
-
-def test_override_buckets_memoized_across_session_builds(tmp_path: Path) -> None:
-    """
-    Same (db_path, limits) → the same bucket object, not a fresh empty one.
-
-    Sessions are rebuilt per API call and sources per file; without
-    memoization every call started a brand-new bucket and the configured
-    override never accumulated state — it limited nothing.
-    """
-    db = tmp_path / "memo_rl.sqlite"
-    limits = OnlineSourceLimits(per_minute=30)
-    first = build_metron_bucket(limits, db)
-    second = build_metron_bucket(OnlineSourceLimits(per_minute=30), db)
-    assert first is second
-    # Different limits → a distinct bucket.
-    third = build_metron_bucket(OnlineSourceLimits(per_minute=10), db)
-    assert third is not first
+from comicbox.formats.metron_api import online_source as metron_online_source
+from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 
 def test_documented_defaults_match_upstream() -> None:
     """
     Sanity check: our citation constants match the upstream libraries.
 
-    If this fails, either the upstream library bumped its constant (rare —
-    it happens when the API itself loosens limits) or we picked the wrong
-    number when first writing this module. Either way the README and
-    rate_limits.py docstrings need a look.
+    Metron's burst limit (20/min) is fixed for every user, so it's still
+    pinned here, but mokkari>=4.0.1 no longer exports it as an importable
+    constant — it reads the actual limit off `X-RateLimit-*` response
+    headers instead of hardcoding one (same for the daily sustained limit,
+    which varies per OpenCollective donor tier and isn't citable at all
+    anymore). So this can only be a literal pin, not a cross-check against
+    mokkari's source — if Metron's policy ever changes, README and
+    rate_limits.py need a manual look.
     """
-    from mokkari.session import (
-        METRON_DAY_RATE_LIMIT,
-        METRON_MINUTE_RATE_LIMIT,
-    )
-
-    assert METRON_DEFAULT_PER_MINUTE == METRON_MINUTE_RATE_LIMIT
-    assert METRON_DEFAULT_PER_DAY == METRON_DAY_RATE_LIMIT
+    assert METRON_DEFAULT_PER_MINUTE == 20
     # simyan 3.x hardcodes its rates as literals in Comicvine.__init__ with
     # no importable constant; pin the documented numbers it ships with.
     assert COMICVINE_DEFAULT_PER_SECOND == 1
     assert COMICVINE_DEFAULT_PER_HOUR == 200
+
+
+# ------------------------------------------------- shared mokkari session
+
+
+class _FakeMokkariSession:
+    """Stands in for mokkari's `Session`; records the kwargs it was built with."""
+
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+
+
+def _fake_mokkari_api(**kwargs: object) -> _FakeMokkariSession:
+    return _FakeMokkariSession(**kwargs)
+
+
+@pytest.fixture(autouse=True)
+def _clear_session_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test gets its own empty module-level session cache."""
+    monkeypatch.setattr(metron_online_source, "_session_cache", {})
+
+
+def _make_metron_source(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    user: str = "u",
+    password: str = "p",  # noqa: S107
+    settings: OnlineSettings | None = None,
+) -> MetronOnlineSource:
+    """
+    Build a source whose `_build_session` never touches a real cache file.
+
+    `_build_session` calls `_get_cache()` regardless of the fake `mokkari.api`
+    below, which would otherwise open a real `SqliteCache` against the
+    user's actual `~/.cache/comicbox/online/` directory.
+    """
+    monkeypatch.setattr("mokkari.api", _fake_mokkari_api)
+    off_cache = OnlineCacheSettings(mode=CacheMode.OFF)
+    settings = replace(settings, cache=off_cache) if settings else OnlineSettings(
+        cache=off_cache
+    )
+    creds = OnlineSourceCredentials(user=user, password=password)
+    return MetronOnlineSource(creds, settings)
+
+
+def test_get_session_shares_one_client_for_same_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Two sources built with the same credentials share one mokkari Session.
+
+    Sources are rebuilt per file; without sharing, every file's `Session`
+    would start with a blank `rate_limit_status` and never see another
+    worker's rate-limit state (see `MetronOnlineSource._get_session`) —
+    the whole point of running `Runner._run_parallel`'s batch as threads
+    rather than processes.
+    """
+    src_a = _make_metron_source(monkeypatch)
+    src_b = _make_metron_source(monkeypatch)
+    assert src_a._get_session() is src_b._get_session()
+
+
+def test_get_session_builds_distinct_clients_for_different_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src_a = _make_metron_source(monkeypatch, user="u1", password="p1")
+    src_b = _make_metron_source(monkeypatch, user="u2", password="p2")
+    assert src_a._get_session() is not src_b._get_session()
+
+
+def test_get_session_memoizes_per_instance_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A second call on the same source instance doesn't re-hit the shared cache."""
+    src = _make_metron_source(monkeypatch)
+    first = src._get_session()
+    assert src._get_session() is first
+
+
+def test_metron_rate_limit_override_warns_and_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """per_minute/per_day overrides can't flow into mokkari>=4.0.1 — warn."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        tuning = OnlineTuningSettings(
+            per_source={
+                "metron": OnlineSourceTuning(
+                    rate_limit=OnlineSourceLimits(per_minute=30)
+                )
+            }
+        )
+        settings = OnlineSettings(tuning=tuning)
+        _make_metron_source(monkeypatch, settings=settings)._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert any("ignored" in message for message in messages)
+
+
+def test_no_metron_rate_limit_override_no_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        _make_metron_source(monkeypatch)._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert not any("ignored" in message for message in messages)
 
 
 # -------------------------------------------------- config-resolution flow
