@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from argparse import Namespace
 from dataclasses import replace
+from datetime import datetime, timezone
 
 import pytest
+from mokkari.session import RateLimitStatus, RateLimitWindow
 
 from comicbox.config import get_config
 from comicbox.config.settings import (
@@ -23,7 +25,11 @@ from comicbox.formats.base.online.rate_limits import (
     METRON_DEFAULT_PER_MINUTE,
 )
 from comicbox.formats.metron_api import online_source as metron_online_source
-from comicbox.formats.metron_api.online_source import MetronOnlineSource
+from comicbox.formats.metron_api.online_source import (
+    MetronOnlineSource,
+    shared_session_rate_limit_status,
+)
+from comicbox.online_session import OnlineCredentials, OnlineSession
 
 
 def test_documented_defaults_match_upstream() -> None:
@@ -54,6 +60,9 @@ class _FakeMokkariSession:
 
     def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
+        # Mirrors mokkari: a fresh Session holds an empty RateLimitStatus
+        # until a response reports X-RateLimit-* headers.
+        self.rate_limit_status = RateLimitStatus()
 
 
 def _fake_mokkari_api(**kwargs: object) -> _FakeMokkariSession:
@@ -131,6 +140,89 @@ def test_get_session_memoizes_per_instance_too(
     src = _make_metron_source(monkeypatch)
     first = src._get_session()
     assert src._get_session() is first
+
+
+# ------------------------------------------------- rate-limit status surfacing
+
+
+def _make_online_session(sources: tuple[str, ...] = ("metron",)) -> OnlineSession:
+    """Session whose metron credentials match `_seed_shared_session`'s cache key."""
+    creds = OnlineCredentials(metron_user="u", metron_password="p", comicvine_key="k")
+    return OnlineSession(sources=sources, credentials=creds)
+
+
+def _seed_shared_session(
+    status: RateLimitStatus,
+    *,
+    user: str = "u",
+    password: str = "p",  # noqa: S107
+) -> _FakeMokkariSession:
+    """Plant a shared session as if a run had already talked to Metron."""
+    fake = _FakeMokkariSession()
+    fake.rate_limit_status = status
+    metron_online_source._session_cache[(user, password)] = (fake, ())
+    return fake
+
+
+def test_shared_session_rate_limit_status_none_without_session() -> None:
+    """No shared session for the credentials yet -> None, not a blank status."""
+    assert shared_session_rate_limit_status("u", "p") is None
+
+
+def test_shared_session_rate_limit_status_reads_live_state() -> None:
+    """The accessor returns the live status of the credential set's session."""
+    status = RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19))
+    _seed_shared_session(status)
+    assert shared_session_rate_limit_status("u", "p") is status
+    # None normalizes to "" exactly like the session-cache key.
+    assert shared_session_rate_limit_status(None, None) is None
+
+
+def test_online_session_rate_limit_status_empty_before_first_request() -> None:
+    """Cold process: metron reports {} until something hits the network."""
+    assert _make_online_session().rate_limit_status() == {"metron": {}}
+
+
+def test_online_session_rate_limit_status_headerless_reads_as_empty() -> None:
+    """A session that exists but saw no X-RateLimit-* headers reads as cold."""
+    _seed_shared_session(RateLimitStatus())
+    assert _make_online_session().rate_limit_status() == {"metron": {}}
+
+
+def test_online_session_rate_limit_status_converts_windows() -> None:
+    """Live mokkari windows come through JSON-safe: datetimes -> epoch floats."""
+    reset = datetime(2026, 7, 19, 12, 0, 0, tzinfo=timezone.utc)
+    _seed_shared_session(
+        RateLimitStatus(
+            burst=RateLimitWindow(limit=20, remaining=19, reset=reset),
+            sustained=RateLimitWindow(limit=25_000, remaining=24_987),
+        )
+    )
+    assert _make_online_session().rate_limit_status() == {
+        "metron": {
+            "burst": {"limit": 20, "remaining": 19, "reset_epoch": reset.timestamp()},
+            "sustained": {"limit": 25_000, "remaining": 24_987, "reset_epoch": None},
+        }
+    }
+
+
+def test_online_session_rate_limit_status_skips_blank_window() -> None:
+    """A window Metron never reported is omitted rather than emitted as Nones."""
+    _seed_shared_session(
+        RateLimitStatus(sustained=RateLimitWindow(limit=5_000, remaining=4_987))
+    )
+    assert _make_online_session().rate_limit_status() == {
+        "metron": {
+            "sustained": {"limit": 5_000, "remaining": 4_987, "reset_epoch": None}
+        }
+    }
+
+
+def test_online_session_rate_limit_status_comicvine_always_empty() -> None:
+    """Simyan exposes no budget to read; comic vine stays {} even mid-run."""
+    _seed_shared_session(RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19)))
+    session = _make_online_session(sources=("comicvine", "metron"))
+    assert session.rate_limit_status()["comicvine"] == {}
 
 
 def test_metron_rate_limit_override_warns_and_is_ignored(
