@@ -4,6 +4,9 @@ comicbox:
   alternate_images:
     - alt0.jxl
     - alt1.jxl
+  alternative_issue:
+    name: "250"
+    number: 250
   arcs:
     d:
       number: 1
@@ -33,6 +36,9 @@ comicbox:
   credit_primaries:
     Joe Orlando: Writer
     Wally Wood: Penciller
+  community_rating:
+    average_rating: 4.5
+    rating_count: 1250
   critical_rating: 5.0
   date:
     cover_date: 1950-11-01

@@ -13,6 +13,7 @@ from comicbox.formats.base.fields.comicbox import NAME_KEY
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import DecimalField
 from comicbox.formats.comicbox.schema import (
+    ALTERNATIVE_ISSUE_KEY,
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,
     NUMBER_KEY,
@@ -48,13 +49,13 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 issue_suffix, ISSUE_SUFFIX_KEY, issue
             )
 
-    def _get_computed_from_issue(
-        self, sub_data: dict[str, Any], **_kwargs: Any
+    def _get_computed_from_issue_key(
+        self, sub_data: dict[str, Any], issue_key: str
     ) -> dict[str, Any] | None:
         """Break parsed issue up into parts."""
         if not sub_data:
             return None
-        issue = sub_data.get(ISSUE_KEY)
+        issue = sub_data.get(issue_key)
         if not issue:
             return None
         issue_name = issue.get(NAME_KEY)
@@ -73,15 +74,27 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
             logger.debug(f"{self._path} Error parsing issue into components: {issue}")
             raise
 
-        return {ISSUE_KEY: issue}
+        return {issue_key: issue}
 
-    def _get_computed_issue(
+    def _get_computed_from_issue(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, Any] | None:
+        """Break parsed issue up into parts."""
+        return self._get_computed_from_issue_key(sub_data, ISSUE_KEY)
+
+    def _get_computed_from_alternative_issue(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
+        """Break parsed alternative_issue up into parts."""
+        return self._get_computed_from_issue_key(sub_data, ALTERNATIVE_ISSUE_KEY)
+
+    def _get_computed_issue_key(
+        self, sub_data: dict[str, Any], issue_key: str
+    ) -> dict[str, Any] | None:
         """Build issue from parts before dump if issue doesn't already exist."""
-        if not sub_data or ISSUE_KEY in self._config.general.delete_keys:
+        if not sub_data or issue_key in self._config.general.delete_keys:
             return None
-        issue = sub_data.get(ISSUE_KEY)
+        issue = sub_data.get(issue_key)
         if not issue:
             return None
         if issue_name := issue.get(NAME_KEY):
@@ -91,8 +104,20 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
         # Decimal removes unspecified decimal points
         if issue_name := f"{issue_number}{issue_suffix}".strip():
             issue[NAME_KEY] = issue_name
-            return {ISSUE_KEY: issue}
+            return {issue_key: issue}
         return None
+
+    def _get_computed_issue(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
+        """Build issue from parts before dump if issue doesn't already exist."""
+        return self._get_computed_issue_key(sub_data, ISSUE_KEY)
+
+    def _get_computed_alternative_issue(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
+        """Build alternative_issue from parts before dump if it has no name."""
+        return self._get_computed_issue_key(sub_data, ALTERNATIVE_ISSUE_KEY)
 
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
@@ -101,6 +126,14 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 "from issue": (_get_computed_from_issue, AdditiveMerger),
                 "from issue.number & issue.suffix": (
                     _get_computed_issue,
+                    AdditiveMerger,
+                ),
+                "from alternative_issue": (
+                    _get_computed_from_alternative_issue,
+                    AdditiveMerger,
+                ),
+                "from alternative_issue.number & alternative_issue.suffix": (
+                    _get_computed_alternative_issue,
                     AdditiveMerger,
                 ),
             }

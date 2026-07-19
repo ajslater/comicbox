@@ -48,12 +48,15 @@ from comicbox.formats.comicbox.schema.publishing import (
 
 NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"
+ALTERNATIVE_ISSUE_KEY = "alternative_issue"
 APP_ID_KEY = "appID"
+AVERAGE_RATING_KEY = "average_rating"
 BOOKMARK_KEY = "bookmark"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
 CREDIT_PRIMARIES_KEY = "credit_primaries"
 COLLECTION_TITLE_KEY = "collection_title"
+COMMUNITY_RATING_KEY = "community_rating"
 CRITICAL_RATING_KEY = "critical_rating"
 COUNTRY_KEY = "country"
 COVER_IMAGE_KEY = "cover_image"
@@ -100,6 +103,7 @@ PUBLISHER_KEY = "publisher"
 PRICES_KEY = "prices"
 PRICE_KEY = "price"
 PROTAGONIST_KEY = "protagonist"
+RATING_COUNT_KEY = "rating_count"
 READING_DIRECTION_KEY = "reading_direction"
 REMAINDERS_KEY = "remainders"
 REPRINTS_KEY = "reprints"
@@ -153,6 +157,15 @@ class UniverseSchema(IdentifiedSchema):
     designation = StringField()  # Metron ONLY
 
 
+class CommunityRatingSchema(BaseSubSchema):
+    """Community Rating Schema."""
+
+    average_rating = DecimalField(  # CBI, CIX, Metron
+        places=1, minimum=Decimal(0), maximum=Decimal(5)
+    )
+    rating_count = IntegerField(minimum=1)  # Metron ONLY
+
+
 class DateSchema(BaseSubSchema):
     """Date Schema."""
 
@@ -183,6 +196,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
 
     age_rating = AgeRatingField()  # CIX, Metron
     alternate_images = StringSetField()  # CT ONLY
+    alternative_issue = Nested(IssueSchema)  # Metron ONLY
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
     bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
     characters = SimpleNamedDictField()  # Comet, CIX, CT, Metron
@@ -193,7 +207,8 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         values=Nested(PersonSchema)
     )
     credit_primaries = DictField(keys=RoleField)  # CBI ONLY
-    critical_rating = DecimalField(  # CBI, CIX
+    community_rating = Nested(CommunityRatingSchema)  # CBI, CIX, Metron
+    critical_rating = DecimalField(  # Comicbox ONLY
         places=1, minimum=Decimal(0), maximum=Decimal(5)
     )
     date = Nested(DateSchema)

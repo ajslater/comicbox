@@ -98,12 +98,18 @@ def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _build_issue_block(issue: Mapping[str, Any]) -> dict[str, Any]:
-    """Build comicbox's `issue` block with name + suffix from alt_number."""
+    """Build comicbox's `issue` block from the Issue number."""
     out: dict[str, Any] = {}
     if number := issue.get("number"):
         out["name"] = str(number)
+    return out
+
+
+def _build_alternative_issue_block(issue: Mapping[str, Any]) -> dict[str, Any]:
+    """Build comicbox's `alternative_issue` block from alt_number."""
+    out: dict[str, Any] = {}
     if alt := issue.get("alt_number"):
-        out["suffix"] = str(alt)
+        out["name"] = str(alt)
     return out
 
 
@@ -164,6 +170,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
     blocks: tuple[tuple[str, Any], ...] = (
         # Scalars / single-source nested
         ("issue", _build_issue_block(issue)),
+        ("alternative_issue", _build_alternative_issue_block(issue)),
         ("date", _build_date(issue)),
         ("cover_image", issue.get("image")),
         ("updated_at", issue.get("modified")),

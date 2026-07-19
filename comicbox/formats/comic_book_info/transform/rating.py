@@ -1,11 +1,11 @@
 """
-ComicBookInfo rating <-> canonical critical_rating conversion.
+ComicBookInfo rating <-> canonical community_rating.average_rating conversion.
 
 ComicBookInfo's ``rating`` field is an integer with no spec-defined scale.
 Different apps wrote it on different scales (0-10 was common, but 0-100
-appeared in the wild too). The canonical comicbox ``critical_rating`` follows
-ComicInfo's ``CommunityRating`` spec: ``0.0`` to ``5.0`` with one decimal
-place of meaningful precision.
+appeared in the wild too). The canonical comicbox
+``community_rating.average_rating`` follows ComicInfo's ``CommunityRating``
+spec: ``0.0`` to ``5.0`` with one decimal place of meaningful precision.
 
 This module bridges the two with a magnitude-based heuristic:
 
@@ -24,7 +24,7 @@ from math import ceil, log10
 from typing import Any
 
 from comicbox.formats.base.transforms.spec import MetaSpec
-from comicbox.formats.comicbox.schema import CRITICAL_RATING_KEY
+from comicbox.formats.comicbox.transform import COMMUNITY_RATING_AVERAGE_KEYPATH
 
 _ONE_DP = Decimal("0.1")
 _ZERO = Decimal("0.0")
@@ -58,7 +58,7 @@ def cbi_rating_to_canonical(value: Any) -> Decimal | None:
 
 
 def canonical_to_cbi_rating(value: Any) -> int | None:
-    """Convert canonical 0-5 critical_rating to a CBI 0-10 integer."""
+    """Convert canonical 0-5 average_rating to a CBI 0-10 integer."""
     if value is None:
         return None
     try:
@@ -71,16 +71,16 @@ def canonical_to_cbi_rating(value: Any) -> int | None:
 
 
 def cbi_rating_to_cb() -> MetaSpec:
-    """Spec: CBI ``rating`` integer -> comicbox canonical ``critical_rating``."""
+    """Spec: CBI ``rating`` integer -> comicbox ``community_rating.average_rating``."""
     return MetaSpec(
-        key_map={CRITICAL_RATING_KEY: _CBI_RATING_TAG},
+        key_map={COMMUNITY_RATING_AVERAGE_KEYPATH: _CBI_RATING_TAG},
         spec=(cbi_rating_to_canonical,),
     )
 
 
 def cbi_rating_from_cb() -> MetaSpec:
-    """Spec: comicbox canonical ``critical_rating`` -> CBI ``rating`` integer."""
+    """Spec: comicbox ``community_rating.average_rating`` -> CBI ``rating`` integer."""
     return MetaSpec(
-        key_map={_CBI_RATING_TAG: CRITICAL_RATING_KEY},
+        key_map={_CBI_RATING_TAG: COMMUNITY_RATING_AVERAGE_KEYPATH},
         spec=(canonical_to_cbi_rating,),
     )

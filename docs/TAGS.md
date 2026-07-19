@@ -7,6 +7,7 @@ comic book metadata formats.
 | ------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------- | ----------------- |
 | age_rating                | AgeRating                                                                                | AgeRating                         |                                                                           |
 | alternate_images          |                                                                                          |                                   |                                                                           |
+| alternative_issue         |                                                                                          | AlternativeNumber                 |                                                                           |
 | arcs                      | StoryArc, StoryArcNumbers                                                                |
 | bookmark                  |                                                                                          |                                   |                                                                           | lastMark          |
 | characacters              | Characters                                                                               |                                   |                                                                           | character         |
@@ -14,8 +15,9 @@ comic book metadata formats.
 | credits                   | Writer, Penciller, Inker, Colorist, Letterer, CoverArtist, Editor, Translator, Publisher | Credits                           | colorist, coverDesigner, creator, editor, inker, letter, penciller writer |
 | credit_primaries          |
 | collection_title          |                                                                                          | CollectionTitle                   |
+| community_rating          | CommunityRating                                                                          | CommunityRating                   | rating                                                                    |
 | cover_image               |                                                                                          |                                   |                                                                           | coverImage        |
-| critical_rating           | CommunityRating                                                                          |                                   | rating                                                                    | rating            |
+| critical_rating           |                                                                                          |                                   |                                                                           |
 | date                      | Year, Month, Day                                                                         | CoverDate, StoreDate              | publicationDay, publicationMonth, publicationYear                         | date              |
 | ext                       |
 | original_format           |

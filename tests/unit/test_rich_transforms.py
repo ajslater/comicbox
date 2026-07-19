@@ -171,7 +171,8 @@ _METRON_CB: dict[str, Any] = dict(MetronApiTransform().to_comicbox(_METRON_FIXTU
 
 def test_metron_issue_block() -> None:
     assert _METRON_CB["issue"]["name"] == "5"
-    assert _METRON_CB["issue"]["suffix"] == "a"
+    assert "suffix" not in _METRON_CB["issue"]
+    assert _METRON_CB["alternative_issue"]["name"] == "a"
 
 
 def test_metron_dates() -> None:
