@@ -4,13 +4,13 @@
 
 - Features
     - `OnlineSession.rate_limit_status()` is no longer a stub: Metron entries
-      now report the account's live rate-limit budget (burst and daily
-      sustained windows — limit, remaining, and reset epoch) that mokkari 4
-      tracks from `X-RateLimit-*` response headers. The daily limit varies by
-      Metron OpenCollective donor tier, so this is the only place it's
-      discoverable. Comic Vine still reports `{}`; simyan exposes no budget to
-      read. Host applications (e.g. Codex) can poll this during a batch run to
-      display live budget.
+      now report the account's live rate-limit budget (burst and daily sustained
+      windows — limit, remaining, and reset epoch) that mokkari 4 tracks from
+      `X-RateLimit-*` response headers. The daily limit varies by Metron
+      OpenCollective donor tier, so this is the only place it's discoverable.
+      Comic Vine still reports `{}`; simyan exposes no budget to read. Host
+      applications (e.g. Codex) can poll this during a batch run to display live
+      budget.
 
 ## v4.2.0
 
