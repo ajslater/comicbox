@@ -31,7 +31,7 @@ from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
-    from mokkari.session import Session
+    from mokkari.session import RateLimitStatus, Session
 
     from comicbox.formats.base.online.profile import ComicProfile
 
@@ -54,6 +54,27 @@ if TYPE_CHECKING:
 # SqliteCache exposes no close() to release anyway.
 _session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
+
+
+def shared_session_rate_limit_status(
+    user: str | None, password: str | None
+) -> RateLimitStatus | None:
+    """
+    Rate-limit state of the shared mokkari session for a credential set.
+
+    Returns the live ``RateLimitStatus`` mokkari tracks from Metron's
+    ``X-RateLimit-*`` response headers, or None when no session exists for
+    these credentials in this process yet (nothing has hit the network).
+    Window fields are None until Metron reports them. The empty-credential
+    normalization mirrors ``_get_or_build_shared_session``'s cache key.
+    """
+    key = (user or "", password or "")
+    with _session_cache_lock:
+        entry = _session_cache.get(key)
+    if entry is None:
+        return None
+    session, _ = entry
+    return session.rate_limit_status
 
 
 def _bi_series_name(bi_series: Any) -> str | None:
