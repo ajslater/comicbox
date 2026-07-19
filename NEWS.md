@@ -1,6 +1,6 @@
 # 📰 News
 
-## v4.3.0
+## v4.4.0
 
 - Features
     - Support the MetronInfo.xml v1.1 schema: new AlternativeNumber and
@@ -11,6 +11,10 @@
     - New comicbox `alternative_issue` field, parsed into name, number and
       suffix parts like `issue`. The Metron API alt\_number now maps to it
       instead of the issue suffix.
+
+## v4.3.0
+
+- Features
     - `OnlineSession.rate_limit_status()` is no longer a stub: Metron entries
       now report the account's live rate-limit budget (burst and daily sustained
       windows — limit, remaining, and reset epoch) that mokkari 4 tracks from
