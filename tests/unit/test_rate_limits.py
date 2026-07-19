@@ -36,8 +36,8 @@ def test_documented_defaults_match_upstream() -> None:
     headers instead of hardcoding one (same for the daily sustained limit,
     which varies per OpenCollective donor tier and isn't citable at all
     anymore). So this can only be a literal pin, not a cross-check against
-    mokkari's source — if Metron's policy ever changes, README and
-    rate_limits.py need a manual look.
+    mokkari's source — if Metron's policy ever changes, rate_limits.py
+    needs a manual look.
     """
     assert METRON_DEFAULT_PER_MINUTE == 20
     # simyan 3.x hardcodes its rates as literals in Comicvine.__init__ with
@@ -61,9 +61,17 @@ def _fake_mokkari_api(**kwargs: object) -> _FakeMokkariSession:
 
 
 @pytest.fixture(autouse=True)
-def _clear_session_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def clear_session_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every test gets its own empty module-level session cache."""
     monkeypatch.setattr(metron_online_source, "_session_cache", {})
+
+
+@pytest.fixture(autouse=True)
+def clear_warn_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reset warn_once dedup state so warning asserts aren't order-dependent."""
+    from comicbox.formats.base.online import warn_once
+
+    monkeypatch.setattr(warn_once, "_seen", set())
 
 
 def _make_metron_source(
@@ -82,8 +90,10 @@ def _make_metron_source(
     """
     monkeypatch.setattr("mokkari.api", _fake_mokkari_api)
     off_cache = OnlineCacheSettings(mode=CacheMode.OFF)
-    settings = replace(settings, cache=off_cache) if settings else OnlineSettings(
-        cache=off_cache
+    settings = (
+        replace(settings, cache=off_cache)
+        if settings
+        else OnlineSettings(cache=off_cache)
     )
     creds = OnlineSourceCredentials(user=user, password=password)
     return MetronOnlineSource(creds, settings)
@@ -140,10 +150,15 @@ def test_metron_rate_limit_override_warns_and_is_ignored(
             }
         )
         settings = OnlineSettings(tuning=tuning)
-        _make_metron_source(monkeypatch, settings=settings)._get_session()
+        session = _make_metron_source(monkeypatch, settings=settings)._get_session()
     finally:
         loguru_logger.remove(handler_id)
     assert any("ignored" in message for message in messages)
+    # The "ignored" half: the override must not flow into the session —
+    # mokkari's api() factory takes exactly these four kwargs, no rate
+    # or bucket argument.
+    assert isinstance(session, _FakeMokkariSession)
+    assert set(session.kwargs) == {"username", "passwd", "cache", "user_agent"}
 
 
 def test_no_metron_rate_limit_override_no_warning(
@@ -158,6 +173,57 @@ def test_no_metron_rate_limit_override_no_warning(
     finally:
         loguru_logger.remove(handler_id)
     assert not any("ignored" in message for message in messages)
+
+
+def test_metron_override_warning_fires_once_per_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """warn_once dedups the ignored-override warning across per-file sources."""
+    from loguru import logger as loguru_logger
+
+    tuning = OnlineTuningSettings(
+        per_source={
+            "metron": OnlineSourceTuning(rate_limit=OnlineSourceLimits(per_minute=30))
+        }
+    )
+    settings = OnlineSettings(tuning=tuning)
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        _make_metron_source(monkeypatch, settings=settings)._get_session()
+        _make_metron_source(monkeypatch, settings=settings)._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert sum("ignored" in message for message in messages) == 1
+
+
+def test_shared_session_warns_on_divergent_cache_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    First build wins.
+
+    A same-credential source with different cache settings reuses the
+    existing session but says so once.
+    """
+    from datetime import timedelta
+
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        first = _make_metron_source(monkeypatch)
+        session = first._get_session()
+        divergent_settings = OnlineSettings(
+            cache=OnlineCacheSettings(mode=CacheMode.ON, ttl=timedelta(days=1))
+        )
+        creds = OnlineSourceCredentials(user="u", password="p")
+        divergent = MetronOnlineSource(creds, divergent_settings)
+        assert divergent._get_session() is session
+    finally:
+        loguru_logger.remove(handler_id)
+    assert sum("reusing the existing shared" in m for m in messages) == 1
 
 
 # -------------------------------------------------- config-resolution flow

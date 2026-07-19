@@ -67,7 +67,10 @@ jobs:
           load: true
           tags: ${{ env.CI_IMAGE_TAG }}
           cache-from: type=registry,ref=${{ env.CI_IMAGE}}:cache
-          cache-to: type=registry,ref=${{ env.CI_IMAGE}}:cache,mode=max
+          # Fork PRs run with a read-only GITHUB_TOKEN; pushing the cache
+          # would fail the whole job before lint/test ever run, so only
+          # export it from same-repo builds.
+          cache-to: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && format('type=registry,ref={0}:cache,mode=max', env.CI_IMAGE) || '' }}
 
       - name: Start Services
         if: steps.gate.outputs.dist_found != 'true'

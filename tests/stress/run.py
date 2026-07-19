@@ -52,7 +52,10 @@ _EXTS: Final = (".cbz", ".cbr", ".cbt", ".cb7", ".pdf")
 _SOURCES: Final = ("metron", "comicvine")
 _RATE_LIMIT_LOG_RE: Final = re.compile(r"rate-limit, retrying in (?P<delay>[\d.]+)s")
 _DOCUMENTED_CAPS: Final = {
-    # Source name → (per-minute cap, per-hour cap, per-day cap)
+    # Source name → (per-minute cap, per-hour cap, per-day cap).
+    # Metron's per-day slot is the zero-donor base tier (up to 25,000 for
+    # OpenCollective donors); only the per-minute and per-hour slots are
+    # checked by _rate_row, the per-day slot is informational.
     "metron": (20, None, 5000),
     "comicvine": (60, 200, None),
 }

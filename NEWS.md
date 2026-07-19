@@ -1,5 +1,23 @@
 # 📰 News
 
+## v4.2.0
+
+- Config
+    - Custom Metron rate limits (per\_minute/per\_day) in the config are no
+      longer supported and will be ignored in favor of the limits Metron reports
+      for your account — mokkari 4 reads them from API response headers, so
+      higher OpenCollective donor tiers are picked up automatically. You will
+      see a warning if you still have them set. These keys are deprecated for
+      every source and will be removed in a future release.
+    - `--jobs` is capped at 20 (Metron's burst limit) when Metron is an active
+      credentialed source for the run; the log explains the cap when it engages.
+
+- Fixes
+    - Rate-limited API responses missing a `Retry-After` header now back off on
+      the normal schedule instead of retrying immediately.
+    - Ignored-config warnings (rate-limit overrides, `--api-url` for Metron) now
+      print once per run instead of once per file.
+
 ## v4.1.1
 
 - Performance

@@ -26,6 +26,7 @@ from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
 )
+from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -41,7 +42,17 @@ if TYPE_CHECKING:
 # (comicbox/run.py) see one consistent `rate_limit_status` across workers
 # instead of each file's source starting cold; mokkari>=4.0.1 makes this
 # safe (thread-safe `SqliteCache`, `rate_limit_status` lock).
-_session_cache: dict[tuple[str, str], Any] = {}
+#
+# Contract: FIRST BUILD WINS. The Session (and the response cache baked
+# into it) is constructed from the settings of whichever source instance
+# hits the cache miss; later same-credential sources reuse it even if
+# their own cache settings differ (we warn once when they do — see
+# `_get_or_build_shared_session`). Keying by cache config instead would
+# split `rate_limit_status` across sessions and defeat the sharing.
+# Entries are deliberately never evicted or closed: the cache is bounded
+# by distinct credential pairs used in one process, and mokkari's
+# SqliteCache exposes no close() to release anyway.
+_session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
 
 
@@ -111,31 +122,44 @@ class MetronOnlineSource(OnlineSource):
         header-driven rate limiting.
         """
         if self._client is None:
+            # Warn here rather than in _build_session so ignored-config
+            # warnings don't depend on winning the session-cache miss;
+            # warn_once keeps them at one line per process either way.
+            self._warn_ignored_url()
+            self._warn_ignored_rate_limit_overrides()
             self._client = self._get_or_build_shared_session()
         return self._client
 
+    def _session_config_signature(self) -> tuple:
+        """Return the per-instance settings a built Session bakes in."""
+        cache = self._settings.cache
+        return (cache.mode, cache.dir, cache.ttl)
+
     def _get_or_build_shared_session(self) -> Session:
         key = (self._credentials.user or "", self._credentials.password or "")
+        signature = self._session_config_signature()
         with _session_cache_lock:
-            session = _session_cache.get(key)
-            if session is None:
+            entry = _session_cache.get(key)
+            if entry is None:
                 session = self._build_session()
-                _session_cache[key] = session
-            return session
+                _session_cache[key] = (session, signature)
+                return session
+        session, built_signature = entry
+        if built_signature != signature:
+            # First build wins (see the _session_cache comment); tell the
+            # user their differing cache config is not taking effect.
+            warn_once(
+                f"{self.name}:session-config-mismatch",
+                f"online {self.name}: reusing the existing shared mokkari "
+                "session; this instance's differing cache settings "
+                f"{signature} are ignored in favor of the session's "
+                f"{built_signature}",
+            )
+        return session
 
     def _build_session(self) -> Session:
         from mokkari import api
 
-        if self._credentials.url:
-            # mokkari's api() factory has no URL-override parameter (only
-            # dev_mode for the dev API), so --api-url metron:<url> can't
-            # actually be honored. Warn so the user notices.
-            logger.warning(
-                f"online {self.name}: --api-url is a no-op for metron "
-                f"(mokkari has no base_url override); ignoring "
-                f"{self._credentials.url!r}"
-            )
-        self._warn_ignored_rate_limit_overrides()
         return api(
             username=self._credentials.user,  # mokkari keyword
             passwd=self._credentials.password,
@@ -143,16 +167,29 @@ class MetronOnlineSource(OnlineSource):
             user_agent=USER_AGENT,
         )
 
+    def _warn_ignored_url(self) -> None:
+        if self._credentials.url:
+            # mokkari's api() factory has no URL-override parameter (only
+            # dev_mode for the dev API), so --api-url metron:<url> can't
+            # actually be honored. Warn so the user notices.
+            warn_once(
+                f"{self.name}:api-url",
+                f"online {self.name}: --api-url is a no-op for metron "
+                f"(mokkari has no base_url override); ignoring "
+                f"{self._credentials.url!r}",
+            )
+
     def _warn_ignored_rate_limit_overrides(self) -> None:
         from comicbox.config.settings import resolve_rate_limit
 
         limits = resolve_rate_limit(self._settings, self.name)
         if limits.per_minute is not None or limits.per_day is not None:
-            logger.warning(
+            warn_once(
+                f"{self.name}:rate-limit-override",
                 f"online {self.name}: rate_limit.per_minute/per_day "
                 "overrides are ignored — mokkari>=4.0.1 tracks Metron's "
                 "actual per-user rate limits from response headers instead "
-                "of a fixed local bucket"
+                "of a fixed local bucket",
             )
 
     @with_retry()

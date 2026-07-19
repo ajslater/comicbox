@@ -119,6 +119,29 @@ def test_honors_retry_after_hint_over_rate_limit_schedule() -> None:
     assert sleeps == [12.5]
 
 
+def test_zero_retry_after_hint_falls_back_to_schedule() -> None:
+    """
+    Treat a non-positive hint as no hint.
+
+    mokkari sets retry_after=0.0 on a 429 when Metron omits the
+    Retry-After header, and honoring that literally would mean
+    zero-delay hammering instead of backoff.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @with_retry(sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls < 2:
+            raise _FakeRateLimitError(retry_after=0.0)
+        return "ok"
+
+    fn()
+    assert sleeps == [_RATE_LIMIT_SCHEDULE[0]]
+
+
 def test_max_retries_exhausted_for_generic_error() -> None:
     """`max_retries` governs the generic-error budget."""
     sleeps, fake_sleep = _capture_sleeps()

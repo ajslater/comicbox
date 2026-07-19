@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import threading
 from argparse import Namespace
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from comicbox.config import get_config
+from comicbox.config.settings import (
+    ComicboxSettings,
+    OnlineAuthSettings,
+    OnlineSourceCredentials,
+)
+from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.run import Runner
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def _make_paths(tmp_path: Path, count: int) -> list[str]:
@@ -114,3 +125,95 @@ def test_prompt_lock_serializes_concurrent_callers() -> None:
     # If the lock works, max_concurrent should be 1 — never two threads in
     # the selector body at the same time.
     assert max_concurrent == 1
+
+
+# ------------------------------------------------ metron thread-pool cap
+
+
+def _metron_settings(
+    *,
+    enabled: bool = True,
+    sources: tuple[str, ...] | None = None,
+    user: str | None = "u",
+    password: str | None = "p",  # noqa: S107
+) -> ComicboxSettings:
+    """Prebuilt settings exercising every `_metron_is_active` input."""
+    cfg = get_config(Namespace(comicbox=Namespace()))
+    lookup = replace(cfg.online.lookup, enabled=enabled, sources=sources)
+    creds = {"metron": OnlineSourceCredentials(user=user, password=password)}
+    online = replace(cfg.online, lookup=lookup, auth=OnlineAuthSettings(sources=creds))
+    return replace(cfg, online=online)
+
+
+def test_metron_active_when_enabled_selected_and_credentialed() -> None:
+    assert Runner(_metron_settings())._metron_is_active()
+
+
+def test_metron_inactive_when_lookup_disabled() -> None:
+    assert not Runner(_metron_settings(enabled=False))._metron_is_active()
+
+
+def test_metron_inactive_when_not_selected() -> None:
+    assert not Runner(_metron_settings(sources=("comicvine",)))._metron_is_active()
+
+
+def test_metron_inactive_without_credentials() -> None:
+    assert not Runner(_metron_settings(user=None, password=None))._metron_is_active()
+
+
+def test_metron_active_with_empty_sources_sentinel() -> None:
+    """
+    `sources=()` (the public ALL_SOURCES sentinel) means "every source".
+
+    Unreachable via the CLI (config building collapses `()` to None) but
+    reachable with a prebuilt settings object; the heuristic must apply
+    falsy-collapse like `_build_active_online_sources` does, so the jobs
+    cap still engages.
+    """
+    assert Runner(_metron_settings(sources=()))._metron_is_active()
+
+
+def _capture_max_workers(monkeypatch: pytest.MonkeyPatch) -> list[int | None]:
+    """Record the `max_workers` each ThreadPoolExecutor is built with."""
+    captured: list[int | None] = []
+
+    class _Recorder(ThreadPoolExecutor):
+        def __init__(self, max_workers: int | None = None, **kwargs) -> None:
+            captured.append(max_workers)
+            super().__init__(max_workers=max_workers, **kwargs)
+
+    monkeypatch.setattr("comicbox.run.ThreadPoolExecutor", _Recorder)
+    return captured
+
+
+def test_run_parallel_caps_jobs_at_metron_burst_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """-j above the burst limit is clamped, and the clamp is explained."""
+    from loguru import logger as loguru_logger
+
+    captured = _capture_max_workers(monkeypatch)
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="INFO", format="{message}")
+    try:
+        Runner(_metron_settings())._run_parallel([], 32)
+    finally:
+        loguru_logger.remove(handler_id)
+    assert captured == [METRON_DEFAULT_PER_MINUTE]
+    assert any("Capping --jobs 32" in message for message in messages)
+
+
+def test_run_parallel_keeps_jobs_when_metron_inactive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = _capture_max_workers(monkeypatch)
+    Runner(_metron_settings(enabled=False))._run_parallel([], 32)
+    assert captured == [32]
+
+
+def test_run_parallel_keeps_jobs_at_or_below_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = _capture_max_workers(monkeypatch)
+    Runner(_metron_settings())._run_parallel([], 4)
+    assert captured == [4]

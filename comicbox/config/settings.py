@@ -377,7 +377,13 @@ def resolve_solo_threshold(settings: OnlineSettings, source_name: str) -> float:
 def resolve_rate_limit(
     settings: OnlineSettings, source_name: str
 ) -> OnlineSourceLimits:
-    """Per-source rate-limit override; empty default = use upstream library default."""
+    """
+    Per-source historical rate-limit override values.
+
+    No override path exists for any source anymore — the values only
+    feed the sources' warn-and-ignore checks (mokkari>=4 tracks Metron's
+    limits from response headers; simyan manages ComicVine's internally).
+    """
     return _tuning_for(settings, source_name).rate_limit
 
 

@@ -429,8 +429,9 @@ class OnlineSession:
         Snapshot of each enabled source's current rate-limit budget.
 
         v1 stub: returns an empty dict for every enabled source. The
-        wiring to mokkari / simyan rate-limit buckets lands in the
-        follow-up commit (see plan §3.5 / §3.6).
+        wiring to mokkari's `Session.rate_limit_status` / simyan's
+        limiter state lands in the follow-up commit (see plan §3.5 /
+        §3.6).
         """
         return {name: {} for name in self._sources}
 

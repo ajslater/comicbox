@@ -11,7 +11,9 @@ comicbox:
     metadata_cli: null
     metadata_format: null
     # Parallel workers across files (1 = serial). Useful with --online for
-    # batch tagging; respects per-API rate limits via process-wide token bucket.
+    # batch tagging. Workers share one Metron session that tracks the
+    # server's rate-limit headers, and jobs is capped at 20 (Metron's
+    # burst limit) when Metron is an active credentialed source.
     jobs: 1
     tagger: null
     theme: gruvbox-dark
@@ -102,8 +104,11 @@ comicbox:
       retry_budget: 5
       # Per-source overrides — keyed by source name (metron, comicvine).
       # Each entry may override auto_threshold, effort, min_confidence,
-      # disambiguation_margin, solo_threshold, or rate_limit.* (per_minute,
-      # per_day, per_second, per_hour). See settings.py for shape.
+      # disambiguation_margin, or solo_threshold. See settings.py for
+      # shape. rate_limit.* keys (per_minute, per_day, per_second,
+      # per_hour) are accepted but ignored with a warning: mokkari>=4
+      # reads Metron's actual per-user limits from response headers, and
+      # simyan manages ComicVine's internally.
       per_source: {}
 
   # Targets (CLI positional args).

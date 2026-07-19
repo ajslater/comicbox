@@ -189,21 +189,23 @@ uv run python -m tests.calibration.run --sources metron
 
 ## Rate-limit cost
 
-The upstream libraries enforce per-IP limits via SQLite-backed buckets that
-persist across runs. Plan your run accordingly:
+Metron's limits are per-user and tracked reactively by mokkari>=4 from
+`X-RateLimit-*` response headers; ComicVine's are per-IP, enforced by simyan's
+persistent local limiter. Plan your run accordingly:
 
-| Source    | Documented limit          | \~300-fixture cost (cold cache)                             |
-| --------- | ------------------------- | ----------------------------------------------------------- |
-| Metron    | 20 req/min, 5,000 req/day | \~15 min wall time                                          |
-| ComicVine | 1 req/sec, 200 req/hour   | \~50 min wall (forced 60-min waits between 200-req batches) |
+| Source    | Documented limit                                 | \~300-fixture cost (cold cache)                             |
+| --------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| Metron    | 20 req/min burst; 5,000-25,000 req/day (by tier) | \~15 min wall time                                          |
+| ComicVine | 1 req/sec, 200 req/hour                          | \~50 min wall (forced 60-min waits between 200-req batches) |
 
 **Subsequent runs are near-instant** — the SQLite response cache (default 7-day
 TTL) replays previous responses without API calls. So the slow run is only the
 first one, and only on cache-miss fixtures.
 
-If you have a higher API tier on either service, you can raise the caps via
-`online.<source>.rate_limit.per_minute` (etc.) in your config.yaml — see
-`comicbox/online/rate_limits.py` for the keys.
+There is nothing to configure for a higher API tier: mokkari picks up your
+actual Metron limits automatically from response headers, and ComicVine has no
+tiers. The old `online.<source>.rate_limit.*` config keys are accepted but
+ignored (with a warning).
 
 ### Periodic checkpointing
 

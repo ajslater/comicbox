@@ -57,8 +57,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         for path in self.namelist():
             fn = Path(path).name.lower()
             if fn in _ALL_ARCHIVE_METADATA_FILENAMES:
-                zf.remove(path)
-        zf.repack()
+                # zipremove patches remove()/repack() onto the stdlib
+                # ZipFile on Python < 3.14 (3.14 has them natively), so
+                # the 3.10 typeshed stubs can't see either method.
+                zf.remove(path)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
     def _archive_write_metadata_files(
         self, zf: ZipFile, files: Mapping[str, bytes]
