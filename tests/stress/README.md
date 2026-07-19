@@ -191,9 +191,11 @@ hits never hit the limiter.
 The "Status" column:
 
 - `OK` — observed rate within 5% of the documented per-minute cap.
-- `OVER (X/min vs Y)` — exceeded the per-minute cap. Investigate whether
-  mokkari/simyan's `pyrate_limiter` bucket is misconfigured or whether parallel
-  workers aren't sharing the limiter correctly.
+- `OVER (X/min vs Y)` — exceeded the per-minute cap. For Metron, investigate
+  whether workers are actually sharing one mokkari Session (a session-cache miss
+  per credential set) or whether a thread burst raced past the advisory
+  `X-RateLimit-*` header check; for ComicVine, whether simyan's local limiter is
+  misconfigured.
 - `OVER hourly (X/hr vs Y)` — same for ComicVine's hourly cap.
 
 Rate-limit retries in the metrics section are a SEPARATE signal: even a passing
@@ -211,5 +213,7 @@ the alarming combination.
 | Investigate a regression    | `--limit 30`, `--jobs 8`, cold cache, single source   |
 
 `--jobs 8` is the spec'd target. Higher (`-j 16`) tends to be no faster than
-`-j 8` because both libraries' rate limiters serialise into the same
-process-wide bucket — extra threads just queue.
+`-j 8`: ComicVine threads queue on simyan's process-wide limiter, and for Metron
+there is no queuing bucket anymore — excess threads just risk 429s and retry
+backoff instead. The Runner also clamps `--jobs` to 20 whenever Metron is an
+active credentialed source (see `_run_parallel` in `comicbox/run.py`).

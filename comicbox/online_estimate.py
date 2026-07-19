@@ -10,8 +10,10 @@ copy.
 The model is deliberately simple. Per comic, each source costs a
 characteristic number of API requests:
 
-- Metron is a fixed two-step search (``series_list`` + ``issues_list``) —
-  one or two requests — that match mode does not change (see v4.0.5).
+- Metron resolves an issue with a single ``issues_list`` search plus the
+  final issue fetch — a flat count that match mode does not change (see
+  v4.0.5 / PR #143; no series-discovery step since series ids land
+  directly on issue-list results).
 - Comic Vine's fuzzy volume→issue path does more verification the tighter
   the match mode, so its request count scales with mode.
 
@@ -70,8 +72,9 @@ SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
     }
 )
 
-# API requests one comic costs, per source. Metron's two-step search is a
-# flat count match mode does not change; Comic Vine's scales with match mode.
+# API requests one comic costs, per source. Metron's search + issue fetch
+# is a flat count match mode does not change; Comic Vine's scales with
+# match mode.
 METRON_REQUESTS_PER_COMIC: Final[int] = 2
 COMICVINE_REQUESTS_BY_MODE: Final = MappingProxyType(
     {
@@ -126,7 +129,7 @@ def _seconds_per_comic(source: str, mode: str) -> float:
 
     Comic Vine paces per resource pool, so its wall-clock cost is the busiest
     pool's share of the comic's requests over that pool's rate — not the
-    request total. Metron's single per-minute bucket paces the total directly.
+    request total. Metron's per-minute cap paces the total directly.
     """
     if source == "comicvine":
         pool_requests = COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE.get(mode, 1)

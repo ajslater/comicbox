@@ -22,10 +22,11 @@ This is a one-time labeling pass — run after sample/bootstrap, then
 re-run calibration. It's safe to re-run later: Metron-cached calls are
 free and existing Metron ids in the fixture file are preserved.
 
-Cost: one Metron API call per CV-only fixture. Metron's documented
-limits (20/min and 5,000/day) cap throughput at ~1,200/hour, so a
-500-fixture run takes ~25 minutes worst case; smaller in practice
-because mokkari's cache replays repeated lookups for free.
+Cost: one Metron API call per CV-only fixture. Metron's 20/min burst
+limit (daily limit tier-dependent, 5,000-25,000) caps throughput at
+~1,200/hour, so a 500-fixture run takes ~25 minutes worst case;
+smaller in practice because mokkari's cache replays repeated lookups
+for free.
 
 Usage:
 
@@ -86,10 +87,13 @@ def _build_metron_session() -> Session:
     """
     Return a configured mokkari Session.
 
-    Reuses `MetronOnlineSource`'s session-construction logic so credentials,
-    cache directory, and rate-limit bucket all match the production
-    online-lookup path. The matcher's per-fixture cache will hit on
-    repeated lookups within the same session.
+    Reuses `MetronOnlineSource`'s session-construction logic so
+    credentials and cache directory match the production online-lookup
+    path. Note this transparently returns the process-wide Session
+    memoized per credential set (see `_session_cache` in
+    `metron_api/online_source.py`), whose header-tracked
+    `rate_limit_status` is shared with anything else in this process
+    using the same credentials.
     """
     online = get_config(None).online
     creds = online.auth.sources.get("metron")

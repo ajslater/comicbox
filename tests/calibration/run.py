@@ -6,10 +6,12 @@ online sources against each fixture's comic file, and reports how well
 the top-ranked candidate matches the fixture's expected id — bucketed
 by score band.
 
-This is a **live API** harness: it hits Metron and ComicVine. Both
-libraries enforce per-IP rate limits via SQLite-backed buckets that
-persist across runs (Metron: 20/min and 5,000/day, ComicVine: 1/sec
-and 200/hour). The cache also persists, so the second run on the same
+This is a **live API** harness: it hits Metron and ComicVine.
+mokkari>=4 tracks Metron's per-user limits reactively from
+`X-RateLimit-*` response headers (20/min burst for everyone; daily
+5,000 base, up to 25,000 for OpenCollective donors); simyan still
+enforces ComicVine's 1/sec and 200/hour via a persistent local
+limiter. The response cache persists, so the second run on the same
 fixture set is near-instant.
 
 Usage:
@@ -506,10 +508,11 @@ class _Heartbeat:
     """
     Background thread that prints a "still working" hint at intervals.
 
-    The pyrate_limiter buckets in mokkari/simyan can park a single API
-    call for up to an hour when an hourly cap is hit. Without this hint,
-    the user sees a stalled-looking line and has no idea whether the
-    process is wedged or just being polite.
+    simyan's local limiter can park a single ComicVine call for up to
+    an hour when the hourly cap is hit, and mokkari `retry_after`
+    sleeps (via retry.py's backoff) can hold a Metron call for minutes.
+    Without this hint, the user sees a stalled-looking line and has no
+    idea whether the process is wedged or just being polite.
 
     When an `_ETA` is passed, each tick also prints the overall progress
     line so the user can see both "current fixture stuck for 90s" AND
@@ -939,10 +942,10 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
               directly on issue-list results.
       CV:     1 search       + N list_issues (N ≤ _MAX_VOLUMES_PER_SEARCH = 20)
 
-    Documented per-IP rate limits: Metron 20/min and 5,000/day, CV 1/sec
-    and 200/hour. The hourly cap on CV is the binding constraint for
-    multi-fixture runs; this prints the wall-time estimate so the user
-    isn't surprised.
+    Documented rate limits: Metron 20/min per user (daily limit
+    tier-dependent, 5,000-25,000), CV 1/sec and 200/hour per IP. The
+    hourly cap on CV is the binding constraint for multi-fixture runs;
+    this prints the wall-time estimate so the user isn't surprised.
     """
     if not sources:
         return
