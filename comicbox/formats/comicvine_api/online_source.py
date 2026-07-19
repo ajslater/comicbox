@@ -38,6 +38,7 @@ from comicbox.formats.base.online.series_filter import (
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
 )
+from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
 
@@ -143,10 +144,13 @@ class ComicVineOnlineSource(OnlineSource):
 
         limits = resolve_rate_limit(self._settings, self.name)
         if limits.per_second is not None or limits.per_hour is not None:
-            logger.warning(
+            # Sources are rebuilt per file; warn_once keeps this at one
+            # line per process instead of one per file in a batch run.
+            warn_once(
+                f"{self.name}:rate-limit-override",
                 f"online {self.name}: rate_limit.per_second/per_hour "
                 "overrides are ignored — simyan 3.x manages ComicVine "
-                "rates internally (1/sec, 200/hr)"
+                "rates internally (1/sec, 200/hr)",
             )
 
     def _maintain_cache(self, client: Comicvine, cache_path: Path) -> None:

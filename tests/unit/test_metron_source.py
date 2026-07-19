@@ -597,7 +597,12 @@ def test_series_id_path_omits_volume_filter(
 
 
 def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The upstream client is built once per source lifetime, then reused."""
+    """The upstream client is built once per credential set, then reused."""
+    from comicbox.formats.metron_api import online_source as metron_online_source
+
+    # Isolate the process-wide per-credential session cache so this test
+    # neither sees nor leaves behind entries for ("u", "p").
+    monkeypatch.setattr(metron_online_source, "_session_cache", {})
     creds = OnlineSourceCredentials(user="u", password="p")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)

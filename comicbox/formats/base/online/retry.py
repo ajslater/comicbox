@@ -189,14 +189,22 @@ def _is_retriable(exc: BaseException) -> bool:
 
 
 def _retry_after(exc: BaseException) -> float | None:
-    """Pull a `retry_after` hint from the exception, if available."""
+    """
+    Pull a `retry_after` hint from the exception, if available.
+
+    A non-positive hint is treated as no hint: mokkari's server-side 429
+    path sets `retry_after` to 0.0 when Metron omits the `Retry-After`
+    header, and honoring that literally would mean up to a full budget of
+    zero-delay retries instead of the rate-limit schedule.
+    """
     hint = getattr(exc, "retry_after", None)
     if hint is None:
         return None
     try:
-        return float(hint)
+        value = float(hint)
     except (TypeError, ValueError):
         return None
+    return value if value > 0 else None
 
 
 def _delay_for(attempt: int) -> float:

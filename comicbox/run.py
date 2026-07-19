@@ -18,7 +18,7 @@ from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
     from argparse import Namespace
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
 
     from comicbox.config.settings import ComicboxSettings
 
@@ -28,7 +28,7 @@ class Runner:
 
     _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
 
-    def __init__(self, config: Namespace) -> None:
+    def __init__(self, config: Namespace | Mapping | ComicboxSettings | None) -> None:
         """Initialize actions and config."""
         self._config: ComicboxSettings = get_config(config)
         init_logging(self._config.general.loglevel)
@@ -104,8 +104,10 @@ class Runner:
         online = self._config.online
         if not online.lookup.enabled:
             return False
+        # Falsy-collapse matches _build_active_online_sources: both None and
+        # the empty ALL_SOURCES sentinel () mean "every configured source".
         sources = online.lookup.sources
-        if sources is not None and "metron" not in sources:
+        if sources and "metron" not in sources:
             return False
         creds = online.auth.sources.get("metron")
         return bool(creds and creds.user and creds.password)
@@ -128,8 +130,13 @@ class Runner:
         the header check alone, so we do that here when Metron is an
         active source for this run.
         """
-        if self._metron_is_active():
-            jobs = min(jobs, METRON_DEFAULT_PER_MINUTE)
+        if self._metron_is_active() and jobs > METRON_DEFAULT_PER_MINUTE:
+            logger.info(
+                f"Capping --jobs {jobs} to {METRON_DEFAULT_PER_MINUTE} "
+                "(Metron's burst limit; the shared-session rate-limit check "
+                "is advisory under concurrent threads)"
+            )
+            jobs = METRON_DEFAULT_PER_MINUTE
         logger.info(f"Running {len(paths)} files with {jobs} workers")
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
