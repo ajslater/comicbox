@@ -11,6 +11,8 @@
     - New comicbox `alternative_issue` field, parsed into name, number and
       suffix parts like `issue`. The Metron API alt\_number now maps to it
       instead of the issue suffix.
+    - Metron online tagging now fills `community_rating` from the API's
+      average\_rating and rating\_count (mokkari 4.2.0).
 
 ## v4.3.0
 

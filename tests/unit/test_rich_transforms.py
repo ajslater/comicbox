@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from comicbox.formats.base.online.sanitize import strip_html
@@ -134,6 +135,8 @@ _METRON_FIXTURE = {
         "page_count": 24,
         "desc": "<p>A <em>short</em> description.</p>",
         "rating": {"id": 3, "name": "Teen"},
+        "average_rating": "4.5",
+        "rating_count": 25,
         "publisher": {"id": 1, "name": "Quality Comics"},
         "imprint": {"id": 2, "name": "Vertigo"},
         "series": {
@@ -173,6 +176,13 @@ def test_metron_issue_block() -> None:
     assert _METRON_CB["issue"]["name"] == "5"
     assert "suffix" not in _METRON_CB["issue"]
     assert _METRON_CB["alternative_issue"]["name"] == "a"
+
+
+def test_metron_community_rating() -> None:
+    assert _METRON_CB["community_rating"] == {
+        "average_rating": Decimal("4.5"),
+        "rating_count": 25,
+    }
 
 
 def test_metron_dates() -> None:

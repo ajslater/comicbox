@@ -158,6 +158,20 @@ def _build_age_rating(issue: Mapping[str, Any]) -> str | None:
     return rating.get("name")
 
 
+def _build_community_rating_block(issue: Mapping[str, Any]) -> dict[str, Any]:
+    """Build comicbox's `community_rating` block from average_rating & rating_count."""
+    out: dict[str, Any] = {}
+    # No average means unrated; a count without an average is meaningless.
+    average_rating = issue.get("average_rating")
+    if average_rating is None or average_rating == "":
+        return out
+    out["average_rating"] = average_rating
+    # Mokkari reports 0 for unrated; the native field minimum is 1.
+    if rating_count := issue.get("rating_count"):
+        out["rating_count"] = rating_count
+    return out
+
+
 def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
     """
     Build the comicbox internal dict from a mokkari Issue dict.
@@ -178,6 +192,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("collection_title", issue.get("collection_title")),
         ("summary", strip_html(issue.get("desc"))),
         ("age_rating", _build_age_rating(issue)),
+        ("community_rating", _build_community_rating_block(issue)),
         # Publishing
         ("series", _build_series(issue)),
         ("volume", _build_volume(issue)),
