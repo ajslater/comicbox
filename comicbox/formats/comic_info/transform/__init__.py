@@ -56,7 +56,6 @@ from comicbox.formats.comicbox.schema import (
     AGE_RATING_KEY,
     CHARACTERS_KEY,
     COUNTRY_KEY,
-    CRITICAL_RATING_KEY,
     GENRES_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
@@ -78,6 +77,7 @@ from comicbox.formats.comicbox.schema import (
     TITLE_KEY,
 )
 from comicbox.formats.comicbox.transform import (
+    COMMUNITY_RATING_AVERAGE_KEYPATH,
     DAY_KEYPATH,
     ISSUE_NAME_KEYPATH,
     MONTH_KEYPATH,
@@ -180,7 +180,7 @@ SIMPLE_KEY_MAP = frozenbidict(
     {
         "AgeRating": AGE_RATING_KEY,
         "BlackAndWhite": MONOCHROME_KEY,
-        "CommunityRating": CRITICAL_RATING_KEY,
+        "CommunityRating": COMMUNITY_RATING_AVERAGE_KEYPATH,
         "Country": COUNTRY_KEY,
         "Count": ISSUE_COUNT_KEYPATH,
         "Day": DAY_KEYPATH,

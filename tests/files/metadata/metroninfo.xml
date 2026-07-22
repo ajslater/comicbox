@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd">
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.1" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.1 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd">
 	<AgeRating>Teen Plus</AgeRating>
+	<AlternativeNumber>2</AlternativeNumber>
 	<Arcs>
 		<Arc>
 			<Name>Captain Arc</Name>
@@ -16,6 +17,10 @@
 		<Character>Gordon Dane</Character>
 	</Characters>
 	<CollectionTitle>Omnibus</CollectionTitle>
+	<CommunityRating>
+		<AverageRating>4.5</AverageRating>
+		<RatingCount>25</RatingCount>
+	</CommunityRating>
 	<CoverDate>1950-11-01</CoverDate>
 	<Credits>
 		<Credit>

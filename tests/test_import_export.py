@@ -109,7 +109,7 @@ FNS = MappingProxyType(
                 "year": 1986,
             },
             "publisher": {"name": "DC Comics"},
-            "critical_rating": Decimal(5),
+            "community_rating": {"average_rating": Decimal(5)},
             "series": {"name": "Watchmen", "volume_count": 1},
             "stories": {"At Midnight, All the Agents": {}},
             "summary": "Tales of the Black Freighter...",
@@ -310,9 +310,17 @@ FNS = MappingProxyType(
         },
         "metroninfo.xml": {
             "age_rating": "Teen Plus",
+            "alternative_issue": {
+                "name": "2",
+                "number": Decimal(2),
+            },
             "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "collection_title": "Omnibus",
+            "community_rating": {
+                "average_rating": Decimal("4.5"),
+                "rating_count": 25,
+            },
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
@@ -407,7 +415,7 @@ FNS = MappingProxyType(
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
-        "metroninfo-v1.0-valid.xml": {
+        "metroninfo-v1.1-valid.xml": {
             "age_rating": "Everyone",
             "arcs": {
                 "Origin": {

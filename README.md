@@ -52,7 +52,7 @@ schema:
 | Format                                                                                     | Read | Write | Notes                                    |
 | ------------------------------------------------------------------------------------------ | :--: | :---: | ---------------------------------------- |
 | [ComicInfo.xml](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1) (ComicRack)  |  ✅  |  ✅   | v2.1 (draft) schema                      |
-| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.0 schema                              |
+| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.1 schema                              |
 | [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/) (Comic Book Lover)       |  ✅  |  ✅   | archive comment JSON                     |
 | [CoMet](https://github.com/wdhongtw/comet-utils)                                           |  ✅  |  ✅   |                                          |
 | [PDF metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data) |  ✅  |  ✅   | can embed ComicInfo.xml / MetronInfo.xml |

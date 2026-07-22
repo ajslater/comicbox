@@ -23,5 +23,5 @@ REGISTRATION = FormatRegistration(
             "API": 3,
         }
     ),
-    validator=XmlValidator("MetronInfo-v1.0.xsd"),
+    validator=XmlValidator("MetronInfo-v1.1.xsd"),
 )

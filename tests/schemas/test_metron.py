@@ -48,6 +48,10 @@ READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "age_rating": "Teen Plus",
+            "alternative_issue": {
+                "name": "2",
+                "number": Decimal(2),
+            },
             "arcs": {
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},
@@ -63,6 +67,10 @@ READ_METADATA = MappingProxyType(
                 "Gordon Dane": {},
             },
             "collection_title": "Omnibus",
+            "community_rating": {
+                "average_rating": Decimal("4.5"),
+                "rating_count": 25,
+            },
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
                 "Wally Wood": {"roles": {"Inker": {}, "Penciller": {}}},
@@ -161,11 +169,12 @@ WRITE_METADATA = create_write_metadata(READ_METADATA, notes=METRON_NOTES)
 READ_METRON_DICT = MappingProxyType(
     {
         MetronInfoSchema.ROOT_TAG: {
-            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.1",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.1 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd",
             "AgeRating": "Teen Plus",
+            "AlternativeNumber": "2",
             "Arcs": {
                 "Arc": [
                     {"Name": "Captain Arc", "Number": 4},
@@ -179,6 +188,10 @@ READ_METRON_DICT = MappingProxyType(
                 ]
             },
             "CollectionTitle": "Omnibus",
+            "CommunityRating": {
+                "AverageRating": Decimal("4.5"),
+                "RatingCount": 25,
+            },
             "CoverDate": "1950-11-01",
             "Credits": {
                 "Credit": [
@@ -263,8 +276,9 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
         MetronInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.1",
             "AgeRating": "Teen Plus",
+            "AlternativeNumber": "2",
             "Arcs": {
                 "Arc": [
                     {"Name": "Captain Arc", "Number": 4},
@@ -278,6 +292,10 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                 ]
             },
             "CollectionTitle": "Omnibus",
+            "CommunityRating": {
+                "AverageRating": Decimal("4.5"),
+                "RatingCount": 25,
+            },
             "CoverDate": "1950-11-01",
             "Credits": {
                 "Credit": [
@@ -376,6 +394,12 @@ def unparse_strinfigy_decimals(data: MappingProxyType[str, Any]) -> str:
         stringified_data,
         Assign(f"{MetronInfoSchema.ROOT_TAG}.Prices.Price", prices, missing=dict),
     )
+    average_rating_path = f"{MetronInfoSchema.ROOT_TAG}.CommunityRating.AverageRating"
+    average_rating = glom(stringified_data, average_rating_path)
+    glom(
+        stringified_data,
+        Assign(average_rating_path, str(average_rating), missing=dict),
+    )
     return xmltodict.unparse(stringified_data, **XML_UNPARSE_ARGS)  # pyright: ignore[reportArgumentType, reportCallIssue], # ty: ignore[no-matching-overload]
 
 
@@ -443,10 +467,10 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
 URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
     {
         MetronInfoSchema.ROOT_TAG: {
-            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0",
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.1",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.0 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.1 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd",
             "URLs": {
                 "URL": [
                     {"#text": "https://barcodelookup.com/12345"},

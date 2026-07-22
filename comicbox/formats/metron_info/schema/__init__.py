@@ -1,6 +1,6 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
 
-# https://metron-project.github.io/docs/metroninfo/schemas/v1.0
+# https://metron-project.github.io/docs/metroninfo/schemas/v1.1
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -39,8 +39,11 @@ from comicbox.formats.metron_info.schema.publishing import (
     MetronPublisherSchema,
     MetronSeriesSchema,
 )
+from comicbox.formats.metron_info.schema.rating import MetronCommunityRatingSchema
 from comicbox.formats.metron_info.schema.resource import metron_resource_list_field
 
+ALTERNATIVE_NUMBER_TAG = "AlternativeNumber"
+COMMUNITY_RATING_TAG = "CommunityRating"
 COUNTRY_ATTR = "@country"
 CREATOR_TAG = "Creator"
 DESIGNATION_TAG = "Designation"
@@ -89,6 +92,7 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
     MangaVolume = XmlStringField()
     CollectionTitle = XmlStringField()
     Number = XmlStringField()
+    AlternativeNumber = XmlStringField()
     Stories = create_sub_tag_field("Story", metron_resource_list_field(sort=False))
     Summary = XmlStringField()
     Prices = create_sub_tag_field(
@@ -118,6 +122,7 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
     Reprints = create_sub_tag_field("Reprint", metron_resource_list_field())
     GTIN = Nested(MetronGTINSchema)
     AgeRating = MetronAgeRatingField()
+    CommunityRating = Nested(MetronCommunityRatingSchema)
     URLs = create_sub_tag_field(
         "URL", xml_list_polyfield(MetronURLSchema, StringField())
     )
@@ -130,8 +135,8 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
         """Schema Options."""
 
         NS = "metroninfo"
-        NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.0"
-        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.0/MetronInfo.xsd"
+        NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.1"
+        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd"
 
         include = create_xml_headers(NS, NS_URI, XSD_URI)
 

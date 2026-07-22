@@ -17,6 +17,7 @@ from comicbox.formats.comicbox.schema import (
     UPDATED_AT_KEY,
 )
 from comicbox.formats.comicbox.transform import (
+    ALTERNATIVE_ISSUE_NAME_KEYPATH,
     COVER_DATE_KEYPATH,
     ISSUE_NAME_KEYPATH,
     STORE_DATE_KEYPATH,
@@ -47,6 +48,10 @@ from comicbox.formats.metron_info.transform.publishing_tags import (
     METRON_SERIES_TRANSFORM_TO_CB,
     METRON_VOLUME_TRANSFORM_TO_CB,
 )
+from comicbox.formats.metron_info.transform.rating import (
+    METRON_COMMUNITY_RATING_TRANSFORM_FROM_CB,
+    METRON_COMMUNITY_RATING_TRANSFORM_TO_CB,
+)
 from comicbox.formats.metron_info.transform.reprints import (
     METRON_REPRINTS_TRANSFORM_FROM_CB,
     METRON_REPRINTS_TRANSFORM_TO_CB,
@@ -65,6 +70,7 @@ from comicbox.formats.metron_info.transform.resources import (
 SIMPLE_KEY_MAP = frozenbidict(
     {
         "AgeRating": AGE_RATING_KEY,
+        "AlternativeNumber": ALTERNATIVE_ISSUE_NAME_KEYPATH,
         "CollectionTitle": COLLECTION_TITLE_KEY,
         "CoverDate": COVER_DATE_KEYPATH,
         "StoreDate": STORE_DATE_KEYPATH,
@@ -85,6 +91,7 @@ class MetronInfoTransform(BaseTransform):
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
         METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,  # must come before most other resources
         METRON_ARCS_TRANSFORM_TO_CB,
+        METRON_COMMUNITY_RATING_TRANSFORM_TO_CB,
         METRON_CREDITS_TRANSFORM_TO_CB,
         METRON_PUBLISHER_TRANSFORM_TO_CB,
         METRON_IMPRINT_TRANSFORM_TO_CB,
@@ -101,6 +108,7 @@ class MetronInfoTransform(BaseTransform):
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
         METRON_ARCS_TRANSFORM_FROM_CB,
+        METRON_COMMUNITY_RATING_TRANSFORM_FROM_CB,
         metron_credits_from_cb(),
         METRON_PUBLISHER_TRANSFORM_FROM_CB,
         METRON_SERIES_TRANSFORM_FROM_CB,

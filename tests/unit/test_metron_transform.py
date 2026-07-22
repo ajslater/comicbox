@@ -21,6 +21,8 @@ def _sample_issue_dict() -> dict:
             "page_count": 24,
             "desc": "Some description.",
             "collection_title": "Foo Comics #5",
+            "average_rating": "4.5",
+            "rating_count": 25,
             "publisher": {"id": 1, "name": "Quality Comics"},
             "series": {
                 "id": 100,
@@ -44,6 +46,10 @@ def test_to_comicbox_maps_core_fields() -> None:
     assert cb["issue"]["name"] == "5"
     assert cb["series"]["name"] == "Foo Comics"
     assert cb["publisher"]["name"] == "Quality Comics"
+    assert cb["community_rating"] == {
+        "average_rating": Decimal("4.5"),
+        "rating_count": 25,
+    }
     # Dates
     assert "cover_date" in cb["date"]
     assert "store_date" in cb["date"]
@@ -61,6 +67,9 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
             "modified": "2025-01-01T00:00:00Z",
             "publisher": {"id": 1, "name": "Pub"},
             "series": {"id": 1, "name": "S", "year_began": 2025, "volume": 1},
+            # Mokkari reports unrated issues as a null average with a 0 count.
+            "average_rating": None,
+            "rating_count": 0,
         }
     }
     result = dict(transform.to_comicbox(minimal))
@@ -69,6 +78,9 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     assert cb["series"]["name"] == "S"
     # Missing fields don't crash; they're just absent.
     assert "summary" not in cb or not cb.get("summary")
+    # Unrated must not emit a block: the 0 count would clamp up to the
+    # native field minimum of 1.
+    assert "community_rating" not in cb
 
 
 def test_prices_currency_mapped_to_country_code() -> None:

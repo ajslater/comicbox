@@ -34,7 +34,7 @@ values.
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-## MetronInfo Schema v1.0
+## MetronInfo Schema v1.1
 
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
@@ -50,6 +50,19 @@ deficiencies that exist with the ComicInfo.xml schema.
 
 The MangaVolume tag is interpreted not as an arbitrary string, but as a range of
 integers delineated by a "-". e.g "1-3".
+
+### Metron CommunityRating
+
+The v1.1 CommunityRating tag maps to the comicbox `community_rating` object:
+AverageRating to `community_rating.average_rating` (which ComicInfo
+CommunityRating and ComicBookInfo rating also map to) and RatingCount to
+`community_rating.rating_count` (which no other format carries).
+
+### Metron AlternativeNumber
+
+The v1.1 AlternativeNumber tag records a legacy or alternate numbering of the
+same issue. It maps to the comicbox `alternative_issue` object, which is parsed
+into name, number and suffix parts just like `issue`.
 
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 

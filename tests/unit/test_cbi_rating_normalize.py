@@ -1,4 +1,4 @@
-"""Tests for ComicBookInfo <-> canonical critical_rating conversion."""
+"""Tests for ComicBookInfo <-> canonical community_rating.average_rating conversion."""
 
 from decimal import Decimal
 
@@ -97,7 +97,7 @@ def test_cbi_rating_round_trip(cbi_in, canonical, cbi_out) -> None:
 
 
 # CB-5: verify the canonical ComicboxSubSchema clamps out-of-range
-# critical_rating to [0, 5] via the RangedNumberMixin (rather than raising)
+# average_rating to [0, 5] via the RangedNumberMixin (rather than raising)
 # and quantizes to one decimal place.
 CANONICAL_SCHEMA_CLAMP_PARAMS = (
     # (input value, expected stored value after clamp)
@@ -111,10 +111,10 @@ CANONICAL_SCHEMA_CLAMP_PARAMS = (
 
 
 @pytest.mark.parametrize(("value", "expected"), CANONICAL_SCHEMA_CLAMP_PARAMS)
-def test_canonical_schema_clamps_critical_rating(value, expected) -> None:
-    """The canonical schema's critical_rating field clamps to [0, 5] at 1 dp."""
+def test_canonical_schema_clamps_average_rating(value, expected) -> None:
+    """The canonical schema's average_rating field clamps to [0, 5] at 1 dp."""
     # Mirror the constructor used in
-    # comicbox.formats.comicbox.schema.ComicboxSubSchemaMixin.critical_rating
+    # comicbox.formats.comicbox.schema.CommunityRatingSchema.average_rating
     from comicbox.formats.base.fields.number_fields import DecimalField
 
     field = DecimalField(places=1, minimum=Decimal(0), maximum=Decimal(5))
