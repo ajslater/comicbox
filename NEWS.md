@@ -1,5 +1,15 @@
 # 📰 News
 
+## v4.5.0
+
+- Features
+    - The public write API can now clear fields: `write_metadata()` and
+      `BulkWriteItem` accept `delete_keys`, glom key paths removed from the
+      final metadata before writing (layered onto the config's
+      `general.delete_keys`). Empty patch values are pruned on schema load, so
+      previously an update-mode write could never clear an existing tag. The
+      patch may be empty when `delete_keys` is non-empty (a pure-clear write).
+
 ## v4.4.0
 
 - Features

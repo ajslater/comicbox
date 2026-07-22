@@ -176,6 +176,97 @@ def test_write_metadata_rejects_empty_root_wrapped_patch(tmp_cbz: Path) -> None:
         write_metadata(tmp_cbz, patch={"comicbox": {}}, formats=["comic_info"])
 
 
+def _read_sub_md(path: Path) -> dict:
+    with Comicbox(path) as cb:
+        return dict(cb.get_internal_metadata().get("comicbox", {}))
+
+
+def test_write_metadata_delete_keys_clears_field(tmp_cbz: Path) -> None:
+    """delete_keys removes an existing field while the patch applies."""
+    write_metadata(
+        tmp_cbz,
+        patch={"summary": "old summary", "age_rating": "Everyone"},
+        mode="update",
+        formats=["comicbox_json"],
+    )
+    result = write_metadata(
+        tmp_cbz,
+        patch={"age_rating": "Teen"},
+        mode="update",
+        formats=["comicbox_json"],
+        delete_keys=["summary"],
+    )
+    assert result.written is True
+    md = _read_sub_md(tmp_cbz)
+    assert "summary" not in md
+    assert md["age_rating"] == "Teen"
+
+
+def test_write_metadata_delete_keys_allows_empty_patch(tmp_cbz: Path) -> None:
+    """A pure-clear write needs no patch values."""
+    write_metadata(
+        tmp_cbz,
+        patch={"summary": "doomed"},
+        mode="update",
+        formats=["comicbox_json"],
+    )
+    result = write_metadata(
+        tmp_cbz,
+        patch={},
+        mode="update",
+        formats=["comicbox_json"],
+        delete_keys=["summary"],
+    )
+    assert result.written is True
+    assert "summary" not in _read_sub_md(tmp_cbz)
+
+
+def test_write_metadata_delete_keys_strips_root_prefix(tmp_cbz: Path) -> None:
+    """'comicbox.'-prefixed key paths normalize like config loading does."""
+    write_metadata(
+        tmp_cbz,
+        patch={"summary": "doomed"},
+        mode="update",
+        formats=["comicbox_json"],
+    )
+    write_metadata(
+        tmp_cbz,
+        patch={},
+        mode="update",
+        formats=["comicbox_json"],
+        delete_keys=["comicbox.summary"],
+    )
+    assert "summary" not in _read_sub_md(tmp_cbz)
+
+
+def test_write_metadata_empty_delete_keys_rejects_empty_patch(tmp_cbz: Path) -> None:
+    with pytest.raises(WriteValidationError, match="non-empty"):
+        write_metadata(tmp_cbz, patch={}, formats=["comic_info"], delete_keys=[])
+
+
+def test_bulk_write_item_delete_keys_passes_through(tmp_cbz: Path) -> None:
+    """BulkWriteItem.delete_keys reaches write_metadata."""
+    write_metadata(
+        tmp_cbz,
+        patch={"summary": "doomed", "age_rating": "Everyone"},
+        mode="update",
+        formats=["comicbox_json"],
+    )
+    item = BulkWriteItem(
+        path=tmp_cbz,
+        patch={},
+        mode="update",
+        formats=frozenset({"COMICBOX_JSON"}),
+        delete_keys=frozenset({"summary"}),
+    )
+    results = list(bulk_write([item]))
+    assert len(results) == 1
+    assert results[0].written is True
+    md = _read_sub_md(tmp_cbz)
+    assert "summary" not in md
+    assert md["age_rating"] == "Everyone"
+
+
 def test_write_metadata_rejects_unknown_mode(tmp_cbz: Path) -> None:
     with pytest.raises(WriteValidationError, match="Unknown mode"):
         write_metadata(
