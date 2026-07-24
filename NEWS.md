@@ -1,5 +1,11 @@
 # 📰 News
 
+## v4.5.1
+
+- Fixes
+    - Extracted PDF pages are named for their contents. Pages extracted as
+      images were given a `.pdf` suffix.
+
 ## v4.5.0
 
 - Features

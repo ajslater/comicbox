@@ -6,6 +6,7 @@ from tarfile import TarFile
 from typing import TYPE_CHECKING, Any, cast
 
 from comicbox._pdf import PDF_ENABLED
+from comicbox.box.archive.sniff import sniff_ext
 
 if TYPE_CHECKING:
     from pdffile import PDFFile
@@ -67,6 +68,20 @@ class Archive:
         archive.reset()
         return data
 
+    @staticmethod
+    def _read_pdffile(
+        archive: PDFFile, filename: str, pdf_format: str, props: dict | None
+    ) -> bytes:
+        """Read a pdf page and report the format actually served."""
+        data = archive.read(filename, fmt=pdf_format, props=props)
+        # Pdf page names carry no extension of their own, so callers name the
+        # extracted file after props["ext"]. A reader that serves a page image
+        # instead of a page pdf without saying so would leave image data named
+        # ".pdf", so fall back to the data itself.
+        if props is not None and not props.get("ext") and (ext := sniff_ext(data)):
+            props["ext"] = ext
+        return data
+
     @classmethod
     def read(
         cls,
@@ -78,7 +93,7 @@ class Archive:
     ) -> bytes:
         """Read one file in the archive's data."""
         if PDF_ENABLED and isinstance(archive, PDFFile):
-            return archive.read(filename, fmt=pdf_format, props=props)
+            return cls._read_pdffile(archive, filename, pdf_format, props)
         if isinstance(archive, TarFile):
             return cls._read_tarfile(archive, filename)
         if hasattr(archive, "reset"):  # SevenZipFile

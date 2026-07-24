@@ -3,6 +3,9 @@
 from argparse import Namespace
 from filecmp import cmp
 
+import pytest
+from pdffile import PDFFile
+
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from tests.const import (
@@ -22,6 +25,7 @@ COVER_FN = "cover.jpg"
 COVER_PATH_DEST = TMP_DIR / "CaptainScience#1_01.jpg"
 PDF_COVER_PATH_SOURCE = TEST_FILES_DIR / "pdf" / "0.pdf"
 PDF_COVER_PATH_DEST = TMP_DIR / "0.pdf"
+PDF_JPEG_DATA = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01"
 PAGES_CONFIG = get_config(
     Namespace(
         comicbox=Namespace(
@@ -75,3 +79,16 @@ def test_extract_cover_pdf() -> None:
         car.extract_covers(TMP_DIR)
 
     assert cmp(PDF_COVER_PATH_SOURCE, PDF_COVER_PATH_DEST)
+
+
+def test_extract_pdf_page_served_as_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that a page served as an image is named for its data, not the archive."""
+    # Stand in for a reader that hands back a page's big embedded image
+    # instead of a one page pdf, but reports no extension for it.
+    monkeypatch.setattr(PDFFile, "read", lambda *_args, **_kwargs: PDF_JPEG_DATA)
+    TMP_DIR.mkdir(exist_ok=True)
+    with Comicbox(PDF_SOURCE_PATH) as car:
+        car.extract_pages(0, 0, TMP_DIR)
+
+    assert (TMP_DIR / "0.jpeg").read_bytes() == PDF_JPEG_DATA
+    my_cleanup(TMP_DIR)
