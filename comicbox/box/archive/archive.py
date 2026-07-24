@@ -5,7 +5,9 @@ from __future__ import annotations
 from tarfile import TarFile
 from typing import TYPE_CHECKING, Any, cast
 
-from comicbox._pdf import PDF_ENABLED
+from loguru import logger
+
+from comicbox._pdf import PAGE_FORMAT_IMAGE, PDF_ENABLED
 from comicbox.box.archive.sniff import sniff_ext
 
 if TYPE_CHECKING:
@@ -69,10 +71,47 @@ class Archive:
         return data
 
     @staticmethod
+    def _read_pdffile_rotated_render(
+        archive: PDFFile, filename: str
+    ) -> tuple[bytes, str] | None:
+        """
+        Render an ``image`` read when raw bytes would bake in rotation.
+
+        Raw first-image extraction can't carry the page's display
+        rotation (/Rotate or a rotated placement), so an ``image`` read
+        of a rotated image-dominant page would write the stored,
+        wrong-way-up orientation into extracted files and converted
+        archives. Detect that case and render the whole page instead.
+        Returns None when the stored bytes are fine as-is, the name is
+        an embedded file, or detection fails.
+        """
+        try:
+            index = archive.valid_pagenum(filename)
+        except ValueError:
+            return None  # embedded file, not a page
+        try:
+            if not archive.classify_page(index).rotation:
+                return None
+            return archive.read_full_pixmap_jpeg(index)
+        except Exception as exc:
+            logger.warning(
+                f"Rotation detection failed for pdf page {filename}, "
+                f"extracting as stored: {exc}"
+            )
+            return None
+
+    @classmethod
     def _read_pdffile(
-        archive: PDFFile, filename: str, pdf_format: str, props: dict | None
+        cls, archive: PDFFile, filename: str, pdf_format: str, props: dict | None
     ) -> bytes:
         """Read a pdf page and report the format actually served."""
+        if pdf_format == PAGE_FORMAT_IMAGE and (
+            served := cls._read_pdffile_rotated_render(archive, filename)
+        ):
+            data, ext = served
+            if props is not None:
+                props["ext"] = ext
+            return data
         data = archive.read(filename, fmt=pdf_format, props=props)
         # Pdf page names carry no extension of their own, so callers name the
         # extracted file after props["ext"]. A reader that serves a page image

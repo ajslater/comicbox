@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
+from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.exceptions import ArchiveWriteError
@@ -114,17 +115,21 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             filename = self._get_filename_from_info(info)
             if not filename:
                 continue
-            # images usually end up slightly larger with
-            # zip compression, so store them.
+            # Default pdf pages to whole-page jpegs: comic readers (and
+            # comicbox's own page regex) don't recognize raw pixmap ppm
+            # data, and the page render applies pdf display rotation.
+            pdf_format = self._get_pdf_format(default=PAGE_FORMAT_PIXMAP_JPEG)
+            props = {}
+            data = self._archive_readfile(filename, pdf_format=pdf_format, props=props)
+            filename = self._ensure_image_suffix(filename, props)
+            # images usually end up slightly larger with zip compression,
+            # so store them. Decide from the final name — pdf pages only
+            # gain their image suffix above.
             compress = (
                 ZIP_DEFLATED
                 if self.IMAGE_EXT_RE.search(filename) is None
                 else ZIP_STORED
             )
-            pdf_format = self._get_pdf_format(default="pixmap")
-            props = {}
-            data = self._archive_readfile(filename, pdf_format=pdf_format, props=props)
-            filename = self._ensure_image_suffix(filename, props)
             zf.writestr(
                 filename,
                 data,

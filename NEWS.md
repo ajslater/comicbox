@@ -7,6 +7,19 @@
       range instead of a file per page.
 
 - Fixes
+    - Default PDF to CBZ conversion produced an archive of raw `.ppm` pixmaps
+      that comic readers (including comicbox itself) do not recognize as pages,
+      yielding a zero page book — and `--delete-orig` then removed the working
+      original. Conversion now defaults to `pixmap_jpeg` whole-page renders,
+      which also apply pdf display rotation.
+    - `--pdf-pages image` extraction and conversion wrote rotated pages as
+      stored — sideways or upside down for scans that rely on `/Rotate` (or a
+      rotated content-stream placement) for display. Rotated image-dominant
+      pages are now rendered to match the displayed orientation; unrotated pages
+      still extract their original bytes untouched.
+    - Converted pdf pages are now stored uncompressed in the zip like other
+      images; the compression decision previously ran before pages gained their
+      image suffix, so page images were pointlessly deflated.
     - The `--pdf-pages` help lists exactly the values it accepts. It advertised
       `pdf` where unsupported and omitted `image_if_dominant` and `pixmap_jpeg`.
     - A PDF with embedded metadata (e.g. a written ComicInfo.xml) no longer

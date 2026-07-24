@@ -57,15 +57,16 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
 _PDF_PAGE_FORMAT_DESC = MappingProxyType(
     {
         "pdf": (
-            "Extract pages as pdf (default). A multi page "
+            "Extract pages as pdf (extraction default). A multi page "
             "[cyan]--extract-pages[/cyan] range is written as one pdf of the "
             "whole range."
         ),
         "pixmap": "Extract pages as an uncompressed pixmap of the page.",
         "image": (
-            "Extract the first image in it's original unaltered format on the page. "
-            "Particularly useful when paired with [cyan]--cbz[/cyan] to convert comic PDFs to CBZs "
-            "without reencoding the images."
+            "Extract the first image on the page in its original unaltered format. "
+            "Avoids reencoding when paired with [cyan]--cbz[/cyan], but pages whose "
+            "displayed orientation is rotated are rendered to a jpeg instead so the "
+            "output matches the display."
         ),
         "image_if_dominant": (
             "Extract the embedded image for pages that are mostly one image, "
@@ -73,7 +74,8 @@ _PDF_PAGE_FORMAT_DESC = MappingProxyType(
             "back to pdf."
         ),
         "pixmap_jpeg": (
-            "Rasterize the whole page to a jpeg. Always yields an image, for any page."
+            "Rasterize the whole page to a jpeg. Always yields an image, for any "
+            "page ([cyan]--cbz[/cyan] conversion default)."
         ),
     }
 )
