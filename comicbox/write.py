@@ -9,6 +9,10 @@ Codex-facing surface:
   existing metadata. See :class:`comicbox.config.settings.WriteMode`.
 - ``formats``: which on-archive formats to write back (ComicInfo.xml,
   comicbox.yaml, …). Names match the ``MetadataFormats`` enum value.
+- ``delete_keys``: glom key paths removed from the final metadata
+  before writing. Merging can only add or replace — an empty patch
+  value is pruned by the schema, so this is the *only* way a write can
+  clear an existing field.
 - ``dry_run``: return the would-be-written payload instead of touching
   the archive.
 
@@ -39,8 +43,11 @@ from comicbox.events import (
 )
 
 # Historical import path for WriteValidationError; the definition lives in
-# comicbox.exceptions so it shares the ComicboxError base without cycles.
-from comicbox.exceptions import WriteValidationError as WriteValidationError
+# comicbox.exceptions so it shares the ComicboxError base without cycles. The
+# redundant alias marks it as an explicit re-export for the old path.
+from comicbox.exceptions import (
+    WriteValidationError as WriteValidationError,  # noqa: PLC0414
+)
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
@@ -83,6 +90,7 @@ class BulkWriteItem:
     patch: Mapping[str, Any]
     mode: Mode = "additive"
     formats: frozenset[FormatName] | None = None
+    delete_keys: frozenset[str] | None = None
 
 
 def write_metadata(
@@ -91,6 +99,7 @@ def write_metadata(
     *,
     mode: Mode = "additive",
     formats: Iterable[FormatName] | None = None,
+    delete_keys: Iterable[str] | None = None,
     dry_run: bool = False,
     base_config: ComicboxSettings | None = None,
 ) -> WriteResult:
@@ -102,18 +111,36 @@ def write_metadata(
     returns (``{"comicbox": {...}}``); the wrapper is detected and
     unwrapped so the natural round-trip works.
 
+    ``delete_keys`` are glom key paths (relative to the root tag, e.g.
+    ``"summary"`` or ``"series.name"``) removed from the final merged
+    metadata before serialization — the only way a write can *clear* an
+    existing field, since empty patch values are pruned on schema load
+    and merging never removes. They are layered onto the config's
+    ``general.delete_keys``; unknown keys are ignored. The patch may be
+    empty when ``delete_keys`` is non-empty (a pure-clear write).
+
     With ``dry_run=True`` no archive is touched; the result's
     ``dry_run_payload`` carries the serialized would-be-written content
     per requested format (keyed by format name).
     """
-    patch = _unwrap_root_tag(patch)
-    if not patch:
-        msg = "write_metadata(): patch must be a non-empty mapping"
+    patch = _unwrap_root_tag(patch) if patch else {}
+    delete_key_set = _normalize_delete_keys(delete_keys)
+    if not patch and not delete_key_set:
+        msg = (
+            "write_metadata(): patch must be a non-empty mapping"
+            " unless delete_keys is non-empty"
+        )
         raise WriteValidationError(msg)
     mode_enum = _validate_mode(mode)
     fmt_set = _resolve_formats(formats)
-    settings = _build_write_settings(mode_enum, fmt_set, base_config=base_config)
-    wrapped: dict[str, Any] = {ComicboxSchemaMixin.ROOT_TAG: dict(patch)}
+    settings = _build_write_settings(
+        mode_enum, fmt_set, delete_keys=delete_key_set, base_config=base_config
+    )
+    # A delete-only write passes no API metadata; the archive's own
+    # sources minus delete_keys are what gets rewritten.
+    wrapped: dict[str, Any] | None = (
+        {ComicboxSchemaMixin.ROOT_TAG: dict(patch)} if patch else None
+    )
 
     try:
         with Comicbox(path, config=settings, metadata=wrapped) as cb:
@@ -377,6 +404,7 @@ def _write_one(
             item.patch,
             mode=item.mode,
             formats=item.formats,
+            delete_keys=item.delete_keys,
             base_config=base_config,
         )
 
@@ -410,16 +438,30 @@ def _resolve_formats(
     return frozenset(resolved)
 
 
+def _normalize_delete_keys(delete_keys: Iterable[str] | None) -> frozenset[str]:
+    """Coerce to key paths relative to the root tag, as config loading does."""
+    if not delete_keys:
+        return frozenset()
+    normalized = (str(kp).removeprefix("comicbox.") for kp in delete_keys)
+    return frozenset(kp for kp in normalized if kp)
+
+
 def _build_write_settings(
     mode: WriteMode,
     formats: frozenset[MetadataFormats],
     *,
+    delete_keys: frozenset[str],
     base_config: ComicboxSettings | None,
 ) -> ComicboxSettings:
-    """Layer write.mode / write.formats over a base config."""
+    """Layer write.mode / write.formats / general.delete_keys over a base config."""
     base = base_config or get_config()
     # replace() carries every other WriteSettings field forward; the old
     # field-by-field copy silently reset any newly added field to its
     # default for every caller passing base_config.
     new_write = replace(base.write, formats=formats, mode=mode)
-    return replace(base, write=new_write)
+    if not delete_keys:
+        return replace(base, write=new_write)
+    new_general = replace(
+        base.general, delete_keys=base.general.delete_keys | delete_keys
+    )
+    return replace(base, write=new_write, general=new_general)

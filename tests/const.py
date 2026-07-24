@@ -38,6 +38,8 @@ CBZ_MULTI_FN = "Captain Science #001 (1950) The Beginning - multi.cbz"
 CBZ_MULTI_SOURCE_PATH = TEST_FILES_DIR / CBZ_MULTI_FN
 PDF_FN = "test_pdf.pdf"
 PDF_SOURCE_PATH = TEST_FILES_DIR / PDF_FN
+# A pdf with an embedded ComicInfo.xml, sharing pdffile's namelist with the pages.
+CIX_PDF_SOURCE_PATH = TEST_FILES_DIR / "test_cix.pdf"
 
 
 # CONFIGS

@@ -152,7 +152,7 @@ class ComicboxComputedNotes(ComicboxMerge):
             sub_md[IDENTIFIERS_KEY] = pruned_notes_identifiers
 
     @staticmethod
-    def _get_computed_notes_date(notes: str) -> None | date:
+    def _get_computed_notes_date(notes: str) -> date | None:
         """Parse the date from the notes."""
         match = _NOTES_RELDATE_RE.search(notes)
         if not match:

@@ -37,7 +37,7 @@ class TestParser:
 
     __test__ = False
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         fmt: MetadataFormats,
         test_fn: Path | str,

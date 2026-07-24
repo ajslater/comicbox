@@ -48,8 +48,11 @@ from comicbox.events import (
 )
 
 # Historical import path for OnlineLookupAbortedError; defined in
-# comicbox.exceptions so it shares the ComicboxError base.
-from comicbox.exceptions import OnlineLookupAbortedError as OnlineLookupAbortedError
+# comicbox.exceptions so it shares the ComicboxError base. The redundant
+# alias marks it as an explicit re-export for consumers of the old path.
+from comicbox.exceptions import (
+    OnlineLookupAbortedError as OnlineLookupAbortedError,  # noqa: PLC0414
+)
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.matcher import (

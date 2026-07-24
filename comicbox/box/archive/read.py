@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 from sys import maxsize
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.init import ComicboxArchiveInit
@@ -13,6 +13,7 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import ArchiveError, UnsupportedArchiveTypeError
 
 if TYPE_CHECKING:
+    from pdffile import PDFFile
     from py7zr.io import BytesIOFactory
 
     from comicbox.box.archive.archiveinfo import InfoType
@@ -94,6 +95,20 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
 
     def _get_pdf_format(self, pdf_format: str = "", default: str = "") -> str:
         return pdf_format or (self._config.convert.pdf_pages or default)
+
+    def _archive_read_pdf_range(
+        self, index_from: int, index_to: int, props: dict | None = None
+    ) -> bytes:
+        """Read a range of pdf pages to memory as a single pdf."""
+        self._ensure_read_archive()
+        archive = self._get_archive()
+        if not self._archive_is_pdf:
+            reason = f"Cannot read a pdf page range from {self._path}"
+            raise ArchiveError(reason)
+        data, ext = cast("PDFFile", archive).read_pdf(index_from, index_to)
+        if props is not None:
+            props["ext"] = ext
+        return data
 
     def _archive_readfile(
         self, filename: str, pdf_format: str = "", props: dict | None = None

@@ -1,5 +1,39 @@
 # 📰 News
 
+## v4.5.0
+
+- Features
+    - The public write API can now clear fields: `write_metadata()` and
+      `BulkWriteItem` accept `delete_keys`, glom key paths removed from the
+      final metadata before writing (layered onto the config's
+      `general.delete_keys`). Empty patch values are pruned on schema load, so
+      previously an update-mode write could never clear an existing tag. The
+      patch may be empty when `delete_keys` is non-empty (a pure-clear write).
+    - Extracting a range of PDF pages as PDFs now writes one PDF of the whole
+      range instead of a file per page.
+
+- Fixes
+    - Default PDF to CBZ conversion produced an archive of raw `.ppm` pixmaps
+      that comic readers (including comicbox itself) do not recognize as pages,
+      yielding a zero page book — and `--delete-orig` then removed the working
+      original. Conversion now defaults to `pixmap_jpeg` whole-page renders,
+      which also apply pdf display rotation.
+    - `--pdf-pages image` extraction and conversion wrote rotated pages as
+      stored — sideways or upside down for scans that rely on `/Rotate` (or a
+      rotated content-stream placement) for display. Rotated image-dominant
+      pages are now rendered to match the displayed orientation; unrotated pages
+      still extract their original bytes untouched.
+    - Converted pdf pages are now stored uncompressed in the zip like other
+      images; the compression decision previously ran before pages gained their
+      image suffix, so page images were pointlessly deflated.
+    - The `--pdf-pages` help lists exactly the values it accepts. It advertised
+      `pdf` where unsupported and omitted `image_if_dominant` and `pixmap_jpeg`.
+    - A PDF with embedded metadata (e.g. a written ComicInfo.xml) no longer
+      counts that file as an extra page, which inflated the page count and left
+      a stray file when extracting page ranges.
+    - Extracted PDF pages are named for their contents. Pages extracted as
+      images were given a `.pdf` suffix.
+
 ## v4.4.0
 
 - Features

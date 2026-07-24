@@ -5,6 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from comicbox._pdf import PAGE_FORMAT_PDF
 from comicbox.box.pages.covers import ComicboxPagesCovers
 from comicbox.exceptions import ExportError
 
@@ -68,17 +69,22 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         resolved_path = path or self._config.general.dest_path
         return Path(resolved_path)
 
+    def _extract_pagenames_get_dir(
+        self, pagenames: Sequence[str], path: Path | str | None
+    ) -> Path | None:
+        resolved_path = self._extract_pagenames_get_path(pagenames, path)
+        if resolved_path and not resolved_path.is_dir():
+            reason = (
+                f"Must extract pages to a directory. {resolved_path!s} "
+                "is not a directory"
+            )
+            raise ExportError(reason)
+        return resolved_path
+
     def _extract_pagenames_to_dir(
         self, pagenames: tuple[str, ...], path: Path | str | None = None
     ) -> None:
-        resolved_path = self._extract_pagenames_get_path(pagenames, path)
-        if resolved_path:
-            if not resolved_path.is_dir():
-                reason = (
-                    f"Must extract pages to a directory. {resolved_path!s} "
-                    "is not a directory"
-                )
-                raise ExportError(reason)
+        if resolved_path := self._extract_pagenames_get_dir(pagenames, path):
             self._extract_all_pagenames(pagenames, resolved_path)
 
     def _extract_pagenames(
@@ -86,6 +92,37 @@ class ComicboxExtractPages(ComicboxPagesCovers):
     ) -> None:
         if path := self._extract_pagenames_get_path(pagenames, path):
             self._extract_all_pagenames(pagenames, path)
+
+    def _is_pdf_range_mode(self) -> bool:
+        """Are pdf pages extracted as pdfs, which merge into one document."""
+        return (
+            self._archive_is_pdf
+            and self._get_pdf_format(default=PAGE_FORMAT_PDF) == PAGE_FORMAT_PDF
+        )
+
+    def _extract_pdf_range_to_dir(
+        self, pagenames: tuple[str, ...], path: Path | str | None
+    ) -> None:
+        """Extract a range of pdf pages as one pdf."""
+        resolved_path = self._extract_pagenames_get_dir(pagenames, path)
+        if not resolved_path:
+            return
+        # PDF page names are contiguous zero padded indexes (embedded files are
+        # filtered out of the page list), so the range is their first and last.
+        page_path = resolved_path / f"{pagenames[0]}-{pagenames[-1]}{self._pdf_suffix}"
+        try:
+            props = {}
+            data = self._archive_read_pdf_range(
+                int(pagenames[0]), int(pagenames[-1]), props=props
+            )
+            if ext := props.get("ext", ""):
+                page_path = page_path.with_suffix("." + ext)
+            _validate_extract_path(page_path, resolved_path)
+            page_path.write_bytes(data)
+        except Exception as exc:
+            logger.warning(f"No pages extracted: {exc}")
+        else:
+            logger.info(f"Saved {len(pagenames)} pages to {page_path}")
 
     def extract_pages(
         self,
@@ -95,7 +132,10 @@ class ComicboxExtractPages(ComicboxPagesCovers):
     ) -> None:
         """Extract pages from archive and write to a path."""
         pagenames = self.get_pagenames_from(page_from, page_to)
-        self._extract_pagenames_to_dir(pagenames, path=path)
+        if len(pagenames) > 1 and self._is_pdf_range_mode():
+            self._extract_pdf_range_to_dir(pagenames, path)
+        else:
+            self._extract_pagenames_to_dir(pagenames, path=path)
 
     def extract_pages_config(self) -> None:
         """Extract pages from archive as configured and write to a path."""

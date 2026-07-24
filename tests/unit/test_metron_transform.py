@@ -39,21 +39,23 @@ def test_to_comicbox_maps_core_fields() -> None:
     result = dict(transform.to_comicbox(_sample_issue_dict()))
     cb = result["comicbox"]
     # Core scalar fields
-    assert cb["page_count"] == 24
-    assert cb["summary"] == "Some description."
-    assert cb["collection_title"] == "Foo Comics #5"
-    # Nested dicts
-    assert cb["issue"]["name"] == "5"
-    assert cb["series"]["name"] == "Foo Comics"
-    assert cb["publisher"]["name"] == "Quality Comics"
+    assert {k: cb[k] for k in ("page_count", "summary", "collection_title")} == {
+        "page_count": 24,
+        "summary": "Some description.",
+        "collection_title": "Foo Comics #5",
+    }
+    # Nested resource names
+    assert {k: cb[k]["name"] for k in ("issue", "series", "publisher")} == {
+        "issue": "5",
+        "series": "Foo Comics",
+        "publisher": "Quality Comics",
+    }
     assert cb["community_rating"] == {
         "average_rating": Decimal("4.5"),
         "rating_count": 25,
     }
-    # Dates
-    assert "cover_date" in cb["date"]
-    assert "store_date" in cb["date"]
-    # Cover image
+    # Dates and cover image are present
+    assert {"cover_date", "store_date"} <= cb["date"].keys()
     assert "cover_image" in cb
 
 
