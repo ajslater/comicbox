@@ -87,7 +87,7 @@ class Archive:
         cls,
         archive: ArchiveType,
         filename: str,
-        factory: None | BytesIOFactory,
+        factory: BytesIOFactory | None,
         pdf_format: str = "",
         props: dict | None = None,
     ) -> bytes:

@@ -30,7 +30,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
 
     def get_metadata_files_mtime(self) -> datetime | None:
         """Get the latest metadata archive file mtime according to the read config."""
-        max_mtime: None | datetime = None
+        max_mtime: datetime | None = None
         for info in self.infolist():
             if ArchiveInfo.is_dir(info):
                 continue
