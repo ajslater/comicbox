@@ -791,8 +791,10 @@ def _format_outcome_diagnostic(outcome: _Outcome, expected: Any) -> list[str]:
         else "no runner-up"
     )
     lines = [
-        f"      metadata={outcome.top_metadata_score:.2f} "
-        f"cover={_cover_score_repr(outcome)} {gap_repr}"
+        (
+            f"      metadata={outcome.top_metadata_score:.2f} "
+            f"cover={_cover_score_repr(outcome)} {gap_repr}"
+        )
     ]
     if outcome.top_candidates:
         # Show the top-K table for MISS cases. When gap is small

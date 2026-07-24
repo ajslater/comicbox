@@ -114,7 +114,7 @@ class BaseSubSchema(ClearingErrorStoreSchema, ABC):
         """Singular post_dump hook."""
         return self.sort_dump(data)
 
-    def loadf(self, path) -> list | None | dict:
+    def loadf(self, path) -> list | dict | None:
         """Read the string from the designated file."""
         with Path(path).open("r") as f:
             str_data = f.read()

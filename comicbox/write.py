@@ -43,8 +43,11 @@ from comicbox.events import (
 )
 
 # Historical import path for WriteValidationError; the definition lives in
-# comicbox.exceptions so it shares the ComicboxError base without cycles.
-from comicbox.exceptions import WriteValidationError as WriteValidationError
+# comicbox.exceptions so it shares the ComicboxError base without cycles. The
+# redundant alias marks it as an explicit re-export for the old path.
+from comicbox.exceptions import (
+    WriteValidationError as WriteValidationError,  # noqa: PLC0414
+)
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 
