@@ -233,10 +233,10 @@ a documented write API. Auto-generated API docs are
 from comicbox.box import Comicbox
 
 with Comicbox("comic.cbz") as cb:
-    metadata = cb.to_dict()              # merged, normalized metadata
-    file_type = cb.get_file_type()       # "CBZ", "PDF", ...
-    mtime = cb.get_metadata_mtime()      # last metadata modification time
-    cover = cb.get_cover_page()          # cover image bytes
+    metadata = cb.to_dict()  # merged, normalized metadata
+    file_type = cb.get_file_type()  # "CBZ", "PDF", ...
+    mtime = cb.get_metadata_mtime()  # last metadata modification time
+    cover = cb.get_cover_page()  # cover image bytes
 ```
 
 Writing is done through the public `write_metadata` (single file) and
