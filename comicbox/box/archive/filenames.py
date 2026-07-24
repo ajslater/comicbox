@@ -20,7 +20,12 @@ class ComicboxArchiveFilenames(ComicboxArchiveMtime):
         """Parse the filenames that are comic pages."""
         archive_filenames = self.namelist()
         if self._archive_is_pdf:
-            self._page_filenames = archive_filenames
+            # PDF page names are zero padded page indexes. Embedded files
+            # (e.g. an attached ComicInfo.xml) share the namelist but are
+            # metadata, not pages.
+            self._page_filenames = tuple(
+                filename for filename in archive_filenames if filename.isdigit()
+            )
         else:
             page_filenames = [
                 filename

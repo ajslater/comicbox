@@ -8,7 +8,9 @@ from tests.const import (
     CBI_CBR_SOURCE_PATH,
     CIX_CBT_SOURCE_PATH,
     CIX_CBZ_SOURCE_PATH,
+    CIX_PDF_SOURCE_PATH,
     COVER_FN,
+    PDF_SOURCE_PATH,
 )
 from tests.util import get_tmp_dir, my_cleanup, my_setup
 
@@ -18,7 +20,7 @@ TMP_COVER_PATH = TMP_DIR / COVER_FN
 
 def _test_cli_action_extract_util(
     path: Path,
-    args: list[str] | tuple[str, str],
+    args: Sequence[str],
     test_files: Sequence[Path | str],
 ) -> None:
     """Test cli metadata write to file."""
@@ -101,3 +103,51 @@ def test_cli_action_extract_from_to() -> None:
         "CaptainScience#1_04.jpg",
     ]
     _test_cli_action_extract(CIX_CBZ_SOURCE_PATH, "2:3", test_files)
+
+
+def _test_cli_action_extract_pdf(
+    extract: str, test_files: tuple[str, ...], *pdf_pages: str
+) -> None:
+    args = ("--extract-pages", extract, *pdf_pages)
+    _test_cli_action_extract_util(PDF_SOURCE_PATH, args, test_files)
+
+
+def test_cli_action_extract_pdf_range() -> None:
+    """Test a pdf page range extracts as one pdf."""
+    _test_cli_action_extract_pdf("1:3", ("1-3.pdf",), "--pdf-pages", "pdf")
+
+
+def test_cli_action_extract_pdf_range_forward() -> None:
+    """Test an open ended pdf range is named for the pages it holds."""
+    _test_cli_action_extract_pdf("2:", ("2-3.pdf",), "--pdf-pages", "pdf")
+
+
+def test_cli_action_extract_pdf_range_tagged() -> None:
+    """Test an open ended range on a pdf with embedded metadata still merges."""
+    _test_cli_action_extract_util(
+        CIX_PDF_SOURCE_PATH,
+        ("--extract-pages", "1:", "--pdf-pages", "pdf"),
+        ("1-3.pdf",),
+    )
+
+
+def test_cli_action_extract_pdf_range_backward() -> None:
+    """Test an open beginning pdf range is named for the pages it holds."""
+    _test_cli_action_extract_pdf(":2", ("0-2.pdf",), "--pdf-pages", "pdf")
+
+
+def test_cli_action_extract_pdf_range_default_format() -> None:
+    """Test pdf pages merge without an explicit --pdf-pages, which defaults to pdf."""
+    _test_cli_action_extract_pdf("1:3", ("1-3.pdf",))
+
+
+def test_cli_action_extract_pdf_single_page() -> None:
+    """Test a single pdf page is not renamed as a range."""
+    _test_cli_action_extract_pdf("2", ("2.pdf",), "--pdf-pages", "pdf")
+
+
+def test_cli_action_extract_pdf_pixmap_not_merged() -> None:
+    """Test that only the pdf format merges a range."""
+    _test_cli_action_extract_pdf(
+        "1:3", ("1.ppm", "2.ppm", "3.ppm"), "--pdf-pages", "pixmap"
+    )

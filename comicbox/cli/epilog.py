@@ -9,6 +9,7 @@ from rich.styled import Styled
 from rich.table import Table
 from rich.text import Text
 
+from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 
 _TABLE_ARGS = MappingProxyType(
@@ -55,12 +56,24 @@ Glom key paths are dot delimited. Numbers are list indexes. This deletes three c
 )
 _PDF_PAGE_FORMAT_DESC = MappingProxyType(
     {
-        "pdf": "Extract pages as pdf file of one page.",
+        "pdf": (
+            "Extract pages as pdf (default). A multi page "
+            "[cyan]--extract-pages[/cyan] range is written as one pdf of the "
+            "whole range."
+        ),
         "pixmap": "Extract pages as an uncompressed pixmap of the page.",
         "image": (
             "Extract the first image in it's original unaltered format on the page. "
             "Particularly useful when paired with [cyan]--cbz[/cyan] to convert comic PDFs to CBZs "
             "without reencoding the images."
+        ),
+        "image_if_dominant": (
+            "Extract the embedded image for pages that are mostly one image, "
+            "in a browser renderable format. Pages with vector content fall "
+            "back to pdf."
+        ),
+        "pixmap_jpeg": (
+            "Rasterize the whole page to a jpeg. Always yields an image, for any page."
         ),
     }
 )
@@ -117,8 +130,10 @@ def _get_pdf_page_format_phases_table() -> Table:
     )
     table.add_column("Value", style="green")
     table.add_column("Description")
-    for key, desc in _PDF_PAGE_FORMAT_DESC.items():
-        table.add_row(key, desc)
+    # Rows come from the installed pdffile so they always match the values
+    # argparse accepts.
+    for value in PAGE_FORMAT_VALUES:
+        table.add_row(value, _PDF_PAGE_FORMAT_DESC.get(value, ""))
     return table
 
 
@@ -180,7 +195,7 @@ def _get_help_format_table() -> Table:
 
 def build_epilog() -> Group:
     """Assemble the rich epilog rendered below the argparse help."""
-    return Group(
+    renderables = [
         _get_help_print_phases_table(),
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
@@ -188,5 +203,8 @@ def build_epilog() -> Group:
         _MATCH_MODE_INTRO,
         _get_match_mode_table(),
         _get_help_format_table(),
-        _get_pdf_page_format_phases_table(),
-    )
+    ]
+    # Without pdffile installed there is no --pdf-pages option to document.
+    if PAGE_FORMAT_VALUES:
+        renderables.append(_get_pdf_page_format_phases_table())
+    return Group(*renderables)

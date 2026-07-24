@@ -9,7 +9,10 @@ checker, import ``PDFFile`` from ``pdffile`` directly under ``TYPE_CHECKING``.
 
 from typing import TYPE_CHECKING
 
-__all__ = ("PAGE_FORMAT_VALUES", "PDF_ENABLED", "PDFFile")
+__all__ = ("PAGE_FORMAT_PDF", "PAGE_FORMAT_VALUES", "PDF_ENABLED", "PDFFile")
+
+#: The page format that yields pdf pages. Also pdffile's own default.
+PAGE_FORMAT_PDF: str = "pdf"
 
 if TYPE_CHECKING:
     from pdffile import PDFFile

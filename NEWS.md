@@ -2,7 +2,16 @@
 
 ## v4.5.1
 
+- Features
+    - Extracting a range of PDF pages as PDFs now writes one PDF of the whole
+      range instead of a file per page.
+
 - Fixes
+    - The `--pdf-pages` help lists exactly the values it accepts. It advertised
+      `pdf` where unsupported and omitted `image_if_dominant` and `pixmap_jpeg`.
+    - A PDF with embedded metadata (e.g. a written ComicInfo.xml) no longer
+      counts that file as an extra page, which inflated the page count and left
+      a stray file when extracting page ranges.
     - Extracted PDF pages are named for their contents. Pages extracted as
       images were given a `.pdf` suffix.
 
