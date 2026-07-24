@@ -1,8 +1,14 @@
 # 📰 News
 
-## v4.5.1
+## v4.5.0
 
 - Features
+    - The public write API can now clear fields: `write_metadata()` and
+      `BulkWriteItem` accept `delete_keys`, glom key paths removed from the
+      final metadata before writing (layered onto the config's
+      `general.delete_keys`). Empty patch values are pruned on schema load, so
+      previously an update-mode write could never clear an existing tag. The
+      patch may be empty when `delete_keys` is non-empty (a pure-clear write).
     - Extracting a range of PDF pages as PDFs now writes one PDF of the whole
       range instead of a file per page.
 
@@ -27,16 +33,6 @@
       a stray file when extracting page ranges.
     - Extracted PDF pages are named for their contents. Pages extracted as
       images were given a `.pdf` suffix.
-
-## v4.5.0
-
-- Features
-    - The public write API can now clear fields: `write_metadata()` and
-      `BulkWriteItem` accept `delete_keys`, glom key paths removed from the
-      final metadata before writing (layered onto the config's
-      `general.delete_keys`). Empty patch values are pruned on schema load, so
-      previously an update-mode write could never clear an existing tag. The
-      patch may be empty when `delete_keys` is non-empty (a pure-clear write).
 
 ## v4.4.0
 
