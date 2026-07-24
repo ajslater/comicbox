@@ -1,5 +1,16 @@
 # 📰 News
 
+## v4.5.1
+
+- Fixes
+    - ComicInfo.xml's `BlackAndWhite` tag works in both directions. The `Yes`
+      value was missing from its enum, so `monochrome` could never be read from
+      a comic nor written to one, leaving the field impossible to set or clear.
+      The schema's `Unknown` reads as no value.
+    - Enum tags that accept booleans (`BlackAndWhite`, `Manga`) now handle
+      `False` as well as `True`. Writing either previously raised and dropped
+      the tag.
+
 ## v4.5.0
 
 - Features

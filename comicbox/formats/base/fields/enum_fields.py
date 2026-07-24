@@ -113,6 +113,7 @@ class EnumBooleanField(EnumField):
     """An Enum Field that also accepts boolean values."""
 
     YES = "Yes"
+    NO = "No"
     TRUTHY = frozenset(
         {
             "1",
@@ -121,21 +122,31 @@ class EnumBooleanField(EnumField):
         }
     )
 
+    def _coerce_bool(self, value: Any) -> str:
+        """
+        Coerce a value the enum doesn't recognize into its yes or no value.
+
+        The enum vocabulary wins first so multi valued enums keep their extra
+        members. Only unrecognized values get read as a boolean, where anything
+        that isn't truthy is no.
+        """
+        if self.get_enum(value):
+            return value
+        return self.YES if str(value).lower() in self.TRUTHY else self.NO
+
     @override
-    def _deserialize(self, value: Enum | str | bool, attr, data, *args, **kwargs):
+    def _deserialize(
+        self, value: Enum | str | bool, attr, data, *args, **kwargs
+    ) -> Any:
         if not isinstance(value, self.ENUM):
-            if value is True or (str(value).lower() in self.TRUTHY):
-                value = self.YES
-            else:
-                value = str(value)
+            value = self._coerce_bool(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)
 
     @override
     def _serialize(self, value, *args, **kwargs) -> str | None:
-        result = super()._serialize(value, *args, **kwargs)
-        if not isinstance(result, self.ENUM) and value in self.TRUTHY:
-            result = super()._serialize(self.YES, *args, **kwargs)
-        return result
+        if value is not None and not isinstance(value, self.ENUM):
+            value = self._coerce_bool(value)
+        return super()._serialize(value, *args, **kwargs)
 
 
 class ComicInfoMangaEnum(Enum):
@@ -167,14 +178,28 @@ class ComicInfoMangaField(EnumBooleanField):
 class YesNoEnum(Enum):
     """Yes No Enum."""
 
+    YES = "Yes"
     NO = "No"
     UNKNOWN = "Unknown"
 
 
 class YesNoField(EnumBooleanField):
-    """A yes no kind of boolean field."""
+    """
+    A yes no kind of boolean field.
+
+    Comicbox models these tags as plain booleans, so deserialize to bool.
+    The schema's Unknown means "not recorded", which is no value at all.
+    """
 
     ENUM = YesNoEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
+
+    @override
+    def _deserialize(self, value, attr, data, *args, **kwargs) -> Any:
+        """Deserialize to a bool, or to None for the schema's Unknown."""
+        enum = super()._deserialize(value, attr, data, *args, **kwargs)
+        if enum == YesNoEnum.UNKNOWN:
+            return None
+        return enum == YesNoEnum.YES
 
 
 class PrettifiedStringField(FuzzyEnumMixin, StringField):
