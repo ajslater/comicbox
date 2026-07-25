@@ -311,7 +311,7 @@ extend-select = [
   "FIX",
   "FLY",
   "FURB",
-  "G",
+  # "G", not for loguru
   "I",
   "ICN",
   "INP",
