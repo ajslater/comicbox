@@ -63,14 +63,25 @@ def _normalize_publisher(name: str) -> str:
 
 
 def s_series(profile: ComicProfile, candidate: Candidate) -> float:
-    """Series-name similarity via rapidfuzz `WRatio`, normalized."""
-    if not profile.series or not candidate.summary.series:
+    """
+    Series-name similarity via rapidfuzz `WRatio`, normalized.
+
+    Scores the best of the candidate's primary series name and its
+    alternative names (`summary.alt_series` — ComicVine volume aliases),
+    so a comic filed under a localized or variant title still matches
+    its canonical volume.
+    """
+    if not profile.series or not (a := _normalize_series(profile.series)):
         return 0.0
-    a = _normalize_series(profile.series)
-    b = _normalize_series(candidate.summary.series)
-    if not a or not b:
-        return 0.0
-    return float(fuzz.WRatio(a, b)) / 100.0
+    summary = candidate.summary
+    return max(
+        (
+            float(fuzz.WRatio(a, b)) / 100.0
+            for name in (summary.series, *summary.alt_series)
+            if name and (b := _normalize_series(name))
+        ),
+        default=0.0,
+    )
 
 
 def _candidate_issue_int(candidate: Candidate) -> int | None:

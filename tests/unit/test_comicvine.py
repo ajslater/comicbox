@@ -70,6 +70,27 @@ def test_transform_maps_core_fields() -> None:
     # comes from comicbox's own archive scan, not CV).
 
 
+def test_transform_maps_volume_aliases_to_reprints() -> None:
+    """CV's newline-separated volume aliases become alternate-series reprints."""
+    transform = ComicVineApiTransform()
+    payload = _sample_issue_dict()
+    payload["comicvine_api"]["volume"]["aliases"] = (
+        "Alias One\nfoo comics\n\n Alias Two "
+    )
+    result = dict(transform.to_comicbox(payload))
+    # Blank segment dropped; the alias equal to the volume name dropped.
+    assert result["comicbox"]["reprints"] == [
+        {"series": {"name": "Alias One"}},
+        {"series": {"name": "Alias Two"}},
+    ]
+
+
+def test_transform_without_aliases_emits_no_reprints() -> None:
+    transform = ComicVineApiTransform()
+    result = dict(transform.to_comicbox(_sample_issue_dict()))
+    assert "reprints" not in result["comicbox"]
+
+
 def test_transform_handles_missing_fields() -> None:
     transform = ComicVineApiTransform()
     minimal = {
@@ -178,12 +199,20 @@ def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
 
 
 class _FakeBasicVolume:
-    def __init__(self, vid: int, name: str, start_year: int | None = None) -> None:
+    def __init__(
+        self,
+        vid: int,
+        name: str,
+        start_year: int | None = None,
+        aliases: str | None = None,
+    ) -> None:
         self.id = vid
         self.name = name
         # simyan's BasicVolume exposes start_year; the search loop uses it
         # to skip volumes that started after the comic was published.
         self.start_year = start_year
+        # Newline-separated alternative volume names.
+        self.aliases = aliases
 
 
 class _FakeImage:
@@ -487,6 +516,67 @@ def test_search_two_step_returns_candidates(
     assert all(c.summary.cover_url == _FakeImage.thumbnail for c in candidates)
 
 
+def test_search_candidates_carry_volume_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Volume aliases ride onto the candidates for the matcher's series signal."""
+    vol = _FakeBasicVolume(vid=100, name="G.I. Joe", aliases="GI Joe\n\n Joe ")
+    issues = {100: [_FakeBasicIssue(iid=5001, number="7", volume_name="G.I. Joe")]}
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+    candidates = src.search(profile)
+    assert [c.summary.alt_series for c in candidates] == [("GI Joe", "Joe")]
+
+
+def test_search_series_id_candidates_have_no_alt_series(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The --series-id fast path has no volume object, so no aliases."""
+    issues = {500: [_FakeBasicIssue(iid=9001, number="7", volume_name="Direct")]}
+    fake_cv = _FakeCV(volumes=[], issues_by_volume=issues)
+    src = _make_cv_source_with_series_id(monkeypatch, fake_cv, series_id=500)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+    candidates = src.search(profile)
+    assert [c.summary.alt_series for c in candidates] == [()]
+
+
+def test_search_alias_rescues_volume_from_prefilter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A localized volume survives the pre-call name gate via its alias."""
+    from comicbox.config.settings import (
+        Effort,
+        OnlineSourceTuning,
+        OnlineTuningSettings,
+    )
+
+    vol = _FakeBasicVolume(
+        vid=100, name="Shingeki no Kyojin", aliases="Attack on Titan"
+    )
+    issues = {
+        100: [_FakeBasicIssue(iid=5001, number="7", volume_name="Shingeki no Kyojin")]
+    }
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
+    creds = OnlineSourceCredentials(key="test-key")
+    # MINIMAL resolves the pre-filter threshold to 0.7, which the volume's
+    # own name cannot clear against this profile.
+    settings = OnlineSettings(
+        tuning=OnlineTuningSettings(
+            per_source={"comicvine": OnlineSourceTuning(effort=Effort.MINIMAL)}
+        )
+    )
+    src = ComicVineOnlineSource(creds, settings)
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    profile = ComicProfile(
+        series="Attack on Titan", issue="007", issue_int=7, year=1952
+    )
+    candidates = src.search(profile)
+
+    assert len(fake_cv.list_issues_calls) == 1
+    assert [c.issue_id for c in candidates] == [5001]
+
+
 # -------------------------------------------- get(issue_id) → volume publisher
 
 
@@ -519,11 +609,16 @@ class _FakeFullVolume:
     """Mock simyan Volume returned by get_volume (carries publisher)."""
 
     def __init__(
-        self, vid: int, name: str, publisher: _FakeGenericEntry | None
+        self,
+        vid: int,
+        name: str,
+        publisher: _FakeGenericEntry | None,
+        aliases: str | None = None,
     ) -> None:
         self.id = vid
         self.name = name
         self.publisher = publisher
+        self.aliases = aliases
 
 
 class _FakeCVForGet:
@@ -583,6 +678,25 @@ def test_get_injects_publisher_from_volume(
     assert payload["publisher"] == {"id": 10, "name": "Marvel"}
 
 
+def test_get_injects_volume_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Aliases ride along on the volume fetch get() already makes."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(
+        vid=999,
+        name="X-Men",
+        publisher=None,
+        aliases="Uncanny X-Men\nThe X-Men",
+    )
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+
+    # No extra API call — the same get_volume that chases the publisher.
+    assert fake_cv.get_volume_calls == [999]
+    assert payload["volume"]["aliases"] == "Uncanny X-Men\nThe X-Men"
+
+
 def test_get_omits_publisher_when_volume_has_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -594,6 +708,8 @@ def test_get_omits_publisher_when_volume_has_none(
 
     payload = src.get(42)
     assert "publisher" not in payload
+    # No aliases on the volume → nothing injected.
+    assert "aliases" not in payload["volume"]
 
 
 def test_get_handles_get_volume_failure_gracefully(

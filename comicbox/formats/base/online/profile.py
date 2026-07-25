@@ -46,6 +46,11 @@ class CandidateSummary:
     page_count: int | None
     cover_url: str | None
     variant_label: str | None
+    # Alternative series names (ComicVine volume aliases). Empty for
+    # sources whose search results don't carry them — mokkari's
+    # BasicSeries has no `alt_names`. `s_series` scores best-of over
+    # `series` and these.
+    alt_series: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

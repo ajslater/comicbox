@@ -1,5 +1,16 @@
 # 📰 News
 
+## v4.6.0
+
+- Features
+    - Metron and ComicVine online tagging record a series' alternative names
+      (localized and variant titles) as alternate-series reprints, the same way
+      MetronInfo.xml's `Series/AlternativeNames` are read. Metron alternative
+      names arrive with mokkari 4.3.0; ComicVine's come from volume aliases.
+    - Online matching recognizes ComicVine volume aliases. A comic filed under a
+      localized or variant series title now matches its canonical volume, both
+      in candidate scoring and in the pre-call volume filter.
+
 ## v4.5.1
 
 - Fixes

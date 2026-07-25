@@ -156,11 +156,18 @@ def _contributing_signals(
     # Issue: profile carries either the raw string `issue` (e.g. "001")
     # or the parsed `issue_int`. The candidate side just has `issue`.
     profile_has_issue = bool(profile.issue) or profile.issue_int is not None
+    # Series: alternative names count as candidate series data — `s_series`
+    # scores them, so dropping the signal would take W_SERIES out of the
+    # renormalisation denominator and inflate the rest.
     summary = candidate.summary
     return tuple(
         (weight, scorer)
         for contributes, weight, scorer in (
-            (bool(profile.series or summary.series), W_SERIES, s_series),
+            (
+                bool(profile.series or summary.series or summary.alt_series),
+                W_SERIES,
+                s_series,
+            ),
             (profile_has_issue or bool(summary.issue), W_ISSUE, s_issue),
             (profile.year is not None or summary.year is not None, W_YEAR, s_year),
             (bool(profile.publisher or summary.publisher), W_PUBLISHER, s_publisher),

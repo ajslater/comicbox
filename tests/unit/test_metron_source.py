@@ -124,6 +124,11 @@ def test_search_issues_list_uses_series_name_directly(
     # volume_id comes straight from BaseIssue.series.id (mokkari 3.28.0+) —
     # no discovery step needed to resolve it.
     assert candidates[0].volume_id == 100
+    # mokkari's `BasicSeries` (search results) has no `alt_names` — only
+    # `IssueSeries` on the issue-detail response does — so search
+    # candidates carry no alternative series names. Getting them would
+    # cost an extra `series()` call per candidate.
+    assert candidates[0].summary.alt_series == ()
 
 
 def test_search_primary_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:

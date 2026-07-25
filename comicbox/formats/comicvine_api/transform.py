@@ -17,10 +17,12 @@ from typing_extensions import override
 
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
+    alt_names_to_reprints,
     build_identifier,
     credits_to_cb,
     named_block,
     named_dict_with_id,
+    split_aliases,
 )
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.base.transforms.base import BaseTransform
@@ -71,6 +73,18 @@ def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
     if (vid := vol.get("id")) is not None:
         out["identifiers"] = {_CV: build_identifier(_CV, "series", vid)}
     return out
+
+
+def _build_reprints(issue: Mapping[str, Any]) -> list[dict]:
+    """
+    Build alternate-series reprints from the volume's alternative names.
+
+    `volume.aliases` is injected by `ComicVineOnlineSource.get()` from the
+    volume it already fetches for the publisher; simyan's `Issue.volume` is
+    a bare generic entry without them.
+    """
+    vol = issue.get("volume") or {}
+    return alt_names_to_reprints(split_aliases(vol.get("aliases")), vol.get("name"))
 
 
 def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
@@ -125,6 +139,8 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
                 source=_CV,
             ),
         ),
+        # Reprints — the volume's alternative names.
+        ("reprints", _build_reprints(issue)),
         # Top-level identifiers (just the CV issue id; volume id lives on series).
         ("identifiers", _build_identifiers(issue)),
     )

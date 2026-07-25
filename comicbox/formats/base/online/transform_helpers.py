@@ -98,6 +98,18 @@ def parse_creator_roles(raw: str | None) -> list[str]:
     return [r.strip() for r in _ROLE_SPLIT_RE.split(raw) if r.strip()]
 
 
+def split_aliases(raw: str | None) -> list[str]:
+    """
+    Split ComicVine's newline-separated volume `aliases` string into a list.
+
+    mokkari returns series alt names as a list already so this is only
+    used for the CV path. Empty / None inputs produce [].
+    """
+    if not raw:
+        return []
+    return [alias for line in raw.splitlines() if (alias := line.strip())]
+
+
 def _extract_role_names(roles_raw: Any, *, role_is_string: bool) -> Iterable[str]:
     """Yield role-name strings from either CV's comma-string form or mokkari's list-of-dicts."""
     if role_is_string:
@@ -169,6 +181,33 @@ def named_block(parent: Mapping[str, Any], key: str) -> dict[str, str] | None:
     if name := nested.get("name"):
         return {"name": name}
     return None
+
+
+def alt_names_to_reprints(
+    alt_names: Iterable[str | None] | None,
+    primary_name: str | None,
+) -> list[dict]:
+    """
+    Convert a series' alternative names into comicbox reprint entries.
+
+    Alternative series names become `reprints[].series.name`, matching how
+    MetronInfo.xml's `Series/AlternativeNames` are read. The online APIs
+    carry no language for these, so no `language` is set.
+
+    Names are stripped; empties, case-insensitive duplicates, and names
+    matching the primary series name are dropped.
+    """
+    if not alt_names:
+        return []
+    seen = {primary_name.strip().casefold()} if primary_name else set()
+    out: list[dict] = []
+    for raw in alt_names:
+        name = str(raw).strip() if raw else ""
+        if not name or (key := name.casefold()) in seen:
+            continue
+        seen.add(key)
+        out.append({"series": {"name": name}})
+    return out
 
 
 def reprints_to_cb(
