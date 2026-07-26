@@ -82,6 +82,121 @@ def test_compute_ids_from_tags() -> None:
     assert_diff(IDS_FROM_TAGS_MD, md)
 
 
+PREFIXED_KEYS_YAML = """
+comicbox:
+  identifiers:
+    comicvine:
+      key: "series:160294"
+    grandcomicsdatabase:
+      key: "series:999"
+    leagueofcomicgeeks:
+      key: "series:178012"
+    metron:
+      key: "series:5678"
+  series:
+    name: Foo
+    identifiers:
+      comicvine:
+        key: "4050-160294"
+"""
+_CV_SERIES_IDENTIFIER = {
+    "key": "160294",
+    "url": "https://comicvine.gamespot.com/c/4050-160294/",
+}
+PREFIXED_KEYS_MD = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "identifiers": {
+                "comicvine": _CV_SERIES_IDENTIFIER,
+                "grandcomicsdatabase": {
+                    "key": "999",
+                    "url": "https://comics.org/series/999/",
+                },
+                "leagueofcomicgeeks": {
+                    "key": "178012",
+                    "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
+                },
+                "metron": {
+                    "key": "5678",
+                    "url": "https://metron.cloud/series/5678",
+                },
+            },
+            "series": {
+                "name": "Foo",
+                "identifiers": {"comicvine": _CV_SERIES_IDENTIFIER},
+            },
+        },
+    }
+)
+
+
+def test_compute_type_prefixed_identifier_keys() -> None:
+    """Hand-tagged 'series:' prefixed keys normalize and get series urls."""
+    with Comicbox() as car:
+        car.add_metadata(PREFIXED_KEYS_YAML, MetadataFormats.COMICBOX_YAML)
+        md = car.get_internal_metadata()
+    assert_diff(PREFIXED_KEYS_MD, md)
+
+
+MULTI_URN_NOTES_YAML = """
+comicbox:
+  notes: "urn:comicvine:issue:145269 urn:metron:issue:999999"
+"""
+MULTI_URN_NOTES_MD = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "identifiers": {
+                "comicvine": {
+                    "key": "145269",
+                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
+                },
+                "metron": {
+                    "key": "999999",
+                    "url": "https://metron.cloud/issue/999999",
+                },
+            },
+            "notes": "urn:comicvine:issue:145269 urn:metron:issue:999999",
+        },
+    }
+)
+
+
+def test_compute_all_urns_from_notes() -> None:
+    """Every urn in a notes field becomes an identifier, not just the first."""
+    with Comicbox() as car:
+        car.add_metadata(MULTI_URN_NOTES_YAML, MetadataFormats.COMICBOX_YAML)
+        md = car.get_internal_metadata()
+    assert_diff(MULTI_URN_NOTES_MD, md)
+
+
+SOURCE_TYPE_KEY_TAG_XML = (
+    '<?xml version="1.0"?><ComicInfo>'
+    "<Tags>leagueofcomicgeeks:series:178012</Tags>"
+    "</ComicInfo>"
+)
+SOURCE_TYPE_KEY_TAG_MD = MappingProxyType(
+    {
+        ComicboxSchemaMixin.ROOT_TAG: {
+            "identifiers": {
+                "leagueofcomicgeeks": {
+                    "key": "178012",
+                    "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
+                },
+            },
+            "tags": {"leagueofcomicgeeks:series:178012": {}},
+        },
+    }
+)
+
+
+def test_compute_ids_from_source_type_key_tag() -> None:
+    """A 'source:type:key' tag keeps its id number and typed url."""
+    with Comicbox() as car:
+        car.add_metadata(SOURCE_TYPE_KEY_TAG_XML, MetadataFormats.COMIC_INFO)
+        md = car.get_internal_metadata()
+    assert_diff(SOURCE_TYPE_KEY_TAG_MD, md)
+
+
 ISSUE_NAME_ONLY_MD = MappingProxyType(
     {ComicInfoSchema.ROOT_TAG: {"Number": "1234SUFFIX"}}
 )

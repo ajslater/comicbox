@@ -25,6 +25,7 @@ from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
 from comicbox.identifiers.identifiers import (
     create_identifier,
     get_identifier_url,
+    normalize_key,
 )
 from comicbox.identifiers.other import (
     parse_identifier_other_str,
@@ -93,12 +94,16 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         id_type: str, identifiers: Mapping | None
     ) -> dict[str, dict[str, str]]:
         """
-        Compute missing urls for one identifiers map.
+        Compute missing urls and normalized keys for one identifiers map.
 
-        Returns ``{source: {"url": ...}}`` deltas instead of writing into
-        the input: computed actions must not mutate the merged metadata
-        they derive from (it's cached); the action's return value is
-        merged by its declared merger like every other action.
+        Returns ``{source: {"key": ..., "url": ...}}`` deltas instead of
+        writing into the input: computed actions must not mutate the merged
+        metadata they derive from (it's cached); the action's return value
+        is merged by its declared merger like every other action.
+
+        Hand-tagged keys may carry a type prefix ("series:178012") that
+        overrides the positional id_type, or a comicvine long code; the
+        cleaned key is emitted as a delta alongside the url.
         """
         deltas: dict[str, dict[str, str]] = {}
         if not identifiers:
@@ -106,10 +111,16 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         for id_source_str, identifier in identifiers.items():
             if identifier.get(ID_URL_KEY):
                 continue
-            if (id_key := identifier.get(ID_KEY_KEY)) and (
-                url := get_identifier_url(id_source_str, id_type, id_key)
-            ):
-                deltas[id_source_str] = {ID_URL_KEY: url}
+            if not (id_key := identifier.get(ID_KEY_KEY)):
+                continue
+            norm_id_type, norm_id_key = normalize_key(id_source_str, id_type, id_key)
+            delta = {}
+            if norm_id_key != id_key:
+                delta[ID_KEY_KEY] = norm_id_key
+            if url := get_identifier_url(id_source_str, norm_id_type, norm_id_key):
+                delta[ID_URL_KEY] = url
+            if delta:
+                deltas[id_source_str] = delta
         return deltas
 
     @classmethod

@@ -9,15 +9,18 @@ from urllib.parse import urlparse
 from bidict import frozenbidict
 
 from comicbox.enums.comicbox import IdSources
-from comicbox.enums.maps.identifiers import SOURCE_ALIAS_TREE
+from comicbox.enums.maps.identifiers import SOURCE_ALIAS_TREE, get_id_source_by_alias
 from comicbox.identifiers import (
     COMICVINE_LONG_ID_KEY_EXP,
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     ID_KEY_KEY,
+    ID_TYPE_NAMES,
     ID_URL_KEY,
     PARSE_COMICVINE_RE,
 )
+
+_ID_TYPES = frozenset(ID_TYPE_NAMES)
 
 _SLUG_REXP = r"(?:/\S*)?"
 
@@ -104,6 +107,10 @@ class IdentifierParts:
     def unparse_url(self, id_type: str, id_key: str) -> str:
         """Create url from identifier parts."""
         url = ""
+        if ":" in id_key:
+            # A prefix normalize_key didn't recognize; no source uses colons
+            # in its path segments, so emit no url rather than a broken one.
+            return url
         if type_value := getattr(self.id_type, id_type, None):
             path = self.url_path_template.format(id_type=type_value, id_key=id_key)
             url = self.url_prefix + path
@@ -260,6 +267,35 @@ def _normalize_comicvine_id_key(id_type: str, id_key: str) -> tuple:
     return id_type, id_key
 
 
+def normalize_key(id_source_str: str, id_type: str, id_key: str) -> tuple[str, str]:
+    """
+    Strip urn, source, and type prefixes off an id key.
+
+    Hand-tagged keys often mirror the urn form comicbox writes to notes and
+    GTIN (e.g. "series:178012"); a type prefix overrides the caller's id_type.
+    Prefixes naming a different source are left alone. Comicvine long codes
+    ("4050-160294") are normalized last.
+    """
+    parts = id_key.strip().split(":")
+    while len(parts) > 1:
+        head = parts[0].strip().lower()
+        if head == "urn":
+            parts.pop(0)
+        elif head in _ID_TYPES:
+            id_type = head
+            parts.pop(0)
+        else:
+            head_source = get_id_source_by_alias(head, None)
+            if head_source and head_source.value == id_source_str:
+                parts.pop(0)
+            else:
+                break
+    id_key = ":".join(parts).strip()
+    if id_source_str == IdSources.COMICVINE.value:
+        id_type, id_key = _normalize_comicvine_id_key(id_type, id_key)
+    return id_type, id_key
+
+
 def get_identifier_url(id_source_str: str, id_type: str, id_key: str) -> str:
     """Get a url for an identifier if we know the rest."""
     url = ""
@@ -285,8 +321,7 @@ def create_identifier(
     if not id_type:
         id_type = DEFAULT_ID_TYPE
     if id_key:
-        if id_source_str == IdSources.COMICVINE.value:
-            id_type, id_key = _normalize_comicvine_id_key(id_type, id_key)
+        id_type, id_key = normalize_key(id_source_str, id_type, id_key)
         if id_key:
             identifier[ID_KEY_KEY] = id_key
     if not url:

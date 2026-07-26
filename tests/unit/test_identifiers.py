@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
+
 from comicbox.box import Comicbox
 from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import get_id_source_by_alias
@@ -9,11 +11,14 @@ from comicbox.formats import MetadataFormats
 from comicbox.formats.base.transforms.identifiers import (
     merge_url_and_explicit_identifiers,
 )
+from comicbox.identifiers import ID_TYPE_NAMES
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
+    IdentifierTypes,
     create_identifier,
     get_id_source_from_url,
     get_identifier_url,
+    normalize_key,
 )
 from comicbox.identifiers.other import parse_identifier_other_str
 from comicbox.identifiers.urns import (
@@ -97,6 +102,76 @@ def test_create_identifier_explicit_url_wins() -> None:
     assert identifier == {"key": "k", "url": "https://example.com/x"}
 
 
+###############
+# normalize_key
+###############
+
+
+def test_normalize_key_type_prefix_overrides_type() -> None:
+    """A 'type:key' key yields the prefixed type and the bare key."""
+    assert normalize_key("leagueofcomicgeeks", "issue", "series:178012") == (
+        "series",
+        "178012",
+    )
+
+
+def test_normalize_key_urn_prefix_unwrapped() -> None:
+    """A full urn pasted as a key unwraps to its type and key."""
+    assert normalize_key("comicvine", "", "urn:comicvine:issue:145269") == (
+        "issue",
+        "145269",
+    )
+
+
+def test_normalize_key_same_source_prefix_and_long_code() -> None:
+    """A redundant same-source prefix strips; comicvine long codes normalize."""
+    assert normalize_key("comicvine", "issue", "comicvine:4050-160294") == (
+        "series",
+        "160294",
+    )
+
+
+def test_normalize_key_foreign_source_prefix_untouched() -> None:
+    """A prefix naming a different source is preserved verbatim."""
+    assert normalize_key("metron", "issue", "comicvine:issue:1") == (
+        "issue",
+        "comicvine:issue:1",
+    )
+
+
+def test_normalize_key_bare_key_unchanged() -> None:
+    """A clean key passes through with the caller's type."""
+    assert normalize_key("metron", "series", "5678") == ("series", "5678")
+
+
+def test_id_type_names_match_identifier_types_fields() -> None:
+    """Drift guard: ID_TYPE_NAMES mirrors IdentifierTypes' public fields."""
+    public_fields = {
+        f.name for f in fields(IdentifierTypes) if not f.name.startswith("_")
+    }
+    assert frozenset(ID_TYPE_NAMES) == public_fields
+
+
+def test_create_identifier_type_prefixed_keys_bug_report_sources() -> None:
+    """'series:'-prefixed keys produce series urls for the four reported dbs."""
+    assert create_identifier("leagueofcomicgeeks", "series:178012") == {
+        "key": "178012",
+        "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
+    }
+    assert create_identifier("comicvine", "series:160294") == {
+        "key": "160294",
+        "url": "https://comicvine.gamespot.com/c/4050-160294/",
+    }
+    assert create_identifier("metron", "series:5678") == {
+        "key": "5678",
+        "url": "https://metron.cloud/series/5678",
+    }
+    assert create_identifier("grandcomicsdatabase", "series:999") == {
+        "key": "999",
+        "url": "https://comics.org/series/999/",
+    }
+
+
 #####################
 # get_identifier_url
 #####################
@@ -118,6 +193,11 @@ def test_get_identifier_url_unknown_source_or_type_is_empty() -> None:
     """Unknown sources and unmapped id types yield an empty url string."""
     assert get_identifier_url("unknownsource", "issue", "1") == ""
     assert get_identifier_url("comicvine", "bogus_type", "12345") == ""
+
+
+def test_get_identifier_url_colon_in_key_is_empty() -> None:
+    """A key with an unrecognized prefix yields no url rather than a bad one."""
+    assert get_identifier_url("metron", "issue", "comicvine:issue:1") == ""
 
 
 def test_url_path_parses_back_to_type_and_key() -> None:
@@ -208,6 +288,15 @@ def test_parse_identifier_other_str_source_prefix() -> None:
         IdSources.METRON,
         "issue",
         "abc-123",
+    )
+
+
+def test_parse_identifier_other_str_source_type_key() -> None:
+    """A 'source:type:key' string parses all three parts without truncation."""
+    assert parse_identifier_other_str("leagueofcomicgeeks:series:178012") == (
+        IdSources.LCG,
+        "series",
+        "178012",
     )
 
 

@@ -216,7 +216,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
             named_dict_with_id(issue.get("characters"), _METRON, "character"),
         ),
         ("teams", named_dict_with_id(issue.get("teams"), _METRON, "team")),
-        ("arcs", named_dict_with_id(issue.get("arcs"), _METRON, "story_arc")),
+        ("arcs", named_dict_with_id(issue.get("arcs"), _METRON, "arc")),
         ("universes", named_dict_with_id(issue.get("universes"), _METRON, "universe")),
         ("genres", named_dict(series_genres)),
         # Credits (list of {id, creator, role: [{name},...]})

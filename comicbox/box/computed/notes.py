@@ -101,10 +101,8 @@ class ComicboxComputedNotes(ComicboxMerge):
     @staticmethod
     def _get_computed_notes_urn_identifiers(notes: str) -> dict:
         identifiers = {}
-        match = _URN_RE.search(notes)
-        if not match:
-            return identifiers
-        for urn in match.groups():
+        for match in _URN_RE.finditer(notes):
+            urn = match.group("urn")
             id_source, id_type, id_key = parse_urn_identifier_and_warn(urn)
             if id_source and id_key:
                 identifier = create_identifier(id_source.value, id_key, id_type=id_type)
@@ -122,7 +120,13 @@ class ComicboxComputedNotes(ComicboxMerge):
                 (id_source_str := match.group("id_source"))
                 and (id_source := get_id_source_by_alias(id_source_str))
                 and (id_key := match.group("id_key"))
-                and (identifier := create_identifier(id_source.value, id_key))
+                and (
+                    identifier := create_identifier(
+                        id_source.value,
+                        id_key,
+                        id_type=(match.group("id_type") or "").lower(),
+                    )
+                )
             ):
                 identifiers[id_source.value] = identifier
         return identifiers

@@ -42,7 +42,7 @@ def _parse_identifier_other_str(
     with suppress(IndexError):
         id_source_str = match.group("id_source") or ""
         id_source = get_id_source_by_alias(id_source_str)
-        id_type = DEFAULT_ID_TYPE
+        id_type = (match.group("id_type") or DEFAULT_ID_TYPE).lower()
         id_key = match.group("id_key")
     return id_source, id_type, id_key
 
