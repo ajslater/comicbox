@@ -38,6 +38,7 @@ from comicbox.formats.base.online.series_filter import (
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
 )
+from comicbox.formats.base.online.transform_helpers import split_aliases
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import USER_AGENT
@@ -195,6 +196,10 @@ class ComicVineOnlineSource(OnlineSource):
         key for the transform to pick up. simyan's response cache is
         URL-keyed, so this is "+1 API call per unique volume" rather
         than per issue — successive issues from the same volume are free.
+
+        ``Volume.aliases`` rides along on that same fetch and is injected
+        onto the volume block for the transform to read as alternative
+        series names.
         """
         session = self._get_session()
         self._record_api_call("get_issue")
@@ -216,6 +221,8 @@ class ComicVineOnlineSource(OnlineSource):
             else:
                 if volume.publisher is not None:
                     dump["publisher"] = volume.publisher.model_dump(mode="json")
+                if volume.aliases and isinstance(dump.get("volume"), dict):
+                    dump["volume"]["aliases"] = volume.aliases
         return dump
 
     # Limit how many candidate volumes to expand into issue queries; each
@@ -245,7 +252,10 @@ class ComicVineOnlineSource(OnlineSource):
         return None
 
     def _to_candidate(
-        self, basic_issue: Any, volume_name: str | None = None
+        self,
+        basic_issue: Any,
+        volume_name: str | None = None,
+        alt_series: tuple[str, ...] = (),
     ) -> Candidate:
         """
         Map simyan's `BasicIssue` to a Candidate.
@@ -253,6 +263,9 @@ class ComicVineOnlineSource(OnlineSource):
         ``volume_name`` overrides the series field when supplied — the
         two-step search has already resolved the volume so we use its
         canonical name even if `basic_issue.volume.name` is sparse.
+
+        ``alt_series`` carries the volume's aliases so the matcher can
+        score a localized or variant title against the profile.
         """
         bi_volume = basic_issue.volume
         series = volume_name or (bi_volume.name if bi_volume else "") or ""
@@ -267,6 +280,7 @@ class ComicVineOnlineSource(OnlineSource):
             page_count=None,
             cover_url=cover_url,
             variant_label=None,
+            alt_series=alt_series,
         )
         return Candidate(
             source=self.name,
@@ -454,13 +468,15 @@ class ComicVineOnlineSource(OnlineSource):
         volume_name: str | None = None,
         *,
         year: int | None = None,
+        alt_series: tuple[str, ...] = (),
     ) -> list[Candidate]:
         """
         Run a single ``list_issues`` call constrained by volume id.
 
         Used both by the fast path (`--series-id comicvine:<id>`) and by
-        each iteration of the discovery two-step. ``volume_name`` is set
-        on the returned candidates' summary when available.
+        each iteration of the discovery two-step. ``volume_name`` and
+        ``alt_series`` are set on the returned candidates' summary when
+        available.
 
         ``year``, when supplied, narrows results to a ±_COVER_DATE_WINDOW_YEARS
         window around it via CV's ``cover_date:Y0-01-01|Y1-12-31``
@@ -486,7 +502,7 @@ class ComicVineOnlineSource(OnlineSource):
                 f"cover_date:{year - window}-01-01|{year + window}-12-31"
             )
         issues = session.list_issues(params={"filter": ",".join(issue_filter)})
-        return [self._to_candidate(i, volume_name) for i in issues]
+        return [self._to_candidate(i, volume_name, alt_series) for i in issues]
 
     def _volume_predates_comic(
         self, vol_start_year: int | None, comic_year: int | None
@@ -625,6 +641,10 @@ class ComicVineOnlineSource(OnlineSource):
         api_budget threshold). Both filters log at debug level so
         calibration runs can audit drops. The actual `list_issues` call
         only fires for volumes that survive both gates.
+
+        The volume's aliases are read off the already-fetched search
+        result — no extra API call — and both widen the name gate and
+        ride onto the candidates for the matcher's series signal.
         """
         vol_start = getattr(vol, "start_year", None)
         if self._volume_predates_comic(vol_start, year):
@@ -635,7 +655,10 @@ class ComicVineOnlineSource(OnlineSource):
                 f"originate here."
             )
             return []
-        if not should_keep_volume_name(profile.series, vol.name, name_threshold):
+        alt_series = tuple(split_aliases(getattr(vol, "aliases", None)))
+        if not should_keep_volume_name(
+            profile.series, vol.name, name_threshold, alt_names=alt_series
+        ):
             logger.debug(
                 f"online {self.name}: skipping volume {vol.id} "
                 f"({vol.name!r}); name dissimilar to "
@@ -645,7 +668,12 @@ class ComicVineOnlineSource(OnlineSource):
             return []
         try:
             return self._list_with_year_retry(
-                session, vol.id, issue_number, vol.name, year=year
+                session,
+                vol.id,
+                issue_number,
+                vol.name,
+                year=year,
+                alt_series=alt_series,
             )
         except Exception as exc:
             logger.warning(
@@ -662,6 +690,7 @@ class ComicVineOnlineSource(OnlineSource):
         volume_name: str | None,
         *,
         year: int | None,
+        alt_series: tuple[str, ...] = (),
     ) -> list[Candidate]:
         """
         Per-volume issue lookup with a year-window filter and one fallback.
@@ -673,10 +702,20 @@ class ComicVineOnlineSource(OnlineSource):
         wrongly drop the right answer.
         """
         candidates = self._list_issues_by_volume(
-            session, volume_id, issue_number, volume_name, year=year
+            session,
+            volume_id,
+            issue_number,
+            volume_name,
+            year=year,
+            alt_series=alt_series,
         )
         if candidates or year is None:
             return candidates
         return self._list_issues_by_volume(
-            session, volume_id, issue_number, volume_name, year=None
+            session,
+            volume_id,
+            issue_number,
+            volume_name,
+            year=None,
+            alt_series=alt_series,
         )

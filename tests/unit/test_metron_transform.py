@@ -85,6 +85,41 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     assert "community_rating" not in cb
 
 
+def test_alt_names_become_reprints() -> None:
+    """Series alt names land as alternate-series reprints, deduped."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["alt_names"] = [
+        "Nickname A",
+        " Nickname A ",  # case/whitespace duplicate
+        "foo comics",  # equal to the primary series name
+        "",
+    ]
+    result = dict(transform.to_comicbox(payload))
+    assert result["comicbox"]["reprints"] == [{"series": {"name": "Nickname A"}}]
+
+
+def test_empty_alt_names_emit_no_reprints() -> None:
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["alt_names"] = []
+    result = dict(transform.to_comicbox(payload))
+    assert "reprints" not in result["comicbox"]
+
+
+def test_alt_names_append_after_issue_reprints() -> None:
+    """Real reprints come first; alt names extend the same list."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["reprints"] = [{"id": 5001, "issue": "Bar Comics #5"}]
+    payload["metron_api"]["series"]["alt_names"] = ["Nickname A"]
+    result = dict(transform.to_comicbox(payload))
+    reprints = result["comicbox"]["reprints"]
+    assert len(reprints) == 2
+    assert reprints[0]["issue"] == "Bar Comics #5"
+    assert reprints[1] == {"series": {"name": "Nickname A"}}
+
+
 def test_prices_currency_mapped_to_country_code() -> None:
     """USD → US so the country-keyed comicbox price dict accepts it."""
     transform = MetronApiTransform()

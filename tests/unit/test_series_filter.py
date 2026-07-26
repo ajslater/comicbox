@@ -155,6 +155,53 @@ def test_threshold_boundary_inclusive() -> None:
     assert should_keep_volume_name("Foo", "Bar", threshold=0.0)
 
 
+# --------------------------------------------- alternative volume names
+
+
+def test_alt_name_rescues_a_dropped_volume() -> None:
+    """A localized volume title is kept when an alias matches the profile."""
+    assert not should_keep_volume_name(
+        "Attack on Titan", "Shingeki no Kyojin", threshold=0.7
+    )
+    assert should_keep_volume_name(
+        "Attack on Titan",
+        "Shingeki no Kyojin",
+        threshold=0.7,
+        alt_names=("Attack on Titan",),
+    )
+
+
+def test_non_matching_alt_names_still_drop() -> None:
+    """Aliases only rescue when one of them actually matches."""
+    assert not should_keep_volume_name(
+        "Attack on Titan",
+        "Shingeki no Kyojin",
+        threshold=0.7,
+        alt_names=("Kimetsu no Yaiba", "Demon Slayer"),
+    )
+
+
+def test_empty_and_blank_alt_names_are_inert() -> None:
+    """No aliases, or only junk ones, behave exactly as before."""
+    for alt_names in ((), ("", "   ")):
+        assert not should_keep_volume_name(
+            "Lois Lane", "Watchmen", threshold=0.7, alt_names=alt_names
+        )
+        assert should_keep_volume_name(
+            "Lois Lane", "Lois Lane", threshold=0.7, alt_names=alt_names
+        )
+
+
+def test_alt_name_year_parens_stripped() -> None:
+    """Aliases run through the same year-paren normalization as the name."""
+    assert should_keep_volume_name(
+        "Attack on Titan",
+        "Shingeki no Kyojin",
+        threshold=0.7,
+        alt_names=("Attack on Titan (2012)",),
+    )
+
+
 # ----------------------------------------- max_results_for (Phase D)
 
 

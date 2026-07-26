@@ -7,12 +7,14 @@ from typing import Any
 
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
+    alt_names_to_reprints,
     build_identifier,
     credits_to_cb,
     named_dict,
     named_dict_with_id,
     parse_creator_roles,
     reprints_to_cb,
+    split_aliases,
 )
 from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
 from comicbox.formats.metron_api.transform import MetronApiTransform
@@ -75,6 +77,27 @@ def test_parse_creator_roles_splits_comma_string() -> None:
     assert parse_creator_roles("writer") == ["writer"]
     assert parse_creator_roles("") == []
     assert parse_creator_roles(None) == []
+
+
+def test_split_aliases() -> None:
+    """ComicVine returns volume aliases newline-separated."""
+    assert split_aliases("A\n\n B \nC") == ["A", "B", "C"]
+    assert split_aliases("") == []
+    assert split_aliases(None) == []
+
+
+def test_alt_names_to_reprints_dedups_and_skips_primary() -> None:
+    out = alt_names_to_reprints(
+        ["Alt One", "alt one", " Foo Comics ", "", None], "Foo Comics"
+    )
+    # Case-insensitive dupe collapses to the first spelling; the name
+    # matching the primary series is not a reprint of itself.
+    assert out == [{"series": {"name": "Alt One"}}]
+
+
+def test_alt_names_to_reprints_without_primary_name() -> None:
+    assert alt_names_to_reprints(["Alt One"], None) == [{"series": {"name": "Alt One"}}]
+    assert alt_names_to_reprints(None, "Foo Comics") == []
 
 
 def test_credits_to_cb_string_role_form() -> None:
@@ -146,6 +169,7 @@ _METRON_FIXTURE = {
             "volume": 1,
             "year_began": 2018,
             "genres": [{"id": 1, "name": "Superhero"}],
+            "alt_names": ["Fu Comics"],
         },
         "story_titles": ["Title One", "Title Two"],
         "isbn": "978-1234",
@@ -232,7 +256,10 @@ def test_metron_identifiers_cross_sourced() -> None:
 
 
 def test_metron_reprints() -> None:
-    assert _METRON_CB["reprints"][0]["issue"] == "Foo Comics #5"
+    reprints = _METRON_CB["reprints"]
+    assert reprints[0]["issue"] == "Foo Comics #5"
+    # The series' alternative names follow the real reprints.
+    assert {"series": {"name": "Fu Comics"}} in reprints
 
 
 def test_metron_cover_image() -> None:

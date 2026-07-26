@@ -42,12 +42,15 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from rapidfuzz import fuzz
 
 from comicbox.config.settings import Effort
 from comicbox.formats.base.online.signals import normalize_series
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 # CV (and to a lesser extent Metron) annotate volume names with the
 # series's publication year in parens: "Lois Lane (1986)", "Conan (2004)",
@@ -134,10 +137,18 @@ def max_results_for(budget: Effort, *, default: int) -> int:
     return _MAX_RESULTS_OVERRIDES.get(budget, default)
 
 
+def _name_passes(profile_norm: str, name: str, threshold: float) -> bool:
+    """Run one candidate name through the same normalize + `ratio` gate."""
+    b = normalize_series(_strip_year_parens(name))
+    return bool(b) and float(fuzz.ratio(profile_norm, b)) >= threshold * 100.0
+
+
 def should_keep_volume_name(
     profile_series: str | None,
     volume_name: str | None,
     threshold: float,
+    *,
+    alt_names: Iterable[str] = (),
 ) -> bool:
     """
     Decide whether a discovered volume is worth a per-volume issue lookup.
@@ -156,6 +167,11 @@ def should_keep_volume_name(
       `s_series` (so naming conventions agree), different primitive
       (so we filter substring noise the matcher would still score
       high). See module docstring for rationale.
+    - Any of the volume's `alt_names` clears that same bar. Aliases
+      are purely additive — they can rescue a volume filed under a
+      localized or variant title ("Shingeki no Kyojin" for a comic
+      tagged "Attack on Titan") but never drop one the primary name
+      would have kept.
 
     Returns False (skip, save the call) otherwise. The caller is
     expected to log a debug-level reason when this happens so
@@ -169,4 +185,6 @@ def should_keep_volume_name(
     b = normalize_series(_strip_year_parens(volume_name))
     if not a or not b:
         return True
-    return float(fuzz.ratio(a, b)) >= threshold * 100.0
+    if float(fuzz.ratio(a, b)) >= threshold * 100.0:
+        return True
+    return any(_name_passes(a, alias, threshold) for alias in alt_names if alias)

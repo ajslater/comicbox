@@ -58,6 +58,7 @@ def _candidate(
     publisher: str | None = "Quality Comics",
     page_count: int | None = 24,
     volume_id: int | None = None,
+    alt_series: tuple[str, ...] = (),
 ) -> Candidate:
     return Candidate(
         source="metron",
@@ -70,6 +71,7 @@ def _candidate(
             page_count=page_count,
             cover_url=None,
             variant_label=None,
+            alt_series=alt_series,
         ),
         volume_id=volume_id,
     )
@@ -158,6 +160,38 @@ class TestSeriesSignal:
     def test_missing_either_side_zero(self) -> None:
         assert s_series(_profile(series=None), _candidate()) == 0.0
         assert s_series(_profile(), _candidate(series="")) == 0.0
+
+    def test_alt_name_beats_primary_name(self) -> None:
+        """A localized volume title matches on its alias."""
+        score = s_series(
+            _profile(series="Attack on Titan"),
+            _candidate(series="Shingeki no Kyojin", alt_series=("Attack on Titan",)),
+        )
+        assert score == 1.0
+
+    def test_alt_name_cannot_lower_a_primary_match(self) -> None:
+        score = s_series(
+            _profile(series="Foo Comics"),
+            _candidate(series="Foo Comics", alt_series=("Totally Unrelated",)),
+        )
+        assert score == 1.0
+
+    def test_no_alt_names_scores_as_before(self) -> None:
+        """Sources without aliases (Metron search) are unaffected."""
+        assert s_series(_profile(), _candidate(alt_series=())) == s_series(
+            _profile(), _candidate()
+        )
+
+    def test_missing_profile_zero_even_with_alt_names(self) -> None:
+        score = s_series(_profile(series=None), _candidate(alt_series=("Foo Comics",)))
+        assert score == 0.0
+
+    def test_alt_names_only_still_scores(self) -> None:
+        score = s_series(
+            _profile(series="Foo Comics"),
+            _candidate(series="", alt_series=("Foo Comics",)),
+        )
+        assert score == 1.0
 
 
 class TestIssueSignal:
@@ -376,6 +410,33 @@ def test_phase_k_solo_signal_uses_full_weight() -> None:
         ),
     )
     # Only s_series contributes (1.0); renormalised score is 1.0.
+    assert metadata_score(profile, cand) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_alt_names_alone_contribute_the_series_signal() -> None:
+    """
+    A candidate whose only series data is an alias still weighs W_SERIES.
+
+    `s_series` scores alt names, so the contributing-signals gate has to
+    count them as series data. Dropping the signal would take W_SERIES
+    out of the renormalisation denominator and inflate the rest — the
+    Phase K rev-1 bug class.
+    """
+    profile = ComicProfile(series="Foo Comics", issue=None, issue_int=None)
+    cand = Candidate(
+        source="comicvine",
+        issue_id=42,
+        summary=CandidateSummary(
+            series="",
+            issue="",
+            year=None,
+            publisher=None,
+            page_count=None,
+            cover_url=None,
+            variant_label=None,
+            alt_series=("Foo Comics",),
+        ),
+    )
     assert metadata_score(profile, cand) == pytest.approx(1.0, abs=1e-9)
 
 
