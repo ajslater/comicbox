@@ -238,6 +238,13 @@ def test_metron_collections() -> None:
     assert set(_METRON_CB["genres"]) == {"Superhero"}
 
 
+def test_metron_arc_identifier_url() -> None:
+    """Metron arcs carry an arc-typed identifier url, not an empty one."""
+    arc_identifier = _METRON_CB["arcs"]["Arc A"]["identifiers"]["metron"]
+    assert arc_identifier["key"] == "31"
+    assert arc_identifier["url"] == "https://metron.cloud/arc/31"
+
+
 def test_metron_credits() -> None:
     assert "Alan Moore" in _METRON_CB["credits"]
     assert "Writer" in _METRON_CB["credits"]["Alan Moore"]["roles"]
@@ -350,6 +357,13 @@ def test_comicvine_collections() -> None:
     assert set(_CV_CB["characters"]) == {"G.I. Joe"}
     assert set(_CV_CB["arcs"]) == {"Yarn Patrol"}
     assert set(_CV_CB["locations"]) == {"Korea"}
+
+
+def test_comicvine_arc_identifier_url() -> None:
+    """ComicVine story arcs carry the 4045 arc-typed identifier url."""
+    arc_identifier = _CV_CB["arcs"]["Yarn Patrol"]["identifiers"]["comicvine"]
+    assert arc_identifier["key"] == "9"
+    assert arc_identifier["url"] == "https://comicvine.gamespot.com/c/4045-9/"
 
 
 def test_comicvine_credits_string_roles() -> None:

@@ -1,5 +1,19 @@
 # 📰 News
 
+## v4.6.1
+
+- Fixes
+    - Hand-tagged identifier keys with a type prefix, like `series:178012`, now
+      produce correct per-database URLs instead of embedding the prefix in an
+      issue-shaped URL. Affected every source, notably ComicVine, Metron, Grand
+      Comics Database, and League of Comic Geeks.
+    - Hand-tagged ComicVine long codes like `4050-160294` are normalized to the
+      bare id with the right URL.
+    - `source:type:key` identifier strings in tags no longer drop the id number.
+    - All URNs in a notes field are read as identifiers; previously only the
+      first was.
+    - Story arcs tagged online from Metron or ComicVine get web URLs.
+
 ## v4.6.0
 
 - Features

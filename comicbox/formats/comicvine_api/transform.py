@@ -126,7 +126,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         # Collections
         ("characters", named_dict_with_id(issue.get("characters"), _CV, "character")),
         ("teams", named_dict_with_id(issue.get("teams"), _CV, "team")),
-        ("arcs", named_dict_with_id(issue.get("story_arcs"), _CV, "story_arc")),
+        ("arcs", named_dict_with_id(issue.get("story_arcs"), _CV, "arc")),
         ("locations", named_dict_with_id(issue.get("locations"), _CV, "location")),
         # Credits — CV stores roles as a comma-separated string per creator.
         (
