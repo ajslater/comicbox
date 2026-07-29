@@ -102,7 +102,7 @@ def _build_metron_session() -> Session:
         raise RuntimeError(msg)
     source = MetronOnlineSource(creds, online)
     if not source.is_configured():
-        msg = "Metron credentials incomplete (need both username and password)"
+        msg = "Metron credentials incomplete (need an API token or username + password)"
         raise RuntimeError(msg)
     return source._get_session()
 

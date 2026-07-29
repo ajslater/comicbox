@@ -501,6 +501,7 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "[green]key[/green], [green]url[/green]. "
             "Examples: [green]--auth metron:user=NAME[/green], "
             "[green]--auth metron:pass=PASS[/green] (warns: leaks into shell history), "
+            "[green]--auth metron:key=TOKEN[/green], "
             "[green]--auth comicvine:key=KEY[/green]. "
             "Prefer the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
         ),

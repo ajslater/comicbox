@@ -110,7 +110,7 @@ class Runner:
         if sources and "metron" not in sources:
             return False
         creds = online.auth.sources.get("metron")
-        return bool(creds and creds.user and creds.password)
+        return bool(creds and (creds.key or (creds.user and creds.password)))
 
     def _run_parallel(self, paths: list[Path], jobs: int) -> None:
         """

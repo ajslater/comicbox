@@ -41,12 +41,13 @@ def test_read_credential_env_picks_up_known_sources() -> None:
     env = {
         "COMICBOX_METRON_USER": "alice",
         "COMICBOX_METRON_PASS": "secret",
+        "COMICBOX_METRON_KEY": "token123",
         "COMICBOX_COMICVINE_KEY": "key123",
         "COMICBOX_UNKNOWN_FIELD": "ignored",
         "OTHER_VAR": "ignored",
     }
     assert read_credential_env(env) == {
-        "metron": {"user": "alice", "pass": "secret"},
+        "metron": {"user": "alice", "pass": "secret", "key": "token123"},
         "comicvine": {"key": "key123"},
     }
 
@@ -101,12 +102,14 @@ def test_cli_overrides_from_auth_list_parses_field_value_pairs() -> None:
             "comicvine:key=abc",
             "metron:user=bob",
             "metron:pass=secret",
+            "metron:key=token123",
             "metron:url=https://metron.local",
         ]
     )
     assert overrides.per_source["comicvine"]["key"] == "abc"
     assert overrides.per_source["metron"]["user"] == "bob"
     assert overrides.per_source["metron"]["pass"] == "secret"
+    assert overrides.per_source["metron"]["key"] == "token123"
     assert overrides.per_source["metron"]["url"] == "https://metron.local"
 
 
@@ -144,6 +147,26 @@ def test_resolve_credentials_cli_beats_env_beats_config() -> None:
     assert creds["metron"].user == "cli_user"  # CLI wins
     assert creds["metron"].password == "env_pw"  # env beats config
     assert creds["metron"].url == "config_url"  # config when nothing higher
+
+
+def test_resolve_credentials_metron_token_follows_the_chain() -> None:
+    """Metron's API token resolves through the same CLI > env > config chain."""
+    config_creds = {"metron": {"key": "config_token"}}
+    creds = resolve_credentials(
+        config_creds=config_creds,
+        cli_overrides=CliOverrides.from_auth_list(["metron:key=cli_token"]),
+        env={"COMICBOX_METRON_KEY": "env_token"},
+        use_keyring=False,
+    )
+    assert creds["metron"].key == "cli_token"  # CLI wins
+    creds = resolve_credentials(
+        config_creds=config_creds,
+        env={"COMICBOX_METRON_KEY": "env_token"},
+        use_keyring=False,
+    )
+    assert creds["metron"].key == "env_token"  # env beats config
+    creds = resolve_credentials(config_creds=config_creds, env={}, use_keyring=False)
+    assert creds["metron"].key == "config_token"
 
 
 def test_resolve_credentials_returns_all_sources() -> None:

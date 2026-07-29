@@ -82,6 +82,8 @@ comicbox:
       metron:
         user: null
         pass: null
+        # API token; an alternative to user/pass. The token wins if both are set.
+        key: null
         url: null
       comicvine:
         key: null

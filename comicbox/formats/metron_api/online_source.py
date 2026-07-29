@@ -50,14 +50,14 @@ if TYPE_CHECKING:
 # `_get_or_build_shared_session`). Keying by cache config instead would
 # split `rate_limit_status` across sessions and defeat the sharing.
 # Entries are deliberately never evicted or closed: the cache is bounded
-# by distinct credential pairs used in one process, and mokkari's
+# by distinct credential sets used in one process, and mokkari's
 # SqliteCache exposes no close() to release anyway.
-_session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
+_session_cache: dict[tuple[str, str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
 
 
 def shared_session_rate_limit_status(
-    user: str | None, password: str | None
+    user: str | None, password: str | None, key: str | None = None
 ) -> RateLimitStatus | None:
     """
     Rate-limit state of the shared mokkari session for a credential set.
@@ -68,9 +68,9 @@ def shared_session_rate_limit_status(
     Window fields are None until Metron reports them. The empty-credential
     normalization mirrors ``_get_or_build_shared_session``'s cache key.
     """
-    key = (user or "", password or "")
+    cache_key = (user or "", password or "", key or "")
     with _session_cache_lock:
-        entry = _session_cache.get(key)
+        entry = _session_cache.get(cache_key)
     if entry is None:
         return None
     session, _ = entry
@@ -102,8 +102,9 @@ class MetronOnlineSource(OnlineSource):
 
     @override
     def is_configured(self) -> bool:
-        """Metron requires both username and password."""
-        return bool(self._credentials.user and self._credentials.password)
+        """Metron accepts an API token (key), or both username and password."""
+        credentials = self._credentials
+        return bool(credentials.key or (credentials.user and credentials.password))
 
     def _get_cache(self) -> Any:
         resolved = self._resolve_response_cache()
@@ -135,7 +136,7 @@ class MetronOnlineSource(OnlineSource):
         `OnlineSource`), so without sharing at module scope every file's
         source would get its own `Session` with its own blank
         `rate_limit_status` — none of them would ever see another worker's
-        rate-limit state. Memoizing by (user, password) lets every thread in
+        rate-limit state. Memoizing by (user, password, key) lets every thread in
         `Runner._run_parallel`'s pool (comicbox/run.py) that logs in with the
         same credentials observe one shared, continuously-updated
         `rate_limit_status`, which is what actually makes sharing threads
@@ -157,7 +158,11 @@ class MetronOnlineSource(OnlineSource):
         return (cache.mode, cache.dir, cache.ttl)
 
     def _get_or_build_shared_session(self) -> Session:
-        key = (self._credentials.user or "", self._credentials.password or "")
+        key = (
+            self._credentials.user or "",
+            self._credentials.password or "",
+            self._credentials.key or "",
+        )
         signature = self._session_config_signature()
         with _session_cache_lock:
             entry = _session_cache.get(key)
@@ -186,6 +191,9 @@ class MetronOnlineSource(OnlineSource):
             passwd=self._credentials.password,
             cache=self._get_cache(),
             user_agent=USER_AGENT,
+            # mokkari prefers the token over username/passwd when both are
+            # set; None falls back to basic auth.
+            api_token=self._credentials.key,
         )
 
     def _warn_ignored_url(self) -> None:

@@ -136,17 +136,24 @@ def _metron_settings(
     sources: tuple[str, ...] | None = None,
     user: str | None = "u",
     password: str | None = "p",  # noqa: S107
+    key: str | None = None,
 ) -> ComicboxSettings:
     """Prebuilt settings exercising every `_metron_is_active` input."""
     cfg = get_config(Namespace(comicbox=Namespace()))
     lookup = replace(cfg.online.lookup, enabled=enabled, sources=sources)
-    creds = {"metron": OnlineSourceCredentials(user=user, password=password)}
+    creds = {"metron": OnlineSourceCredentials(user=user, password=password, key=key)}
     online = replace(cfg.online, lookup=lookup, auth=OnlineAuthSettings(sources=creds))
     return replace(cfg, online=online)
 
 
 def test_metron_active_when_enabled_selected_and_credentialed() -> None:
     assert Runner(_metron_settings())._metron_is_active()
+
+
+def test_metron_active_with_token_only() -> None:
+    """A token-authenticated run still gets the burst-limit thread-pool cap."""
+    settings = _metron_settings(user=None, password=None, key="t")
+    assert Runner(settings)._metron_is_active()
 
 
 def test_metron_inactive_when_lookup_disabled() -> None:

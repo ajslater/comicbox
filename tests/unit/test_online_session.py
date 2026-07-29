@@ -14,6 +14,7 @@ from comicbox.online_session import (
 )
 
 VALID_METRON = OnlineCredentials(metron_user="u", metron_password="p")
+VALID_METRON_TOKEN = OnlineCredentials(metron_key="t")
 VALID_COMICVINE = OnlineCredentials(comicvine_key="k")
 VALID_BOTH = OnlineCredentials(metron_user="u", metron_password="p", comicvine_key="k")
 
@@ -39,9 +40,23 @@ def test_rejects_empty_sources() -> None:
         OnlineSession(sources=set(), credentials=VALID_BOTH)
 
 
+def test_construct_with_metron_token_only() -> None:
+    """An API token authenticates Metron without a username or password."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON_TOKEN)
+    assert session.mode is MatchMode.AUTO
+
+
 def test_rejects_metron_without_creds() -> None:
     with pytest.raises(OnlineConfigurationError, match="metron requires"):
         OnlineSession(sources={"metron"}, credentials=OnlineCredentials())
+
+
+def test_rejects_metron_with_user_but_no_password() -> None:
+    """Half a basic-auth pair is not credentials, token era or not."""
+    with pytest.raises(OnlineConfigurationError, match="metron requires"):
+        OnlineSession(
+            sources={"metron"}, credentials=OnlineCredentials(metron_user="u")
+        )
 
 
 def test_rejects_comicvine_without_key() -> None:
@@ -113,6 +128,7 @@ def test_credentials_propagate_into_settings() -> None:
     creds = OnlineCredentials(
         metron_user="alice",
         metron_password="secret",
+        metron_key="metron-token",
         metron_url="https://m",
         comicvine_key="cv-key",
         comicvine_url="https://cv",
@@ -122,6 +138,7 @@ def test_credentials_propagate_into_settings() -> None:
     m = cfg.online.auth.sources["metron"]
     assert m.user == "alice"
     assert m.password == "secret"
+    assert m.key == "metron-token"
     assert m.url == "https://m"
     cv = cfg.online.auth.sources["comicvine"]
     assert cv.key == "cv-key"
