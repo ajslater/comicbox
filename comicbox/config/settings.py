@@ -226,9 +226,9 @@ class OnlineSourceCredentials:
     """
     Resolved credentials for one online source.
 
-    Field membership is per-source: Metron uses ``user``/``password``/``url``;
-    ComicVine uses ``key``/``url``. The source's ``is_configured()``
-    decides which fields are required.
+    Field membership is per-source: Metron uses ``key`` (API token) or
+    ``user``/``password``, plus ``url``; ComicVine uses ``key``/``url``.
+    The source's ``is_configured()`` decides which fields are required.
     """
 
     user: str | None = None

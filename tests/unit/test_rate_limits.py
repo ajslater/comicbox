@@ -86,8 +86,9 @@ def clear_warn_once(monkeypatch: pytest.MonkeyPatch) -> None:
 def _make_metron_source(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    user: str = "u",
-    password: str = "p",  # noqa: S107
+    user: str | None = "u",
+    password: str | None = "p",  # noqa: S107
+    key: str | None = None,
     settings: OnlineSettings | None = None,
 ) -> MetronOnlineSource:
     """
@@ -104,7 +105,7 @@ def _make_metron_source(
         if settings
         else OnlineSettings(cache=off_cache)
     )
-    creds = OnlineSourceCredentials(user=user, password=password)
+    creds = OnlineSourceCredentials(user=user, password=password, key=key)
     return MetronOnlineSource(creds, settings)
 
 
@@ -142,6 +143,56 @@ def test_get_session_memoizes_per_instance_too(
     assert src._get_session() is first
 
 
+def test_build_session_passes_api_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A token-only source authenticates with mokkari's Bearer-token parameter."""
+    src = _make_metron_source(monkeypatch, user=None, password=None, key="tok")
+    session = src._get_session()
+    assert isinstance(session, _FakeMokkariSession)
+    assert session.kwargs["api_token"] == "tok"
+    assert session.kwargs["username"] is None
+    assert session.kwargs["passwd"] is None
+
+
+def test_build_session_passes_no_api_token_for_basic_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without a token mokkari falls back to username/passwd, not an empty token."""
+    session = _make_metron_source(monkeypatch)._get_session()
+    assert isinstance(session, _FakeMokkariSession)
+    assert session.kwargs["api_token"] is None
+    assert session.kwargs["username"] == "u"
+
+
+def test_get_session_shares_one_client_for_same_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src_a = _make_metron_source(monkeypatch, user=None, password=None, key="tok")
+    src_b = _make_metron_source(monkeypatch, user=None, password=None, key="tok")
+    assert src_a._get_session() is src_b._get_session()
+
+
+def test_get_session_builds_distinct_clients_for_different_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Distinct tokens are distinct accounts, so they must not share a session.
+
+    They have no user or password, so a cache key of only those two fields
+    would collapse every token-only source onto one shared session.
+    """
+    src_a = _make_metron_source(monkeypatch, user=None, password=None, key="t1")
+    src_b = _make_metron_source(monkeypatch, user=None, password=None, key="t2")
+    assert src_a._get_session() is not src_b._get_session()
+
+
+def test_get_session_builds_distinct_clients_for_token_vs_user_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src_token = _make_metron_source(monkeypatch, user=None, password=None, key="tok")
+    src_basic = _make_metron_source(monkeypatch)
+    assert src_token._get_session() is not src_basic._get_session()
+
+
 # ------------------------------------------------- rate-limit status surfacing
 
 
@@ -156,11 +207,12 @@ def _seed_shared_session(
     *,
     user: str = "u",
     password: str = "p",  # noqa: S107
+    key: str = "",
 ) -> _FakeMokkariSession:
     """Plant a shared session as if a run had already talked to Metron."""
     fake = _FakeMokkariSession()
     fake.rate_limit_status = status
-    metron_online_source._session_cache[(user, password)] = (fake, ())
+    metron_online_source._session_cache[(user, password, key)] = (fake, ())
     return fake
 
 
@@ -178,9 +230,33 @@ def test_shared_session_rate_limit_status_reads_live_state() -> None:
     assert shared_session_rate_limit_status(None, None) is None
 
 
+def test_shared_session_rate_limit_status_reads_token_session() -> None:
+    """A token-only session is found by its token, not by empty user/password."""
+    status = RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19))
+    _seed_shared_session(status, user="", password="", key="tok")
+    assert shared_session_rate_limit_status(None, None, "tok") is status
+    assert shared_session_rate_limit_status(None, None) is None
+
+
 def test_online_session_rate_limit_status_empty_before_first_request() -> None:
     """Cold process: metron reports {} until something hits the network."""
     assert _make_online_session().rate_limit_status() == {"metron": {}}
+
+
+def test_online_session_rate_limit_status_token_credentials() -> None:
+    """A token-authenticated session surfaces its own shared session's windows."""
+    _seed_shared_session(
+        RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19)),
+        user="",
+        password="",
+        key="tok",
+    )
+    session = OnlineSession(
+        sources=("metron",), credentials=OnlineCredentials(metron_key="tok")
+    )
+    assert session.rate_limit_status() == {
+        "metron": {"burst": {"limit": 20, "remaining": 19, "reset_epoch": None}}
+    }
 
 
 def test_online_session_rate_limit_status_headerless_reads_as_empty() -> None:
@@ -247,10 +323,16 @@ def test_metron_rate_limit_override_warns_and_is_ignored(
         loguru_logger.remove(handler_id)
     assert any("ignored" in message for message in messages)
     # The "ignored" half: the override must not flow into the session —
-    # mokkari's api() factory takes exactly these four kwargs, no rate
-    # or bucket argument.
+    # mokkari's api() factory takes exactly these five kwargs (dev_mode
+    # excepted), no rate or bucket argument.
     assert isinstance(session, _FakeMokkariSession)
-    assert set(session.kwargs) == {"username", "passwd", "cache", "user_agent"}
+    assert set(session.kwargs) == {
+        "username",
+        "passwd",
+        "cache",
+        "user_agent",
+        "api_token",
+    }
 
 
 def test_no_metron_rate_limit_override_no_warning(

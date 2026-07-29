@@ -1,5 +1,13 @@
 # 📰 News
 
+## v4.7.0
+
+- Features
+    - Metron accepts an API token instead of a username and password. Set it
+      with `--auth metron:key=TOKEN`, the `COMICBOX_METRON_KEY` environment
+      variable, or the `online.auth.metron.key` config key. The token wins if
+      both are set.
+
 ## v4.6.1
 
 - Fixes

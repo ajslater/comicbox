@@ -89,6 +89,25 @@ def _make_metron_source(
     return src
 
 
+@pytest.mark.parametrize(
+    ("user", "password", "key", "expected"),
+    [
+        (None, None, "t", True),  # API token alone
+        ("u", "p", None, True),  # basic auth alone
+        ("u", "p", "t", True),  # both; mokkari prefers the token
+        (None, None, None, False),
+        ("u", None, None, False),  # half a basic-auth pair
+        (None, "p", None, False),
+    ],
+)
+def test_is_configured(
+    user: str | None, password: str | None, key: str | None, *, expected: bool
+) -> None:
+    creds = OnlineSourceCredentials(user=user, password=password, key=key)
+    src = MetronOnlineSource(creds, OnlineSettings())
+    assert src.is_configured() is expected
+
+
 def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) -> None:
     """Profile without a series name skips the API entirely."""
     fake = _FakeMokkari(issues_by_key={})

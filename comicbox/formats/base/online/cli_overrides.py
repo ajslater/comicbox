@@ -8,6 +8,7 @@ into a per-source field dict the credential resolver consumes.
 Examples:
     --auth metron:user=AJSlater
     --auth metron:pass='hunter2'
+    --auth metron:key=abcdef0123456789
     --auth metron:url=https://metron.cloud
     --auth comicvine:key=ABCD1234
     --auth comicvine:url=https://comicvine.gamespot.com/api

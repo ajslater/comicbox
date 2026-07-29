@@ -93,6 +93,7 @@ class OnlineCredentials:
 
     metron_user: str | None = None
     metron_password: str | None = None
+    metron_key: str | None = None
     metron_url: str | None = None
     comicvine_key: str | None = None
     comicvine_url: str | None = None
@@ -470,7 +471,9 @@ class OnlineSession:
             )
 
             status = shared_session_rate_limit_status(
-                self._credentials.metron_user, self._credentials.metron_password
+                self._credentials.metron_user,
+                self._credentials.metron_password,
+                self._credentials.metron_key,
             )
             if status is not None:
                 statuses["metron"] = _rate_limit_windows(status)
@@ -753,6 +756,7 @@ class OnlineSession:
             result["metron"] = OnlineSourceCredentials(
                 user=creds.metron_user,
                 password=creds.metron_password,
+                key=creds.metron_key,
                 url=creds.metron_url,
             )
         if "comicvine" in self._sources:
@@ -782,8 +786,13 @@ class OnlineSession:
         sources: tuple[str, ...], creds: OnlineCredentials
     ) -> None:
         missing: list[str] = []
-        if "metron" in sources and not (creds.metron_user and creds.metron_password):
-            missing.append("metron requires metron_user and metron_password")
+        if "metron" in sources and not (
+            creds.metron_key or (creds.metron_user and creds.metron_password)
+        ):
+            missing.append(
+                "metron requires metron_key (API token) or both "
+                "metron_user and metron_password"
+            )
         if "comicvine" in sources and not creds.comicvine_key:
             missing.append("comicvine requires comicvine_key")
         if missing:

@@ -32,7 +32,7 @@ REGISTRATION = FormatRegistration(
     is_online=True,
     cli_info=OnlineSourceCliInfo(
         short_name="metron",
-        credentials="username + password",
+        credentials="API token or username + password",
         id_form="metron:NNN",
         website="https://metron.cloud",
     ),
