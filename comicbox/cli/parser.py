@@ -79,10 +79,9 @@ class AuthAction(Action):
     """
     Append ``--auth`` values; warn when a ``pass`` field leaks into shell history.
 
-    Validates syntax lightly here (presence of ``:`` and ``=``); deeper
-    validation (known source / known field) happens in
-    ``CliOverrides.from_auth_list`` so callers using the API see the
-    same error surface.
+    Collects raw entries only; all syntax validation (known source, known
+    field, empty value) happens in ``CliOverrides.from_auth_list`` so
+    callers using the API see the same error surface.
     """
 
     @override
@@ -493,17 +492,17 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
         "--auth",
         action=AuthAction,
         default=None,
-        metavar="SRC:FIELD=VAL",
+        metavar="SRC:TOKEN",
         dest="auth",
         help=(
-            "Per-source credentials. Repeatable. "
-            "Valid fields: [green]user[/green], [green]pass[/green], "
-            "[green]key[/green], [green]url[/green]. "
-            "Examples: [green]--auth metron:user=NAME[/green], "
-            "[green]--auth metron:pass=PASS[/green] (warns: leaks into shell history), "
-            "[green]--auth metron:key=TOKEN[/green], "
-            "[green]--auth comicvine:key=KEY[/green]. "
-            "Prefer the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
+            "Per-source API token. Repeatable. Examples: "
+            "[green]--auth metron:TOKEN[/green], "
+            "[green]--auth comicvine:TOKEN[/green]. "
+            "Other fields take a name: [green]comicvine:url=URL[/green] overrides "
+            "the ComicVine API endpoint; Metron's deprecated "
+            "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
+            "(warns: leaks into shell history) still work, but prefer a token. "
+            "Use the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
         ),
     )
 
