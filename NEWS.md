@@ -3,6 +3,8 @@
 ## v4.7.1
 
 - Features
+    - `--auth` takes an API token directly, as `--auth metron:TOKEN` or
+      `--auth comicvine:KEY`.
     - Metron username and password authentication is deprecated and now warns.
       It will be removed in a future release; generate a token on your
       metron.cloud account page.

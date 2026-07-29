@@ -107,9 +107,10 @@ ComicVine — Metron doesn't fan out, so it ignores effort and always searches a
 full strength. Credentials come from `--auth`, `COMICBOX_*` environment
 variables, the config file, or your system keyring. Metron authenticates with an
 API token generated on your metron.cloud account page — pass it as
-`--auth metron:key=TOKEN` or `COMICBOX_METRON_KEY`. A Metron username and
-password still work but are deprecated and will be removed in a future release.
-See `comicbox -h` for the full set of online, caching, and tuning options.
+`--auth metron:TOKEN` or `COMICBOX_METRON_KEY`. ComicVine takes its key the same
+way, as `--auth comicvine:KEY`. A Metron username and password still work but
+are deprecated and will be removed in a future release. See `comicbox -h` for
+the full set of online, caching, and tuning options.
 
 ### 🖼️ Pages, Covers & Conversion
 

@@ -1,18 +1,19 @@
 """
 Parse the repeatable per-source CLI ``--auth`` overrides.
 
-The CLI flag ``--auth`` is repeatable with the form
-``<source>:<field>=<value>``. Each occurrence is collected and turned
-into a per-source field dict the credential resolver consumes.
+The CLI flag ``--auth`` is repeatable. ``<source>:<token>`` sets that
+source's API token; ``<source>:<field>=<value>`` sets a named field.
+Each occurrence is collected and turned into a per-source field dict
+the credential resolver consumes.
 
-Metron's ``user``/``pass`` are deprecated in favor of its ``key`` API token.
+Metron's ``user``/``pass`` are deprecated in favor of its API token.
 
 Examples:
-    --auth metron:key=abcdef0123456789
+    --auth metron:abcdef0123456789
+    --auth comicvine:ABCD1234
     --auth metron:user=AJSlater
     --auth metron:pass='hunter2'
     --auth metron:url=https://metron.cloud
-    --auth comicvine:key=ABCD1234
     --auth comicvine:url=https://comicvine.gamespot.com/api
 
 """
@@ -30,23 +31,39 @@ if TYPE_CHECKING:
 _VALID_AUTH_FIELDS = frozenset({"user", "pass", "key", "url"})
 
 
-def _parse_auth_entry(raw: str) -> tuple[str, str, str]:
-    """Parse a single ``<source>:<field>=<value>`` entry."""
-    if ":" not in raw or "=" not in raw:
-        reason = f"--auth expects <source>:<field>=<value>, got {raw!r}"
-        raise ValueError(reason)
-    head, _, value = raw.partition("=")
-    source, _, cred_field = head.partition(":")
-    source = source.strip().lower()
+def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
+    """Split an entry's post-source remainder into a field and a value."""
+    cred_field, sep, value = rest.partition("=")
+    if not sep:
+        # Bare `<source>:<token>` shorthand: the API token is the field
+        # users reach for, so it needs no name. Tokens are hex or JWT and
+        # so never contain "=", which keeps this unambiguous.
+        return "key", rest
     cred_field = cred_field.strip().lower()
+    if cred_field not in _VALID_AUTH_FIELDS:
+        reason = (
+            f"--auth: unknown field {cred_field!r} in {raw!r}; "
+            f"valid: {', '.join(sorted(_VALID_AUTH_FIELDS))}"
+        )
+        raise ValueError(reason)
+    return cred_field, value
+
+
+def _parse_auth_entry(raw: str) -> tuple[str, str, str]:
+    """Parse a single ``<source>:<token>`` or ``<source>:<field>=<value>`` entry."""
+    source, sep, rest = raw.partition(":")
+    if not sep:
+        reason = (
+            f"--auth expects <source>:<token> or <source>:<field>=<value>, got {raw!r}"
+        )
+        raise ValueError(reason)
+    source = source.strip().lower()
     if source not in SOURCE_NAMES:
         reason = f"--auth: unknown source {source!r}; known: {', '.join(SOURCE_NAMES)}"
         raise ValueError(reason)
-    if cred_field not in _VALID_AUTH_FIELDS:
-        reason = (
-            f"--auth: unknown field {cred_field!r}; "
-            f"valid: {', '.join(sorted(_VALID_AUTH_FIELDS))}"
-        )
+    cred_field, value = _parse_auth_field(raw, rest)
+    if not value:
+        reason = f"--auth: empty value in {raw!r}"
         raise ValueError(reason)
     return source, cred_field, value
 

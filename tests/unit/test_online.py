@@ -124,8 +124,38 @@ def test_cli_overrides_unknown_field_errors() -> None:
 
 
 def test_cli_overrides_bad_syntax_errors() -> None:
-    with pytest.raises(ValueError, match=r"<source>:<field>=<value>"):
+    with pytest.raises(ValueError, match=r"<source>:<token>"):
         CliOverrides.from_auth_list(["nodelimiter"])
+
+
+def test_cli_overrides_bare_value_is_the_api_token() -> None:
+    """`<source>:<token>` needs no field name — the token is the common case."""
+    overrides = CliOverrides.from_auth_list(["metron:token123", "comicvine:ABCD1234"])
+    assert overrides.per_source["metron"]["key"] == "token123"
+    assert overrides.per_source["comicvine"]["key"] == "ABCD1234"
+
+
+def test_cli_overrides_bare_and_named_forms_agree() -> None:
+    """The undocumented `key=` form is still accepted and means the same thing."""
+    bare = CliOverrides.from_auth_list(["metron:token123"])
+    named = CliOverrides.from_auth_list(["metron:key=token123"])
+    assert bare.per_source == named.per_source
+
+
+def test_cli_overrides_bare_token_alongside_named_fields() -> None:
+    overrides = CliOverrides.from_auth_list(
+        ["metron:token123", "metron:url=https://metron.local"]
+    )
+    assert overrides.per_source["metron"] == {
+        "key": "token123",
+        "url": "https://metron.local",
+    }
+
+
+def test_cli_overrides_empty_value_errors() -> None:
+    """A bare `<source>:` is a typo, not a request to blank the token."""
+    with pytest.raises(ValueError, match="empty value"):
+        CliOverrides.from_auth_list(["metron:"])
 
 
 # ----------------------------------------------- credential resolution chain
