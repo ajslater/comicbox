@@ -80,9 +80,10 @@ comicbox:
 
     auth:
       metron:
+        # Deprecated, to be removed: use an API token in `key` instead.
         user: null
         pass: null
-        # API token; an alternative to user/pass. The token wins if both are set.
+        # API token from your metron.cloud account page. Wins over user/pass.
         key: null
         url: null
       comicvine:

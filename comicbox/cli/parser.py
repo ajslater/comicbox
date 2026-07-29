@@ -499,10 +499,12 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "Per-source credentials. Repeatable. "
             "Valid fields: [green]user[/green], [green]pass[/green], "
             "[green]key[/green], [green]url[/green]. "
-            "Examples: [green]--auth metron:user=NAME[/green], "
-            "[green]--auth metron:pass=PASS[/green] (warns: leaks into shell history), "
-            "[green]--auth metron:key=TOKEN[/green], "
-            "[green]--auth comicvine:key=KEY[/green]. "
+            "Examples: [green]--auth metron:key=TOKEN[/green], "
+            "[green]--auth comicvine:key=KEY[/green], "
+            "[green]--auth metron:user=NAME[/green], "
+            "[green]--auth metron:pass=PASS[/green] (warns: leaks into shell history). "
+            "Metron [green]user[/green]/[green]pass[/green] are deprecated — use an "
+            "API token from your metron.cloud account page. "
             "Prefer the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
         ),
     )

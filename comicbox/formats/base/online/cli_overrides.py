@@ -5,10 +5,12 @@ The CLI flag ``--auth`` is repeatable with the form
 ``<source>:<field>=<value>``. Each occurrence is collected and turned
 into a per-source field dict the credential resolver consumes.
 
+Metron's ``user``/``pass`` are deprecated in favor of its ``key`` API token.
+
 Examples:
+    --auth metron:key=abcdef0123456789
     --auth metron:user=AJSlater
     --auth metron:pass='hunter2'
-    --auth metron:key=abcdef0123456789
     --auth metron:url=https://metron.cloud
     --auth comicvine:key=ABCD1234
     --auth comicvine:url=https://comicvine.gamespot.com/api
