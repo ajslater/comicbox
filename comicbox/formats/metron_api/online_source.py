@@ -149,6 +149,7 @@ class MetronOnlineSource(OnlineSource):
             # warn_once keeps them at one line per process either way.
             self._warn_ignored_url()
             self._warn_ignored_rate_limit_overrides()
+            self._warn_deprecated_basic_auth()
             self._client = self._get_or_build_shared_session()
         return self._client
 
@@ -206,6 +207,19 @@ class MetronOnlineSource(OnlineSource):
                 f"online {self.name}: --api-url is a no-op for metron "
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}",
+            )
+
+    def _warn_deprecated_basic_auth(self) -> None:
+        # Only fires when basic auth is what mokkari will actually use: a
+        # token, when present, wins over username/passwd.
+        if not self._credentials.key:
+            warn_once(
+                f"{self.name}:basic-auth-deprecated",
+                f"online {self.name}: username/password authentication is "
+                "deprecated and will be removed in a future release. "
+                "Generate an API token on your metron.cloud account page and "
+                "set it with --auth metron:key=TOKEN or the "
+                "COMICBOX_METRON_KEY environment variable.",
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:

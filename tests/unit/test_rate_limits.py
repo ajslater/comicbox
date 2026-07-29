@@ -335,6 +335,50 @@ def test_metron_rate_limit_override_warns_and_is_ignored(
     }
 
 
+def _warnings_from_get_session(src: MetronOnlineSource) -> list[str]:
+    """Collect the warnings a source emits while opening its session."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        src._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    return messages
+
+
+def test_metron_basic_auth_warns_deprecated(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Username/password still works, but says so — Metron is moving to tokens."""
+    messages = _warnings_from_get_session(_make_metron_source(monkeypatch))
+    assert any("deprecated" in message for message in messages)
+
+
+def test_metron_token_auth_no_deprecation_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src = _make_metron_source(monkeypatch, user=None, password=None, key="tok")
+    assert not any("deprecated" in m for m in _warnings_from_get_session(src))
+
+
+def test_metron_token_beats_password_no_deprecation_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A token wins inside mokkari, so a stale username/password isn't nagged about."""
+    src = _make_metron_source(monkeypatch, key="tok")
+    assert not any("deprecated" in m for m in _warnings_from_get_session(src))
+
+
+def test_metron_basic_auth_warning_fires_once_per_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """warn_once dedups the deprecation across per-file sources."""
+    first = _warnings_from_get_session(_make_metron_source(monkeypatch))
+    second = _warnings_from_get_session(_make_metron_source(monkeypatch))
+    assert any("deprecated" in message for message in first)
+    assert not any("deprecated" in message for message in second)
+
+
 def test_no_metron_rate_limit_override_no_warning(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
