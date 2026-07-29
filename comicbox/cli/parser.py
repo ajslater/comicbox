@@ -498,11 +498,11 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "Per-source API token. Repeatable. Examples: "
             "[green]--auth metron:TOKEN[/green], "
             "[green]--auth comicvine:TOKEN[/green]. "
-            "Other fields take a name: [green]<source>:url=URL[/green], plus "
-            "Metron's deprecated [green]<source>:user=NAME[/green] and "
-            "[green]<source>:pass=PASS[/green] (warns: leaks into shell history) — "
-            "use an API token from your metron.cloud account page instead. "
-            "Prefer the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
+            "Other fields take a name: [green]comicvine:url=URL[/green] overrides "
+            "the ComicVine API endpoint; Metron's deprecated "
+            "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
+            "(warns: leaks into shell history) still work, but prefer a token. "
+            "Use the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
         ),
     )
 

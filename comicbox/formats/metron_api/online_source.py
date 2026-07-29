@@ -200,11 +200,11 @@ class MetronOnlineSource(OnlineSource):
     def _warn_ignored_url(self) -> None:
         if self._credentials.url:
             # mokkari's api() factory has no URL-override parameter (only
-            # dev_mode for the dev API), so --api-url metron:<url> can't
+            # dev_mode for the dev API), so --auth metron:url= can't
             # actually be honored. Warn so the user notices.
             warn_once(
                 f"{self.name}:api-url",
-                f"online {self.name}: --api-url is a no-op for metron "
+                f"online {self.name}: --auth metron:url= is a no-op "
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}",
             )

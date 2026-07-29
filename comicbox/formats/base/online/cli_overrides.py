@@ -13,8 +13,10 @@ Examples:
     --auth comicvine:ABCD1234
     --auth metron:user=AJSlater
     --auth metron:pass='hunter2'
-    --auth metron:url=https://metron.cloud
     --auth comicvine:url=https://comicvine.gamespot.com/api
+
+``url`` overrides a source's API endpoint. Only ComicVine honors it;
+mokkari has no base-URL override, so Metron warns and ignores it.
 
 """
 
