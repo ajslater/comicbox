@@ -82,6 +82,34 @@ def test_rejects_ask_mode() -> None:
         )
 
 
+# --- pinned ids ---------------------------------------------------------------
+
+
+def test_ids_default_to_empty() -> None:
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    assert session._build_config().online.lookup.ids == {}
+
+
+def test_ids_propagate_to_lookup_settings() -> None:
+    """A pinned id per source reaches the per-file lookup settings."""
+    session = OnlineSession(
+        sources=("metron", "comicvine"),
+        ids={"metron": 123},
+        credentials=VALID_BOTH,
+    )
+    cfg = session._build_config()
+    assert cfg.online.lookup.ids == {"metron": 123}
+    # The unpinned source still runs; it just has no id to fetch.
+    assert cfg.online.lookup.sources == ("metron", "comicvine")
+
+
+def test_rejects_ids_for_a_source_not_in_the_session() -> None:
+    with pytest.raises(OnlineConfigurationError, match="not in this session"):
+        OnlineSession(
+            sources=("metron",), ids={"comicvine": 456}, credentials=VALID_METRON
+        )
+
+
 # --- mode propagation ---------------------------------------------------------
 
 

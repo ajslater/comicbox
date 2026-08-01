@@ -48,7 +48,7 @@ from comicbox.online_estimate import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
     from pathlib import Path
 
     from comicbox.config.settings import ComicboxSettings
@@ -265,12 +265,17 @@ class OnlineSession:
     ComicboxSettings layer that each per-file Comicbox instance will see.
     Mutable state — ``mode``, ``unattended``, the cancel token — lives on
     the instance and may be updated from any thread.
+
+    ``ids`` pins an issue id per source for a single-comic session: a
+    pinned source fetches that id directly while the unpinned sources
+    search, so one run can mix id retrieval and search and merge both.
     """
 
     def __init__(  # noqa: PLR0913
         self,
         *,
         sources: Iterable[str] = ("metron", "comicvine"),
+        ids: Mapping[str, int] | None = None,
         credentials: OnlineCredentials | None = None,
         mode: MatchMode = MatchMode.AUTO,
         unattended: bool = False,
@@ -286,6 +291,11 @@ class OnlineSession:
         # first_wins, its match ends the lookup for that comic.
         self._sources = tuple(dict.fromkeys(sources))
         self._validate_sources(self._sources)
+        # Pinned per-source issue ids. A source with an id fetches it
+        # directly; the rest of the sources search as usual, so one session
+        # can mix id retrieval and search and merge both results.
+        self._ids: dict[str, int] = dict(ids or {})
+        self._validate_ids(self._sources, self._ids)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
         self._mode: MatchMode = self._validate_mode(mode)
@@ -740,6 +750,7 @@ class OnlineSession:
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=self._sources,
+            ids=self._ids,
             match=self.mode,
             prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
             rematch=self._rematch,
@@ -778,6 +789,15 @@ class OnlineSession:
             msg = (
                 f"Unknown online sources: {sorted(unknown)}. "
                 f"Expected a subset of {sorted(_KNOWN_SOURCES)}."
+            )
+            raise OnlineConfigurationError(msg)
+
+    @staticmethod
+    def _validate_ids(sources: tuple[str, ...], ids: Mapping[str, int]) -> None:
+        if extra := sorted(set(ids) - set(sources)):
+            msg = (
+                f"Pinned issue ids for sources not in this session: {extra}. "
+                f"Enabled sources: {list(sources)}."
             )
             raise OnlineConfigurationError(msg)
 
