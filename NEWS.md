@@ -1,5 +1,12 @@
 # 📰 News
 
+## v4.8.0
+
+- Features
+    - `OnlineSession` accepts pinned per-source issue `ids`. A source with an id
+      fetches it directly while the other enabled sources search, so one session
+      can mix id retrieval and search and merge both results.
+
 ## v4.7.1
 
 - Features
