@@ -1,5 +1,10 @@
 # 📰 News
 
+## v4.8.1
+
+- Dev
+    - Require simyan >= 3.1.0 and use its new `search_volumes()` API.
+
 ## v4.8.0
 
 - Features

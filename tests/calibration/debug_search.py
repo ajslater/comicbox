@@ -169,19 +169,13 @@ def _debug_comicvine(profile: object, online: object) -> None:
     if creds is None or not creds.api_key:
         print("  comicvine not configured; skipping")  # noqa: T201
         return
-    from simyan.comicvine import ComicvineResource
-
     src = ComicVineOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
     session = src._get_session()
     series_name = profile.series  # ty: ignore[unresolved-attribute]
 
-    print(f"\n  [as-is] search(VOLUME, query={series_name!r}, max_results=20)")  # noqa: T201
+    print(f"\n  [as-is] search_volumes(query={series_name!r}, max_results=20)")  # noqa: T201
     try:
-        results = list(
-            session.search(
-                resource=ComicvineResource.VOLUME, query=series_name, max_results=20
-            )
-        )
+        results = list(session.search_volumes(query=series_name, max_results=20))
     except Exception as exc:
         print(f"    EXCEPTION: {exc!r}")  # noqa: T201
         return
@@ -191,12 +185,8 @@ def _debug_comicvine(profile: object, online: object) -> None:
 
     cleaned = _clean_for_search(series_name)
     if cleaned and cleaned != series_name:
-        print(f"\n  [cleaned] search(VOLUME, query={cleaned!r}, max_results=20)")  # noqa: T201
-        results2 = list(
-            session.search(
-                resource=ComicvineResource.VOLUME, query=cleaned, max_results=20
-            )
-        )
+        print(f"\n  [cleaned] search_volumes(query={cleaned!r}, max_results=20)")  # noqa: T201
+        results2 = list(session.search_volumes(query=cleaned, max_results=20))
         print(f"    → {len(results2)} volume(s)")  # noqa: T201
         for v in results2[:5]:
             print(f"      id={v.id} name={v.name!r}")  # noqa: T201

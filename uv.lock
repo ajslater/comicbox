@@ -782,7 +782,7 @@ wheels = [
 
 [[package]]
 name = "comicbox"
-version = "4.8.0"
+version = "4.8.1"
 source = { editable = "." }
 dependencies = [
     { name = "bidict" },
@@ -899,7 +899,7 @@ requires-dist = [
     { name = "rich-argparse", specifier = "~=1.7" },
     { name = "ruamel-yaml", specifier = "~=0.18" },
     { name = "simplejson", specifier = "~=4.0" },
-    { name = "simyan", specifier = ">=3.0.0,<4" },
+    { name = "simyan", specifier = ">=3.1.0,<4" },
     { name = "typing-extensions", specifier = "~=4.13" },
     { name = "urnparse", specifier = "~=0.2" },
     { name = "xmlschema", specifier = "~=4.0" },

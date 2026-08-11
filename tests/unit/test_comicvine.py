@@ -256,14 +256,12 @@ class _FakeCV:
         # When set, `list_volumes` returns these instead of an empty list.
         # Exercises the union-with-fuzzy narrow-filter path. None ≡ empty.
         self._filter_volumes = filter_volumes
-        self.search_calls: list[dict] = []
+        self.search_volumes_calls: list[dict] = []
         self.list_issues_calls: list[dict] = []
         self.list_volumes_calls: list[dict] = []
 
-    def search(self, resource, query, max_results=500):
-        self.search_calls.append(
-            {"resource": resource, "query": query, "max_results": max_results}
-        )
+    def search_volumes(self, query, max_results=500):
+        self.search_volumes_calls.append({"query": query, "max_results": max_results})
         return list(self._volumes)
 
     def list_volumes(self, params=None, max_results=500):
@@ -299,22 +297,19 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     profile = ComicProfile(issue="7", issue_int=7, year=1952)
     assert src.search(profile) == []
     # No volume search either — there's nothing to search by.
-    assert fake_cv.search_calls == []
+    assert fake_cv.search_volumes_calls == []
 
 
 def test_search_volumes_via_full_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Volume discovery uses CV full-text search (more punctuation-tolerant)."""
-    from simyan.comicvine import ComicvineResource
-
     fake_cv = _FakeCV(volumes=[], issues_by_volume={})
     src = _make_cv_source(monkeypatch, fake_cv)
     profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=1952)
     src.search(profile)
-    assert len(fake_cv.search_calls) == 1
-    call = fake_cv.search_calls[0]
-    assert call["resource"] == ComicvineResource.VOLUME
+    assert len(fake_cv.search_volumes_calls) == 1
+    call = fake_cv.search_volumes_calls[0]
     assert call["query"] == "GI Joe"
 
 
@@ -331,7 +326,7 @@ def test_narrow_filter_unions_with_fuzzy_no_year_skips_narrow(
     profile = ComicProfile(series="X", issue="1", issue_int=1, year=None)
     src.search(profile)
     assert fake_cv.list_volumes_calls == []
-    assert len(fake_cv.search_calls) == 1
+    assert len(fake_cv.search_volumes_calls) == 1
 
 
 def test_narrow_filter_unions_with_fuzzy_both_run(
@@ -355,7 +350,7 @@ def test_narrow_filter_unions_with_fuzzy_both_run(
     )
     candidates = src.search(profile)
     # BOTH calls fired (union).
-    assert len(fake_cv.search_calls) == 1
+    assert len(fake_cv.search_volumes_calls) == 1
     assert len(fake_cv.list_volumes_calls) == 1
     # Candidates from BOTH volumes — fuzzy preserved, narrow added.
     issue_ids = {c.issue_id for c in candidates}
@@ -414,7 +409,7 @@ def test_search_retries_volume_search_on_rate_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    `session.search(VOLUME, ...)` is now retry-wrapped.
+    `session.search_volumes(...)` is now retry-wrapped.
 
     Pre-fix: a `RateLimitError` from CV's volume search propagated up
     through `except Exception: ... raise`, dropping the whole fixture's
@@ -435,14 +430,14 @@ def test_search_retries_volume_search_on_rate_limit(
             self._fail_count = 0
 
         @override
-        def search(self, resource, query, max_results=500):
+        def search_volumes(self, query, max_results=500):
             if self._fail_count < 1:
-                self.search_calls.append(
-                    {"resource": resource, "query": query, "max_results": max_results}
+                self.search_volumes_calls.append(
+                    {"query": query, "max_results": max_results}
                 )
                 self._fail_count += 1
                 raise RateLimitError(retry_after=0.001)
-            return super().search(resource, query, max_results)
+            return super().search_volumes(query, max_results)
 
     fake_cv = _RateLimitedCV(volumes=[vol1], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
@@ -451,7 +446,7 @@ def test_search_retries_volume_search_on_rate_limit(
     # The retry succeeded — we got the issue.
     assert [c.issue_id for c in candidates] == [5001]
     # Two search calls happened: the rate-limited one + the replay.
-    assert len(fake_cv.search_calls) == 2
+    assert len(fake_cv.search_volumes_calls) == 2
 
 
 def _make_cv_source_with_series_id(
@@ -479,7 +474,7 @@ def test_search_series_id_skips_volume_search(
     candidates = src.search(profile)
 
     # The volume-search step was skipped.
-    assert fake_cv.search_calls == []
+    assert fake_cv.search_volumes_calls == []
     # list_issues ran exactly once with the explicit volume id in the filter.
     assert len(fake_cv.list_issues_calls) == 1
     filter_str = fake_cv.list_issues_calls[0].get("filter", "")
