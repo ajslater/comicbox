@@ -301,6 +301,7 @@ _CV_FIXTURE = {
         "name": "Behold...The Eye!",
         "number": "7",
         "cover_date": "1952-08-01",
+        "store_date": "1952-08-15",
         "date_last_updated": "2020-04-02T12:00:00Z",
         "description": "<p>The exciting tale of...</p><p>And another paragraph.</p>",
         "image": {
@@ -375,6 +376,39 @@ def test_comicvine_credits_string_roles() -> None:
 
 def test_comicvine_identifiers() -> None:
     assert _CV_CB["identifiers"]["comicvine"]["key"] == "92734"
+
+
+def test_comicvine_dates() -> None:
+    assert "cover_date" in _CV_CB["date"]
+    assert "store_date" in _CV_CB["date"]
+
+
+def test_comicvine_volume_aliases_to_reprints() -> None:
+    """CV's newline-separated volume aliases become alternate-series reprints."""
+    payload = {
+        "comicvine_api": {
+            "id": 1,
+            "number": "1",
+            "cover_date": "2020-01-01",
+            "date_last_updated": "2020-01-01T00:00:00Z",
+            "image": {"medium_url": "http://x"},
+            "volume": {
+                "id": 1,
+                "name": "Foo Comics",
+                "aliases": "Alias One\nfoo comics\n\n Alias Two ",
+            },
+        }
+    }
+    cb = dict(ComicVineApiTransform().to_comicbox(payload))["comicbox"]
+    # Blank segment dropped; the alias equal to the volume name dropped.
+    assert cb["reprints"] == [
+        {"series": {"name": "Alias One"}},
+        {"series": {"name": "Alias Two"}},
+    ]
+
+
+def test_comicvine_without_aliases_emits_no_reprints() -> None:
+    assert "reprints" not in _CV_CB
 
 
 def test_comicvine_handles_minimal_input() -> None:
