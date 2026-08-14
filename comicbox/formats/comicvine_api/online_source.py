@@ -340,7 +340,7 @@ class ComicVineOnlineSource(OnlineSource):
         Union-of-narrow-and-fuzzy volume discovery.
 
         Always runs both:
-        - Fuzzy `session.search(VOLUME, query)` — CV's text-relevance
+        - Fuzzy `session.search_volumes(query)` — CV's text-relevance
           ranking. Surfaces canonical / popular volumes.
         - Narrow `session.list_volumes(name+start_year filter)` — only
           when profile.year is set. Surfaces the specific year's volume
@@ -400,7 +400,7 @@ class ComicVineOnlineSource(OnlineSource):
         self, session: Any, query: str, max_results: int
     ) -> list[Any]:
         """
-        Per-call retry wrapper around `session.search(VOLUME, ...)`.
+        Per-call retry wrapper around `session.search_volumes(...)`.
 
         Mirrors the Metron `_series_list_with_retry` fix from the same
         2026-05-15-stress-100 audit pass: the volume-search call was
@@ -408,14 +408,8 @@ class ComicVineOnlineSource(OnlineSource):
         would drop the entire fixture's candidate set instead of
         retrying transparently.
         """
-        from simyan.comicvine import ComicvineResource
-
         self._record_api_call("search_volumes")
-        return session.search(
-            resource=ComicvineResource.VOLUME,
-            query=query,
-            max_results=max_results,
-        )
+        return session.search_volumes(query=query, max_results=max_results)
 
     @with_retry()
     def _volume_filter_search_with_retry(

@@ -1,4 +1,4 @@
-"""ComicVine source + transform tests."""
+"""ComicVine online-source tests."""
 
 from __future__ import annotations
 
@@ -19,180 +19,16 @@ from comicbox.config.settings import (
     OnlineSourceTuning,
     OnlineTuningSettings,
 )
-from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
 )
-from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
 from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
-
-
-def _sample_issue_dict() -> dict:
-    return {
-        "comicvine_api": {
-            "id": 1234,
-            "number": "5",
-            "cover_date": "2020-04-01",
-            "store_date": "2020-04-15",
-            "date_last_updated": "2020-04-02T12:00:00Z",
-            "description": "<p>Some description.</p>",
-            "page_count": 24,
-            "image": {
-                "thumbnail": "http://example.com/thumbnail.jpg",
-                "small_url": "http://example.com/small.jpg",
-                "medium_url": "http://example.com/medium.jpg",
-                "original_url": "http://example.com/original.jpg",
-            },
-            "volume": {"id": 100, "name": "Foo Comics"},
-        }
-    }
-
-
-def test_transform_maps_core_fields() -> None:
-    transform = ComicVineApiTransform()
-    result = dict(transform.to_comicbox(_sample_issue_dict()))
-    cb = result["comicbox"]
-    # description was HTML; nh3 strips tags.
-    assert cb["summary"] == "Some description."
-    assert cb["issue"]["name"] == "5"
-    # CV's `volume` becomes comicbox's `series`.
-    assert cb["series"]["name"] == "Foo Comics"
-    assert cb["cover_image"]
-    assert "cover_date" in cb["date"]
-    assert "store_date" in cb["date"]
-    # CV doesn't expose page_count on Issue; not mapped (page_count
-    # comes from comicbox's own archive scan, not CV).
-
-
-def test_transform_maps_volume_aliases_to_reprints() -> None:
-    """CV's newline-separated volume aliases become alternate-series reprints."""
-    transform = ComicVineApiTransform()
-    payload = _sample_issue_dict()
-    payload["comicvine_api"]["volume"]["aliases"] = (
-        "Alias One\nfoo comics\n\n Alias Two "
-    )
-    result = dict(transform.to_comicbox(payload))
-    # Blank segment dropped; the alias equal to the volume name dropped.
-    assert result["comicbox"]["reprints"] == [
-        {"series": {"name": "Alias One"}},
-        {"series": {"name": "Alias Two"}},
-    ]
-
-
-def test_transform_without_aliases_emits_no_reprints() -> None:
-    transform = ComicVineApiTransform()
-    result = dict(transform.to_comicbox(_sample_issue_dict()))
-    assert "reprints" not in result["comicbox"]
-
-
-def test_transform_handles_missing_fields() -> None:
-    transform = ComicVineApiTransform()
-    minimal = {
-        "comicvine_api": {
-            "id": 1,
-            "number": "1",
-            "cover_date": "2025-01-01",
-            "date_last_updated": "2025-01-01T00:00:00Z",
-            "image": {"medium_url": "http://example.com/x.jpg"},
-            "volume": {"id": 1, "name": "S"},
-        }
-    }
-    result = dict(transform.to_comicbox(minimal))
-    cb = result["comicbox"]
-    assert cb["issue"]["name"] == "1"
-    assert cb["series"]["name"] == "S"
-
-
-# ----------------------------------------------- CoverHashUrlCache
-
-
-def test_cover_hash_url_cache_round_trip(tmp_path: Path) -> None:
-    cache = CoverHashUrlCache(tmp_path / "cover_hashes.sqlite")
-    assert cache.get("http://example.com/x.jpg") is None
-    cache.set("http://example.com/x.jpg", "abcdef0123456789")
-    assert cache.get("http://example.com/x.jpg") == "abcdef0123456789"
-
-
-def test_cover_hash_url_cache_overwrites(tmp_path: Path) -> None:
-    cache = CoverHashUrlCache(tmp_path / "cover_hashes.sqlite")
-    cache.set("u", "h1")
-    cache.set("u", "h2")
-    assert cache.get("u") == "h2"
-
-
-def test_cover_hash_url_cache_creates_table(tmp_path: Path) -> None:
-    db_path = tmp_path / "cover_hashes.sqlite"
-    CoverHashUrlCache(db_path)
-    with sqlite3.connect(str(db_path)) as conn:
-        rows = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-    table_names = [r[0] for r in rows]
-    assert "cover_hashes" in table_names
-
-
-# ----------------------------------------------- matcher hash-fetcher hook
-
-
-def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
-    """Matcher should call the fetcher for candidates without precomputed hash."""
-    from comicbox.formats.base.online.matcher import OnlineMatcher
-    from comicbox.formats.base.online.profile import (
-        Candidate,
-        CandidateSummary,
-        ComicProfile,
-    )
-
-    fetcher_calls: list[str] = []
-
-    def fake_fetcher(url: str) -> str:
-        fetcher_calls.append(url)
-        return "ffffffffffffffff"  # different from local
-
-    def local_provider() -> str:
-        return "0000000000000000"
-
-    profile = ComicProfile(
-        series="Foo",
-        issue="5",
-        issue_int=5,
-        year=2020,
-        publisher="P",
-        page_count=24,
-    )
-    cand = Candidate(
-        source="comicvine",
-        issue_id=42,
-        summary=CandidateSummary(
-            series="Foo",
-            issue="5",
-            year=2020,
-            publisher="P",
-            page_count=24,
-            cover_url="http://example.com/x.jpg",
-            variant_label=None,
-        ),
-    )
-
-    matcher = OnlineMatcher()
-    matcher.rank(
-        profile,
-        [cand],
-        local_hash_provider=local_provider,
-        candidate_hash_fetcher=fake_fetcher,
-        threshold=0.99,  # force hashing path (top below threshold).
-    )
-    # Whether or not the candidate was hashed depends on the metadata
-    # score landing in the ambiguous band; with a perfect metadata match
-    # the policy may skip hashing. The test asserts the fetcher is wired:
-    # if invoked, it received our URL.
-    assert all(call == "http://example.com/x.jpg" for call in fetcher_calls)
 
 
 # ------------------------------------------ two-step volume → issues search
@@ -256,14 +92,12 @@ class _FakeCV:
         # When set, `list_volumes` returns these instead of an empty list.
         # Exercises the union-with-fuzzy narrow-filter path. None ≡ empty.
         self._filter_volumes = filter_volumes
-        self.search_calls: list[dict] = []
+        self.search_volumes_calls: list[dict] = []
         self.list_issues_calls: list[dict] = []
         self.list_volumes_calls: list[dict] = []
 
-    def search(self, resource, query, max_results=500):
-        self.search_calls.append(
-            {"resource": resource, "query": query, "max_results": max_results}
-        )
+    def search_volumes(self, query, max_results=500):
+        self.search_volumes_calls.append({"query": query, "max_results": max_results})
         return list(self._volumes)
 
     def list_volumes(self, params=None, max_results=500):
@@ -299,22 +133,19 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     profile = ComicProfile(issue="7", issue_int=7, year=1952)
     assert src.search(profile) == []
     # No volume search either — there's nothing to search by.
-    assert fake_cv.search_calls == []
+    assert fake_cv.search_volumes_calls == []
 
 
 def test_search_volumes_via_full_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Volume discovery uses CV full-text search (more punctuation-tolerant)."""
-    from simyan.comicvine import ComicvineResource
-
     fake_cv = _FakeCV(volumes=[], issues_by_volume={})
     src = _make_cv_source(monkeypatch, fake_cv)
     profile = ComicProfile(series="GI Joe", issue="7", issue_int=7, year=1952)
     src.search(profile)
-    assert len(fake_cv.search_calls) == 1
-    call = fake_cv.search_calls[0]
-    assert call["resource"] == ComicvineResource.VOLUME
+    assert len(fake_cv.search_volumes_calls) == 1
+    call = fake_cv.search_volumes_calls[0]
     assert call["query"] == "GI Joe"
 
 
@@ -331,7 +162,7 @@ def test_narrow_filter_unions_with_fuzzy_no_year_skips_narrow(
     profile = ComicProfile(series="X", issue="1", issue_int=1, year=None)
     src.search(profile)
     assert fake_cv.list_volumes_calls == []
-    assert len(fake_cv.search_calls) == 1
+    assert len(fake_cv.search_volumes_calls) == 1
 
 
 def test_narrow_filter_unions_with_fuzzy_both_run(
@@ -355,7 +186,7 @@ def test_narrow_filter_unions_with_fuzzy_both_run(
     )
     candidates = src.search(profile)
     # BOTH calls fired (union).
-    assert len(fake_cv.search_calls) == 1
+    assert len(fake_cv.search_volumes_calls) == 1
     assert len(fake_cv.list_volumes_calls) == 1
     # Candidates from BOTH volumes — fuzzy preserved, narrow added.
     issue_ids = {c.issue_id for c in candidates}
@@ -414,7 +245,7 @@ def test_search_retries_volume_search_on_rate_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    `session.search(VOLUME, ...)` is now retry-wrapped.
+    `session.search_volumes(...)` is now retry-wrapped.
 
     Pre-fix: a `RateLimitError` from CV's volume search propagated up
     through `except Exception: ... raise`, dropping the whole fixture's
@@ -435,14 +266,14 @@ def test_search_retries_volume_search_on_rate_limit(
             self._fail_count = 0
 
         @override
-        def search(self, resource, query, max_results=500):
+        def search_volumes(self, query, max_results=500):
             if self._fail_count < 1:
-                self.search_calls.append(
-                    {"resource": resource, "query": query, "max_results": max_results}
+                self.search_volumes_calls.append(
+                    {"query": query, "max_results": max_results}
                 )
                 self._fail_count += 1
                 raise RateLimitError(retry_after=0.001)
-            return super().search(resource, query, max_results)
+            return super().search_volumes(query, max_results)
 
     fake_cv = _RateLimitedCV(volumes=[vol1], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
@@ -451,7 +282,7 @@ def test_search_retries_volume_search_on_rate_limit(
     # The retry succeeded — we got the issue.
     assert [c.issue_id for c in candidates] == [5001]
     # Two search calls happened: the rate-limited one + the replay.
-    assert len(fake_cv.search_calls) == 2
+    assert len(fake_cv.search_volumes_calls) == 2
 
 
 def _make_cv_source_with_series_id(
@@ -479,7 +310,7 @@ def test_search_series_id_skips_volume_search(
     candidates = src.search(profile)
 
     # The volume-search step was skipped.
-    assert fake_cv.search_calls == []
+    assert fake_cv.search_volumes_calls == []
     # list_issues ran exactly once with the explicit volume id in the filter.
     assert len(fake_cv.list_issues_calls) == 1
     filter_str = fake_cv.list_issues_calls[0].get("filter", "")
