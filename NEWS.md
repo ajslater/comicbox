@@ -1,5 +1,15 @@
 # 📰 News
 
+## v4.8.2
+
+- Features
+    - Metron tagging populates `language` from the issue's series.
+    - Metron prices in EUR and ITL are attributed to Italy. EUR is deliberate:
+      metron.cloud's euro prices currently all come from its Italian comics
+      catalog.
+- Dev
+    - Require mokkari >= 4.5.0.
+
 ## v4.8.1
 
 - Dev
