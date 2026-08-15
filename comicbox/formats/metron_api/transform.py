@@ -135,8 +135,17 @@ _CURRENCY_TO_COUNTRY: MappingProxyType[str, str] = MappingProxyType(
         "CAD": "CA",
         "CHF": "CH",
         "CNY": "CN",
+        # ⚠ EUR → IT is deliberate, not an oversight (2026-08). EUR is a
+        # multi-country currency, but the only EUR prices metron.cloud
+        # serves today come from the Italian-comics catalog it added
+        # alongside mokkari 4.5.0, so Italy is the correct attribution
+        # for now. Revisit if Metron starts carrying other eurozone
+        # catalogs.
+        "EUR": "IT",
         "GBP": "GB",
         "INR": "IN",
+        # Pre-euro Italian lire, from that same Italian-comics catalog.
+        "ITL": "IT",
         "JPY": "JP",
         "KRW": "KR",
         "MXN": "MX",
@@ -189,7 +198,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
     (None, "", {}, [], 0) are skipped so the resulting dict carries
     only fields the upstream actually provided.
     """
-    series_genres = (issue.get("series") or {}).get("genres")
+    series = issue.get("series") or {}
     blocks: tuple[tuple[str, Any], ...] = (
         # Scalars / single-source nested
         ("issue", _build_issue_block(issue)),
@@ -202,6 +211,8 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("summary", strip_html(issue.get("desc"))),
         ("age_rating", _build_age_rating(issue)),
         ("community_rating", _build_community_rating_block(issue)),
+        # mokkari >= 4.5 carries the series' ISO 639-1 language on IssueSeries.
+        ("language", series.get("language")),
         # Publishing
         ("series", _build_series(issue)),
         ("volume", _build_volume(issue)),
@@ -218,7 +229,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("teams", named_dict_with_id(issue.get("teams"), _METRON, "team")),
         ("arcs", named_dict_with_id(issue.get("arcs"), _METRON, "arc")),
         ("universes", named_dict_with_id(issue.get("universes"), _METRON, "universe")),
-        ("genres", named_dict(series_genres)),
+        ("genres", named_dict(series.get("genres"))),
         # Credits (list of {id, creator, role: [{name},...]})
         (
             "credits",

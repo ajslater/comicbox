@@ -83,6 +83,8 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     # Unrated must not emit a block: the 0 count would clamp up to the
     # native field minimum of 1.
     assert "community_rating" not in cb
+    # Mokkari defaults language to "", which must not become a language key.
+    assert "language" not in cb
 
 
 def test_alt_names_become_reprints() -> None:
@@ -145,3 +147,32 @@ def test_prices_missing_returns_empty_dict() -> None:
     transform = MetronApiTransform()
     result = dict(transform.to_comicbox(_sample_issue_dict()))
     assert result["comicbox"].get("prices", {}) == {}
+
+
+def test_prices_italian_currencies_map_to_italy() -> None:
+    """EUR and ITL both attribute to Italy. See _CURRENCY_TO_COUNTRY on EUR."""
+    transform = MetronApiTransform()
+    for currency in ("EUR", "ITL"):
+        payload = _sample_issue_dict()
+        payload["metron_api"]["price"] = "4.99"
+        payload["metron_api"]["price_currency"] = currency
+        result = dict(transform.to_comicbox(payload))
+        assert result["comicbox"]["prices"] == {"IT": Decimal("4.99")}
+
+
+def test_series_language_maps_to_top_level_language() -> None:
+    """The IssueSeries language becomes comicbox's top level language."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["language"] = "it"
+    result = dict(transform.to_comicbox(payload))
+    assert result["comicbox"]["language"] == "it"
+
+
+def test_empty_series_language_emits_no_language() -> None:
+    """Mokkari's empty string default doesn't create a language field."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["language"] = ""
+    result = dict(transform.to_comicbox(payload))
+    assert "language" not in result["comicbox"]
