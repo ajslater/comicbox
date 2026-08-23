@@ -63,6 +63,9 @@ ComicboxInit → ComicboxArchive* (read/write/pages) → ComicboxSources
 - `comicbox/_pdf.py` — Optional `pdffile` integration flag. Lives at the top
   level (not under `comicbox/formats/pdf/`) so importing the flag doesn't
   trigger the PDF format-package init.
+- `comicbox/_rar.py` — Lazy `rarfile` import that applies comicbox's sub-second
+  timestamp patch. The only sanctioned way to import rarfile for archive
+  construction; never imports it at module scope.
 
 ## Testing, Linting & Type Checking
 

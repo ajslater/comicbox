@@ -1,5 +1,21 @@
 # 📰 News
 
+## v4.8.3
+
+- Fixes
+    - CBR files whose RAR3 extended timestamps carry a sub-second remainder of a
+      second or more no longer fail to open with
+      `ValueError: microsecond must be in 0..999999`. rarfile <= 4.5 overflows
+      parsing these, which some third-party packers write; comicbox now carries
+      the excess into whole seconds. The patch deactivates itself if a future
+      rarfile fixes the overflow.
+    - Content based archive detection tries formats in observed frequency order
+      (zip, rar, pdf, 7z, tar) when the file extension hint misses, instead of
+      trying the rarest formats first. Every detector in that order now requires
+      leading magic — zip included — so a pdf or 7z with zip data appended can
+      no longer be claimed by the zip tail scan; zips with prepended data
+      (self-extractors) are still detected by a terminal loose pass.
+
 ## v4.8.2
 
 - Features

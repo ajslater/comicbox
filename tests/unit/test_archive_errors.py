@@ -9,7 +9,7 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.exceptions import ComicboxError, UnsupportedArchiveTypeError
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CB7_SOURCE_PATH, CIX_CBZ_SOURCE_PATH, PDF_SOURCE_PATH
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -78,6 +78,44 @@ def test_truncated_cbz_failure_is_a_comicbox_error(tmp_path: Path) -> None:
     truncated.write_bytes(data[: len(data) // 2])
     with pytest.raises(ComicboxError):
         Comicbox(truncated)
+
+
+@pytest.mark.parametrize(
+    ("source_path", "expected_type"),
+    [(PDF_SOURCE_PATH, "PDF"), (CB7_SOURCE_PATH, "CB7")],
+)
+def test_zip_tail_cannot_shadow_leading_magic_format(
+    tmp_path: Path, source_path: Path, expected_type: str
+) -> None:
+    """
+    A pdf or 7z with zip data appended detects as its leading-magic type.
+
+    is_zipfile only scans the tail for an end-of-central-directory record,
+    so such a polyglot matches the zip detector too. The strict zip
+    detector requires zip leading magic, so with no extension hint the
+    real format still wins despite zip running first in the full order.
+    """
+    polyglot = tmp_path / "no_extension_hint"
+    polyglot.write_bytes(source_path.read_bytes() + CIX_CBZ_SOURCE_PATH.read_bytes())
+    with Comicbox(polyglot) as cb:
+        assert cb.get_file_type() == expected_type
+
+
+def test_zip_with_prepended_data_still_opens_as_cbz(tmp_path: Path) -> None:
+    """
+    A zip that starts with other data is still detected, last.
+
+    The zip format allows prepended data (self-extractors). The strict
+    leading-magic zip detector rejects it, no other format matches, and
+    the loose terminal zip detector accepts it.
+    """
+    prepended = tmp_path / "self_extracting.cbz"
+    prepended.write_bytes(
+        b"#!/bin/sh\necho fake sfx stub\n" + CIX_CBZ_SOURCE_PATH.read_bytes()
+    )
+    with Comicbox(prepended) as cb:
+        assert cb.get_file_type() == "CBZ"
+        assert cb.namelist()
 
 
 def test_directory_path_raises_is_a_directory(tmp_path: Path) -> None:
