@@ -185,20 +185,47 @@ class ComicboxInit:
             return True
         return False
 
-    def _try_detect_zip(self, path: Path) -> bool:
+    # Every zip record signature starts with these two bytes.
+    _ZIP_LEADING_MAGIC = b"PK"
+
+    def _detect_zip(self, path: Path, *, strict: bool) -> bool:
+        # is_zipfile only scans the tail for an end-of-central-directory
+        # record, so a pdf or 7z with zip data appended matches it too.
+        # The strict pass also requires zip leading magic, making every
+        # detector lead-magic based so none can shadow another. The loose
+        # terminal pass still accepts zips the format allows to start with
+        # other data (self-extractors, prepended junk).
+        if strict:
+            # Swallow OSError like is_zipfile does, so an unreadable path
+            # falls through detection instead of raising here.
+            leading = b""
+            with suppress(OSError), path.open("rb") as archive_file:
+                leading = archive_file.read(2)
+            if leading != self._ZIP_LEADING_MAGIC:
+                return False
         if is_zipfile(path):
             self._archive_cls = ZipFile
             self._file_type = FileTypeEnum.CBZ
             return True
         return False
 
+    def _try_detect_zip(self, path: Path) -> bool:
+        return self._detect_zip(path, strict=True)
+
+    def _try_detect_zip_loose(self, path: Path) -> bool:
+        return self._detect_zip(path, strict=False)
+
     def _try_detect_rar(self, path: Path) -> bool:
         # rarfile is imported lazily — defers the heavy package init for
         # workers that only see CBZs (the common case at bulk-read scale).
-        from rarfile import RarFile, is_rarfile
+        # import_rarfile also applies comicbox's sub-second timestamp patch.
+        # Every RarFile is constructed from the class bound here, so patching
+        # at detection time covers them all.
+        from comicbox._rar import import_rarfile
 
-        if is_rarfile(path):
-            self._archive_cls = RarFile
+        rarfile = import_rarfile()
+        if rarfile.is_rarfile(path):
+            self._archive_cls = rarfile.RarFile
             self._file_type = FileTypeEnum.CBR
             return True
         return False
@@ -210,8 +237,21 @@ class ComicboxInit:
             return True
         return False
 
-    # Full detection order (default when no extension hint)
-    _FULL_DETECT_ORDER: tuple[str, ...] = ("pdf", "7z", "zip", "rar", "tar")
+    # Full detection order (default when no extension hint), by observed
+    # archive frequency: cbz dominates, then cbr, then pdf; cb7 is very rare
+    # and cbt rarer still. Common types first also rules out most files
+    # before the heavy py7zr import, and leaves tar — the weakest magic,
+    # "ustar" at offset 257 — near last. Frequency ordering is safe because
+    # every detector here requires leading magic; the loose tail-scan zip
+    # detector runs terminally so it can never shadow another format.
+    _FULL_DETECT_ORDER: tuple[str, ...] = (
+        "zip",
+        "rar",
+        "pdf",
+        "7z",
+        "tar",
+        "zip_loose",
+    )
 
     # Extension → which types to try first (saves disk reads)
     _EXTENSION_HINT: ClassVar[dict[str, tuple[str, ...]]] = {
@@ -230,6 +270,7 @@ class ComicboxInit:
             "zip": self._try_detect_zip,
             "rar": self._try_detect_rar,
             "tar": self._try_detect_tar,
+            "zip_loose": self._try_detect_zip_loose,
         }
         return detectors[key](path)
 
