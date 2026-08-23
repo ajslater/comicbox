@@ -91,10 +91,10 @@ writes the best result.
 
 ```sh
 # Interactive: prompts only when the match isn't clear.
-comicbox --online metron "GI Joe #007 (1952).cbz"
+comicbox -o metron "GI Joe #007 (1952).cbz"
 
 # Tag by an exact database id (skips searching).
-comicbox --id metron:42 "comic.cbz"
+comicbox -I metron:42 "comic.cbz"
 
 # Unattended batch run: never prompts, 4 files at a time.
 comicbox --online all --recurse --prompts never -j 4 ./comics/
@@ -116,13 +116,13 @@ the full set of online, caching, and tuning options.
 
 ```sh
 # Extract the cover image.
-comicbox --extract-covers --dest-path ./out "comic.cbz"
+comicbox -X --dest-path ./out "comic.cbz"
 
 # Extract a range of pages (zero-based) by index.
-comicbox --extract-pages 0:5 --dest-path ./out "comic.cbz"
+comicbox -x 0:5 --dest-path ./out "comic.cbz"
 
 # Convert a CBR to a CBZ, carrying metadata across.
-comicbox --cbz "comic.cbr"
+comicbox -z "comic.cbr"
 
 # Convert a single-image-per-page comic PDF to CBZ without re-encoding.
 comicbox --cbz --pdf-pages image "comic.pdf"
@@ -187,8 +187,8 @@ comicbox -m "{publisher: SmallComics}" -w cix "comic.cbz"
 comicbox --recurse -m "{publisher: 'SC Comics'}" -w cix ./comics/
 
 # Export and re-import metadata as a file.
-comicbox --export cix "comic.cbz"
-comicbox --import ComicInfo.xml -w cix "comic.cbz"
+comicbox -e cix "comic.cbz"
+comicbox -i ComicInfo.xml -w cix "comic.cbz"
 ```
 
 `-m`/`--metadata` accepts a compact "linear YAML" using tag names from any of

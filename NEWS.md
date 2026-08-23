@@ -1,5 +1,10 @@
 # 📰 News
 
+## v4.8.4
+
+- Features
+    - Short options for more common flags. See `--help`.
+
 ## v4.8.3
 
 - Fixes
