@@ -195,10 +195,14 @@ class ComicboxInit:
     def _try_detect_rar(self, path: Path) -> bool:
         # rarfile is imported lazily — defers the heavy package init for
         # workers that only see CBZs (the common case at bulk-read scale).
-        from rarfile import RarFile, is_rarfile
+        # import_rarfile also applies comicbox's sub-second timestamp patch.
+        # Every RarFile is constructed from the class bound here, so patching
+        # at detection time covers them all.
+        from comicbox._rar import import_rarfile
 
-        if is_rarfile(path):
-            self._archive_cls = RarFile
+        rarfile = import_rarfile()
+        if rarfile.is_rarfile(path):
+            self._archive_cls = rarfile.RarFile
             self._file_type = FileTypeEnum.CBR
             return True
         return False
@@ -210,8 +214,12 @@ class ComicboxInit:
             return True
         return False
 
-    # Full detection order (default when no extension hint)
-    _FULL_DETECT_ORDER: tuple[str, ...] = ("pdf", "7z", "zip", "rar", "tar")
+    # Full detection order (default when no extension hint), by observed
+    # archive frequency: cbz dominates, then cbr, then pdf; cb7 is very rare
+    # and cbt rarer still. Common types first also rules out most files
+    # before the heavy py7zr import, and leaves tar — the weakest magic,
+    # "ustar" at offset 257 — last.
+    _FULL_DETECT_ORDER: tuple[str, ...] = ("zip", "rar", "pdf", "7z", "tar")
 
     # Extension → which types to try first (saves disk reads)
     _EXTENSION_HINT: ClassVar[dict[str, tuple[str, ...]]] = {
