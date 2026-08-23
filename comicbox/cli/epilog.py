@@ -24,7 +24,7 @@ _TABLE_ARGS = MappingProxyType(
 # (phase char, description, optional short flag alias)
 _PRINT_PHASES_DESC = MappingProxyType(
     {
-        "v": ("Software version", "-v"),
+        "v": ("Software version", "-v, --version"),
         "t": ("File type", ""),
         "f": ("File names", ""),
         "s": ("Source metadata", ""),
@@ -32,7 +32,7 @@ _PRINT_PHASES_DESC = MappingProxyType(
         "n": ("Loaded metadata normalized to comicbox schema", ""),
         "m": ("Merged normalized intermediate metadata", ""),
         "c": ("Computed metadata sources", ""),
-        "p": ("Final metadata merged with computed sources", "-p"),
+        "p": ("Final metadata merged with computed sources", "-p, --print-metadata"),
     }
 )
 _METADATA_EXAMPLES = Styled(
