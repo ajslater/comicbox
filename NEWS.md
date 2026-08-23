@@ -11,7 +11,10 @@
       rarfile fixes the overflow.
     - Content based archive detection tries formats in observed frequency order
       (zip, rar, pdf, 7z, tar) when the file extension hint misses, instead of
-      trying the rarest formats first.
+      trying the rarest formats first. Every detector in that order now requires
+      leading magic — zip included — so a pdf or 7z with zip data appended can
+      no longer be claimed by the zip tail scan; zips with prepended data
+      (self-extractors) are still detected by a terminal loose pass.
 
 ## v4.8.2
 
