@@ -208,6 +208,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
 def _add_read_group(parser: ArgumentParser) -> None:
     group = parser.add_argument_group("read")
     group.add_argument(
+        "-f",
         "--read",
         action=CSVAction,
         metavar="FORMATS",
@@ -278,6 +279,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
 def _add_print_group(parser: ArgumentParser) -> None:
     group = parser.add_argument_group("print")
     group.add_argument(
+        "-P",
         "--print",
         action="store",
         default=None,
@@ -290,6 +292,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
     )
     group.add_argument(
         "-p",
+        "--print-metadata",
         action="store_true",
         default=None,
         dest="print_metadata",
@@ -319,6 +322,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
 def _add_convert_group(parser: ArgumentParser) -> None:
     group = parser.add_argument_group("convert")
     group.add_argument(
+        "-z",
         "--cbz",
         action="store_true",
         default=None,
@@ -338,6 +342,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         help="Rename the file with comicbox's filename format.",
     )
     group.add_argument(
+        "-x",
         "--extract-pages",
         action=PageRangeAction,
         default=None,
@@ -349,6 +354,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         ),
     )
     group.add_argument(
+        "-X",
         "--extract-covers",
         action="store_true",
         default=None,
@@ -356,6 +362,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         help="Extract cover pages.",
     )
     group.add_argument(
+        "-i",
         "--import",
         action="append",
         default=None,
@@ -364,6 +371,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         help="Import metadata from external files. Accepts quoted globs. Repeatable.",
     )
     group.add_argument(
+        "-e",
         "--export",
         action=CSVAction,
         default=None,
@@ -386,6 +394,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
 def _add_online_lookup_group(parser: ArgumentParser) -> None:
     group = parser.add_argument_group("online: lookup")
     group.add_argument(
+        "-o",
         "--online",
         action=CSVAction,
         dest="online_sources",
@@ -402,6 +411,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         ),
     )
     group.add_argument(
+        "-I",
         "--id",
         action="append",
         dest="explicit_ids",
@@ -489,6 +499,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
 def _add_online_auth_group(parser: ArgumentParser) -> None:
     group = parser.add_argument_group("online: auth")
     group.add_argument(
+        "-a",
         "--auth",
         action=AuthAction,
         default=None,
