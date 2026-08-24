@@ -63,8 +63,8 @@ def _patch_nsec_overflow(rarfile: ModuleType) -> None:
             return original(dttm, nsec)
 
         # Patching a module attribute is valid at runtime, but ModuleType
-        # declares no such attribute for basedpyright to check against.
-        rarfile.to_nsdatetime = to_nsdatetime  # pyright: ignore[reportAttributeAccessIssue]
+        # declares no such attribute for the type checkers to check against.
+        rarfile.to_nsdatetime = to_nsdatetime  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
 
 @cache
