@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import shutil
 import threading
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.events import BatchFinished, BatchStarted, Event, FileParsed
 from comicbox.write import (
     BulkWriteItem,
@@ -16,7 +18,7 @@ from comicbox.write import (
     bulk_write,
     write_metadata,
 )
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CBI_CBR_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -488,3 +490,98 @@ def test_bulk_write_reports_per_file_errors(tmp_path: Path) -> None:
     by_path = {r.path: r for r in results}
     assert by_path[bad].error is not None
     assert by_path[good].written is True
+
+
+# --- archive conversion (final_path) ----------------------------------------
+
+
+@pytest.fixture
+def tmp_cbr(tmp_path: Path) -> Path:
+    """Fresh copy of the test CBR for each test."""
+    target = tmp_path / "test.cbr"
+    shutil.copy(CBI_CBR_SOURCE_PATH, target)
+    return target
+
+
+def test_write_metadata_final_path_unchanged_for_cbz(tmp_cbz: Path) -> None:
+    """An in-place CBZ write reports final_path equal to the submitted path."""
+    result = write_metadata(
+        tmp_cbz,
+        patch={"publisher": {"name": "Foo"}},
+        mode="replace",
+        formats=["comicbox_json"],
+    )
+    assert result.written is True
+    assert result.final_path == tmp_cbz
+
+
+def test_write_metadata_converts_cbr_and_reports_final_path(tmp_cbr: Path) -> None:
+    """Writing a CBR repacks it as CBZ and final_path reports the new file."""
+    result = write_metadata(
+        tmp_cbr,
+        patch={"publisher": {"name": "Foo"}},
+        mode="replace",
+        formats=["comic_info"],
+    )
+    assert result.written is True
+    assert result.path == tmp_cbr
+    new_path = tmp_cbr.with_suffix(".cbz")
+    assert result.final_path == new_path
+    assert new_path.is_file()
+    # delete_orig defaults off: the original survives alongside the CBZ.
+    assert tmp_cbr.is_file()
+    assert _read_publisher(new_path)["name"] == "Foo"
+
+
+def test_write_metadata_convert_delete_orig_removes_original(tmp_cbr: Path) -> None:
+    """With general.delete_orig the converted-from CBR is removed."""
+    cfg = get_config()
+    cfg = replace(cfg, general=replace(cfg.general, delete_orig=True))
+    result = write_metadata(
+        tmp_cbr,
+        patch={"publisher": {"name": "Foo"}},
+        mode="replace",
+        formats=["comic_info"],
+        base_config=cfg,
+    )
+    assert result.written is True
+    assert result.final_path == tmp_cbr.with_suffix(".cbz")
+    assert result.final_path is not None
+    assert result.final_path.is_file()
+    assert not tmp_cbr.exists()
+
+
+def test_write_metadata_dry_run_reports_no_final_path(tmp_cbr: Path) -> None:
+    """A dry run touches nothing and reports no final_path."""
+    result = write_metadata(
+        tmp_cbr,
+        patch={"publisher": {"name": "Foo"}},
+        mode="replace",
+        formats=["comic_info"],
+        dry_run=True,
+    )
+    assert result.written is False
+    assert result.final_path is None
+    assert tmp_cbr.is_file()
+    assert not tmp_cbr.with_suffix(".cbz").exists()
+
+
+def test_bulk_write_propagates_final_path_on_conversion(tmp_cbr: Path) -> None:
+    """bulk_write results carry final_path for converted archives."""
+    cfg = get_config()
+    cfg = replace(cfg, general=replace(cfg.general, delete_orig=True))
+    items = [
+        BulkWriteItem(
+            path=tmp_cbr,
+            patch={"publisher": {"name": "Foo"}},
+            mode="replace",
+            formats=frozenset({"COMIC_INFO"}),
+        )
+    ]
+    results = list(bulk_write(items, base_config=cfg))
+    assert len(results) == 1
+    result = results[0]
+    assert result.written is True
+    assert result.path == tmp_cbr
+    assert result.final_path == tmp_cbr.with_suffix(".cbz")
+    assert not tmp_cbr.exists()

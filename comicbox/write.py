@@ -80,6 +80,12 @@ class WriteResult:
     # True when the batch was cancelled before this file's write started
     # (stop_on_error tripped, or the caller set the cancel event).
     cancelled: bool = False
+    # On-disk path after a successful write. Differs from ``path`` when the
+    # write converted the archive to CBZ (CBR/CBT/CB7 sources are unwritable,
+    # so a write repacks them; the original survives alongside the new CBZ
+    # unless the config sets ``general.delete_orig``). None for dry runs,
+    # errors, and cancellations, which leave the archive untouched.
+    final_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,9 +154,14 @@ def write_metadata(
                 payload = {fmt.name: cb.to_string(fmt) for fmt in fmt_set}
                 return WriteResult(path=path, written=False, dry_run_payload=payload)
             cb.dump()
+            # Capture before the context closes: dump() repacks unwritable
+            # archives (CBR/CBT/CB7) into a CBZ and moves the box onto the
+            # new path. Callers tracking files on disk need where the
+            # archive actually ended up, not where it was submitted.
+            final_path = cb.get_path() or path
     except Exception as exc:
         return WriteResult(path=path, error=exc)
-    return WriteResult(path=path, written=True)
+    return WriteResult(path=path, written=True, final_path=final_path)
 
 
 def _run_bulk_write(
