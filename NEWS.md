@@ -1,5 +1,13 @@
 # 📰 News
 
+## v4.8.5
+
+- Features
+    - `write_metadata` and `bulk_write` results report `final_path`: the
+      archive's on-disk path after the write. It differs from the submitted
+      `path` when the write repacked an unwritable archive (CBR/CBT/CB7) into a
+      CBZ, so callers tracking files on disk can follow the conversion.
+
 ## v4.8.4
 
 - Features
