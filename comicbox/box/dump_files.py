@@ -48,13 +48,35 @@ class ComicboxDumpToFiles(ComicboxDump):
         for fmt in formats:
             self.to_file(fmt=fmt)
 
+    def predict_filename(self) -> str:
+        """
+        Return the scheme filename this archive would be renamed to.
+
+        The rendered name ends in ``ext``, which is a *metadata* field
+        rather than the file's suffix. Left to the merge it can be missing
+        (a config that skips or deletes it, whereupon comicfn2dict falls
+        back to its "cbz" default) or stale (a value some tagger embedded
+        in the archive), either of which names a PDF as a zip. The archive
+        on disk is the authority, so its own suffix always wins.
+
+        Returns "" when no usable name could be built, including a name
+        that is nothing but an extension — renaming to that would make a
+        hidden file.
+        """
+        schema, filename_md = self._to_dict(MetadataFormats.FILENAME)
+        fn = schema.dumps(filename_md)
+        if not fn or fn.startswith("."):
+            return ""
+        if self._path:
+            fn = str(Path(fn).with_suffix(self._path.suffix))
+        return fn
+
     def rename_file(self) -> None:
         """Rename the archive."""
         if not self._path:
             reason = "Cannot rename archive without a path."
             raise ArchiveWriteError(reason)
-        schema, filename_md = self._to_dict(MetadataFormats.FILENAME)
-        fn = schema.dumps(filename_md)
+        fn = self.predict_filename()
         old_path = self._path
         if not fn:
             logger.warning(f"Unable to construct a filename for {old_path}")
