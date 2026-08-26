@@ -6,12 +6,32 @@ from loguru import logger
 
 from comicbox.box.pages import ComicboxPages
 from comicbox.formats import MetadataFormats
+from comicbox.formats.comicbox.schema import EXT_KEY
 from comicbox.formats.sources import MetadataSources
 
 ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats
     + MetadataSources.ARCHIVE_COMMENT.value.formats
 )
+
+
+def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mapping:
+    """
+    Drop keys that describe the file's name rather than its contents.
+
+    ``ext`` is parsed from the filename and means nothing inside the
+    archive — but a metadata file written into a *converted* archive is
+    built before the suffix changes, so it would preserve the old one
+    ("ext: cbt" inside a .cbz). Read back, that stale value outranks the
+    real filename and can rename the archive to a format it isn't.
+    """
+    root_tag = getattr(schema, "ROOT_TAG", None)
+    sub_md = denormalized_metadata.get(root_tag) if root_tag else None
+    if not isinstance(sub_md, Mapping) or EXT_KEY not in sub_md:
+        return denormalized_metadata
+    stripped = dict(denormalized_metadata)
+    stripped[root_tag] = {key: value for key, value in sub_md.items() if key != EXT_KEY}
+    return stripped
 
 
 class ComicboxDump(ComicboxPages):
@@ -80,7 +100,9 @@ class ComicboxDump(ComicboxPages):
             if isinstance(mupdf_md, Mapping):
                 pdf_md.update(mupdf_md.get(schema.ROOT_TAG, {}))
         elif fmt in MetadataSources.ARCHIVE_FILE.value.formats:
-            files[fmt.value.filename] = schema.dumps(denormalized_metadata)
+            files[fmt.value.filename] = schema.dumps(
+                _without_filename_only_keys(schema, denormalized_metadata)
+            )
         elif fmt in MetadataSources.ARCHIVE_COMMENT.value.formats:
             cmnt = schema.dumps(denormalized_metadata)
             cmnt = cmnt.encode(errors="replace")
