@@ -1,5 +1,24 @@
 # 📰 News
 
+## v4.8.6
+
+- Features
+    - `Comicbox.predict_filename()` returns the scheme name `rename_file()`
+      would rename to, without renaming. `rename_file()` now uses it, so a
+      caller can show or check the destination first.
+
+- Fixes
+    - Renaming keeps the archive's own file extension. The name ends in `ext`, a
+      metadata field, so a config that skips it fell back to "cbz" and a stale
+      value embedded by another tagger overrode the real one — either way
+      renaming a PDF or CBT to a name claiming to be a zip.
+    - Converting no longer writes the pre-conversion `ext` into the new
+      archive's metadata, which is what left those stale values behind.
+    - Archives differing only by suffix no longer destroy each other when
+      converted in one bulk write. They all convert to the same `.cbz`, and the
+      loser could replace the winner's finished file while `delete_orig`
+      unlinked both originals; it now fails cleanly instead.
+
 ## v4.8.5
 
 - Features

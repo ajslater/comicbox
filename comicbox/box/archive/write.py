@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from pathlib import Path
+from threading import Lock
 
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -14,6 +15,32 @@ from comicbox.formats.sources import MetadataSources
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
+# Destinations a conversion is currently writing to. Archives differing
+# only by suffix ("Foo.cbr" and "Foo.cbt", a common way for a library to
+# carry one issue twice) both convert to "Foo.cbz", and bulk writes run on
+# a thread pool: without this the second writer replaces the first's
+# finished file and, under ``delete_orig``, both originals are unlinked —
+# one archive's contents gone for good. Claiming the destination turns the
+# loser into an ordinary per-file error instead.
+_INFLIGHT_DESTINATIONS: set[Path] = set()
+_INFLIGHT_GUARD = Lock()
+
+
+def _claim_destination(path: Path) -> None:
+    """Take a conversion destination, refusing one already in flight."""
+    with _INFLIGHT_GUARD:
+        if path in _INFLIGHT_DESTINATIONS:
+            reason = f"{path} is already being written by another archive."
+            raise ArchiveWriteError(reason)
+        _INFLIGHT_DESTINATIONS.add(path)
+
+
+def _release_destination(path: Path) -> None:
+    """Release a claimed conversion destination."""
+    with _INFLIGHT_GUARD:
+        _INFLIGHT_DESTINATIONS.discard(path)
+
+
 _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
     {
         fmt.value.filename.lower()
@@ -153,18 +180,27 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
             raise ArchiveWriteError(reason)
-        new_path = self._get_new_archive_path()
-        tmp_path = self._path.with_suffix(_RECOMPRESS_SUFFIX)
-        tmp_path.unlink(missing_ok=True)
-        logger.info(f"Creating {new_path}...")
-        with ZipFile(tmp_path, "x") as zf:
-            self._archive_write_metadata_files(zf, files)
-            self._copy_archive_files_to_new_archive(zf)
-            zf.comment = comment
+        # Keep the whole source name in the temp file's. Sharing one temp
+        # path between archives that differ only by suffix let concurrent
+        # writers unlink each other's in-progress file and then replace a
+        # half-written one onto the destination.
+        tmp_path = self._path.with_name(self._path.name + _RECOMPRESS_SUFFIX)
+        destination = self._path.with_suffix(_CBZ_SUFFIX)
+        _claim_destination(destination)
+        try:
+            new_path = self._get_new_archive_path()
+            tmp_path.unlink(missing_ok=True)
+            logger.info(f"Creating {new_path}...")
+            with ZipFile(tmp_path, "x") as zf:
+                self._archive_write_metadata_files(zf, files)
+                self._copy_archive_files_to_new_archive(zf)
+                zf.comment = comment
 
-        # Cleanup
-        self.close()
-        self._cleanup_tmp_archive(tmp_path, new_path)
+            # Cleanup
+            self.close()
+            self._cleanup_tmp_archive(tmp_path, new_path)
+        finally:
+            _release_destination(destination)
 
     def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:

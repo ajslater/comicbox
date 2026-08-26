@@ -72,7 +72,7 @@
     "@fsouza/prettierd": "^0.29.0",
     "@prettier/plugin-xml": "^3.4.2",
     "@stylistic/eslint-plugin": "^5.10.0",
-    "eslint": "^10.9.0",
+    "eslint": "^10.9.1",
     "eslint_d": "^15.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-array-func": "^5.1.1",
