@@ -19,6 +19,7 @@ from comicbox.events import (
     SearchCompleted,
     SearchStarted,
     Skipped,
+    SourceStarted,
 )
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import Candidate, CandidateSummary
@@ -220,6 +221,101 @@ def test_stored_id_refresh_emits_auto_written(monkeypatch) -> None:
 
     finished = _first(events, FileFinished)
     assert finished.outcome == "written"
+
+
+def test_source_started_precedes_the_search(monkeypatch) -> None:
+    """The cold-search path emits SourceStarted before SearchStarted, same source."""
+    _patch_metron(monkeypatch, [_make_candidate(101, 2020)])
+    events: list[Event] = []
+    cb = _build_cb()
+    cb.set_event_handler(events.append)
+    cb.run_online_lookup()
+
+    kinds = [type(e).__name__ for e in events]
+    assert kinds.index("SourceStarted") < kinds.index("SearchStarted")
+
+    started = _first(events, SourceStarted)
+    search = _first(events, SearchStarted)
+    assert started.source == search.source == "metron"
+    assert started.path == search.path
+
+
+def test_stored_id_refresh_emits_source_started_without_a_search(monkeypatch) -> None:
+    """The stored-id fast path never searches, but still reports the source it consulted."""
+    instances = _patch_metron(monkeypatch, [])
+    cli_md = {
+        "comicbox": {
+            "series": {"name": "Foo Comics"},
+            "issue": {"name": "5"},
+            "identifiers": {"metron": {"key": "777"}},
+        }
+    }
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron"],
+            general=Namespace(metadata=cli_md),
+            auth=["metron:user=u", "metron:pass=p"],
+        )
+    )
+    events: list[Event] = []
+    with Comicbox(config=args) as cb:
+        cb.set_event_handler(events.append)
+        cb.run_online_lookup()
+
+    assert instances[0].get_calls == [777]
+    # The gap SourceStarted exists to close: no search, so no SearchStarted.
+    assert not any(isinstance(e, SearchStarted) for e in events)
+    assert _first(events, SourceStarted).source == "metron"
+
+
+def test_first_wins_skip_emits_no_source_started(monkeypatch) -> None:
+    """A source that sits out because an earlier one won never claims to run."""
+
+    class _MockCV(_MockMetron):
+        name = "comicvine"
+        metadata_source = MetadataSources.COMICVINE_API
+        metadata_format = MetadataFormats.COMICVINE_API
+
+    def _factory(cls, candidates):
+        def factory(creds, settings):
+            return cls(creds, settings, candidates)
+
+        return factory
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType(
+            {
+                "metron": _factory(_MockMetron, [_make_candidate(101, 2020)]),
+                "comicvine": _factory(_MockCV, [_make_candidate(202, 2020)]),
+            }
+        ),
+    )
+    cli_md = {
+        "comicbox": {
+            "series": {"name": "Foo Comics"},
+            "issue": {"name": "5"},
+            "date": {"year": 2020},
+            "publisher": {"name": "Quality Comics"},
+            "page_count": 24,
+        }
+    }
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["metron", "comicvine"],
+            general=Namespace(metadata=cli_md),
+            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+        )
+    )
+    events: list[Event] = []
+    with Comicbox(config=args) as cb:
+        cb.set_event_handler(events.append)
+        cb.run_online_lookup()
+
+    # Metron wins first; comicvine is skipped, so only metron ever started.
+    started = [e.source for e in events if isinstance(e, SourceStarted)]
+    assert started == ["metron"]
 
 
 def test_event_handler_absent_is_a_noop(monkeypatch) -> None:

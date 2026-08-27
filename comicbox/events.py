@@ -104,6 +104,25 @@ ReadEvent: TypeAlias = (
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class SourceStarted(Event):
+    """
+    Worker is about to consult one online source for this file.
+
+    Fired once per source that actually runs, immediately before the source
+    is consulted and *after* the first-wins skip — a source sat out because
+    an earlier one already won never emits this. Unlike
+    :class:`SearchStarted`, which only covers the cold-search path, this
+    fires for every route a source can take: explicit-id fetch, stored-id
+    refresh, series-cache issue lookup, and search. Callers rendering "which
+    source is being consulted right now" want this one; ``SearchStarted``
+    stays the narrower "a full search is about to be issued" signal.
+    """
+
+    source: str = ""
+    kind: Literal["source_started"] = "source_started"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SearchStarted(Event):
     """Worker is about to query an online source for this file."""
 
@@ -243,6 +262,7 @@ class FileFinished(Event):
 # Convenience union for online events.
 OnlineEvent: TypeAlias = (
     BatchStarted
+    | SourceStarted
     | SearchStarted
     | SearchCompleted
     | AutoWritten

@@ -45,6 +45,7 @@ from comicbox.events import (
     SearchStarted,
     SeriesIdentified,
     Skipped,
+    SourceStarted,
 )
 
 # Historical import path for OnlineLookupAbortedError; defined in
@@ -1085,6 +1086,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                     f"use --all-sources to query every source)"
                 )
                 continue
+            # After the first-wins skip, so a source that sat out never
+            # claims to be running. Covers every route _lookup_one_source
+            # can take, including the explicit-id, stored-id and
+            # series-cache fast paths that never reach a SearchStarted.
+            self._emit(SourceStarted(path=path, source=source.name))
             if self._lookup_one_source(source):
                 won_any = True
         self._online_lookup_won = won_any
