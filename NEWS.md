@@ -1,13 +1,13 @@
 # 📰 News
 
-## v4.9.0
+## v4.8.7
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually
-      runs, immediately before that source is consulted and after the
-      first-wins skip. `SearchStarted` only covers the cold-search path, so a
-      caller rendering "which source is being consulted right now" went blind
-      on the explicit-id, stored-id and series-cache fast paths.
+      runs, immediately before that source is consulted and after the first-wins
+      skip. `SearchStarted` only covers the cold-search path, so a caller
+      rendering "which source is being consulted right now" went blind on the
+      explicit-id, stored-id and series-cache fast paths.
 
 ## v4.8.6
 
