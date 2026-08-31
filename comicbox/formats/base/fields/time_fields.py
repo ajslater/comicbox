@@ -9,10 +9,10 @@ from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
 from typing_extensions import override
 
-from comicbox.formats.base.fields.fields import StringField, TrapExceptionsMeta
+from comicbox.formats.base.fields.fields import StringField
 
 
-class DateField(fields.Date, metaclass=TrapExceptionsMeta):
+class DateField(fields.Date):
     """A date only field."""
 
     def __init__(
@@ -62,7 +62,7 @@ class DateField(fields.Date, metaclass=TrapExceptionsMeta):
         return value
 
 
-class DateTimeField(fields.DateTime, metaclass=TrapExceptionsMeta):
+class DateTimeField(fields.DateTime):
     """A Datetime field."""
 
     def __init__(

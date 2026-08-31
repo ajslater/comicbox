@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from marshmallow.exceptions import ValidationError
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
 from typing_extensions import override
@@ -46,57 +47,63 @@ class CDataFieldMixin:
     """Get value or cdata."""
 
     def _deserialize(self, value, *args, **kwargs):
+        if isinstance(value, Mapping) and CDATA_KEY not in value:
+            # An attributed tag is {"@attr": …, "#text": …}. A mapping with no
+            # text at all is a structure standing where a scalar belongs, so
+            # fail visibly instead of unwrapping it to nothing.
+            reason = f"No {CDATA_KEY} in {tuple(value.keys())}"
+            raise ValidationError(reason)
         value = get_cdata(value)
         return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
 
 # FIELDS
-class XmlStringField(StringField, CDataFieldMixin):
+class XmlStringField(CDataFieldMixin, StringField):
     """Get value or cdata."""
 
 
-class XmlIssueField(IssueField, CDataFieldMixin):
+class XmlIssueField(CDataFieldMixin, IssueField):
     """Get value or cdata."""
 
 
 # DATETIME
-class XmlDateField(DateField, CDataFieldMixin):
+class XmlDateField(CDataFieldMixin, DateField):
     """Get value or cdata."""
 
 
-class XmlDateTimeField(DateTimeField, CDataFieldMixin):
+class XmlDateTimeField(CDataFieldMixin, DateTimeField):
     """Get value or cdata."""
 
 
-class XmlPdfDateTimeField(PdfDateTimeField, CDataFieldMixin):
+class XmlPdfDateTimeField(CDataFieldMixin, PdfDateTimeField):
     """Get value or cdata."""
 
 
 # ENUM
-class XmlEnumField(EnumField, CDataFieldMixin):
+class XmlEnumField(CDataFieldMixin, EnumField):
     """Get value or cdata."""
 
 
-class XmlReadingDirectionField(ReadingDirectionField, CDataFieldMixin):
+class XmlReadingDirectionField(CDataFieldMixin, ReadingDirectionField):
     """Get value or cdata."""
 
 
-class XmlOriginalFormatField(OriginalFormatField, CDataFieldMixin):
+class XmlOriginalFormatField(CDataFieldMixin, OriginalFormatField):
     """Get value or cdata."""
 
 
-class XmlComicInfoMangaField(ComicInfoMangaField, CDataFieldMixin):
+class XmlComicInfoMangaField(CDataFieldMixin, ComicInfoMangaField):
     """Get value or cdata."""
 
 
-class XmlYesNoField(YesNoField, CDataFieldMixin):
+class XmlYesNoField(CDataFieldMixin, YesNoField):
     """Get value or cdata."""
 
 
 # NUMBERS
 
 
-class XmlBooleanField(BooleanField, CDataFieldMixin):
+class XmlBooleanField(CDataFieldMixin, BooleanField):
     """Get value or cdata."""
 
     @override
@@ -110,18 +117,18 @@ class XmlBooleanField(BooleanField, CDataFieldMixin):
         return result if result is None else str(result).lower()
 
 
-class XmlIntegerField(IntegerField, CDataFieldMixin):
+class XmlIntegerField(CDataFieldMixin, IntegerField):
     """Get value or cdata."""
 
 
-class XmlDecimalField(DecimalField, CDataFieldMixin):
+class XmlDecimalField(CDataFieldMixin, DecimalField):
     """Get value or cdata."""
 
 
 # PYCOUNTRY
 
 
-class XmlLanguageField(LanguageField, CDataFieldMixin):
+class XmlLanguageField(CDataFieldMixin, LanguageField):
     """Get value or cdata."""
 
 

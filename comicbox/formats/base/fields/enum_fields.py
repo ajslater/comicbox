@@ -13,7 +13,7 @@ from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
 from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
 from comicbox.enums.maps.reading_direction import READING_DIRECTION_ENUM_MAP
-from comicbox.formats.base.fields.fields import StringField, TrapExceptionsMeta
+from comicbox.formats.base.fields.fields import StringField
 
 
 class FuzzyEnumMixin:
@@ -74,7 +74,7 @@ class FuzzyEnumMixin:
         return None
 
 
-class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
+class EnumField(FuzzyEnumMixin, fields.Enum):
     """Fuzzy lookup Enum field that allows caseless enum lookups with variations."""
 
     ENUM = Enum
