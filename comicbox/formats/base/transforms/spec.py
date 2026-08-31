@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
-from glom import A, Coalesce, Path, S, T, Val, assign
+from glom import SKIP, A, Coalesce, Path, S, T, Val, assign
 
 from comicbox.constants import ROOT_KEYPATH
 from comicbox.empty import is_empty
@@ -48,7 +48,10 @@ def _get_multi_values_spec(
         path_parts.append(tail_path)
         path = Path(*path_parts)
     # Don't know which of multiple values are critical so don't throw.
-    return keypath, Coalesce(path, skip=is_empty, default=None)
+    # SKIP, not None: a missing source must leave the key *out* of the values
+    # dict. Emitting an explicit None made every `values.get(key, default)` in
+    # the spec functions return None instead of the default they asked for.
+    return keypath, Coalesce(path, skip=is_empty, default=SKIP)
 
 
 def _get_spec_source_values(

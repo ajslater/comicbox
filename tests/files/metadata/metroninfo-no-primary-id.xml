@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	A MetronInfo file that carries `id` attributes on its tags but names no
+	primary id source: no <ID primary="true">, and the only <URL> belongs to
+	no database comicbox recognizes.
+
+	Every tag-level `id` here has to survive the read and land under the
+	`metron` source. Regression fixture for the multi-source `values` dict
+	emitting an explicit None, which made the primary-source fallback dead
+	and dropped all of these ids on the floor.
+-->
+<MetronInfo>
+	<IDS>
+		<ID source="Comic Vine">145269</ID>
+	</IDS>
+	<Publisher id="11">
+		<Imprint id="222">Youthful Imprint</Imprint>
+		<Name>Youthful Adventure Stories</Name>
+	</Publisher>
+	<Series id="2222" lang="en">
+		<AlternativeNames>
+			<AlternativeName id="3333" lang="es">Capitán Ciencia</AlternativeName>
+		</AlternativeNames>
+		<Name>Captain Science</Name>
+	</Series>
+	<Stories>
+		<Story id="5555">Captain Lost</Story>
+	</Stories>
+	<Arcs>
+		<Arc id="7777">
+			<Name>Captain Arc</Name>
+		</Arc>
+	</Arcs>
+	<Universes>
+		<Universe id="8888">
+			<Name>Mirror</Name>
+		</Universe>
+	</Universes>
+	<Credits>
+		<Credit>
+			<Creator id="9999">Joe Orlando</Creator>
+			<Roles>
+				<Role id="1111">Writer</Role>
+			</Roles>
+		</Credit>
+	</Credits>
+	<Reprints>
+		<Reprint id="4444">Captain Science Alternate #001</Reprint>
+	</Reprints>
+	<URLs>
+		<URL>https://example.com/not-a-known-database/1</URL>
+	</URLs>
+</MetronInfo>

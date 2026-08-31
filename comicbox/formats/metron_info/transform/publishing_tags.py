@@ -34,13 +34,13 @@ from comicbox.formats.metron_info.schema import (
     SERIES_TAG,
     VOLUME_TAG,
 )
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.formats.metron_info.transform.identifier_attribute import (
     ID_ATTRIBUTE,
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
-from comicbox.identifiers import DEFAULT_ID_SOURCE
 
 LANGUAGE_TAGPATH = f"{SERIES_TAG}.{LANG_ATTR}"
 FORMAT_TAGPATH = f"{SERIES_TAG}.Format"
@@ -74,7 +74,7 @@ def _publisher_to_cb(
     metron_publisher = values.get(PUBLISHER_TAG)
     if not metron_publisher:
         return None
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     comicbox_publisher = {}
     if name := metron_publisher.get(NAME_TAG):
         comicbox_publisher[NAME_KEY] = name
@@ -97,7 +97,7 @@ def _imprint_from_cb(values: dict[str, Any], primary_id_source: str) -> dict | N
 
 def _publisher_from_cb(values: dict[str, Any]) -> dict:
     metron_publisher = {}
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     if comicbox_publisher := values.get(PUBLISHER_KEY):
         if publisher_name := comicbox_publisher.get(NAME_KEY):
             metron_publisher[NAME_TAG] = publisher_name
@@ -124,7 +124,7 @@ def _imprint_to_cb(values: dict[str, Any]) -> dict | None:
     metron_imprint = values.get(IMPRINT_TAGPATH)
     if not metron_imprint:
         return None
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     comicbox_imprint = {}
     if imprint_name := get_cdata(metron_imprint):
         comicbox_imprint[NAME_KEY] = imprint_name
@@ -147,7 +147,7 @@ def _series_id_to_cb(values: dict[str, Any]) -> None:
     metron_series = values.get(SERIES_TAG)
     if not metron_series:
         return None
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     comicbox_series = {}
     metron_id_attribute_to_cb(
         "series", metron_series, comicbox_series, primary_id_source
@@ -159,7 +159,7 @@ def _series_id_from_cb(values: dict[str, Any]) -> None:
     comicbox_series = values.get(SERIES_KEY)
     if not comicbox_series:
         return None
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     metron_series = {}
     metron_id_attribute_from_cb(metron_series, comicbox_series, primary_id_source)
     return metron_series.get(ID_ATTRIBUTE)
