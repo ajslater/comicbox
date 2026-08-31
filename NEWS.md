@@ -139,6 +139,19 @@
       `comicbox --rename` and `comicbox -P f` with no file ended in an
       ArchiveError traceback. The guard that turns those actions off existed but
       never ran for a CLI run, which passes settings already built.
+    - Reading metadata no longer depends on write settings. Every source's merge
+      strategy came from `write.mode`, so `--replace` changed what a plain read
+      returned, and under `update` the last source carrying a key dropped every
+      earlier source's contribution to it. Sources merge additively now; the
+      write mode applies only to metadata the caller supplied — the write API's
+      patch, `-m`, `--import` and the config's metadata block.
+    - What an online lookup fetched survives a write. The lookup runs once per
+      archive and the post-write cache reset discarded its results, so
+      `--online --write … --rename` named the file from pre-online metadata.
+      Metadata added through the API now survives in full, not just the first
+      one.
+    - `add_metadata(md, fmt=…)` accepts every format instead of raising on the
+      ones no source declares, like the online formats.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

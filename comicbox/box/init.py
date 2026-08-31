@@ -125,7 +125,13 @@ class ComicboxInit:
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def _reset_archive(
-        self, fmt: MetadataFormats | None, metadata: Mapping | str | bytes | None
+        self,
+        fmt: MetadataFormats | None,
+        metadata: Mapping | str | bytes | None,
+        keep_sources: Mapping[
+            MetadataSources, list[SourceData] | tuple[SourceData, ...]
+        ]
+        | None = None,
     ) -> None:
         self._archive_cls: Callable | None = None
         self._file_type: FileTypeEnum | None = None
@@ -143,9 +149,11 @@ class ComicboxInit:
 
         from comicbox.formats.sources import MetadataSources
 
+        # keep_sources carries the sources a reset can't rebuild — see
+        # ComicboxDump._reset_caches_after_write.
         self._sources: dict[
             MetadataSources, list[SourceData] | tuple[SourceData, ...]
-        ] = {}
+        ] = dict(keep_sources) if keep_sources else {}
         if metadata:
             self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
         self._loaded: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}

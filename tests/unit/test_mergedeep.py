@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections import Counter
 
-from comicbox.merge import AdditiveMerger, ReplaceMerger, UpdateMerger
+import pytest
+
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger, UpdateMerger
 from comicbox.merge.mergedeep import Strategy, merge
 
 #############
@@ -137,25 +139,27 @@ def test_replace_merger_wraps_replace_strategy() -> None:
     assert dest == {"a": [9], "n": {"b": [8]}}
 
 
-def test_update_merger_shallow_updates_under_root_tag() -> None:
-    """UpdateMerger does a shallow dict.update inside the comicbox root tag."""
-    dest = {"comicbox": {"a": 1, "b": {"deep": 1}}}
-    result = UpdateMerger.merge(dest, {"comicbox": {"b": {"other": 2}, "c": 3}})
+def test_update_merger_shallow_updates_the_mapping_it_is_given() -> None:
+    """UpdateMerger does a shallow dict.update at the level it is handed."""
+    dest = {"a": 1, "b": {"deep": 1}}
+    result = UpdateMerger.merge(dest, {"b": {"other": 2}, "c": 3})
     assert result is dest
     # Shallow: the nested 'b' dict is replaced wholesale, not deep-merged.
-    assert dest == {"comicbox": {"a": 1, "b": {"other": 2}, "c": 3}}
+    assert dest == {"a": 1, "b": {"other": 2}, "c": 3}
 
 
-def test_update_merger_without_root_tag_is_a_noop() -> None:
+@pytest.mark.parametrize("merger", [AdditiveMerger, ReplaceMerger, UpdateMerger])
+def test_every_merger_shares_one_shape_contract(merger: type[Merger]) -> None:
     """
-    UpdateMerger silently drops sources when dest lacks the root tag.
+    All three mergers merge into the mapping they are handed.
 
-    # NOTE: dest.get(ROOT_TAG, {}) creates a throwaway dict that is
-    # updated and discarded, so merging into a dest without a 'comicbox'
-    # key loses the source data. Pinning current behavior; callers must
-    # pre-shape dest with the root tag.
+    UpdateMerger used to reach into the comicbox root tag on its own, so
+    the sub-metadata shape its siblings take was silently dropped:
+    dest.get(ROOT_TAG, {}) built a throwaway dict, updated it, and
+    discarded it. Callers unwrap the root tag now; nothing here knows
+    about it.
     """
     dest: dict = {}
-    result = UpdateMerger.merge(dest, {"comicbox": {"a": 1}})
+    result = merger.merge(dest, {"a": 1})
     assert result is dest
-    assert dest == {}
+    assert dest == {"a": 1}
