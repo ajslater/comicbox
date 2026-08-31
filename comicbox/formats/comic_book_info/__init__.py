@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comic_book_info.transform import ComicBookInfoTransform
-from comicbox.validate.json_validator import JsonValidator
+from comicbox.validate.spec import ValidatorSpec, ValidatorType
 
 REGISTRATION = FormatRegistration(
     format=MetadataFormat(
@@ -23,6 +23,8 @@ REGISTRATION = FormatRegistration(
             "API": 5,
         }
     ),
-    validator=JsonValidator("comic-book-info-v1.0.schema.json"),
+    validator_spec=ValidatorSpec(
+        ValidatorType.JSON, "comic-book-info-v1.0.schema.json"
+    ),
     has_tags_without_ids=True,
 )

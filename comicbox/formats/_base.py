@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.transforms.base import BaseTransform
-from comicbox.validate.base import BaseValidator
+from comicbox.validate.spec import ValidatorSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,9 @@ class FormatRegistration:
 
     format: MetadataFormat
     sources: MappingProxyType[str, int]
-    validator: BaseValidator | None = None
+    #: Names the schema validator without building it. Only the opt-in
+    #: `--validate` path calls `build_validator()` on it.
+    validator_spec: ValidatorSpec | None = None
     has_tags_without_ids: bool = False
     is_online: bool = False
     cli_info: OnlineSourceCliInfo | None = None
