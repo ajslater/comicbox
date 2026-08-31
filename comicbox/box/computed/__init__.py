@@ -23,15 +23,16 @@ a computed method was silently never called; ``getattr(self, name)`` dispatches
 through the instance like every other method call.
 """
 
-from collections.abc import Mapping
+from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import lru_cache
 from types import MappingProxyType
 from typing import Any
 
 from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
-from deepdiff import DeepDiff
 from glom import glom
 from loguru import logger
 
@@ -58,6 +59,74 @@ def _prune_empty(value: Any) -> Any:
             if not is_empty(pruned := _prune_empty(sub_value))
         }
     return value
+
+
+# One spec, built once. dict() on the specs ran per reprint name.
+_FILENAME_TO_REPRINT_SPECS = dict(FILENAME_TO_REPRINT_SPECS)
+
+
+@lru_cache(maxsize=1024)
+def _parse_reprint_name(name: str) -> Mapping[str, Any]:
+    """
+    Read a reprint's name with the filename grammar, once per distinct name.
+
+    Both the grammar and the glom spec are pure functions of the name, and
+    names repeat: a reprint-heavy book is mostly the same few editions said
+    twice, which is what the consolidation pass exists for.
+
+    The result is shared between callers and must be treated as read only.
+    Everything that reaches a reprint from here goes through
+    ``_prune_empty``, which builds a fresh container at every mapping level.
+    """
+    return glom(comicfn2dict(name), _FILENAME_TO_REPRINT_SPECS)
+
+
+def _comparable(value: Any) -> Hashable:
+    """
+    One reprint value in the form two reprints can be compared by.
+
+    Sources disagree about representation without disagreeing about
+    content: a volume number read out of a reprint's name is the string
+    ``"2"`` where the same number loaded through the schema is the int
+    ``2``, and capitalization is a source's habit rather than a fact about
+    the edition.
+    """
+    if isinstance(value, Mapping):
+        return frozenset(
+            (key, _comparable(sub_value)) for key, sub_value in value.items()
+        )
+    if isinstance(value, Sequence | AbstractSet) and not isinstance(value, str | bytes):
+        # Order is the serializer's choice, so compare as a multiset.
+        return tuple(sorted((_comparable(item) for item in value), key=repr))
+    return str(value).casefold()
+
+
+def _reprint_fields(reprint: Mapping, prefix: str = "") -> dict[str, Hashable]:
+    """Flatten a reprint to comparable leaf values, keyed by dotted path."""
+    fields: dict[str, Hashable] = {}
+    for key, value in reprint.items():
+        path = f"{prefix}{key}"
+        if isinstance(value, Mapping):
+            fields.update(_reprint_fields(value, f"{path}."))
+        else:
+            fields[path] = _comparable(value)
+    return fields
+
+
+def _reprints_agree(
+    left: Mapping[str, Hashable], right: Mapping[str, Hashable]
+) -> bool:
+    """
+    Whether two flattened reprints describe one edition rather than two.
+
+    They do when neither contradicts the other on a field they both carry.
+    Sharing no field at all is not agreement — that is two editions, not one
+    said twice — unless one of them makes no claim to contradict.
+    """
+    if not left or not right:
+        return True
+    shared = left.keys() & right.keys()
+    return bool(shared) and all(left[path] == right[path] for path in shared)
 
 
 @dataclass
@@ -130,8 +199,7 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
             new_reprint = dict(old_reprint)
             name = new_reprint.get(NAME_KEY)
             if name:
-                filename_dict = comicfn2dict(str(name))
-                parsed = glom(filename_dict, dict(FILENAME_TO_REPRINT_SPECS))
+                parsed = _parse_reprint_name(str(name))
                 for key, value in parsed.items():
                     # The filename grammar yields a slot for every field it
                     # knows, empty when the name didn't say.
@@ -153,22 +221,27 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         old_reprints = sub_data.get(REPRINTS_KEY)
         if not old_reprints:
             return None
+        # Compare flattened, normalized fields rather than diffing every pair
+        # of nested reprints. The DeepDiff this replaces was ~93% of the whole
+        # computed pass on a reprint-heavy book, and its ignore_order pairing
+        # decided agreement by a similarity threshold, so whether two reprints
+        # consolidated depended on how many fields they *didn't* share.
+        fields = [_reprint_fields(reprint) for reprint in old_reprints]
         new_reprints = []
         merged_indexes = set()
         for index, old_reprint in enumerate(old_reprints):
             if index in merged_indexes:
                 continue
-            for sub_index, compare_old_reprint in enumerate(old_reprints[index:]):
-                diff = DeepDiff(
-                    old_reprint,
-                    compare_old_reprint,
-                    ignore_order=True,
-                    ignore_string_case=True,
-                    ignore_encoding_errors=True,
-                )
-                if "values_changed" not in diff:
-                    AdditiveMerger.merge(old_reprint, compare_old_reprint)
-                    merged_indexes.add(index + sub_index)
+            # A leader absorbs what agrees with it, so its fields grow as the
+            # scan runs and later candidates are compared against everything
+            # it has taken on. The scan starts past the leader itself: it used
+            # to begin at the leader, merging a dict into itself, which
+            # mergedeep skips outright.
+            for sub_index in range(index + 1, len(old_reprints)):
+                if _reprints_agree(fields[index], fields[sub_index]):
+                    AdditiveMerger.merge(old_reprint, old_reprints[sub_index])
+                    fields[index] = _reprint_fields(old_reprint)
+                    merged_indexes.add(sub_index)
             new_reprints.append(old_reprint)
 
         if len(old_reprints) != len(new_reprints):
@@ -260,10 +333,15 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
                 # and both are stamped into notes. Merge the delta into the
                 # snapshot so later actions see it. That accumulated snapshot
                 # *is* the computed metadata — ComicboxMetadata reads it back
-                # instead of replaying every delta onto a second copy. The
-                # copy keeps the stored delta from aliasing the snapshot a
-                # later action may change.
-                action.merger.merge(sub_data, deepcopy(sub_md))
+                # instead of replaying every delta onto a second copy.
+                #
+                # The delta is merged as-is. It used to be deep copied first,
+                # to keep the stored delta from aliasing a snapshot a later
+                # action may change, but mergedeep never lends the source's
+                # objects to the destination: every branch of it either
+                # recurses into the destination's own mapping or assigns a
+                # deepcopy. Copying here only did that same work twice.
+                action.merger.merge(sub_data, sub_md)
 
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
             computed_data = ComputedData(action.label, md, action.merger)
