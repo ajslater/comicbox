@@ -23,6 +23,8 @@
       written with urns still read.
     - `MainCharacterOrTeam` is one name, and CoMet's `identifier` and
       `isVersionOf` one value each, as their schemas define them.
+    - New `manga_volume` field holds MetronInfo's `MangaVolume` string as
+      written. Comicbox still reads the volume numbers out of it.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 
@@ -37,6 +39,8 @@
     - Marvel's `Max` and `Max: Explicit Content` ratings are recognized.
     - ComicInfo's `Translator` accepts several names like every other creator
       tag.
+    - Writing MetronInfo no longer stamps a `MangaVolume` onto comics that never
+      had one. It was rebuilt from the volume number on every write.
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually

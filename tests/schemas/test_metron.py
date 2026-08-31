@@ -153,6 +153,7 @@ READ_METADATA = MappingProxyType(
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
             "universes": {"Mirror": {"designation": "4242"}},
+            "manga_volume": "1950-1952",
             "volume": {
                 "number": 1950,
                 "number_to": 1952,

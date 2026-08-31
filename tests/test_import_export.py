@@ -351,6 +351,7 @@ FNS = MappingProxyType(
                 "https://isbndb.com/book/123-456789-0123",
                 "https://metron.cloud/issue/999999",
             ],
+            "manga_volume": "1950-1952",
             "imprint": {
                 "identifiers": {
                     "metron": {
@@ -518,6 +519,7 @@ FNS = MappingProxyType(
                 "https://metron.cloud/issue/290431",
                 "https://comicvine.gamespot.com/c/4000-290431/",
             ],
+            "manga_volume": "2",
             "imprint": {
                 "identifiers": {
                     "metron": {

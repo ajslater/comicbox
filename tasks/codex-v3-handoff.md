@@ -261,8 +261,29 @@ what comicbox writes to other apps' files.
 **Codex impact:** none to the stored shape. Worth knowing if codex compares
 comicbox's ComicInfo output against files written by older versions.
 
+### PR 7 — `manga_volume`
+
+New field `comicbox.manga_volume`, a string holding MetronInfo's `MangaVolume`
+exactly as the file wrote it. `volume.number` and `volume.number_to` are
+unchanged and are still filled in from it — comicbox parses `"3"` and `"1-5"`
+for you — but only when the file didn't state a `Series/Volume` of its own.
+
+| Field                                | v3                                                 |
+| ------------------------------------ | -------------------------------------------------- |
+| `manga_volume`                       | new; verbatim string, may be any text              |
+| `volume.number` / `volume.number_to` | unchanged; derived from `manga_volume` when absent |
+
+**This fixes a data-corruption bug worth knowing about.** `MangaVolume` used to
+be split into the volume numbers on read and rebuilt from them on write,
+unconditionally — so every comic comicbox wrote MetronInfo for came out claiming
+a manga volume, western comics included. Any MetronInfo.xml comicbox wrote may
+carry a bogus `<MangaVolume>`; it now writes one only when `manga_volume` holds
+a value that came from a file.
+
+**Codex impact:** new optional field. Nothing to migrate — v2 never stored the
+string, so the up-converter cannot invent one.
+
 <!-- Subsequent PRs append their shape-change tables here:
-     PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
 
@@ -272,8 +293,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **`manga_volume: string`** added, holding MetronInfo's `MangaVolume` verbatim;
-  `volume.number`/`volume.number_to` are parsed from it when unset.
 - **`reprints`** entries gain an authoritative verbatim `name`; structured
   `series`/`volume`/`issue` become derived enrichment.
 - **`series.alternative_names: [{name, language, identifiers}]`** added — Metron
@@ -298,8 +317,8 @@ Schema) before writing code, since details can shift during implementation.
 - [ ] Move credit primary flags onto the per-role object (PR 4 section).
 - [ ] Split stored identifiers and urls; rename `identifier_primary_source` →
       `primary_id_source` (PR 5 section).
-- [ ] (later PRs) Handle `manga_volume`, tri-state `manga`, `reprints[].name`,
-      `series.alternative_names`.
+- [ ] Add the optional `manga_volume` field.
+- [ ] (later PRs) Handle `reprints[].name` and `series.alternative_names`.
 - [ ] Re-run codex's comicbox integration tests against the paired comicbox
       release; comicbox's own `tests/test_codex_api.py` pins the
       `get_internal_metadata()` contract and is the reference for expected

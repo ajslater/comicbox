@@ -72,10 +72,10 @@ ISSUE_SUFFIX_KEY = "suffix"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MANGA_KEY = "manga"
+MANGA_VOLUME_KEY = "manga_volume"
 MONTH_KEY = "month"
 MONOCHROME_KEY = "monochrome"
 NUMBER_KEY = "number"
-NUMBER_TO_KEY = "number_to"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
@@ -228,6 +228,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
     locations = SimpleNamedDictField()  # CIX, CT, Metron
     manga = MangaField()  # CIX ONLY
+    manga_volume = StringField()  # Metron ONLY
     monochrome = BooleanField()  # CIX ONLY, CT
     notes = StringField()  # CT, Metron, CIX
     page_count = IntegerField(minimum=0)  # CIX, Comet, Metron, CBI

@@ -27,6 +27,7 @@ comic book metadata formats.
 | language          | LanguageISO                                                                              | Series@lang                       |                                                                           | language          |
 | locations         | Locations                                                                                | Locations                         |
 | manga             | Manga                                                                                    |
+| manga_volume      |                                                                                          | MangaVolume                       |
 | monochrome        | BlackAndWhite                                                                            |
 | notes             | Notes                                                                                    | Notes                             |
 | original_format   | Format                                                                                   | Series.Format                     |
