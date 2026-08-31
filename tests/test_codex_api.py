@@ -54,7 +54,11 @@ class Fixture:
 TEMPLATE_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "age_rating": "Teen",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
@@ -90,9 +94,6 @@ TEMPLATE_MD = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "tagger": f"comicbox {VERSION}",
             "title": "The Beginning; The End",

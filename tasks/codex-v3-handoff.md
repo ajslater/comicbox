@@ -283,6 +283,36 @@ a value that came from a file.
 **Codex impact:** new optional field. Nothing to migrate — v2 never stored the
 string, so the up-converter cannot invent one.
 
+### PR 8 — ComicInfo `AlternateSeries` is an arc, not a reprint
+
+No new fields. Data that used to arrive in `reprints` now arrives in `arcs`.
+
+| ComicInfo tag     | v2                              | v3                   |
+| ----------------- | ------------------------------- | -------------------- |
+| `AlternateSeries` | `reprints[].series.name`        | `arcs.<name>`        |
+| `AlternateNumber` | `reprints[].issue`              | `arcs.<name>.number` |
+| `AlternateCount`  | `reprints[].volume.issue_count` | dropped              |
+
+ComicInfo v1.0 had no `StoryArc` — it arrived in v2.0 — so libraries tagged
+before then recorded crossovers in these three tags. ComicRack documented them
+for exactly that (Civil War, House of M), the Anansi project calls them
+"cross-over story arcs", and Komga and Kavita build read lists from
+`AlternateSeries` + `AlternateNumber` the same way they do from `StoryArc` +
+`StoryArcNumber`. Reading them as reprints put crossover data in the field
+meaning "another edition of this book".
+
+Comicbox now **writes** arcs only to `StoryArc`/`StoryArcNumber`, so a file it
+touches is migrated to the modern tags. When both tag pairs name the same arc,
+`StoryArc` wins.
+
+**Consequence worth knowing:** ComicInfo can no longer carry a reprint at all.
+Writing only ComicInfo for a comic whose reprints came from CoMet or MetronInfo
+loses them, because ComicInfo has no field for that concept.
+
+**Codex migration:** reprint rows that came from ComicInfo become arc rows.
+There is no way to tell them apart after the fact from the stored data alone, so
+the practical move is to re-read affected comics rather than migrate.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
@@ -297,10 +327,6 @@ Schema) before writing code, since details can shift during implementation.
   `series`/`volume`/`issue` become derived enrichment.
 - **`series.alternative_names: [{name, language, identifiers}]`** added — Metron
   `Series/AlternativeNames` no longer lands in `reprints`.
-- **ComicInfo `AlternateSeries`/`AlternateNumber`** now read into `arcs` (they
-  predate `StoryArc` and were the pre-v2.0 way to record crossovers);
-  `AlternateCount` is dropped, and comicbox writes arc data only to
-  `StoryArc`/`StoryArcNumber`.
 - **`title` is verbatim** — never split, never overwritten by joined story
   names. `stories` are derived from `title` (split on `;`) only when absent, and
   `title` from `stories` (joined with `; `) only when absent.

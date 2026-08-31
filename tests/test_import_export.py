@@ -205,7 +205,11 @@ FNS = MappingProxyType(
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -243,9 +247,6 @@ FNS = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
@@ -254,7 +255,11 @@ FNS = MappingProxyType(
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicinfo-metron-origin.xml": {
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -298,9 +303,6 @@ FNS = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "Comictagger",
@@ -314,7 +316,10 @@ FNS = MappingProxyType(
                 "name": "2",
                 "number": Decimal(2),
             },
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "collection_title": "Omnibus",
             "community_rating": {

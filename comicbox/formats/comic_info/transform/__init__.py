@@ -33,6 +33,8 @@ from comicbox.formats.base.transforms.xml_credits import (
     xml_credits_transform_to_cb,
 )
 from comicbox.formats.comic_info.schema import (
+    ALTERNATE_NUMBER_TAG,
+    ALTERNATE_SERIES_TAG,
     BOOKMARK_ATTRIBUTE,
     WEB_TAG,
     ComicInfoSchema,
@@ -50,10 +52,6 @@ from comicbox.formats.comic_info.transform.pages import (
     comicinfo_bookmark_to_cb,
     comicinfo_pages_from_cb,
     comicinfo_pages_to_cb,
-)
-from comicbox.formats.comic_info.transform.reprints import (
-    COMICINFO_REPRINTS_FROM_CB,
-    COMICINFO_REPRINTS_TO_CB,
 )
 from comicbox.formats.comic_info.transform.storyarcs import (
     story_arcs_from_cb,
@@ -234,8 +232,12 @@ class ComicInfoTransform(BaseTransform):
         COMICINFO_READING_DIRECTION_TO_CB,
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
         comicinfo_bookmark_to_cb("Pages.Page", BOOKMARK_ATTRIBUTE, IMAGE_ATTRIBUTE),
-        COMICINFO_REPRINTS_TO_CB,
-        story_arcs_to_cb("StoryArc", "StoryArcNumber"),
+        story_arcs_to_cb(
+            "StoryArc",
+            "StoryArcNumber",
+            ALTERNATE_SERIES_TAG,
+            ALTERNATE_NUMBER_TAG,
+        ),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
@@ -245,7 +247,6 @@ class ComicInfoTransform(BaseTransform):
         COMICINFO_GTIN_FROM_CB,
         COMICINFO_MANGA_FROM_CB,
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
-        COMICINFO_REPRINTS_FROM_CB,
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),
         urls_transform_from_cb(WEB_TAG),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,

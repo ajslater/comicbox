@@ -25,6 +25,10 @@
       `isVersionOf` one value each, as their schemas define them.
     - New `manga_volume` field holds MetronInfo's `MangaVolume` string as
       written. Comicbox still reads the volume numbers out of it.
+    - ComicInfo's `AlternateSeries` and `AlternateNumber` read as a story arc
+      instead of a reprint. They predate `StoryArc` and are how older files
+      record a crossover. Arcs are written only to `StoryArc` now, and
+      `AlternateCount` is dropped.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 

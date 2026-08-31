@@ -121,8 +121,16 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
                     "Pages",
                 }
             ),
-            "reprints": frozenset(
-                {"AlternateSeries", "AlternateNumber", "AlternateCount"}
+            # The Alternate tags predate StoryArc and hold crossover arcs, so
+            # they follow arcs now, not reprints.
+            "arcs": frozenset(
+                {
+                    "StoryArc",
+                    "StoryArcNumber",
+                    "AlternateSeries",
+                    "AlternateNumber",
+                    "AlternateCount",
+                }
             ),
         }
     )
