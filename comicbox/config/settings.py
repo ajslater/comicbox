@@ -94,12 +94,9 @@ DEFAULT_AUTO_THRESHOLD = 0.95
 # in user-facing CLI/docs but available as per-source YAML overrides.
 DEFAULT_MIN_CONFIDENCE = 0.50
 DEFAULT_DISAMBIGUATION_MARGIN = 0.10
-# Solo-viable auto-write floor. When the matcher returns exactly one
-# candidate clearing ``min_confidence``, ``AUTO``/``EAGER`` modes
-# auto-write only if it also clears this floor. Equals the global
-# auto-write threshold, so solo cases need the same bar as
-# multi-candidate unambiguous wins.
-DEFAULT_SOLO_THRESHOLD = DEFAULT_AUTO_THRESHOLD
+# The solo-viable auto-write floor has no constant of its own: it
+# *is* the source's resolved ``auto_threshold`` unless a per-source
+# ``solo_threshold`` overrides it. See ``resolve_solo_threshold``.
 
 
 @dataclass(frozen=True, slots=True)
@@ -374,9 +371,25 @@ def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) ->
 
 
 def resolve_solo_threshold(settings: OnlineSettings, source_name: str) -> float:
-    """Per-source override > built-in default. Not user-exposed today."""
+    """
+    Per-source override > this source's resolved ``auto_threshold``.
+
+    Phase E's floor is defined as "the same bar as a multi-candidate
+    unambiguous win", so it tracks whatever auto-write bar this source
+    actually runs at — global, per-source, CLI or env. A constant here
+    would silently decouple the two: raising ``auto_threshold`` to 0.98
+    left a lone 0.96-scoring candidate auto-writing through a 0.95 back
+    door that no configuration could close, and lowering it left the
+    floor stricter than the bar it mirrors.
+
+    Lowering ``solo_threshold`` per source is the only way to make
+    ``AUTO``/``EAGER``'s solo carve-out reach below the auto-write bar
+    (see ``_policy_auto_writes``).
+    """
     override = _tuning_for(settings, source_name).solo_threshold
-    return override if override is not None else DEFAULT_SOLO_THRESHOLD
+    if override is not None:
+        return override
+    return resolve_auto_threshold(settings, source_name)
 
 
 def resolve_rate_limit(
