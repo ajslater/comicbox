@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import shutil
 import threading
 from argparse import Namespace
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
+
+import pytest
+from loguru import logger as loguru_logger
 
 from comicbox.config import get_config
 from comicbox.config.settings import (
@@ -15,13 +21,13 @@ from comicbox.config.settings import (
     OnlineAuthSettings,
     OnlineSourceCredentials,
 )
+from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.run import Runner
+from tests.const import CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    import pytest
+    from collections.abc import Generator
 
 
 def _make_paths(tmp_path: Path, count: int) -> list[str]:
@@ -197,8 +203,6 @@ def test_run_parallel_caps_jobs_at_metron_burst_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """-j above the burst limit is clamped, and the clamp is explained."""
-    from loguru import logger as loguru_logger
-
     captured = _capture_max_workers(monkeypatch)
     messages: list[str] = []
     handler_id = loguru_logger.add(messages.append, level="INFO", format="{message}")
@@ -224,3 +228,149 @@ def test_run_parallel_keeps_jobs_at_or_below_limit(
     captured = _capture_max_workers(monkeypatch)
     Runner(_metron_settings())._run_parallel([], 4)
     assert captured == [4]
+
+
+# --------------------------------------------- real work through the pool
+
+
+def _real_batch(tmp_path: Path) -> tuple[list[Path], Path]:
+    """
+    Three readable comics and one corrupt file, in a fixed sort order.
+
+    `get_config` sorts `paths`, so the names are chosen to put the
+    corrupt file second: the serial path then has exactly one successful
+    file behind it, which is what makes the two error semantics below
+    distinguishable.
+    """
+    source = Path(CIX_CBZ_SOURCE_PATH)
+    good = []
+    for name in ("a_good.cbz", "c_good.cbz", "d_good.cbz"):
+        dest = tmp_path / name
+        shutil.copy(source, dest)
+        good.append(dest)
+    corrupt = tmp_path / "b_corrupt.cbz"
+    corrupt.write_bytes(b"this is not a zip archive")
+    return good, corrupt
+
+
+def _runner_for(paths: list[Path], jobs: int) -> Runner:
+    return Runner(
+        Namespace(
+            comicbox=Namespace(
+                paths=[str(p) for p in paths],
+                general=Namespace(jobs=jobs),
+            )
+        )
+    )
+
+
+@contextmanager
+def _captured_records() -> Generator[list[Any]]:
+    """
+    Collect loguru records. Must be entered *after* `Runner(...)`.
+
+    `Runner.__init__` calls `init_logging`, which removes existing
+    handlers — a handler added earlier would be gone before `run()`.
+    """
+    records: list[Any] = []
+    handler_id = loguru_logger.add(lambda m: records.append(m.record), level="TRACE")
+    try:
+        yield records
+    finally:
+        loguru_logger.remove(handler_id)
+
+
+def _messages(records: list[Any], text: str) -> list[Any]:
+    return [r for r in records if text in r["message"]]
+
+
+def _errors(records: list[Any]) -> list[Any]:
+    return [r for r in records if r["level"].name == "ERROR"]
+
+
+def test_parallel_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
+    """
+    Unpatched `_run_one` over real archives: one bad file can't stop the pool.
+
+    With no action flags set, each successfully opened comic logs
+    "No action performed" exactly once, which is the per-file receipt
+    this asserts on.
+    """
+    good, corrupt = _real_batch(tmp_path)
+    runner = _runner_for([*good, corrupt], jobs=2)
+    with _captured_records() as records:
+        runner.run()  # completes; no exception escapes the pool
+
+    assert len(_messages(records, "No action performed")) == len(good)
+    errors = _errors(records)
+    assert len(errors) == 1
+    assert errors[0]["message"] == str(corrupt)
+    assert isinstance(errors[0]["exception"].value, UnsupportedArchiveTypeError)
+
+
+def test_parallel_batch_logs_each_failure_once(tmp_path: Path) -> None:
+    """
+    `_run_one` logs, then returns normally, so `future.result()` re-raises nothing.
+
+    Both the worker's `except` and `_run_parallel`'s own `except` can log
+    the same path; only one of them does.
+    """
+    good, corrupt = _real_batch(tmp_path)
+    second_corrupt = tmp_path / "e_corrupt.cbz"
+    second_corrupt.write_bytes(b"also not a zip")
+    runner = _runner_for([*good, corrupt, second_corrupt], jobs=3)
+    with _captured_records() as records:
+        runner.run()
+
+    errors = _errors(records)
+    assert sorted(r["message"] for r in errors) == sorted(
+        [str(corrupt), str(second_corrupt)]
+    )
+    assert len(_messages(records, "No action performed")) == len(good)
+
+
+def test_serial_batch_aborts_on_a_corrupt_file(tmp_path: Path) -> None:
+    """
+    Documents a real asymmetry between the two dispatch paths.
+
+    `_run_inner`'s serial branch calls `run_on_file` directly, and
+    neither has an `except Exception` guard, so the first unreadable file
+    ends the batch with a traceback. The parallel branch routes through
+    `_run_one` — whose docstring is explicitly "swallowing exceptions for
+    batch resilience" — and logs-and-continues instead.
+
+    The guard arrived with `_run_one` in the parallel dispatch (v4.0.0);
+    the pre-existing serial loop never had one, and only `recurse()` did.
+    So this looks like an oversight rather than a decision: the same
+    corrupt file is a logged error under `-j 2` and a fatal traceback
+    under `-j 1`.
+    """
+    good, corrupt = _real_batch(tmp_path)
+    runner = _runner_for([*good, corrupt], jobs=1)
+    with _captured_records() as records, pytest.raises(UnsupportedArchiveTypeError):
+        runner.run()
+
+    # Only the file sorting before the corrupt one was processed; the two
+    # after it never ran.
+    assert len(_messages(records, "No action performed")) == 1
+    assert _errors(records) == []
+
+
+def test_recurse_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
+    """`recurse()` has the guard the serial explicit-path loop lacks."""
+    good, corrupt = _real_batch(tmp_path)
+    runner = Runner(
+        Namespace(
+            comicbox=Namespace(
+                paths=[str(tmp_path)],
+                general=Namespace(jobs=1, recurse=True),
+            )
+        )
+    )
+    with _captured_records() as records:
+        runner.run()
+
+    assert len(_messages(records, "No action performed")) == len(good)
+    errors = _errors(records)
+    assert len(errors) == 1
+    assert errors[0]["message"] == str(corrupt)
