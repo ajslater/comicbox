@@ -347,6 +347,26 @@ alternative names that codex stored as reprints should move, but as with the
 ComicInfo arcs, re-reading affected comics is more reliable than guessing which
 reprint rows were really alternative names.
 
+### PR 10 — `title` and `stories` derive only when missing
+
+No shape change. `title` is still a string and `stories` still a name-keyed map;
+what changes is when comicbox fills one in from the other.
+
+| Comic states | v2 result                                                                             | v3 result                   |
+| ------------ | ------------------------------------------------------------------------------------- | --------------------------- |
+| stories only | title = stories joined with `; `                                                      | same                        |
+| title only   | stories = title split on `;`                                                          | same                        |
+| both         | **title overwritten** with the joined stories, and stories gained the title's entries | both kept exactly as stated |
+
+A `title` the source stated is now the title. It used to be replaced by the
+joined story names so that MetronInfo, which has no title tag, would beat a
+title guessed from the filename — but which source wins is the merge order's
+job, and solving it here meant overwriting data a file actually contained.
+
+**Codex impact:** a comic carrying both a title and story names may now show a
+different title than before — the one in the file rather than one rebuilt from
+its stories. Nothing to migrate.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
@@ -356,10 +376,6 @@ reprint rows were really alternative names.
 Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
-
-- **`title` is verbatim** — never split, never overwritten by joined story
-  names. `stories` are derived from `title` (split on `;`) only when absent, and
-  `title` from `stories` (joined with `; `) only when absent.
 
 ## Adoption checklist
 

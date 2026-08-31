@@ -33,6 +33,9 @@
       mixed into `reprints`.
     - Reprints keep the `name` the file gave them. The series, volume and issue
       read out of that name are a convenience now, not the record.
+    - A `title` a comic states is kept as written. Stories are read out of it
+      only when the comic lists none, and a title is built from the stories only
+      when it has no title.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 
