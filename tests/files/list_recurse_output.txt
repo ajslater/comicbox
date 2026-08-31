@@ -83,6 +83,19 @@ tests/files/Captain Science #001-metron.cbz
 │      │ metroninfo.xml │
 └──────┴────────────────┘
 ════════════════════════════════════════════════════════════════════════════════
+tests/files/Captain Science #001.cb7
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Page ┃ Archive Path                                ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│   0  │ Captain Science 001/CaptainScience#1_01.jpg │
+│   1  │ Captain Science 001/CaptainScience#1_02.jpg │
+│   2  │ Captain Science 001/CaptainScience#1_03.jpg │
+│   3  │ Captain Science 001/CaptainScience#1_04.jpg │
+│   4  │ Captain Science 001/CaptainScience#1_05.jpg │
+│      │ Captain Science 001/comicinfo.xml           │
+│      │ Captain Science 001/metroninfo.xml          │
+└──────┴─────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════════════════════════
 tests/files/Captain Science #001.cbz
 ┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Page ┃ Archive Path                                ┃

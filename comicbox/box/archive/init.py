@@ -41,6 +41,7 @@ class ComicboxArchiveInit(ComicboxInit):
             # be many KB on archives with hundreds of pages.
             self._namelist = None
             self._infolist = None
+            self._dirnames = None
 
     def _get_archive(self) -> ArchiveType:
         """Set archive instance open for reading."""

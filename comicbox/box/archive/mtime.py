@@ -14,10 +14,13 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
     """Calculate page filenames."""
 
     def _is_comment_json(self, archive: ArchiveType) -> bool:
+        # Slice, don't index: zipfile hands back a bytes comment and rarfile
+        # a str one, and indexing bytes yields an int (123) that matches
+        # neither bracket, so every CBZ comment tested as not-json.
         return (
             self._config.is_read_comments
             and bool(comment := getattr(archive, "comment", ""))
-            and (comment[0] in _BRACKETS)
+            and (comment[:1] in _BRACKETS)
         )
 
     def get_path_mtime_dttm(self) -> datetime | None:

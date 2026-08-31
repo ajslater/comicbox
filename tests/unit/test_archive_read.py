@@ -7,7 +7,9 @@ import sys
 
 from comicbox.box import Comicbox
 from comicbox.box.archive import archive as archive_module
-from tests.const import CB7_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
+from tests.const import CB7_SOURCE_PATH, CIX_CBZ_SOURCE_PATH, TEST_FILES_DIR
+
+RESOURCE_FORK_ARCHIVE = TEST_FILES_DIR / "macos_resource_fork.cbz"
 
 
 def test_namelist_derives_from_cached_infolist(monkeypatch) -> None:
@@ -125,3 +127,38 @@ def test_infolist_and_namelist_share_sort_order() -> None:
         infolist = cb.infolist()
         names_from_infolist = tuple(cb._get_info_fn(i) for i in infolist)
     assert names_from_namelist == names_from_infolist
+
+
+def test_readfile_ignores_a_same_named_directory_in_the_cwd(tmp_path, monkeypatch):
+    """
+    A member name is the archive's, not the filesystem's.
+
+    The dir guard called Path(filename).is_dir(), which resolves a relative
+    archive name against the process cwd — so a directory that happened to
+    share a page's name made the read return b"" and the page vanished.
+    """
+    import zipfile
+
+    cbz = tmp_path / "trap.cbz"
+    page = "CaptainScience#1_01.jpg"
+    payload = b"\xff\xd8\xff\xe0page-data"
+    with zipfile.ZipFile(cbz, "w") as zf:
+        zf.writestr(page, payload)
+
+    # cwd now holds a *directory* named exactly like the archive's page.
+    cwd = tmp_path / "cwd"
+    (cwd / page).mkdir(parents=True)
+    monkeypatch.chdir(cwd)
+
+    with Comicbox(cbz) as cb:
+        assert cb._archive_readfile(page) == payload
+
+
+def test_readfile_still_skips_a_real_archive_directory_entry():
+    """The guard's actual job: a directory member of the archive reads empty."""
+    with Comicbox(RESOURCE_FORK_ARCHIVE) as cb:
+        dirnames = cb.dirnames()
+        assert "__MACOSX/" in dirnames
+        assert cb._archive_readfile("__MACOSX/") == b""
+        # Only the directory entry is skipped; real members still read.
+        assert cb._archive_readfile("CaptainScience#1_01.jpg")

@@ -11,6 +11,7 @@ from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
@@ -26,7 +27,11 @@ if TYPE_CHECKING:
 class Runner:
     """Main runner."""
 
-    _RECURSE_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".pdf"})
+    # Derived from the file-type enum so a newly supported archive can't be
+    # left out of a recursive walk. Hardcoding the set is what dropped .cb7.
+    _RECURSE_SUFFIXES = frozenset(
+        {"." + file_type.value.lower() for file_type in FileTypeEnum}
+    )
 
     def __init__(self, config: Namespace | Mapping | ComicboxSettings | None) -> None:
         """Initialize actions and config."""

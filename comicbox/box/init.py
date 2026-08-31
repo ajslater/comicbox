@@ -130,6 +130,7 @@ class ComicboxInit:
         self._archive: ArchiveType | None = None
         self._namelist: tuple[str, ...] | None = None
         self._infolist: tuple[InfoType, ...] | None = None
+        self._dirnames: frozenset[str] | None = None
         self._7zfactory: BytesIOFactory | None = None
 
         self._transform_cache: dict = {}
