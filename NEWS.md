@@ -54,6 +54,10 @@
       that got it transitively through comicbox has to depend on it directly.
 
 - Fixes
+    - Reading a comic no longer fails when two reprints tie on every sort key up
+      to one that only one of them has. A reprint carrying a `volume` with an
+      `issue_count` but no `number` used to abort the whole dump with
+      `TypeError: '<' not supported between instances of 'int' and 'str'`.
     - A comic that can't be read no longer ends the batch. Every dispatch path —
       serial, `--recurse` and `-j N` — now logs the file and keeps going.
       Previously `comicbox a.cbz b.cbz c.cbz` stopped at the first unreadable
