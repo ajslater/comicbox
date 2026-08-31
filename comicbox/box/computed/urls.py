@@ -11,8 +11,6 @@ Reading ids out of urls, the other direction, runs at the head of the
 pipeline in ``url_identifiers``.
 """
 
-from collections.abc import Callable
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.identifiers import ComicboxComputedIdentifiers
@@ -22,7 +20,6 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import get_identifier_url
-from comicbox.merge import Merger, ReplaceMerger
 
 
 class ComicboxComputedUrls(ComicboxComputedIdentifiers):
@@ -55,12 +52,3 @@ class ComicboxComputedUrls(ComicboxComputedIdentifiers):
         if not url_list or url_list == list(sub_data.get(URLS_KEY) or ()):
             return None
         return {URLS_KEY: url_list}
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                **ComicboxComputedIdentifiers.COMPUTED_ACTIONS,
-                "urls": (_get_computed_urls, ReplaceMerger),
-            }
-        )
-    )

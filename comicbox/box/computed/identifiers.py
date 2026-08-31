@@ -1,6 +1,6 @@
 """Comicbox computed identifiers."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
@@ -32,7 +32,6 @@ from comicbox.identifiers.other import (
 from comicbox.identifiers.urns import (
     parse_urn_identifier,
 )
-from comicbox.merge import AdditiveMerger, Merger
 
 _IDENTIFIED_KEYS = (PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY)
 _IDENTIFIED_TAG_KEYS = (
@@ -170,16 +169,3 @@ class ComicboxComputedIdentifiers(ComicboxComputedNotes):
             if tag_deltas := self._key_deltas_for_multiple_tags(key, all_tags):
                 tree[key] = tag_deltas
         return tree or None
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                **ComicboxComputedNotes.COMPUTED_ACTIONS,
-                "from tags": (_get_computed_from_tags, AdditiveMerger),
-                "normalize identifier keys": (
-                    _normalize_all_identifier_keys,
-                    AdditiveMerger,
-                ),
-            }
-        )
-    )
