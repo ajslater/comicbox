@@ -22,10 +22,9 @@ from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
-from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 from loguru import logger
 
@@ -42,6 +41,7 @@ from comicbox.config.settings import (
     OnlineSourceTuning,
     OnlineTuningSettings,
     Prompts,
+    parse_enum,
 )
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
@@ -61,8 +61,6 @@ _TTL_UNIT_SECONDS: Mapping[str, int] = {
     "w": 604800,
 }
 
-_EnumT = TypeVar("_EnumT", bound=Enum)
-
 
 def _coalesce(*values: Any) -> Any:
     """Return the first non-None value (order = priority)."""
@@ -70,18 +68,6 @@ def _coalesce(*values: Any) -> Any:
         if v is not None:
             return v
     return None
-
-
-def _parse_enum(
-    enum_cls: type[_EnumT], flag: str, raw: str, *, noun: str = "name"
-) -> _EnumT:
-    """Parse a lowercased string into an enum member, raising a flag-tagged error."""
-    try:
-        return enum_cls(raw.strip().lower())
-    except ValueError as exc:
-        valid = ", ".join(member.value for member in enum_cls)
-        reason = f"{flag}: unknown {noun} {raw!r}; valid: {valid}"
-        raise ValueError(reason) from exc
 
 
 def _parse_ttl(raw: str | None) -> timedelta:
@@ -207,7 +193,7 @@ def _build_per_source_tuning(
         effort_raw = block.get("effort")
         out[str(name).lower()] = OnlineSourceTuning(
             auto_threshold=block.get("auto_threshold"),
-            effort=_parse_enum(Effort, "--effort", str(effort_raw))
+            effort=parse_enum(Effort, "--effort", str(effort_raw))
             if effort_raw
             else None,
             min_confidence=block.get("min_confidence"),
@@ -259,12 +245,12 @@ def _build_lookup(
     if not selected:
         selected = None
     match_mode = (
-        _parse_enum(MatchMode, "--match", str(match_raw))
+        parse_enum(MatchMode, "--match", str(match_raw))
         if match_raw
         else MatchMode.AUTO
     )
     prompts_value = (
-        _parse_enum(Prompts, "--prompts", str(prompts_raw), noun="value")
+        parse_enum(Prompts, "--prompts", str(prompts_raw), noun="value")
         if prompts_raw
         else Prompts.ASK
     )
@@ -324,7 +310,7 @@ def _build_cache(
     cache_mode = (
         cache_mode_raw
         if isinstance(cache_mode_raw, CacheMode)
-        else _parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
+        else parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
     )
     cache_dir_raw = _coalesce(
         cli("cache_dir"), online_env.get("cache_dir"), online_block.cache.dir
@@ -360,7 +346,7 @@ def _build_tuning(
         cli("effort"), online_env.get("effort"), online_block.tuning.effort
     )
     effort_value = (
-        _parse_enum(Effort, "--effort", str(effort_raw))
+        parse_enum(Effort, "--effort", str(effort_raw))
         if effort_raw
         else Effort.BALANCED
     )
@@ -483,7 +469,7 @@ def runtime_online_inputs(
     cli_overrides = CliOverrides.from_auth_list(getattr(cns, "auth", None) or ())
     cache_cli = getattr(cns, "cache", None)
     cache_mode_cli = (
-        _parse_enum(CacheMode, "--cache", str(cache_cli), noun="value")
+        parse_enum(CacheMode, "--cache", str(cache_cli), noun="value")
         if cache_cli
         else None
     )

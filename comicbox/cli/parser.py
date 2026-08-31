@@ -263,11 +263,19 @@ def _add_write_group(parser: ArgumentParser) -> None:
         ),
     )
     group.add_argument(
-        "--replace",
-        action="store_true",
+        "--merge-mode",
+        action="store",
         default=None,
-        dest="write_replace",
-        help="Replace metadata keys instead of merging them.",
+        choices=tuple(mode.value for mode in MergeMode),
+        metavar="MODE",
+        dest="write_merge_mode",
+        help=(
+            "How supplied metadata merges into a comic's existing tags: "
+            "[green]additive[/green] (default; dicts recurse, lists concatenate), "
+            "[green]replace[/green] (dicts recurse, lists overwrite), "
+            "[green]update[/green] (top level keys replaced wholesale, "
+            "siblings of a patched key are dropped). Table below."
+        ),
     )
     group.add_argument(
         "--stamp",

@@ -43,6 +43,12 @@
       `urn:metron:series:178012` when the type isn't the implied one. Older urns
       still read.
     - Tags like `marvel-comics` and `2019-2021` no longer become database ids.
+    - Removed `--replace` and the `write.replace` config key. Despite the name
+      it performed the `update` merge, never the `replace` merge. Use
+      `--merge-mode update`.
+    - The write API takes `merge_mode` instead of `mode`, and defaults to the
+      config's `write.merge_mode` instead of forcing `additive`. The `WriteMode`
+      enum is now `MergeMode`.
 
 - Fixes
     - Writing MetronInfo no longer invents extra credits. Only `Painter` still
@@ -174,6 +180,10 @@
     - A notes timestamp nothing can parse leaves `updated_at` unset.
 
 - Features
+    - New `--merge-mode` option and `write.merge_mode` config key choose how
+      supplied metadata merges into a comic's existing tags: `additive` (the
+      default), `replace` or `update`. Only the write API could set this before.
+      `--help` shows what each mode does.
     - Web urls in the Notes field are read into `urls`.
     - New `SourceStarted` online event, emitted once per source that actually
       runs, immediately before that source is consulted and after the first-wins

@@ -35,7 +35,10 @@ comicbox:
 
   write:
     formats: []
-    replace: False
+    # How supplied metadata (-m, --import, the write API's patch, the
+    # config metadata block) merges into a comic's existing tags.
+    # One of: additive, update, replace.
+    merge_mode: additive
     stamp: False
     stamp_notes: True
     delete_all_tags: False

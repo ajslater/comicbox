@@ -52,13 +52,15 @@ def test_write_metadata_replaces_scalar_preserving_siblings(tmp_cbz: Path) -> No
             "identifiers": {"metron": {"key": "42"}},
         }
     }
-    write_metadata(tmp_cbz, patch=initial, mode="replace", formats=["comicbox_json"])
+    write_metadata(
+        tmp_cbz, patch=initial, merge_mode="replace", formats=["comicbox_json"]
+    )
 
     # Patch only the name
     result = write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comicbox_json"],
     )
     assert result.written is True
@@ -85,11 +87,13 @@ def test_write_metadata_additive_recurses_into_publisher_dict(tmp_cbz: Path) -> 
             "identifiers": {"metron": {"key": "42"}},
         }
     }
-    write_metadata(tmp_cbz, patch=initial, mode="replace", formats=["comicbox_json"])
+    write_metadata(
+        tmp_cbz, patch=initial, merge_mode="replace", formats=["comicbox_json"]
+    )
     write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "Foo"}},
-        mode="additive",
+        merge_mode="additive",
         formats=["comicbox_json"],
     )
     pub = _read_publisher(tmp_cbz)
@@ -110,13 +114,13 @@ def test_write_metadata_update_replaces_top_level_key(tmp_cbz: Path) -> None:
                 "identifiers": {"metron": {"key": "42"}},
             }
         },
-        mode="replace",
+        merge_mode="replace",
         formats=["comicbox_json"],
     )
     write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "Foo"}},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
     )
     pub = _read_publisher(tmp_cbz)
@@ -124,12 +128,56 @@ def test_write_metadata_update_replaces_top_level_key(tmp_cbz: Path) -> None:
     assert "identifiers" not in pub
 
 
+@pytest.mark.parametrize(
+    ("merge_mode", "expect_urls", "expect_groups"),
+    [
+        (
+            "additive",
+            ["https://example.com/a", "https://example.com/b", "https://example.com/c"],
+            {"G1", "G2", "G3"},
+        ),
+        ("replace", ["https://example.com/c"], {"G3"}),
+    ],
+)
+def test_write_metadata_list_fields_concatenate_or_overwrite(
+    tmp_cbz: Path,
+    merge_mode: str,
+    expect_urls: list[str],
+    expect_groups: set[str],
+) -> None:
+    """
+    List typed fields are the only axis where additive and replace differ.
+
+    Everywhere else the schema nests dicts or holds scalars, where both
+    modes recurse and replace leaves identically. `urls` (a list) and
+    `series_groups` (a set) are two of the five fields that can tell the
+    two modes apart.
+    """
+    seed = {
+        "urls": ["https://example.com/a", "https://example.com/b"],
+        "series_groups": ["G1", "G2"],
+    }
+    write_metadata(tmp_cbz, patch=seed, merge_mode="replace", formats=["comicbox_json"])
+    write_metadata(
+        tmp_cbz,
+        patch={"urls": ["https://example.com/c"], "series_groups": ["G3"]},
+        merge_mode=merge_mode,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+        formats=["comicbox_json"],
+    )
+
+    md = _read_sub_md(tmp_cbz)
+    # The archive's own identifiers compute a comicvine url; only the
+    # supplied ones say anything about the merge.
+    assert [url for url in md["urls"] if "example.com" in url] == expect_urls
+    assert set(md["series_groups"]) == expect_groups
+
+
 def test_write_metadata_dry_run_returns_payload(tmp_cbz: Path) -> None:
     """dry_run=True returns the serialised would-be-written content."""
     result = write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comic_info"],
         dry_run=True,
     )
@@ -150,7 +198,7 @@ def test_write_metadata_unwraps_root_wrapped_patch(tmp_cbz: Path) -> None:
     """The root-wrapped shape to_dict() returns round-trips instead of no-opping."""
     wrapped = {"comicbox": {"publisher": {"name": "Wrapped"}}}
     result = write_metadata(
-        tmp_cbz, patch=wrapped, mode="replace", formats=["comicbox_json"]
+        tmp_cbz, patch=wrapped, merge_mode="replace", formats=["comicbox_json"]
     )
     assert result.written is True
     assert _read_publisher(tmp_cbz)["name"] == "Wrapped"
@@ -161,13 +209,13 @@ def test_write_metadata_round_trips_to_dict(tmp_cbz: Path) -> None:
     write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "RoundTrip"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comicbox_json"],
     )
     with Comicbox(tmp_cbz) as cb:
         full = cb.to_dict()
     result = write_metadata(
-        tmp_cbz, patch=full, mode="replace", formats=["comicbox_json"]
+        tmp_cbz, patch=full, merge_mode="replace", formats=["comicbox_json"]
     )
     assert result.written is True
     assert _read_publisher(tmp_cbz)["name"] == "RoundTrip"
@@ -188,13 +236,13 @@ def test_write_metadata_delete_keys_clears_field(tmp_cbz: Path) -> None:
     write_metadata(
         tmp_cbz,
         patch={"summary": "old summary", "age_rating": "Everyone"},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
     )
     result = write_metadata(
         tmp_cbz,
         patch={"age_rating": "Teen"},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
         delete_keys=["summary"],
     )
@@ -209,13 +257,13 @@ def test_write_metadata_delete_keys_allows_empty_patch(tmp_cbz: Path) -> None:
     write_metadata(
         tmp_cbz,
         patch={"summary": "doomed"},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
     )
     result = write_metadata(
         tmp_cbz,
         patch={},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
         delete_keys=["summary"],
     )
@@ -228,13 +276,13 @@ def test_write_metadata_delete_keys_strips_root_prefix(tmp_cbz: Path) -> None:
     write_metadata(
         tmp_cbz,
         patch={"summary": "doomed"},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
     )
     write_metadata(
         tmp_cbz,
         patch={},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
         delete_keys=["comicbox.summary"],
     )
@@ -251,13 +299,13 @@ def test_bulk_write_item_delete_keys_passes_through(tmp_cbz: Path) -> None:
     write_metadata(
         tmp_cbz,
         patch={"summary": "doomed", "age_rating": "Everyone"},
-        mode="update",
+        merge_mode="update",
         formats=["comicbox_json"],
     )
     item = BulkWriteItem(
         path=tmp_cbz,
         patch={},
-        mode="update",
+        merge_mode="update",
         formats=frozenset({"COMICBOX_JSON"}),
         delete_keys=frozenset({"summary"}),
     )
@@ -269,12 +317,79 @@ def test_bulk_write_item_delete_keys_passes_through(tmp_cbz: Path) -> None:
     assert md["age_rating"] == "Everyone"
 
 
-def test_write_metadata_rejects_unknown_mode(tmp_cbz: Path) -> None:
-    with pytest.raises(WriteValidationError, match="Unknown mode"):
+def _seed_publisher_with_sibling(path: Path) -> None:
+    """Seed publisher.name plus a nested sibling update mode would drop."""
+    write_metadata(
+        path,
+        patch={
+            "publisher": {
+                "name": "Original",
+                "identifiers": {"metron": {"key": "42"}},
+            }
+        },
+        merge_mode="replace",
+        formats=["comicbox_json"],
+    )
+
+
+def test_write_metadata_unset_merge_mode_defers_to_the_config(tmp_cbz: Path) -> None:
+    """
+    An omitted merge_mode honors the config instead of forcing additive.
+
+    The API used to pass its own default down unconditionally, which
+    overwrote whatever `write.merge_mode` a config file or --merge-mode
+    had established for every caller supplying a base_config.
+    """
+    config = get_config({"comicbox": {"write": {"merge_mode": "update"}}})
+    _seed_publisher_with_sibling(tmp_cbz)
+    write_metadata(
+        tmp_cbz,
+        patch={"publisher": {"name": "Foo"}},
+        formats=["comicbox_json"],
+        base_config=config,
+    )
+    pub = _read_publisher(tmp_cbz)
+    assert pub["name"] == "Foo"
+    assert "identifiers" not in pub
+
+
+def test_write_metadata_explicit_merge_mode_beats_the_config(tmp_cbz: Path) -> None:
+    """An explicit merge_mode wins over the config's."""
+    config = get_config({"comicbox": {"write": {"merge_mode": "update"}}})
+    _seed_publisher_with_sibling(tmp_cbz)
+    write_metadata(
+        tmp_cbz,
+        patch={"publisher": {"name": "Foo"}},
+        merge_mode="additive",
+        formats=["comicbox_json"],
+        base_config=config,
+    )
+    pub = _read_publisher(tmp_cbz)
+    assert pub["name"] == "Foo"
+    assert pub["identifiers"]["metron"]["key"] == "42"
+
+
+def test_bulk_write_item_unset_merge_mode_defers_to_the_config(tmp_cbz: Path) -> None:
+    """BulkWriteItem's unset merge_mode reaches the config the same way."""
+    config = get_config({"comicbox": {"write": {"merge_mode": "update"}}})
+    _seed_publisher_with_sibling(tmp_cbz)
+    item = BulkWriteItem(
+        path=tmp_cbz,
+        patch={"publisher": {"name": "Foo"}},
+        formats=frozenset({"COMICBOX_JSON"}),
+    )
+    results = list(bulk_write([item], base_config=config))
+    assert len(results) == 1
+    assert results[0].written is True
+    assert "identifiers" not in _read_publisher(tmp_cbz)
+
+
+def test_write_metadata_rejects_unknown_merge_mode(tmp_cbz: Path) -> None:
+    with pytest.raises(WriteValidationError, match="Unknown merge mode"):
         write_metadata(
             tmp_cbz,
             patch={"publisher": {"name": "x"}},
-            mode="bogus",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+            merge_mode="bogus",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
             formats=["comic_info"],
         )
 
@@ -304,7 +419,7 @@ def test_bulk_write_yields_per_file_results(tmp_path: Path) -> None:
             BulkWriteItem(
                 path=target,
                 patch={"publisher": {"name": f"Pub{i}"}},
-                mode="replace",
+                merge_mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
         )
@@ -323,7 +438,7 @@ def test_bulk_write_emits_events(tmp_cbz: Path) -> None:
         BulkWriteItem(
             path=tmp_cbz,
             patch={"publisher": {"name": "X"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMICBOX_JSON"}),
         )
     ]
@@ -348,7 +463,7 @@ def test_bulk_write_respects_cancel_token(tmp_path: Path) -> None:
             BulkWriteItem(
                 path=target,
                 patch={"publisher": {"name": "Changed"}},
-                mode="replace",
+                merge_mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
         )
@@ -370,7 +485,7 @@ def test_bulk_write_stop_on_error_cancels_queued_writes(tmp_path: Path) -> None:
         BulkWriteItem(
             path=bad,
             patch={"publisher": {"name": "x"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMICBOX_JSON"}),
         )
     ]
@@ -383,7 +498,7 @@ def test_bulk_write_stop_on_error_cancels_queued_writes(tmp_path: Path) -> None:
             BulkWriteItem(
                 path=target,
                 patch={"publisher": {"name": "Changed"}},
-                mode="replace",
+                merge_mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
         )
@@ -409,7 +524,7 @@ def test_bulk_write_cancel_mid_batch_stops_queued_writes(tmp_path: Path) -> None
             BulkWriteItem(
                 path=target,
                 patch={"publisher": {"name": "Changed"}},
-                mode="replace",
+                merge_mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
         )
@@ -431,7 +546,7 @@ def test_bulk_write_emits_batch_started_eagerly(tmp_cbz: Path) -> None:
         BulkWriteItem(
             path=tmp_cbz,
             patch={"publisher": {"name": "X"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMICBOX_JSON"}),
         )
     ]
@@ -451,7 +566,7 @@ def test_bulk_write_abandonment_skips_queued_writes(tmp_path: Path) -> None:
             BulkWriteItem(
                 path=target,
                 patch={"publisher": {"name": "Changed"}},
-                mode="replace",
+                merge_mode="replace",
                 formats=frozenset({"COMICBOX_JSON"}),
             )
         )
@@ -475,13 +590,13 @@ def test_bulk_write_reports_per_file_errors(tmp_path: Path) -> None:
         BulkWriteItem(
             path=bad,
             patch={"publisher": {"name": "x"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMICBOX_JSON"}),
         ),
         BulkWriteItem(
             path=good,
             patch={"publisher": {"name": "y"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMICBOX_JSON"}),
         ),
     ]
@@ -508,7 +623,7 @@ def test_write_metadata_final_path_unchanged_for_cbz(tmp_cbz: Path) -> None:
     result = write_metadata(
         tmp_cbz,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comicbox_json"],
     )
     assert result.written is True
@@ -520,7 +635,7 @@ def test_write_metadata_converts_cbr_and_reports_final_path(tmp_cbr: Path) -> No
     result = write_metadata(
         tmp_cbr,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comic_info"],
     )
     assert result.written is True
@@ -540,7 +655,7 @@ def test_write_metadata_convert_delete_orig_removes_original(tmp_cbr: Path) -> N
     result = write_metadata(
         tmp_cbr,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comic_info"],
         base_config=cfg,
     )
@@ -556,7 +671,7 @@ def test_write_metadata_dry_run_reports_no_final_path(tmp_cbr: Path) -> None:
     result = write_metadata(
         tmp_cbr,
         patch={"publisher": {"name": "Foo"}},
-        mode="replace",
+        merge_mode="replace",
         formats=["comic_info"],
         dry_run=True,
     )
@@ -574,7 +689,7 @@ def test_bulk_write_propagates_final_path_on_conversion(tmp_cbr: Path) -> None:
         BulkWriteItem(
             path=tmp_cbr,
             patch={"publisher": {"name": "Foo"}},
-            mode="replace",
+            merge_mode="replace",
             formats=frozenset({"COMIC_INFO"}),
         )
     ]
