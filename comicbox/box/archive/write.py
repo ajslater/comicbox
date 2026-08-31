@@ -185,22 +185,23 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         # writers unlink each other's in-progress file and then replace a
         # half-written one onto the destination.
         tmp_path = self._path.with_name(self._path.name + _RECOMPRESS_SUFFIX)
-        destination = self._path.with_suffix(_CBZ_SUFFIX)
-        _claim_destination(destination)
-        try:
-            new_path = self._get_new_archive_path()
-            tmp_path.unlink(missing_ok=True)
-            logger.info(f"Creating {new_path}...")
-            with ZipFile(tmp_path, "x") as zf:
-                self._archive_write_metadata_files(zf, files)
-                self._copy_archive_files_to_new_archive(zf)
-                zf.comment = comment
+        new_path = self._get_new_archive_path()
+        tmp_path.unlink(missing_ok=True)
+        logger.info(f"Creating {new_path}...")
+        with ZipFile(tmp_path, "x") as zf:
+            # Pages first, metadata last. A later in-place re-tag removes the
+            # trailing metadata and appends the new copy, so repack has nothing
+            # after it to shift: no page byte is ever rewritten, and a write
+            # interrupted partway can only damage bytes past the last page.
+            # Metadata written first sat at offset 0 and made every subsequent
+            # write slide the whole archive down over its own pages.
+            self._copy_archive_files_to_new_archive(zf)
+            self._archive_write_metadata_files(zf, files)
+            zf.comment = comment
 
-            # Cleanup
-            self.close()
-            self._cleanup_tmp_archive(tmp_path, new_path)
-        finally:
-            _release_destination(destination)
+        # Cleanup
+        self.close()
+        self._cleanup_tmp_archive(tmp_path, new_path)
 
     def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:
@@ -226,10 +227,31 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
         Pure file I/O: cache invalidation after the rewrite is the dump
         layer's job (ComicboxDump._reset_caches_after_write).
+
+        Every write claims its destination, not just the conversions. An
+        in-place rewrite is as destructive as a conversion when two writers
+        overlap on it -- ``bulk_write`` does not deduplicate paths, so one
+        archive named twice in a batch used to be repacked by both threads
+        at once -- and the finished-file check cannot see a write that is
+        still in flight.
         """
-        if self._archive_cls == ZipFile:
-            self._patch_zipfile(files, comment)
-        elif self._archive_is_pdf and not self._config.convert.cbz:
-            self._update_pdffile(files, mupdf_metadata)
-        else:
-            self._create_zipfile(files, comment)
+        if not self._path:
+            reason = "Cannot write archive metadata without a path."
+            raise ArchiveWriteError(reason)
+        is_zip = self._archive_cls == ZipFile
+        is_pdf_in_place = self._archive_is_pdf and not self._config.convert.cbz
+        destination = (
+            self._path
+            if is_zip or is_pdf_in_place
+            else self._path.with_suffix(_CBZ_SUFFIX)
+        )
+        _claim_destination(destination)
+        try:
+            if is_zip:
+                self._patch_zipfile(files, comment)
+            elif is_pdf_in_place:
+                self._update_pdffile(files, mupdf_metadata)
+            else:
+                self._create_zipfile(files, comment)
+        finally:
+            _release_destination(destination)
