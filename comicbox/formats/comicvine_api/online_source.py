@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -211,19 +212,34 @@ class ComicVineOnlineSource(OnlineSource):
             (dump.get("volume") or {}).get("id")
         )
         if volume_id is not None:
-            try:
-                volume = self._get_volume_with_retry(session, int(volume_id))
-            except Exception as exc:
-                logger.warning(
-                    f"online {self.name}: get_volume({volume_id}) failed; "
-                    f"publisher will be missing from this issue: {exc}"
-                )
-            else:
-                if volume.publisher is not None:
-                    dump["publisher"] = volume.publisher.model_dump(mode="json")
-                if volume.aliases and isinstance(dump.get("volume"), dict):
-                    dump["volume"]["aliases"] = volume.aliases
+            self._enrich_from_volume(session, dump, int(volume_id))
         return dump
+
+    def _enrich_from_volume(
+        self, session: Any, dump: dict[str, Any], volume_id: int
+    ) -> None:
+        """
+        Inject the volume's publisher and aliases into an issue dump.
+
+        Best-effort: a source-side failure leaves the issue without a
+        publisher rather than failing the fetch. An abort is not such a
+        failure -- it ends the whole lookup, as in
+        `OnlineSource.lookup_issue`.
+        """
+        try:
+            volume = self._get_volume_with_retry(session, volume_id)
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: get_volume({volume_id}) failed; "
+                f"publisher will be missing from this issue: {exc}"
+            )
+            return
+        if volume.publisher is not None:
+            dump["publisher"] = volume.publisher.model_dump(mode="json")
+        if volume.aliases and isinstance(dump.get("volume"), dict):
+            dump["volume"]["aliases"] = volume.aliases
 
     # Limit how many candidate volumes to expand into issue queries; each
     # volume → one extra `list_issues` API call under CV's 1/sec rate limit.
@@ -373,6 +389,10 @@ class ComicVineOnlineSource(OnlineSource):
             narrow = self._volume_filter_search_with_retry(
                 session, profile.series, profile.year, max_volumes
             )
+        except OnlineLookupAbortedError:
+            # An abort ends the whole lookup; it is not a source-side
+            # failure to degrade past. Mirrors OnlineSource.lookup_issue.
+            raise
         except Exception as exc:
             logger.info(
                 f"online {self.name}: volume filter-search failed "
@@ -669,6 +689,10 @@ class ComicVineOnlineSource(OnlineSource):
                 year=year,
                 alt_series=alt_series,
             )
+        except OnlineLookupAbortedError:
+            # An abort ends the whole lookup; it is not a source-side
+            # failure to degrade past. Mirrors OnlineSource.lookup_issue.
+            raise
         except Exception as exc:
             logger.warning(
                 f"online {self.name}: issue-list for volume {vol.id} "

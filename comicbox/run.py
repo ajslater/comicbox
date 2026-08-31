@@ -12,6 +12,7 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
@@ -66,11 +67,20 @@ class Runner:
         return out
 
     def _run_one(self, path: Path) -> None:
-        """Process a single file, swallowing exceptions for batch resilience."""
+        """
+        Process a single file, swallowing exceptions for batch resilience.
+
+        Abort is the one exception that isn't about this file: the user
+        answered "abort" at a prompt (or a caller cancelled a retry
+        sleep), which is a decision about the run. Swallowing it here
+        turned it into "skip one comic and keep prompting for the rest."
+        """
         try:
             with Comicbox(path, config=self._config) as car:
                 car.print_file_header()
                 car.run()
+        except OnlineLookupAbortedError:
+            raise
         except Exception:
             logger.exception(path)
 
@@ -101,6 +111,10 @@ class Runner:
         for full_path in self._iter_recurse(path):
             try:
                 self.run_on_file(full_path)
+            except OnlineLookupAbortedError:
+                # Abort ends the walk; the remaining files are not ours
+                # to keep processing.
+                raise
             except Exception:
                 logger.exception(full_path)
 
@@ -145,12 +159,23 @@ class Runner:
         logger.info(f"Running {len(paths)} files with {jobs} workers")
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
-            for future in as_completed(futures):
-                path = futures[future]
-                try:
-                    future.result()
-                except Exception:
-                    logger.exception(path)
+            try:
+                for future in as_completed(futures):
+                    path = futures[future]
+                    try:
+                        future.result()
+                    except OnlineLookupAbortedError:
+                        raise
+                    except Exception:
+                        logger.exception(path)
+            except OnlineLookupAbortedError:
+                # Drop every file still queued so the abort actually ends
+                # the batch. Workers already in flight can't be
+                # interrupted from here -- the pool joins them on the way
+                # out -- but no further file is started.
+                for pending in futures:
+                    pending.cancel()
+                raise
 
     def run(self) -> None:
         """Run actions with config."""

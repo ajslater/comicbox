@@ -96,6 +96,21 @@
       from. Malformed tags were dropped as silently as absent ones.
     - Schema-wide validation hooks run. The first one added to any schema would
       have failed on a bad call.
+    - Online tagging reports a match only when metadata was actually applied. A
+      `--id` fetch or a stored-id refresh that failed still reported the comic
+      as written, so a batch run counted it as tagged and the file was rewritten
+      with its own existing metadata.
+    - The online summary and the `AutoWritten` event are emitted after the issue
+      fetch lands, not before it. A failed fetch used to be counted as an
+      auto-write.
+    - A prompt whose answer keeps changing the session's match policy without
+      ever choosing now gives up instead of asking forever, and a chosen
+      candidate number outside the offered list is refused. A negative one
+      silently tagged the comic with the last candidate.
+    - Aborting at a prompt ends the run. `--recurse` walked on to the next comic
+      and `--jobs` worked through the rest of the batch; a cancelled retry
+      inside a Comic Vine volume or a Metron year-retry was swallowed like an
+      ordinary API failure.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from loguru import logger
 from typing_extensions import override
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -539,6 +540,10 @@ class MetronOnlineSource(OnlineSource):
                         cover_year_override=retry_year,
                         include_volume=include_volume,
                     )
+                except OnlineLookupAbortedError:
+                    # An abort ends the whole lookup; it is not a
+                    # source-side failure to degrade past.
+                    raise
                 except Exception as exc:
                     logger.warning(
                         f"online {self.name}: issue-list retry at "
