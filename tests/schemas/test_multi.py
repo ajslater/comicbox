@@ -82,9 +82,12 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "summary": "A long example description",
             "bookmark": 4,
             "original_format": "Comic",
@@ -173,9 +176,12 @@ READ_MULTI_DICT = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "summary": "A long example description",
             "stories": {
                 "The Beginning COMET": {},

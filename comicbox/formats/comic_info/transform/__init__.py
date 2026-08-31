@@ -15,6 +15,7 @@ from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.base.transforms.identifiers import (
     identifiers_transform_from_cb,
     urls_transform_from_cb,
+    urls_transform_to_cb,
 )
 from comicbox.formats.base.transforms.publishing_tags import (
     IMPRINT_NAME_KEYPATH,
@@ -34,6 +35,7 @@ from comicbox.formats.base.transforms.xml_credits import (
 )
 from comicbox.formats.comic_info.schema import (
     BOOKMARK_ATTRIBUTE,
+    WEB_TAG,
     ComicInfoSchema,
 )
 from comicbox.formats.comic_info.transform.identifiers import (
@@ -227,6 +229,7 @@ class ComicInfoTransform(BaseTransform):
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(ComicInfoRoleTagEnum),
         COMICINFO_IDENTIFIERS_TO_CB,
+        urls_transform_to_cb(WEB_TAG),
         COMICINFO_MANGA_TO_CB,
         COMICINFO_READING_DIRECTION_TO_CB,
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
@@ -244,6 +247,6 @@ class ComicInfoTransform(BaseTransform):
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
         COMICINFO_REPRINTS_FROM_CB,
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),
-        urls_transform_from_cb("Web"),
+        urls_transform_from_cb(WEB_TAG),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )

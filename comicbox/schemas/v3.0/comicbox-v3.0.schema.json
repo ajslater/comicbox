@@ -92,21 +92,11 @@
         "genres": {
           "$ref": "identified-objects.schema.json"
         },
-        "identifier_primary_source": {
-          "type": "object",
-          "properties": {
-            "source": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string",
-              "format": "uri"
-            }
-          },
-          "required": ["source"]
-        },
         "identifiers": {
           "$ref": "identifiers.schema.json"
+        },
+        "primary_id_source": {
+          "type": "string"
         },
         "imprint": {
           "$ref": "named-identified-object.schema.json"
@@ -239,6 +229,13 @@
         "updated_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
         },
         "volume": {
           "$ref": "volume.schema.json"

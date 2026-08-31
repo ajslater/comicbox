@@ -61,11 +61,9 @@ def test_named_dict_with_id_carries_identifiers() -> None:
     assert out["Bob"]["identifiers"]["metron"]["key"] == "2"
 
 
-def test_build_identifier_includes_url_when_known_source() -> None:
-    out = build_identifier("metron", "issue", 42)
-    assert out["key"] == "42"
-    # metron is in IDENTIFIER_PARTS_MAP so a URL is built.
-    assert out.get("url", "").startswith("http")
+def test_build_identifier_is_key_only() -> None:
+    # Identifiers hold the key alone; urls live in the top level urls list.
+    assert build_identifier("metron", "issue", 42) == {"key": "42"}
 
 
 def test_parse_creator_roles_splits_comma_string() -> None:
@@ -238,11 +236,9 @@ def test_metron_collections() -> None:
     assert set(_METRON_CB["genres"]) == {"Superhero"}
 
 
-def test_metron_arc_identifier_url() -> None:
-    """Metron arcs carry an arc-typed identifier url, not an empty one."""
-    arc_identifier = _METRON_CB["arcs"]["Arc A"]["identifiers"]["metron"]
-    assert arc_identifier["key"] == "31"
-    assert arc_identifier["url"] == "https://metron.cloud/arc/31"
+def test_metron_arc_identifier() -> None:
+    """Metron arcs carry the arc's own identifier key."""
+    assert _METRON_CB["arcs"]["Arc A"]["identifiers"]["metron"] == {"key": "31"}
 
 
 def test_metron_credits() -> None:
@@ -360,11 +356,9 @@ def test_comicvine_collections() -> None:
     assert set(_CV_CB["locations"]) == {"Korea"}
 
 
-def test_comicvine_arc_identifier_url() -> None:
-    """ComicVine story arcs carry the 4045 arc-typed identifier url."""
-    arc_identifier = _CV_CB["arcs"]["Yarn Patrol"]["identifiers"]["comicvine"]
-    assert arc_identifier["key"] == "9"
-    assert arc_identifier["url"] == "https://comicvine.gamespot.com/c/4045-9/"
+def test_comicvine_arc_identifier() -> None:
+    """ComicVine story arcs carry the arc's own identifier key."""
+    assert _CV_CB["arcs"]["Yarn Patrol"]["identifiers"]["comicvine"] == {"key": "9"}
 
 
 def test_comicvine_credits_string_roles() -> None:

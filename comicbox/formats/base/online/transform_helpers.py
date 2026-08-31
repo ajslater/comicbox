@@ -70,7 +70,7 @@ def named_dict_with_id(
 
 
 def build_identifier(source: str, id_type: str, value: Any) -> dict[str, str]:
-    """Build the {key, url} sub-dict for one identifier."""
+    """Build the identifier sub-dict for one id."""
     s = str(value)
     if not s:
         return {}
@@ -78,7 +78,7 @@ def build_identifier(source: str, id_type: str, value: Any) -> dict[str, str]:
         identifier = create_identifier(source, s, id_type=id_type)
     except Exception:
         return {"key": s}
-    # `create_identifier` already returns a {key, url?} dict.
+    # `create_identifier` returns a key-only dict; urls are derived later.
     return dict(identifier) or {"key": s}
 
 

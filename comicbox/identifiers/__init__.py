@@ -10,6 +10,7 @@ DEFAULT_ID_TYPE = "issue"
 
 # Field names inside the comicbox identifier dict shape.
 ID_KEY_KEY = "key"
+ID_TYPE_KEY = "id_type"
 ID_URL_KEY = "url"
 
 

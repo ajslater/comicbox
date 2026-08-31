@@ -72,9 +72,9 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "pages": {
                 0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 4542},
                 1: {"size": 4065},

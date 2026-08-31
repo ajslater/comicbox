@@ -72,9 +72,9 @@ TEMPLATE_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -139,21 +139,21 @@ CBR_MD = _patch_md(CBR_MD_PATCH)
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
-        "identifier_primary_source": {
-            "source": "comicvine",
-            "url": "https://comicvine.gamespot.com/",
-        },
+        "primary_id_source": "comicvine",
         "identifiers": {
             "comicvine": {
                 "key": "145269",
-                "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
                 "key": "123-456789-0123",
-                "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345"},
         },
+        "urls": [
+            "https://comicvine.gamespot.com/c/4000-145269/",
+            "https://isbndb.com/book/123-456789-0123",
+            "https://barcodelookup.com/12345",
+        ],
         "date": {"cover_date": date(1950, 11, 1)},
         "notes": (
             "Tagged with "
@@ -196,21 +196,21 @@ CB7_MD_PATCH = {
             "cover_date": date(1950, 11, 1),
         },
         "ext": "cb7",
-        "identifier_primary_source": {
-            "source": "comicvine",
-            "url": "https://comicvine.gamespot.com/",
-        },
+        "primary_id_source": "comicvine",
         "identifiers": {
             "comicvine": {
                 "key": "145269",
-                "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
                 "key": "123-456789-0123",
-                "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345"},
         },
+        "urls": [
+            "https://comicvine.gamespot.com/c/4000-145269/",
+            "https://isbndb.com/book/123-456789-0123",
+            "https://barcodelookup.com/12345",
+        ],
         "notes": (
             "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
             "[Issue ID 145269] urn:comicvine:issue:145269 "

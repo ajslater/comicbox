@@ -38,9 +38,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -146,9 +146,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -180,9 +180,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "imprint": {"name": "TestImprint"},
             "notes": (
                 "Tagged with comicbox dev on "
@@ -221,9 +221,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -270,13 +270,15 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
                     "key": "99999",
-                    "url": "https://metron.cloud/issue/99999",
                 },
             },
+            "urls": [
+                "https://metron.cloud/issue/99999",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -330,30 +332,29 @@ FNS = MappingProxyType(
                 "month": 11,
             },
             "genres": {"Science Fiction": {}},
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
             "imprint": {
                 "identifiers": {
                     "metron": {
                         "key": "222",
-                        "url": "https://metron.cloud/imprint/222",
                     }
                 },
                 "name": "Youthful Imprint",
@@ -374,7 +375,6 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "11",
-                        "url": "https://metron.cloud/publisher/11",
                     }
                 },
                 "name": "Youthful Adventure Stories",
@@ -387,7 +387,6 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "2222",
-                        "url": "https://metron.cloud/series/2222",
                     }
                 },
                 "name": "Captain Science",
@@ -420,7 +419,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "78945",
-                            "url": "https://metron.cloud/arc/78945",
                         }
                     },
                     "number": 1,
@@ -432,7 +430,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "45678",
-                            "url": "https://metron.cloud/character/45678",
                         }
                     }
                 },
@@ -457,7 +454,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "32165",
-                            "url": "https://metron.cloud/creator/32165",
                         }
                     },
                     "roles": {
@@ -465,7 +461,6 @@ FNS = MappingProxyType(
                             "identifiers": {
                                 "metron": {
                                     "key": "32165",
-                                    "url": "https://metron.cloud/creator/32165",
                                 }
                             }
                         }
@@ -495,39 +490,38 @@ FNS = MappingProxyType(
                     }
                 },
             },
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
-                "bar.foo": {"url": "https://bar.foo"},
                 "comicvine": {
                     "key": "290431",
-                    "url": "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
                 },
-                "foo.bar": {"url": "https://foo.bar"},
                 "grandcomicsdatabase": {
                     "key": "543",
-                    "url": "https://comics.org/issue/543/",
                 },
                 "isbn": {
                     "key": "1234567890123",
-                    "url": "https://isbndb.com/book/1234567890123",
                 },
                 "metron": {
                     "key": "290431",
-                    "url": "https://metron.cloud/issue/290431",
                 },
                 "upc": {
                     "key": "76194130593600111",
-                    "url": "https://barcodelookup.com/76194130593600111",
                 },
             },
+            "urls": [
+                "https://bar.foo",
+                "https://barcodelookup.com/76194130593600111",
+                "https://comics.org/issue/543/",
+                "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
+                "https://foo.bar",
+                "https://isbndb.com/book/1234567890123",
+                "https://metron.cloud/issue/290431",
+                "https://comicvine.gamespot.com/c/4000-290431/",
+            ],
             "imprint": {
                 "identifiers": {
                     "metron": {
                         "key": "1234",
-                        "url": "https://metron.cloud/imprint/1234",
                     }
                 },
                 "name": "Vertigo",
@@ -555,7 +549,6 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "12345",
-                        "url": "https://metron.cloud/publisher/12345",
                     }
                 },
                 "name": "DC Comics",
@@ -578,7 +571,6 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "65478",
-                        "url": "https://metron.cloud/series/65478",
                     }
                 },
                 "name": "Justice League",
@@ -612,7 +604,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "49948",
-                            "url": "https://metron.cloud/team/49948",
                         }
                     }
                 },
@@ -625,7 +616,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "24",
-                            "url": "https://metron.cloud/universe/24",
                         }
                     },
                 },

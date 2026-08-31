@@ -35,6 +35,7 @@ from comicbox.formats.metron_info.transform.identifiers import (
     METRON_IDENTIFIERS_TRANSFORM_TO_CB,
     METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
     METRON_URLS_TRANSFORM_FROM_CB,
+    METRON_URLS_TRANSFORM_TO_CB,
 )
 from comicbox.formats.metron_info.transform.publishing_tags import (
     METRON_IMPRINT_TRANSFORM_TO_CB,
@@ -100,6 +101,7 @@ class MetronInfoTransform(BaseTransform):
         METRON_VOLUME_TRANSFORM_TO_CB,
         METRON_PRICES_TRANSFORM_TO_CB,
         METRON_IDENTIFIERS_TRANSFORM_TO_CB,
+        METRON_URLS_TRANSFORM_TO_CB,
         METRON_REPRINTS_TRANSFORM_TO_CB,
         *METRON_RESOURCES_TRANSFORMS_TO_CB,
         METRON_UNIVERSES_TRANSFORM_TO_CB,

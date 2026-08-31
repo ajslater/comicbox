@@ -60,9 +60,12 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "volume": {
                 "number": 1950,
                 "issue_count": 7,
@@ -206,8 +209,8 @@ CIX_TESTER = TestParser(
 
 def _create_file_read_dict() -> MappingProxyType[str, Any]:
     x = deepcopy(dict(READ_METADATA))
-    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue], # ty: ignore[invalid-assignment]
-    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue],# ty: ignore[invalid-assignment]
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][COVER_DATE_KEY] = date(1950, 11, 1)  #  pyright: ignore[reportArgumentType,reportIndexIssue,reportCallIssue], # ty: ignore[invalid-assignment]
+    x[ComicboxSchemaMixin.ROOT_TAG][DATE_KEY][DAY_KEY] = 1  # pyright: ignore[reportArgumentType,reportIndexIssue,reportCallIssue],# ty: ignore[invalid-assignment]
     return MappingProxyType(x)
 
 

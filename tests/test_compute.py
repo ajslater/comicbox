@@ -27,7 +27,6 @@ DATE_FROM_NOTES_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269] [RELDATE:2025-04-11]",
@@ -55,11 +54,9 @@ IDS_FROM_TAGS_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "1234",
-                    "url": "https://comicvine.gamespot.com/c/4000-1234/",
                 },
                 "metron": {
                     "key": "9999",
-                    "url": "https://metron.cloud/issue/9999",
                 },
             },
             "tags": {"urn:metron:9999": {}, "CVDB1234": {}},
@@ -101,7 +98,6 @@ comicbox:
 """
 _CV_SERIES_IDENTIFIER = {
     "key": "160294",
-    "url": "https://comicvine.gamespot.com/c/4050-160294/",
 }
 PREFIXED_KEYS_MD = MappingProxyType(
     {
@@ -110,15 +106,12 @@ PREFIXED_KEYS_MD = MappingProxyType(
                 "comicvine": _CV_SERIES_IDENTIFIER,
                 "grandcomicsdatabase": {
                     "key": "999",
-                    "url": "https://comics.org/series/999/",
                 },
                 "leagueofcomicgeeks": {
                     "key": "178012",
-                    "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
                 },
                 "metron": {
                     "key": "5678",
-                    "url": "https://metron.cloud/series/5678",
                 },
             },
             "series": {
@@ -148,11 +141,9 @@ MULTI_URN_NOTES_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
             },
             "notes": "urn:comicvine:issue:145269 urn:metron:issue:999999",
@@ -180,7 +171,6 @@ SOURCE_TYPE_KEY_TAG_MD = MappingProxyType(
             "identifiers": {
                 "leagueofcomicgeeks": {
                     "key": "178012",
-                    "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
                 },
             },
             "tags": {"leagueofcomicgeeks:series:178012": {}},

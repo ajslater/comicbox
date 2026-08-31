@@ -25,8 +25,7 @@
     },
     "identifiers": {
       "comicvine": {
-        "key": "145269",
-        "url": "https://comicvine.gamespot.com/c/4000-145269/"
+        "key": "145269"
       }
     },
     "issue": {
@@ -66,6 +65,9 @@
     "tagger": "comicbox dev",
     "title": "The Beginning",
     "updated_at": "1970-01-01T00:00:00Z",
+    "urls": [
+      "https://comicvine.gamespot.com/c/4000-145269/"
+    ],
     "volume": {
       "issue_count": 7,
       "number": 1950

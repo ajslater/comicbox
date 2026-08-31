@@ -9,9 +9,8 @@
       "key": {
         "type": "string"
       },
-      "url": {
-        "type": "string",
-        "format": "uri"
+      "id_type": {
+        "type": "string"
       }
     },
     "required": ["key"]

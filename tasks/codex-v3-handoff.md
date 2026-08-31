@@ -177,8 +177,69 @@ ComicBookInfo's per-credit `primary` field always meant.
 set `primary` on that person's row for that role only. Only ComicBookInfo
 supplies the flag; no other format reads or writes it.
 
+### PR 5 — identifiers split from urls
+
+The largest shape change. MetronInfo keeps its `IDS` and `URLs` in separate
+lists, each with its own primary flag, and comicbox now does the same.
+
+```yaml
+# v2
+identifier_primary_source:
+    source: comicvine
+    url: https://comicvine.gamespot.com/ # synthesized, never from the file
+identifiers:
+    comicvine:
+        key: "145269"
+        url: https://comicvine.gamespot.com/captain-science-1/4000-145269/
+
+# v3
+primary_id_source: comicvine
+identifiers:
+    comicvine:
+        key: "145269"
+urls:
+    - https://comicvine.gamespot.com/captain-science-1/4000-145269/ # verbatim
+    - https://comicvine.gamespot.com/c/4000-145269/ # derived from the key
+```
+
+| v2                                 | v3                                                       |
+| ---------------------------------- | -------------------------------------------------------- |
+| `identifiers.<source>.key`         | unchanged                                                |
+| `identifiers.<source>.url`         | moved into the top-level `urls` list                     |
+| `identifier_primary_source.source` | `primary_id_source` (a plain string)                     |
+| `identifier_primary_source.url`    | **gone** — it was always synthesized                     |
+| —                                  | `urls: [string]`, order preserved, file's own urls first |
+| —                                  | `identifiers.<source>.id_type`, optional (see below)     |
+
+The same applies to **every** nested identifiers map: `series`, `publisher`,
+`imprint`, `arcs`, `characters`, `teams`, `locations`, `genres`, `stories`,
+`tags`, `universes`, `credits`, `credits.*.roles`, `reprints`. Only the top
+level gains `urls`.
+
+**`id_type`** is a new optional field on an identifier, recorded only when the
+key's type differs from the one implied by where it sits. Almost every
+identifier omits it: an id under `series` is a series id. It exists for
+hand-tagged keys like `series:178012` written at the issue level, where the type
+decides which url the key builds.
+
+**Derivation still happens, it is just no longer stored twice.** Reading a
+comic, comicbox fills a missing identifier from a url it recognizes, and a
+missing url from an identifier's key. So codex sees both, as before. Two
+behavior changes come with it:
+
+- A url from a site comicbox doesn't recognize is kept verbatim in `urls` and no
+  longer invents an identifier keyed by its hostname. v2 produced entries like
+  `identifiers: {"bar.foo": {"url": "https://bar.foo"}}`; those are gone.
+- An explicit id always beats a url-derived one. For several databases the url
+  path is a slug rather than the id.
+
+**Codex migration:** move each `identifiers.*.url` into a top-level `urls` list,
+rename `identifier_primary_source` to `primary_id_source` keeping only its
+`source` string, and drop identifier rows whose source is a bare hostname (keep
+their url).
+
 <!-- Subsequent PRs append their shape-change tables here:
-     PR 5 identifiers/urls, PR 7 manga_volume,
+     PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
 
@@ -188,12 +249,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **Identifiers split from URLs**: `identifiers` becomes `{source: {key}}` with
-  no per-identifier `url`; a new top-level `urls: [string]` holds verbatim URLs,
-  primary first; `identifier_primary_source: {source, url}` collapses to
-  `primary_id_source: string`. Comicbox still derives missing URLs from
-  identifiers and missing identifiers from recognized URLs, so the convenience
-  remains — it is just no longer stored redundantly.
 - **`manga_volume: string`** added, holding MetronInfo's `MangaVolume` verbatim;
   `volume.number`/`volume.number_to` are parsed from it when unset.
 - **`reprints`** entries gain an authoritative verbatim `name`; structured
@@ -218,8 +273,8 @@ Schema) before writing code, since details can shift during implementation.
 - [ ] Split any stored `manga` value of `YesAndRightToLeft`; read right-to-left
       from `reading_direction`.
 - [ ] Move credit primary flags onto the per-role object (PR 4 section).
-- [ ] (later PRs) Split stored identifiers/urls; rename
-      `identifier_primary_source` → `primary_id_source`.
+- [ ] Split stored identifiers and urls; rename `identifier_primary_source` →
+      `primary_id_source` (PR 5 section).
 - [ ] (later PRs) Handle `manga_volume`, tri-state `manga`, `reprints[].name`,
       `series.alternative_names`.
 - [ ] Re-run codex's comicbox integration tests against the paired comicbox

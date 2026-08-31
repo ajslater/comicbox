@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.computed.notes import ComicboxComputedNotes
+from comicbox.box.computed.urls import ComicboxComputedUrls
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats.comicbox.schema import (
     BOOKMARK_KEY,
@@ -27,7 +27,7 @@ _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
 )
 
 
-class ComicboxComputedPages(ComicboxComputedNotes):
+class ComicboxComputedPages(ComicboxComputedUrls):
     """Comicbox Computed Pages."""
 
     def _enable_page_compute_attribute(self, key: str, sub_md: Mapping) -> bool:
@@ -121,7 +121,7 @@ class ComicboxComputedPages(ComicboxComputedNotes):
             {
                 "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
                 "Pages": (_get_computed_pages_metadata, ReplaceMerger),
-                **ComicboxComputedNotes.COMPUTED_ACTIONS,
+                **ComicboxComputedUrls.COMPUTED_ACTIONS,
             }
         )
     )

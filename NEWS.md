@@ -14,6 +14,10 @@
     - The primary credit flag moved from the separate `credit_primaries` map
       onto each person's role. Being the primary Writer no longer implies being
       the primary Inker.
+    - Web links moved out of `identifiers` into their own `urls` list, kept as
+      written. Identifiers hold only a key, and `identifier_primary_source`
+      became `primary_id_source`. Comicbox still fills in a missing url from an
+      identifier, and a missing identifier from a url it recognizes.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 

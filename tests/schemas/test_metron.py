@@ -80,30 +80,29 @@ READ_METADATA = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "222",
-                        "url": "https://metron.cloud/imprint/222",
                     },
                 },
                 "name": "Youthful Imprint",
             },
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -120,7 +119,6 @@ READ_METADATA = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "11",
-                        "url": "https://metron.cloud/publisher/11",
                     },
                 },
                 "name": "Youthful Adventure Stories",
@@ -129,7 +127,6 @@ READ_METADATA = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "2222",
-                        "url": "https://metron.cloud/series/2222",
                     }
                 },
                 "name": "Captain Science",
@@ -442,25 +439,25 @@ SIMPLE_METRON_TESTER = TestParser(
 URL_PRIMARY_READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
         }
     }
 )

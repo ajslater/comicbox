@@ -37,7 +37,6 @@ from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
-    IdentifierPrimarySource,
 )
 from comicbox.formats.comicbox.schema.publishing import (
     IssueSchema,
@@ -65,8 +64,8 @@ DESIGNATION_KEY = "designation"
 EXT_KEY = "ext"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
-IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
-ID_SOURCE_KEY = "source"
+PRIMARY_ID_SOURCE_KEY = "primary_id_source"
+URLS_KEY = "urls"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_SUFFIX_KEY = "suffix"
@@ -223,7 +222,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron
     genres = SimpleNamedDictField()  # Comet, CBI, CIX, CT, Metron, PDF
     # identifiers from parent # Comet, CBI, CIX, CT, Metron,
-    identifier_primary_source = Nested(IdentifierPrimarySource)  # Metron
+    primary_id_source = StringField()  # Metron
     imprint = SimpleNamedNestedField()  # CIX, CT, Metron
     issue = Nested(IssueSchema)  # ALL
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
@@ -268,6 +267,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     tags = SimpleNamedDictField()  # CBI, CT, Metron
     teams = SimpleNamedDictField()  # CIX, Metron, CT
     universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
+    urls = StringListField(sort=False)  # CIX, Metron
     updated_at = DateTimeField(serialize_to_iso=False)  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
         schema=VolumeSchema,
