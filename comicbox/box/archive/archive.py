@@ -11,6 +11,8 @@ from comicbox._pdf import PAGE_FORMAT_IMAGE, PDF_ENABLED
 from comicbox.box.archive.sniff import sniff_ext
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from pdffile import PDFFile
     from py7zr import SevenZipFile
     from py7zr.io import BytesIOFactory
@@ -58,17 +60,32 @@ class Archive:
         return file_obj.read() if file_obj else b""
 
     @staticmethod
+    def extract_7zipfile(
+        archive: SevenZipFile, factory: BytesIOFactory, filenames: Collection[str]
+    ) -> None:
+        """Decompress several 7z members into the factory in one pass."""
+        if not filenames:
+            return
+        archive.extract(targets=list(filenames), factory=factory)
+        # py7zr registers extract targets on a worker that survives the
+        # call, so reset before the next one to clear the registrations
+        # and rewind the file pointer to the start of the packed streams.
+        archive.reset()
+
+    @classmethod
     def _read_7zipfile(
-        archive: SevenZipFile, factory: BytesIOFactory | None, filename: str
+        cls, archive: SevenZipFile, factory: BytesIOFactory | None, filename: str
     ) -> bytes:
         """Read a single file from 7zip."""
         if not factory:
             return b""
-        archive.extract(targets=[filename], factory=factory)
-        file_obj = factory.products.get(filename)
-        data = file_obj.read() if file_obj else b""
-        archive.reset()
-        return data
+        if filename not in factory.products:
+            cls.extract_7zipfile(archive, factory, (filename,))
+        # Pop rather than get. py7zr's factory keeps every member it has
+        # ever decompressed, so a whole-archive read would otherwise hold
+        # every page resident until the box is closed.
+        file_obj = factory.products.pop(filename, None)
+        return file_obj.read() if file_obj else b""
 
     @staticmethod
     def _read_pdffile_rotated_render(
