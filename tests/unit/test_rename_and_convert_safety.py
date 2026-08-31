@@ -215,3 +215,72 @@ def test_a_conversion_respects_a_held_destination(tmp_path: Path) -> None:
     assert "already being written" in str(result.error)
     assert cbt.exists()
     assert not dest.exists()
+
+
+def test_rename_refuses_an_existing_destination(tmp_path: Path) -> None:
+    """
+    A rename cannot silently eat the file already at the predicted name.
+
+    Path.rename() replaces the destination on posix, so two archives whose
+    metadata predicts one name — the same issue carried twice, or a scheme
+    that renders too few distinguishing fields — left only the last one
+    written, with no error and no log line saying anything was lost.
+    """
+    cbz = tmp_path / "Rename v1999 #006 (1999).cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        occupied = tmp_path / car.predict_filename()
+    occupied.write_bytes(b"already-here")
+
+    with pytest.raises(ArchiveWriteError, match="already exists"), Comicbox(cbz) as car:
+        car.rename_file()
+
+    # Both files survive: the destination is untouched and the source stays
+    # where it was, so a later run can still find it.
+    assert occupied.read_bytes() == b"already-here"
+    assert cbz.exists()
+
+
+def test_rename_respects_a_held_destination(tmp_path: Path) -> None:
+    """
+    A rename consults the in-flight claim, like a conversion does.
+
+    Holding the destination stands in for another thread's rename that
+    hasn't landed yet, which leaves nothing on disk for the exists() check
+    to see.
+    """
+    cbz = tmp_path / "Rename v1999 #007 (1999).cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        dest = tmp_path / car.predict_filename()
+
+    _claim_destination(dest)
+    try:
+        with (
+            pytest.raises(ArchiveWriteError, match="already being written"),
+            Comicbox(cbz) as car,
+        ):
+            car.rename_file()
+    finally:
+        _release_destination(dest)
+
+    assert cbz.exists()
+    assert not dest.exists()
+
+
+def test_rename_to_the_same_name_is_not_a_collision(tmp_path: Path) -> None:
+    """An archive already at its predicted name must not refuse itself."""
+    cbz = tmp_path / "Idempotent v1999 #008 (1999).cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        car.rename_file()
+        landed = car.get_path()
+    assert landed is not None
+
+    # Renaming the already-renamed archive is a no-op, not "already exists".
+    with Comicbox(landed) as car:
+        car.rename_file()
+        again = car.get_path()
+
+    assert again == landed
+    assert landed.exists()

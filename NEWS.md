@@ -69,6 +69,13 @@
     - An unrecognized ComicVine type code reads as an issue, not an arc.
     - An `id_type` comicbox doesn't know no longer leaks into a url.
     - kitsu.app urls are recognized.
+    - `--recurse` finds `.cb7` archives, which it silently skipped.
+    - Renaming refuses a name another file already holds instead of replacing
+      that file. Two comics whose metadata predicts one name kept both.
+    - A ComicBookInfo comment in a CBZ dates the metadata by the file's own
+      mtime, as it already did in a CBR.
+    - Reading a page no longer depends on the working directory. A directory
+      there named like a page made that page read as empty.
     - A name slug or tracking suffix after the id in a url is no longer the id.
     - A link to a database's front page no longer becomes an id for it.
     - Urls are recognized whatever the host's case, and with a port or login.

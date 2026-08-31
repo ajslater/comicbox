@@ -8,6 +8,7 @@ from sys import maxsize
 from typing import TYPE_CHECKING, cast
 
 from comicbox.box.archive.archive import Archive
+from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.init import ComicboxArchiveInit
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import ArchiveError, UnsupportedArchiveTypeError
@@ -63,6 +64,17 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._infolist = infolist
         return self._infolist
 
+    def dirnames(self) -> frozenset[str]:
+        """Get the names of the archive's directory entries."""
+        self._ensure_read_archive()
+        if self._dirnames is None:
+            self._dirnames: frozenset[str] | None = frozenset(
+                self._get_info_fn(info)
+                for info in self.infolist()
+                if ArchiveInfo.is_dir(info)
+            )
+        return self._dirnames
+
     @classmethod
     def check_unrar_executable(cls) -> bool:
         """Check for the unrar executable."""
@@ -116,9 +128,13 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
         data = b""
-        if Path(filename).is_dir():
-            return data
         self._ensure_read_archive()
+        # Ask the archive, not the filesystem. Path(filename).is_dir()
+        # resolved an archive-internal name against the process cwd, so a
+        # directory that happened to share a page's name made the read
+        # return b"" -- and a real directory entry was never caught at all.
+        if filename in self.dirnames():
+            return data
         archive = self._get_archive()
         factory = self._get_7zfactory()
         pdf_format = self._get_pdf_format(pdf_format)
