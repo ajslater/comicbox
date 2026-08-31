@@ -287,12 +287,21 @@ def test_online_cli_all_overrides_durable_selection(
     assert cfg.online.lookup.sources is None
 
 
-def test_online_sources_unknown_names_warn_and_drop(
+def test_online_sources_unknown_names_raise(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """
+    An unknown source name aborts instead of being dropped.
+
+    Dropping was silent in both directions: a mixed list quietly
+    narrowed (asking for comicvine + gcd got only comicvine), and an
+    all-unknown list left the empty ALL_SOURCES sentinel behind, which
+    widened the run to every source. See
+    tests/unit/test_config_online_sources.py.
+    """
     monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine,grand_comics_db")
-    cfg = get_config()
-    assert cfg.online.lookup.sources == ("comicvine",)
+    with pytest.raises(ValueError, match="unknown source"):
+        get_config()
 
 
 def test_first_wins_defaults_true() -> None:

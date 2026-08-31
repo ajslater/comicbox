@@ -120,6 +120,25 @@
       that writes the format.
     - A MetronInfo `AlternativeName`'s `id` attribute is read. The schema
       dropped it before the transform that handles it ever saw it.
+    - `-c/--config` loads the file it names. The flag parsed into
+      `general.config`, the loader looked for it one level up under `config`,
+      and a `suppress` around the lookup hid the mismatch, so every alternate
+      config file was silently ignored in favor of the defaults.
+    - An unknown `--online` source name is an error instead of a silent
+      widening. Unknown names were dropped with a warning; when every name was
+      unknown, the empty result was the "all sources" sentinel, so a typo like
+      `--online metrn` queried every configured database rather than the one
+      that was asked for. `COMICBOX_ONLINE_SOURCES` and the
+      `online.lookup.sources` config key are checked the same way.
+    - The solo-viable auto-write floor is back at the auto-write threshold.
+      `OnlineTuningSettings.auto_threshold` had drifted to 0.85 while the config
+      file, the `--auto-threshold` help and the matcher all said 0.95, and the
+      solo floor was defined off it, so a lone mediocre match could be written
+      without a prompt — the failure that floor exists to prevent.
+    - Actions needing an archive warn instead of raising when there is no path.
+      `comicbox --rename` and `comicbox -P f` with no file ended in an
+      ArchiveError traceback. The guard that turns those actions off existed but
+      never ran for a CLI run, which passes settings already built.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

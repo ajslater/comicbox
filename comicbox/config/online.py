@@ -30,6 +30,7 @@ from typing import Any, TypeVar
 from loguru import logger
 
 from comicbox.config.settings import (
+    DEFAULT_AUTO_THRESHOLD,
     CacheMode,
     Effort,
     MatchMode,
@@ -351,7 +352,9 @@ def _build_tuning(
         online_block.tuning.auto_threshold,
     )
     auto_threshold = (
-        float(auto_threshold_raw) if auto_threshold_raw is not None else 0.95
+        float(auto_threshold_raw)
+        if auto_threshold_raw is not None
+        else DEFAULT_AUTO_THRESHOLD
     )
     effort_raw = _coalesce(
         cli("effort"), online_env.get("effort"), online_block.tuning.effort
@@ -406,25 +409,31 @@ def _split_source_names(value: Any) -> tuple[str, ...]:
 
 def _normalize_sources(value: Any, *, origin: str) -> tuple[str, ...] | None:
     """
-    Normalize a sources list from env/config into an ordered tuple.
+    Normalize a sources list from CLI/env/config into an ordered tuple.
 
     Returns None when the value is absent (fall through to the next
     layer), ALL_SOURCES when it's empty or contains the ``all``
     sentinel, and otherwise an order-preserving dedupe of the listed
-    names. Unknown names warn and drop rather than failing the run.
+    names.
+
+    Unknown names raise. Dropping them used to leave an all-unknown
+    selection empty, which is the ALL_SOURCES sentinel — so a typo in
+    ``--online metrn`` silently widened the run to *every* source
+    instead of narrowing it to the one the user asked for. Matches
+    ``--id``/``--series-id``, which have always rejected unknown names.
     """
     if value is None:
         return None
     names = _split_source_names(value)
     if not names or "all" in names:
         return ALL_SOURCES
-    unknown = tuple(n for n in names if n not in SOURCE_NAMES)
-    if unknown:
-        logger.warning(
-            f"online: ignoring unknown source(s) {', '.join(unknown)} from "
-            f"{origin}; known: {', '.join(SOURCE_NAMES)}"
+    if unknown := tuple(n for n in names if n not in SOURCE_NAMES):
+        reason = (
+            f"{origin}: unknown source(s) {', '.join(unknown)}; "
+            f"known: {', '.join(SOURCE_NAMES)}"
         )
-    return tuple(n for n in names if n in SOURCE_NAMES)
+        raise ValueError(reason)
+    return names
 
 
 def _resolve_runtime_sources(
