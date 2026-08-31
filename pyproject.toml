@@ -11,7 +11,6 @@ dependencies = [
   "case-converter~=1.2",
   "comicfn2dict>=0.3.2,<1.0.0",
   "confuse~=2.2.0",
-  "deepdiff~=9.0",
   "glom~=25.12",
   "httpx~=0.28",
   "imagehash>=4.3.2",
@@ -105,6 +104,7 @@ lint = [
 ]
 test = [
   "coverage[toml]~=7.0",
+  "deepdiff~=9.0",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
   "pytest~=9.0",

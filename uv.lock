@@ -883,7 +883,6 @@ dependencies = [
     { name = "case-converter" },
     { name = "comicfn2dict" },
     { name = "confuse" },
-    { name = "deepdiff" },
     { name = "glom" },
     { name = "httpx" },
     { name = "imagehash" },
@@ -958,6 +957,7 @@ lint = [
 ]
 test = [
     { name = "coverage", extra = ["toml"] },
+    { name = "deepdiff" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -970,7 +970,6 @@ requires-dist = [
     { name = "comicbox-pdffile", marker = "extra == 'pdf'", specifier = ">=0.6.3,<0.7" },
     { name = "comicfn2dict", specifier = ">=0.3.2,<1.0.0" },
     { name = "confuse", specifier = "~=2.2.0" },
-    { name = "deepdiff", specifier = "~=9.0" },
     { name = "glom", specifier = "~=25.12" },
     { name = "httpx", specifier = "~=0.28" },
     { name = "imagehash", specifier = ">=4.3.2" },
@@ -1039,6 +1038,7 @@ lint = [
 ]
 test = [
     { name = "coverage", extras = ["toml"], specifier = "~=7.0" },
+    { name = "deepdiff", specifier = "~=9.0" },
     { name = "pytest", specifier = "~=9.0" },
     { name = "pytest-asyncio", specifier = "~=1.0" },
     { name = "pytest-cov", specifier = "~=7.0" },
