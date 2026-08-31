@@ -48,7 +48,11 @@ comicbox:
   identifiers:
     comicvine:
       key: "145269"
-      url: https://comicvine.gamespot.com/c/4000-145269/
+    metron:
+      # Recorded only when the key's type isn't the one implied by where it
+      # sits. An id at the top level is an issue id unless it says otherwise.
+      key: "178012"
+      id_type: series
   imprint:
     name: TestImprint
   issue:
@@ -138,6 +142,11 @@ comicbox:
     Young Adult Silly Universe:
       designation: 4242
   updated_at: 1970-01-01T00:00:00Z
+  urls:
+    # Kept as the file wrote them, its own first, then any comicbox derived
+    # from an identifier.
+    - https://comicvine.gamespot.com/captain-science-1/4000-145269/
+    - https://comicvine.gamespot.com/c/4000-145269/
   volume:
     issue_count: 7
     number: 1950
