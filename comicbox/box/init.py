@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, ClassVar
 from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
-from comicbox.config.settings import ComicboxSettings
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
 
     from comicbox.box.archive.archiveinfo import InfoType
     from comicbox.box.types import ArchiveType
+    from comicbox.config.settings import ComicboxSettings
     from comicbox.formats import MetadataFormats
     from comicbox.formats.sources import MetadataSources
 else:
@@ -98,15 +98,18 @@ class ComicboxInit:
         ``comicbox.logger.init_logging`` themselves.
         """
         self._path = self._validate_path(path)
-        if isinstance(config, ComicboxSettings):
-            self._config: ComicboxSettings = config
-        else:
-            # Lazy import: comicbox.config imports comicbox.formats which
-            # transitively imports this module — keep the top-level import
-            # graph acyclic.
-            from comicbox.config import get_config
+        # Lazy import: comicbox.config imports comicbox.formats which
+        # transitively imports this module — keep the top-level import
+        # graph acyclic.
+        from comicbox.config import get_config
 
-            self._config = get_config(config, path=self._path, box=True)
+        # An already-built ComicboxSettings goes through get_config too.
+        # Its fast path skips the confuse rebuild but still applies
+        # post_process_set_for_path, which turns off file-requiring
+        # options when there's no path. Short-circuiting around it here
+        # was what made that guard dead for every CLI run: Runner builds
+        # a ComicboxSettings once and hands it to each Comicbox.
+        self._config: ComicboxSettings = get_config(config, path=self._path, box=True)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:

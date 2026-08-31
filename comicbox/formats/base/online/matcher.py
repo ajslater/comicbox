@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Final
 from loguru import logger
 
 from comicbox.config.settings import (
+    DEFAULT_AUTO_THRESHOLD,
     MatchMode,
     resolve_auto_threshold,
     resolve_disambiguation_margin,
@@ -64,7 +65,7 @@ W_COVER = 0.20
 # Default constant kept here for the rank() default-arg signature; the
 # matcher reads per-source values via `resolve_*` helpers in `_resolve_policy`
 # and `_should_invoke_hashing` so per-source overrides take effect.
-_DEFAULT_CONFIDENCE_THRESHOLD = 0.95
+_DEFAULT_CONFIDENCE_THRESHOLD = DEFAULT_AUTO_THRESHOLD
 
 
 class ResolutionKind(str, Enum):

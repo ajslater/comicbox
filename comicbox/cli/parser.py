@@ -10,6 +10,7 @@ from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
 from comicbox.cli.epilog import build_epilog
+from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD
 
 # Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
 _WARNED_FLAGS: set[str] = set()
@@ -562,7 +563,8 @@ def _add_online_tuning_group(parser: ArgumentParser) -> None:
         dest="auto_threshold",
         help=(
             "Global auto-write threshold in [green][0, 1][/green]. Default "
-            "[green]0.95[/green]. Per-source overrides via YAML only."
+            f"[green]{DEFAULT_AUTO_THRESHOLD}[/green]. "
+            "Per-source overrides via YAML only."
         ),
     )
     group.add_argument(

@@ -85,16 +85,21 @@ class CacheMode(str, Enum):
     REFRESH = "refresh"
 
 
+# Global auto-write threshold. The single source of truth for this
+# number: ``config_default.yaml`` must declare the same value, and
+# ``tests/unit/test_config_defaults_drift.py`` proves it still does.
+DEFAULT_AUTO_THRESHOLD = 0.95
+
 # Built-in defaults for per-source tuning knobs. Internal — not surfaced
 # in user-facing CLI/docs but available as per-source YAML overrides.
 DEFAULT_MIN_CONFIDENCE = 0.50
 DEFAULT_DISAMBIGUATION_MARGIN = 0.10
 # Solo-viable auto-write floor. When the matcher returns exactly one
 # candidate clearing ``min_confidence``, ``AUTO``/``EAGER`` modes
-# auto-write only if it also clears this floor. Default equals the
-# global confidence threshold (0.95), so solo cases need the same bar
-# as multi-candidate unambiguous wins.
-DEFAULT_SOLO_THRESHOLD = 0.85
+# auto-write only if it also clears this floor. Equals the global
+# auto-write threshold, so solo cases need the same bar as
+# multi-candidate unambiguous wins.
+DEFAULT_SOLO_THRESHOLD = DEFAULT_AUTO_THRESHOLD
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,7 +319,7 @@ class OnlineTuningSettings:
     """Global tuning defaults plus per-source overrides."""
 
     # Global defaults.
-    auto_threshold: float = 0.85
+    auto_threshold: float = DEFAULT_AUTO_THRESHOLD
     effort: Effort = Effort.BALANCED
     retry_budget: int = 5
 
