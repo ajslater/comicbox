@@ -59,7 +59,11 @@ METADATA = MappingProxyType(
             "prices": {"": Decimal("0.10").quantize(Decimal("0.01"))},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},

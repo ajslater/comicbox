@@ -12,9 +12,10 @@ details you need.
 
 comicbox and codex ship paired. Schema v3.0 changes the shape of the metadata
 dict that `Comicbox.get_internal_metadata()` returns, plus the on-disk comicbox
-JSON/YAML serializations. There are **no compatibility shims** — comicbox reads
-v2 documents through a one-shot up-converter and thereafter speaks only v3.
-Codex must be updated in the same release cycle.
+JSON/YAML serializations. There are **no compatibility shims and no
+up-converter**: comicbox speaks v3 only, and a v2 document loads with its
+renamed and removed fields silently ignored. Codex must be updated in the same
+release cycle.
 
 The redesign came from an audit of every supported format spec (MetronInfo v1.1,
 ComicInfo v2.1 draft, ComicBookInfo 1.0, CoMet 1.1) against the v2.0 unified
@@ -37,6 +38,10 @@ ComicBookInfo >> CoMet / PDF / filename.**
   v2 documents carry the `/v2.0/comicbox-v2.0.schema.json` URL.
 - YAML documents carry the same `schema:` key when exported by comicbox, but
   hand-written YAML often omits it — do not rely on it being present.
+- Nothing outside comicbox's own repository used schema v2, so there is no v2
+  data in the wild to migrate. Comicbox JSON or YAML that codex wrote itself is
+  the one exception; convert it with the field tables below, or more simply,
+  re-read the comics.
 - The JSON Schemas live in the comicbox package at `comicbox/schemas/v3.0/`
   (`schemas/` at the repo root is a symlink to `comicbox/schemas/`). The v2.0
   directory is retained unchanged as the published v2 contract.
@@ -280,7 +285,8 @@ carry a bogus `<MangaVolume>`; it now writes one only when `manga_volume` holds
 a value that came from a file.
 
 **Codex impact:** new optional field. Nothing to migrate — v2 never stored the
-string, so the up-converter cannot invent one.
+string, so it cannot be recovered from stored data; it arrives when a MetronInfo
+file is next read.
 
 ### PR 8 — ComicInfo `AlternateSeries` is an arc, not a reprint
 
@@ -365,6 +371,18 @@ job, and solving it here meant overwriting data a file actually contained.
 **Codex impact:** a comic carrying both a title and story names may now show a
 different title than before — the one in the file rather than one rebuilt from
 its stories. Nothing to migrate.
+
+### v2.0 documents
+
+There is no up-converter. Comicbox reads v3 only, and a v2 document loads with
+its renamed and removed fields ignored, because the schemas exclude unknown
+fields rather than rejecting them. Such a file silently loses its
+`identifier_primary_source`, every `identifiers.*.url`, `credit_primaries`,
+`critical_rating` and `alternate_images`, and a `manga` of `YesAndRightToLeft`
+fails the enum.
+
+The field tables above are the conversion rules, if codex has comicbox documents
+of its own to migrate.
 
 ## Adoption checklist
 

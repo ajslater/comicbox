@@ -3,8 +3,8 @@
 ## v4.8.7
 
 - Breaking Changes
-    - Comicbox schema v3.0. Version 2.0 documents still load and are read into
-      the new shape.
+    - Comicbox schema v3.0. Version 2.0 documents no longer load; the fields
+      below that moved or were removed are ignored if a 2.0 file supplies them.
     - Credit roles are stored with MetronInfo's names. Roles it has no name for
       keep their own spelling.
     - Age ratings are stored on MetronInfo's scale. ComicInfo's finer

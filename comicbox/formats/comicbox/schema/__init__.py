@@ -44,7 +44,6 @@ from comicbox.formats.comicbox.schema.publishing import (
     SeriesSchema,
     VolumeSchema,
 )
-from comicbox.formats.comicbox.schema.upconvert import upconvert_v2
 
 NAME_KEY = _FIELD_NAME_KEY
 AGE_RATING_KEY = "age_rating"
@@ -287,9 +286,3 @@ class ComicboxSchemaMixin:
     ROOT_TAG = "comicbox"
     ROOT_KEYPATH = ROOT_TAG
     HAS_PAGE_COUNT = True
-
-    @classmethod
-    def pre_load_validate(cls, data: dict | None) -> dict:
-        """Read a v2.0 document into the v3.0 shape before deserializing."""
-        data = super().pre_load_validate(data)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
-        return upconvert_v2(data)

@@ -142,10 +142,10 @@ schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
 
-Comicbox 2.0 documents are still read; they are converted to the 3.0 shape on
-load. The
-[2.0 schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
-is retained unchanged for reference.
+Comicbox 2.0 is superseded and is not read. Its
+[schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
+is kept for reference only; a 2.0 document loads with its renamed and removed
+fields ignored.
 
 #### Comicbox JSON Format
 
