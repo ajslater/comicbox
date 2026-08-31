@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Iterable, Mapping
+from decimal import Decimal
 from typing import Any
 
 from glom import glom
@@ -12,6 +13,32 @@ from typing_extensions import override
 from comicbox.empty import filter_list_empty, is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+
+# Sort keys are compared element by element, so every element in a slot must be
+# comparable with its siblings. Nothing guarantees they share a type: a reprint
+# missing `volume.number` substitutes an empty value into a slot where its
+# sibling holds an int, and `int < str` is a TypeError. Ranking the type first
+# means unlike types are ordered by rank and never compared to each other.
+_EMPTY_RANK = 0
+_NUMBER_RANK = 1
+_STRING_RANK = 2
+_OTHER_RANK = 3
+_NUMBER_TYPES = (int, float, Decimal)
+
+
+def _comparable(value: Any) -> tuple[int, Any]:
+    """Pair a sort key element with a rank for its comparability class."""
+    if is_empty(value):
+        # Absent and explicitly empty elements share a rank so they still
+        # dedupe together, and sort first like the old empty string did.
+        return (_EMPTY_RANK, "")
+    if isinstance(value, str):
+        return (_STRING_RANK, value)
+    if isinstance(value, _NUMBER_TYPES):
+        # Numbers stay numbers: 2 must keep sorting before 10.
+        return (_NUMBER_RANK, value)
+    # Dates, and anything else unhashable or unorderable against its own kind.
+    return (_OTHER_RANK, str(value))
 
 
 def case_insensitive_dict(d: dict) -> dict:
@@ -65,10 +92,9 @@ class ListField(fields.List):
             for key_path in self._sort_keys:
                 sort_value = glom(value, key_path, default=None)
                 sort_value = self.get_tag_value(sort_value)
-                sort_value = "" if sort_value is None else sort_value
-                key.append(sort_value)
+                key.append(_comparable(sort_value))
         else:
-            key = (self.get_tag_value(value),)
+            key = (_comparable(self.get_tag_value(value)),)
         key = tuple(key)
 
         # Combine elements that dedupe to the same key. dict.update() returns
