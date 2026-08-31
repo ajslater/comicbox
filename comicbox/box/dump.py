@@ -128,20 +128,23 @@ class ComicboxDump(ComicboxPages):
         Re-seed the box caches from the now-rewritten archive.
 
         Everything parsed from the old archive bytes is stale after a
-        write; only the caller-injected API source survives (it didn't
-        come from the file). Lives here rather than in the archive write
-        layer so file I/O stays decoupled from the source-cache
-        lifecycle.
+        write, but the sources that never came from the file can't be
+        rebuilt by re-reading it: the caller-injected API metadata, and
+        whatever the online lookup fetched. The lookup is once-per-box
+        (``_online_lookup_done_flag`` outlives this reset), so dropping
+        its sources here left the post-write rename — and any other
+        read after a write — deciding on pre-online metadata, minus
+        whatever the written formats happened to carry back.
+
+        Lives here rather than in the archive write layer so file I/O
+        stays decoupled from the source-cache lifecycle.
         """
-        old_api_source_data_list = self._sources.get(MetadataSources.API)
-        if old_api_source_data_list:
-            old_api_source_data = old_api_source_data_list[0]
-            old_api_source_metadata = old_api_source_data.data
-            old_api_source_format = old_api_source_data.fmt
-        else:
-            old_api_source_metadata = None
-            old_api_source_format = None
-        self._reset_archive(old_api_source_format, old_api_source_metadata)
+        keep_sources = {
+            source: source_data_list
+            for source in self.SOURCES_SET_ELSEWHERE
+            if (source_data_list := self._sources.get(source))
+        }
+        self._reset_archive(None, None, keep_sources)
 
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""

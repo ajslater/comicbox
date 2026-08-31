@@ -1,11 +1,20 @@
-"""Recursive merging for containers."""
+"""
+Recursive merging for containers.
+
+Every ``Merger`` merges *at the level of the mapping it is handed*: none
+of them knows about the comicbox root tag. Callers holding root-wrapped
+metadata unwrap it first (see ``ComicboxMerge._merge_metadata_by_source``
+and ``ComicboxMetadata._set_computed_merged_metadata``). Before, only
+``UpdateMerger`` reached into ROOT_TAG, so the same merger object meant
+two different things depending on which call site used it — and handing
+it the sub-metadata the other mergers take silently dropped the merge.
+"""
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableMapping
 
 from typing_extensions import override
 
-from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.merge.mergedeep import Strategy, merge
 
 
@@ -15,7 +24,7 @@ class Merger(ABC):
     @staticmethod
     @abstractmethod
     def merge(dest: MutableMapping, *sources: Mapping) -> MutableMapping:
-        """Implement a merge method."""
+        """Merge sources into dest, left to right, and return dest."""
         raise NotImplementedError
 
 
@@ -47,9 +56,7 @@ class UpdateMerger(Merger):
     @override
     @staticmethod
     def merge(dest: MutableMapping, *sources: Mapping) -> MutableMapping:
-        """Merge with update."""
-        dest_sub_md = dest.get(ComicboxSchemaMixin.ROOT_TAG, {})
+        """Shallowly update dest with each source's top level keys."""
         for source in sources:
-            source_sub_md = source.get(ComicboxSchemaMixin.ROOT_TAG, {})
-            dest_sub_md.update(source_sub_md)
+            dest.update(source)
         return dest

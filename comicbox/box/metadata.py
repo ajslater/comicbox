@@ -35,13 +35,14 @@ class ComicboxMetadata(ComicboxComputed):
         # nested objects the _merged_metadata cache still references.
         merged_md = deepcopy(dict(merged_md))
 
+        # Mergers act on the mapping they're handed, so unwrap the root
+        # tag here — the same shape _set_computed_metadata already merges
+        # each computed delta into.
+        merged_sub_md = merged_md.setdefault(ComicboxSchemaMixin.ROOT_TAG, {})
         for computed_data in computed_md:
             computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
             if computed_sub_data and computed_data.merger:
-                computed_data.merger.merge(
-                    merged_md,
-                    computed_data.metadata,
-                )
+                computed_data.merger.merge(merged_sub_md, computed_sub_data)
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
         self._metadata_dict_formats = self._dict_formats
