@@ -49,6 +49,9 @@
     - The write API takes `merge_mode` instead of `mode`, and defaults to the
       config's `write.merge_mode` instead of forcing `additive`. The `WriteMode`
       enum is now `MergeMode`.
+    - `deepdiff` is no longer a dependency. Nothing in the library imports it
+      since reprint consolidation stopped diffing pairs of reprints. Anything
+      that got it transitively through comicbox has to depend on it directly.
 
 - Performance
     - Converting a CB7 reads its pages in batches instead of one at a time.
@@ -59,6 +62,10 @@
       GiB. Output is unchanged.
 
 - Fixes
+    - Reading a comic no longer fails when two reprints tie on every sort key up
+      to one that only one of them has. A reprint carrying a `volume` with an
+      `issue_count` but no `number` used to abort the whole dump with
+      `TypeError: '<' not supported between instances of 'int' and 'str'`.
     - A comic that can't be read no longer ends the batch. Every dispatch path —
       serial, `--recurse` and `-j N` — now logs the file and keeps going.
       Previously `comicbox a.cbz b.cbz c.cbz` stopped at the first unreadable
@@ -224,6 +231,13 @@
       once and reused until the environment changes. As with `OnlineSession`,
       editing a config file mid-run no longer changes settings for the rest of
       the run.
+    - Books with many reprints no longer dominate the computed pass. Reprints
+      were consolidated by deep-diffing every ordered pair of them, which grew
+      quadratically and was 93% of the pass on a forty-reprint book; they are
+      now compared on flattened, normalized fields. A reprint's name is also
+      parsed once per distinct name rather than once per reprint. Reading a
+      forty-reprint book is about seventeen times faster, and a
+      hundred-and-thirty-six-reprint book about fifty.
 
 ## v4.8.6
 
