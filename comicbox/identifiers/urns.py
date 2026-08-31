@@ -26,12 +26,21 @@ from comicbox.identifiers.other import parse_identifier_other_str
 
 _ID_TYPES = frozenset(ID_TYPE_NAMES)
 # RFC 8141 §2: 2-32 chars, alphanumeric at both ends, hyphens inside.
-_NID_EXP = r"[A-Za-z0-9][A-Za-z0-9-]{0,30}[A-Za-z0-9]"
-_NID_RE = re.compile(_NID_EXP)
+NID_EXP = r"[A-Za-z0-9][A-Za-z0-9-]{0,30}[A-Za-z0-9]"
+_NID_RE = re.compile(NID_EXP)
+# The namespace specific string as comicbox writes it and finds it again in
+# prose. A urn has to end where its key ends, not at the next space, so the
+# comma or period after it in a sentence is not read as part of the key.
+NSS_EXP = r"[\w%.:-]*[\w%]"
+_NSS_RE = re.compile(NSS_EXP)
+# One urn, for finding urns embedded in a sentence. The only grammar
+# comicbox writes, so it is also the one to_urn_string composes against.
+URN_SCAN_EXP = rf"urn:{NID_EXP}:{NSS_EXP}"
+# The reader is deliberately looser than the writer: whatever another tagger
+# put in the key comes back whole rather than being silently truncated.
 # The scheme is case insensitive per RFC 8141 §2.
-_URN_RE = re.compile(rf"urn:(?P<nid>{_NID_EXP}):(?P<nss>\S+)", re.IGNORECASE)
+_URN_RE = re.compile(rf"urn:(?P<nid>{NID_EXP}):(?P<nss>\S+)", re.IGNORECASE)
 _URN_SCHEME = "urn:"
-_WHITESPACE_RE = re.compile(r"\s")
 
 
 def _is_urn(tag: str) -> bool:
@@ -83,13 +92,13 @@ def to_urn_string(id_source_str: str, id_type: str, id_key_str: str) -> str:
     Compose an urn string.
 
     Returns the empty string for parts that cannot make a legal urn, so a
-    hand written identifier source or key never aborts a read.
+    hand written identifier source or key never aborts a read. A key is
+    checked against the same grammar the notes scanner looks for, because a
+    urn comicbox writes but cannot find again is worse than no urn: the
+    scanner would stop at the first illegal character and record the
+    truncated head as the id.
     """
-    if (
-        not _NID_RE.fullmatch(id_source_str)
-        or not id_key_str
-        or _WHITESPACE_RE.search(id_key_str)
-    ):
+    if not _NID_RE.fullmatch(id_source_str) or not _NSS_RE.fullmatch(id_key_str):
         return ""
     id_type = id_type.lower()
     if id_type in ("", DEFAULT_ID_TYPE):

@@ -104,11 +104,14 @@ class IdentifierParts:
         return self.id_type.map.inverse.get(id_type_code, default)
 
     def parse_url_path(self, url: str) -> tuple[str, str]:
-        """Parse URL path with regex."""
+        """Parse URL path with regex, or return no match."""
         obj = urlparse(url)
         match = self.url_path_regex_compiled.search(obj.path[1:])
         if not match:
-            return "", obj.path
+            # A known database's own site is full of pages that are not an
+            # id: /about, /search, the front page. Handing the raw path back
+            # as the key minted ids like "/about/" that nothing can look up.
+            return "", ""
         try:
             id_type_slug = match.group("id_type")
         except IndexError:
@@ -144,7 +147,9 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
         IdSources.ASIN: IdentifierParts(
             domain="www.amazon.com",
             id_type=IdentifierTypes(issue="issue"),
-            url_path_regex=r"dp/(?P<id_key>\S+)",
+            # An asin is one path segment. \S+ swallowed the /ref=... amazon
+            # appends to nearly every url into the id.
+            url_path_regex=r"dp/(?P<id_key>[^/]+)",
             url_path_template="dp/{id_key}",
         ),
         IdSources.COMICVINE: IdentifierParts(
@@ -184,13 +189,15 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
         IdSources.ISBN: IdentifierParts(
             domain="isbndb.com",
             id_type=IdentifierTypes(issue="book", series="series"),
-            url_path_regex=r"(?P<id_type>book)/(?P<id_key>[\d-]+)",
+            # Both declared slugs, or a series url unparse_url built parsed
+            # back as nothing.
+            url_path_regex=r"(?P<id_type>book|series)/(?P<id_key>[\d-]+)",
             url_path_template="{id_type}/{id_key}",
         ),
         IdSources.KITSU: IdentifierParts(
             domain="kitsu.app",
             id_type=IdentifierTypes(series="manga"),
-            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>\S+)",
+            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>[^/]+)",
             url_path_template="{id_type}/{id_key}",
         ),
         IdSources.LCG: IdentifierParts(
@@ -198,19 +205,23 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             id_type=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
             ),
-            url_path_regex=rf"(?P<id_type>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
+            # The series slug is two segments, so the type is spelled out
+            # longest first rather than matched generically. A greedy \S+ for
+            # either group ate the whole path and read the trailing name slug
+            # as the id.
+            url_path_regex=rf"(?P<id_type>comics/series|comics|comic)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGADEX: IdentifierParts(
             domain="mangadex.org",
             id_type=IdentifierTypes(series="title"),
-            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGAUPDATES: IdentifierParts(
             domain="mangaupdates.com",
             id_type=IdentifierTypes(series="series"),
-            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MARVEL: IdentifierParts(
@@ -360,11 +371,15 @@ def create_identifier(
 def get_id_source_from_url(url: str) -> str:
     """Parse the id source for a url."""
     obj = urlparse(url)
-    parts = obj.netloc.split(".")
+    # The hostname, not the netloc: it is lowercased and carries neither the
+    # port nor the userinfo, so metron.cloud:443 and Metron.Cloud both name
+    # metron instead of falling through as unknown domains.
+    hostname = obj.hostname or ""
+    parts = hostname.split(".")
 
     parts.reverse()
     node = SOURCE_ALIAS_TREE
-    id_source_str = obj.netloc
+    id_source_str = hostname
     for part in parts:
         node = node.get(part)
         if isinstance(node, IdSources):
