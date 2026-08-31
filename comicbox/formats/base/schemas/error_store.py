@@ -19,18 +19,69 @@ from typing_extensions import override
 # value.
 _current_path: ContextVar[str | None] = ContextVar("comicbox_schema_path", default=None)
 
+_UNKNOWN_KEY = "UNKNOWN"
+# Offending values go in the warning so the field name is actionable, but a
+# whole embedded page list would drown the log.
+_MAX_VALUE_REPR = 128
+
+
+def _repr_value(value: Any) -> str:
+    """Represent an offending value, truncated."""
+    value_repr = repr(value)
+    if len(value_repr) > _MAX_VALUE_REPR:
+        value_repr = value_repr[:_MAX_VALUE_REPR] + "…"
+    return value_repr
+
 
 class ClearingErrorStore(ErrorStore):
     """Take over error processing."""
 
     def _clean_error_list(
         self,
-        key: str,
-        error_list: list[str],
+        key: Any,
+        error_list: Any,
         cleaned_errors: dict[Any, Any],
     ) -> None:
-        if cleaned_error_list := frozenset(error_list) - self._ignore_errors:
+        """Filter ignored messages out of one field's errors."""
+        if isinstance(error_list, Mapping):
+            # Nested schema and collection errors arrive keyed by sub field
+            # name or by index. Recurse so the leaf messages stay readable
+            # instead of collapsing to a set of their container's keys.
+            nested: dict[Any, Any] = {}
+            for sub_key, sub_error_list in error_list.items():
+                self._clean_error_list(sub_key, sub_error_list, nested)
+            if nested:
+                cleaned_errors[key] = nested
+            return
+        messages = error_list if isinstance(error_list, list | tuple) else [error_list]
+        # str() keeps the set hashable and sortable whatever marshmallow put
+        # in the list; ignored messages are plain strings and still match.
+        if cleaned_error_list := frozenset(str(m) for m in messages) - (
+            self._ignore_errors
+        ):
             cleaned_errors[key] = sorted(cleaned_error_list)
+
+    def _log_cleaned_errors(self, cleaned_errors: dict[Any, Any]) -> None:
+        """
+        Warn about the fields being dropped.
+
+        Clearing the error store is what lets one bad tag not condemn a whole
+        file, but dropping it silently makes malformed metadata indis-
+        tinguishable from absent metadata. Name every field, and what was in
+        it, so a silent drop is at least a visible one.
+        """
+        if not cleaned_errors:
+            return
+        data = self._data if isinstance(self._data, Mapping) else {}
+        reports = []
+        for key in sorted(cleaned_errors, key=str):
+            messages = cleaned_errors[key]
+            if key in data:
+                reports.append(f"{key}={_repr_value(data[key])} {messages}")
+            else:
+                reports.append(f"{key} {messages}")
+        path = f"{self._path}: " if self._path else ""
+        logger.warning(f"{path}Dropped invalid metadata: {', '.join(reports)}")
 
     def _clear_errors(self) -> None:
         if not self.errors:
@@ -40,14 +91,15 @@ class ClearingErrorStore(ErrorStore):
             for key, error_list in self.errors.items():
                 self._clean_error_list(key, error_list, cleaned_errors)
         else:
-            self._clean_error_list("UNKNOWN", self.errors, cleaned_errors)
+            self._clean_error_list(_UNKNOWN_KEY, self.errors, cleaned_errors)
+        self._log_cleaned_errors(cleaned_errors)
         self.clear_errors = merge_errors(self.clear_errors, cleaned_errors)
         self.errors = {}
 
     def __init__(
         self,
         error_store: ErrorStore,
-        data: Mapping[str, Any],
+        data: Any,
         path: str | None = None,
         ignore_errors: frozenset | None = None,
     ) -> None:
@@ -145,7 +197,7 @@ class ClearingErrorStoreSchema(Schema):
             error_store = ClearingErrorStore(
                 error_store, data, self._path, ignore_errors=self._ignore_errors
             )
-        super()._invoke_schema_validators(error_store=error_store, **kwargs)
+        super()._invoke_schema_validators(error_store=error_store, data=data, **kwargs)
 
     def _filter_list(self, error_list: list) -> list:
         return sorted(frozenset(error_list) - self._ignore_errors)

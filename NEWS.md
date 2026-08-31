@@ -86,6 +86,16 @@
     - A link to a database's front page no longer becomes an id for it.
     - Urls are recognized whatever the host's case, and with a port or login.
     - Notes urns are written only in a form the notes reader reads back.
+    - An XML tag that carries an attribute is read instead of being dropped.
+      Every XML field looked for the tag's text only after its value parser had
+      already failed on the whole tag, so a `<Series lang="en">` took the file's
+      entire metadata down with it.
+    - Two reprints that sort alike are combined instead of becoming one empty
+      entry. Any list that deduplicates was affected.
+    - Metadata that comicbox skips is named in a warning with the value it came
+      from. Malformed tags were dropped as silently as absent ones.
+    - Schema-wide validation hooks run. The first one added to any schema would
+      have failed on a bad call.
 
 - Features
     - Web urls in the Notes field are read into `urls`.
