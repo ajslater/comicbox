@@ -58,12 +58,34 @@ def _round_trip_metron_key(fmt: MetadataFormats) -> str | None:
 
 def test_create_identifier_round_trip_metron() -> None:
     """An identifier holds only the key; its url is derived on demand."""
-    identifier = create_identifier("metron", "super-series", id_type="series")
+    identifier = create_identifier(
+        "metron", "super-series", positional_id_type="series"
+    )
     assert identifier == {"key": "super-series"}
     url = get_identifier_url("metron", "series", identifier["key"])
     assert url == "https://metron.cloud/series/super-series"
     # The generated url parses back to the same source.
     assert get_id_source_from_url(url) == IdSources.METRON.value
+
+
+def test_create_identifier_records_a_type_the_string_named() -> None:
+    """
+    A type the identifier string states is kept; one implied by place is not.
+
+    The stored type is what decides which url the key builds, so it only
+    matters when it differs from the type of the field the id sits in.
+    """
+    assert create_identifier("metron", "5678", id_type="series") == {
+        "key": "5678",
+        "id_type": "series",
+    }
+    assert create_identifier("metron", "series:5678") == {
+        "key": "5678",
+        "id_type": "series",
+    }
+    assert create_identifier("metron", "series:5678", positional_id_type="series") == {
+        "key": "5678"
+    }
 
 
 def test_create_identifier_comicvine_normalizes_long_key() -> None:

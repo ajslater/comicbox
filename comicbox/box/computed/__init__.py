@@ -179,6 +179,13 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
             if not sub_md:
                 continue
 
+            if merger:
+                # Actions derive from each other: normalized keys build urls,
+                # and both are stamped into notes. Merge the delta into the
+                # snapshot so later actions see it. The copy keeps the stored
+                # delta from aliasing the snapshot a later action may change.
+                merger.merge(sub_data, deepcopy(sub_md))
+
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}
             computed_data = ComputedData(label, md, merger)
             computed_list.append(computed_data)

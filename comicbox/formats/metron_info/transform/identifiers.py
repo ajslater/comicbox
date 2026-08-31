@@ -114,7 +114,6 @@ def _identifier_to_cb(native_identifier: Any) -> tuple[str, dict]:
     identifier = create_identifier(
         id_source_str,
         id_key,
-        id_type="issue",
         default_id_source_str=DEFAULT_ID_SOURCE.value,
     )
     return id_source_str, identifier

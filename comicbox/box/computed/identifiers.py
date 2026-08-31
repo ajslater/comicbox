@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from types import MappingProxyType
 from typing import Any
 
-from comicbox.box.computed.issue import ComicboxComputedIssue
+from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.formats.comicbox.schema import (
     ARCS_KEY,
     CHARACTERS_KEY,
@@ -21,7 +21,7 @@ from comicbox.formats.comicbox.schema import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import (
     create_identifier,
     normalize_key,
@@ -54,7 +54,7 @@ _IRREGULAR_SINGULAR_ID_TYPES = MappingProxyType(
 _PARSE_AS_IDENTIFIERS = frozenset({TAGS_KEY, GENRES_KEY})
 
 
-class ComicboxComputedIdentifiers(ComicboxComputedIssue):
+class ComicboxComputedIdentifiers(ComicboxComputedNotes):
     """Comicbox computed identifiers."""
 
     @staticmethod
@@ -111,9 +111,19 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         for id_source_str, identifier in identifiers.items():
             if not (id_key := identifier.get(ID_KEY_KEY)):
                 continue
-            _, norm_id_key = normalize_key(id_source_str, id_type, id_key)
+            old_id_type = identifier.get(ID_TYPE_KEY) or id_type
+            norm_id_type, norm_id_key = normalize_key(
+                id_source_str, old_id_type, id_key
+            )
+            delta = {}
             if norm_id_key != id_key:
-                deltas[id_source_str] = {ID_KEY_KEY: norm_id_key}
+                delta[ID_KEY_KEY] = norm_id_key
+            if norm_id_type != old_id_type:
+                # The prefix in the key named a type. Keeping it is what
+                # decides which url the key builds.
+                delta[ID_TYPE_KEY] = norm_id_type
+            if delta:
+                deltas[id_source_str] = delta
         return deltas
 
     @classmethod
@@ -164,7 +174,7 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
             {
-                **ComicboxComputedIssue.COMPUTED_ACTIONS,
+                **ComicboxComputedNotes.COMPUTED_ACTIONS,
                 "from tags": (_get_computed_from_tags, AdditiveMerger),
                 "normalize identifier keys": (
                     _normalize_all_identifier_keys,

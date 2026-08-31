@@ -311,10 +311,16 @@ def create_identifier(
     id_key: str,
     *,
     id_type: str = "",
+    positional_id_type: str = DEFAULT_ID_TYPE,
     default_id_source_str: str = DEFAULT_ID_SOURCE.value,
 ) -> dict:
     """
     Create identifier dict from parts.
+
+    ``id_type`` is the type the identifier string itself named, if any.
+    ``positional_id_type`` is the type implied by where the identifier sits:
+    an id under ``series`` is a series id. The type is stored only when the
+    two disagree, because that is when it decides which url the key builds.
 
     Only the key is stored. A url for it is derived on demand with
     ``get_identifier_url``; keeping a synthesized copy inside the identifier
@@ -323,13 +329,14 @@ def create_identifier(
     identifier = {}
     if not id_source_str:
         id_source_str = default_id_source_str
-    positional_id_type = id_type or DEFAULT_ID_TYPE
     if id_key:
-        id_type, id_key = normalize_key(id_source_str, positional_id_type, id_key)
+        id_type, id_key = normalize_key(
+            id_source_str, id_type or positional_id_type, id_key
+        )
         if id_key:
             identifier[ID_KEY_KEY] = id_key
             if id_type != positional_id_type:
-                # A prefix in the key overrode where the identifier sits.
+                # The string named a type that isn't the one where it sits.
                 identifier[ID_TYPE_KEY] = id_type
     return identifier
 

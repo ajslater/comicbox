@@ -8,7 +8,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.merge import ComicboxMerge
+from comicbox.box.computed.url_identifiers import ComicboxComputedUrlIdentifiers
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP, get_id_source_by_alias
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.comicbox.schema import (
@@ -62,7 +62,7 @@ _NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
 _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
 
 
-class ComicboxComputedNotes(ComicboxMerge):
+class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
     """Computed metadata methods for notes field."""
 
     def _set_computed_notes_key(
@@ -238,10 +238,11 @@ class ComicboxComputedNotes(ComicboxMerge):
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
             {
+                **ComicboxComputedUrlIdentifiers.COMPUTED_ACTIONS,
                 "from notes": (
                     get_computed_from_notes,
                     AdditiveMerger,
-                )
+                ),
             }
         )
     )
