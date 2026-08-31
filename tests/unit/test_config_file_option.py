@@ -1,16 +1,18 @@
 """
 End-to-end tests for ``-c/--config``: an alternate config file must bite.
 
-Regression: ``-c`` parses to the ``general_config`` argparse dest, which
-``post_process_args`` folds into ``args.comicbox.general.config``.
+Regression: ``-c`` parsed to a flat ``general_config`` argparse dest,
+which a reshaping pass folded into ``args.comicbox.general.config``.
 ``read_config_sources`` read ``args.comicbox.config`` — one level too
 shallow — inside a blanket ``contextlib.suppress(AttributeError,
 KeyError)``. The lookup raised, the suppress swallowed it, and every
 ``-c`` run silently used the built-in defaults. Nothing warned, and no
 test compared behavior with and without the flag.
 
-These tests assert on *resulting settings*, not on the key path, so they
-stay honest if the args reshaping moves again.
+The dest is now ``general.config`` — the template path itself — and
+``test_cli_dest_template_drift`` proves every dest resolves in the
+template. These tests assert on *resulting settings*, not on the key
+path, so they stay honest wherever the args shape goes next.
 """
 
 from __future__ import annotations

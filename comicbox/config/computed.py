@@ -1,14 +1,31 @@
 """Compute values for config before template load."""
 
+import contextlib
 from functools import cache
+from types import MappingProxyType
+from typing import Any
 
-from confuse import Subview
+from confuse import NotFoundError, Subview
 from loguru import logger
 
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
 from comicbox.print import PrintPhases
 from comicbox.version import DEFAULT_TAGGER
+
+_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
+
+
+def _optional(view: Subview) -> Any:
+    """
+    Return the view's value, or None when the key is absent.
+
+    The CLI shorthand flags folded here (``-Q``, ``-p``, ``-v``) have no
+    template keys of their own, so they're only present when passed.
+    """
+    with contextlib.suppress(NotFoundError):
+        return view.get()
+    return None
 
 
 @cache
@@ -42,14 +59,30 @@ def _deduplicate_delete_keys(config: Subview) -> None:
     config["general"]["delete_keys"].set(delete_keys)
 
 
+def _fold_quiet(config: Subview) -> None:
+    """
+    Fold ``-Q`` counts into a loglevel.
+
+    ``-Q`` has no config key of its own; it's shorthand for
+    ``general.loglevel``, and the count picks how quiet.
+    """
+    if quiet := _optional(config["general"]["quiet"]):
+        config["general"]["loglevel"].set(_QUIET_LOGLEVEL.get(quiet, "CRITICAL"))
+
+
 def _parse_print(config: Subview) -> None:
     raw = _raw_or_empty(config["print"]["phases"])
-    if not raw:
-        config["print"]["phases"].set(frozenset())
-        return
     # Accept a string ("snmcp") or any iterable of strings (["s", "n", ...])
     # — concatenate into a single phase-char string.
     chars = raw if isinstance(raw, str) else "".join(str(p) for p in raw)
+    # -v and -p are shorthands for their phase chars.
+    if _optional(config["print"]["version"]):
+        chars += "v"
+    if _optional(config["print"]["metadata"]):
+        chars += "p"
+    if not chars:
+        config["print"]["phases"].set(frozenset())
+        return
     enum_print_phases: set[PrintPhases] = set()
     for phase in chars.lower():
         try:
@@ -90,6 +123,7 @@ def _set_computed(config: Subview) -> None:
 def compute_config(config_program: Subview) -> None:
     """Compute values for config before template load."""
     clean_paths(config_program)
+    _fold_quiet(config_program)
     _ensure_cli_yaml(config_program)
     _deduplicate_delete_keys(config_program)
     transform_keys_to_formats(config_program)

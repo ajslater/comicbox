@@ -24,7 +24,7 @@ Display rules:
 - Top 9 candidates max.
 - `cover_score` shown in parens after `score` when hashing was invoked.
 - Trims the auxiliary lines when the run asked for less output.
-  `-Q` has no setting of its own — the CLI folds it into
+  `-Q` has no setting of its own — `compute_config` folds it into
   `general.loglevel` — so that resolved level is what's read.
 
 Session options (nested under `o`) let the user switch the rest of
@@ -201,8 +201,8 @@ def _resolve_terse(settings: ComicboxSettings) -> bool:
     """
     Trim the per-candidate detail lines when the run asked for less output.
 
-    `-Q/--quiet` has no setting of its own: `comicbox.cli` folds it into
-    `general.loglevel`, so that resolved level is the only record of it.
+    `-Q/--quiet` has no setting of its own: `comicbox.config.computed`
+    folds it into `general.loglevel`, so that level is the only record of it.
     Anything above the INFO default trims — `-QQ` and up, or a
     `loglevel` above INFO in the config file. A single `-Q` maps to
     INFO, which is already the default, so it changes nothing here

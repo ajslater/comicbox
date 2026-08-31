@@ -778,7 +778,7 @@ def test_real_config_single_quiet_changes_nothing() -> None:
     """
     Documents `-Q`'s no-op first level.
 
-    `comicbox.cli._QUIET_LOGLEVEL` maps one `-Q` to INFO, which is
+    `comicbox.config.computed._QUIET_LOGLEVEL` maps one `-Q` to INFO, which is
     already `config_default.yaml`'s level, so a single `-Q` neither
     quiets the log nor trims the prompt. Two Qs is where it starts.
     """

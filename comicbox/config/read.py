@@ -10,15 +10,19 @@ from loguru import logger
 
 def _config_path(args: Namespace | Mapping) -> str | Path | None:
     """
-    Pull ``comicbox.general.config`` out of either args shape.
+    Pull ``comicbox.general.config`` out of any args shape.
 
-    ``-c/--config`` parses to the ``general_config`` dest, which
-    ``post_process_args`` folds into ``args.comicbox.general.config``.
-    Look it up explicitly: a blanket ``suppress(AttributeError)`` here
-    is what let the key path drift out of sync silently.
+    This runs before ``set_args``, so it reads raw args rather than the
+    config tree and has to know all three shapes: the CLI's dotted dest
+    (``-c`` parses straight to ``general.config``), a library caller's
+    nested Namespace, and a Mapping. Look each up explicitly: a blanket
+    ``suppress(AttributeError)`` here is what let the key path drift out
+    of sync silently.
     """
     if isinstance(args, Namespace):
         comicbox = getattr(args, "comicbox", None)
+        if dotted := getattr(comicbox, "general.config", None):
+            return dotted
         general = getattr(comicbox, "general", None)
         return getattr(general, "config", None)
     comicbox = args.get("comicbox")
@@ -62,4 +66,5 @@ def read_config_sources(
         if isinstance(args, Mapping):
             config.set(args)
         elif isinstance(args, Namespace):  # pyright: ignore[reportUnnecessaryIsInstance]
-            config.set_args(args)
+            # dots=True splits the CLI's dotted dests into the config tree.
+            config.set_args(args, dots=True)
