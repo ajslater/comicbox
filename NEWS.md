@@ -53,6 +53,14 @@
       since reprint consolidation stopped diffing pairs of reprints. Anything
       that got it transitively through comicbox has to depend on it directly.
 
+- Performance
+    - Converting a CB7 reads its pages in batches instead of one at a time.
+      Every 7z read decompressed the archive's solid block from the start, so
+      conversion cost grew with the square of the page count, and py7zr's page
+      buffers were held until the file was closed. A 200 page, 117 MiB CB7
+      converts in 6.2s instead of 232s, with 318 MiB peak RSS instead of 1.9
+      GiB. Output is unchanged.
+
 - Fixes
     - Reading a comic no longer fails when two reprints tie on every sort key up
       to one that only one of them has. A reprint carrying a `volume` with an
