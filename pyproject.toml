@@ -36,7 +36,6 @@ dependencies = [
   "simplejson~=4.0",
   "simyan>=3.1.0,<4",
   "typing-extensions~=4.13",
-  "urnparse~=0.2",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
   "zipremove~=0.1",

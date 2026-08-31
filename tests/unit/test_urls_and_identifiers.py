@@ -108,4 +108,4 @@ def test_notes_stamp_sees_a_url_derived_identifier() -> None:
             MetadataFormats.COMICBOX_YAML,
         )
         notes = car.to_dict().get("comicbox", {}).get("notes") or ""
-    assert f"urn:comicvine:issue:{_CV_KEY}" in notes
+    assert f"urn:comicvine:{_CV_KEY}" in notes

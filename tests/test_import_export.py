@@ -191,7 +191,7 @@ FNS = MappingProxyType(
             "notes": (
                 "Tagged with comicbox dev on "
                 "1970-01-01T00:00:00Z [Issue ID 145269] "
-                "[CVDB145269] urn:comicvine:issue:145269"
+                "[CVDB145269] urn:comicvine:145269"
             ),
             "page_count": 0,
             "pages": {

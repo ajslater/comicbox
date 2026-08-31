@@ -348,13 +348,75 @@ def test_parse_string_identifier_uses_default_source_for_bare_key() -> None:
     )
 
 
-def test_to_urn_string_round_trip_and_dotted_source_rejected() -> None:
-    """to_urn_string composes a urn that parses back; dotted sources abort."""
+def test_to_urn_string_round_trip_omits_the_default_type() -> None:
+    """An issue urn carries no type segment and parses back as an issue."""
     urn = to_urn_string("comicvine", "issue", "45722")
-    assert urn == "urn:comicvine:issue:45722"
+    assert urn == "urn:comicvine:45722"
     assert parse_urn_identifier(urn) == (IdSources.COMICVINE, "issue", "45722")
-    # Domain-like source strings cannot be urn nids.
+    # An unstated type means the default type too.
+    assert to_urn_string("comicvine", "", "45722") == urn
+
+
+def test_to_urn_string_writes_an_overriding_type() -> None:
+    """A type that isn't the default is named, so it survives the round trip."""
+    urn = to_urn_string("metron", "series", "178012")
+    assert urn == "urn:metron:series:178012"
+    assert parse_urn_identifier(urn) == (IdSources.METRON, "series", "178012")
+
+
+def test_to_urn_string_refuses_parts_that_cannot_make_a_urn() -> None:
+    """
+    Unusable parts yield no urn instead of raising.
+
+    The notes stamp composes urns from hand written identifier sources, so a
+    source that is not a legal urn namespace must not abort the whole read.
+    """
     assert to_urn_string("weird.dotted", "issue", "1") == ""
+    assert to_urn_string("my_db", "issue", "abc") == ""
+    assert to_urn_string("x", "issue", "1") == ""
+    assert to_urn_string("metron", "issue", "abc def") == ""
+    assert to_urn_string("metron", "issue", "") == ""
+    # A type comicbox doesn't know would read back as an issue id.
+    assert to_urn_string("metron", "map", "1") == ""
+
+
+def test_parse_urn_identifier_scheme_and_type_are_case_insensitive() -> None:
+    """RFC 8141 makes the scheme case insensitive, and comicbox the type."""
+    expected = (IdSources.COMICVINE, "issue", "145269")
+    assert parse_urn_identifier("URN:comicvine:145269") == expected
+    assert parse_urn_identifier("urn:Comicvine:Issue:145269") == expected
+
+
+def test_parse_urn_identifier_rejects_a_near_urn() -> None:
+    """A string that merely starts with urn is not a urn."""
+    assert parse_urn_identifier("urnfoo:bar:baz") == (None, "", "")
+
+
+def test_parse_urn_identifier_keeps_every_segment_of_the_key() -> None:
+    """A key with colons in it stays whole instead of losing its head."""
+    assert parse_urn_identifier("urn:metron:series:a:b") == (
+        IdSources.METRON,
+        "series",
+        "a:b",
+    )
+
+
+def test_parse_urn_identifier_unknown_type_is_part_of_the_key() -> None:
+    """An unrecognized first segment is key data, not a type to discard."""
+    assert parse_urn_identifier("urn:comicvine:notatype:145269") == (
+        IdSources.COMICVINE,
+        "issue",
+        "notatype:145269",
+    )
+
+
+def test_parse_urn_identifier_decodes_percent_encoded_keys() -> None:
+    """Keys another tagger percent encoded still arrive decoded."""
+    assert parse_urn_identifier("urn:metron:100%25") == (
+        IdSources.METRON,
+        "issue",
+        "100%",
+    )
 
 
 ########################

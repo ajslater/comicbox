@@ -28,7 +28,7 @@ from comicbox.identifiers.identifiers import (
     create_identifier,
 )
 from comicbox.identifiers.urns import (
-    parse_urn_identifier_and_warn,
+    parse_urn_identifier,
 )
 from comicbox.merge import AdditiveMerger, Merger
 
@@ -103,7 +103,7 @@ class ComicboxComputedNotes(ComicboxMerge):
         identifiers = {}
         for match in _URN_RE.finditer(notes):
             urn = match.group("urn")
-            id_source, id_type, id_key = parse_urn_identifier_and_warn(urn)
+            id_source, id_type, id_key = parse_urn_identifier(urn)
             if id_source and id_key:
                 identifier = create_identifier(id_source.value, id_key, id_type=id_type)
                 identifiers[id_source.value] = identifier
