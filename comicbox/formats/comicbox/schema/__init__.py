@@ -133,7 +133,6 @@ VOLUME_COUNT_KEY = "volume_count"
 VOLUME_ISSUE_COUNT_KEY = "issue_count"
 VOLUME_NUMBER_KEY = "number"
 VOLUME_NUMBER_TO_KEY = "number_to"
-WEB_KEY = "web"
 YEAR_KEY = "year"
 
 

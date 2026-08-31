@@ -180,6 +180,21 @@ def test_compute_all_urns_from_notes() -> None:
     assert_diff(MULTI_URN_NOTES_MD, md)
 
 
+PUNCTUATED_URN_NOTES_YAML = """
+comicbox:
+  notes: "Read urn:metron:issue:2002, then the next one."
+"""
+
+
+def test_compute_urn_in_a_sentence_keeps_its_punctuation_out() -> None:
+    """A urn ends with its key, not at the next space."""
+    with Comicbox() as car:
+        car.add_metadata(PUNCTUATED_URN_NOTES_YAML, MetadataFormats.COMICBOX_YAML)
+        md = car.get_internal_metadata()
+    identifiers = md[ComicboxSchemaMixin.ROOT_TAG]["identifiers"]
+    assert identifiers["metron"]["key"] == "2002"
+
+
 SOURCE_TYPE_KEY_TAG_XML = (
     '<?xml version="1.0"?><ComicInfo>'
     "<Tags>leagueofcomicgeeks:series:178012</Tags>"

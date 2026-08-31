@@ -218,6 +218,38 @@ def test_get_identifier_url_unknown_source_or_type_is_empty() -> None:
     assert get_identifier_url("comicvine", "bogus_type", "12345") == ""
 
 
+def test_get_identifier_url_type_is_never_read_off_the_dataclass() -> None:
+    """
+    A type naming a dataclass member is not a slug.
+
+    id_type is unvalidated text, so fetching it as an attribute let
+    "id_type: map" put the repr of the whole slug map inside a url.
+    """
+    assert get_identifier_url("metron", "map", "1") == ""
+    assert get_identifier_url("metron", "default_slug_type", "1") == ""
+
+
+def test_unrecognized_comicvine_type_code_reads_as_an_issue() -> None:
+    """
+    A url whose type code we don't know is most likely an issue's.
+
+    Falling back to whichever type was declared first made every one of
+    them an arc.
+    """
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE]
+    assert id_parts.parse_url_path("https://comicvine.gamespot.com/foo/4099-123/") == (
+        "issue",
+        "123",
+    )
+
+
+def test_kitsu_urls_resolve_to_kitsu() -> None:
+    """The kitsu domain alias was misspelled, so its urls named no source."""
+    assert get_id_source_from_url("https://kitsu.app/manga/bleach") == (
+        IdSources.KITSU.value
+    )
+
+
 def test_get_identifier_url_colon_in_key_is_empty() -> None:
     """A key with an unrecognized prefix yields no url rather than a bad one."""
     assert get_identifier_url("metron", "issue", "comicvine:issue:1") == ""
@@ -340,6 +372,25 @@ def test_parse_identifier_other_str_garbage_falls_back_to_key() -> None:
         "garbage with spaces",
     )
     assert parse_identifier_other_str("") == (None, "", "")
+
+
+def test_parse_identifier_other_str_ordinary_words_are_not_identifiers() -> None:
+    """
+    A string that merely contains something id shaped is not an id.
+
+    Tags and genres are run through this parser, so a substring match minted
+    ids for databases that never heard of the book: "marvel-comics" was a
+    marvel id of "-comics", and a year range was a comicvine issue.
+    """
+    for text in (
+        "marvel-comics",
+        "comixology-unlimited",
+        "gtin-14",
+        "2019-2021",
+        "collected 4001-2 things",
+        "Basingstoke Comics",
+    ):
+        assert parse_identifier_other_str(text) == (None, "", text)
 
 
 ##########################################

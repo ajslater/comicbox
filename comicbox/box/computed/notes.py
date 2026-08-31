@@ -11,6 +11,7 @@ from loguru import logger
 from comicbox.box.computed.url_identifiers import ComicboxComputedUrlIdentifiers
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP, get_id_source_by_alias
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
@@ -23,7 +24,7 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSubSchema
-from comicbox.identifiers import IDENTIFIER_RE_EXP
+from comicbox.identifiers import IDENTIFIER_RE_EXP, match_id_source_str
 from comicbox.identifiers.identifiers import (
     create_identifier,
 )
@@ -52,14 +53,19 @@ _NOTES_RE_EXP = (
     + r"?"
 )
 _NOTES_RE = re.compile(_NOTES_RE_EXP, flags=re.IGNORECASE)
-_URN_RE_EXP = r"(?P<urn>urn:\S{2,}:\S{2,})"
-_URN_RE = re.compile(_URN_RE_EXP)
+# Notes are prose. A urn ends where its key ends, not at the next space, so
+# the comma or period after it in a sentence isn't read as part of the key.
+_URN_RE_EXP = r"(?P<urn>urn:[A-Za-z0-9][A-Za-z0-9-]{0,30}:[\w%.:-]*[\w%])"
+_URN_RE = re.compile(_URN_RE_EXP, flags=re.IGNORECASE)
 _NOTES_IDENTIFIER_EXTRA_EXP = r"\[" + IDENTIFIER_RE_EXP + r"\]"
 _NOTES_IDENTIFIER_EXTRA_RE = re.compile(
     _NOTES_IDENTIFIER_EXTRA_EXP, flags=re.IGNORECASE
 )
 _NOTES_KEYS = (TAGGER_KEY, UPDATED_AT_KEY)
 _NOTES_RELDATE_RE = re.compile(r"\[RELDATE:(?P<reldate>\S+)\]")
+# Field instances are stateless parsers; one of each is enough.
+_DATE_FIELD = DateField()
+_DATETIME_FIELD = DateTimeField()
 
 
 class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
@@ -72,7 +78,7 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
         match: re.Match[str],
         md: dict[str, Any],
     ) -> None:
-        schema = ComicboxYamlSubSchema(path=self._path)
+        schema = get_schema(ComicboxYamlSubSchema, path=self._path)
         if not sub_data.get(key) and (new_value := match.group(key)):
             field = schema.fields.get(key)
             if not field:
@@ -117,7 +123,7 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
             return identifiers
         for match in matches:
             if (
-                (id_source_str := match.group("id_source"))
+                (id_source_str := match_id_source_str(match))
                 and (id_source := get_id_source_by_alias(id_source_str))
                 and (id_key := match.group("id_key"))
                 and (
@@ -163,7 +169,7 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
             return None
         date_str = match.group("reldate")
         try:
-            return DateField()._deserialize(date_str)  # noqa: SLF001
+            return _DATE_FIELD._deserialize(date_str)  # noqa: SLF001
         except Exception:
             logger.debug(f"Unparsable RELDATE {date_str}")
         return None
@@ -214,7 +220,7 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
         if not match_group:
             return
         dttm_str = match_group.strip()
-        updated_at = DateTimeField()._deserialize(dttm_str)  # noqa: SLF001
+        updated_at = _DATETIME_FIELD._deserialize(dttm_str)  # noqa: SLF001
         sub_md[UPDATED_AT_KEY] = updated_at
 
     def get_computed_from_notes(self, sub_data: dict[str, Any]) -> dict | None:

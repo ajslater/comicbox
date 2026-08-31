@@ -17,6 +17,9 @@ from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.urns import to_urn_string
 from comicbox.merge import ReplaceMerger
 
+# A field instance is a stateless serializer; one is enough.
+_DATETIME_FIELD = DateTimeField()
+
 
 class ComicboxComputedStamp(ComicboxComputedPages):
     """Comicbox Computed tagger, updated_at and notes stamps."""
@@ -30,7 +33,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if (
             sub_data
             and (updated_at := sub_data.get(UPDATED_AT_KEY))
-            and (ts := DateTimeField()._serialize(updated_at))  # noqa: SLF001
+            and (ts := _DATETIME_FIELD._serialize(updated_at))  # noqa: SLF001
         ):
             notes += f" on {ts}"
 
