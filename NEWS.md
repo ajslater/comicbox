@@ -50,6 +50,14 @@
       config's `write.merge_mode` instead of forcing `additive`. The `WriteMode`
       enum is now `MergeMode`.
 
+- Performance
+    - Converting a CB7 reads its pages in batches instead of one at a time.
+      Every 7z read decompressed the archive's solid block from the start, so
+      conversion cost grew with the square of the page count, and py7zr's page
+      buffers were held until the file was closed. A 200 page, 117 MiB CB7
+      converts in 6.2s instead of 232s, with 318 MiB peak RSS instead of 1.9
+      GiB. Output is unchanged.
+
 - Fixes
     - A comic that can't be read no longer ends the batch. Every dispatch path —
       serial, `--recurse` and `-j N` — now logs the file and keeps going.

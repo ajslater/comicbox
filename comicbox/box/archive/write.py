@@ -137,28 +137,32 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
             raise ArchiveWriteError(reason)
-        infolist = self.infolist()
-        for info in infolist:
-            filename = self._get_filename_from_info(info)
-            if not filename:
-                continue
-            # Default pdf pages to whole-page jpegs: comic readers (and
-            # comicbox's own page regex) don't recognize raw pixmap ppm
-            # data, and the page render applies pdf display rotation.
-            pdf_format = self._get_pdf_format(default=PAGE_FORMAT_PIXMAP_JPEG)
+        filenames = tuple(
+            filename
+            for info in self.infolist()
+            if (filename := self._get_filename_from_info(info))
+        )
+        # Default pdf pages to whole-page jpegs: comic readers (and
+        # comicbox's own page regex) don't recognize raw pixmap ppm
+        # data, and the page render applies pdf display rotation.
+        pdf_format = self._get_pdf_format(default=PAGE_FORMAT_PIXMAP_JPEG)
+        # Read in batches. Reading a 7z member on its own re-decompresses
+        # its whole solid block, so copying page by page made conversion
+        # cost grow with the square of the page count.
+        for filename in self._iter_prefetched(filenames):
             props = {}
             data = self._archive_readfile(filename, pdf_format=pdf_format, props=props)
-            filename = self._ensure_image_suffix(filename, props)
+            write_name = self._ensure_image_suffix(filename, props)
             # images usually end up slightly larger with zip compression,
             # so store them. Decide from the final name — pdf pages only
             # gain their image suffix above.
             compress = (
                 ZIP_DEFLATED
-                if self.IMAGE_EXT_RE.search(filename) is None
+                if self.IMAGE_EXT_RE.search(write_name) is None
                 else ZIP_STORED
             )
             zf.writestr(
-                filename,
+                write_name,
                 data,
                 compress_type=compress,
                 compresslevel=9,
