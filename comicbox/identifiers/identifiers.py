@@ -15,8 +15,8 @@ from comicbox.identifiers import (
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     ID_KEY_KEY,
+    ID_TYPE_KEY,
     ID_TYPE_NAMES,
-    ID_URL_KEY,
     PARSE_COMICVINE_RE,
 )
 
@@ -311,23 +311,26 @@ def create_identifier(
     id_key: str,
     *,
     id_type: str = "",
-    url: str = "",
     default_id_source_str: str = DEFAULT_ID_SOURCE.value,
 ) -> dict:
-    """Create identifier dict from parts."""
+    """
+    Create identifier dict from parts.
+
+    Only the key is stored. A url for it is derived on demand with
+    ``get_identifier_url``; keeping a synthesized copy inside the identifier
+    let the two disagree and made a guessed url look like source data.
+    """
     identifier = {}
     if not id_source_str:
         id_source_str = default_id_source_str
-    if not id_type:
-        id_type = DEFAULT_ID_TYPE
+    positional_id_type = id_type or DEFAULT_ID_TYPE
     if id_key:
-        id_type, id_key = normalize_key(id_source_str, id_type, id_key)
+        id_type, id_key = normalize_key(id_source_str, positional_id_type, id_key)
         if id_key:
             identifier[ID_KEY_KEY] = id_key
-    if not url:
-        url = get_identifier_url(id_source_str, id_type, id_key)
-    if url:
-        identifier[ID_URL_KEY] = url
+            if id_type != positional_id_type:
+                # A prefix in the key overrode where the identifier sits.
+                identifier[ID_TYPE_KEY] = id_type
     return identifier
 
 

@@ -5,8 +5,6 @@
 	<Number>1</Number>
 	<Count>7</Count>
 	<Volume>1950</Volume>
-	<AlternateSeries>Captain Science Alternate</AlternateSeries>
-	<AlternateNumber>001</AlternateNumber>
 	<Notes>Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269]</Notes>
 	<Year>1950</Year>
 	<Month>11</Month>
@@ -20,8 +18,8 @@
 	<PageCount>0</PageCount>
 	<LanguageISO>en</LanguageISO>
 	<Characters>Captain Science,Gordon Dane</Characters>
-	<StoryArc>Captain Arc,Other Arc</StoryArc>
-	<StoryArcNumber>4,2</StoryArcNumber>
+	<StoryArc>Captain Arc,Other Arc,Captain Science Alternate</StoryArc>
+	<StoryArcNumber>4,2,1</StoryArcNumber>
 	<AgeRating>Teen</AgeRating>
 	<Pages>
 		<Page Image="0" ImageSize="4542" Type="FrontCover"/>
@@ -30,5 +28,4 @@
 		<Page Image="3" ImageSize="4157"/>
 		<Page Image="4" ImageSize="4108"/>
 	</Pages>
-	<GTIN>urn:comicvine:issue:145269</GTIN>
 </ComicInfo>

@@ -39,9 +39,9 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "imprint": {"name": "TestImprint"},
             "notes": YAML_NOTES,
             "publisher": {"name": "TestPub"},
@@ -68,7 +68,6 @@ READ_YAML_DICT = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "imprint": {"name": "TestImprint"},
@@ -89,6 +88,7 @@ READ_YAML_DICT = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DATETIME,
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
         }
     }
 )

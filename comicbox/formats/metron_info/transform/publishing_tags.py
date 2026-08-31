@@ -12,12 +12,11 @@ from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     IMPRINT_KEY,
     LANGUAGE_KEY,
+    MANGA_VOLUME_KEY,
     NAME_KEY,
     NUMBER_KEY,
-    NUMBER_TO_KEY,
     ORIGINAL_FORMAT_KEY,
     PUBLISHER_KEY,
-    REPRINTS_KEY,
     SERIES_KEY,
     SERIES_SORT_NAME_KEY,
     SERIES_START_YEAR_KEY,
@@ -25,10 +24,8 @@ from comicbox.formats.comicbox.schema import (
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
     VOLUME_NUMBER_KEY,
-    VOLUME_NUMBER_TO_KEY,
 )
 from comicbox.formats.metron_info.schema import (
-    ALTERNATIVE_NAMES_TAGPATH,
     IMPRINT_TAG,
     LANG_ATTR,
     MANGA_VOLUME_TAG,
@@ -180,32 +177,6 @@ METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB = MetaSpec(
 )
 
 
-def _alternative_names_from_cb(
-    comicbox_reprints: list[dict[str, Any]],
-) -> list | None:
-    alt_names = []
-    if not comicbox_reprints:
-        return alt_names
-    for reprint in comicbox_reprints:
-        if reprint_series := reprint.get(SERIES_KEY):
-            alt_name = {}
-            if series_name := reprint_series.get(NAME_KEY):
-                alt_name["#text"] = series_name
-            if series_lang := reprint.get(LANGUAGE_KEY):
-                alt_name[LANG_ATTR] = series_lang
-            if alt_name:
-                alt_names.append(alt_name)
-    if not alt_names:
-        alt_names = None
-    return alt_names
-
-
-METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={ALTERNATIVE_NAMES_TAGPATH: REPRINTS_KEY},
-    spec=_alternative_names_from_cb,
-)
-
-
 def _volume_to_cb(values: dict[str, Any]) -> dict | None:
     volume = {}
     metron_volume = values.get(VOLUME_TAGPATH)
@@ -213,37 +184,24 @@ def _volume_to_cb(values: dict[str, Any]) -> dict | None:
         volume[NUMBER_KEY] = metron_volume
     if issue_count := values.get(ISSUE_COUNT_TAGPATH):
         volume[VOLUME_ISSUE_COUNT_KEY] = issue_count
-
-    if (metron_manga_volume := values.get(MANGA_VOLUME_TAG, "")) and (
-        parts := metron_manga_volume.split("-")
-    ):
-        if NUMBER_KEY not in volume:
-            volume[VOLUME_NUMBER_KEY] = parts[0]
-        if len(parts) > 1:
-            volume[VOLUME_NUMBER_TO_KEY] = parts[1]
     if not volume:
         volume = None
     return volume
 
 
 METRON_VOLUME_TRANSFORM_TO_CB = MetaSpec(
-    key_map={VOLUME_KEY: (VOLUME_TAGPATH, ISSUE_COUNT_TAGPATH, MANGA_VOLUME_TAG)},
+    key_map={VOLUME_KEY: (VOLUME_TAGPATH, ISSUE_COUNT_TAGPATH)},
     spec=_volume_to_cb,
 )
 
-
-def _manga_volume_from_cb(comicbox_volume: dict[str, int]) -> str:
-    parts = []
-    from_vol = comicbox_volume.get(NUMBER_KEY)
-    if from_vol is not None:
-        parts.append(str(from_vol))
-    to_vol = comicbox_volume.get(NUMBER_TO_KEY)
-    if to_vol is not None:
-        parts.append(str(to_vol))
-    return "-".join(parts)
-
-
+# MangaVolume is a free string in the MetronInfo schema, so comicbox stores it
+# as one. It used to be split into volume.number and volume.number_to, and
+# then rebuilt from them on every write — which stamped a MangaVolume onto
+# western comics that never had one. It is now written only from the value a
+# file actually supplied.
+METRON_MANGA_VOLUME_TRANSFORM_TO_CB = MetaSpec(
+    key_map={MANGA_VOLUME_KEY: MANGA_VOLUME_TAG}
+)
 METRON_MANGA_VOLUME_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={"MangaVolume": VOLUME_KEY},
-    spec=_manga_volume_from_cb,
+    key_map={MANGA_VOLUME_TAG: MANGA_VOLUME_KEY}
 )

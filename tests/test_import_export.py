@@ -38,9 +38,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -53,7 +53,11 @@ FNS = MappingProxyType(
             "publisher": {"name": "Bell Features"},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "issue": "001",
+                    "series": {"name": "Captain Science Alternate"},
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},
@@ -64,10 +68,9 @@ FNS = MappingProxyType(
         },
         "comic-book-info.json": {
             "credits": {
-                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Joe Orlando": {"roles": {"Writer": {"primary": True}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -92,12 +95,11 @@ FNS = MappingProxyType(
             "country": "US",
             "credits": {
                 "Gibbons, Dave": {"roles": {"Artist": {}, "Letterer": {}}},
-                "Gibbons, John": {"roles": {"Colorer": {}}},
+                "Gibbons, John": {"roles": {"Colorist": {}}},
                 "Kesel, Barbara": {"roles": {"Editor": {}}},
-                "Moore, Alan": {"roles": {"Writer": {}}},
+                "Moore, Alan": {"roles": {"Writer": {"primary": True}}},
                 "Wein, Len": {"roles": {"Editor": {}}},
             },
-            "credit_primaries": {"Writer": "Moore, Alan"},
             "genres": {"Superhero": {}},
             "issue": {
                 "name": "1",
@@ -148,9 +150,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -182,9 +184,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "imprint": {"name": "TestImprint"},
             "notes": (
                 "Tagged with comicbox dev on "
@@ -207,7 +209,11 @@ FNS = MappingProxyType(
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -223,9 +229,9 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -245,9 +251,6 @@ FNS = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
@@ -256,7 +259,11 @@ FNS = MappingProxyType(
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicinfo-metron-origin.xml": {
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
                 "Joe Orlando": {"roles": {"Writer": {}}},
@@ -272,13 +279,15 @@ FNS = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "metron": {
                     "key": "99999",
-                    "url": "https://metron.cloud/issue/99999",
                 },
             },
+            "urls": [
+                "https://metron.cloud/issue/99999",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -298,9 +307,6 @@ FNS = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "stories": {"The Beginning": {}},
             "tagger": "Comictagger",
@@ -314,7 +320,10 @@ FNS = MappingProxyType(
                 "name": "2",
                 "number": Decimal(2),
             },
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+            },
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "collection_title": "Omnibus",
             "community_rating": {
@@ -332,30 +341,30 @@ FNS = MappingProxyType(
                 "month": 11,
             },
             "genres": {"Science Fiction": {}},
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
+            "manga_volume": "1950-1952",
             "imprint": {
                 "identifiers": {
                     "metron": {
                         "key": "222",
-                        "url": "https://metron.cloud/imprint/222",
                     }
                 },
                 "name": "Youthful Imprint",
@@ -376,20 +385,26 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "11",
-                        "url": "https://metron.cloud/publisher/11",
                     }
                 },
                 "name": "Youthful Adventure Stories",
             },
             "reprints": [
-                {"language": "es", "series": {"name": "Capitán Ciencia"}},
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
+                {"name": "Capitán Ciencia", "series": {"name": "Capitán Ciencia"}},
+                {
+                    "name": "Captain Science Alternate #001",
+                    "issue": "001",
+                    "series": {"name": "Captain Science Alternate"},
+                },
             ],
             "series": {
+                "alternative_names": [
+                    {"name": "Captain Science Alternate"},
+                    {"language": "es", "name": "Capitán Ciencia"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "2222",
-                        "url": "https://metron.cloud/series/2222",
                     }
                 },
                 "name": "Captain Science",
@@ -422,7 +437,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "78945",
-                            "url": "https://metron.cloud/arc/78945",
                         }
                     },
                     "number": 1,
@@ -434,7 +448,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "45678",
-                            "url": "https://metron.cloud/character/45678",
                         }
                     }
                 },
@@ -459,7 +472,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "32165",
-                            "url": "https://metron.cloud/creator/32165",
                         }
                     },
                     "roles": {
@@ -467,7 +479,6 @@ FNS = MappingProxyType(
                             "identifiers": {
                                 "metron": {
                                     "key": "32165",
-                                    "url": "https://metron.cloud/creator/32165",
                                 }
                             }
                         }
@@ -497,39 +508,39 @@ FNS = MappingProxyType(
                     }
                 },
             },
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
-                "bar.foo": {"url": "https://bar.foo"},
                 "comicvine": {
                     "key": "290431",
-                    "url": "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
                 },
-                "foo.bar": {"url": "https://foo.bar"},
                 "grandcomicsdatabase": {
                     "key": "543",
-                    "url": "https://comics.org/issue/543/",
                 },
                 "isbn": {
                     "key": "1234567890123",
-                    "url": "https://isbndb.com/book/1234567890123",
                 },
                 "metron": {
                     "key": "290431",
-                    "url": "https://metron.cloud/issue/290431",
                 },
                 "upc": {
                     "key": "76194130593600111",
-                    "url": "https://barcodelookup.com/76194130593600111",
                 },
             },
+            "urls": [
+                "https://bar.foo",
+                "https://barcodelookup.com/76194130593600111",
+                "https://comics.org/issue/543/",
+                "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
+                "https://foo.bar",
+                "https://isbndb.com/book/1234567890123",
+                "https://metron.cloud/issue/290431",
+                "https://comicvine.gamespot.com/c/4000-290431/",
+            ],
+            "manga_volume": "2",
             "imprint": {
                 "identifiers": {
                     "metron": {
                         "key": "1234",
-                        "url": "https://metron.cloud/imprint/1234",
                     }
                 },
                 "name": "Vertigo",
@@ -557,13 +568,12 @@ FNS = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "12345",
-                        "url": "https://metron.cloud/publisher/12345",
                     }
                 },
                 "name": "DC Comics",
             },
             "reprints": [
-                {"series": {"name": "Foo"}},
+                {"name": "Foo", "series": {"name": "Foo"}},
                 {
                     "identifiers": {
                         "metron": {
@@ -571,16 +581,24 @@ FNS = MappingProxyType(
                         }
                     },
                     "issue": "001",
+                    "name": "Foo Bar #001",
                     "series": {"name": "Foo Bar"},
                 },
-                {"issue": "002", "series": {"name": "Foo Bar"}},
-                {"language": "de", "series": {"name": "Hüsker Dü"}},
+                {
+                    "issue": "002",
+                    "name": "Foo Bar #002",
+                    "series": {"name": "Foo Bar"},
+                },
+                {"name": "Hüsker Dü", "series": {"name": "Hüsker Dü"}},
             ],
             "series": {
+                "alternative_names": [
+                    {"name": "Foo"},
+                    {"language": "de", "name": "Hüsker Dü"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "65478",
-                        "url": "https://metron.cloud/series/65478",
                     }
                 },
                 "name": "Justice League",
@@ -614,7 +632,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "49948",
-                            "url": "https://metron.cloud/team/49948",
                         }
                     }
                 },
@@ -627,7 +644,6 @@ FNS = MappingProxyType(
                     "identifiers": {
                         "metron": {
                             "key": "24",
-                            "url": "https://metron.cloud/universe/24",
                         }
                     },
                 },

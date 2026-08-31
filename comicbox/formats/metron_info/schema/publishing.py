@@ -1,17 +1,18 @@
 """Metron Publishing Schemas."""
 
 from types import MappingProxyType
+from typing import Any
 
-from marshmallow.fields import Nested
+from typing_extensions import override
 
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.metroninfo import MetronFormatField
 from comicbox.formats.base.fields.number_fields import IntegerField
 from comicbox.formats.base.fields.pycountry import LanguageField
 from comicbox.formats.base.fields.xml_fields import (
-    XmlListField,
     XmlStringField,
     create_sub_tag_field,
+    xml_list_polyfield,
 )
 from comicbox.formats.base.schemas.xml_schemas import XmlSubSchema
 from comicbox.formats.metron_info.schema.identifiers import MetronIdentifiedNameSchema
@@ -26,6 +27,19 @@ class MetronPublisherSchema(MetronIdentifiedNameSchema):
 
 class MetronNameSchema(XmlSubSchema):
     """Metron Alternative Name Schema."""
+
+    @classmethod
+    @override
+    def pre_load_validate(cls, data: Any) -> Any:
+        """
+        Accept a name written without attributes.
+
+        ``lang`` defaults to en in the schema, so ``<AlternativeName>Foo</...>``
+        is legal and parses as a bare string rather than a mapping.
+        """
+        if isinstance(data, str):
+            return {"#text": data}
+        return data
 
     class Meta(XmlSubSchema.Meta):
         """XML Attributes."""
@@ -49,7 +63,9 @@ class MetronSeriesSchema(MetronIdentifiedNameSchema):
     StartYear = IntegerField(minimum=1000, maximum=9999)
     AlternativeNames = create_sub_tag_field(
         "AlternativeName",
-        XmlListField(Nested(MetronNameSchema)),
+        # lang defaults to en in the schema, so a name with no attributes is
+        # a bare string, not a mapping.
+        xml_list_polyfield(MetronNameSchema, XmlStringField()),
     )
 
     class Meta(MetronIdentifiedNameSchema.Meta):

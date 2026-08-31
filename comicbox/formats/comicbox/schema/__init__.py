@@ -22,7 +22,7 @@ from comicbox.formats.base.fields.comicbox import (
 )
 from comicbox.formats.base.fields.enum_fields import (
     AgeRatingField,
-    ComicInfoMangaField,
+    MangaField,
     OriginalFormatField,
     ReadingDirectionField,
 )
@@ -37,7 +37,6 @@ from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
-    IdentifierPrimarySource,
 )
 from comicbox.formats.comicbox.schema.publishing import (
     IssueSchema,
@@ -54,10 +53,8 @@ AVERAGE_RATING_KEY = "average_rating"
 BOOKMARK_KEY = "bookmark"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
-CREDIT_PRIMARIES_KEY = "credit_primaries"
 COLLECTION_TITLE_KEY = "collection_title"
 COMMUNITY_RATING_KEY = "community_rating"
-CRITICAL_RATING_KEY = "critical_rating"
 COUNTRY_KEY = "country"
 COVER_IMAGE_KEY = "cover_image"
 COVER_DATE_KEY = "cover_date"
@@ -67,18 +64,18 @@ DESIGNATION_KEY = "designation"
 EXT_KEY = "ext"
 GENRES_KEY = "genres"
 IDENTIFIERS_KEY = "identifiers"
-IDENTIFIER_PRIMARY_SOURCE_KEY = "identifier_primary_source"
-ID_SOURCE_KEY = "source"
+PRIMARY_ID_SOURCE_KEY = "primary_id_source"
+URLS_KEY = "urls"
 IMPRINT_KEY = "imprint"
 ISSUE_KEY = "issue"
 ISSUE_SUFFIX_KEY = "suffix"
 LANGUAGE_KEY = "language"
 LOCATIONS_KEY = "locations"
 MANGA_KEY = "manga"
+MANGA_VOLUME_KEY = "manga_volume"
 MONTH_KEY = "month"
 MONOCHROME_KEY = "monochrome"
 NUMBER_KEY = "number"
-NUMBER_TO_KEY = "number_to"
 NOTES_KEY = "notes"
 ORIGINAL_FORMAT_KEY = "original_format"
 PAGES_KEY = "pages"
@@ -102,6 +99,7 @@ PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
 PRICES_KEY = "prices"
 PRICE_KEY = "price"
+PRIMARY_KEY = "primary"
 PROTAGONIST_KEY = "protagonist"
 RATING_COUNT_KEY = "rating_count"
 READING_DIRECTION_KEY = "reading_direction"
@@ -115,6 +113,8 @@ ROLES_KEY = "roles"
 SCAN_INFO_KEY = "scan_info"
 SERIES_KEY = "series"
 SERIES_GROUPS_KEY = "series_groups"
+SERIES_ALTERNATIVE_NAMES_KEY = "alternative_names"
+ALTERNATIVE_NAMES_KEYPATH = f"{SERIES_KEY}.{SERIES_ALTERNATIVE_NAMES_KEY}"
 SERIES_SORT_NAME_KEY = "sort_name"
 SERIES_START_YEAR_KEY = "start_year"
 STORE_DATE_KEY = "store_date"
@@ -143,11 +143,24 @@ class ArcSchema(IdentifiedSchema):
     number = IntegerField(minimum=0)  # CIX, Metron
 
 
+class RoleSchema(IdentifiedSchema):
+    """
+    One role a person is credited with.
+
+    ``primary`` marks the person as the headline credit for this role, which
+    is what ComicBookInfo's per-credit ``primary`` flag means. It belongs to
+    the (person, role) pair: a primary Writer who also inked is not thereby
+    the primary Inker.
+    """
+
+    primary = BooleanField()  # CBI ONLY
+
+
 class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
     roles = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
-        keys=RoleField, allow_empty_values=True
+        keys=RoleField, values=Nested(RoleSchema), allow_empty_values=True
     )
 
 
@@ -195,7 +208,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     )
 
     age_rating = AgeRatingField()  # CIX, Metron
-    alternate_images = StringSetField()  # CT ONLY
     alternative_issue = Nested(IssueSchema)  # Metron ONLY
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
     bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
@@ -206,22 +218,19 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
-    credit_primaries = DictField(keys=RoleField)  # CBI ONLY
     community_rating = Nested(CommunityRatingSchema)  # CBI, CIX, Metron
-    critical_rating = DecimalField(  # Comicbox ONLY
-        places=1, minimum=Decimal(0), maximum=Decimal(5)
-    )
     date = Nested(DateSchema)
     ext = StringField()  # Filename ONLY
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron
     genres = SimpleNamedDictField()  # Comet, CBI, CIX, CT, Metron, PDF
     # identifiers from parent # Comet, CBI, CIX, CT, Metron,
-    identifier_primary_source = Nested(IdentifierPrimarySource)  # Metron
+    primary_id_source = StringField()  # Metron
     imprint = SimpleNamedNestedField()  # CIX, CT, Metron
     issue = Nested(IssueSchema)  # ALL
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
     locations = SimpleNamedDictField()  # CIX, CT, Metron
-    manga = ComicInfoMangaField()  # CIX ONLY
+    manga = MangaField()  # CIX ONLY
+    manga_volume = StringField()  # Metron ONLY
     monochrome = BooleanField()  # CIX ONLY, CT
     notes = StringField()  # CT, Metron, CIX
     page_count = IntegerField(minimum=0)  # CIX, Comet, Metron, CBI
@@ -261,6 +270,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     tags = SimpleNamedDictField()  # CBI, CT, Metron
     teams = SimpleNamedDictField()  # CIX, Metron, CT
     universes = SimpleNamedDictField(values=Nested(UniverseSchema))  # Metron ONLY
+    urls = StringListField(sort=False)  # CIX, Metron
     updated_at = DateTimeField(serialize_to_iso=False)  # CBI, Metron, PDF
     volume = SimpleNamedNestedField(  # Comet, CBI, CIX, Filename, Metron
         schema=VolumeSchema,

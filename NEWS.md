@@ -2,6 +2,62 @@
 
 ## v4.8.7
 
+- Breaking Changes
+    - Comicbox schema v3.0. Version 2.0 documents no longer load; the fields
+      below that moved or were removed are ignored if a 2.0 file supplies them.
+    - Credit roles are stored with MetronInfo's names. Roles it has no name for
+      keep their own spelling.
+    - Age ratings are stored on MetronInfo's scale. ComicInfo's finer
+      distinctions, like `Everyone 10+` and `G`, become `Everyone`.
+    - `manga` no longer carries reading direction. `YesAndRightToLeft` splits
+      into `manga` and `reading_direction`, and recombines when writing
+      ComicInfo.
+    - The primary credit flag moved from the separate `credit_primaries` map
+      onto each person's role. Being the primary Writer no longer implies being
+      the primary Inker.
+    - Web links moved out of `identifiers` into their own `urls` list, kept as
+      written. Identifiers hold only a key, and `identifier_primary_source`
+      became `primary_id_source`. Comicbox still fills in a missing url from an
+      identifier, and a missing identifier from a url it recognizes.
+    - ComicInfo's `GTIN` holds a barcode again instead of a list of comicbox
+      urns, which is what Kavita, Komga and Mylar expect there. Files already
+      written with urns still read.
+    - `MainCharacterOrTeam` is one name, and CoMet's `identifier` and
+      `isVersionOf` one value each, as their schemas define them.
+    - New `manga_volume` field holds MetronInfo's `MangaVolume` string as
+      written. Comicbox still reads the volume numbers out of it.
+    - ComicInfo's `AlternateSeries` and `AlternateNumber` read as a story arc
+      instead of a reprint. They predate `StoryArc` and are how older files
+      record a crossover. Arcs are written only to `StoryArc` now, and
+      `AlternateCount` is dropped.
+    - A series' other names live in `series.alternative_names` instead of being
+      mixed into `reprints`.
+    - Reprints keep the `name` the file gave them. The series, volume and issue
+      read out of that name are a convenience now, not the record.
+    - A `title` a comic states is kept as written. Stories are read out of it
+      only when the comic lists none, and a title is built from the stories only
+      when it has no title.
+    - Removed the `critical_rating` and `alternate_images` fields, which mapped
+      to no format.
+
+- Fixes
+    - Writing MetronInfo no longer invents extra credits. Only `Painter` still
+      writes Penciller, Inker and Colorist.
+    - `breakdowns`, `finishes`, `plotter` and `scripter` keep their own role
+      instead of collapsing into a coarser one.
+    - More role spellings are recognized, including `Inks`, `Pencils` and
+      `Cover Artist`.
+    - A ComicInfo `Manga` of `Unknown` no longer reads as "not manga".
+    - Marvel's `Max` and `Max: Explicit Content` ratings are recognized.
+    - ComicInfo's `Translator` accepts several names like every other creator
+      tag.
+    - Writing MetronInfo no longer stamps a `MangaVolume` onto comics that never
+      had one. It was rebuilt from the volume number on every write.
+    - Writing MetronInfo no longer duplicates reprints and alternative names.
+      Each round trip copied one list into both tags.
+    - A MetronInfo `AlternativeName` written without a language is no longer
+      dropped.
+
 - Features
     - New `SourceStarted` online event, emitted once per source that actually
       runs, immediately before that source is consulted and after the first-wins

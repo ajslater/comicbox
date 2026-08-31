@@ -121,8 +121,16 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
                     "Pages",
                 }
             ),
-            "reprints": frozenset(
-                {"AlternateSeries", "AlternateNumber", "AlternateCount"}
+            # The Alternate tags predate StoryArc and hold crossover arcs, so
+            # they follow arcs now, not reprints.
+            "arcs": frozenset(
+                {
+                    "StoryArc",
+                    "StoryArcNumber",
+                    "AlternateSeries",
+                    "AlternateNumber",
+                    "AlternateCount",
+                }
             ),
         }
     )
@@ -151,7 +159,7 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
     Letterer = XmlStringSetField(as_string=True)
     CoverArtist = XmlStringSetField(as_string=True)
     Editor = XmlStringSetField(as_string=True)
-    Translator = XmlStringField()
+    Translator = XmlStringSetField(as_string=True)
     # End Role Tags
     Publisher = XmlStringField()
     Imprint = XmlStringField()
@@ -175,9 +183,9 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
         "Page", ListField(Nested(XmlPageInfoSchema), sort_keys=(IMAGE_ATTRIBUTE,))
     )
     CommunityRating = XmlDecimalField()
-    MainCharacterOrTeam = XmlStringSetField(as_string=True)
+    MainCharacterOrTeam = XmlStringField()
     Review = XmlStringField()
-    GTIN = XmlStringSetField(as_string=True)
+    GTIN = XmlStringField()
 
     class Meta(XmlSubHeadSchema.Meta):
         """Schema options."""

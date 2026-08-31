@@ -1,7 +1,6 @@
 """Identifier Fields."""
 
 from typing import Any
-from urllib.parse import urlparse
 
 from loguru import logger
 
@@ -9,11 +8,11 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comicbox.schema import (
-    ID_SOURCE_KEY,
-    IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
+    PRIMARY_ID_SOURCE_KEY,
+    URLS_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
+from comicbox.identifiers import ID_KEY_KEY
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -23,52 +22,8 @@ from comicbox.identifiers.urns import (
     parse_string_identifier,
     to_urn_string,
 )
-from comicbox.merge import AdditiveMerger
 
-PRIMARY_ID_SOURCE_KEYPATH = f"{IDENTIFIER_PRIMARY_SOURCE_KEY}.{ID_SOURCE_KEY}"
-
-
-def merge_url_and_explicit_identifiers(
-    url_identifiers: dict, *explicit_identifier_dicts: dict
-) -> dict:
-    """
-    Merge URL-derived and explicit-id identifiers with per-field precedence.
-
-    A web URL's path is not a reliable canonical id — for sources like Metron
-    it's a slug, not the numeric issue id carried by an ``<ID>``/GTIN tag — so an
-    explicit identifier's ``key`` must win over a URL-derived one. Conversely a
-    real URL must win over the ``url`` that ``create_identifier`` synthesizes
-    from a bare id. Naively additive-merging the two (URL last) clobbers the
-    authoritative numeric key with the slug, which breaks downstream id lookups;
-    this restores the right precedence one field at a time.
-    """
-    merged: dict[str, dict] = {}
-    # URL-derived identifiers own the canonical ``url`` and supply a fallback
-    # ``key`` for files that carry only a web link.
-    AdditiveMerger.merge(merged, url_identifiers)
-    # Explicit identifiers (later dicts win) override the ``key`` with the
-    # authoritative id, but keep an already-present real ``url``.
-    for explicit_identifiers in explicit_identifier_dicts:
-        for id_source_str, identifier in explicit_identifiers.items():
-            dest = merged.setdefault(id_source_str, {})
-            for field, value in identifier.items():
-                if not value:
-                    continue
-                if field == ID_URL_KEY and dest.get(ID_URL_KEY):
-                    continue
-                dest[field] = value
-    return merged
-
-
-def create_identifier_primary_source(
-    id_source: IdSources,
-) -> dict:
-    """Create identifier primary source."""
-    ips: dict[str, Any] = {ID_SOURCE_KEY: id_source}
-    id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
-    if id_parts and (url := id_parts.url_prefix):
-        ips[ID_URL_KEY] = url
-    return ips
+PRIMARY_ID_SOURCE_KEYPATH = PRIMARY_ID_SOURCE_KEY
 
 
 def _identifier_to_cb(native_identifier: str, naked_id_source: Any) -> tuple[str, dict]:
@@ -83,11 +38,13 @@ def _identifier_to_cb(native_identifier: str, naked_id_source: Any) -> tuple[str
     return id_source_str, comicbox_identifier
 
 
-def identifiers_to_cb(
-    native_identifiers: set[str] | None, naked_id_source: Any
-) -> dict:
+def identifiers_to_cb(native_identifiers: Any, naked_id_source: Any) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
+    if isinstance(native_identifiers, str):
+        # A single-valued tag, like CoMet's <identifier>. Iterating the
+        # string itself would parse it one character at a time.
+        native_identifiers = (native_identifiers,)
     if native_identifiers:
         for native_identifier in native_identifiers:
             try:
@@ -105,7 +62,7 @@ def identifiers_transform_to_cb(
 ) -> MetaSpec:
     """Transform identifier tags to comicbox identifiers."""
 
-    def to_cb(native_identifiers: set[str]) -> dict[str, dict[str, str]]:
+    def to_cb(native_identifiers: Any) -> dict[str, dict[str, str]]:
         return identifiers_to_cb(native_identifiers, naked_id_source)
 
     return MetaSpec(
@@ -135,85 +92,73 @@ def identifiers_transform_from_cb(identifiers_tag: str) -> MetaSpec:
     )
 
 
-def _parse_unknown_url(url_str: str) -> tuple[str, dict]:
-    """Parse unknown urls."""
-    identifier = {}
-    try:
-        url = urlparse(url_str)
-        id_source_str = url.netloc
-        id_key = ""
-        if url.path and url.path != "/":
-            id_key += url.path
-        if url.query:
-            id_key += "?" + url.query
-        if url.fragment:
-            id_key += "#" + url.fragment
-        if id_key:
-            identifier[ID_KEY_KEY] = id_key
-        if url:
-            identifier[ID_URL_KEY] = url_str
-    except Exception:
-        logger.debug(f"Unparsable url: {url_str}")
-        id_source_str = ""
-    return id_source_str, identifier
+def _identifier_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> str:
+    """Unparse the best identifier to a single urn string."""
+    for id_source in IdSources:
+        if (
+            (comicbox_identifier := comicbox_identifiers.get(id_source.value))
+            and (id_key := comicbox_identifier.get(ID_KEY_KEY))
+            and (urn_str := to_urn_string(id_source.value, "issue", id_key))
+        ):
+            return urn_str
+    return ""
 
 
-def url_to_cb(
-    native_url: str | dict,
-) -> tuple[str, dict]:
-    """Parse one url into identifier."""
-    url_str = get_cdata(native_url)
+def identifier_transform_from_cb(identifier_tag: str) -> MetaSpec:
+    """
+    Transform comicbox identifiers to one identifier tag.
+
+    For a format like CoMet that allows a single identifier, the best ranked
+    source wins.
+    """
+    return MetaSpec(
+        key_map={identifier_tag: IDENTIFIERS_KEY},
+        spec=_identifier_from_cb,
+    )
+
+
+def identifier_from_url(url_str: str) -> tuple[str, dict]:
+    """
+    Parse an identifier out of a url comicbox recognizes.
+
+    Returns an empty result for a url from a database comicbox doesn't know.
+    Such a url is still kept verbatim in ``urls``; inventing an identifier
+    source from its hostname only produced keys nothing could look up.
+    """
     if not url_str:
         return "", {}
     id_source_str = get_id_source_from_url(url_str)
     try:
         id_source = IdSources(id_source_str)
     except ValueError:
-        id_source = None
-    if id_source and (id_parts := IDENTIFIER_PARTS_MAP.get(id_source)):
-        id_type, id_key = id_parts.parse_url_path(url_str)
-        identifier = create_identifier(
-            id_source_str, id_key, id_type=id_type, url=url_str
-        )
-    else:
-        identifier = None
-    if not identifier:
-        id_source_str, identifier = _parse_unknown_url(url_str)
+        return "", {}
+    id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
+    if not id_parts:
+        return "", {}
+    id_type, id_key = id_parts.parse_url_path(url_str)
+    identifier = create_identifier(id_source_str, id_key, id_type=id_type)
+    if not identifier.get(ID_KEY_KEY):
+        return "", {}
     return id_source_str, identifier
 
 
-def urls_to_cb(urls: Any) -> dict:
-    """Parse url tags into identifiers."""
-    comicbox_identifiers = {}
-    if urls:
-        for url in urls:
-            id_source_str, identifier = url_to_cb(url)
-            if id_source_str and identifier:
-                comicbox_identifiers[id_source_str] = identifier
-    return comicbox_identifiers
+def urls_to_cb(native_urls: Any) -> list[str]:
+    """Collect url tags verbatim, in order, without duplicates."""
+    urls: dict[str, None] = {}
+    if isinstance(native_urls, str):
+        native_urls = (native_urls,)
+    if native_urls:
+        for native_url in native_urls:
+            if url_str := get_cdata(native_url):
+                urls[str(url_str)] = None
+    return list(urls)
 
 
-def url_from_cb(
-    id_source_str: str,
-    comicbox_identifier: dict,
-) -> str:
-    """Unparse one identifier into one url tag."""
-    url = comicbox_identifier.get(ID_URL_KEY, "")
-    if not url and (id_key := comicbox_identifier.get(ID_KEY_KEY)):
-        new_identifier = create_identifier(id_source_str, id_key)
-        url = new_identifier.get(ID_URL_KEY, "")
-    return url
-
-
-def _urls_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> set:
-    """Unparse urls struct to set of strings."""
-    url_strings = set()
-    for id_source, comicbox_identifier in comicbox_identifiers.items():
-        if url := url_from_cb(id_source, comicbox_identifier):
-            url_strings.add(url)
-    return url_strings
+def urls_transform_to_cb(urls_tag: str) -> MetaSpec:
+    """Transform url tags to comicbox urls."""
+    return MetaSpec(key_map={URLS_KEY: urls_tag}, spec=urls_to_cb)
 
 
 def urls_transform_from_cb(urls_tag: str) -> MetaSpec:
-    """Transform comicbox identifiers to urls tags."""
-    return MetaSpec(key_map={urls_tag: IDENTIFIERS_KEY}, spec=_urls_from_cb)
+    """Transform comicbox urls to url tags."""
+    return MetaSpec(key_map={urls_tag: URLS_KEY}, spec=urls_to_cb)

@@ -13,8 +13,8 @@ from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.formats.base.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.base.transforms.identifiers import (
-    identifiers_transform_from_cb,
     urls_transform_from_cb,
+    urls_transform_to_cb,
 )
 from comicbox.formats.base.transforms.publishing_tags import (
     IMPRINT_NAME_KEYPATH,
@@ -33,20 +33,25 @@ from comicbox.formats.base.transforms.xml_credits import (
     xml_credits_transform_to_cb,
 )
 from comicbox.formats.comic_info.schema import (
+    ALTERNATE_NUMBER_TAG,
+    ALTERNATE_SERIES_TAG,
     BOOKMARK_ATTRIBUTE,
+    WEB_TAG,
     ComicInfoSchema,
 )
 from comicbox.formats.comic_info.transform.identifiers import (
+    COMICINFO_GTIN_FROM_CB,
     COMICINFO_IDENTIFIERS_TO_CB,
+)
+from comicbox.formats.comic_info.transform.manga import (
+    COMICINFO_MANGA_FROM_CB,
+    COMICINFO_MANGA_TO_CB,
+    COMICINFO_READING_DIRECTION_TO_CB,
 )
 from comicbox.formats.comic_info.transform.pages import (
     comicinfo_bookmark_to_cb,
     comicinfo_pages_from_cb,
     comicinfo_pages_to_cb,
-)
-from comicbox.formats.comic_info.transform.reprints import (
-    COMICINFO_REPRINTS_FROM_CB,
-    COMICINFO_REPRINTS_TO_CB,
 )
 from comicbox.formats.comic_info.transform.storyarcs import (
     story_arcs_from_cb,
@@ -59,7 +64,6 @@ from comicbox.formats.comicbox.schema import (
     GENRES_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
-    MANGA_KEY,
     MONOCHROME_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -188,7 +192,6 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Imprint": IMPRINT_NAME_KEYPATH,
         "LanguageISO": LANGUAGE_KEY,
         "MainCharacterOrTeam": PROTAGONIST_KEY,
-        "Manga": MANGA_KEY,
         "Month": MONTH_KEYPATH,
         "Notes": NOTES_KEY,
         "Number": ISSUE_NAME_KEYPATH,
@@ -224,20 +227,27 @@ class ComicInfoTransform(BaseTransform):
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(ComicInfoRoleTagEnum),
         COMICINFO_IDENTIFIERS_TO_CB,
+        urls_transform_to_cb(WEB_TAG),
+        COMICINFO_MANGA_TO_CB,
+        COMICINFO_READING_DIRECTION_TO_CB,
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
         comicinfo_bookmark_to_cb("Pages.Page", BOOKMARK_ATTRIBUTE, IMAGE_ATTRIBUTE),
-        COMICINFO_REPRINTS_TO_CB,
-        story_arcs_to_cb("StoryArc", "StoryArcNumber"),
+        story_arcs_to_cb(
+            "StoryArc",
+            "StoryArcNumber",
+            ALTERNATE_SERIES_TAG,
+            ALTERNATE_NUMBER_TAG,
+        ),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP),
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
         *xml_credits_transform_from_cb(ComicInfoRoleTagEnum, ROLE_ALIASES),
-        identifiers_transform_from_cb("GTIN"),
+        COMICINFO_GTIN_FROM_CB,
+        COMICINFO_MANGA_FROM_CB,
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
-        COMICINFO_REPRINTS_FROM_CB,
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),
-        urls_transform_from_cb("Web"),
+        urls_transform_from_cb(WEB_TAG),
         format_root_keypath=ComicInfoSchema.ROOT_KEYPATH,
     )

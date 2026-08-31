@@ -5,11 +5,10 @@ from types import MappingProxyType
 from typing import Any
 
 from caseconverter import snakecase, titlecase
-from loguru import logger
 from marshmallow import fields
 from typing_extensions import override
 
-from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicbox import MangaEnum, ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
 from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
@@ -23,15 +22,26 @@ class FuzzyEnumMixin:
     ENUM_ALIAS_MAP = MappingProxyType({})
 
     @staticmethod
-    def get_key_variations(key: str | Enum) -> set[str]:
-        """Get enum caseless slightly fuzzy lookup key variations for a key."""
+    def get_ordered_key_variations(key: str | Enum) -> tuple[str, ...]:
+        """
+        Get fuzzy lookup key variations, most literal first.
+
+        Lookups try these in order, so the exact spelling always beats a
+        variation that only matches after punctuation is collapsed.
+        """
         new_key = key.value if isinstance(key, Enum) else key
         new_key = new_key.lower()
-        key_variations = {new_key}
-        key_variations.add(new_key.replace(" ", ""))
-        space_case = snakecase(new_key).replace("_", "")
-        key_variations.add(space_case)
-        return key_variations
+        variations = (
+            new_key,
+            new_key.replace(" ", ""),
+            snakecase(new_key).replace("_", ""),
+        )
+        return tuple(dict.fromkeys(variations))
+
+    @classmethod
+    def get_key_variations(cls, key: str | Enum) -> set[str]:
+        """Get enum caseless slightly fuzzy lookup key variations for a key."""
+        return set(cls.get_ordered_key_variations(key))
 
     @classmethod
     def add_enum_map_item(cls, key: str | Enum, enum: Enum, enum_map: dict) -> None:
@@ -48,10 +58,20 @@ class FuzzyEnumMixin:
         return enum_map
 
     def get_enum(self, value: str | Enum) -> Enum | None:
-        """Get an enum from the fuzzy lookup map."""
+        """
+        Get an enum from the fuzzy lookup map.
+
+        The map is keyed by every variation of every known spelling, so the
+        lookup must generate the same variations of the value. Lowercasing
+        alone matched "Cover Artist" and "CoverArtist" to different entries
+        and missed snake_case input entirely.
+        """
         key: str = value.value if isinstance(value, Enum) else str(value)
-        key = key.lower()
-        return self._enum_map.get(key)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        enum_map = self._enum_map  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        for key_variation in self.get_ordered_key_variations(key):
+            if enum := enum_map.get(key_variation):
+                return enum
+        return None
 
 
 class EnumField(FuzzyEnumMixin, fields.Enum, metaclass=TrapExceptionsMeta):
@@ -152,27 +172,28 @@ class EnumBooleanField(EnumField):
 class ComicInfoMangaEnum(Enum):
     """Manga enum for ComicInfo."""
 
+    UNKNOWN = "Unknown"
     YES = "Yes"
     YES_RTL = "YesAndRightToLeft"
     NO = "No"
 
 
 class ComicInfoMangaField(EnumBooleanField):
-    """Manga field from ComicInfo."""
+    """
+    Manga field from ComicInfo.
+
+    Keeps ComicInfo's compound vocabulary, YesAndRightToLeft included. The
+    ComicInfo transform splits that value across comicbox's manga and
+    reading_direction fields and recomposes it on write.
+    """
 
     ENUM = ComicInfoMangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
-    @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
-        """Match a manga value to an acceptable value."""
-        if data and data.get("reading_direction") == ReadingDirectionEnum.RTL:
-            reason = (
-                f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
-                "because of reading_direction"
-            )
-            logger.warning(reason)
-            value = ComicInfoMangaEnum.YES_RTL
-        return super()._deserialize(value, attr, data, *args, **kwargs)
+
+class MangaField(EnumBooleanField):
+    """Comicbox manga field: says only whether the book is manga."""
+
+    ENUM = MangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class YesNoEnum(Enum):

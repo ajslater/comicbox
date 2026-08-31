@@ -49,7 +49,7 @@ def test_write_metadata_replaces_scalar_preserving_siblings(tmp_cbz: Path) -> No
     initial = {
         "publisher": {
             "name": "Original",
-            "identifiers": {"metron": {"key": "42", "url": "https://x/42"}},
+            "identifiers": {"metron": {"key": "42"}},
         }
     }
     write_metadata(tmp_cbz, patch=initial, mode="replace", formats=["comicbox_json"])

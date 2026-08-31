@@ -9,7 +9,6 @@ from comicbox.formats.comicbox.schema import STORIES_KEY, TITLE_KEY
 from comicbox.merge import (
     AdditiveMerger,
     Merger,
-    ReplaceMerger,
 )
 
 _TITLE_STORIES_DELIMITER = ";"
@@ -22,9 +21,13 @@ class ComicboxComputedStoriesTitle(ComicboxComputedDate):
     def _get_computed_from_stories(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, str] | None:
-        """Parse stories back into title if no title already exists."""
-        # Always overwrite title so Metron, which has no title, will override filename
-        # titles.
+        """Build a title out of the stories when the book has no title."""
+        if sub_data.get(TITLE_KEY):
+            # A title the source stated is the title. It used to be
+            # overwritten with the joined stories so Metron, which has no
+            # title tag, would beat a filename title — but which source wins
+            # is the merge order's job, not this one's.
+            return None
         stories = sub_data.get(STORIES_KEY)
         if not stories:
             return None
@@ -34,21 +37,19 @@ class ComicboxComputedStoriesTitle(ComicboxComputedDate):
     def _get_computed_from_title(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, dict] | None:
-        """Parse title from stories."""
+        """Read the stories out of a title when the book lists none."""
+        if sub_data.get(STORIES_KEY):
+            return None
         title = sub_data.get(TITLE_KEY)
         if not title:
             return None
-        new_stories = tuple(
-            story.strip() for story in title.split(_TITLE_STORIES_DELIMITER)
-        )
-        old_stories = sub_data.get(STORIES_KEY, {})
-        stories = {}
-        for story in new_stories:
-            if story not in old_stories:
-                stories[story] = {}
+        stories = {
+            story: {}
+            for story in (raw.strip() for raw in title.split(_TITLE_STORIES_DELIMITER))
+            if story
+        }
         if not stories:
             return None
-
         return {STORIES_KEY: stories}
 
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
@@ -57,7 +58,7 @@ class ComicboxComputedStoriesTitle(ComicboxComputedDate):
                 # Order is important here
                 **ComicboxComputedDate.COMPUTED_ACTIONS,
                 "from title": (_get_computed_from_title, AdditiveMerger),
-                "from stories": (_get_computed_from_stories, ReplaceMerger),
+                "from stories": (_get_computed_from_stories, AdditiveMerger),
             }
         )
     )

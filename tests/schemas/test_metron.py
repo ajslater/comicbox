@@ -80,30 +80,29 @@ READ_METADATA = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "222",
-                        "url": "https://metron.cloud/imprint/222",
                     },
                 },
                 "name": "Youthful Imprint",
             },
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -120,16 +119,18 @@ READ_METADATA = MappingProxyType(
                 "identifiers": {
                     "metron": {
                         "key": "11",
-                        "url": "https://metron.cloud/publisher/11",
                     },
                 },
                 "name": "Youthful Adventure Stories",
             },
             "series": {
+                "alternative_names": [
+                    {"name": "Captain Science Alternate"},
+                    {"language": "es", "name": "Capitán Ciencia"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "2222",
-                        "url": "https://metron.cloud/series/2222",
                     }
                 },
                 "name": "Captain Science",
@@ -150,12 +151,19 @@ READ_METADATA = MappingProxyType(
             },
             "title": "Captain Lost; Science is Good; metron",
             "reprints": [
-                {"language": "es", "series": {"name": "Capitán Ciencia"}},
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
+                # The name is what the file said; series and issue are read
+                # out of it.
+                {"name": "Capitán Ciencia", "series": {"name": "Capitán Ciencia"}},
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                },
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,
             "universes": {"Mirror": {"designation": "4242"}},
+            "manga_volume": "1950-1952",
             "volume": {
                 "number": 1950,
                 "number_to": 1952,
@@ -442,25 +450,25 @@ SIMPLE_METRON_TESTER = TestParser(
 URL_PRIMARY_READ_METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
-            "identifier_primary_source": {
-                "source": "metron",
-                "url": "https://metron.cloud/",
-            },
+            "primary_id_source": "metron",
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 },
                 "isbn": {
                     "key": "123-456789-0123",
-                    "url": "https://isbndb.com/book/123-456789-0123",
                 },
                 "metron": {
                     "key": "999999",
-                    "url": "https://metron.cloud/issue/999999",
                 },
-                "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+                "upc": {"key": "12345"},
             },
+            "urls": [
+                "https://barcodelookup.com/12345",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://isbndb.com/book/123-456789-0123",
+                "https://metron.cloud/issue/999999",
+            ],
         }
     }
 )

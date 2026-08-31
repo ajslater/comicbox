@@ -130,9 +130,12 @@ DELETE_KEYS_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "imprint": {"name": "CLIImprint"},
             "issue": {
                 "name": "001",
@@ -147,7 +150,6 @@ DELETE_KEYS_MD = MappingProxyType(
             "original_format": "Comic",
             "page_count": 0,
             "publisher": {"name": "Galactic Press"},
-            "reprints": [{"issue": "001"}],
             "stories": {"The Beginning COMET": {}},
             "summary": "A long example description",
             "tagger": "comicbox dev",
@@ -328,7 +330,7 @@ def test_cli_action_delete_keys() -> None:
             str(TMP_MULTI_PATH),
             *MD_ARGS,
             "--delete-keys",
-            "age_rating,arcs.Captain Arc,credits.Joe Orlando CBI.roles,credits.Wally Wood CBI.roles,pages,series,reprints.0.series",
+            "age_rating,arcs.Captain Arc,credits.Joe Orlando CBI.roles,credits.Wally Wood CBI.roles,pages,series",
             "-w",
             "cix",
             "--no-stamp-notes",

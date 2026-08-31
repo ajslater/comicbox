@@ -42,7 +42,7 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
     appID = StringField()  # noqa: N815
     comicbox = Nested(ComicboxJsonSubSchema)
     schema = Constant(
-        "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json"
+        "https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json"
     )
 
     @override

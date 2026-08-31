@@ -34,9 +34,9 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -94,9 +94,9 @@ READ_COMICBOX_DICT = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -125,7 +125,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "4": {"size": 4108},
             },
         },
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json",
     }
 )
 

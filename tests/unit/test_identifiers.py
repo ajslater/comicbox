@@ -9,7 +9,7 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import get_id_source_by_alias
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.transforms.identifiers import (
-    merge_url_and_explicit_identifiers,
+    identifier_from_url,
 )
 from comicbox.identifiers import ID_TYPE_NAMES
 from comicbox.identifiers.identifiers import (
@@ -35,7 +35,8 @@ comicbox:
   identifiers:
     metron:
       key: "123495"
-      url: https://metron.cloud/issue/batman-2016-0/
+  urls:
+    - https://metron.cloud/issue/batman-2016-0/
 """
 
 
@@ -56,23 +57,18 @@ def _round_trip_metron_key(fmt: MetadataFormats) -> str | None:
 
 
 def test_create_identifier_round_trip_metron() -> None:
-    """A metron series identifier gets both a key and a metron.cloud url."""
+    """An identifier holds only the key; its url is derived on demand."""
     identifier = create_identifier("metron", "super-series", id_type="series")
-    assert identifier == {
-        "key": "super-series",
-        "url": "https://metron.cloud/series/super-series",
-    }
+    assert identifier == {"key": "super-series"}
+    url = get_identifier_url("metron", "series", identifier["key"])
+    assert url == "https://metron.cloud/series/super-series"
     # The generated url parses back to the same source.
-    assert get_id_source_from_url(identifier["url"]) == IdSources.METRON.value
+    assert get_id_source_from_url(url) == IdSources.METRON.value
 
 
 def test_create_identifier_comicvine_normalizes_long_key() -> None:
     """A full comicvine '4000-12345' code is normalized to the bare key."""
-    identifier = create_identifier("comicvine", "4000-12345")
-    assert identifier == {
-        "key": "12345",
-        "url": "https://comicvine.gamespot.com/c/4000-12345/",
-    }
+    assert create_identifier("comicvine", "4000-12345") == {"key": "12345"}
 
 
 def test_create_identifier_comicvine_bare_key_round_trips() -> None:
@@ -84,11 +80,11 @@ def test_create_identifier_comicvine_bare_key_round_trips() -> None:
 
 def test_create_identifier_empty_source_uses_default() -> None:
     """An empty id source falls back to the comicvine default."""
-    identifier = create_identifier("", "999")
-    assert identifier == {
-        "key": "999",
-        "url": "https://comicvine.gamespot.com/c/4000-999/",
-    }
+    assert create_identifier("", "999") == {"key": "999"}
+    assert (
+        get_identifier_url("comicvine", "issue", "999")
+        == "https://comicvine.gamespot.com/c/4000-999/"
+    )
 
 
 def test_create_identifier_unknown_source_keeps_key_without_url() -> None:
@@ -96,10 +92,9 @@ def test_create_identifier_unknown_source_keeps_key_without_url() -> None:
     assert create_identifier("notasource", "abc") == {"key": "abc"}
 
 
-def test_create_identifier_explicit_url_wins() -> None:
-    """An explicitly passed url is preserved instead of being generated."""
-    identifier = create_identifier("metron", "k", url="https://example.com/x")
-    assert identifier == {"key": "k", "url": "https://example.com/x"}
+def test_create_identifier_stores_no_url() -> None:
+    """Identifiers never carry a url; web links live in the urls list."""
+    assert create_identifier("metron", "k") == {"key": "k"}
 
 
 ###############
@@ -153,23 +148,29 @@ def test_id_type_names_match_identifier_types_fields() -> None:
 
 
 def test_create_identifier_type_prefixed_keys_bug_report_sources() -> None:
-    """'series:'-prefixed keys produce series urls for the four reported dbs."""
-    assert create_identifier("leagueofcomicgeeks", "series:178012") == {
-        "key": "178012",
-        "url": "https://leagueofcomicgeeks.com/comics/series/178012/s",
-    }
-    assert create_identifier("comicvine", "series:160294") == {
-        "key": "160294",
-        "url": "https://comicvine.gamespot.com/c/4050-160294/",
-    }
-    assert create_identifier("metron", "series:5678") == {
-        "key": "5678",
-        "url": "https://metron.cloud/series/5678",
-    }
-    assert create_identifier("grandcomicsdatabase", "series:999") == {
-        "key": "999",
-        "url": "https://comics.org/series/999/",
-    }
+    """'series:'-prefixed keys still build series urls for the four reported dbs."""
+    cases = (
+        (
+            "leagueofcomicgeeks",
+            "series:178012",
+            "178012",
+            "https://leagueofcomicgeeks.com/comics/series/178012/s",
+        ),
+        (
+            "comicvine",
+            "series:160294",
+            "160294",
+            "https://comicvine.gamespot.com/c/4050-160294/",
+        ),
+        ("metron", "series:5678", "5678", "https://metron.cloud/series/5678"),
+        ("grandcomicsdatabase", "series:999", "999", "https://comics.org/series/999/"),
+    )
+    for id_source, raw_key, key, url in cases:
+        # The prefix overrode the issue type the key was written at, so the
+        # identifier records the type that decides its url.
+        identifier = create_identifier(id_source, raw_key)
+        assert identifier == {"key": key, "id_type": "series"}
+        assert get_identifier_url(id_source, identifier["id_type"], key) == url
 
 
 #####################
@@ -374,37 +375,28 @@ def test_get_id_source_by_alias_unknown_uses_default() -> None:
     assert get_id_source_by_alias("never-heard-of-it", None) is None
 
 
-####################################
-# merge_url_and_explicit_identifiers
-####################################
+###################
+# identifier_from_url
+###################
 
 
-def test_merge_explicit_id_key_beats_url_slug_but_keeps_real_url() -> None:
-    """An explicit numeric key wins over a url slug; the real url is kept."""
-    url_identifiers = {
-        "metron": {"key": "batman-2016-0", "url": "https://metron.cloud/issue/b/"}
-    }
-    explicit_identifiers = {
-        "metron": {"key": "123495", "url": "https://metron.cloud/issue/123495"}
-    }
-    merged = merge_url_and_explicit_identifiers(url_identifiers, explicit_identifiers)
-    assert merged == {
-        "metron": {"key": "123495", "url": "https://metron.cloud/issue/b/"}
-    }
+def test_identifier_from_url_recognized_source() -> None:
+    """A url from a known database yields that database's id."""
+    id_source, identifier = identifier_from_url(
+        "https://comicvine.gamespot.com/c/4000-145269/"
+    )
+    assert id_source == "comicvine"
+    assert identifier == {"key": "145269"}
 
 
-def test_merge_url_only_supplies_fallback_key_and_url() -> None:
-    """With no explicit id, the url-derived key and url survive as a fallback."""
-    url_identifiers = {
-        "metron": {"key": "batman-2016-0", "url": "https://metron.cloud/issue/b/"}
-    }
-    assert merge_url_and_explicit_identifiers(url_identifiers) == url_identifiers
+def test_identifier_from_url_unknown_source() -> None:
+    """A url from an unknown site yields nothing to invent an id from."""
+    assert identifier_from_url("https://example.com/some/comic") == ("", {})
 
 
-def test_merge_explicit_only_passes_through() -> None:
-    """With no url identifiers the explicit identifiers pass through intact."""
-    explicit = {"metron": {"key": "123495", "url": "https://metron.cloud/issue/123495"}}
-    assert merge_url_and_explicit_identifiers({}, explicit) == explicit
+def test_identifier_from_url_empty() -> None:
+    """An empty url yields nothing."""
+    assert identifier_from_url("") == ("", {})
 
 
 #####################################################

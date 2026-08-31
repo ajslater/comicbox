@@ -47,9 +47,9 @@ METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {"name": "1", "number": Decimal(1)},
             "language": "en",
             "bookmark": 4,
@@ -59,7 +59,11 @@ METADATA = MappingProxyType(
             "prices": {"": Decimal("0.10").quantize(Decimal("0.01"))},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},

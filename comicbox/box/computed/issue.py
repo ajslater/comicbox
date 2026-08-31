@@ -16,12 +16,19 @@ from comicbox.formats.comicbox.schema import (
     ALTERNATIVE_ISSUE_KEY,
     ISSUE_KEY,
     ISSUE_SUFFIX_KEY,
+    MANGA_VOLUME_KEY,
     NUMBER_KEY,
+    VOLUME_KEY,
+    VOLUME_NUMBER_TO_KEY,
 )
 from comicbox.merge import AdditiveMerger, Merger
 
 ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 _PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
+# MangaVolume is a free string. A single number or a "first-last" range is
+# what publishers actually write, so comicbox reads those into the volume
+# numbers for clients rather than making every client parse it.
+_PARSE_MANGA_VOLUME_MATCHER = re.compile(r"^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$")
 
 
 class ComicboxComputedIssue(ComicboxComputedStamp):
@@ -119,10 +126,37 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
         """Build alternative_issue from parts before dump if it has no name."""
         return self._get_computed_issue_key(sub_data, ALTERNATIVE_ISSUE_KEY)
 
+    def _get_computed_from_manga_volume(
+        self, sub_data: dict[str, Any], **_kwargs: Any
+    ) -> dict[str, Any] | None:
+        """Read the volume numbers out of a manga volume string."""
+        if not sub_data:
+            return None
+        manga_volume = sub_data.get(MANGA_VOLUME_KEY)
+        if not manga_volume:
+            return None
+        match = _PARSE_MANGA_VOLUME_MATCHER.match(str(manga_volume))
+        if not match:
+            return None
+        old_volume = sub_data.get(VOLUME_KEY) or {}
+        number, number_to = match.groups()
+        volume = {}
+        if is_empty(old_volume.get(NUMBER_KEY)):
+            volume[NUMBER_KEY] = int(number)
+        if number_to and is_empty(old_volume.get(VOLUME_NUMBER_TO_KEY)):
+            volume[VOLUME_NUMBER_TO_KEY] = int(number_to)
+        if not volume:
+            return None
+        return {VOLUME_KEY: volume}
+
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
             {
                 **ComicboxComputedStamp.COMPUTED_ACTIONS,
+                "from manga_volume": (
+                    _get_computed_from_manga_volume,
+                    AdditiveMerger,
+                ),
                 "from issue": (_get_computed_from_issue, AdditiveMerger),
                 "from issue.number & issue.suffix": (
                     _get_computed_issue,

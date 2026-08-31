@@ -14,6 +14,20 @@ class ReadingDirectionEnum(Enum):
     BTT = "btt"
 
 
+class MangaEnum(Enum):
+    """
+    Whether a book is manga.
+
+    ComicInfo compounds this with reading direction in a single
+    YesAndRightToLeft value. Comicbox keeps the two facts apart: this says
+    only whether the book is manga, and reading_direction says how it reads.
+    """
+
+    YES = "Yes"
+    NO = "No"
+    UNKNOWN = "Unknown"
+
+
 class IdSources(Enum):
     """Comic Database Namespace Identifiers."""
 

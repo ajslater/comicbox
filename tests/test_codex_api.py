@@ -54,7 +54,11 @@ class Fixture:
 TEMPLATE_MD = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
-            "arcs": {"Captain Arc": {"number": 4}, "Other Arc": {"number": 2}},
+            "arcs": {
+                "Captain Arc": {"number": 4},
+                "Other Arc": {"number": 2},
+                "Captain Science Alternate": {"number": 1},
+            },
             "age_rating": "Teen",
             "characters": {"Captain Science": {}, "Gordon Dane": {}},
             "credits": {
@@ -72,9 +76,9 @@ TEMPLATE_MD = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "issue": {
                 "name": "1",
                 "number": Decimal(1),
@@ -90,9 +94,6 @@ TEMPLATE_MD = MappingProxyType(
                 4: {"size": 4108},
             },
             "publisher": {"name": "Youthful Adventure Stories"},
-            "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
-            ],
             "series": {"name": "Captain Science"},
             "tagger": f"comicbox {VERSION}",
             "title": "The Beginning; The End",
@@ -123,7 +124,9 @@ CBZ_MD = _patch_md(CBZ_MD_PATCH)
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "country": "US",
-        "credit_primaries": {"Writer": "Joe Orlando"},
+        # The CBR carries ComicBookInfo, whose primary credit flag lands on
+        # the person's role.
+        "credits": {"Joe Orlando": {"roles": {"Writer": {"primary": True}}}},
         "ext": "cbr",
         "page_count": 0,
         "series": {"volume_count": 1},
@@ -137,21 +140,21 @@ CBR_MD = _patch_md(CBR_MD_PATCH)
 CBT_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "ext": "cbt",
-        "identifier_primary_source": {
-            "source": "comicvine",
-            "url": "https://comicvine.gamespot.com/",
-        },
+        "primary_id_source": "comicvine",
         "identifiers": {
             "comicvine": {
                 "key": "145269",
-                "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
                 "key": "123-456789-0123",
-                "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345"},
         },
+        "urls": [
+            "https://comicvine.gamespot.com/c/4000-145269/",
+            "https://isbndb.com/book/123-456789-0123",
+            "https://barcodelookup.com/12345",
+        ],
         "date": {"cover_date": date(1950, 11, 1)},
         "notes": (
             "Tagged with "
@@ -194,21 +197,21 @@ CB7_MD_PATCH = {
             "cover_date": date(1950, 11, 1),
         },
         "ext": "cb7",
-        "identifier_primary_source": {
-            "source": "comicvine",
-            "url": "https://comicvine.gamespot.com/",
-        },
+        "primary_id_source": "comicvine",
         "identifiers": {
             "comicvine": {
                 "key": "145269",
-                "url": "https://comicvine.gamespot.com/c/4000-145269/",
             },
             "isbn": {
                 "key": "123-456789-0123",
-                "url": "https://isbndb.com/book/123-456789-0123",
             },
-            "upc": {"key": "12345", "url": "https://barcodelookup.com/12345"},
+            "upc": {"key": "12345"},
         },
+        "urls": [
+            "https://comicvine.gamespot.com/c/4000-145269/",
+            "https://isbndb.com/book/123-456789-0123",
+            "https://barcodelookup.com/12345",
+        ],
         "notes": (
             "Tagged with comicbox dev on 1970-01-01T00:00:00Z "
             "[Issue ID 145269] urn:comicvine:issue:145269 "
