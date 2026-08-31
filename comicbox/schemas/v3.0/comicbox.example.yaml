@@ -1,9 +1,6 @@
 appID: comicbox dev
 comicbox:
   age_rating: Everyone
-  alternate_images:
-    - alt0.jxl
-    - alt1.jxl
   alternative_issue:
     name: "250"
     number: 250
@@ -39,7 +36,6 @@ comicbox:
   community_rating:
     average_rating: 4.5
     rating_count: 1250
-  critical_rating: 5.0
   date:
     cover_date: 1950-11-01
     store_date: 1950-11-28

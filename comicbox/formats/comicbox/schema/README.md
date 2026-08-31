@@ -5,11 +5,6 @@ are unique to one format.
 
 ## Fields unique to one format
 
-### Comicbox
-
-- critical_rating (no longer mapped to any format; ratings now flow through
-  community_rating)
-
 ### CoMet
 
 - cover_image

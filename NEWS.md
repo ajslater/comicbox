@@ -2,6 +2,16 @@
 
 ## v4.8.7
 
+- Breaking Changes
+    - The comicbox native schema is now v3.0. Documents are validated against
+      `schemas/v3.0/comicbox-v3.0.schema.json` and exported JSON carries that
+      URL. Existing v2.0 documents still load; the v2.0 schema is retained
+      unchanged as the published v2 contract.
+    - Removed the `alternate_images` field. It mapped to no format since the
+      ComicTagger format was dropped, so nothing produced or consumed it.
+    - Removed the `critical_rating` field. It had already stopped mapping to any
+      format; ratings flow through `community_rating`.
+
 - Features
     - New `SourceStarted` online event, emitted once per source that actually
       runs, immediately before that source is consulted and after the first-wins

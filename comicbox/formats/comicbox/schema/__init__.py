@@ -57,7 +57,6 @@ CREDITS_KEY = "credits"
 CREDIT_PRIMARIES_KEY = "credit_primaries"
 COLLECTION_TITLE_KEY = "collection_title"
 COMMUNITY_RATING_KEY = "community_rating"
-CRITICAL_RATING_KEY = "critical_rating"
 COUNTRY_KEY = "country"
 COVER_IMAGE_KEY = "cover_image"
 COVER_DATE_KEY = "cover_date"
@@ -195,7 +194,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     )
 
     age_rating = AgeRatingField()  # CIX, Metron
-    alternate_images = StringSetField()  # CT ONLY
     alternative_issue = Nested(IssueSchema)  # Metron ONLY
     arcs = SimpleNamedDictField(values=Nested(ArcSchema))  # CIX, CT, Metron
     bookmark = IntegerField(minimum=0)  # Comet, CIX(pages), CT
@@ -208,9 +206,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     )
     credit_primaries = DictField(keys=RoleField)  # CBI ONLY
     community_rating = Nested(CommunityRatingSchema)  # CBI, CIX, Metron
-    critical_rating = DecimalField(  # Comicbox ONLY
-        places=1, minimum=Decimal(0), maximum=Decimal(5)
-    )
     date = Nested(DateSchema)
     ext = StringField()  # Filename ONLY
     original_format = OriginalFormatField()  # Comet, CT, Filename, CIX, Metron

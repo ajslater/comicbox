@@ -6,7 +6,6 @@ comic book metadata formats.
 | Comicbox                  | ComicInfo                                                                                | MetronInfo                        | ComicBookInfo                                                             | CoMet             |
 | ------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------- | ----------------- |
 | age_rating                | AgeRating                                                                                | AgeRating                         |                                                                           |
-| alternate_images          |                                                                                          |                                   |                                                                           |
 | alternative_issue         |                                                                                          | AlternativeNumber                 |                                                                           |
 | arcs                      | StoryArc, StoryArcNumbers                                                                |
 | bookmark                  |                                                                                          |                                   |                                                                           | lastMark          |
@@ -17,7 +16,6 @@ comic book metadata formats.
 | collection_title          |                                                                                          | CollectionTitle                   |
 | community_rating          | CommunityRating                                                                          | CommunityRating                   | rating                                                                    |
 | cover_image               |                                                                                          |                                   |                                                                           | coverImage        |
-| critical_rating           |                                                                                          |                                   |                                                                           |
 | date                      | Year, Month, Day                                                                         | CoverDate, StoreDate              | publicationDay, publicationMonth, publicationYear                         | date              |
 | ext                       |
 | original_format           |
