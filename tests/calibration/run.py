@@ -47,6 +47,7 @@ from typing_extensions import Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD
 from comicbox.formats.base.online.matcher import OnlineMatcher
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
@@ -64,9 +65,18 @@ if TYPE_CHECKING:
 
 
 # Score bands for the report. Inclusive lower bound, exclusive upper.
+#
+# The top band's boundary is `DEFAULT_AUTO_THRESHOLD`, not a literal:
+# these labels say what the shipped default policy *does* with a score,
+# and the old hardcoded "0.85-0.95 (auto-write)" stopped being true the
+# day the default bar moved to 0.95. Calibration notes written against
+# the old labels credit the auto-write band with accuracy numbers that
+# actually belong to the top of the prompt zone. Bands below the bar
+# assume it sits at or above 0.85; a lower bar empties the second band
+# rather than mislabelling it.
 _SCORE_BANDS: tuple[tuple[float, float, str], ...] = (
-    (0.95, 1.001, "0.95-1.00 (very high)"),
-    (0.85, 0.95, "0.85-0.95 (auto-write)"),
+    (DEFAULT_AUTO_THRESHOLD, 1.001, f"{DEFAULT_AUTO_THRESHOLD:.2f}-1.00 (auto-write)"),
+    (0.85, DEFAULT_AUTO_THRESHOLD, f"0.85-{DEFAULT_AUTO_THRESHOLD:.2f} (near miss)"),
     (0.70, 0.85, "0.70-0.85 (prompt zone)"),
     (0.50, 0.70, "0.50-0.70 (solo-viable)"),
     (0.0, 0.50, "0.00-0.50 (below min_confidence)"),
