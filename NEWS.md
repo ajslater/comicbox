@@ -49,6 +49,9 @@
     - The write API takes `merge_mode` instead of `mode`, and defaults to the
       config's `write.merge_mode` instead of forcing `additive`. The `WriteMode`
       enum is now `MergeMode`.
+    - `deepdiff` is no longer a dependency. Nothing in the library imports it
+      since reprint consolidation stopped diffing pairs of reprints. Anything
+      that got it transitively through comicbox has to depend on it directly.
 
 - Fixes
     - Writing MetronInfo no longer invents extra credits. Only `Painter` still
