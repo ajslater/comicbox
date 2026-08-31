@@ -23,7 +23,9 @@ Layout matches the Phase 4 spec:
 Display rules:
 - Top 9 candidates max.
 - `cover_score` shown in parens after `score` when hashing was invoked.
-- Honors `--terse` / `-Q` quiet by trimming auxiliary lines.
+- Trims the auxiliary lines when the run asked for less output.
+  `-Q` has no setting of its own — the CLI folds it into
+  `general.loglevel` — so that resolved level is what's read.
 
 Session options (nested under `o`) let the user switch the rest of
 this run to unattended mode or change the match policy
@@ -37,14 +39,21 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from comicbox.config.settings import ComicboxSettings
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
     from comicbox.formats.base.online.selector import SelectorContext, SelectorResult
 
 
 _MAX_DISPLAYED = 9
+
+#: Trim the per-candidate detail lines at this loglevel and above.
+#: `-QQ` resolves to SUCCESS, so two Qs is where trimming starts.
+_TERSE_MIN_LEVEL = "SUCCESS"
 
 _POLICY_CHOICES: tuple[tuple[str, str], ...] = (
     ("1", "ask"),
@@ -188,6 +197,30 @@ def _build_policy_lines() -> list[str]:
     return lines
 
 
+def _resolve_terse(settings: ComicboxSettings) -> bool:
+    """
+    Trim the per-candidate detail lines when the run asked for less output.
+
+    `-Q/--quiet` has no setting of its own: `comicbox.cli` folds it into
+    `general.loglevel`, so that resolved level is the only record of it.
+    Anything above the INFO default trims — `-QQ` and up, or a
+    `loglevel` above INFO in the config file. A single `-Q` maps to
+    INFO, which is already the default, so it changes nothing here
+    either.
+
+    This used to read `settings.quiet`, which `ComicboxSettings` has
+    never defined and — being `slots=True` — nothing could attach. The
+    `getattr` default won every time, so trimming never once happened.
+    """
+    loglevel = settings.general.loglevel
+    if isinstance(loglevel, str):
+        try:
+            loglevel = logger.level(loglevel.upper()).no
+        except ValueError:
+            return False
+    return loglevel >= logger.level(_TERSE_MIN_LEVEL).no
+
+
 def _prompt_line(message: str) -> str | None:
     """Prompt the user once; return None if the user aborts."""
     if _is_tty():
@@ -285,8 +318,7 @@ def cli_selector(
     options submenu) until the user enters a valid id, skips, or
     aborts.
     """
-    settings = ctx.settings
-    terse = bool(getattr(settings, "quiet", 0))
+    terse = _resolve_terse(ctx.settings)
 
     while True:
         for line in _build_lines(profile, candidates, ctx.file_path, terse=terse):
