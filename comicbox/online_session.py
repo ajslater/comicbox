@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_che
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     MatchMode,
     OnlineAuthSettings,
     OnlineLookupSettings,

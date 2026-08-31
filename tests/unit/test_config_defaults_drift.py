@@ -41,13 +41,13 @@ from typing import Any
 
 import yaml
 
-from comicbox.config.online import _parse_ttl
+from comicbox.config.online.build import _parse_ttl
+from comicbox.config.online.settings import OnlineSettings
 from comicbox.config.settings import (
     ComicboxSettings,
     ComputeSettings,
     ConvertSettings,
     GeneralSettings,
-    OnlineSettings,
     PrintSettings,
     ReadSettings,
     WriteSettings,
@@ -187,7 +187,7 @@ def test_auto_threshold_default_agrees_everywhere() -> None:
     The generic walk above covers it, but this failure message is the
     one worth reading when someone edits a threshold.
     """
-    from comicbox.config.settings import (
+    from comicbox.config.online.settings import (
         DEFAULT_AUTO_THRESHOLD,
         OnlineSettings,
         OnlineSourceTuning,

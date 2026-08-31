@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from typing_extensions import override
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     CacheMode,
     Effort,
     OnlineCacheSettings,
@@ -293,7 +293,7 @@ def test_search_retries_volume_search_on_rate_limit(
 def _make_cv_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV, series_id: int
 ) -> ComicVineOnlineSource:
-    from comicbox.config.settings import OnlineLookupSettings
+    from comicbox.config.online.settings import OnlineLookupSettings
 
     creds = OnlineSourceCredentials(key="test-key")
     settings = OnlineSettings(
@@ -381,7 +381,7 @@ def test_search_alias_rescues_volume_from_prefilter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A localized volume survives the pre-call name gate via its alias."""
-    from comicbox.config.settings import (
+    from comicbox.config.online.settings import (
         Effort,
         OnlineSourceTuning,
         OnlineTuningSettings,

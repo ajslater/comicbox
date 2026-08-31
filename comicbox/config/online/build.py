@@ -25,7 +25,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     CacheMode,
     Effort,
@@ -38,8 +38,8 @@ from comicbox.config.settings import (
     OnlineSourceTuning,
     OnlineTuningSettings,
     Prompts,
-    parse_enum,
 )
+from comicbox.config.settings import parse_enum
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
 from comicbox.formats.base.online.credentials import resolve_credentials

@@ -5,7 +5,7 @@ from argparse import Namespace
 import pytest
 
 from comicbox.config import get_config
-from comicbox.config.settings import CacheMode, Effort, MatchMode, Prompts
+from comicbox.config.online.settings import CacheMode, Effort, MatchMode, Prompts
 from comicbox.formats.base.online.cli_overrides import CliOverrides
 from comicbox.formats.base.online.credentials import resolve_credentials
 
@@ -122,7 +122,7 @@ def test_resolve_credentials_returns_all_sources() -> None:
 
 def test_credentials_repr_redacts_secrets() -> None:
     """repr() must never expose password or api key — log-safety invariant."""
-    from comicbox.config.settings import OnlineSourceCredentials
+    from comicbox.config.online.settings import OnlineSourceCredentials
 
     creds = OnlineSourceCredentials(
         user="ajslater",
@@ -141,7 +141,7 @@ def test_credentials_repr_redacts_secrets() -> None:
 
 def test_credentials_repr_shows_none_for_unset_secrets() -> None:
     """An unset secret renders as None, distinct from a redacted '***'."""
-    from comicbox.config.settings import OnlineSourceCredentials
+    from comicbox.config.online.settings import OnlineSourceCredentials
 
     creds = OnlineSourceCredentials(user="ajslater")
     rendered = repr(creds)

@@ -33,7 +33,7 @@ from loguru import logger
 from typing_extensions import override
 
 from comicbox.box.normalize import ComicboxNormalize
-from comicbox.config.settings import MatchMode, Prompts
+from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.events import (
     AutoWritten,
     FileFinished,
@@ -78,7 +78,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping, Sequence
     from pathlib import Path
 
-    from comicbox.config.settings import OnlineSettings
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
     from comicbox.formats.base.online.cover_hash import (
         CoverFetchPool,
@@ -600,7 +600,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         so a top-K batch costs one query in and one transaction out
         instead of two connections per candidate.
         """
-        from comicbox.config.settings import CacheMode
+        from comicbox.config.online.settings import CacheMode
 
         if self._config.online.cache.mode is CacheMode.OFF:
             return None
@@ -705,7 +705,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _resolve_with_matcher(
         self, source_name: str, candidates: list[Candidate]
     ) -> Resolution:
-        from comicbox.config.settings import (
+        from comicbox.config.online.settings import (
             resolve_auto_threshold,
             resolve_disambiguation_margin,
             resolve_min_confidence,

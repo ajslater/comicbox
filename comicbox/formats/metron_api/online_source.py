@@ -224,7 +224,7 @@ class MetronOnlineSource(OnlineSource):
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
-        from comicbox.config.settings import resolve_rate_limit
+        from comicbox.config.online.settings import resolve_rate_limit
 
         limits = resolve_rate_limit(self._settings, self.name)
         if limits.per_minute is not None or limits.per_day is not None:

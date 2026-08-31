@@ -12,7 +12,6 @@ from confuse.templates import (
     Choice,
     Integer,
     MappingTemplate,
-    Number,
     OneOf,
     Optional,
     Sequence,
@@ -23,9 +22,14 @@ from loguru import logger
 from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.online import (
+    ONLINE_TEMPLATE,
     build_online_settings,
     cns_for_overrides,
     runtime_online_inputs,
+)
+from comicbox.config.online.template import (
+    NON_MAPPING_CONTAINER,
+    NON_MAPPING_TYPES,
 )
 from comicbox.config.paths import (
     expand_glob_paths,
@@ -54,80 +58,10 @@ if TYPE_CHECKING:
 # user-config-dir lookup (``COMICBOXDIR``).
 _ENV_PREFIX = PACKAGE_NAME.upper()
 
-# Any non-Mapping container type — set/frozenset/tuple/list all pass.
-_NON_MAPPING_TYPES = (set, frozenset, tuple, list)
-_NON_MAPPING_CONTAINER = OneOf(_NON_MAPPING_TYPES)
-
-
-_RATE_LIMIT_TEMPLATE = MappingTemplate(
-    {
-        "per_minute": Optional(Integer()),
-        "per_day": Optional(Integer()),
-        "per_second": Optional(Integer()),
-        "per_hour": Optional(Integer()),
-    }
-)
-
-
-_PER_SOURCE_TUNING_TEMPLATE = MappingTemplate(
-    {
-        "auto_threshold": Optional(Number()),
-        "effort": Optional(String()),
-        "min_confidence": Optional(Number()),
-        "disambiguation_margin": Optional(Number()),
-        "solo_threshold": Optional(Number()),
-        "rate_limit": Optional(_RATE_LIMIT_TEMPLATE),
-    }
-)
-
-
-_AUTH_SOURCE_TEMPLATE = MappingTemplate(
-    {
-        "user": Optional(str),
-        "pass": Optional(str),
-        "key": Optional(str),
-        "url": Optional(str),
-    }
-)
-
-
-_ONLINE_TEMPLATE = MappingTemplate(
-    {
-        "lookup": MappingTemplate(
-            {
-                "match": String(),
-                "prompts": String(),
-                "rematch": bool,
-                # A CSV string is accepted alongside a container so an
-                # env var can set it; _normalize_sources splits either.
-                "sources": Optional(OneOf((str, *_NON_MAPPING_TYPES))),
-                "first_wins": bool,
-            }
-        ),
-        "auth": MappingTemplate(
-            {
-                "metron": _AUTH_SOURCE_TEMPLATE,
-                "comicvine": _AUTH_SOURCE_TEMPLATE,
-            }
-        ),
-        "cache": MappingTemplate(
-            {
-                "mode": String(),
-                "dir": Optional(OneOf((str, Path))),
-                "ttl": String(),
-            }
-        ),
-        "tuning": MappingTemplate(
-            {
-                "auto_threshold": Number(),
-                "effort": String(),
-                "retry_budget": Integer(),
-                "per_source": Optional(dict),
-            }
-        ),
-    }
-)
-
+# Container and online templates live in the online package; the
+# container types are shared with the groups below.
+_NON_MAPPING_TYPES = NON_MAPPING_TYPES
+_NON_MAPPING_CONTAINER = NON_MAPPING_CONTAINER
 
 _TEMPLATE = MappingTemplate(
     {
@@ -193,7 +127,7 @@ _TEMPLATE = MappingTemplate(
                         "page_count": bool,
                     }
                 ),
-                "online": _ONLINE_TEMPLATE,
+                "online": ONLINE_TEMPLATE,
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 "computed": Optional(
                     MappingTemplate(

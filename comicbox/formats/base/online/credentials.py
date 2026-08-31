@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from comicbox.config.settings import OnlineSourceCredentials
+from comicbox.config.online.settings import OnlineSourceCredentials
 from comicbox.formats.base.online import SOURCE_NAMES
 
 if TYPE_CHECKING:

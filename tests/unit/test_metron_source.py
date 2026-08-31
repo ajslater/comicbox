@@ -16,10 +16,7 @@ from typing import Any
 import pytest
 from typing_extensions import override
 
-from comicbox.config.settings import (
-    OnlineSettings,
-    OnlineSourceCredentials,
-)
+from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
@@ -258,7 +255,7 @@ def test_search_retries_per_call_on_rate_limit(
 def _make_metron_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari, series_id: int
 ) -> MetronOnlineSource:
-    from comicbox.config.settings import OnlineLookupSettings
+    from comicbox.config.online.settings import OnlineLookupSettings
 
     creds = OnlineSourceCredentials(user="u", password="p")
     settings = OnlineSettings(

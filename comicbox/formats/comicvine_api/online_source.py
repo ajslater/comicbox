@@ -272,7 +272,7 @@ class ComicVineOnlineSource(OnlineSource):
             logger.debug(f"online {self.name}: cache disable skipped: {exc}")
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
-        from comicbox.config.settings import resolve_rate_limit
+        from comicbox.config.online.settings import resolve_rate_limit
 
         limits = resolve_rate_limit(self._settings, self.name)
         if limits.per_second is not None or limits.per_hour is not None:
@@ -780,7 +780,7 @@ class ComicVineOnlineSource(OnlineSource):
 
     def _new_search_budget(self) -> _SearchBudget:
         """Resolve this search's pre-call fan-out limits from the effort knob."""
-        from comicbox.config.settings import resolve_effort
+        from comicbox.config.online.settings import resolve_effort
 
         max_calls = max_calls_for(resolve_effort(self._settings, self.name))
         deadline = None if max_calls is None else time.monotonic() + _SEARCH_DEADLINE_S

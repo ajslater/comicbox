@@ -21,7 +21,8 @@ from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
-from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD, MergeMode
+from comicbox.config.online.settings import DEFAULT_AUTO_THRESHOLD
+from comicbox.config.settings import MergeMode
 
 if TYPE_CHECKING:
     from rich.console import Group

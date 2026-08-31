@@ -45,10 +45,10 @@ from typing import TYPE_CHECKING, Final
 
 from loguru import logger
 
-from comicbox.config.settings import Effort, Prompts
+from comicbox.config.online.settings import Effort, Prompts
 
 if TYPE_CHECKING:
-    from comicbox.config.settings import OnlineSettings
+    from comicbox.config.online.settings import OnlineSettings
 
 
 # Batch-size threshold at which to auto-engage `fast` for a source
@@ -138,7 +138,7 @@ def resolve_auto_engaged_budget(
     if online.tuning.effort is not Effort.BALANCED:
         return online
 
-    from comicbox.config.settings import OnlineSourceTuning
+    from comicbox.config.online.settings import OnlineSourceTuning
 
     is_tty = _stdin_is_tty()
     is_unattended = online.lookup.prompts is Prompts.NEVER

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comicbox.config.settings import MatchMode, Prompts
+from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.online_session import (
     OnlineConfigurationError,
     OnlineCredentials,

@@ -18,8 +18,8 @@ from confuse import ConfigError
 from loguru import logger as loguru_logger
 
 from comicbox.config import get_config
+from comicbox.config.online.settings import CacheMode
 from comicbox.config.read import _LEGACY_ENV_VARS
-from comicbox.config.settings import CacheMode
 
 
 @pytest.fixture

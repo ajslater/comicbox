@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING, Final
 
 from rapidfuzz import fuzz
 
-from comicbox.config.settings import Effort
+from comicbox.config.online.settings import Effort
 from comicbox.formats.base.online.signals import normalize_series
 
 if TYPE_CHECKING:
