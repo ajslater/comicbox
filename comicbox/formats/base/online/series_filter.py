@@ -122,6 +122,45 @@ _MAX_RESULTS_OVERRIDES: Final[MappingProxyType[Effort, int]] = MappingProxyType(
 )
 
 
+# Per-budget cap on how many per-volume issue-list API calls one search
+# may spend. Distinct from `_MAX_RESULTS_OVERRIDES`, which caps how many
+# volumes DISCOVERY returns: `_discover_volumes` unions a fuzzy and a
+# narrow result set, each capped at that number, so the surviving volume
+# list can be twice the cap — and each survivor costs one `list_issues`
+# call, or two when the cover-date window comes back empty. A 20-volume
+# cap therefore admits up to ~80 rate-limited calls for ONE comic, which
+# at ComicVine's 1/sec is over a minute of wall clock before the matcher
+# sees anything.
+#
+# This is a pre-call throttle in the same family as the name filter: it
+# decides whether to spend a call, never what to do with a result. The
+# matcher's ranking of whatever comes back is untouched.
+#
+# THOROUGH is deliberately absent — "spend API budget freely" is its
+# whole contract, so it keeps the unbounded fan-out.
+_MAX_CALLS_OVERRIDES: Final[MappingProxyType[Effort, int]] = MappingProxyType(
+    {
+        # BALANCED: 20 covers the full default discovery cap for the
+        # common case where fuzzy and narrow agree, and only bites on
+        # the pathological union where they don't.
+        Effort.BALANCED: 20,
+        # MINIMAL already caps discovery at 5 volumes; 10 lets every one
+        # of them take its year-window retry and stop there.
+        Effort.MINIMAL: 10,
+    }
+)
+
+
+def max_calls_for(budget: Effort) -> int | None:
+    """
+    Return the per-search issue-list call budget, or None for unlimited.
+
+    None means THOROUGH (or an unrecognized budget): no per-search cap,
+    matching that mode's "spend freely" contract.
+    """
+    return _MAX_CALLS_OVERRIDES.get(budget)
+
+
 def threshold_for(budget: Effort) -> float:
     """Return the per-budget filter threshold in `[0, 1]`."""
     return _THRESHOLDS.get(budget, 0.0)

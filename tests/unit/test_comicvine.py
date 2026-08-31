@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from contextlib import closing
 from datetime import timedelta
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ from typing_extensions import override
 
 from comicbox.config.settings import (
     CacheMode,
+    Effort,
     OnlineCacheSettings,
     OnlineSettings,
     OnlineSourceCredentials,
@@ -20,8 +22,11 @@ from comicbox.config.settings import (
     OnlineTuningSettings,
 )
 from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.series_filter import max_calls_for
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
+    _SearchBudget,
+    reset_shared_sessions,
 )
 from comicbox.version import USER_AGENT
 
@@ -968,12 +973,19 @@ def test_build_session_drops_v2_queries_table(
     assert "queries" not in tables
 
 
-def test_build_session_warns_on_ignored_rate_limit_override(
+def test_get_session_warns_on_ignored_rate_limit_override(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """CV per_second/per_hour overrides can't flow into simyan 3.x — warn."""
+    """
+    CV per_second/per_hour overrides can't flow into simyan 3.x — warn.
+
+    Driven through `_get_session`, not `_build_session`: the warning
+    deliberately fires on every source that carries the ignored config,
+    not only on the one that wins the shared-client cache miss.
+    """
     from loguru import logger as loguru_logger
 
+    reset_shared_sessions()
     messages: list[str] = []
     handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
     try:
@@ -987,7 +999,167 @@ def test_build_session_warns_on_ignored_rate_limit_override(
         settings = OnlineSettings(
             cache=OnlineCacheSettings(dir=tmp_path), tuning=tuning
         )
-        _build_with_fake(monkeypatch, settings)
+        monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
+        creds = OnlineSourceCredentials(key="warn-key")
+        ComicVineOnlineSource(creds, settings)._get_session()
     finally:
         loguru_logger.remove(handler_id)
+        reset_shared_sessions()
     assert any("ignored" in message for message in messages)
+
+
+def test_get_session_shared_across_source_instances(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """
+    Same credentials → one client, even across separately built sources.
+
+    `_build_active_online_sources` rebuilds sources per file, so this is
+    what keeps a batch from paying for a fresh simyan client (and its
+    connection pool and sqlite handles) per comic.
+    """
+    reset_shared_sessions()
+    try:
+        monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
+        settings = _make_cache_settings(tmp_path)
+        creds = OnlineSourceCredentials(key="shared-key")
+        first = ComicVineOnlineSource(creds, settings)._get_session()
+        second = ComicVineOnlineSource(creds, settings)._get_session()
+        assert first is second
+    finally:
+        reset_shared_sessions()
+
+
+def test_get_session_not_shared_across_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A different api_key gets its own client."""
+    reset_shared_sessions()
+    try:
+        monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
+        settings = _make_cache_settings(tmp_path)
+        first = ComicVineOnlineSource(
+            OnlineSourceCredentials(key="key-a"), settings
+        )._get_session()
+        second = ComicVineOnlineSource(
+            OnlineSourceCredentials(key="key-b"), settings
+        )._get_session()
+        assert first is not second
+    finally:
+        reset_shared_sessions()
+
+
+def test_get_session_warns_when_reused_with_different_cache_settings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """First build wins; the loser is told its cache config is ignored."""
+    from loguru import logger as loguru_logger
+
+    reset_shared_sessions()
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
+        creds = OnlineSourceCredentials(key="mismatch-key")
+        ComicVineOnlineSource(creds, _make_cache_settings(tmp_path))._get_session()
+        other = tmp_path / "other"
+        other.mkdir()
+        ComicVineOnlineSource(creds, _make_cache_settings(other))._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+        reset_shared_sessions()
+    assert any("ignored in favor of" in message for message in messages)
+
+
+# ------------------------------------------------ per-search fan-out budget
+
+
+def _many_volume_source(
+    monkeypatch: pytest.MonkeyPatch, count: int, effort: Effort
+) -> tuple[ComicVineOnlineSource, _FakeCV]:
+    """Build a CV source facing `count` equally-plausible volumes."""
+    volumes = [_FakeBasicVolume(vid=i, name="Conan") for i in range(1, count + 1)]
+    issues = {
+        i: [_FakeBasicIssue(iid=i * 10, number="7", volume_name="Conan")]
+        for i in range(1, count + 1)
+    }
+    fake_cv = _FakeCV(volumes=volumes, issues_by_volume=issues)
+    tuning = OnlineTuningSettings(
+        per_source={"comicvine": OnlineSourceTuning(effort=effort)}
+    )
+    src = ComicVineOnlineSource(
+        OnlineSourceCredentials(key="test-key"), OnlineSettings(tuning=tuning)
+    )
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src, fake_cv
+
+
+def test_search_caps_issue_list_calls_at_the_effort_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A wide fan-out can't spend unbounded rate-limited calls on one comic.
+
+    Every surviving volume costs a `list_issues` call at CV's 1/sec, so
+    an uncapped fan-out is minutes of wall clock for a single file.
+    """
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+    src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(fake_cv.list_issues_calls) == max_calls_for(Effort.BALANCED)
+
+
+def test_search_budget_is_pre_call_not_post_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    The budget drops CALLS, never results.
+
+    Effort/api_budget is a pre-call fan-out throttle; every candidate
+    that a spent call returned still reaches the matcher.
+    """
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+    candidates = src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(candidates) == len(fake_cv.list_issues_calls)
+
+
+def test_thorough_effort_keeps_the_unbounded_fan_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`thorough` means spend freely — no per-search cap."""
+    assert max_calls_for(Effort.THOROUGH) is None
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.THOROUGH)
+    src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(fake_cv.list_issues_calls) == 40
+
+
+def test_search_reports_volumes_it_did_not_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Truncation is never silent — a short candidate list says why."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="INFO", format="{message}")
+    try:
+        src, _ = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+        src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    finally:
+        loguru_logger.remove(handler_id)
+    assert any("not queried" in message for message in messages)
+
+
+def test_search_budget_deadline_stops_the_fan_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stalled fan-out stops on the clock even with calls left."""
+    budget = _SearchBudget(max_calls=100, deadline=time.monotonic() - 1.0)
+    assert budget.take() is False
+    assert budget.dropped == 1
+    assert "deadline" in budget.exhausted_reason()
+
+
+def test_search_budget_unlimited_never_stops() -> None:
+    """`max_calls=None` with no deadline is the THOROUGH contract."""
+    budget = _SearchBudget(max_calls=None, deadline=None)
+    assert all(budget.take() for _ in range(50))
+    assert budget.dropped == 0

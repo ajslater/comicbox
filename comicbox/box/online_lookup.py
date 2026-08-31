@@ -69,17 +69,21 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.prompt import cli_selector
 from comicbox.formats.base.online.selector import SelectorContext
+from comicbox.formats.base.online.series_cache import claim_series
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableMapping
+    from collections.abc import Callable, MutableMapping, Sequence
     from pathlib import Path
 
     from comicbox.config.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
-    from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
+    from comicbox.formats.base.online.cover_hash import (
+        CoverFetchPool,
+        CoverHashUrlCache,
+    )
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
@@ -202,11 +206,34 @@ def _series_fingerprint(profile: ComicProfile) -> str:
     step-6 prompt-cache fingerprint which incorporates candidate
     volume_ids. Same series across different issues collapses to the
     same string here.
+
+    Every component must be a property of the SERIES, never of the
+    issue. `profile.year` is the issue's own cover year, so including it
+    (as this did until 2026-08) gave every issue of a run that spans
+    more than one calendar year its own key — the cache missed on
+    exactly the multi-issue batches it exists to accelerate, and the
+    unit fixture that should have caught it held the year constant.
+
+    The two discriminators that replace it are genuinely series-level:
+
+    - `volume` — the ordinal from "Vol. 2", already year-sanitized by
+      `_resolve_volume` (a 4-digit value is rejected as a mis-filed
+      year), so it separates reboots when the file carries one.
+    - `series_start_year` — the year the run began. Sparse (Metron
+      writes it; most embedded formats don't), so it discriminates when
+      present and costs nothing when absent.
+
+    Residual collision: two same-name, same-publisher runs where neither
+    file carries a volume ordinal or a start year now share a key. That
+    resolves itself rather than mis-tagging — `_try_series_cache_lookup`
+    falls back to the full search when the cached volume has no such
+    issue, leaving the entry intact.
     """
     series = (profile.series or "").strip().lower()
     publisher = (profile.publisher or "").strip().lower()
-    year = str(profile.year or "")
-    return f"{series}|{year}|{publisher}"
+    volume = str(profile.volume or "")
+    start_year = str(profile.series_start_year or "")
+    return f"{series}|{volume}|{start_year}|{publisher}"
 
 
 def _detect_cv_id_disagreement(
@@ -275,6 +302,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # run_online_lookup() calls report this first-run outcome.
     _online_lookup_won: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
+    _cover_fetch_pool: CoverFetchPool | None = None
     _local_cover_phash_computed: bool = False
     _local_cover_phash_value: str | None = None
     # Built once per lookup run (5 call sites); invalidated whenever the
@@ -486,6 +514,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             publisher=fields.get("publisher"),
             page_count=fields.get("page_count"),
             volume=fields.get("volume"),
+            series_start_year=fields.get("series_start_year"),
         )
         self._profile_cache = profile
         return profile
@@ -539,17 +568,21 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         First-writer-wins: a falsy-group collision (two unrelated comics
         that happened to share a series fingerprint) can't overwrite an
         already-resolved entry. Fires ``SeriesIdentified`` only on first
-        population for this fingerprint. Locking — when needed for
-        concurrent callers — is the OnlineSession's responsibility; the
-        cache passed in here can be a thread-safe wrapper.
+        population for this fingerprint.
+
+        ``claim_series`` makes "was I the first writer?" a single
+        operation, so concurrent callers (the CLI's `-j N` pool, which
+        shares one cache across workers) get exactly one winner and
+        therefore exactly one event. A plain dict from a single-threaded
+        caller still works — it degrades to the check-then-set this used
+        to do inline.
         """
         if self._series_cache is None or candidate.volume_id is None:
             return
         fingerprint = _series_fingerprint(self._build_profile())
         key = (source.name, fingerprint)
-        if key in self._series_cache:
+        if not claim_series(self._series_cache, key, candidate.volume_id):
             return
-        self._series_cache[key] = candidate.volume_id
         self._emit(
             SeriesIdentified(
                 path=getattr(self, "_path", None),
@@ -559,58 +592,95 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
         )
 
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
+    def _get_cover_hash_cache(self) -> CoverHashUrlCache | None:
         """
-        Download a candidate cover from URL and return its pHash, with caching.
+        Lazily open the shared cover-hash sqlite cache; None when caching is OFF.
 
-        Used by the matcher for sources that don't ship a precomputed hash
-        (ComicVine, GCD). Local writes go through the shared
-        cover-hashes sqlite cache.
+        One connection for the box's lifetime (see `CoverHashUrlCache`),
+        so a top-K batch costs one query in and one transaction out
+        instead of two connections per candidate.
         """
-        from comicbox.formats.base.online.cover_hash import (
-            CoverHashUrlCache,
-            compute_phash,
-        )
+        from comicbox.config.settings import CacheMode
 
-        if not url:
+        if self._config.online.cache.mode is CacheMode.OFF:
             return None
+        if self._cover_hash_url_cache is None:
+            from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
 
-        cache = self._cover_hash_url_cache
-        if cache is None:
             cache_dir = self._config.online.cache.dir
             if cache_dir is None:
                 from platformdirs import user_cache_path
 
                 cache_dir = user_cache_path("comicbox") / "online"
             cache_dir.mkdir(parents=True, exist_ok=True)
-            cache = CoverHashUrlCache(cache_dir / "cover_hashes.sqlite")
-            self._cover_hash_url_cache = cache
+            self._cover_hash_url_cache = CoverHashUrlCache(
+                cache_dir / "cover_hashes.sqlite"
+            )
+        return self._cover_hash_url_cache
 
-        from comicbox.config.settings import CacheMode
+    def _get_cover_fetch_pool(self) -> CoverFetchPool:
+        """Lazily build the bounded download pool; one httpx client per box."""
+        if self._cover_fetch_pool is None:
+            from comicbox.formats.base.online.cover_hash import CoverFetchPool
 
-        if self._config.online.cache.mode is CacheMode.OFF:
-            cache = None
-        if cache is not None and (cached := cache.get(url)):
-            return cached
+            self._cover_fetch_pool = CoverFetchPool()
+        return self._cover_fetch_pool
 
-        try:
-            import httpx
+    def _candidate_cover_hash_batch_fetcher(
+        self, urls: Sequence[str]
+    ) -> dict[str, str]:
+        """
+        Resolve many candidate cover URLs to pHashes in one pass.
 
-            response = httpx.get(url, timeout=15.0, follow_redirects=True)
-            response.raise_for_status()
-        except Exception as exc:
-            logger.warning(f"online: cover download failed ({url}): {exc}")
+        Used by the matcher for sources that don't ship a precomputed
+        hash (ComicVine, GCD). Cache lookups collapse into a single
+        query; the remaining misses download concurrently over one
+        shared HTTP client and are written back in one transaction.
+        URLs that fail to download or hash are simply absent from the
+        result — the matcher reads that as "no cover signal".
+        """
+        wanted = [u for u in dict.fromkeys(urls) if u]
+        if not wanted:
+            return {}
+        cache = self._get_cover_hash_cache()
+        resolved = cache.get_many(wanted) if cache is not None else {}
+        missing = [u for u in wanted if u not in resolved]
+        if not missing:
+            return resolved
+        fetched = self._get_cover_fetch_pool().fetch_hashes(missing)
+        if cache is not None and fetched:
+            cache.set_many(fetched.items())
+        resolved.update(fetched)
+        return resolved
+
+    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
+        """
+        Download a candidate cover from URL and return its pHash, with caching.
+
+        The single-URL entry point, kept for callers that resolve one
+        candidate at a time; the matcher's hot path goes through
+        `_candidate_cover_hash_batch_fetcher` instead.
+        """
+        if not url:
             return None
+        return self._candidate_cover_hash_batch_fetcher((url,)).get(url)
 
+    def _close_cover_hash_resources(self) -> None:
+        """Release the cover-hash sqlite connection and HTTP client."""
+        if self._cover_hash_url_cache is not None:
+            self._cover_hash_url_cache.close()
+            self._cover_hash_url_cache = None
+        if self._cover_fetch_pool is not None:
+            self._cover_fetch_pool.close()
+            self._cover_fetch_pool = None
+
+    @override
+    def close(self) -> None:
+        """Close the archive, then release online-lookup resources."""
         try:
-            phash = compute_phash(response.content)
-        except Exception as exc:
-            logger.warning(f"online: cover pHash failed ({url}): {exc}")
-            return None
-
-        if cache is not None:
-            cache.set(url, phash)
-        return phash
+            super().close()
+        finally:
+            self._close_cover_hash_resources()
 
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""
@@ -650,7 +720,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._build_profile(),
             candidates,
             local_hash_provider=self._local_cover_phash,
-            candidate_hash_fetcher=self._candidate_cover_hash_fetcher,
+            candidate_hash_batch_fetcher=self._candidate_cover_hash_batch_fetcher,
             threshold=threshold,
             min_confidence=min_conf,
             disambiguation_margin=margin,

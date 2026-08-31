@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 from loguru import logger as loguru_logger
+from typing_extensions import Self
 
 from comicbox.config import get_config
 from comicbox.config.settings import (
@@ -21,6 +22,7 @@ from comicbox.config.settings import (
     OnlineSourceCredentials,
 )
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
+from comicbox.formats.base.online.series_cache import SeriesCache
 from comicbox.run import Runner
 from tests.const import CIX_CBZ_SOURCE_PATH
 
@@ -416,3 +418,87 @@ def test_recurse_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
     assert len(errors) == 1
     assert str(corrupt) in errors[0]["message"]
     assert runner.failure_count == 1
+
+
+# ------------------------------------------------ CLI series batching
+
+
+def _online_runner(tmp_path: Path, names: list[str]) -> tuple[Runner, list[str]]:
+    """Build a Runner over `names` with online lookup enabled."""
+    for name in names:
+        (tmp_path / name).write_bytes(b"")
+    settings = _metron_settings()
+    paths = tuple(str(tmp_path / name) for name in names)
+    return Runner(replace(settings, paths=paths)), list(paths)
+
+
+def test_runner_owns_one_series_cache_for_the_batch() -> None:
+    """
+    The CLI gets a series cache; it used to have none at all.
+
+    Without it, `comicbox --online` re-ran the full candidate search for
+    every issue of a series even inside a single batch — the exact work
+    `OnlineSession` has always skipped.
+    """
+    runner = Runner(_metron_settings())
+    assert isinstance(runner._series_cache, SeriesCache)
+    assert len(runner._series_cache) == 0
+
+
+def test_series_cache_is_wired_into_each_box(tmp_path: Path) -> None:
+    """Every file of an online batch shares the runner's one cache."""
+    runner, paths = _online_runner(tmp_path, ["Spider-Man #001 (2018).cbz"])
+    seen: list[Any] = []
+
+    class _FakeBox:
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+        def set_series_cache(self, cache: Any) -> None:
+            seen.append(cache)
+
+        def print_file_header(self) -> None:
+            return None
+
+        def run(self) -> None:
+            return None
+
+    with patch("comicbox.run.Comicbox", lambda *_a, **_kw: _FakeBox()):
+        runner.run_on_file(paths[0])
+    assert seen == [runner._series_cache]
+
+
+def test_online_batch_is_clustered_by_series(tmp_path: Path) -> None:
+    """
+    Same-series files run back-to-back so the cache's cold path runs once.
+
+    Interleaved input order is the realistic case — a recursive walk
+    sorts by path, which mixes series whenever they share a directory.
+    """
+    names = [
+        "Spider-Man #001 (2018).cbz",
+        "Batman #001 (2011).cbz",
+        "Spider-Man #014 (2019).cbz",
+        "Batman #027 (2013).cbz",
+    ]
+    runner, paths = _online_runner(tmp_path, names)
+    ordered = [
+        Path(p).name for p in runner._order_for_series_batching(list(map(Path, paths)))
+    ]
+    spider = [i for i, n in enumerate(ordered) if n.startswith("Spider")]
+    batman = [i for i, n in enumerate(ordered) if n.startswith("Batman")]
+    assert spider == [spider[0], spider[0] + 1]
+    assert batman == [batman[0], batman[0] + 1]
+
+
+def test_offline_batch_keeps_user_order(tmp_path: Path) -> None:
+    """Reordering is an online-lookup optimization; nothing else pays for it."""
+    names = ["z.cbz", "a.cbz", "m.cbz"]
+    for name in names:
+        (tmp_path / name).write_bytes(b"")
+    paths = [tmp_path / name for name in names]
+    runner = Runner(get_config(Namespace(comicbox=Namespace())))
+    assert runner._order_for_series_batching(paths) == paths

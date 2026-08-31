@@ -6,7 +6,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from comicbox.formats.base.online.retry import _RATE_LIMIT_SCHEDULE, with_retry
+from comicbox.exceptions import OnlineLookupAbortedError
+from comicbox.formats.base.online.retry import (
+    _MAX_TOTAL_WAIT_S,
+    _RATE_LIMIT_SCHEDULE,
+    clear_cancel,
+    interruptible_sleep,
+    request_cancel,
+    with_retry,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -523,3 +531,109 @@ def test_api_key_redacted_inside_nested_exception_args() -> None:
     chain = "".join(traceback.format_exception(excinfo.value))
     assert "SECRETKEY123" not in chain
     assert "api_key=REDACTED" in chain
+
+
+# --- wall-clock ceiling -----------------------------------------------------
+
+
+def test_total_wait_ceiling_stops_a_server_hint_loop() -> None:
+    """
+    An honored `retry_after` per attempt is otherwise unbounded in total.
+
+    `_MAX_RETRY_AFTER_S` caps ONE hint at an hour; nothing capped the sum,
+    so eight of them could park a worker for most of a day.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+
+    @with_retry(max_retries=1, sleep=fake_sleep)
+    def fn() -> str:
+        raise _FakeRateLimitError(retry_after=3600.0)
+
+    with pytest.raises(_FakeRateLimitError):
+        fn()
+    assert sum(sleeps) <= _MAX_TOTAL_WAIT_S
+    # One 3600s hint exactly fills the ceiling; a second would breach it.
+    assert len(sleeps) == 1
+
+
+def test_total_wait_ceiling_is_configurable_per_call() -> None:
+    """A tighter ceiling ends the loop sooner, without truncating a delay."""
+    sleeps, fake_sleep = _capture_sleeps()
+
+    @with_retry(max_retries=1, sleep=fake_sleep, max_wait_s=100.0)
+    def fn() -> str:
+        raise _FakeRateLimitError
+
+    with pytest.raises(_FakeRateLimitError):
+        fn()
+    # 30 + 60 = 90 fits; the next scheduled delay (120) would breach 100,
+    # so the loop ends rather than sleeping a shortened, useless wait.
+    assert sleeps == [30.0, 60.0]
+
+
+def test_ceiling_leaves_the_tuned_rate_limit_schedule_intact() -> None:
+    """
+    The default ceiling must not silently shorten `_RATE_LIMIT_SCHEDULE`.
+
+    That schedule's 8-attempt tail was tuned against a `-j 8` rate-limit
+    cascade; a ceiling below its 2910s total would undo that fix without
+    anything failing.
+    """
+    assert sum(_RATE_LIMIT_SCHEDULE) <= _MAX_TOTAL_WAIT_S
+
+
+# --- cancellable sleep is the default ---------------------------------------
+
+
+def test_default_sleep_is_interruptible() -> None:
+    """
+    Every caller gets cancellable waits, not just OnlineSession.
+
+    The waits here run to minutes, so an uninterruptible default made
+    Ctrl-C look broken for CLI users and left a programmatic cancel with
+    nothing to interrupt.
+    """
+    calls = 0
+
+    @with_retry(max_retries=3)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise _FakeRateLimitError
+
+    request_cancel()
+    try:
+        with pytest.raises(OnlineLookupAbortedError):
+            fn()
+    finally:
+        clear_cancel()
+    # Cancelled during the first backoff, so the call is never replayed.
+    assert calls == 1
+
+
+def test_interruptible_sleep_returns_normally_when_not_cancelled() -> None:
+    """With no cancel pending it is an ordinary (short) sleep."""
+    clear_cancel()
+    interruptible_sleep(0.001)
+
+
+def test_instance_retry_sleep_still_overrides_the_new_default() -> None:
+    """OnlineSession's per-instance cancellable sleep keeps winning."""
+    sleeps, fake_sleep = _capture_sleeps()
+
+    class _Source:
+        retry_sleep = staticmethod(fake_sleep)
+        on_rate_limit = None
+
+        @with_retry(max_retries=2)
+        def fetch(self) -> str:
+            raise _FakeRateLimitError
+
+    request_cancel()
+    try:
+        with pytest.raises(_FakeRateLimitError):
+            _Source().fetch()
+    finally:
+        clear_cancel()
+    # The instance sleep ran instead of the cancelling default.
+    assert sleeps

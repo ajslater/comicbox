@@ -37,6 +37,7 @@ from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 # import path; the definition lives in comicbox.exceptions so it shares
 # the ComicboxError base.
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
+from comicbox.formats.base.online.series_cache import filename_series_fingerprint
 
 # Re-exported so batch callers get the run estimator off the same Codex-facing
 # façade as the session it estimates; the implementation lives in
@@ -525,7 +526,7 @@ class OnlineSession:
         """
         path_list = list(paths)
         if self._series_batching:
-            path_list = sorted(path_list, key=_filename_series_fingerprint)
+            path_list = sorted(path_list, key=filename_series_fingerprint)
         for path in path_list:
             if self._cancel.is_set():
                 yield OnlineResult(path=path, cancelled=True)
@@ -860,6 +861,14 @@ def _prompt_fingerprint(
     to the same fingerprint because their candidate volume_ids match —
     enabling the cache to auto-apply the user's prior series choice to
     every subsequent issue of that run.
+
+    Series-level means series-level: the issue's own cover year is
+    excluded for the same reason `_series_fingerprint` excludes it (see
+    comicbox/box/online_lookup.py) — it forked the key per issue on any
+    run spanning more than one year, so the user was re-prompted for a
+    series they had already disambiguated. The volume ordinal and the
+    series start year take its place, on top of the candidate
+    volume_ids, which already carry most of the discrimination.
     """
     series = (profile.series or "").strip().lower()
     publisher = (profile.publisher or "").strip().lower()
@@ -871,26 +880,12 @@ def _prompt_fingerprint(
     # fingerprint, equivalent to "same exact candidate list."
     if not volume_ids:
         volume_ids = tuple(sorted(c.issue_id for c in candidates))
-    parts = (source, series, str(profile.year or ""), publisher, repr(volume_ids))
+    parts = (
+        source,
+        series,
+        str(profile.volume or ""),
+        str(profile.series_start_year or ""),
+        publisher,
+        repr(volume_ids),
+    )
     return "|".join(parts)
-
-
-def _filename_series_fingerprint(path: Path) -> str:
-    """
-    Lightweight series fingerprint derived from the filename alone.
-
-    Used by ``tag_many`` to group same-series comics together *before*
-    opening any archives. Falls back to the bare filename when comicfn2dict
-    can't extract a series — those files won't benefit from series
-    batching but won't break it either (they sort to a deterministic
-    "by filename" bucket).
-    """
-    from comicfn2dict import comicfn2dict
-
-    try:
-        parsed = comicfn2dict(path.name)
-    except Exception:  # pragma: no cover — comicfn2dict is permissive
-        return path.name.lower()
-    series = str(parsed.get("series") or "").strip().lower()
-    year = str(parsed.get("year") or "")
-    return f"{series}|{year}" if series else f"~{path.name.lower()}"

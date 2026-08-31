@@ -39,6 +39,8 @@ from comicbox.formats.base.online.signals import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from comicbox.config.settings import OnlineSettings
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
 
@@ -49,6 +51,14 @@ LocalHashProvider = Callable[[], str | None]
 # Callable that fetches and hashes a candidate cover URL, with caching.
 # Returns the hex hash string or None if unavailable.
 CandidateHashFetcher = Callable[[str], str | None]
+
+# Callable that resolves MANY candidate cover URLs at once, returning
+# `{url: hash}` for the ones that resolved. Absent keys mean "no hash for
+# that cover" — same meaning as `CandidateHashFetcher` returning None.
+# Supplying this lets the whole top-K download concurrently instead of
+# one blocking round-trip per candidate; see
+# `comicbox.formats.base.online.cover_hash.CoverFetchPool`.
+CandidateHashBatchFetcher = Callable[["Sequence[str]"], "dict[str, str]"]
 
 
 # Metadata-signal weights. Sum to 0.80; the remaining 0.20 is reserved
@@ -565,14 +575,26 @@ def _should_invoke_hashing(
 def _resolve_candidate_hash(
     candidate: Candidate,
     candidate_hash_fetcher: CandidateHashFetcher | None,
+    prefetched: dict[str, str] | None = None,
 ) -> str | None:
-    """Get a candidate's pHash, preferring precomputed value."""
+    """
+    Get a candidate's pHash, preferring precomputed value.
+
+    ``prefetched`` is the batch pre-pass's `{url: hash}` map. A URL
+    present there is answered without touching the network; a URL the
+    batch pass already tried and failed is absent from the map, and
+    since the batch covered every hashable candidate in the top-K,
+    absence means "no hash" rather than "not looked at yet" — so we do
+    NOT fall back to a per-URL fetch and re-pay the failed download.
+    """
     if candidate.precomputed_cover_hash:
         return candidate.precomputed_cover_hash
-    if candidate_hash_fetcher is None:
-        return None
     cover_url = candidate.summary.cover_url
     if not cover_url:
+        return None
+    if prefetched is not None:
+        return prefetched.get(cover_url)
+    if candidate_hash_fetcher is None:
         return None
     try:
         return candidate_hash_fetcher(cover_url)
@@ -584,10 +606,43 @@ def _resolve_candidate_hash(
         return None
 
 
+def _prefetch_candidate_hashes(
+    ranked: list[Candidate],
+    top_k: int,
+    candidate_hash_batch_fetcher: CandidateHashBatchFetcher,
+) -> dict[str, str]:
+    """
+    Resolve every hashable top-K cover in ONE batch call.
+
+    The candidates that need a download are exactly those inside the
+    top-K with a cover URL and no precomputed hash. Collecting them
+    upfront lets the fetcher run them concurrently over a shared HTTP
+    client and answer the cache in a single query, instead of the
+    serial download-per-candidate the scoring loop used to drive.
+
+    A failing batch degrades to an empty map, which the scoring loop
+    reads as "no cover signal" — the same outcome the serial path
+    produced when every download failed.
+    """
+    urls = [
+        url
+        for c in ranked[:top_k]
+        if not c.precomputed_cover_hash and (url := c.summary.cover_url)
+    ]
+    if not urls:
+        return {}
+    try:
+        return candidate_hash_batch_fetcher(urls)
+    except Exception as exc:
+        logger.warning(f"online: batch cover-hash fetch failed: {exc}")
+        return {}
+
+
 def _apply_cover_hashing(
     ranked: list[Candidate],
     local_hash: str,
     candidate_hash_fetcher: CandidateHashFetcher | None,
+    candidate_hash_batch_fetcher: CandidateHashBatchFetcher | None = None,
 ) -> list[Candidate]:
     """
     Hash the top K candidates and re-rank by blended score.
@@ -598,8 +653,18 @@ def _apply_cover_hashing(
     scales up to 15. Candidates inside K are marked
     `cover_hash_attempted` whether or not a hash came back, so the
     tiebreak can tell "this cover doesn't help" from "we never looked".
+
+    When a batch fetcher is supplied, every download for the top-K is
+    issued up front and concurrently (`_prefetch_candidate_hashes`);
+    the loop below then only scores. Ordering, scoring and the tiebreak
+    are identical either way — only *when* the bytes arrive changes.
     """
     top_k = _top_k_for_hashing(len(ranked))
+    prefetched = (
+        _prefetch_candidate_hashes(ranked, top_k, candidate_hash_batch_fetcher)
+        if candidate_hash_batch_fetcher is not None
+        else None
+    )
     rescored: list[Candidate] = []
     for i, c in enumerate(ranked):
         if i >= top_k:
@@ -608,7 +673,7 @@ def _apply_cover_hashing(
         # Attempted from here on, whatever the outcome — the tiebreak
         # reads this to tell an unhelpful cover from an unexamined one.
         attempted = replace(c, cover_hash_attempted=True)
-        cand_hash = _resolve_candidate_hash(c, candidate_hash_fetcher)
+        cand_hash = _resolve_candidate_hash(c, candidate_hash_fetcher, prefetched)
         if not cand_hash:
             rescored.append(attempted)
             continue
@@ -638,6 +703,7 @@ class OnlineMatcher:
         *,
         local_hash_provider: LocalHashProvider | None = None,
         candidate_hash_fetcher: CandidateHashFetcher | None = None,
+        candidate_hash_batch_fetcher: CandidateHashBatchFetcher | None = None,
         threshold: float = _DEFAULT_CONFIDENCE_THRESHOLD,
         min_confidence: float = 0.50,
         disambiguation_margin: float = 0.10,
@@ -651,6 +717,11 @@ class OnlineMatcher:
         candidates carry a `precomputed_cover_hash` (string-compare); other
         sources fall through to ``candidate_hash_fetcher`` for
         download-and-hash with caching. Both kinds mix in the same ranking.
+
+        ``candidate_hash_batch_fetcher``, when supplied, takes precedence
+        for the download path: the whole top-K is resolved in one
+        concurrent batch rather than one blocking GET at a time. The
+        ranking it produces is identical.
         """
         scored: list[Candidate] = []
         for c in candidates:
@@ -671,7 +742,9 @@ class OnlineMatcher:
         local_hash = local_hash_provider()
         if not local_hash:
             return scored
-        return _apply_cover_hashing(scored, local_hash, candidate_hash_fetcher)
+        return _apply_cover_hashing(
+            scored, local_hash, candidate_hash_fetcher, candidate_hash_batch_fetcher
+        )
 
     def resolve(
         self,

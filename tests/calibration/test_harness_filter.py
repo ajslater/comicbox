@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.calibration._harness_helpers import make_outcome, write_outcomes
 from tests.calibration.run import _Fixture
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _outcome = make_outcome
 _write_outcomes = write_outcomes
@@ -97,8 +101,10 @@ class _FakeBox:
     def _local_cover_phash(self) -> str | None:
         return "deadbeef"
 
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
-        return f"hash:{url}"
+    def _candidate_cover_hash_batch_fetcher(
+        self, urls: Sequence[str]
+    ) -> dict[str, str]:
+        return {url: f"hash:{url}" for url in urls}
 
 
 def test_hash_providers_full_returns_methods() -> None:
@@ -140,9 +146,12 @@ def test_hash_providers_call_through_returns_box_results() -> None:
     assert local is not None
     assert fetcher is not None
     assert local() == "deadbeef"
-    assert fetcher("https://example.test/cover.jpg") == (
-        "hash:https://example.test/cover.jpg"
-    )
+    # The batch fetcher resolves a whole top-K at once, which is what
+    # production passes the matcher.
+    assert fetcher(["https://example.test/a.jpg", "https://example.test/b.jpg"]) == {
+        "https://example.test/a.jpg": "hash:https://example.test/a.jpg",
+        "https://example.test/b.jpg": "hash:https://example.test/b.jpg",
+    }
 
 
 # --------------------------------------- _resolve_retry_outcomes_path fallback
