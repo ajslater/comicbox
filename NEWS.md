@@ -178,6 +178,10 @@
       case. An unrecognized name is no longer read as ComicVine.
     - An issue naming a suffix but no number, like `1234AU`, gets its number.
     - A notes timestamp nothing can parse leaves `updated_at` unset.
+    - ComicInfo's `SeriesGroup` is read back. The tag was written correctly and
+      then dropped on load: it was mapped like `Characters` and `Tags`, whose
+      comicbox fields hold a name and its ids, while `series_groups` holds plain
+      names.
 
 - Features
     - New `--merge-mode` option and `write.merge_mode` config key choose how
