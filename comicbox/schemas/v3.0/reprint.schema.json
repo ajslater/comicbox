@@ -4,6 +4,9 @@
   "title": "Comicbox Reprint",
   "type": "object",
   "properties": {
+    "name": {
+      "type": "string"
+    },
     "identifiers": {
       "$ref": "identifiers.schema.json"
     },

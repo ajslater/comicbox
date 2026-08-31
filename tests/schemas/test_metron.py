@@ -124,6 +124,10 @@ READ_METADATA = MappingProxyType(
                 "name": "Youthful Adventure Stories",
             },
             "series": {
+                "alternative_names": [
+                    {"name": "Captain Science Alternate"},
+                    {"language": "es", "name": "Capitán Ciencia"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "2222",
@@ -147,8 +151,14 @@ READ_METADATA = MappingProxyType(
             },
             "title": "Captain Lost; Science is Good; metron",
             "reprints": [
-                {"language": "es", "series": {"name": "Capitán Ciencia"}},
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
+                # The name is what the file said; series and issue are read
+                # out of it.
+                {"name": "Capitán Ciencia", "series": {"name": "Capitán Ciencia"}},
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                },
             ],
             "tagger": "comicbox dev",
             "updated_at": TEST_DATETIME,

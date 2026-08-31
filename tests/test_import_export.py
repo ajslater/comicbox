@@ -386,10 +386,18 @@ FNS = MappingProxyType(
                 "name": "Youthful Adventure Stories",
             },
             "reprints": [
-                {"language": "es", "series": {"name": "Capitán Ciencia"}},
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"},
+                {"name": "Capitán Ciencia", "series": {"name": "Capitán Ciencia"}},
+                {
+                    "name": "Captain Science Alternate #001",
+                    "issue": "001",
+                    "series": {"name": "Captain Science Alternate"},
+                },
             ],
             "series": {
+                "alternative_names": [
+                    {"name": "Captain Science Alternate"},
+                    {"language": "es", "name": "Capitán Ciencia"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "2222",
@@ -561,7 +569,7 @@ FNS = MappingProxyType(
                 "name": "DC Comics",
             },
             "reprints": [
-                {"series": {"name": "Foo"}},
+                {"name": "Foo", "series": {"name": "Foo"}},
                 {
                     "identifiers": {
                         "metron": {
@@ -569,12 +577,21 @@ FNS = MappingProxyType(
                         }
                     },
                     "issue": "001",
+                    "name": "Foo Bar #001",
                     "series": {"name": "Foo Bar"},
                 },
-                {"issue": "002", "series": {"name": "Foo Bar"}},
-                {"language": "de", "series": {"name": "Hüsker Dü"}},
+                {
+                    "issue": "002",
+                    "name": "Foo Bar #002",
+                    "series": {"name": "Foo Bar"},
+                },
+                {"name": "Hüsker Dü", "series": {"name": "Hüsker Dü"}},
             ],
             "series": {
+                "alternative_names": [
+                    {"name": "Foo"},
+                    {"language": "de", "name": "Hüsker Dü"},
+                ],
                 "identifiers": {
                     "metron": {
                         "key": "65478",

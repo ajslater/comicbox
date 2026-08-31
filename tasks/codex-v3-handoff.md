@@ -313,6 +313,40 @@ loses them, because ComicInfo has no field for that concept.
 There is no way to tell them apart after the fact from the stored data alone, so
 the practical move is to re-read affected comics rather than migrate.
 
+### PR 9 — reprints keep their name, series gains `alternative_names`
+
+Two concepts MetronInfo keeps in separate tags were both landing in `reprints`.
+
+| Source                    | v2                                                 | v3                                                      |
+| ------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+| `Reprints/Reprint`        | `reprints[]` with parsed `series`/`volume`/`issue` | `reprints[].name` verbatim, plus the same parsed fields |
+| `Series/AlternativeNames` | appended to `reprints[]`                           | `series.alternative_names[]`                            |
+
+New `series.alternative_names`, a list of `{name, language?, identifiers?}` —
+the other names the same series goes by: translations, romanizations, variant
+spellings. A reprint means something else entirely: another edition of this
+issue's content.
+
+`reprints[].name` is new and is **authoritative**. Comicbox stores what the file
+wrote and writes that back. The `series`, `volume` and `issue` fields are still
+there and still filled in, read out of the name for convenience, but a reprint
+whose name the filename grammar can't model — "Amazing Fantasy #15 (2nd
+printing)" — is no longer silently rewritten on the way out.
+
+**Bug this fixes:** `AlternativeNames` were read into `reprints`, and then every
+reprint with a series name was written back out to **both** `<Reprints>` and
+`<AlternativeNames>`. Each read-write cycle multiplied the entries. MetronInfo
+files comicbox has written may carry inflated lists.
+
+Also: a `<AlternativeName>` with no `lang` attribute was dropped on read (it
+parses as a bare string, not a mapping). `lang` defaults to `en` in the schema,
+so those are legal and common.
+
+**Codex migration:** reprint rows keep working; `name` is additive. Series
+alternative names that codex stored as reprints should move, but as with the
+ComicInfo arcs, re-reading affected comics is more reliable than guessing which
+reprint rows were really alternative names.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
@@ -323,10 +357,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **`reprints`** entries gain an authoritative verbatim `name`; structured
-  `series`/`volume`/`issue` become derived enrichment.
-- **`series.alternative_names: [{name, language, identifiers}]`** added — Metron
-  `Series/AlternativeNames` no longer lands in `reprints`.
 - **`title` is verbatim** — never split, never overwritten by joined story
   names. `stories` are derived from `title` (split on `;`) only when absent, and
   `title` from `stories` (joined with `; `) only when absent.
@@ -344,7 +374,7 @@ Schema) before writing code, since details can shift during implementation.
 - [ ] Split stored identifiers and urls; rename `identifier_primary_source` →
       `primary_id_source` (PR 5 section).
 - [ ] Add the optional `manga_volume` field.
-- [ ] (later PRs) Handle `reprints[].name` and `series.alternative_names`.
+- [ ] Add `reprints[].name` and `series.alternative_names` (PR 9 section).
 - [ ] Re-run codex's comicbox integration tests against the paired comicbox
       release; comicbox's own `tests/test_codex_api.py` pins the
       `get_internal_metadata()` contract and is the reference for expected

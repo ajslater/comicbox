@@ -29,6 +29,10 @@
       instead of a reprint. They predate `StoryArc` and are how older files
       record a crossover. Arcs are written only to `StoryArc` now, and
       `AlternateCount` is dropped.
+    - A series' other names live in `series.alternative_names` instead of being
+      mixed into `reprints`.
+    - Reprints keep the `name` the file gave them. The series, volume and issue
+      read out of that name are a convenience now, not the record.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 
@@ -45,6 +49,10 @@
       tag.
     - Writing MetronInfo no longer stamps a `MangaVolume` onto comics that never
       had one. It was rebuilt from the volume number on every write.
+    - Writing MetronInfo no longer duplicates reprints and alternative names.
+      Each round trip copied one list into both tags.
+    - A MetronInfo `AlternativeName` written without a language is no longer
+      dropped.
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually

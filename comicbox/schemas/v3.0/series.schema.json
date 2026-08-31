@@ -4,6 +4,12 @@
   "title": "Comicbox Series",
   "type": "object",
   "properties": {
+    "alternative_names": {
+      "type": "array",
+      "items": {
+        "$ref": "alternative-name.schema.json"
+      }
+    },
     "identifiers": {
       "$ref": "identifiers.schema.json"
     },

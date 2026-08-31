@@ -6,19 +6,35 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
+from comicfn2dict.parse import comicfn2dict
 from comicfn2dict.regex import ORIGINAL_FORMAT_RE
 from deepdiff import DeepDiff
+from glom import glom
 from loguru import logger
 
 from comicbox.box.computed.stories_title import ComicboxComputedStoriesTitle
+from comicbox.empty import is_empty
 from comicbox.formats.base.fields.enum_fields import OriginalFormatField
+from comicbox.formats.base.transforms.xml_reprints import FILENAME_TO_REPRINT_SPECS
 from comicbox.formats.comicbox.schema import (
+    NAME_KEY,
     ORIGINAL_FORMAT_KEY,
     REPRINTS_KEY,
     SCAN_INFO_KEY,
     ComicboxSchemaMixin,
 )
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
+
+
+def _prune_empty(value: Any) -> Any:
+    """Drop the empty slots the filename grammar leaves behind."""
+    if isinstance(value, Mapping):
+        return {
+            key: pruned
+            for key, sub_value in value.items()
+            if not is_empty(pruned := _prune_empty(sub_value))
+        }
+    return value
 
 
 @dataclass
@@ -61,6 +77,41 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
             return None
         return {ORIGINAL_FORMAT_KEY: original_format}
 
+    def _get_computed_from_reprint_names(
+        self, sub_data: dict[str, Any]
+    ) -> dict[str, list] | None:
+        """
+        Read what a reprint's name says about its series, volume and issue.
+
+        The name is free text the source wrote, so this is enrichment for
+        readers, never the authority: it only fills fields the reprint left
+        empty, and the name itself is what gets written back.
+        """
+        if REPRINTS_KEY in self._config.general.delete_keys or not sub_data:
+            return None
+        old_reprints = sub_data.get(REPRINTS_KEY)
+        if not old_reprints:
+            return None
+        new_reprints = []
+        enriched = False
+        for old_reprint in old_reprints:
+            new_reprint = dict(old_reprint)
+            name = new_reprint.get(NAME_KEY)
+            if name:
+                filename_dict = comicfn2dict(str(name))
+                parsed = glom(filename_dict, dict(FILENAME_TO_REPRINT_SPECS))
+                for key, value in parsed.items():
+                    # The filename grammar yields a slot for every field it
+                    # knows, empty when the name didn't say.
+                    pruned = _prune_empty(value)
+                    if key not in new_reprint and not is_empty(pruned):
+                        new_reprint[key] = pruned
+                        enriched = True
+            new_reprints.append(new_reprint)
+        if not enriched:
+            return None
+        return {REPRINTS_KEY: new_reprints}
+
     def _get_computed_from_reprints(
         self, sub_data: dict[str, Any]
     ) -> dict[str, list] | None:
@@ -102,6 +153,10 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
             {
                 # Order is important here
                 **ComicboxComputedStoriesTitle.COMPUTED_ACTIONS,
+                "from reprint names": (
+                    _get_computed_from_reprint_names,
+                    ReplaceMerger,
+                ),
                 "from reprints": (_get_computed_from_reprints, ReplaceMerger),
                 "from scan_info": (_get_computed_from_scan_info, AdditiveMerger),
                 "Delete Keys": (_get_delete_keys, None),

@@ -17,7 +17,6 @@ from comicbox.formats.comicbox.schema import (
     NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PUBLISHER_KEY,
-    REPRINTS_KEY,
     SERIES_KEY,
     SERIES_SORT_NAME_KEY,
     SERIES_START_YEAR_KEY,
@@ -27,7 +26,6 @@ from comicbox.formats.comicbox.schema import (
     VOLUME_NUMBER_KEY,
 )
 from comicbox.formats.metron_info.schema import (
-    ALTERNATIVE_NAMES_TAGPATH,
     IMPRINT_TAG,
     LANG_ATTR,
     MANGA_VOLUME_TAG,
@@ -176,32 +174,6 @@ METRON_SERIES_IDENTIFIER_TRANSFORM_TO_CB = MetaSpec(
 METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB = MetaSpec(
     key_map={SERIES_ID_TAGPATH: (SERIES_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
     spec=_series_id_from_cb,
-)
-
-
-def _alternative_names_from_cb(
-    comicbox_reprints: list[dict[str, Any]],
-) -> list | None:
-    alt_names = []
-    if not comicbox_reprints:
-        return alt_names
-    for reprint in comicbox_reprints:
-        if reprint_series := reprint.get(SERIES_KEY):
-            alt_name = {}
-            if series_name := reprint_series.get(NAME_KEY):
-                alt_name["#text"] = series_name
-            if series_lang := reprint.get(LANGUAGE_KEY):
-                alt_name[LANG_ATTR] = series_lang
-            if alt_name:
-                alt_names.append(alt_name)
-    if not alt_names:
-        alt_names = None
-    return alt_names
-
-
-METRON_SERIES_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={ALTERNATIVE_NAMES_TAGPATH: REPRINTS_KEY},
-    spec=_alternative_names_from_cb,
 )
 
 
