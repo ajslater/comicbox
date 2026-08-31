@@ -1,4 +1,16 @@
-"""Argparse layer for the comicbox CLI."""
+"""
+Argparse layer for the comicbox CLI.
+
+Config-tree args name their ``dest`` after the confuse template path they
+set (``general.config``, ``read.except``, ...). ``set_args(dots=True)``
+splits those dots into the nested config tree, so the parser and the
+template share one string instead of a hand-maintained reshaping table.
+
+Online runtime args (``--online``, ``--id``, ``--match``, ...) are the
+exception: they stay flat and are consumed by ``runtime_online_inputs`` /
+``build_online_settings`` directly, which need typed per-flag errors and
+dynamically keyed maps that a fixed template can't express.
+"""
 
 import sys
 from argparse import Action, ArgumentParser, Namespace
@@ -9,13 +21,38 @@ from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
-from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD, MergeMode
+from comicbox.config.online.settings import DEFAULT_AUTO_THRESHOLD
+from comicbox.config.settings import MergeMode
 
 if TYPE_CHECKING:
     from rich.console import Group
 
 # Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
 _WARNED_FLAGS: set[str] = set()
+
+# Dests that deliberately do not name a config template path. Everything
+# else must, and the dest drift test enforces it.
+ONLINE_RUNTIME_DESTS = frozenset(
+    {
+        "online_sources",
+        "explicit_ids",
+        "explicit_series_ids",
+        "match",
+        "prompts",
+        "rematch",
+        "all_sources",
+        "auth",
+        "cache",
+        "cache_dir",
+        "cache_ttl",
+        "auto_threshold",
+        "effort",
+        # Not online, but also not template paths:
+        "paths",  # positional; already the template key
+        "extract_pages",  # PageRangeAction writes convert.extract_pages_*
+        "help",
+    }
+)
 
 
 class LazyEpilog:
@@ -84,10 +121,12 @@ class PageRangeAction(Action):
         else:
             index_to = None
 
+        # Dotted keys, matching the confuse template path directly. This
+        # action's own dest stays None and is dropped by confuse.
         if index_from is not None:
-            namespace.extract_pages_from = index_from
+            setattr(namespace, "convert.extract_pages_from", index_from)
         if index_to is not None:
-            namespace.extract_pages_to = index_to
+            setattr(namespace, "convert.extract_pages_to", index_to)
 
 
 def _warn_once(key: str, message: str) -> None:
@@ -128,7 +167,7 @@ class AuthAction(Action):
                     "auth_pass",
                     (
                         "warning: --auth <source>:pass=... leaks into shell history; "
-                        "prefer COMICBOX_<SOURCE>_PASS env var or keyring"
+                        "prefer COMICBOX_ONLINE__AUTH__<SOURCE>__PASS or keyring"
                     ),
                 )
             items.append(raw)
@@ -143,7 +182,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         metavar="PATH",
         action="store",
         default=None,
-        dest="general_config",
+        dest="general.config",
         help="Path to an alternate config file.",
     )
     group.add_argument(
@@ -151,7 +190,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--recurse",
         action="store_true",
         default=None,
-        dest="general_recurse",
+        dest="general.recurse",
         help="Perform selected actions recursively on directory arguments.",
     )
     group.add_argument(
@@ -159,7 +198,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--dry-run",
         action="store_true",
         default=None,
-        dest="general_dry_run",
+        dest="general.dry_run",
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
     group.add_argument(
@@ -167,7 +206,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--quiet",
         action="count",
         default=None,
-        dest="general_quiet",
+        dest="general.quiet",
         help=(
             "Increasingly quiet success messages, warnings, and errors with more Qs."
         ),
@@ -178,7 +217,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         type=int,
         default=None,
         metavar="N",
-        dest="general_jobs",
+        dest="general.jobs",
         help=(
             "Parallel workers across files. Default [green]1[/green] (serial). "
             "[green]4[/green] is the recommended ceiling for cold-cache batch runs."
@@ -188,7 +227,8 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "-d",
         "--dest-path",
         default=None,
-        dest="general_dest_path",
+        metavar="PATH",
+        dest="general.dest_path",
         help="Destination path for extracting pages and metadata.",
     )
     group.add_argument(
@@ -197,7 +237,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         action="append",
         default=None,
         metavar="YAML",
-        dest="general_metadata_cli",
+        dest="general.metadata_cli",
         help=(
             "Set metadata fields with linear YAML. (e.g.: [green]'keyA: value,"
             " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
@@ -212,7 +252,8 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--delete-keys",
         action=CSVAction,
         default=None,
-        dest="general_delete_keys",
+        metavar="KEYS",
+        dest="general.delete_keys",
         help=(
             "Delete a comma delimited list of comicbox glom key paths entirely from the final "
             "metadata. Example below."
@@ -222,7 +263,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--delete-orig",
         action="store_true",
         default=None,
-        dest="general_delete_orig",
+        dest="general.delete_orig",
         help="Delete the original cbr, cbt, or cb7 file if it was converted to a cbz successfully.",
     )
 
@@ -235,7 +276,7 @@ def _add_read_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="read_formats",
+        dest="read.formats",
         help="Metadata formats to read. Defaults to all. Keys listed below.",
     )
     group.add_argument(
@@ -243,7 +284,7 @@ def _add_read_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="read_except",
+        dest="read.except",
         help="Subtract these formats from the read formats.",
     )
 
@@ -256,7 +297,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="write_formats",
+        dest="write.formats",
         help=(
             "Write comic metadata formats back to the archive. cbt and cbr files are always"
             " exported to a cbz file. Format keys listed below."
@@ -268,7 +309,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         default=None,
         choices=tuple(mode.value for mode in MergeMode),
         metavar="MODE",
-        dest="write_merge_mode",
+        dest="write.merge_mode",
         help=(
             "How supplied metadata merges into a comic's existing tags: "
             "[green]additive[/green] (default; dicts recurse, lists concatenate), "
@@ -281,7 +322,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         "--stamp",
         action="store_true",
         default=None,
-        dest="write_stamp",
+        dest="write.stamp",
         help=(
             "Normally comicbox only updates the notes (if enabled), tagger, and updated_at "
             "tags when performing a write or export action. This adds the stamps anyway."
@@ -291,7 +332,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         "--no-stamp-notes",
         action="store_false",
         default=None,
-        dest="write_stamp_notes",
+        dest="write.stamp_notes",
         help=(
             "Do not write the notes field with tagger, timestamp and identifiers "
             "when writing metadata out to a file."
@@ -301,7 +342,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         "--delete-all-tags",
         action="store_true",
         default=None,
-        dest="write_delete_all_tags",
+        dest="write.delete_all_tags",
         help="Delete all tags from the archive. Overrides --write.",
     )
 
@@ -314,7 +355,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
         action="store",
         default=None,
         metavar="PHASES",
-        dest="print_phases",
+        dest="print.phases",
         help=(
             "Print one or more phases of metadata processing. Pass a string of phase"
             " characters listed below (e.g. [green]slcm[/green])."
@@ -325,7 +366,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
         "--print-metadata",
         action="store_true",
         default=None,
-        dest="print_metadata",
+        dest="print.metadata",
         help="Print merged metadata. Shortcut for [green]--print p[/green].",
     )
     group.add_argument(
@@ -333,14 +374,14 @@ def _add_print_group(parser: ArgumentParser) -> None:
         "--version",
         action="store_true",
         default=None,
-        dest="print_version",
+        dest="print.version",
         help="Print software version. Shortcut for [green]--print v[/green].",
     )
     group.add_argument(
         "--validate",
         action="store_true",
         default=None,
-        dest="print_validate",
+        dest="print.validate",
         help=(
             "Validate formats against schema if available. Schemas like ComicInfo enforce a "
             "strict tag order. Schemas available at "
@@ -356,7 +397,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--cbz",
         action="store_true",
         default=None,
-        dest="convert_cbz",
+        dest="convert.cbz",
         help=(
             "Export the archive to CBZ format and rewrite all metadata formats found. "
             "When converting PDFs, by default a pixmap is taken of the page. "
@@ -368,7 +409,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--rename",
         action="store_true",
         default=None,
-        dest="convert_rename",
+        dest="convert.rename",
         help="Rename the file with comicbox's filename format.",
     )
     group.add_argument(
@@ -388,7 +429,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--extract-covers",
         action="store_true",
         default=None,
-        dest="convert_extract_covers",
+        dest="convert.extract_covers",
         help="Extract cover pages.",
     )
     group.add_argument(
@@ -397,7 +438,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         action="append",
         default=None,
         metavar="PATH",
-        dest="convert_import_paths",
+        dest="convert.import_paths",
         help="Import metadata from external files. Accepts quoted globs. Repeatable.",
     )
     group.add_argument(
@@ -406,7 +447,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         default=None,
         metavar="FORMATS",
-        dest="convert_export_formats",
+        dest="convert.export_formats",
         help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
     if PDF_ENABLED:
@@ -416,7 +457,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
             default=None,
             choices=PAGE_FORMAT_VALUES,
             metavar="MODE",
-            dest="convert_pdf_pages",
+            dest="convert.pdf_pages",
             help="Method to extract pdf pages and covers. Valid values listed below.",
         )
 
@@ -543,7 +584,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "the ComicVine API endpoint; Metron's deprecated "
             "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
             "(warns: leaks into shell history) still work, but prefer a token. "
-            "Use the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
+            "Use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__<FIELD>[/cyan] "
+            "env vars where possible."
         ),
     )
 

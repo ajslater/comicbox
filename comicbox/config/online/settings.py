@@ -1,0 +1,295 @@
+"""
+Typed settings for the online-tagging block.
+
+Split out of ``comicbox.config.settings`` because the online block is
+roughly half the config layer on its own.
+
+Invariant: this module must not import ``comicbox.formats`` at runtime
+(TYPE_CHECKING-only is fine). ``comicbox.formats.*`` imports these
+settings, so a runtime import back would close a cycle;
+``test_config_online_leaf`` pins it.
+"""
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import timedelta
+from enum import Enum
+from pathlib import Path
+
+from typing_extensions import override
+
+
+class MatchMode(str, Enum):
+    """
+    Match-resolution aggressiveness.
+
+    Strictly increasing aggressiveness: each level auto-writes a
+    superset of what the previous one does (ask ⊂ careful ⊂ auto ⊂
+    eager). See ``match-resolution-user-doc.md`` for the full
+    decision algorithm.
+
+    Inherits from str so dataclass equality, dict keys, and JSON
+    serialization all "just work".
+    """
+
+    ASK = "ask"
+    CAREFUL = "careful"
+    AUTO = "auto"
+    EAGER = "eager"
+
+
+class Prompts(str, Enum):
+    """Whether comicbox is allowed to prompt the user mid-run."""
+
+    ASK = "ask"
+    NEVER = "never"
+
+
+class Effort(str, Enum):
+    """
+    API-call effort per comic, for fan-out sources.
+
+    Orthogonal to ``MatchMode`` (which controls how the matcher's
+    verdict is applied). ``Effort`` controls how aggressively pre-call
+    algorithms trade accuracy for API throughput — it only bites on
+    sources that fan out per candidate (ComicVine). Single-call sources
+    (Metron since PR #143) have no fan-out to throttle and ignore it.
+
+    - ``MINIMAL``: aggressive pre-filtering; trade accuracy for throughput.
+    - ``BALANCED``: today's behavior; the default.
+    - ``THOROUGH``: spend API budget freely; max accuracy.
+    """
+
+    MINIMAL = "minimal"
+    BALANCED = "balanced"
+    THOROUGH = "thorough"
+
+
+class CacheMode(str, Enum):
+    """Cache tri-state: on / off / refresh."""
+
+    ON = "on"
+    OFF = "off"
+    REFRESH = "refresh"
+
+
+# Global auto-write threshold. The single source of truth for this
+# number: ``config_default.yaml`` must declare the same value, and
+# ``tests/unit/test_config_defaults_drift.py`` proves it still does.
+DEFAULT_AUTO_THRESHOLD = 0.95
+
+# Built-in defaults for per-source tuning knobs. Internal — not surfaced
+# in user-facing CLI/docs but available as per-source YAML overrides.
+DEFAULT_MIN_CONFIDENCE = 0.50
+DEFAULT_DISAMBIGUATION_MARGIN = 0.10
+
+
+# The solo-viable auto-write floor has no constant of its own: it
+# *is* the source's resolved ``auto_threshold`` unless a per-source
+# ``solo_threshold`` overrides it. See ``resolve_solo_threshold``.
+@dataclass(frozen=True, slots=True)
+class OnlineLookupSettings:
+    """What to look up and how aggressively to act on results."""
+
+    # Runtime-only (CLI-derived; never lives in the config file).
+    enabled: bool = False
+    ids: Mapping[str, int] = field(default_factory=dict)
+    series_ids: Mapping[str, int] = field(default_factory=dict)
+
+    # Ordered source selection AND run priority: the first listed source
+    # runs first, and with ``first_wins`` its match ends the lookup.
+    # None = every configured source in SOURCE_NAMES order. Durable via
+    # the ``online.lookup.sources`` config-file key; CLI --online and
+    # COMICBOX_ONLINE__LOOKUP__SOURCES override it.
+    sources: tuple[str, ...] | None = None
+
+    # Behavior toggles.
+    match: MatchMode = MatchMode.AUTO
+    prompts: Prompts = Prompts.ASK
+    rematch: bool = False
+    # Stop after the first source that contributes data (the cheap,
+    # default mode). False = query every selected source and merge
+    # (CLI: --all-sources).
+    first_wins: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSourceCredentials:
+    """
+    Resolved credentials for one online source.
+
+    Field membership is per-source: Metron uses ``key`` (API token) or
+    ``user``/``password``, plus ``url``; ComicVine uses ``key``/``url``.
+    The source's ``is_configured()`` decides which fields are required.
+    """
+
+    user: str | None = None
+    password: str | None = None
+    key: str | None = None
+    url: str | None = None
+
+    @override
+    def __repr__(self) -> str:
+        """Redact secret-bearing fields so this object is log-safe."""
+        return (
+            "OnlineSourceCredentials("
+            f"user={self.user!r}, "
+            f"password={'***' if self.password else None}, "
+            f"key={'***' if self.key else None}, "
+            f"url={self.url!r})"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineAuthSettings:
+    """Per-source credentials, indexed by source name."""
+
+    sources: Mapping[str, OnlineSourceCredentials] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineCacheSettings:
+    """Where the online response cache lives and how long entries survive."""
+
+    mode: CacheMode = CacheMode.ON
+    dir: Path | None = None
+    ttl: timedelta = field(default_factory=lambda: timedelta(days=7))
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSourceLimits:
+    """
+    Per-source rate-limit overrides.
+
+    All fields default to None, in which case comicbox lets the upstream
+    library (mokkari / simyan) apply its own rate limits.
+
+    Documented defaults live in
+    ``comicbox.formats.base.online.rate_limits`` for citation / audit.
+    """
+
+    # Historical Metron overrides. mokkari>=4.0.1 tracks Metron's actual
+    # per-user limits from `X-RateLimit-*` response headers instead of a
+    # fixed local bucket, with no injection point for a custom one; these
+    # are accepted but ignored with a warning at client build.
+    per_minute: int | None = None
+    per_day: int | None = None
+    # Historical ComicVine overrides. simyan 3.x builds its rate limiter
+    # internally (1/sec, 200/hr) with no injection point; these are
+    # accepted but ignored with a warning at client build.
+    per_second: int | None = None
+    per_hour: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSourceTuning:
+    """
+    Per-source overrides for tuning knobs.
+
+    Any field left at None falls back to the global default in
+    ``OnlineTuningSettings``. Advanced fields
+    (``min_confidence``, ``disambiguation_margin``, ``solo_threshold``)
+    are undocumented in user-facing reference but live here so power
+    users can adjust them per source via YAML.
+    """
+
+    auto_threshold: float | None = None
+    effort: Effort | None = None
+    min_confidence: float | None = None
+    disambiguation_margin: float | None = None
+    solo_threshold: float | None = None
+    rate_limit: OnlineSourceLimits = field(default_factory=OnlineSourceLimits)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineTuningSettings:
+    """Global tuning defaults plus per-source overrides."""
+
+    # Global defaults.
+    auto_threshold: float = DEFAULT_AUTO_THRESHOLD
+    effort: Effort = Effort.BALANCED
+    retry_budget: int = 5
+
+    # Per-source overrides (keyed by source name).
+    per_source: Mapping[str, OnlineSourceTuning] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSettings:
+    """Online metadata-tagging settings, split into four concern groups."""
+
+    lookup: OnlineLookupSettings = field(default_factory=OnlineLookupSettings)
+    auth: OnlineAuthSettings = field(default_factory=OnlineAuthSettings)
+    cache: OnlineCacheSettings = field(default_factory=OnlineCacheSettings)
+    tuning: OnlineTuningSettings = field(default_factory=OnlineTuningSettings)
+
+
+def _tuning_for(settings: OnlineSettings, source_name: str) -> OnlineSourceTuning:
+    return settings.tuning.per_source.get(source_name) or OnlineSourceTuning()
+
+
+def resolve_match(settings: OnlineSettings, source_name: str) -> MatchMode:
+    """Per-source match mode falls back to the global default."""
+    # No per-source override on this knob (carried in the global
+    # ``lookup.match``); helper exists for symmetry and future expansion.
+    del source_name  # unused — kept for signature consistency
+    return settings.lookup.match
+
+
+def resolve_auto_threshold(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source auto_threshold override > global default."""
+    override = _tuning_for(settings, source_name).auto_threshold
+    return override if override is not None else settings.tuning.auto_threshold
+
+
+def resolve_effort(settings: OnlineSettings, source_name: str) -> Effort:
+    """Per-source effort override > global default."""
+    override = _tuning_for(settings, source_name).effort
+    return override if override is not None else settings.tuning.effort
+
+
+def resolve_min_confidence(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source override > built-in default. Not user-exposed today."""
+    override = _tuning_for(settings, source_name).min_confidence
+    return override if override is not None else DEFAULT_MIN_CONFIDENCE
+
+
+def resolve_disambiguation_margin(settings: OnlineSettings, source_name: str) -> float:
+    """Per-source override > built-in default. Not user-exposed today."""
+    override = _tuning_for(settings, source_name).disambiguation_margin
+    return override if override is not None else DEFAULT_DISAMBIGUATION_MARGIN
+
+
+def resolve_solo_threshold(settings: OnlineSettings, source_name: str) -> float:
+    """
+    Per-source override > this source's resolved ``auto_threshold``.
+
+    Phase E's floor is defined as "the same bar as a multi-candidate
+    unambiguous win", so it tracks whatever auto-write bar this source
+    actually runs at — global, per-source, CLI or env. A constant here
+    would silently decouple the two: raising ``auto_threshold`` to 0.98
+    left a lone 0.96-scoring candidate auto-writing through a 0.95 back
+    door that no configuration could close, and lowering it left the
+    floor stricter than the bar it mirrors.
+
+    Lowering ``solo_threshold`` per source is the only way to make
+    ``AUTO``/``EAGER``'s solo carve-out reach below the auto-write bar
+    (see ``_policy_auto_writes``).
+    """
+    override = _tuning_for(settings, source_name).solo_threshold
+    if override is not None:
+        return override
+    return resolve_auto_threshold(settings, source_name)
+
+
+def resolve_rate_limit(
+    settings: OnlineSettings, source_name: str
+) -> OnlineSourceLimits:
+    """
+    Per-source historical rate-limit override values.
+
+    No override path exists for any source anymore — the values only
+    feed the sources' warn-and-ignore checks (mokkari>=4 tracks Metron's
+    limits from response headers; simyan manages ComicVine's internally).
+    """
+    return _tuning_for(settings, source_name).rate_limit

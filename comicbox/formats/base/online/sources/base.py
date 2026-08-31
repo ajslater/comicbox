@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     import datetime
     from collections.abc import Callable, Sequence
 
-    from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+    from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
     from comicbox.formats.sources import MetadataSources
@@ -176,7 +176,7 @@ class OnlineSource(ABC):
         REFRESH unlinks the cache once per process (discard at run
         start). The source wraps the result in its vendor cache class.
         """
-        from comicbox.config.settings import CacheMode
+        from comicbox.config.online.settings import CacheMode
 
         cache_mode = self._settings.cache.mode
         if cache_mode is CacheMode.OFF:
@@ -188,7 +188,7 @@ class OnlineSource(ABC):
 
     def _effort_max_results(self, default: int) -> int:
         """Resolve the per-effort discovery breadth cap for this source."""
-        from comicbox.config.settings import resolve_effort
+        from comicbox.config.online.settings import resolve_effort
 
         return max_results_for(
             resolve_effort(self._settings, self.name), default=default
@@ -196,7 +196,7 @@ class OnlineSource(ABC):
 
     def _effort_name_threshold(self) -> float:
         """Resolve the per-effort pre-call name-filter threshold."""
-        from comicbox.config.settings import resolve_effort
+        from comicbox.config.online.settings import resolve_effort
 
         return threshold_for(resolve_effort(self._settings, self.name))
 

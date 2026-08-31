@@ -19,9 +19,8 @@ isolated too.
 
 The fixture:
 
-* strips every ``COMICBOX_*`` env var (covers confuse's ``set_env``
-  prefix and the direct reads in ``credentials.read_credential_env`` /
-  ``env.read_online_env``);
+* strips every ``COMICBOX_*`` env var (the prefix of the EnvSource
+  mounted on the config tree, so this covers every config key);
 * points ``COMICBOXDIR`` at an empty tmpdir so confuse's
   ``_add_user_source`` finds no ``config.yaml``.
 

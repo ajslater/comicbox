@@ -120,7 +120,7 @@ comicbox:
             api_key: your_cv_api_key
 ```
 
-Or env vars (`COMICBOX_METRON_USERNAME`, etc.).
+Or env vars (`COMICBOX_ONLINE__AUTH__METRON__USER`, etc.).
 
 ## Running
 

@@ -21,10 +21,7 @@ from typing import Any
 
 import pytest
 
-from comicbox.config.settings import (
-    OnlineSettings,
-    OnlineSourceCredentials,
-)
+from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online.profile import ComicProfile
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource

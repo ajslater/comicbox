@@ -69,9 +69,10 @@ def test_cli_merge_mode_beats_the_config_file(alt_config: Path) -> None:
 
 
 def test_cli_merge_mode_lands_on_the_write_block() -> None:
-    """``--merge-mode`` drains into the nested write namespace."""
+    """``--merge-mode`` reaches the write block of the built settings."""
     cns = get_args(("comicbox", "--merge-mode", "update", "x.cbz"))
-    assert cns.write.merge_mode == "update"
+    settings = get_config(Namespace(comicbox=cns))
+    assert settings.write.merge_mode is MergeMode.UPDATE
 
 
 def test_cli_merge_mode_rejects_unknown_choice() -> None:

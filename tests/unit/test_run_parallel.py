@@ -16,11 +16,7 @@ from loguru import logger as loguru_logger
 from typing_extensions import Self
 
 from comicbox.config import get_config
-from comicbox.config.settings import (
-    ComicboxSettings,
-    OnlineAuthSettings,
-    OnlineSourceCredentials,
-)
+from comicbox.config.online.settings import OnlineAuthSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.series_cache import SeriesCache
 from comicbox.run import Runner
@@ -30,6 +26,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     import pytest
+
+    from comicbox.config.settings import ComicboxSettings
 
 
 def _make_paths(tmp_path: Path, count: int) -> list[str]:

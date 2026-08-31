@@ -39,7 +39,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
-from comicbox.config.settings import MatchMode
+from comicbox.config.online.settings import MatchMode
 from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_HOUR,
     METRON_DEFAULT_PER_MINUTE,

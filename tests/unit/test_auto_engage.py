@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     Effort,
     OnlineLookupSettings,
     OnlineSettings,

@@ -1,8 +1,9 @@
 """
 Online (tagging) settings assembly.
 
-Precedence for the online block (CLI > env > config file) is hand-rolled
-here instead of being layered through confuse because:
+Precedence for the online block is CLI > the confuse view, which already
+carries env-over-file layering. Only the CLI layer is hand-rolled here
+instead of going through confuse because:
 
 - Parse failures must raise typed ``ValueError``s with flag-specific
   messages (``--match: unknown name ...``); confuse templates would
@@ -10,14 +11,10 @@ here instead of being layered through confuse because:
 - The ``--id``/``--series-id`` maps and the per-source auth and tuning
   shapes are keyed by dynamic source names, which confuse's fixed
   ``MappingTemplate``s can't express.
-
-Keep the env-var knobs read here in sync with
-``comicbox.formats.base.online.env.read_online_env``.
 """
 
 from __future__ import annotations
 
-import os
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -28,7 +25,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     CacheMode,
     Effort,
@@ -41,12 +38,11 @@ from comicbox.config.settings import (
     OnlineSourceTuning,
     OnlineTuningSettings,
     Prompts,
-    parse_enum,
 )
+from comicbox.config.settings import parse_enum
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
 from comicbox.formats.base.online.credentials import resolve_credentials
-from comicbox.formats.base.online.env import read_online_env
 from comicbox.identifiers import PARSE_COMICVINE_RE
 
 # ComicVine resource-type prefixes.
@@ -207,39 +203,26 @@ def _build_per_source_tuning(
 def _build_lookup(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
-    online_env: Mapping[str, Any],
     cli: Callable[[str], Any],
 ) -> OnlineLookupSettings:
-    """Build `OnlineLookupSettings` from CLI > env > config."""
-    match_raw = _coalesce(
-        cli("match"), online_env.get("match"), online_block.lookup.match
-    )
-    prompts_raw = _coalesce(
-        cli("prompts"), online_env.get("prompts"), online_block.lookup.prompts
-    )
-    rematch = bool(
-        _coalesce(
-            cli("rematch"),
-            online_env.get("rematch"),
-            online_block.lookup.rematch,
-        )
-    )
+    """Build `OnlineLookupSettings` from CLI > config."""
+    match_raw = _coalesce(cli("match"), online_block.lookup.match)
+    prompts_raw = _coalesce(cli("prompts"), online_block.lookup.prompts)
+    rematch = bool(_coalesce(cli("rematch"), online_block.lookup.rematch))
     # The --all-sources flag asserts "query everything" (first_wins off);
-    # absent, the first_wins key coalesces env > config file.
+    # absent, the first_wins key comes from the config view.
     all_sources_cli = cli("all_sources")
     first_wins = bool(
         _coalesce(
             None if all_sources_cli is None else not all_sources_cli,
-            online_env.get("first_wins"),
             online_block.lookup.first_wins,
         )
     )
-    # Ordered selection: CLI > env > config file. ALL_SOURCES (or an
+    # Ordered selection: CLI > config view. ALL_SOURCES (or an
     # empty/all-containing list at any layer) collapses to None = every
     # configured source in default order.
     selected = _coalesce(
         runtime.sources,
-        _normalize_sources(online_env.get("sources"), origin="env"),
         _normalize_sources(online_block.lookup.sources, origin="config"),
     )
     if not selected:
@@ -270,10 +253,8 @@ def _build_lookup(
 def _build_auth_settings(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
-    *,
-    env: Mapping[str, str],
 ) -> OnlineAuthSettings:
-    """Build per-source credentials from CLI + env + config + keyring."""
+    """Build per-source credentials from CLI + config + keyring."""
     config_creds: dict[str, dict[str, Any]] = {}
     auth_block: Any = getattr(online_block, "auth", None)
     for source in SOURCE_NAMES:
@@ -290,7 +271,6 @@ def _build_auth_settings(
     resolved = resolve_credentials(
         config_creds=config_creds,
         cli_overrides=runtime.cli_overrides,
-        env=env,
     )
     return OnlineAuthSettings(sources=resolved)
 
@@ -298,27 +278,18 @@ def _build_auth_settings(
 def _build_cache(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
-    online_env: Mapping[str, Any],
     cli: Callable[[str], Any],
 ) -> OnlineCacheSettings:
-    """Build `OnlineCacheSettings` from CLI > env > config."""
-    cache_mode_raw = _coalesce(
-        runtime.cache_mode_cli,
-        online_env.get("cache"),
-        online_block.cache.mode,
-    )
+    """Build `OnlineCacheSettings` from CLI > config."""
+    cache_mode_raw = _coalesce(runtime.cache_mode_cli, online_block.cache.mode)
     cache_mode = (
         cache_mode_raw
         if isinstance(cache_mode_raw, CacheMode)
         else parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
     )
-    cache_dir_raw = _coalesce(
-        cli("cache_dir"), online_env.get("cache_dir"), online_block.cache.dir
-    )
+    cache_dir_raw = _coalesce(cli("cache_dir"), online_block.cache.dir)
     cache_dir = Path(cache_dir_raw).expanduser() if cache_dir_raw else None
-    cache_ttl_raw = _coalesce(
-        cli("cache_ttl"), online_env.get("cache_ttl"), online_block.cache.ttl
-    )
+    cache_ttl_raw = _coalesce(cli("cache_ttl"), online_block.cache.ttl)
     return OnlineCacheSettings(
         mode=cache_mode,
         dir=cache_dir,
@@ -328,31 +299,24 @@ def _build_cache(
 
 def _build_tuning(
     online_block: Any,
-    online_env: Mapping[str, Any],
     cli: Callable[[str], Any],
 ) -> OnlineTuningSettings:
-    """Build `OnlineTuningSettings` from CLI > env > config."""
+    """Build `OnlineTuningSettings` from CLI > config."""
     auto_threshold_raw = _coalesce(
-        cli("auto_threshold"),
-        online_env.get("auto_threshold"),
-        online_block.tuning.auto_threshold,
+        cli("auto_threshold"), online_block.tuning.auto_threshold
     )
     auto_threshold = (
         float(auto_threshold_raw)
         if auto_threshold_raw is not None
         else DEFAULT_AUTO_THRESHOLD
     )
-    effort_raw = _coalesce(
-        cli("effort"), online_env.get("effort"), online_block.tuning.effort
-    )
+    effort_raw = _coalesce(cli("effort"), online_block.tuning.effort)
     effort_value = (
         parse_enum(Effort, "--effort", str(effort_raw))
         if effort_raw
         else Effort.BALANCED
     )
-    retry_budget = int(
-        _coalesce(online_env.get("retry_budget"), online_block.tuning.retry_budget, 5)
-    )
+    retry_budget = int(_coalesce(online_block.tuning.retry_budget, 5))
     per_source = _build_per_source_tuning(online_block)
     return OnlineTuningSettings(
         auto_threshold=auto_threshold,
@@ -367,21 +331,17 @@ def build_online_settings(
     runtime: _RuntimeOnlineInputs,
     *,
     cns: Namespace | None = None,
-    env: Mapping[str, str] | None = None,
 ) -> OnlineSettings:
-    """Build the nested `OnlineSettings` from confuse + env + CLI overrides."""
-    if env is None:
-        env = os.environ
-    online_env = read_online_env(env)
+    """Build the nested `OnlineSettings` from the confuse view + CLI overrides."""
 
     def _cli(field: str) -> Any:
         return getattr(cns, field, None) if cns is not None else None
 
     return OnlineSettings(
-        lookup=_build_lookup(online_block, runtime, online_env, _cli),
-        auth=_build_auth_settings(online_block, runtime, env=env),
-        cache=_build_cache(online_block, runtime, online_env, _cli),
-        tuning=_build_tuning(online_block, online_env, _cli),
+        lookup=_build_lookup(online_block, runtime, _cli),
+        auth=_build_auth_settings(online_block, runtime),
+        cache=_build_cache(online_block, runtime, _cli),
+        tuning=_build_tuning(online_block, _cli),
     )
 
 

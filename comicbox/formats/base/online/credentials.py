@@ -4,10 +4,9 @@ Credential resolution chain for online sources.
 Resolution order, per (source, field):
 
 1. CLI override via ``--auth <source>:<field>=<value>``.
-2. Environment variable (``COMICBOX_<SOURCE>_<FIELD>``).
-3. Config file value (loaded by confuse into the
-   ``online.auth.<source>.*`` block).
-4. Keyring lookup (passwords only, optional dependency, never written by
+2. The confuse ``online.auth.<source>.*`` block, which already layers
+   env vars (``COMICBOX_ONLINE__AUTH__METRON__KEY``) over config files.
+3. Keyring lookup (passwords only, optional dependency, never written by
    comicbox).
 
 Outputs an `OnlineSourceCredentials` instance per source. A source is
@@ -17,14 +16,12 @@ check lives on the source class.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from comicbox.config.settings import OnlineSourceCredentials
+from comicbox.config.online.settings import OnlineSourceCredentials
 from comicbox.formats.base.online import SOURCE_NAMES
-from comicbox.formats.base.online.env import read_credential_env
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -67,20 +64,16 @@ def _coalesce(*values: str | None) -> str | None:
 def resolve_credentials(
     config_creds: Mapping[str, Mapping[str, Any]],
     cli_overrides: CliOverrides | None = None,
-    env: Mapping[str, str] | None = None,
     *,
     use_keyring: bool = True,
 ) -> dict[str, OnlineSourceCredentials]:
     """
     Build the resolved per-source credentials map.
 
-    `config_creds` is the post-confuse view of `online.<source>.*` (file +
-    confuse env-var auto-loading). `cli_overrides` is the parsed CLI
-    `--api-*` flags. `env` defaults to `os.environ`.
+    `config_creds` is the post-confuse view of `online.auth.<source>.*`,
+    which already layers env vars over config files. `cli_overrides` is
+    the parsed `--auth` flags.
     """
-    if env is None:
-        env = os.environ
-    env_creds = read_credential_env(env)
     cli_creds: Mapping[str, Mapping[str, Any]] = (
         cli_overrides.per_source if cli_overrides else {}
     )
@@ -88,15 +81,10 @@ def resolve_credentials(
     resolved: dict[str, OnlineSourceCredentials] = {}
     for source in SOURCE_NAMES:
         config_block = dict(config_creds.get(source) or {})
-        env_block = env_creds.get(source, {})
         cli_block = dict(cli_creds.get(source) or {})
 
         values: dict[str, str | None] = {
-            field: _coalesce(
-                cli_block.get(field),
-                env_block.get(field),
-                config_block.get(field),
-            )
+            field: _coalesce(cli_block.get(field), config_block.get(field))
             for field in _FIELDS
         }
 

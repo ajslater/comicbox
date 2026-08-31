@@ -10,7 +10,7 @@ import pytest
 from mokkari.session import RateLimitStatus, RateLimitWindow
 
 from comicbox.config import get_config
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     CacheMode,
     OnlineCacheSettings,
     OnlineSettings,

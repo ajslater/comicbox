@@ -13,7 +13,7 @@ from dataclasses import replace
 
 import pytest
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     MatchMode,
     OnlineLookupSettings,
     OnlineSettings,

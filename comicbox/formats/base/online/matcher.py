@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Final
 
 from loguru import logger
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     MatchMode,
     resolve_auto_threshold,
@@ -41,7 +41,7 @@ from comicbox.formats.base.online.signals import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from comicbox.config.settings import OnlineSettings
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
 
 
@@ -322,7 +322,7 @@ def _resolve_policy(
         return Resolution(ResolutionKind.AUTO_WRITE, top, tuple(ranked))
 
     # Couldn't auto-write under this policy — defer to interactive/unattended.
-    from comicbox.config.settings import Prompts
+    from comicbox.config.online.settings import Prompts
 
     if settings.lookup.prompts is Prompts.NEVER:
         return Resolution(ResolutionKind.SKIP, None, tuple(ranked))

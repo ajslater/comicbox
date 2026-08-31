@@ -47,7 +47,7 @@ from typing_extensions import Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD
+from comicbox.config.online.settings import DEFAULT_AUTO_THRESHOLD
 from comicbox.formats.base.online.matcher import OnlineMatcher
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
@@ -55,7 +55,7 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
 
-    from comicbox.config.settings import OnlineSettings
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.matcher import (
         CandidateHashBatchFetcher,
         LocalHashProvider,
@@ -1256,7 +1256,7 @@ def _resolve_sources(
     """
     from dataclasses import replace
 
-    from comicbox.config.settings import Effort
+    from comicbox.config.online.settings import Effort
 
     cfg = get_config(None)
     online = cfg.online

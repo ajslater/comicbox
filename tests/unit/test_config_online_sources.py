@@ -70,7 +70,7 @@ def test_empty_source_list_still_selects_everything() -> None:
 
 def test_unknown_env_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     """The env layer collapses the same way; it has to raise too."""
-    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "bogus")
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__SOURCES", "bogus")
     with pytest.raises(ValueError, match="unknown source"):
         get_config(Namespace(comicbox=get_args(("comicbox", "-o", "x.cbz"))))
 

@@ -31,7 +31,7 @@ from typing_extensions import override
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup, _series_fingerprint
 from comicbox.config import get_config
-from comicbox.config.settings import OnlineSourceCredentials
+from comicbox.config.online.settings import OnlineSourceCredentials
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online import outcome_stats

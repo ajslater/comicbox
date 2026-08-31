@@ -99,11 +99,11 @@ def test_default_config_rebuilds_when_the_environment_changes(
 ) -> None:
     """A memo outliving its environment would silently ignore env vars."""
     before = get_config()
-    monkeypatch.setenv("COMICBOX_ONLINE_FIRST_WINS", "false")
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__FIRST_WINS", "false")
     after = get_config()
     assert after is not before
     assert after.online.lookup.first_wins is False
-    monkeypatch.delenv("COMICBOX_ONLINE_FIRST_WINS")
+    monkeypatch.delenv("COMICBOX_ONLINE__LOOKUP__FIRST_WINS")
     assert get_config().online.lookup.first_wins is True
 
 
