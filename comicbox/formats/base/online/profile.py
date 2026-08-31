@@ -33,6 +33,13 @@ class ComicProfile:
     # used as a soft search filter for sources that support it (Metron's
     # `series_volume`); CV's API has no ordinal-volume filter.
     volume: int | None = None
+    # The year the SERIES began, not this issue's cover year (that's
+    # `year`). Only some sources populate it — Metron writes
+    # `comicbox.series.start_year`, most embedded formats don't — so it
+    # is frequently None. Used by the series-level fingerprints, where a
+    # per-issue field would fork the key for every issue of a
+    # multi-year run.
+    series_start_year: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,5 +207,8 @@ def accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
     )
     if (parsed := parse_year(raw_year)) is not None:
         fields["year"] = parsed
+    raw_start = glom(md, "comicbox.series.start_year", default=None)
+    if (parsed_start := parse_year(raw_start)) is not None:
+        fields["series_start_year"] = parsed_start
     if (v := _resolve_volume(md)) is not None:
         fields["volume"] = v

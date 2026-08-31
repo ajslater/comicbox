@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
 from contextlib import closing, suppress
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from loguru import logger
@@ -34,6 +36,7 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.retry import with_retry
 from comicbox.formats.base.online.series_filter import (
+    max_calls_for,
     should_keep_volume_name,
 )
 from comicbox.formats.base.online.sources.base import (
@@ -52,11 +55,54 @@ if TYPE_CHECKING:
 
     from comicbox.formats.base.online.profile import ComicProfile
 
-# Cache files already housekept this process; sources (and thus clients)
-# are rebuilt per file, and re-running the same purge/drop/vacuum SQL for
-# every file of a batch would be pure overhead.
+# Cache files already housekept this process. Keyed by cache PATH, not by
+# client: distinct credential sets share one `comicvine_cache.sqlite`, so
+# the shared-session cache below doesn't subsume this guard even though it
+# makes it a no-op in the common single-credential case.
 _maintained_cache_paths: set[str] = set()
 _maintenance_lock = threading.Lock()
+
+# Wall-clock ceiling for one `search()`'s per-volume fan-out. At CV's
+# 1/sec pacing this is ~40 issue-list calls' worth of time, so it only
+# bites when the calls are also being slowed by retries or rate-limit
+# backoff — precisely the case where the fan-out would otherwise stall a
+# batch behind one pathological comic. The volume discovery calls
+# themselves are outside it: they are the search, not the fan-out.
+_SEARCH_DEADLINE_S = 45.0
+
+# Clients are shared process-wide across the credential set that built
+# them (see `_get_session`), keyed by (api_key, base_url). Sources are
+# rebuilt per file by `_build_active_online_sources`
+# (comicbox/box/online_lookup.py), so without sharing, every file of a
+# batch paid for a fresh `Comicvine`: a new requests session (no
+# connection reuse across files), a new requests_cache sqlite handle, a
+# new ratelimit-bucket file handle, and a re-run of the cache
+# maintenance path. simyan 3.x keeps its rate-limit state in a sqlite
+# bucket file rather than in memory, so sharing is about connection and
+# handle reuse rather than about rate-limit visibility — that part
+# already worked across instances.
+#
+# Contract: FIRST BUILD WINS, matching `metron_api`'s session cache. The
+# client (and the response cache baked into it) is constructed from the
+# settings of whichever source instance hits the cache miss; later
+# same-credential sources reuse it even if their own cache settings
+# differ, and we warn once when they do. Entries are deliberately never
+# evicted: the cache is bounded by distinct credential sets used in one
+# process.
+_session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
+_session_cache_lock = threading.Lock()
+
+
+def reset_shared_sessions() -> None:
+    """
+    Drop every shared simyan client. Test seam; not used in production.
+
+    Unit tests build ad-hoc sources with throwaway credentials and
+    tmp_path cache dirs; without this the first test's client would be
+    handed to every later test that reuses a credential set.
+    """
+    with _session_cache_lock:
+        _session_cache.clear()
 
 
 def _drop_v2_cache_table(cache_path: Path) -> None:
@@ -74,6 +120,49 @@ def _drop_v2_cache_table(cache_path: Path) -> None:
         conn.execute("DROP TABLE IF EXISTS queries")
 
 
+@dataclass
+class _SearchBudget:
+    """
+    Pre-call spend limit for one `search()`: N issue-list calls, T seconds.
+
+    ComicVine's fan-out is the one place a single comic can cost an
+    unbounded amount of wall clock: `_discover_volumes` unions two
+    capped result sets, so the volume list can reach 2x the discovery
+    cap, and every survivor costs one rate-limited `list_issues` call
+    (two when the cover-date window comes back empty). At 1/sec that is
+    minutes for one comic, and there was nothing to stop it.
+
+    Both limits gate whether a call is ISSUED. Neither looks at a
+    response, so the effort/api-budget contract — pre-call fan-out
+    throttling only — holds. Whatever calls do go out are ranked exactly
+    as before.
+
+    ``max_calls=None`` means unlimited (THOROUGH).
+    """
+
+    max_calls: int | None
+    deadline: float | None
+    spent: int = 0
+    dropped: int = 0
+
+    def take(self) -> bool:
+        """Claim one call. False when the budget or the clock is out."""
+        if self.max_calls is not None and self.spent >= self.max_calls:
+            self.dropped += 1
+            return False
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            self.dropped += 1
+            return False
+        self.spent += 1
+        return True
+
+    def exhausted_reason(self) -> str:
+        """Why the budget stopped, for the log line."""
+        if self.max_calls is not None and self.spent >= self.max_calls:
+            return f"call budget ({self.max_calls}) exhausted"
+        return f"search deadline ({_SEARCH_DEADLINE_S:.0f}s) reached"
+
+
 class ComicVineOnlineSource(OnlineSource):
     """Wraps simyan for the ComicVine API."""
 
@@ -87,15 +176,56 @@ class ComicVineOnlineSource(OnlineSource):
         return bool(self._credentials.key)
 
     def _get_session(self) -> Comicvine:
-        """Build the simyan client once per source lifetime, then reuse it."""
+        """
+        Return the process-wide simyan client shared by this credential set.
+
+        Sources are rebuilt per file (`_build_active_online_sources` in
+        comicbox/box/online_lookup.py), so memoizing on `self` alone gave
+        every file of a batch its own client — a fresh HTTPS connection
+        pool, response-cache handle and ratelimit-bucket handle per
+        comic. Memoizing by (api_key, base_url) at module scope lets
+        every file, and every thread in `Runner._run_parallel`'s pool,
+        reuse one. See `_session_cache` for the first-build-wins
+        contract.
+        """
         if self._client is None:
-            self._client = self._build_session()
+            # Warn here rather than in _build_session so ignored-config
+            # warnings don't depend on winning the session-cache miss;
+            # warn_once keeps them at one line per process either way.
+            self._warn_ignored_rate_limit_overrides()
+            self._client = self._get_or_build_shared_session()
         return self._client
+
+    def _session_config_signature(self) -> tuple:
+        """Return the per-instance settings a built client bakes in."""
+        cache = self._settings.cache
+        return (cache.mode, cache.dir, cache.ttl)
+
+    def _get_or_build_shared_session(self) -> Comicvine:
+        key = (self._credentials.key or "", self._credentials.url or "")
+        signature = self._session_config_signature()
+        with _session_cache_lock:
+            entry = _session_cache.get(key)
+            if entry is None:
+                client = self._build_session()
+                _session_cache[key] = (client, signature)
+                return client
+        client, built_signature = entry
+        if built_signature != signature:
+            # First build wins (see the _session_cache comment); tell the
+            # user their differing cache config is not taking effect.
+            warn_once(
+                f"{self.name}:session-config-mismatch",
+                f"online {self.name}: reusing the existing shared simyan "
+                "client; this instance's differing cache settings "
+                f"{signature} are ignored in favor of the client's "
+                f"{built_signature}",
+            )
+        return client
 
     def _build_session(self) -> Comicvine:
         from simyan.comicvine import Comicvine
 
-        self._warn_ignored_rate_limit_overrides()
         # Both paths are always passed explicitly — simyan's defaults land
         # in ~/.cache/simyan, outside comicbox's cache dir.
         cache_path = self.cache_db_path()
@@ -622,6 +752,7 @@ class ComicVineOnlineSource(OnlineSource):
         # picks the real values for `fast` (currently 0.7 placeholder).
         name_threshold = self._effort_name_threshold()
 
+        budget = self._new_search_budget()
         candidates: list[Candidate] = []
         for vol in volumes:
             candidates.extend(
@@ -632,9 +763,28 @@ class ComicVineOnlineSource(OnlineSource):
                     issue_number=issue_number,
                     year=year,
                     name_threshold=name_threshold,
+                    budget=budget,
                 )
             )
+        if budget.dropped:
+            # Never truncate silently: a short candidate list has to be
+            # distinguishable from a thin one upstream.
+            logger.info(
+                f"online {self.name}: {budget.exhausted_reason()} after "
+                f"{budget.spent} issue-list call(s) for "
+                f"series={profile.series!r}; {budget.dropped} volume(s) "
+                "not queried. Raise api_budget to `thorough` to search "
+                "them all."
+            )
         return candidates
+
+    def _new_search_budget(self) -> _SearchBudget:
+        """Resolve this search's pre-call fan-out limits from the effort knob."""
+        from comicbox.config.settings import resolve_effort
+
+        max_calls = max_calls_for(resolve_effort(self._settings, self.name))
+        deadline = None if max_calls is None else time.monotonic() + _SEARCH_DEADLINE_S
+        return _SearchBudget(max_calls=max_calls, deadline=deadline)
 
     def _candidates_for_volume(
         self,
@@ -645,6 +795,7 @@ class ComicVineOnlineSource(OnlineSource):
         issue_number: str | None,
         year: int | None,
         name_threshold: float,
+        budget: _SearchBudget | None = None,
     ) -> list[Candidate]:
         """
         Apply pre-call filters and (if kept) fetch the volume's matching issues.
@@ -652,9 +803,11 @@ class ComicVineOnlineSource(OnlineSource):
         Pre-filters in order: start_year causality (skip volumes that
         started after the comic), then series-name fuzzy match (skip
         volumes whose name diverges from `profile.series` past the
-        api_budget threshold). Both filters log at debug level so
-        calibration runs can audit drops. The actual `list_issues` call
-        only fires for volumes that survive both gates.
+        api_budget threshold), then the per-search call/deadline budget.
+        The name filters log at debug level so calibration runs can audit
+        drops; the budget's drops are counted and reported once by the
+        caller. The actual `list_issues` call only fires for volumes that
+        survive every gate.
 
         The volume's aliases are read off the already-fetched search
         result — no extra API call — and both widen the name gate and
@@ -680,6 +833,8 @@ class ComicVineOnlineSource(OnlineSource):
                 f"{name_threshold:.2f}, api_budget pre-filter)."
             )
             return []
+        if budget is not None and not budget.take():
+            return []
         try:
             return self._list_with_year_retry(
                 session,
@@ -688,6 +843,7 @@ class ComicVineOnlineSource(OnlineSource):
                 vol.name,
                 year=year,
                 alt_series=alt_series,
+                budget=budget,
             )
         except OnlineLookupAbortedError:
             # An abort ends the whole lookup; it is not a source-side
@@ -709,6 +865,7 @@ class ComicVineOnlineSource(OnlineSource):
         *,
         year: int | None,
         alt_series: tuple[str, ...] = (),
+        budget: _SearchBudget | None = None,
     ) -> list[Candidate]:
         """
         Per-volume issue lookup with a year-window filter and one fallback.
@@ -718,6 +875,11 @@ class ComicVineOnlineSource(OnlineSource):
         the year filter — cover_date can be missing on CV issues, and
         we'd rather see *something* and let the matcher score it than
         wrongly drop the right answer.
+
+        That fallback is a second rate-limited call, so it claims from
+        the same per-search budget the first one did. This is why the
+        budget is counted in CALLS rather than in volumes: a volume can
+        cost one or two.
         """
         candidates = self._list_issues_by_volume(
             session,
@@ -728,6 +890,8 @@ class ComicVineOnlineSource(OnlineSource):
             alt_series=alt_series,
         )
         if candidates or year is None:
+            return candidates
+        if budget is not None and not budget.take():
             return candidates
         return self._list_issues_by_volume(
             session,

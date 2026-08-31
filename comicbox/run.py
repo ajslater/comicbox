@@ -17,6 +17,10 @@ from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveType
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
+from comicbox.formats.base.online.series_cache import (
+    SeriesCache,
+    filename_series_fingerprint,
+)
 from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
@@ -48,6 +52,14 @@ class Runner:
         #: wrong; `comicbox.cli.main` exits non-zero when it's non-empty.
         self.failure_count = 0
         self._failure_lock = threading.Lock()
+        #: Batch-wide series cache for online tagging (series-first
+        #: batching, plan §3.10). `OnlineSession` has always had one; the
+        #: CLI did not, so `comicbox --online` re-ran the full candidate
+        #: search for every issue of a series even inside one `-j N`
+        #: batch. A plain dict guarded by a lock: the pool's workers all
+        #: read and write it, and `_maybe_populate_series_cache` needs
+        #: `in` / `__setitem__` to stay consistent between them.
+        self._series_cache = SeriesCache()
         init_logging(self._config.general.loglevel)
 
     def _iter_recurse(self, path: Path) -> Iterator[Path]:
@@ -123,8 +135,28 @@ class Runner:
                 return
 
         with Comicbox(path, config=self._config) as car:
+            if self._config.online.lookup.enabled:
+                car.set_series_cache(self._series_cache)
             car.print_file_header()
             car.run()
+
+    def _order_for_series_batching(self, paths: list[Path]) -> list[Path]:
+        """
+        Cluster same-series files together so the series cache can hit.
+
+        Mirrors `OnlineSession.tag_many`: the first issue of each cluster
+        pays for the cold-path search and resolves the volume id; the
+        rest of the cluster reads it back and goes straight to the
+        volume-scoped issue lookup. Sorting by fingerprint makes the
+        cluster order deterministic, so re-runs produce the same
+        cache-key sequence.
+
+        Only reorders when online lookup is on — for every other
+        operation the input order is the user's and we leave it alone.
+        """
+        if not self._config.online.lookup.enabled:
+            return paths
+        return sorted(paths, key=filename_series_fingerprint)
 
     def recurse(self, path: Path) -> None:
         """Perform operations recursively on files (single-threaded)."""
@@ -244,6 +276,15 @@ class Runner:
             # actual processing is unchanged.
             paths = self._expand_paths()
             self._maybe_auto_engage_api_budget(len(paths))
+            if self._config.online.lookup.enabled:
+                # Online serial runs dispatch over the EXPANDED, clustered
+                # list so the series cache sees same-series files
+                # back-to-back. Offline runs keep the original
+                # one-call-per-configured-path control flow, which is what
+                # `--recurse` directory handling is written against.
+                for path in self._order_for_series_batching(paths):
+                    self._run_one(path)
+                return
             for raw in self._config.paths or ():
                 self._run_one(raw)
             return
@@ -258,4 +299,4 @@ class Runner:
         if len(paths) == 1:
             self._run_one(paths[0])
             return
-        self._run_parallel(paths, jobs)
+        self._run_parallel(self._order_for_series_batching(paths), jobs)

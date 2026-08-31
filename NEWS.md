@@ -214,6 +214,17 @@
       explicit-id, stored-id and series-cache fast paths.
 
 - Performance
+    - Online tagging is faster. Candidate covers download in parallel over one
+      connection, Comic Vine reuses one client for the whole run, and series
+      caching now works across a series that spans several years, where it used
+      to search again for every issue.
+    - `comicbox --online` batches by series like `OnlineSession` already did, so
+      tagging a run costs one search instead of one per issue.
+    - Comic Vine searches spend a bounded number of API calls per comic, and no
+      single call can wait indefinitely on a rate limit. Raise `api_budget` to
+      `thorough` for the old unbounded search.
+    - Rate-limit waits are interruptible everywhere, so Ctrl-C is no longer
+      ignored for minutes at a time.
     - Comicbox starts about a third faster. Importing it no longer compiles the
       XSD and JSON Schema documents for every metadata format, and the CLI no
       longer assembles its help tables on every run. Both are built the first

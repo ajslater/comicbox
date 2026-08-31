@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -1397,3 +1398,129 @@ def test_matcher_uses_candidate_hash_fetcher_for_no_precomputed() -> None:
     # the policy may skip hashing. The test asserts the fetcher is wired:
     # if invoked, it received our URL.
     assert all(call == "http://example.com/x.jpg" for call in fetcher_calls)
+
+
+# ------------------------------------------------ batch cover-hash fetching
+
+
+def _ambiguous_pair(cover_a: str, cover_b: str) -> list[Candidate]:
+    """Two same-score candidates, so hashing is invoked to separate them."""
+    return [
+        Candidate(
+            source="comicvine",
+            issue_id=1,
+            summary=CandidateSummary(
+                series="Watchmen",
+                issue="1",
+                year=1986,
+                publisher="DC",
+                page_count=None,
+                cover_url=cover_a,
+                variant_label=None,
+            ),
+            volume_id=10,
+        ),
+        Candidate(
+            source="comicvine",
+            issue_id=2,
+            summary=CandidateSummary(
+                series="Watchmen",
+                issue="1",
+                year=1986,
+                publisher="DC",
+                page_count=None,
+                cover_url=cover_b,
+                variant_label=None,
+            ),
+            volume_id=20,
+        ),
+    ]
+
+
+def test_batch_fetcher_resolves_the_whole_top_k_in_one_call() -> None:
+    """
+    Every top-K cover is requested up front, not one blocking GET at a time.
+
+    That single call is what lets the downloads overlap; serially they
+    cost one round-trip per candidate for one comic.
+    """
+    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    candidates = _ambiguous_pair("http://a", "http://b")
+    batches: list[list[str]] = []
+
+    def batch_fetcher(urls):
+        batches.append(list(urls))
+        return {"http://a": "0" * 16, "http://b": "f" * 16}
+
+    OnlineMatcher().rank(
+        profile,
+        candidates,
+        local_hash_provider=lambda: "0" * 16,
+        candidate_hash_batch_fetcher=batch_fetcher,
+    )
+    assert len(batches) == 1
+    assert sorted(batches[0]) == ["http://a", "http://b"]
+
+
+def test_batch_and_serial_fetchers_rank_identically() -> None:
+    """Concurrency changes when bytes arrive, never the ordering."""
+    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    hashes = {"http://a": "f" * 16, "http://b": "0" * 16}
+
+    serial = OnlineMatcher().rank(
+        profile,
+        _ambiguous_pair("http://a", "http://b"),
+        local_hash_provider=lambda: "0" * 16,
+        candidate_hash_fetcher=hashes.get,
+    )
+    batched = OnlineMatcher().rank(
+        profile,
+        _ambiguous_pair("http://a", "http://b"),
+        local_hash_provider=lambda: "0" * 16,
+        candidate_hash_batch_fetcher=lambda urls: {
+            u: hashes[u] for u in urls if u in hashes
+        },
+    )
+    assert [c.issue_id for c in serial] == [c.issue_id for c in batched]
+    assert [c.score for c in serial] == [c.score for c in batched]
+
+
+def test_batch_fetcher_failure_degrades_to_no_cover_signal() -> None:
+    """A broken batch leaves metadata ranking intact rather than raising."""
+    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+
+    def exploding_fetcher(urls):
+        msg = "network down"
+        raise RuntimeError(msg)
+
+    ranked = OnlineMatcher().rank(
+        profile,
+        _ambiguous_pair("http://a", "http://b"),
+        local_hash_provider=lambda: "0" * 16,
+        candidate_hash_batch_fetcher=exploding_fetcher,
+    )
+    assert len(ranked) == 2
+    assert all(c.cover_score is None for c in ranked)
+    # Still marked attempted — the tiebreak must tell "no usable cover"
+    # from "never looked", and we did look.
+    assert all(c.cover_hash_attempted for c in ranked)
+
+
+def test_batch_fetcher_skips_candidates_with_precomputed_hashes() -> None:
+    """Metron's precomputed hash costs no download."""
+    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    candidates = _ambiguous_pair("http://a", "http://b")
+    candidates[0] = replace(candidates[0], precomputed_cover_hash="0" * 16)
+    requested: list[str] = []
+
+    def batch_fetcher(urls):
+        requested.extend(urls)
+        return {}
+
+    OnlineMatcher().rank(
+        profile,
+        candidates,
+        local_hash_provider=lambda: "0" * 16,
+        candidate_hash_batch_fetcher=batch_fetcher,
+    )
+    assert requested == ["http://b"]

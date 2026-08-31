@@ -11,11 +11,13 @@ responses — are never retried.
 from __future__ import annotations
 
 import re
-import time
+import threading
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Final, TypeVar
 
 from loguru import logger
+
+from comicbox.exceptions import OnlineLookupAbortedError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -113,6 +115,66 @@ _RATE_LIMIT_SCHEDULE: Final[tuple[float, ...]] = (
 # stay at `max_retries=5` (31s total budget for transient 5xx). Going
 # higher for rate-limit gives the schedule above room to play out fully.
 _MAX_RATE_LIMIT_RETRIES: Final[int] = len(_RATE_LIMIT_SCHEDULE)
+
+# Wall-clock ceiling on ALL the waiting one decorated call may do.
+#
+# The attempt budgets above bound the NUMBER of retries but not the time
+# they take. Our own two schedules are bounded by construction — the
+# generic one sums to 31s, the rate-limit one to 2910s — but the
+# server-hint path is not: `_MAX_RETRY_AFTER_S` caps a single honored
+# `retry_after` at 3600s and nothing caps the sum, so eight of them let
+# one call block a worker for the better part of a day.
+#
+# 1 hour is chosen to bound that path while leaving `_RATE_LIMIT_SCHEDULE`
+# free to play out in full. That schedule's 8-attempt plateau tail is not
+# arbitrary: it was tuned against the 2026-05-15-stress-100 run, where a
+# high-fan-out fixture under `-j 8` needed every one of those attempts to
+# clear a rate-limit cascade without dropping its series. A tighter
+# ceiling would silently undo that — 900s, say, would stop it at 4
+# attempts. Lower this only with that regression in hand.
+#
+# Checked BEFORE sleeping: a delay that would breach the ceiling ends the
+# retry loop instead of being truncated, because a truncated rate-limit
+# wait just burns the next attempt on the same 429.
+_MAX_TOTAL_WAIT_S: Final[float] = 3600.0
+
+# Process-wide cancel signal for retry sleeps. Set it and every waiting
+# call wakes up and abandons its retry loop.
+#
+# The waits here are minutes long, so a plain `time.sleep` makes Ctrl-C
+# feel broken and makes a programmatic cancel impossible to honor
+# promptly. `OnlineSession` has always injected its own cancellable sleep
+# per instance (see `_resolve_sleep`), but that left every other caller —
+# the CLI included — sleeping uninterruptibly. This makes interruptible
+# the DEFAULT; the per-instance override still wins where it is set.
+_cancel_event = threading.Event()
+
+
+def request_cancel() -> None:
+    """Wake every in-flight retry sleep and abandon its retry loop."""
+    _cancel_event.set()
+
+
+def clear_cancel() -> None:
+    """Reset the cancel signal so later calls may retry normally."""
+    _cancel_event.clear()
+
+
+def is_cancelled() -> bool:
+    """Whether a cancel has been requested."""
+    return _cancel_event.is_set()
+
+
+def interruptible_sleep(seconds: float) -> None:
+    """
+    Sleep, waking early and raising if a cancel is requested.
+
+    Raising (rather than returning early) is what stops the retry loop
+    from immediately re-issuing the call it was backing off from.
+    """
+    if _cancel_event.wait(seconds):
+        msg = "online: retry wait cancelled"
+        raise OnlineLookupAbortedError(msg)
 
 
 def _is_rate_limit(exc: BaseException) -> bool:
@@ -225,6 +287,8 @@ def _plan_retry(
     attempt: int,
     rate_limit_attempt: int,
     max_retries: int,
+    waited: float = 0.0,
+    max_wait: float = _MAX_TOTAL_WAIT_S,
 ) -> tuple[float, str, bool] | None:
     """
     Decide whether and how to retry. Returns (delay, budget_label, is_rate_limit).
@@ -234,6 +298,11 @@ def _plan_retry(
     (`_RATE_LIMIT_SCHEDULE`); generic retriable errors use the caller's
     `max_retries` and the exponential schedule. A server-supplied
     `retry_after` hint always wins over both.
+
+    ``waited`` is how long this call has already slept. A delay that
+    would push the total past ``max_wait`` returns ``None`` rather than a
+    shortened delay: waiting out only part of a rate-limit window spends
+    an attempt on a request that is still going to be refused.
     """
     is_rate_limit = _is_rate_limit(exc)
     if is_rate_limit:
@@ -248,6 +317,8 @@ def _plan_retry(
         delay = _delay_for_rate_limit(rate_limit_attempt)
     else:
         delay = min(_delay_for(attempt), _MAX_DELAY_S)
+    if waited + delay > max_wait:
+        return None
     if is_rate_limit:
         budget = (
             f"rate-limit attempt {rate_limit_attempt + 1}/{_MAX_RATE_LIMIT_RETRIES}"
@@ -265,13 +336,17 @@ def _handle_retry_exception(
     rate_limit_attempt: int,
     max_retries: int,
     sleep: Callable[[float], None],
-) -> bool:
+    waited: float = 0.0,
+    max_wait: float = _MAX_TOTAL_WAIT_S,
+) -> float | None:
     """
-    Sleep through one retriable failure. Return True iff the budget remains.
+    Sleep through one retriable failure. Return the delay slept, or None.
 
     Raises ``exc`` immediately when it's non-retriable (programmer / auth
-    errors); returns False when the applicable budget is exhausted so the
-    caller can break out of its retry loop.
+    errors); returns ``None`` when the applicable budget — attempts or
+    the ``max_wait`` wall clock — is exhausted, so the caller can break
+    out of its retry loop. The returned delay feeds back in as
+    ``waited`` on the next call.
     """
     if not _is_retriable(exc):
         raise exc
@@ -280,14 +355,21 @@ def _handle_retry_exception(
         attempt=attempt,
         rate_limit_attempt=rate_limit_attempt,
         max_retries=max_retries,
+        waited=waited,
+        max_wait=max_wait,
     )
     if plan is None:
-        return False
+        if waited > 0:
+            logger.info(
+                f"{func_name}: giving up after {waited:.0f}s of retry waits "
+                f"(ceiling {max_wait:.0f}s)"
+            )
+        return None
     delay, budget, is_rate_limit = plan
     cause = "rate-limit" if is_rate_limit else type(exc).__name__
     logger.info(f"{func_name}: {cause}, retrying in {delay:.1f}s ({budget})")
     sleep(delay)
-    return True
+    return delay
 
 
 def _notify_rate_limit_listener(
@@ -341,12 +423,20 @@ def _run_with_retries(
     *,
     max_retries: int,
     sleep: Callable[[float], None],
+    max_wait: float = _MAX_TOTAL_WAIT_S,
 ) -> T:
-    """Drive ``func`` through the retry budget; re-raise on exhaustion."""
+    """
+    Drive ``func`` through the retry budget; re-raise on exhaustion.
+
+    Two budgets bound the loop: the per-kind attempt counts, and
+    ``max_wait`` — the total time spent sleeping across every attempt.
+    Whichever runs out first ends it.
+    """
     sleep = _resolve_sleep(args, sleep)
     last_exc: BaseException | None = None
     attempt = 0
     rate_limit_attempt = 0
+    waited = 0.0
     while True:
         try:
             return func(*args, **kwargs)
@@ -360,15 +450,19 @@ def _run_with_retries(
                 rate_limit_attempt=rate_limit_attempt,
                 max_retries=max_retries,
             )
-            if not _handle_retry_exception(
+            slept = _handle_retry_exception(
                 exc,
                 func_name=func.__name__,  # ty: ignore[unresolved-attribute]
                 attempt=attempt,
                 rate_limit_attempt=rate_limit_attempt,
                 max_retries=max_retries,
                 sleep=sleep,
-            ):
+                waited=waited,
+                max_wait=max_wait,
+            )
+            if slept is None:
                 break
+            waited += slept
             if _is_rate_limit(exc):
                 rate_limit_attempt += 1
             else:
@@ -380,7 +474,8 @@ def _run_with_retries(
 def with_retry(
     *,
     max_retries: int = 5,
-    sleep: Callable[[float], None] = time.sleep,
+    sleep: Callable[[float], None] = interruptible_sleep,
+    max_wait_s: float = _MAX_TOTAL_WAIT_S,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Wrap a callable with retry-on-rate-limit / 5xx; never retries auth errors.
@@ -396,13 +491,29 @@ def with_retry(
     When the exception carries a `retry_after` attribute (mokkari does
     this), we honor it directly — server hint always wins over our
     blind schedules.
+
+    ``max_wait_s`` bounds the TOTAL time one call may spend sleeping
+    across all its attempts. Without it the attempt budgets alone allow
+    a single call to block for the better part of an hour (rate-limit
+    schedule) or several (an honored server hint per attempt).
+
+    The default ``sleep`` is `interruptible_sleep`, so a cancel wakes
+    waiting calls everywhere rather than only in `OnlineSession`, which
+    used to be the sole injector of a cancellable sleep. Pass
+    ``sleep=time.sleep`` for an uninterruptible wait; a per-instance
+    ``retry_sleep`` attribute still overrides both (`_resolve_sleep`).
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             return _run_with_retries(
-                func, args, kwargs, max_retries=max_retries, sleep=sleep
+                func,
+                args,
+                kwargs,
+                max_retries=max_retries,
+                sleep=sleep,
+                max_wait=max_wait_s,
             )
 
         return wrapper
