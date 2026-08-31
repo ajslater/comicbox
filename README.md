@@ -67,14 +67,17 @@ A full cross-format
 Different formats spell the same idea in different ways. Comicbox reconciles
 them so you never have to:
 
-- **Identifiers** — IDs, GTINs, and URLs from every format are aggregated into a
-  single `identifiers` structure, and written back out as
+- **Identifiers** — database IDs and GTINs from every format are aggregated into
+  a single `identifiers` structure, and written back out as
   [URNs](https://en.wikipedia.org/wiki/Uniform_Resource_Name) in the Notes
-  field.
+  field. Web links live beside them in their own `urls` list, kept as the file
+  wrote them. Comicbox fills in a missing url from an identifier and a missing
+  identifier from a url it recognizes, so you get both.
 - **Reprints** — Alternate Names, Aliases, and "is version of" relationships
   collapse into one `reprints` list.
 - **Notes mining** — the heavily-abused Notes field is parsed for embedded data
-  (tagger, timestamps, and identifiers) that formats don't otherwise carry.
+  (tagger, timestamps, identifiers, and web links) that formats don't otherwise
+  carry.
 - **Liberal value parsing** — fuzzy, caseless values for enum-like fields (Age
   Rating, Format, credit roles) are accepted, tidied to Title Case, and
   converted to each output format's own enum on write.

@@ -108,4 +108,99 @@ def test_notes_stamp_sees_a_url_derived_identifier() -> None:
             MetadataFormats.COMICBOX_YAML,
         )
         notes = car.to_dict().get("comicbox", {}).get("notes") or ""
-    assert f"urn:comicvine:issue:{_CV_KEY}" in notes
+    assert f"urn:comicvine:{_CV_KEY}" in notes
+
+
+def test_a_typed_key_gets_its_typed_url_and_urn() -> None:
+    """
+    A hand tagged type prefix survives all the way to the url and the stamp.
+
+    The key is normalized, the type it named is kept, the url built for it is
+    that type's url and not an issue url, and the urn in notes names the type
+    so the next read gets the same thing back.
+    """
+    config = get_config(Namespace(comicbox=Namespace(write=Namespace(stamp=True))))
+    with Comicbox(config=config) as car:
+        car.add_metadata(
+            "comicbox:\n  identifiers:\n    leagueofcomicgeeks:\n"
+            '      key: "series:178012"\n',
+            MetadataFormats.COMICBOX_YAML,
+        )
+        sub_md = dict(car.to_dict().get("comicbox", {}))
+    assert sub_md["identifiers"]["leagueofcomicgeeks"] == {
+        "key": "178012",
+        "id_type": "series",
+    }
+    assert sub_md["urls"] == ["https://leagueofcomicgeeks.com/comics/series/178012/s"]
+    assert "urn:leagueofcomicgeeks:series:178012" in sub_md["notes"]
+
+
+def test_urls_written_into_notes_are_collected() -> None:
+    """
+    Most formats have nowhere to put a url, so taggers write them in notes.
+
+    The url becomes a url like any other, and the id it contains is read out
+    of it, while a url from a site comicbox doesn't know is simply kept.
+    """
+    sub_md = _load_yaml(f"""
+comicbox:
+  notes: "Tagged by hand. See {_CV_URL} and {_UNKNOWN_URL}."
+""")
+    assert sub_md["urls"] == [_CV_URL, _UNKNOWN_URL]
+    assert sub_md["identifiers"]["comicvine"]["key"] == _CV_KEY
+
+
+def test_a_url_in_notes_keeps_the_sentence_out_of_it() -> None:
+    """Notes are prose, so a url ends before the punctuation around it."""
+    sub_md = _load_yaml("""
+comicbox:
+  notes: "Source (https://metron.cloud/issue/99999)."
+""")
+    assert sub_md["urls"] == ["https://metron.cloud/issue/99999"]
+
+
+def test_a_url_in_notes_is_not_repeated() -> None:
+    """A url the file already lists elsewhere is not collected twice."""
+    sub_md = _load_yaml(f"""
+comicbox:
+  urls:
+    - {_CV_URL}
+  notes: "see {_CV_URL}"
+""")
+    assert sub_md["urls"] == [_CV_URL]
+
+
+def test_a_url_only_in_notes_survives_the_stamp() -> None:
+    """
+    The stamp rewrites notes, so a url in the old text has to be saved first.
+
+    It lands in urls, where the formats that have a url field can write it,
+    and its id goes into the new notes as a urn.
+    """
+    config = get_config(Namespace(comicbox=Namespace(write=Namespace(stamp=True))))
+    with Comicbox(config=config) as car:
+        car.add_metadata(
+            'comicbox:\n  notes: "Tagged with SomeTagger.'
+            ' https://metron.cloud/issue/99999"\n',
+            MetadataFormats.COMICBOX_YAML,
+        )
+        sub_md = dict(car.to_dict().get("comicbox", {}))
+    assert sub_md["urls"] == ["https://metron.cloud/issue/99999"]
+    assert sub_md["identifiers"]["metron"]["key"] == "99999"
+    assert "urn:metron:99999" in sub_md["notes"]
+
+
+def test_a_url_id_outranks_one_mined_from_notes() -> None:
+    """
+    A url naming a database's id beats the same database's id in notes text.
+
+    Notes are another program's prose. A url path is that database's own
+    address for the book, so it wins when the two disagree.
+    """
+    sub_md = _load_yaml("""
+comicbox:
+  urls:
+    - https://metron.cloud/issue/99999
+  notes: "Tagged with Comictagger using info from Metron [Issue ID 145269]"
+""")
+    assert sub_md["identifiers"]["metron"]["key"] == "99999"

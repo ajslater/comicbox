@@ -66,7 +66,7 @@ _ID_SOURCE_ALIASES: MappingProxyType[IdSources, frozenset[str]] = MappingProxyTy
             {"gs1.org", "gs1us.org", "gtinlookup.info", "gtinlookup.org"}
         ),
         IdSources.ISBN: frozenset({"isbnsearch.org", "isbndb.com"}),
-        IdSources.KITSU: frozenset({"kistu.app"}),
+        IdSources.KITSU: frozenset({"kitsu.app"}),
         IdSources.LCG: frozenset({"leagueofcomicgeeks.com"}),
         IdSources.MANGADEX: frozenset({"mangadex.org"}),
         IdSources.MANGAUPDATES: frozenset({"mangaupdates.com"}),

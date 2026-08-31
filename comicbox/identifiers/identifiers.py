@@ -2,7 +2,7 @@
 
 import re
 from contextlib import suppress
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from types import MappingProxyType
 from urllib.parse import urlparse
 
@@ -53,18 +53,31 @@ class IdentifierTypes:
     def map(self) -> frozenbidict:
         """Initialize reverse dict."""
         if not self._map:
-            trimmed_dict = {key: value for key, value in asdict(self).items() if value}
+            # Only the slug fields. The memo fields are also fields, so
+            # walking every one of them put _default_type's value in the
+            # map, colliding with the type it was remembering.
+            trimmed_dict = {
+                name: value
+                for name in ID_TYPE_NAMES
+                if (value := getattr(self, name, ""))
+            }
             self._map = frozenbidict(trimmed_dict)
         return self._map
 
     @property
     def default_slug_type(self) -> str:
-        """Return the first allocated slug type."""
+        """Return the type to assume when a url names one we don't know."""
         if not self._default_type:
-            for key, value in self.map.items():
-                if value:
-                    self._default_type = key
-                    break
+            # A comic's own page is the issue's, so that's the type an
+            # unrecognized one most likely is. Falling back to whichever
+            # type happened to be declared first made them all arcs.
+            if self.issue:
+                self._default_type = DEFAULT_ID_TYPE
+            else:
+                for key, value in self.map.items():
+                    if value:
+                        self._default_type = key
+                        break
         return self._default_type
 
 
@@ -111,7 +124,10 @@ class IdentifierParts:
             # A prefix normalize_key didn't recognize; no source uses colons
             # in its path segments, so emit no url rather than a broken one.
             return url
-        if type_value := getattr(self.id_type, id_type, None):
+        # A type is looked up in the slug map, never fetched off the
+        # dataclass: id_type is unvalidated, and an "id_type: map" put the
+        # repr of the map itself in the url.
+        if type_value := self.id_type.map.get(id_type):
             path = self.url_path_template.format(id_type=type_value, id_key=id_key)
             url = self.url_prefix + path
         return url
@@ -311,10 +327,16 @@ def create_identifier(
     id_key: str,
     *,
     id_type: str = "",
+    positional_id_type: str = DEFAULT_ID_TYPE,
     default_id_source_str: str = DEFAULT_ID_SOURCE.value,
 ) -> dict:
     """
     Create identifier dict from parts.
+
+    ``id_type`` is the type the identifier string itself named, if any.
+    ``positional_id_type`` is the type implied by where the identifier sits:
+    an id under ``series`` is a series id. The type is stored only when the
+    two disagree, because that is when it decides which url the key builds.
 
     Only the key is stored. A url for it is derived on demand with
     ``get_identifier_url``; keeping a synthesized copy inside the identifier
@@ -323,13 +345,14 @@ def create_identifier(
     identifier = {}
     if not id_source_str:
         id_source_str = default_id_source_str
-    positional_id_type = id_type or DEFAULT_ID_TYPE
     if id_key:
-        id_type, id_key = normalize_key(id_source_str, positional_id_type, id_key)
+        id_type, id_key = normalize_key(
+            id_source_str, id_type or positional_id_type, id_key
+        )
         if id_key:
             identifier[ID_KEY_KEY] = id_key
             if id_type != positional_id_type:
-                # A prefix in the key overrode where the identifier sits.
+                # The string named a type that isn't the one where it sits.
                 identifier[ID_TYPE_KEY] = id_type
     return identifier
 

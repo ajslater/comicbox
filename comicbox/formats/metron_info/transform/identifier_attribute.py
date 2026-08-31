@@ -26,7 +26,8 @@ def metron_id_attribute_to_cb(
             # Mapping.get is untyped here; metron @id attributes arrive as
             # str from xmltodict but int from API dicts — coerce.
             str(id_key),
-            id_type=id_type,
+            # The attribute names no type of its own; the tag it hangs on does.
+            positional_id_type=id_type,
             default_id_source_str=DEFAULT_ID_SOURCE.value,
         )
         comicbox_obj[IDENTIFIERS_KEY] = {id_source_str: comicbox_identifier}

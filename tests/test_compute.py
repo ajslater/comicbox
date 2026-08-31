@@ -30,6 +30,7 @@ DATE_FROM_NOTES_MD = MappingProxyType(
                 }
             },
             "notes": "Tagged with comicbox dev on 1970-01-01T00:00:00Z [Issue ID 145269] [CVDB145269] [RELDATE:2025-04-11]",
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "tagger": "comicbox dev",
             "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=tzutc()),
         },
@@ -59,6 +60,10 @@ IDS_FROM_TAGS_MD = MappingProxyType(
                     "key": "9999",
                 },
             },
+            "urls": [
+                "https://comicvine.gamespot.com/c/4000-1234/",
+                "https://metron.cloud/issue/9999",
+            ],
             "tags": {"urn:metron:9999": {}, "CVDB1234": {}},
         },
     }
@@ -98,6 +103,7 @@ comicbox:
 """
 _CV_SERIES_IDENTIFIER = {
     "key": "160294",
+    "id_type": "series",
 }
 PREFIXED_KEYS_MD = MappingProxyType(
     {
@@ -106,17 +112,27 @@ PREFIXED_KEYS_MD = MappingProxyType(
                 "comicvine": _CV_SERIES_IDENTIFIER,
                 "grandcomicsdatabase": {
                     "key": "999",
+                    "id_type": "series",
                 },
                 "leagueofcomicgeeks": {
                     "key": "178012",
+                    "id_type": "series",
                 },
                 "metron": {
                     "key": "5678",
+                    "id_type": "series",
                 },
             },
+            "urls": [
+                "https://comicvine.gamespot.com/c/4050-160294/",
+                "https://comics.org/series/999/",
+                "https://leagueofcomicgeeks.com/comics/series/178012/s",
+                "https://metron.cloud/series/5678",
+            ],
             "series": {
                 "name": "Foo",
-                "identifiers": {"comicvine": _CV_SERIES_IDENTIFIER},
+                # The series id sits in a series, so its type is implied.
+                "identifiers": {"comicvine": {"key": "160294"}},
             },
         },
     }
@@ -146,6 +162,10 @@ MULTI_URN_NOTES_MD = MappingProxyType(
                     "key": "999999",
                 },
             },
+            "urls": [
+                "https://comicvine.gamespot.com/c/4000-145269/",
+                "https://metron.cloud/issue/999999",
+            ],
             "notes": "urn:comicvine:issue:145269 urn:metron:issue:999999",
         },
     }
@@ -160,6 +180,21 @@ def test_compute_all_urns_from_notes() -> None:
     assert_diff(MULTI_URN_NOTES_MD, md)
 
 
+PUNCTUATED_URN_NOTES_YAML = """
+comicbox:
+  notes: "Read urn:metron:issue:2002, then the next one."
+"""
+
+
+def test_compute_urn_in_a_sentence_keeps_its_punctuation_out() -> None:
+    """A urn ends with its key, not at the next space."""
+    with Comicbox() as car:
+        car.add_metadata(PUNCTUATED_URN_NOTES_YAML, MetadataFormats.COMICBOX_YAML)
+        md = car.get_internal_metadata()
+    identifiers = md[ComicboxSchemaMixin.ROOT_TAG]["identifiers"]
+    assert identifiers["metron"]["key"] == "2002"
+
+
 SOURCE_TYPE_KEY_TAG_XML = (
     '<?xml version="1.0"?><ComicInfo>'
     "<Tags>leagueofcomicgeeks:series:178012</Tags>"
@@ -171,8 +206,10 @@ SOURCE_TYPE_KEY_TAG_MD = MappingProxyType(
             "identifiers": {
                 "leagueofcomicgeeks": {
                     "key": "178012",
+                    "id_type": "series",
                 },
             },
+            "urls": ["https://leagueofcomicgeeks.com/comics/series/178012/s"],
             "tags": {"leagueofcomicgeeks:series:178012": {}},
         },
     }

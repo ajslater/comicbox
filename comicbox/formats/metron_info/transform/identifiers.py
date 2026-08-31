@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from contextlib import suppress
 from types import MappingProxyType
 from typing import Any
-from urllib.parse import urlparse
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
@@ -23,8 +22,8 @@ from comicbox.formats.comicbox.schema import (
 from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import (
-    IDENTIFIER_PARTS_MAP,
     create_identifier,
+    get_id_source_from_url,
     get_identifier_url,
 )
 
@@ -61,19 +60,23 @@ def _primary_id_source_from_ids(metron_ids: list[Any]) -> str | None:
     return None
 
 
+def get_url_id_source(url: str) -> str:
+    """Name the database a url belongs to, if comicbox knows it."""
+    # Matching only each source's canonical domain missed the other domains
+    # they answer on, like comicvine.com or the ten amazon country domains.
+    with suppress(ValueError):
+        return IdSources(get_id_source_from_url(url)).value
+    return ""
+
+
 def _primary_id_source_from_urls(metron_urls: list[Any]) -> str | None:
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue
-        url = get_cdata(metron_url)
-        if not url:
-            continue
-        netloc = urlparse(str(url)).netloc
-        if not netloc:
-            continue
-        for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if str(netloc).endswith(id_parts.domain):
-                return id_source.value
+        if (url := get_cdata(metron_url)) and (
+            id_source_str := get_url_id_source(str(url))
+        ):
+            return id_source_str
     return None
 
 
@@ -114,7 +117,6 @@ def _identifier_to_cb(native_identifier: Any) -> tuple[str, dict]:
     identifier = create_identifier(
         id_source_str,
         id_key,
-        id_type="issue",
         default_id_source_str=DEFAULT_ID_SOURCE.value,
     )
     return id_source_str, identifier
@@ -201,6 +203,13 @@ def identifiers_from_cb(values: dict[str, Any]) -> list:
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
         if id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.values():
             continue
+        id_type = comicbox_identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+        if id_type != DEFAULT_ID_TYPE:
+            # IDS holds this issue's ids. A series or character id written
+            # here reads back as an issue id, and the url built from it
+            # points at an issue that doesn't exist. It still travels in
+            # URLs and in the Notes urns.
+            continue
         metron_id_source = _metron_id_source(id_source_str)
         if not metron_id_source:
             continue
@@ -269,16 +278,6 @@ def _urls_from_cb(values: dict[str, Any]) -> list:
     metron_urls: list[dict[str, Any]] = [{"#text": url} for url in url_list]
     metron_urls[index][PRIMARY_ATTRIBUTE] = True
     return metron_urls
-
-
-def get_url_id_source(url: str) -> str:
-    """Name the database a url belongs to, if comicbox knows it."""
-    netloc = urlparse(url).netloc
-    if netloc:
-        for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if str(netloc).endswith(id_parts.domain):
-                return id_source.value
-    return ""
 
 
 METRON_URLS_TRANSFORM_FROM_CB = MetaSpec(

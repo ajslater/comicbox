@@ -20,7 +20,7 @@ comic book metadata formats.
 | original_format          |
 | genres                   | Genre                                                                                    | Genres                     | genre                                                                     | genre             |
 | primary_id_source        |                                                                                          | IDS@primary, URLs@primary  |
-| identifiers              | GTIN                                                                                     | IDS, GTIN                  | identifier                                                                |
+| identifiers              | GTIN                                                                                     | IDS, GTIN                  |                                                                           | identifier        |
 | urls                     | Web                                                                                      | URLs                       |
 | imprint                  | Imprint                                                                                  |                            | Publisher.Imprint                                                         |
 | issue                    | Number                                                                                   | Number                     | issue                                                                     | issue             |

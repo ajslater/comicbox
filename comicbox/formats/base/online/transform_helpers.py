@@ -74,10 +74,8 @@ def build_identifier(source: str, id_type: str, value: Any) -> dict[str, str]:
     s = str(value)
     if not s:
         return {}
-    try:
-        identifier = create_identifier(source, s, id_type=id_type)
-    except Exception:
-        return {"key": s}
+    # An api id names no type of its own; the collection it came from does.
+    identifier = create_identifier(source, s, positional_id_type=id_type)
     # `create_identifier` returns a key-only dict; urls are derived later.
     return dict(identifier) or {"key": s}
 

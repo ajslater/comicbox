@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.computed.identifiers import ComicboxComputedIdentifiers
+from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
@@ -20,7 +20,7 @@ from comicbox.merge import AdditiveMerger, Merger
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 
 
-class ComicboxComputedDate(ComicboxComputedIdentifiers):
+class ComicboxComputedDate(ComicboxComputedIssue):
     """Comicbox Computed Date tags."""
 
     def _set_computed_from_date_cover_date(
@@ -90,7 +90,7 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
         MappingProxyType(
             {
                 # Order is important here
-                **ComicboxComputedIdentifiers.COMPUTED_ACTIONS,
+                **ComicboxComputedIssue.COMPUTED_ACTIONS,
                 "from date": (_get_computed_from_date, AdditiveMerger),
             }
         )

@@ -58,12 +58,34 @@ def _round_trip_metron_key(fmt: MetadataFormats) -> str | None:
 
 def test_create_identifier_round_trip_metron() -> None:
     """An identifier holds only the key; its url is derived on demand."""
-    identifier = create_identifier("metron", "super-series", id_type="series")
+    identifier = create_identifier(
+        "metron", "super-series", positional_id_type="series"
+    )
     assert identifier == {"key": "super-series"}
     url = get_identifier_url("metron", "series", identifier["key"])
     assert url == "https://metron.cloud/series/super-series"
     # The generated url parses back to the same source.
     assert get_id_source_from_url(url) == IdSources.METRON.value
+
+
+def test_create_identifier_records_a_type_the_string_named() -> None:
+    """
+    A type the identifier string states is kept; one implied by place is not.
+
+    The stored type is what decides which url the key builds, so it only
+    matters when it differs from the type of the field the id sits in.
+    """
+    assert create_identifier("metron", "5678", id_type="series") == {
+        "key": "5678",
+        "id_type": "series",
+    }
+    assert create_identifier("metron", "series:5678") == {
+        "key": "5678",
+        "id_type": "series",
+    }
+    assert create_identifier("metron", "series:5678", positional_id_type="series") == {
+        "key": "5678"
+    }
 
 
 def test_create_identifier_comicvine_normalizes_long_key() -> None:
@@ -196,6 +218,38 @@ def test_get_identifier_url_unknown_source_or_type_is_empty() -> None:
     assert get_identifier_url("comicvine", "bogus_type", "12345") == ""
 
 
+def test_get_identifier_url_type_is_never_read_off_the_dataclass() -> None:
+    """
+    A type naming a dataclass member is not a slug.
+
+    id_type is unvalidated text, so fetching it as an attribute let
+    "id_type: map" put the repr of the whole slug map inside a url.
+    """
+    assert get_identifier_url("metron", "map", "1") == ""
+    assert get_identifier_url("metron", "default_slug_type", "1") == ""
+
+
+def test_unrecognized_comicvine_type_code_reads_as_an_issue() -> None:
+    """
+    A url whose type code we don't know is most likely an issue's.
+
+    Falling back to whichever type was declared first made every one of
+    them an arc.
+    """
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE]
+    assert id_parts.parse_url_path("https://comicvine.gamespot.com/foo/4099-123/") == (
+        "issue",
+        "123",
+    )
+
+
+def test_kitsu_urls_resolve_to_kitsu() -> None:
+    """The kitsu domain alias was misspelled, so its urls named no source."""
+    assert get_id_source_from_url("https://kitsu.app/manga/bleach") == (
+        IdSources.KITSU.value
+    )
+
+
 def test_get_identifier_url_colon_in_key_is_empty() -> None:
     """A key with an unrecognized prefix yields no url rather than a bad one."""
     assert get_identifier_url("metron", "issue", "comicvine:issue:1") == ""
@@ -320,6 +374,25 @@ def test_parse_identifier_other_str_garbage_falls_back_to_key() -> None:
     assert parse_identifier_other_str("") == (None, "", "")
 
 
+def test_parse_identifier_other_str_ordinary_words_are_not_identifiers() -> None:
+    """
+    A string that merely contains something id shaped is not an id.
+
+    Tags and genres are run through this parser, so a substring match minted
+    ids for databases that never heard of the book: "marvel-comics" was a
+    marvel id of "-comics", and a year range was a comicvine issue.
+    """
+    for text in (
+        "marvel-comics",
+        "comixology-unlimited",
+        "gtin-14",
+        "2019-2021",
+        "collected 4001-2 things",
+        "Basingstoke Comics",
+    ):
+        assert parse_identifier_other_str(text) == (None, "", text)
+
+
 ##########################################
 # parse_string_identifier & to_urn_string
 ##########################################
@@ -348,13 +421,75 @@ def test_parse_string_identifier_uses_default_source_for_bare_key() -> None:
     )
 
 
-def test_to_urn_string_round_trip_and_dotted_source_rejected() -> None:
-    """to_urn_string composes a urn that parses back; dotted sources abort."""
+def test_to_urn_string_round_trip_omits_the_default_type() -> None:
+    """An issue urn carries no type segment and parses back as an issue."""
     urn = to_urn_string("comicvine", "issue", "45722")
-    assert urn == "urn:comicvine:issue:45722"
+    assert urn == "urn:comicvine:45722"
     assert parse_urn_identifier(urn) == (IdSources.COMICVINE, "issue", "45722")
-    # Domain-like source strings cannot be urn nids.
+    # An unstated type means the default type too.
+    assert to_urn_string("comicvine", "", "45722") == urn
+
+
+def test_to_urn_string_writes_an_overriding_type() -> None:
+    """A type that isn't the default is named, so it survives the round trip."""
+    urn = to_urn_string("metron", "series", "178012")
+    assert urn == "urn:metron:series:178012"
+    assert parse_urn_identifier(urn) == (IdSources.METRON, "series", "178012")
+
+
+def test_to_urn_string_refuses_parts_that_cannot_make_a_urn() -> None:
+    """
+    Unusable parts yield no urn instead of raising.
+
+    The notes stamp composes urns from hand written identifier sources, so a
+    source that is not a legal urn namespace must not abort the whole read.
+    """
     assert to_urn_string("weird.dotted", "issue", "1") == ""
+    assert to_urn_string("my_db", "issue", "abc") == ""
+    assert to_urn_string("x", "issue", "1") == ""
+    assert to_urn_string("metron", "issue", "abc def") == ""
+    assert to_urn_string("metron", "issue", "") == ""
+    # A type comicbox doesn't know would read back as an issue id.
+    assert to_urn_string("metron", "map", "1") == ""
+
+
+def test_parse_urn_identifier_scheme_and_type_are_case_insensitive() -> None:
+    """RFC 8141 makes the scheme case insensitive, and comicbox the type."""
+    expected = (IdSources.COMICVINE, "issue", "145269")
+    assert parse_urn_identifier("URN:comicvine:145269") == expected
+    assert parse_urn_identifier("urn:Comicvine:Issue:145269") == expected
+
+
+def test_parse_urn_identifier_rejects_a_near_urn() -> None:
+    """A string that merely starts with urn is not a urn."""
+    assert parse_urn_identifier("urnfoo:bar:baz") == (None, "", "")
+
+
+def test_parse_urn_identifier_keeps_every_segment_of_the_key() -> None:
+    """A key with colons in it stays whole instead of losing its head."""
+    assert parse_urn_identifier("urn:metron:series:a:b") == (
+        IdSources.METRON,
+        "series",
+        "a:b",
+    )
+
+
+def test_parse_urn_identifier_unknown_type_is_part_of_the_key() -> None:
+    """An unrecognized first segment is key data, not a type to discard."""
+    assert parse_urn_identifier("urn:comicvine:notatype:145269") == (
+        IdSources.COMICVINE,
+        "issue",
+        "notatype:145269",
+    )
+
+
+def test_parse_urn_identifier_decodes_percent_encoded_keys() -> None:
+    """Keys another tagger percent encoded still arrive decoded."""
+    assert parse_urn_identifier("urn:metron:100%25") == (
+        IdSources.METRON,
+        "issue",
+        "100%",
+    )
 
 
 ########################

@@ -12,7 +12,7 @@ from comicbox.formats.comicbox.schema import (
     PRIMARY_ID_SOURCE_KEY,
     URLS_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -71,34 +71,17 @@ def identifiers_transform_to_cb(
     )
 
 
-def _identifiers_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> set:
-    """Unparse identifier struct to set of strings."""
-    urn_strings = set()
-    for id_source in IdSources:
-        if (
-            (comicbox_identifier := comicbox_identifiers.get(id_source.value))
-            and (id_key := comicbox_identifier.get(ID_KEY_KEY))
-            and (urn_str := to_urn_string(id_source.value, "issue", id_key))
-        ):
-            urn_strings.add(urn_str)
-    return urn_strings
-
-
-def identifiers_transform_from_cb(identifiers_tag: str) -> MetaSpec:
-    """Transform comicbox identifiers identifier tag."""
-    return MetaSpec(
-        key_map={identifiers_tag: IDENTIFIERS_KEY},
-        spec=_identifiers_from_cb,
-    )
-
-
 def _identifier_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> str:
     """Unparse the best identifier to a single urn string."""
     for id_source in IdSources:
         if (
             (comicbox_identifier := comicbox_identifiers.get(id_source.value))
             and (id_key := comicbox_identifier.get(ID_KEY_KEY))
-            and (urn_str := to_urn_string(id_source.value, "issue", id_key))
+            and (
+                urn_str := to_urn_string(
+                    id_source.value, comicbox_identifier.get(ID_TYPE_KEY, ""), id_key
+                )
+            )
         ):
             return urn_str
     return ""
