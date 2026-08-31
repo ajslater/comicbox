@@ -96,6 +96,15 @@
       from. Malformed tags were dropped as silently as absent ones.
     - Schema-wide validation hooks run. The first one added to any schema would
       have failed on a bad call.
+    - MetronInfo `id` attributes are read from files that name no primary id
+      source. A file with no `<ID primary="true">` and no url comicbox
+      recognizes dropped every tag-level id — on Publisher, Imprint, Series,
+      Arc, Universe, Creator, Role, Story and Reprint. The fallback source that
+      should have caught this never ran, and the ids were filed under a null
+      source and discarded on load. They now read as Metron ids, the database
+      that writes the format.
+    - A MetronInfo `AlternativeName`'s `id` attribute is read. The schema
+      dropped it before the transform that handles it ever saw it.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

@@ -21,7 +21,7 @@ from comicbox.formats.comicbox.schema import (
     ROLES_KEY,
 )
 from comicbox.formats.metron_info.schema import CREATOR_TAG
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.formats.metron_info.transform.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
@@ -167,7 +167,7 @@ def _credits_to_cb(
     metron_credits = values.get(CREDITS_KEYPATH)
     if not metron_credits:
         return {}
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     return {
         person_credit[0]: person_credit[1]
         for metron_credit in metron_credits
@@ -239,7 +239,7 @@ def _credits_from_cb(
     comicbox_credits = values.get(CREDITS_KEY)
     if comicbox_credits is None:
         comicbox_credits = {}
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return [
         metron_credit
         for person_name, comicbox_credit in comicbox_credits.items()

@@ -6,7 +6,10 @@ from typing import Any
 from typing_extensions import override
 
 from comicbox.formats.base.fields.fields import StringField
-from comicbox.formats.base.fields.metroninfo import MetronFormatField
+from comicbox.formats.base.fields.metroninfo import (
+    MetronFormatField,
+    MetronIDAttrField,
+)
 from comicbox.formats.base.fields.number_fields import IntegerField
 from comicbox.formats.base.fields.pycountry import LanguageField
 from comicbox.formats.base.fields.xml_fields import (
@@ -47,6 +50,10 @@ class MetronNameSchema(XmlSubSchema):
         include = MappingProxyType(
             {
                 "#text": StringField(),
+                # nameType declares `id` alongside `lang` in the XSD, and the
+                # reprints transform already reads and writes it. Omitting it
+                # here stripped the attribute before the transform ever saw it.
+                "@id": MetronIDAttrField(),
                 "@lang": LanguageField(),
             }
         )
