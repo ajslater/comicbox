@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import override
 
@@ -29,6 +29,20 @@ if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
     from comicbox.formats.sources import MetadataSources
     from comicbox.print import PrintPhases
+
+_EnumT = TypeVar("_EnumT", bound=Enum)
+
+
+def parse_enum(
+    enum_cls: type[_EnumT], flag: str, raw: str, *, noun: str = "name"
+) -> _EnumT:
+    """Parse a lowercased string into an enum member, raising a flag-tagged error."""
+    try:
+        return enum_cls(raw.strip().lower())
+    except ValueError as exc:
+        valid = ", ".join(member.value for member in enum_cls)
+        reason = f"{flag}: unknown {noun} {raw!r}; valid: {valid}"
+        raise ValueError(reason) from exc
 
 
 class MatchMode(str, Enum):
@@ -129,22 +143,31 @@ class ReadSettings:
     merge_order: "tuple[MetadataSources, ...] | None" = None
 
 
-class WriteMode(str, Enum):
+class MergeMode(str, Enum):
     """
-    How a write merges its patch against the comic's existing metadata.
+    How caller-supplied metadata merges into a comic's existing tags.
+
+    Applies to metadata the caller handed to this run — the write API's
+    patch, ``-m``, ``--import`` files and the config's metadata block.
+    Metadata comicbox discovered on its own is always accumulated
+    additively.
 
     - ``additive``: deep-merge via mergedeep ADDITIVE. Dicts recurse;
       lists / tuples / sets at conflicting paths *concatenate*; scalars
       and other leaves *replace*. Default.
-    - ``update``: ``dict.update()`` at ROOT_TAG. Replaces top-level keys
-      wholesale; siblings of a replaced key are dropped.
     - ``replace``: deep-merge via mergedeep REPLACE. Dicts recurse;
-      everything else (scalars, lists, tuples, sets) *replaces*. Codex's
-      "rename publisher from `Foo Comics` to `Foo`" use case wants this
-      when paired with list-typed fields whose patch is meant to be the
-      new complete value rather than an append. For dict-of-dict
-      structures (most of comicbox's schema) ``additive`` and ``replace``
-      are indistinguishable.
+      everything else (scalars, lists, tuples, sets) *replaces*. Use it
+      when a list-typed patch value is meant to be the new complete
+      value rather than an append.
+    - ``update``: ``dict.update()`` at ROOT_TAG. Replaces top-level keys
+      wholesale; siblings of a replaced key are dropped. A patch of
+      ``{"credits": {"Jane": {...}}}`` removes every other credit.
+
+    ``additive`` and ``replace`` differ only on the five list-typed
+    schema fields: ``remainders``, ``reprints``, ``series_groups``,
+    ``urls`` and ``series.alternative_names``. Everywhere else the
+    schema is dict-of-dict or scalar, where the two are
+    indistinguishable.
     """
 
     ADDITIVE = "additive"
@@ -157,11 +180,9 @@ class WriteSettings:
     """Which metadata formats to write back, and how."""
 
     formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
-    # Default merge behavior on write. The legacy ``replace`` bool is
-    # kept as a deprecated alias: ``replace=True`` maps to
-    # ``mode=WriteMode.UPDATE`` (its historical meaning — UpdateMerger).
-    mode: WriteMode = WriteMode.ADDITIVE
-    replace: bool = False  # DEPRECATED: alias for ``mode=update``.
+    # How supplied metadata overlays existing tags. Settable with the
+    # ``write.merge_mode`` config key and ``--merge-mode``.
+    merge_mode: MergeMode = MergeMode.ADDITIVE
     stamp: bool = False
     stamp_notes: bool = True
     delete_all_tags: bool = False

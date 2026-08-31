@@ -80,6 +80,32 @@ _PDF_PAGE_FORMAT_DESC = MappingProxyType(
     }
 )
 
+# (mode, dict-typed fields, list-typed fields, top level keys)
+_MERGE_MODE_ROWS = (
+    ("additive (default)", "recurse", "concatenate", "kept"),
+    ("replace", "recurse", "overwrite", "kept"),
+    (
+        "update",
+        "replaced wholesale",
+        "replaced wholesale",
+        "replaced, siblings dropped",
+    ),
+)
+_MERGE_MODE_INTRO = Styled(
+    """
+[bold]Merging supplied metadata[/bold]
+
+[cyan]--merge-mode <mode>[/cyan] controls how metadata you supply — [cyan]-m[/cyan],
+[cyan]--import[/cyan], and the config metadata block — overlays the tags already in
+the comic. Metadata comicbox discovers on its own is always additive.
+
+[green]additive[/green] and [green]replace[/green] differ only on the five list typed fields:
+[green]remainders[/green], [green]reprints[/green], [green]series_groups[/green], [green]urls[/green] and [green]series.alternative_names[/green].
+Everywhere else the schema nests dicts, where the two behave identically.
+""",
+    style="argparse.text",
+)
+
 # (mode, behavior on unambiguous top, on solo viable, on close call near top)
 _MATCH_MODE_ROWS = (
     ("ask", "prompt", "prompt", "prompt"),
@@ -136,6 +162,20 @@ def _get_pdf_page_format_phases_table() -> Table:
     # argparse accepts.
     for value in PAGE_FORMAT_VALUES:
         table.add_row(value, _PDF_PAGE_FORMAT_DESC.get(value, ""))
+    return table
+
+
+def _get_merge_mode_table() -> Table:
+    table = Table(
+        title="[dark_cyan]--merge-mode[/dark_cyan] values",
+        **_TABLE_ARGS,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    )
+    table.add_column("--merge-mode", style="green")
+    table.add_column("dict fields")
+    table.add_column("list fields")
+    table.add_column("top level keys")
+    for row in _MERGE_MODE_ROWS:
+        table.add_row(*row)
     return table
 
 
@@ -201,6 +241,8 @@ def build_epilog() -> Group:
         _get_help_print_phases_table(),
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
+        _MERGE_MODE_INTRO,
+        _get_merge_mode_table(),
         _get_online_sources_table(),
         _MATCH_MODE_INTRO,
         _get_match_mode_table(),

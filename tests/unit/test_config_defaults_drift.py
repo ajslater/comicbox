@@ -95,7 +95,6 @@ _KNOWN_DIVERGENCES = {
 
 # Dataclass fields with no YAML key, and why they don't need one.
 _NO_YAML_KEY = {
-    "write.mode": "Derived from the deprecated `replace` bool at build time.",
     "online.lookup.enabled": "Runtime-only: set by --online, never persisted.",
     "online.lookup.ids": "Runtime-only: set by --id.",
     "online.lookup.series_ids": "Runtime-only: set by --series-id.",

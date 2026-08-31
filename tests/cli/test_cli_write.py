@@ -6,6 +6,8 @@ from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
 
+import pytest
+
 from comicbox import cli
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -93,7 +95,7 @@ TMP_MULTI_PATH = TMP_DIR / CBZ_MULTI_SOURCE_PATH.name
 
 TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 CLI_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
-METADATA_REPLACE = MappingProxyType(
+METADATA_UPDATE = MappingProxyType(
     {
         ComicboxCLISchema.ROOT_TAG: {
             **METADATA[ComicboxCLISchema.ROOT_TAG],
@@ -191,7 +193,7 @@ def test_cli_action_write() -> None:
     _cleanup()
 
 
-def test_cli_action_write_replace() -> None:
+def test_cli_action_write_merge_mode_update() -> None:
     """Test cli metadata write to file."""
     _setup()
     with Comicbox(TMP_PATH) as car:
@@ -206,7 +208,8 @@ def test_cli_action_write_replace() -> None:
         "tags: {d: {},e: {},f: {}}",
         "-m",
         "{ title: bozo_title }",
-        "--replace",
+        "--merge-mode",
+        "update",
         str(TMP_PATH),
         "--print",
         "nmcp",
@@ -218,7 +221,42 @@ def test_cli_action_write_replace() -> None:
     md[ComicboxCLISchema.ROOT_TAG].pop("notes", None)
     md[ComicboxCLISchema.ROOT_TAG].pop("updated_at", None)
     md = MappingProxyType(md)
-    assert_diff(METADATA_REPLACE, md)
+    assert_diff(METADATA_UPDATE, md)
+    _cleanup()
+
+
+@pytest.mark.parametrize(
+    ("merge_mode", "expect_groups"),
+    [("additive", {"G1", "G2", "G3"}), ("replace", {"G3"})],
+)
+def test_cli_action_write_merge_mode_list_field(
+    merge_mode: str, expect_groups: set[str]
+) -> None:
+    """
+    ``--merge-mode replace`` is reachable from the CLI, and it differs.
+
+    The deprecated ``--replace`` selected *update*, so replace mode had
+    no command line surface at all. A list typed field is the only place
+    additive and replace disagree, so nothing else could pin this.
+    """
+    _setup()
+    seed = ("comicbox", "-m", "series_groups: [G1, G2]", "-w", "cb", str(TMP_PATH))
+    cli.main(seed)
+    args = (
+        "comicbox",
+        "-m",
+        "series_groups: [G3]",
+        "--merge-mode",
+        merge_mode,
+        "-w",
+        "cb",
+        str(TMP_PATH),
+    )
+    cli.main(args)
+
+    with Comicbox(TMP_PATH) as car:
+        md = car.get_internal_metadata()
+    assert set(md[ComicboxCLISchema.ROOT_TAG]["series_groups"]) == expect_groups
     _cleanup()
 
 

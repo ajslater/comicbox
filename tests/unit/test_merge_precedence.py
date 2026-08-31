@@ -26,7 +26,7 @@ from comicbox.box import Comicbox
 from comicbox.box.init import LoadedMetadata
 from comicbox.box.merge import ComicboxMerge
 from comicbox.config import get_config
-from comicbox.config.settings import ComicboxSettings, WriteMode
+from comicbox.config.settings import ComicboxSettings, MergeMode
 from comicbox.formats import MetadataFormats
 from comicbox.formats.sources import MetadataSources
 
@@ -78,10 +78,10 @@ def _merge_order(*names: str) -> ComicboxSettings:
     return get_config({"comicbox": {"read": {"merge_order": list(names)}}})
 
 
-def _write_mode(mode: WriteMode) -> ComicboxSettings:
-    """Set write.mode the way the public write API does."""
+def _merge_mode(mode: MergeMode) -> ComicboxSettings:
+    """Set write.merge_mode the way the public write API does."""
     config = get_config()
-    return replace(config, write=replace(config.write, mode=mode))
+    return replace(config, write=replace(config.write, merge_mode=mode))
 
 
 ###########################
@@ -166,8 +166,8 @@ def test_add_metadata_with_an_online_format_merges(cbz: Path) -> None:
 #################################
 
 
-@pytest.mark.parametrize("mode", list(WriteMode))
-def test_reads_are_identical_under_every_write_mode(cbz: Path, mode: WriteMode) -> None:
+@pytest.mark.parametrize("mode", list(MergeMode))
+def test_reads_are_identical_under_every_merge_mode(cbz: Path, mode: MergeMode) -> None:
     """
     `to_dict()` must not depend on how a hypothetical write would merge.
 
@@ -175,27 +175,21 @@ def test_reads_are_identical_under_every_write_mode(cbz: Path, mode: WriteMode) 
     so comicbox.json's `credits` replaced ComicInfo's wholesale and Joe
     vanished from a plain read.
     """
-    md = _read(cbz, _write_mode(mode))
+    md = _read(cbz, _merge_mode(mode))
     assert md == _read(cbz)
     assert set(md["credits"]) == {"Joe", "Wally"}
-
-
-def test_legacy_replace_bool_does_not_change_a_read(cbz: Path) -> None:
-    """The deprecated `write.replace` alias is a write knob too."""
-    config = get_config({"comicbox": {"write": {"replace": True}}})
-    assert _read(cbz, config) == _read(cbz)
 
 
 @pytest.mark.parametrize(
     ("mode", "expect_sibling"),
     [
-        (WriteMode.ADDITIVE, True),
-        (WriteMode.REPLACE, True),
-        (WriteMode.UPDATE, False),
+        (MergeMode.ADDITIVE, True),
+        (MergeMode.REPLACE, True),
+        (MergeMode.UPDATE, False),
     ],
 )
-def test_write_mode_still_governs_the_supplied_patch(
-    cbz: Path, mode: WriteMode, *, expect_sibling: bool
+def test_merge_mode_still_governs_the_supplied_patch(
+    cbz: Path, mode: MergeMode, *, expect_sibling: bool
 ) -> None:
     """
     The patch keeps its documented per-mode semantics against the archive.
@@ -204,7 +198,7 @@ def test_write_mode_still_governs_the_supplied_patch(
     the archive comment supplied — while the deep modes keep it.
     """
     patch = {"comicbox": {"series": {"name": "D"}}}
-    with Comicbox(cbz, config=_write_mode(mode), metadata=patch) as cb:
+    with Comicbox(cbz, config=_merge_mode(mode), metadata=patch) as cb:
         series = cb.to_dict()["comicbox"]["series"]
     assert series["name"] == "D"
     assert ("volume_count" in series) is expect_sibling
