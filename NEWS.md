@@ -135,6 +135,17 @@
       file, the `--auto-threshold` help and the matcher all said 0.95, and the
       solo floor was defined off it, so a lone mediocre match could be written
       without a prompt — the failure that floor exists to prevent.
+    - The solo-viable auto-write floor follows the auto-write threshold that is
+      actually configured. It read a fixed 0.95 whatever the setting said, so
+      raising `--auto-threshold` left a lone match under the new bar writing
+      itself anyway, through a back door no setting could close.
+    - A cover comicbox measured is no longer overruled by one it never looked
+      at. When two records match the metadata equally well, comicbox prefers the
+      canonical volume unless the covers say otherwise — but a candidate past
+      the cover-checking cutoff counted as "covers alike" rather than "not
+      checked", and won the tie against a candidate whose cover actually matched
+      the comic. A candidate that was checked and simply has no cover still
+      yields to the canonical volume as before.
     - Actions needing an archive warn instead of raising when there is no path.
       `comicbox --rename` and `comicbox -P f` with no file ended in an
       ArchiveError traceback. The guard that turns those actions off existed but

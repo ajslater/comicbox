@@ -191,6 +191,23 @@ def final_score(candidate: Candidate, *, hash_used: bool) -> float:
     same — `_METADATA_WEIGHT_SUM` (0.80) is still the metadata's
     share of the blended budget, regardless of which signals
     contributed to producing the md value.
+
+    Known asymmetry (audited 2026-08-31, deliberately not retuned here
+    — see the matcher scoring audit under
+    ``tasks/online-tagging/calibration-notes/``): an un-hashed
+    candidate is scored on raw metadata while a hashed one is scored on
+    `0.80*md + 0.20*cover`, and both are compared against the same
+    `auto_threshold`. Measuring a cover therefore *moves* the bar a
+    candidate has to clear: it holds a bar T only while
+    `cover >= (T - 0.80*md) / 0.20`. At the shipped T=0.95 that is
+    cover >= 0.75 for a flawless md=1.0, and unreachable for any
+    md < 0.9375 — while an un-hashed sibling with the same metadata
+    keeps its md and clears T unmeasured. In the 2026-05-17 bigmedia
+    run 48% of 548 measured cover scores were below 0.75, and the
+    blend lowered the top candidate's score in 114 of 306 hashed
+    fixtures. Retuning the weights (or renormalising the un-hashed
+    side) changes which files get written to, so it needs a
+    calibration run, not a patch.
     """
     if not hash_used or candidate.cover_score is None:
         return candidate.metadata_score
@@ -222,11 +239,22 @@ def _policy_auto_writes(
     The pre-Phase-E behavior is recoverable by setting the threshold
     to `min_confidence` (default 0.50), which makes any solo candidate
     above the min_confidence bar auto-write.
+
+    The floor defaults to this source's resolved `auto_threshold`
+    (``resolve_solo_threshold``), and at that default the carve-out is
+    subsumed: `solo_viable` means every other candidate is below
+    `min_confidence` (0.50), so a top clearing a >= 0.50 threshold is
+    also more than `disambiguation_margin` clear of the runner-up, i.e.
+    already `unambig`. AUTO therefore behaves exactly like CAREFUL out
+    of the box; the carve-out only widens it once a user lowers
+    `solo_threshold` for a source. That is the intended reading of
+    "no more permissive than CAREFUL unless the user opts in" — not a
+    dead branch to delete.
     """
     unambig = top_score >= confidence_threshold and gap >= disambiguation_margin
     # Solo-viable auto-write requires the lone candidate clear the floor.
-    # Default floor = global confidence threshold, so AUTO/EAGER's solo
-    # path is no more permissive than CAREFUL unless the user opts in
+    # Default floor = this source's auto-write threshold, so AUTO/EAGER's
+    # solo path is no more permissive than CAREFUL unless the user opts in
     # by lowering the per-source override.
     solo_viable_confident = solo_viable and top_score >= solo_confidence_threshold
     match policy:
@@ -306,17 +334,21 @@ def _top_k_for_hashing(candidate_count: int) -> int:
     """
     Adaptive cover-hash top-K (Phase J).
 
-    The bigmedia 2026-05-14 calibration showed that Phase H's broaden
-    retry caused 14 PROMPT-zone regressions: when broaden added
-    candidates with similar metadata scores, the previously-best
-    candidate dropped out of the fixed top-5 for hashing and lost its
-    cover boost.
+    K scales with the candidate count — hash half the list, floored at
+    5 (the original fixed constant), capped at 15 (cost budget). Cost:
+    at most 10 extra cover-hash fetches per fixture vs the original
+    K=5, and only when the candidate set is genuinely large. The cache
+    absorbs subsequent runs.
 
-    Adaptive K scales with the candidate count — hash half the list,
-    floored at 5 (the original constant), capped at 15 (cost budget).
-    Cost: at most 10 extra cover-hash fetches per fixture vs the
-    original K=5, only when the candidate set is genuinely large.
-    Cache absorbs subsequent runs.
+    Phase J was written to stop a large candidate set from pushing the
+    best candidate out of a fixed top-5 and costing it its cover boost.
+    The feature that produced those large sets — Phase H's broaden
+    retry — was reverted (`62a5725`, `b407815`), and Phase J itself
+    flipped zero outcomes on the corpus that motivated it. It stays as
+    a cost-bounded generalization of K=5 for any future feature that
+    returns wide candidate lists; a rank-boundary artifact is still a
+    real failure mode (see `_cover_diff_is_noise`), just not one this
+    corpus exercises.
 
     Examples:
       5 candidates  → K=5  (current behavior; small set)
@@ -395,16 +427,11 @@ _TIED_METADATA_BLEND_MARGIN: float = 0.02
 # answer's cover is genuinely a better match. Without this guard, the
 # tiebreak collapses them and the lower vol_id wins, which is wrong.
 #
-# Phase G (2026-05-14): tightened from 0.05 → 0.03. The bigmedia
-# calibration surfaced two tied-dupe cases (Fallen Son: Death of Cap
-# America 2007, Hawkeye Freefall 2020) where cover diffs of 0.00 and
-# 0.03 fell within the old noise margin and let the lower-vol-id
-# tiebreak fire, picking the wrong record. Tightening to 0.03 still
-# treats the Watchmen-vs-dupe case (cover diff 0.03 between near-
-# identical scans) as noise (≤ 0.03 = noise), but pulls the boundary
-# in slightly. Doesn't fix Hawkeye Freefall (cover diff exactly 0.03)
-# directly — would need 0.02 for that, but 0.02 risks breaking the
-# Watchmen canonical-volume tiebreak. Conservative tightening.
+# Phase G (2026-05-14) tightened this from 0.05 to 0.03 against the
+# bigmedia calibration; 0.02 would also catch Hawkeye Freefall (cover
+# diff exactly 0.03) but risks breaking the Watchmen canonical-volume
+# tiebreak, so the boundary stayed conservative. The run-by-run
+# reasoning lives in `tasks/online-tagging/calibration-notes/`.
 _COVER_DIFF_NOISE_MARGIN: float = 0.03
 
 
@@ -412,15 +439,41 @@ def _cover_diff_is_noise(a: Candidate, b: Candidate) -> bool:
     """
     Decide whether the cover-score gap between two candidates is hash noise.
 
-    Returns True when the gap is small enough to be hash artifact rather
-    than disambiguation signal. When either candidate's cover_score is
-    missing, we can't compute a diff — fall back to "noise" so the
-    volume_id tiebreak still applies (no cover signal at all means
-    cover wasn't helping anyway).
+    Returns True when the gap is small enough to be hash artifact
+    rather than disambiguation signal, so the volume_id tiebreak can
+    override it.
+
+    A missing `cover_score` is not one case but two, and they answer
+    this question differently:
+
+    - **No cover signal to be had.** Neither candidate was hashed
+      (hashing never fired), or the one that wasn't scored *was*
+      hashed and came back empty — no `cover_url`, a fetch failure, an
+      undecodable image. Cover genuinely isn't helping here, so treat
+      the pair as tied and let volume_id decide, as before.
+    - **Not computed.** The unscored candidate sits outside the
+      hashing top-K (`_top_k_for_hashing`), so its cover was never
+      looked at. Its silence is our cost cap talking, not evidence of
+      similarity — and collapsing the pair would let a candidate no
+      one measured beat one whose cover we *did* measure against the
+      local copy, on volume id alone. Keep the measured signal: not
+      noise.
+
+    The second case needs at least 6 candidates to arise (K >= 5) plus
+    an exact metadata-score tie across the K boundary, so it is narrow
+    — but it is the one case where the tiebreak discards a real
+    measurement instead of breaking a real tie.
     """
-    if a.cover_score is None or b.cover_score is None:
+    if a.cover_score is not None and b.cover_score is not None:
+        return abs(a.cover_score - b.cover_score) <= _COVER_DIFF_NOISE_MARGIN
+    if a.cover_score is None and b.cover_score is None:
+        # No cover signal on either side — nothing for the tiebreak to
+        # override, so let volume_id decide as it always has.
         return True
-    return abs(a.cover_score - b.cover_score) <= _COVER_DIFF_NOISE_MARGIN
+    unmeasured = a if a.cover_score is None else b
+    # One side measured. Its signal stands unless the other side was
+    # examined too and simply had no usable cover.
+    return unmeasured.cover_hash_attempted
 
 
 def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
@@ -442,10 +495,12 @@ def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
     - Requires blended scores within a small margin. Genuine
       score-spread (>0.02) means the matcher distinguished the
       candidates and we should trust that.
-    - Requires cover-score difference to be noise-level (<=0.05). When
-      one candidate's cover is a near-perfect Hamming match and the
-      other's is materially worse, that's the cover signal doing real
-      work — don't override.
+    - Requires the cover-score difference to be noise-level
+      (`_COVER_DIFF_NOISE_MARGIN`, 0.03), with an unmeasured cover
+      counting as noise only when nothing was measured for it to hide
+      behind (`_cover_diff_is_noise`). When one candidate's cover is a
+      near-perfect Hamming match and the other's is materially worse,
+      that's the cover signal doing real work — don't override.
 
     The three predicates together catch the "two records, same series +
     issue + year + publisher, different volume, near-identical covers"
@@ -539,7 +594,10 @@ def _apply_cover_hashing(
 
     K is adaptive (Phase J — see `_top_k_for_hashing`): for small
     candidate sets it stays at 5 (the historical constant); for larger
-    sets (Phase H broaden-retry, BALANCED budget) it scales up to 15.
+    sets (a BALANCED / THOROUGH budget over a multi-volume search) it
+    scales up to 15. Candidates inside K are marked
+    `cover_hash_attempted` whether or not a hash came back, so the
+    tiebreak can tell "this cover doesn't help" from "we never looked".
     """
     top_k = _top_k_for_hashing(len(ranked))
     rescored: list[Candidate] = []
@@ -547,9 +605,12 @@ def _apply_cover_hashing(
         if i >= top_k:
             rescored.append(c)
             continue
+        # Attempted from here on, whatever the outcome — the tiebreak
+        # reads this to tell an unhelpful cover from an unexamined one.
+        attempted = replace(c, cover_hash_attempted=True)
         cand_hash = _resolve_candidate_hash(c, candidate_hash_fetcher)
         if not cand_hash:
-            rescored.append(c)
+            rescored.append(attempted)
             continue
         try:
             cs = _cover_score(local_hash, cand_hash)
@@ -557,9 +618,9 @@ def _apply_cover_hashing(
             logger.warning(
                 f"online: cover hash failed for {c.source}:{c.issue_id}: {exc}"
             )
-            rescored.append(c)
+            rescored.append(attempted)
             continue
-        with_cover = replace(c, cover_score=cs)
+        with_cover = replace(attempted, cover_score=cs)
         rescored.append(
             replace(with_cover, score=final_score(with_cover, hash_used=True))
         )

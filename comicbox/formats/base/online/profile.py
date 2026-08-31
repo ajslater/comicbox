@@ -66,6 +66,13 @@ class Candidate:
     score: float = 0.0
     url: str = ""
     precomputed_cover_hash: str | None = None
+    # True once the matcher tried to hash this candidate's cover, whatever
+    # came of it. With `cover_score` it forms a tri-state the tiebreak
+    # needs: scored (attempted, comparable), attempted-but-unscored (the
+    # candidate has no usable cover — a real absence of signal), and
+    # never-attempted (outside the hashing top-K, so its absence is our
+    # cost cap talking, not the data).
+    cover_hash_attempted: bool = False
     # The parent container's id — CV's `volume.id`, Metron's `series.id`.
     # Two issues sharing a volume_id are siblings in the same series run;
     # this is what calibration uses to distinguish "variant cover of the

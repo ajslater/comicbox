@@ -626,15 +626,37 @@ def test_strict_unattended_skips_when_close() -> None:
     assert res.kind is ResolutionKind.SKIP
 
 
-def test_normal_accepts_solo_below_threshold() -> None:
-    """`--policy normal` (default) takes a sole viable candidate even below auto-write bar."""
+def test_normal_accepts_solo_below_threshold_only_when_floor_lowered() -> None:
+    """
+    AUTO's solo carve-out reaches below the auto-write bar only on opt-in.
+
+    The floor defaults to the source's `auto_threshold`, which makes
+    the carve-out equivalent to CAREFUL's `unambig` rule. Lowering
+    `solo_threshold` for the source is what buys "take a sole viable
+    candidate even below the auto-write bar".
+    """
     matcher = OnlineMatcher()
     candidates = [
         _candidate(issue_id=1, page_count=22),  # 0.7 weight on pages
     ]
     ranked = matcher.rank(_profile(), candidates)
+    assert 0.95 < ranked[0].score < 0.99
+
+    # Default floor (= the 0.99 auto_threshold): the lone candidate
+    # doesn't clear the bar, so it prompts.
     res = matcher.resolve(
         ranked, _settings(confidence_threshold=0.99), source_name="metron"
+    )
+    assert res.kind is ResolutionKind.PROMPT
+
+    # Opt in by lowering the floor for this source.
+    res = matcher.resolve(
+        ranked,
+        _settings(
+            confidence_threshold=0.99,
+            solo_confidence_threshold_per_source={"metron": 0.50},
+        ),
+        source_name="metron",
     )
     assert res.kind is ResolutionKind.AUTO_WRITE
     assert res.chosen is not None
@@ -1154,6 +1176,95 @@ def test_solo_confidence_floor_gates_eager_solo_carve_out() -> None:
     # 0.88 < 0.95 floor AND 0.88 < 0.99 confidence_threshold → PROMPT.
     res = matcher.resolve(ranked, settings_eager, "metron")
     assert res.kind is ResolutionKind.PROMPT
+
+
+# ------------- Phase E: the floor tracks the auto-write bar
+
+
+def test_solo_floor_tracks_a_raised_auto_threshold() -> None:
+    """
+    Raising `auto_threshold` raises the solo floor with it.
+
+    The floor is defined as "the same bar as a multi-candidate
+    unambiguous win". Reading it from a module constant instead of the
+    source's resolved threshold left a 0.95 back door open under a
+    stricter configuration: a lone 0.98-scoring candidate auto-wrote
+    for a user who had asked for 0.99, and no setting could close it.
+    """
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, page_count=22)]
+    ranked = matcher.rank(_profile(), candidates)
+    # Above the old 0.95 constant, below the configured bar.
+    assert 0.95 < ranked[0].score < 0.99
+
+    res = matcher.resolve(
+        ranked, _settings(confidence_threshold=0.99), source_name="metron"
+    )
+    assert res.kind is ResolutionKind.PROMPT
+
+
+def test_solo_floor_tracks_a_per_source_auto_threshold() -> None:
+    """A per-source `auto_threshold` moves that source's solo floor only."""
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, page_count=22)]
+    ranked = matcher.rank(_profile(), candidates)
+
+    settings = _settings(
+        confidence_threshold=0.85,
+        confidence_threshold_per_source={"metron": 0.99},
+    )
+    # metron runs at 0.99 — solo floor follows, so the 0.98 lone
+    # candidate prompts.
+    assert matcher.resolve(ranked, settings, "metron").kind is ResolutionKind.PROMPT
+    # comicvine still runs at the global 0.85 and auto-writes.
+    assert (
+        matcher.resolve(ranked, settings, "comicvine").kind is ResolutionKind.AUTO_WRITE
+    )
+
+
+def test_explicit_solo_threshold_still_wins_over_the_auto_threshold() -> None:
+    """An explicit per-source `solo_threshold` outranks the tracked default."""
+    matcher = OnlineMatcher()
+    candidates = [_candidate(issue_id=1, page_count=22)]
+    ranked = matcher.rank(_profile(), candidates)
+
+    res = matcher.resolve(
+        ranked,
+        _settings(
+            confidence_threshold=0.99,
+            solo_confidence_threshold_per_source={"metron": 0.50},
+        ),
+        source_name="metron",
+    )
+    assert res.kind is ResolutionKind.AUTO_WRITE
+
+
+def test_auto_matches_careful_at_default_settings() -> None:
+    """
+    With the floor at the auto bar, AUTO's solo carve-out adds nothing.
+
+    `solo_viable` means every other candidate is below `min_confidence`
+    (0.50), so a top that clears the threshold is also more than
+    `disambiguation_margin` clear of the runner-up — already `unambig`.
+    Pinning this keeps the equivalence a documented property instead of
+    a surprise the next time someone reads AUTO's rule.
+    """
+    matcher = OnlineMatcher()
+    lone = matcher.rank(_profile(), [_candidate(issue_id=1, year=2018, page_count=20)])
+    clean = matcher.rank(_profile(), [_candidate(issue_id=1)])
+    for ranked in (lone, clean):
+        # 0.85: the lone 0.88 candidate clears the bar. 0.99: it doesn't,
+        # which is where the carve-out used to make AUTO the looser mode.
+        for threshold in (0.85, 0.99):
+            settings_auto = _settings(
+                policy=Policy.NORMAL, confidence_threshold=threshold
+            )
+            settings_careful = _settings(
+                policy=Policy.STRICT, confidence_threshold=threshold
+            )
+            auto = matcher.resolve(ranked, settings_auto, "metron")
+            careful = matcher.resolve(ranked, settings_careful, "metron")
+            assert auto.kind is careful.kind
 
 
 # ------------- Phase J: adaptive top-K for cover hashing
