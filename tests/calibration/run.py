@@ -53,11 +53,11 @@ from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Sequence
 
     from comicbox.config.settings import OnlineSettings
     from comicbox.formats.base.online.matcher import (
-        CandidateHashFetcher,
+        CandidateHashBatchFetcher,
         LocalHashProvider,
     )
     from comicbox.formats.base.online.profile import Candidate
@@ -408,12 +408,14 @@ class _HashProviderBox(Protocol):
 
     def _local_cover_phash(self) -> str | None: ...
 
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None: ...
+    def _candidate_cover_hash_batch_fetcher(
+        self, urls: Sequence[str]
+    ) -> dict[str, str]: ...
 
 
 def _hash_providers(
     cb: _HashProviderBox, fixture: _Fixture
-) -> tuple[LocalHashProvider | None, CandidateHashFetcher | None]:
+) -> tuple[LocalHashProvider | None, CandidateHashBatchFetcher | None]:
     """
     Return the cover-hash providers the matcher should use for this fixture.
 
@@ -424,10 +426,13 @@ def _hash_providers(
     We gate on `cover_quality`:
 
     - **full** — pass both providers. `_local_cover_phash` reads the
-      first archive page and hashes it; `_candidate_cover_hash_fetcher`
-      downloads ComicVine cover URLs (Metron candidates ship a
-      precomputed hash) into the shared SQLite cache. This is the
-      production hashing path, just driven from the harness.
+      first archive page and hashes it;
+      `_candidate_cover_hash_batch_fetcher` resolves the whole top-K's
+      ComicVine cover URLs at once (Metron candidates ship a precomputed
+      hash) against the shared SQLite cache, downloading the misses
+      concurrently. This is the production hashing path, just driven
+      from the harness — it tracks whichever fetcher production uses, so
+      the timings the harness reports stay comparable to a real run.
     - **thumbnail** / **missing** — return (None, None). Slimlib's
       shrunk covers and missing-cover fixtures produce noise at best
       and degrade the metadata-only signal at worst. We'd rather see
@@ -437,7 +442,7 @@ def _hash_providers(
     if fixture.cover_quality != "full":
         return None, None
     # Bind to the instance methods (mixin-provided on Comicbox).
-    return cb._local_cover_phash, cb._candidate_cover_hash_fetcher
+    return cb._local_cover_phash, cb._candidate_cover_hash_batch_fetcher
 
 
 def _format_duration(seconds: float) -> str:
@@ -603,7 +608,7 @@ def _score_one(
                 profile,
                 candidates,
                 local_hash_provider=local_provider,
-                candidate_hash_fetcher=candidate_fetcher,
+                candidate_hash_batch_fetcher=candidate_fetcher,
             )
     except Exception as exc:
         return _Outcome(
