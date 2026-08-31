@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import fields
+from types import MappingProxyType
 
 from comicbox.box import Comicbox
 from comicbox.enums.comicbox import IdSources
@@ -22,10 +24,13 @@ from comicbox.identifiers.identifiers import (
 )
 from comicbox.identifiers.other import parse_identifier_other_str
 from comicbox.identifiers.urns import (
+    URN_SCAN_EXP,
     parse_string_identifier,
     parse_urn_identifier,
     to_urn_string,
 )
+
+_URN_SCAN_RE = re.compile(URN_SCAN_EXP, flags=re.IGNORECASE)
 
 # A Metron-tagged issue carrying both the numeric id and the slug web url —
 # the shape that exposed the url-clobbers-key bug.
@@ -281,9 +286,32 @@ def test_metron_url_path_strips_trailing_slash() -> None:
     )
 
 
-def test_get_id_source_from_url_unknown_domain_returns_netloc() -> None:
-    """An unrecognized domain falls back to returning the netloc itself."""
+def test_get_id_source_from_url_unknown_domain_returns_hostname() -> None:
+    """An unrecognized domain falls back to returning the hostname itself."""
     assert get_id_source_from_url("https://example.com/foo") == "example.com"
+    # The hostname is lowercased, so the fallback is too.
+    assert get_id_source_from_url("https://Example.COM/foo") == "example.com"
+
+
+def test_get_id_source_from_url_ignores_port_case_and_userinfo() -> None:
+    """
+    The host names the database; the rest of the authority does not.
+
+    Matching on the netloc made metron.cloud:8000 and Metron.Cloud unknown
+    domains, so their urls yielded no id at all.
+    """
+    for url in (
+        "https://metron.cloud/issue/123495/",
+        "https://metron.cloud:443/issue/123495/",
+        "https://Metron.Cloud/issue/123495/",
+        "https://user:pw@metron.cloud/issue/123495/",
+    ):
+        assert get_id_source_from_url(url) == IdSources.METRON.value, url
+
+
+def test_get_id_source_from_url_hostless_url_names_nothing() -> None:
+    """A url with no authority at all yields no source rather than raising."""
+    assert get_id_source_from_url("not a url") == ""
 
 
 ######################
@@ -553,3 +581,287 @@ def test_metron_id_survives_comic_info_round_trip() -> None:
 def test_metron_id_survives_metron_info_round_trip() -> None:
     """A Metron issue id written to MetronInfo reads back as the numeric key."""
     assert _round_trip_metron_key(MetadataFormats.METRON_INFO) == "123495"
+
+
+##################################################
+# url paths: no match, whole segments, round trip
+##################################################
+
+
+def test_parse_url_path_non_id_page_on_a_known_domain_is_no_match() -> None:
+    """
+    A known database's non-id pages are not ids.
+
+    Handing the raw path back as the key minted ids like "/about/" and "/"
+    for the front page, and a comic carrying a plain link to the site got a
+    junk id for that database that no lookup could ever resolve.
+    """
+    cases = (
+        (IdSources.METRON, "https://metron.cloud/about/"),
+        (IdSources.METRON, "https://metron.cloud/"),
+        (IdSources.COMICVINE, "https://comicvine.gamespot.com/news/"),
+        (IdSources.LCG, "https://leagueofcomicgeeks.com/about"),
+        (IdSources.GCD, "https://comics.org/donate/"),
+        (IdSources.ASIN, "https://www.amazon.com/gp/help/customer/display.html"),
+    )
+    for id_source, url in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == ("", ""), url
+        # And the public entrypoint invents no identifier from it.
+        assert identifier_from_url(url) == ("", {}), url
+
+
+def test_parse_url_path_stops_the_id_at_the_path_segment() -> None:
+    """
+    An id is one path segment, never the rest of the url.
+
+    A greedy match read the trailing name slug most of these databases append
+    as the id, and amazon's /ref=... tracking suffix as part of the asin.
+    """
+    cases = (
+        (
+            IdSources.LCG,
+            "https://leagueofcomicgeeks.com/comic/1234/batman-1",
+            ("issue", "1234"),
+        ),
+        (
+            IdSources.LCG,
+            "https://leagueofcomicgeeks.com/comics/series/178012/batman",
+            ("series", "178012"),
+        ),
+        (
+            IdSources.LCG,
+            "https://leagueofcomicgeeks.com/comics/9/dc-comics",
+            ("publisher", "9"),
+        ),
+        (
+            IdSources.MANGADEX,
+            "https://mangadex.org/title/a1b2c3/one-piece",
+            ("series", "a1b2c3"),
+        ),
+        (
+            IdSources.MANGAUPDATES,
+            "https://mangaupdates.com/series/wn3q3v5/berserk",
+            ("series", "wn3q3v5"),
+        ),
+        (
+            IdSources.KITSU,
+            "https://kitsu.app/manga/bleach/chapters",
+            ("series", "bleach"),
+        ),
+        (
+            IdSources.ASIN,
+            "https://www.amazon.com/Some-Title/dp/B08XYZ1234/ref=sr_1_1",
+            ("issue", "B08XYZ1234"),
+        ),
+    )
+    for id_source, url, expected in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == expected, url
+
+
+# One sample key per database, shaped the way that database's url path regex
+# accepts: bare numbers, hyphenated barcodes, slugs and uuids.
+_ROUND_TRIP_ID_KEYS: MappingProxyType[IdSources, str] = MappingProxyType(
+    {
+        IdSources.ANILIST: "30002",
+        IdSources.ASIN: "B08XYZ1234",
+        IdSources.COMICVINE: "145269",
+        IdSources.COMIXOLOGY: "216693",
+        IdSources.GCD: "1234567",
+        IdSources.ISBN: "978-0-306-40615-7",
+        IdSources.KITSU: "bleach",
+        IdSources.LCG: "178012",
+        IdSources.MANGADEX: "f9c33607-9180-4ba6-b85c-e4b5faee7192",
+        IdSources.MANGAUPDATES: "wn3q3v5",
+        IdSources.MARVEL: "12345",
+        IdSources.METRON: "batman-2016-0",
+        IdSources.MYANIMELIST: "13",
+        IdSources.PANELSYNDICATE: "theprivateeye",
+        IdSources.UPC: "76194130593400111",
+    }
+)
+
+
+def test_round_trip_table_covers_every_source_that_has_url_parts() -> None:
+    """Drift guard: the sample keys name every database in the parts map."""
+    assert frozenset(_ROUND_TRIP_ID_KEYS) == frozenset(IDENTIFIER_PARTS_MAP)
+
+
+def test_every_url_parses_back_to_the_parts_it_was_built_from() -> None:
+    """
+    parse_url_path inverts unparse_url for every source and every type.
+
+    unparse_url builds a url for any type the source declares a slug for, so
+    parse_url_path has to read every one of them back. Where it could not,
+    a url comicbox wrote itself came back as a different type, or as no id.
+    """
+    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
+        id_key = _ROUND_TRIP_ID_KEYS[id_source]
+        for id_type in id_parts.id_type.map:
+            url = id_parts.unparse_url(id_type, id_key)
+            assert url, f"{id_source.value} {id_type} builds no url"
+            assert id_parts.parse_url_path(url) == (id_type, id_key), url
+            assert get_id_source_from_url(url) == id_source.value, url
+
+
+def test_every_url_yields_the_identifier_it_was_built_from() -> None:
+    """The whole public path, url to identifier, round trips for every type."""
+    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
+        id_key = _ROUND_TRIP_ID_KEYS[id_source]
+        for id_type in id_parts.id_type.map:
+            url = get_identifier_url(id_source.value, id_type, id_key)
+            expected = {"key": id_key}
+            if id_type != "issue":
+                expected["id_type"] = id_type
+            assert identifier_from_url(url) == (id_source.value, expected), url
+
+
+#####################################
+# legacy identifier strings still read
+#####################################
+
+
+def test_legacy_urns_still_parse() -> None:
+    """
+    Every urn shape already in the wild reads back.
+
+    Comicbox wrote a type segment into every urn before v3, and the notes of
+    files tagged by hand and by other programs carry stranger things still.
+    """
+    cases = (
+        # The typed form comicbox wrote before v3, including for the default
+        # type it no longer states.
+        ("urn:comicvine:issue:145269", IdSources.COMICVINE, "issue", "145269"),
+        ("urn:metron:series:178012", IdSources.METRON, "series", "178012"),
+        (
+            "urn:leagueofcomicgeeks:issue:178012",
+            IdSources.LCG,
+            "issue",
+            "178012",
+        ),
+        # A comicvine long code inside a urn, typed and untyped. The urn layer
+        # hands it over whole; create_identifier splits it.
+        (
+            "urn:comicvine:issue:4050-160294",
+            IdSources.COMICVINE,
+            "issue",
+            "4050-160294",
+        ),
+        ("urn:comicvine:4000-45722", IdSources.COMICVINE, "issue", "4000-45722"),
+        # RFC 8141 makes the scheme case insensitive, and comicbox the type.
+        ("URN:comicvine:145269", IdSources.COMICVINE, "issue", "145269"),
+        ("URN:METRON:SERIES:178012", IdSources.METRON, "series", "178012"),
+        # Colons inside the key keep every segment.
+        ("urn:metron:series:a:b", IdSources.METRON, "series", "a:b"),
+        (
+            "urn:comicvine:notatype:145269",
+            IdSources.COMICVINE,
+            "issue",
+            "notatype:145269",
+        ),
+        # A segment that spells a source, not a type, is key data here. The
+        # redundant same-source prefix is stripped later, by normalize_key.
+        ("urn:metron:metron:123", IdSources.METRON, "issue", "metron:123"),
+        # A whole key that happens to spell a type is still the key.
+        ("urn:metron:series", IdSources.METRON, "issue", "series"),
+        # An alternate source prefix names its database.
+        ("urn:cvdb:145269", IdSources.COMICVINE, "issue", "145269"),
+    )
+    for urn, id_source, id_type, id_key in cases:
+        assert parse_urn_identifier(urn) == (id_source, id_type, id_key), urn
+
+
+def test_legacy_urns_normalize_to_the_key_they_name() -> None:
+    """The identifier a legacy urn finally becomes carries the bare key."""
+    cases = (
+        ("comicvine", "urn:comicvine:issue:145269", {"key": "145269"}),
+        (
+            "comicvine",
+            "urn:comicvine:issue:4050-160294",
+            {"key": "160294", "id_type": "series"},
+        ),
+        ("metron", "urn:metron:metron:123", {"key": "123"}),
+        ("metron", "urn:metron:series:178012", {"key": "178012", "id_type": "series"}),
+    )
+    for id_source_str, urn, expected in cases:
+        _, id_type, id_key = parse_urn_identifier(urn)
+        assert create_identifier(id_source_str, id_key, id_type=id_type) == expected, (
+            urn
+        )
+
+
+_LEGACY_GTIN_COMIC_INFO = """<?xml version="1.0" encoding="utf-8"?>
+<ComicInfo>
+  <Title>Legacy</Title>
+  <GTIN>urn:comicvine:issue:145269, urn:metron:series:178012,urn:isbn:issue:978-0-306-40615-7</GTIN>
+</ComicInfo>
+"""
+
+
+def test_legacy_comma_joined_gtin_urns_still_read() -> None:
+    """
+    ComicInfo GTIN holds a barcode now, but old files list comicbox urns there.
+
+    Comicbox used to dump every identifier into that tag as a comma joined
+    list of urns. Plenty of files carry them, so each one still reads, spaces
+    around the commas and all.
+    """
+    with Comicbox() as car:
+        car.add_metadata(_LEGACY_GTIN_COMIC_INFO, MetadataFormats.COMIC_INFO)
+        identifiers = dict(car.to_dict().get("comicbox", {}).get("identifiers", {}))
+    assert identifiers["comicvine"] == {"key": "145269"}
+    assert identifiers["metron"] == {"key": "178012", "id_type": "series"}
+    assert identifiers["isbn"] == {"key": "978-0-306-40615-7"}
+
+
+#################################
+# one urn grammar, reader & writer
+#################################
+
+
+def test_every_urn_written_is_found_whole_in_prose() -> None:
+    """
+    Comicbox only writes urns its own notes scanner reads back.
+
+    The scanner stops at the first character outside the urn grammar, so a
+    urn the writer composed with one in it was recorded as its truncated
+    head. The writer now composes against the grammar the scanner looks for.
+    """
+    keys = (
+        "145269",
+        "batman-2016-0",
+        "978-0-306-40615-7",
+        "100%",
+        "a:b",
+        "f9c33607-9180-4ba6-b85c-e4b5faee7192",
+    )
+    for key in keys:
+        urn = to_urn_string("metron", "issue", key)
+        assert urn, key
+        match = _URN_SCAN_RE.search(f"Tagged by hand. See {urn}, and more.")
+        assert match is not None, urn
+        assert match.group() == urn, urn
+
+
+def test_urn_illegal_keys_are_refused_rather_than_truncated() -> None:
+    """
+    A key the urn grammar has no room for yields no urn at all.
+
+    Writing one anyway put a urn in notes that read back as the part before
+    the illegal character: urn:metron:a/b became the id "a".
+    """
+    for key in ("a/b", "a{b}", "a+b", "a~b", "a b", ""):
+        assert to_urn_string("metron", "issue", key) == "", key
+
+
+def test_urn_scan_and_urn_parse_agree_on_the_namespace() -> None:
+    """
+    The scanner and the parser share one namespace grammar.
+
+    The hand-maintained copy in the notes module accepted a one character
+    namespace and a trailing hyphen, so it handed the parser urns the parser
+    then refused, and the notes said nothing about why.
+    """
+    for text in ("urn:x:123", "urn:ab-:123"):
+        assert _URN_SCAN_RE.search(text) is None, text
+        assert parse_urn_identifier(text) == (None, "", ""), text
+    assert _URN_SCAN_RE.search("urn:ab:123") is not None
