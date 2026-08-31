@@ -12,10 +12,12 @@ and `_read_input` with scripted reply sequences.
 from __future__ import annotations
 
 import sys
+from argparse import Namespace
 from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from comicbox.config import get_config
 from comicbox.formats.base.online import prompt
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -82,11 +84,11 @@ class _ScriptedPrompt:
         return self.replies.pop(0)
 
 
-class _QuietSettings:
-    """Minimal settings stand-in carrying the `quiet` attr terse mode reads."""
-
-    def __init__(self, quiet: int = 0) -> None:
-        self.quiet = quiet
+def _settings(loglevel: str | int = "INFO") -> ComicboxSettings:
+    """Real settings with only the loglevel pinned — terse's one input."""
+    return get_config(
+        Namespace(comicbox=Namespace(general=Namespace(loglevel=loglevel)))
+    )
 
 
 def _ctx(
@@ -98,7 +100,7 @@ def _ctx(
     return SelectorContext(
         file_path=cast("None", file_path),
         source=source,
-        settings=cast("ComicboxSettings", settings or _QuietSettings()),
+        settings=cast("ComicboxSettings", settings) if settings else _settings(),
         triggered_hashing=False,
     )
 
@@ -713,9 +715,9 @@ def test_cli_selector_renders_the_file_path_and_candidates(
 def test_cli_selector_terse_trims_aux_lines(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Terse rendering engages when the settings object carries `quiet`."""
+    """A quieted run keeps the numbered choices and drops the chrome."""
     monkeypatch.setattr(prompt, "_prompt_line", _ScriptedPrompt("s"))
-    ctx = _ctx(settings=_QuietSettings(quiet=1))
+    ctx = _ctx(settings=_settings("WARNING"))
     prompt.cli_selector(ComicProfile(), [_candidate(url="https://example.test/1")], ctx)
     out = capsys.readouterr().out
     assert "1. Foo Comics #5" in out
@@ -723,23 +725,69 @@ def test_cli_selector_terse_trims_aux_lines(
     assert "example.test" not in out
 
 
-def test_real_settings_carry_no_quiet_attribute() -> None:
+def test_cli_selector_verbose_by_default(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(prompt, "_prompt_line", _ScriptedPrompt("s"))
+    prompt.cli_selector(
+        ComicProfile(), [_candidate(url="https://example.test/1")], _ctx()
+    )
+    out = capsys.readouterr().out
+    assert "publisher=" in out
+    assert "example.test" in out
+
+
+# --- _resolve_terse ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("loglevel", ["SUCCESS", "WARNING", "ERROR", "CRITICAL", 30])
+def test_resolve_terse_engages_above_info(loglevel: str | int) -> None:
+    assert prompt._resolve_terse(_settings(loglevel)) is True
+
+
+@pytest.mark.parametrize("loglevel", ["INFO", "DEBUG", "TRACE", "info", 10])
+def test_resolve_terse_stays_off_at_or_below_info(loglevel: str | int) -> None:
+    assert prompt._resolve_terse(_settings(loglevel)) is False
+
+
+def test_resolve_terse_ignores_an_unknown_level() -> None:
+    """A bad `--loglevel` is the logger's problem to report, not ours."""
+    assert prompt._resolve_terse(_settings("NONSENSE")) is False
+
+
+# --- terse against the real config ------------------------------------------
+
+
+def _settings_for(*argv: str) -> ComicboxSettings:
+    """Resolve settings the way the CLI does, `-Q` folding included."""
+    from comicbox.cli import get_args
+
+    return get_config(Namespace(comicbox=get_args(("comicbox", *argv))))
+
+
+def test_real_config_default_is_verbose() -> None:
+    assert prompt._resolve_terse(_settings_for("x.cbz")) is False
+
+
+def test_real_config_double_quiet_is_terse() -> None:
+    """`-QQ` resolves to SUCCESS, the first level that means "less"."""
+    assert prompt._resolve_terse(_settings_for("-QQ", "x.cbz")) is True
+
+
+def test_real_config_single_quiet_changes_nothing() -> None:
     """
-    `cli_selector`'s terse mode is unreachable from the real config.
+    Documents `-Q`'s no-op first level.
 
-    `terse = bool(getattr(settings, "quiet", 0))` reads an attribute
-    `ComicboxSettings` doesn't define — `-Q/--quiet` is folded into
-    `general.loglevel` by `comicbox/cli/__init__.py`, and the settings
-    dataclass is `slots=True` so nothing can attach `quiet` later. The
-    module docstring's "Honors --terse / -Q quiet" is therefore not
-    true of any CLI run today.
+    `comicbox.cli._QUIET_LOGLEVEL` maps one `-Q` to INFO, which is
+    already `config_default.yaml`'s level, so a single `-Q` neither
+    quiets the log nor trims the prompt. Two Qs is where it starts.
     """
-    from argparse import Namespace
+    assert prompt._resolve_terse(_settings_for("-Q", "x.cbz")) is False
 
-    from comicbox.config import get_config
 
-    settings = get_config(Namespace(comicbox=Namespace()))
-    assert not hasattr(settings, "quiet")
+def test_real_config_yaml_loglevel_is_terse() -> None:
+    """`loglevel` is a config-file key; `-Q` is just its CLI shorthand."""
+    assert prompt._resolve_terse(_settings("WARNING")) is True
 
 
 if __name__ == "__main__":  # pragma: no cover

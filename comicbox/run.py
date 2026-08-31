@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from pathlib import Path
@@ -12,7 +13,7 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
-from comicbox.exceptions import OnlineLookupAbortedError
+from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveTypeError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
@@ -23,6 +24,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
     from comicbox.config.settings import ComicboxSettings
+
+#: Expected per-file failures: the path simply isn't an archive we can
+#: open. A traceback tells the user nothing the message doesn't, so these
+#: log one line. Anything else is a bug and earns the stack.
+_EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError,)
 
 
 class Runner:
@@ -37,6 +43,11 @@ class Runner:
     def __init__(self, config: Namespace | Mapping | ComicboxSettings | None) -> None:
         """Initialize actions and config."""
         self._config: ComicboxSettings = get_config(config)
+        #: Files this run couldn't process. Batch dispatch logs a failure
+        #: and keeps going, so this is the only record that anything went
+        #: wrong; `comicbox.cli.main` exits non-zero when it's non-empty.
+        self.failure_count = 0
+        self._failure_lock = threading.Lock()
         init_logging(self._config.general.loglevel)
 
     def _iter_recurse(self, path: Path) -> Iterator[Path]:
@@ -66,9 +77,23 @@ class Runner:
             out.append(path)
         return out
 
-    def _run_one(self, path: Path) -> None:
+    def _record_failure(self) -> None:
+        """Count one failed file. Called from pool workers, so locked."""
+        with self._failure_lock:
+            self.failure_count += 1
+
+    def _run_one(self, path: Path | str | None) -> None:
         """
-        Process a single file, swallowing exceptions for batch resilience.
+        Process one batch element, swallowing exceptions for batch resilience.
+
+        The single guard every batch dispatch shares — serial, recursive
+        and threaded — so one unreadable comic costs its own file and
+        nothing more, whatever `-j` says. It used to wrap only the thread
+        pool, which made the same corrupt file a logged error under
+        `-j 2` and a fatal one under `-j 1`.
+
+        `run_on_file` stays unguarded on purpose: a caller asking about
+        one file wants to hear that it failed.
 
         Abort is the one exception that isn't about this file: the user
         answered "abort" at a prompt (or a caller cancelled a retry
@@ -76,12 +101,14 @@ class Runner:
         turned it into "skip one comic and keep prompting for the rest."
         """
         try:
-            with Comicbox(path, config=self._config) as car:
-                car.print_file_header()
-                car.run()
+            self.run_on_file(path)
         except OnlineLookupAbortedError:
             raise
+        except _EXPECTED_FILE_ERRORS as exc:
+            self._record_failure()
+            logger.error(exc)
         except Exception:
+            self._record_failure()
             logger.exception(path)
 
     def run_on_file(self, path: Path | str | None) -> None:
@@ -108,15 +135,11 @@ class Runner:
             logger.warning(f"Recurse option not set. Ignoring directory {path}")
             return
 
+        # `_run_one` guards each file and lets an abort through, which
+        # ends the walk: the remaining files are not ours to keep
+        # processing.
         for full_path in self._iter_recurse(path):
-            try:
-                self.run_on_file(full_path)
-            except OnlineLookupAbortedError:
-                # Abort ends the walk; the remaining files are not ours
-                # to keep processing.
-                raise
-            except Exception:
-                logger.exception(full_path)
+            self._run_one(full_path)
 
     def _metron_is_active(self) -> bool:
         """Best-effort check: could this run actually hit Metron via mokkari."""
@@ -180,6 +203,7 @@ class Runner:
     def run(self) -> None:
         """Run actions with config."""
         outcome_stats.reset()
+        self.failure_count = 0
         try:
             self._run_inner()
         finally:
@@ -221,7 +245,7 @@ class Runner:
             paths = self._expand_paths()
             self._maybe_auto_engage_api_budget(len(paths))
             for raw in self._config.paths or ():
-                self.run_on_file(raw)
+                self._run_one(raw)
             return
 
         # Parallel path: expand directories first so the thread pool sees

@@ -54,6 +54,17 @@
       that got it transitively through comicbox has to depend on it directly.
 
 - Fixes
+    - A comic that can't be read no longer ends the batch. Every dispatch path —
+      serial, `--recurse` and `-j N` — now logs the file and keeps going.
+      Previously `comicbox a.cbz b.cbz c.cbz` stopped at the first unreadable
+      file and left the rest untouched, while the same batch under `-j 2`
+      processed all of them.
+    - `comicbox` exits non-zero when any file failed, instead of only when the
+      failure happened to end the run. A batch where every file failed used to
+      exit 0 under `-j N`.
+    - The ambiguous-match prompt trims its per-candidate detail lines on a
+      quieted run (`-QQ` and up, or a `loglevel` above `INFO` in the config). It
+      always claimed to and never did.
     - Writing MetronInfo no longer invents extra credits. Only `Painter` still
       writes Penciller, Inker and Colorist.
     - `breakdowns`, `finishes`, `plotter` and `scripter` keep their own role
