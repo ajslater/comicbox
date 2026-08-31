@@ -141,3 +141,10 @@ def main(params: Sequence[str] | None = None) -> None:
     except _HANDLED_EXCEPTIONS as exc:
         rich_print(f"[yellow]{exc}[/yellow]")
         sys.exit(1)
+    if runner.failure_count:
+        # Batch dispatch logs each failure and keeps going, so without
+        # this a run where every file failed still exited 0. Serial runs
+        # used to report it by letting the first failure escape, which
+        # also abandoned every file behind it.
+        rich_print(f"[yellow]{runner.failure_count} file(s) failed.[/yellow]")
+        sys.exit(1)

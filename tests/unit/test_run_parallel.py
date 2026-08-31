@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
-import pytest
 from loguru import logger as loguru_logger
 
 from comicbox.config import get_config
@@ -21,13 +20,14 @@ from comicbox.config.settings import (
     OnlineAuthSettings,
     OnlineSourceCredentials,
 )
-from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.run import Runner
 from tests.const import CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    import pytest
 
 
 def _make_paths(tmp_path: Path, count: int) -> list[str]:
@@ -242,6 +242,7 @@ def _real_batch(tmp_path: Path) -> tuple[list[Path], Path]:
     file behind it, which is what makes the two error semantics below
     distinguishable.
     """
+    tmp_path.mkdir(parents=True, exist_ok=True)
     source = Path(CIX_CBZ_SOURCE_PATH)
     good = []
     for name in ("a_good.cbz", "c_good.cbz", "d_good.cbz"):
@@ -304,8 +305,8 @@ def test_parallel_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
     assert len(_messages(records, "No action performed")) == len(good)
     errors = _errors(records)
     assert len(errors) == 1
-    assert errors[0]["message"] == str(corrupt)
-    assert isinstance(errors[0]["exception"].value, UnsupportedArchiveTypeError)
+    assert str(corrupt) in errors[0]["message"]
+    assert runner.failure_count == 1
 
 
 def test_parallel_batch_logs_each_failure_once(tmp_path: Path) -> None:
@@ -323,37 +324,77 @@ def test_parallel_batch_logs_each_failure_once(tmp_path: Path) -> None:
         runner.run()
 
     errors = _errors(records)
-    assert sorted(r["message"] for r in errors) == sorted(
-        [str(corrupt), str(second_corrupt)]
-    )
+    assert len(errors) == 2
+    assert {str(corrupt), str(second_corrupt)} == {
+        r["message"].rsplit(": ", 1)[-1] for r in errors
+    }
     assert len(_messages(records, "No action performed")) == len(good)
+    assert runner.failure_count == 2
 
 
-def test_serial_batch_aborts_on_a_corrupt_file(tmp_path: Path) -> None:
+def test_serial_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
     """
-    Documents a real asymmetry between the two dispatch paths.
+    `-j 1` is as resilient as `-j 2` — the asymmetry this used to pin.
 
-    `_run_inner`'s serial branch calls `run_on_file` directly, and
-    neither has an `except Exception` guard, so the first unreadable file
-    ends the batch with a traceback. The parallel branch routes through
-    `_run_one` — whose docstring is explicitly "swallowing exceptions for
-    batch resilience" — and logs-and-continues instead.
-
-    The guard arrived with `_run_one` in the parallel dispatch (v4.0.0);
-    the pre-existing serial loop never had one, and only `recurse()` did.
-    So this looks like an oversight rather than a decision: the same
-    corrupt file is a logged error under `-j 2` and a fatal traceback
-    under `-j 1`.
+    The serial branch called `run_on_file` directly and neither had a
+    guard, so the first unreadable file ended the batch and every file
+    sorting after it went unprocessed. Both branches now route through
+    `_run_one`.
     """
     good, corrupt = _real_batch(tmp_path)
     runner = _runner_for([*good, corrupt], jobs=1)
-    with _captured_records() as records, pytest.raises(UnsupportedArchiveTypeError):
+    with _captured_records() as records:
         runner.run()
 
-    # Only the file sorting before the corrupt one was processed; the two
-    # after it never ran.
-    assert len(_messages(records, "No action performed")) == 1
-    assert _errors(records) == []
+    assert len(_messages(records, "No action performed")) == len(good)
+    assert len(_errors(records)) == 1
+    assert runner.failure_count == 1
+
+
+def test_serial_and_parallel_agree_on_a_corrupt_file(tmp_path: Path) -> None:
+    """The same batch, the same outcome, whatever `-j` says."""
+
+    def outcome(jobs: int, root: Path) -> tuple[int, int]:
+        good, _corrupt = _real_batch(root)
+        runner = _runner_for([*good, root / "b_corrupt.cbz"], jobs=jobs)
+        with _captured_records() as records:
+            runner.run()
+        return len(_messages(records, "No action performed")), runner.failure_count
+
+    serial = outcome(1, tmp_path / "serial")
+    parallel = outcome(2, tmp_path / "parallel")
+    assert serial == parallel == (3, 1)
+
+
+def test_expected_archive_errors_log_without_a_traceback(tmp_path: Path) -> None:
+    """
+    "Not a comic" is a message, not a bug — it doesn't earn a stack.
+
+    Unexpected failures still get `logger.exception`; this is the one
+    class of per-file error the user can act on directly.
+    """
+    good, corrupt = _real_batch(tmp_path)
+    runner = _runner_for([*good, corrupt], jobs=1)
+    with _captured_records() as records:
+        runner.run()
+
+    error = _errors(records)[0]
+    assert error["exception"] is None
+    assert "Unsupported archive type" in error["message"]
+
+
+def test_run_resets_the_failure_count(tmp_path: Path) -> None:
+    """A reused Runner reports this run's failures, not the last one's."""
+    good, corrupt = _real_batch(tmp_path)
+    runner = _runner_for([*good, corrupt], jobs=1)
+    with _captured_records():
+        runner.run()
+    assert runner.failure_count == 1
+
+    runner._config = replace(runner._config, paths=tuple(str(p) for p in good))
+    with _captured_records():
+        runner.run()
+    assert runner.failure_count == 0
 
 
 def test_recurse_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
@@ -373,4 +414,5 @@ def test_recurse_batch_survives_a_corrupt_file(tmp_path: Path) -> None:
     assert len(_messages(records, "No action performed")) == len(good)
     errors = _errors(records)
     assert len(errors) == 1
-    assert errors[0]["message"] == str(corrupt)
+    assert str(corrupt) in errors[0]["message"]
+    assert runner.failure_count == 1
