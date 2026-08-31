@@ -231,7 +231,7 @@ class OnlineLookupSettings:
     # runs first, and with ``first_wins`` its match ends the lookup.
     # None = every configured source in SOURCE_NAMES order. Durable via
     # the ``online.lookup.sources`` config-file key; CLI --online and
-    # COMICBOX_ONLINE_SOURCES override it.
+    # COMICBOX_ONLINE__LOOKUP__SOURCES override it.
     sources: tuple[str, ...] | None = None
 
     # Behavior toggles.

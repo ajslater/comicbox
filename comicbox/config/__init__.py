@@ -49,10 +49,9 @@ from comicbox.version import PACKAGE_NAME
 if TYPE_CHECKING:
     from argparse import Namespace
 
-# Every env var the config layer reads is COMICBOX-prefixed: confuse's
-# ``set_env`` auto-loading (``COMICBOX_*``), its user-config-dir lookup
-# (``COMICBOXDIR``), and the direct reads in ``online.env`` and
-# ``online.credentials``.
+# Every env var the config layer reads is COMICBOX-prefixed: the
+# EnvSource mounted on the config tree (``COMICBOX_*``) and confuse's
+# user-config-dir lookup (``COMICBOXDIR``).
 _ENV_PREFIX = PACKAGE_NAME.upper()
 
 # Any non-Mapping container type — set/frozenset/tuple/list all pass.
@@ -99,7 +98,9 @@ _ONLINE_TEMPLATE = MappingTemplate(
                 "match": String(),
                 "prompts": String(),
                 "rematch": bool,
-                "sources": Optional(_NON_MAPPING_CONTAINER),
+                # A CSV string is accepted alongside a container so an
+                # env var can set it; _normalize_sources splits either.
+                "sources": Optional(OneOf((str, *_NON_MAPPING_TYPES))),
                 "first_wins": bool,
             }
         ),

@@ -220,7 +220,7 @@ class MetronOnlineSource(OnlineSource):
                 "deprecated and will be removed in a future release. "
                 "Generate an API token on your metron.cloud account page and "
                 "set it with --auth metron:key=TOKEN or the "
-                "COMICBOX_METRON_KEY environment variable.",
+                "COMICBOX_ONLINE__AUTH__METRON__KEY environment variable.",
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:

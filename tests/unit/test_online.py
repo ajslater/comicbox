@@ -8,90 +8,6 @@ from comicbox.config import get_config
 from comicbox.config.settings import CacheMode, Effort, MatchMode, Prompts
 from comicbox.formats.base.online.cli_overrides import CliOverrides
 from comicbox.formats.base.online.credentials import resolve_credentials
-from comicbox.formats.base.online.env import (
-    parse_bool,
-    read_credential_env,
-    read_online_env,
-)
-
-# ------------------------------------------------------------------ env helpers
-
-
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("1", True),
-        ("0", False),
-        ("true", True),
-        ("FALSE", False),
-        ("Yes", True),
-        ("no", False),
-        ("on", True),
-        ("Off", False),
-        (" 1 ", True),
-        ("maybe", None),
-        ("", None),
-    ],
-)
-def test_parse_bool(raw: str, expected: bool | None) -> None:
-    assert parse_bool(raw) is expected
-
-
-def test_read_credential_env_picks_up_known_sources() -> None:
-    env = {
-        "COMICBOX_METRON_USER": "alice",
-        "COMICBOX_METRON_PASS": "secret",
-        "COMICBOX_METRON_KEY": "token123",
-        "COMICBOX_COMICVINE_KEY": "key123",
-        "COMICBOX_UNKNOWN_FIELD": "ignored",
-        "OTHER_VAR": "ignored",
-    }
-    assert read_credential_env(env) == {
-        "metron": {"user": "alice", "pass": "secret", "key": "token123"},
-        "comicvine": {"key": "key123"},
-    }
-
-
-def test_read_credential_env_empty() -> None:
-    assert read_credential_env({}) == {}
-
-
-def test_read_online_env_parses_typed_values() -> None:
-    env = {
-        "COMICBOX_ONLINE_MATCH": "eager",
-        "COMICBOX_ONLINE_PROMPTS": "never",
-        "COMICBOX_ONLINE_REMATCH": "true",
-        "COMICBOX_ONLINE_FIRST_WINS": "1",
-        "COMICBOX_ONLINE_AUTO_THRESHOLD": "0.92",
-        "COMICBOX_ONLINE_EFFORT": "thorough",
-        "COMICBOX_ONLINE_CACHE": "refresh",
-        "COMICBOX_ONLINE_CACHE_DIR": "/tmp/cb",
-        "COMICBOX_ONLINE_CACHE_TTL": "24h",
-        "COMICBOX_ONLINE_RETRY_BUDGET": "8",
-    }
-    parsed = read_online_env(env)
-    assert parsed == {
-        "match": "eager",
-        "prompts": "never",
-        "rematch": True,
-        "first_wins": True,
-        "auto_threshold": 0.92,
-        "effort": "thorough",
-        "cache": "refresh",
-        "cache_dir": "/tmp/cb",
-        "cache_ttl": "24h",
-        "retry_budget": 8,
-    }
-
-
-def test_read_online_env_drops_unparseable() -> None:
-    env = {
-        "COMICBOX_ONLINE_AUTO_THRESHOLD": "not-a-float",
-        "COMICBOX_ONLINE_RETRY_BUDGET": "not-an-int",
-        "COMICBOX_ONLINE_REMATCH": "maybe",
-    }
-    assert read_online_env(env) == {}
-
 
 # ------------------------------------------------------------- CLI overrides
 
@@ -161,7 +77,13 @@ def test_cli_overrides_empty_value_errors() -> None:
 # ----------------------------------------------- credential resolution chain
 
 
-def test_resolve_credentials_cli_beats_env_beats_config() -> None:
+def test_resolve_credentials_cli_beats_config() -> None:
+    """
+    CLI wins per field; everything else comes from the config view.
+
+    Env vars reach this through that view rather than a separate layer —
+    ``test_config_env_tree`` covers that route end to end.
+    """
     creds = resolve_credentials(
         config_creds={
             "metron": {
@@ -171,36 +93,28 @@ def test_resolve_credentials_cli_beats_env_beats_config() -> None:
             }
         },
         cli_overrides=CliOverrides.from_auth_list(["metron:user=cli_user"]),
-        env={"COMICBOX_METRON_PASS": "env_pw"},
         use_keyring=False,
     )
     assert creds["metron"].user == "cli_user"  # CLI wins
-    assert creds["metron"].password == "env_pw"  # env beats config
-    assert creds["metron"].url == "config_url"  # config when nothing higher
+    assert creds["metron"].password == "config_pw"  # config where CLI is silent
+    assert creds["metron"].url == "config_url"
 
 
 def test_resolve_credentials_metron_token_follows_the_chain() -> None:
-    """Metron's API token resolves through the same CLI > env > config chain."""
+    """Metron's API token resolves through the same CLI > config chain."""
     config_creds = {"metron": {"key": "config_token"}}
     creds = resolve_credentials(
         config_creds=config_creds,
         cli_overrides=CliOverrides.from_auth_list(["metron:key=cli_token"]),
-        env={"COMICBOX_METRON_KEY": "env_token"},
         use_keyring=False,
     )
     assert creds["metron"].key == "cli_token"  # CLI wins
-    creds = resolve_credentials(
-        config_creds=config_creds,
-        env={"COMICBOX_METRON_KEY": "env_token"},
-        use_keyring=False,
-    )
-    assert creds["metron"].key == "env_token"  # env beats config
-    creds = resolve_credentials(config_creds=config_creds, env={}, use_keyring=False)
+    creds = resolve_credentials(config_creds=config_creds, use_keyring=False)
     assert creds["metron"].key == "config_token"
 
 
 def test_resolve_credentials_returns_all_sources() -> None:
-    creds = resolve_credentials(config_creds={}, env={}, use_keyring=False)
+    creds = resolve_credentials(config_creds={}, use_keyring=False)
     assert set(creds.keys()) == {"metron", "comicvine"}
     assert creds["metron"].user is None
     assert creds["comicvine"].key is None
@@ -269,8 +183,8 @@ def test_online_sources_cli_order_is_preserved() -> None:
 def test_online_sources_env_sets_durable_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """COMICBOX_ONLINE_SOURCES orders sources without enabling lookups."""
-    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine, metron")
+    """The sources env var orders sources without enabling lookups."""
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__SOURCES", "comicvine, metron")
     cfg = get_config()
     assert cfg.online.lookup.sources == ("comicvine", "metron")
     assert cfg.online.lookup.enabled is False
@@ -280,7 +194,7 @@ def test_online_cli_all_overrides_durable_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """--online all means every configured source, not the env/file list."""
-    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine")
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__SOURCES", "comicvine")
     cli = Namespace(online_sources=["all"])
     cfg = get_config(Namespace(comicbox=cli))
     assert cfg.online.lookup.enabled is True
@@ -299,7 +213,7 @@ def test_online_sources_unknown_names_raise(
     widened the run to every source. See
     tests/unit/test_config_online_sources.py.
     """
-    monkeypatch.setenv("COMICBOX_ONLINE_SOURCES", "comicvine,grand_comics_db")
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__SOURCES", "comicvine,grand_comics_db")
     with pytest.raises(ValueError, match="unknown source"):
         get_config()
 
@@ -316,7 +230,7 @@ def test_all_sources_flag_inverts_first_wins() -> None:
 
 
 def test_first_wins_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("COMICBOX_ONLINE_FIRST_WINS", "false")
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__FIRST_WINS", "false")
     cfg = get_config()
     assert cfg.online.lookup.first_wins is False
 

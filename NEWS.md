@@ -52,6 +52,14 @@
     - `deepdiff` is no longer a dependency. Nothing in the library imports it
       since reprint consolidation stopped diffing pairs of reprints. Anything
       that got it transitively through comicbox has to depend on it directly.
+    - Environment variables name their config key with `__` between levels, and
+      every config key can be set that way: `COMICBOX_GENERAL__RECURSE`,
+      `COMICBOX_ONLINE__AUTH__METRON__KEY`. The old flat names like
+      `COMICBOX_ONLINE_MATCH` and `COMICBOX_METRON_KEY` warn and name their
+      replacement.
+    - An environment variable that doesn't fit its config key is an error
+      instead of being silently ignored.
+    - `resolve_credentials` no longer takes an `env` argument.
 
 - Performance
     - Converting a CB7 reads its pages in batches instead of one at a time.

@@ -25,7 +25,7 @@ comic library.
                 api_key: your_cv_api_key
     ```
 
-    Or set env vars (`COMICBOX_METRON_USERNAME`, etc.).
+    Or set env vars (`COMICBOX_ONLINE__AUTH__METRON__USER`, etc.).
 
 2. Build a fixtures.json.
 

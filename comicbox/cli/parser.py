@@ -166,7 +166,7 @@ class AuthAction(Action):
                     "auth_pass",
                     (
                         "warning: --auth <source>:pass=... leaks into shell history; "
-                        "prefer COMICBOX_<SOURCE>_PASS env var or keyring"
+                        "prefer COMICBOX_ONLINE__AUTH__<SOURCE>__PASS or keyring"
                     ),
                 )
             items.append(raw)
@@ -583,7 +583,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "the ComicVine API endpoint; Metron's deprecated "
             "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
             "(warns: leaks into shell history) still work, but prefer a token. "
-            "Use the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
+            "Use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__<FIELD>[/cyan] "
+            "env vars where possible."
         ),
     )
 
