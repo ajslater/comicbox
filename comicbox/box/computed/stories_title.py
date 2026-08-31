@@ -1,15 +1,9 @@
 """Computed Stories and Title Methods."""
 
-from collections.abc import Callable
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.date import ComicboxComputedDate
 from comicbox.formats.comicbox.schema import STORIES_KEY, TITLE_KEY
-from comicbox.merge import (
-    AdditiveMerger,
-    Merger,
-)
 
 _TITLE_STORIES_DELIMITER = ";"
 _TITLE_STORIES_JOIN_DELIMITER = f"{_TITLE_STORIES_DELIMITER} "
@@ -51,14 +45,3 @@ class ComicboxComputedStoriesTitle(ComicboxComputedDate):
         if not stories:
             return None
         return {STORIES_KEY: stories}
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                # Order is important here
-                **ComicboxComputedDate.COMPUTED_ACTIONS,
-                "from title": (_get_computed_from_title, AdditiveMerger),
-                "from stories": (_get_computed_from_stories, AdditiveMerger),
-            }
-        )
-    )

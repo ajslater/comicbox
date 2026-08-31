@@ -259,21 +259,31 @@ Sample output:
   fixtures missing expected metron id: 9
   accuracy on labeled fixtures: 95.7%
   by score band:
-    0.95-1.00 (very high): 142/142 correct (100%)
-    0.85-0.95 (auto-write): 32/35 correct (91%)
+    0.95-1.00 (auto-write): 142/142 correct (100%)
+    0.85-0.95 (near miss): 32/35 correct (91%)
     0.70-0.85 (prompt zone): 4/8 correct (50%)
     0.50-0.70 (solo-viable): 0/1 correct (0%)
 ```
+
+The top band's boundary is `DEFAULT_AUTO_THRESHOLD` (0.95), so the labels follow
+the shipped default bar. Notes written before 2026-08-31 label 0.85-0.95
+"auto-write"; that band has been the top of the prompt zone since the default
+threshold moved to 0.95, and its accuracy numbers say nothing about what
+comicbox writes unattended.
 
 What to look at:
 
 - **Top accuracy** — the headline number. Aim for ≥95% on a representative
   fixture set before declaring the matcher tuned.
-- **Per-band correctness** — the auto-write band (0.85-0.95) should be ≥99%
+- **Per-band correctness** — the auto-write band (≥ 0.95) should be ≥99%
   correct; if it's lower, the threshold is too low and comicbox is confidently
-  writing wrong tags. Raise the `--confidence-threshold` default.
-- **Prompt-zone accuracy** — the 0.70-0.85 band is where users see prompts.
-  \~50% correct is fine here; users veto bad ones manually.
+  writing wrong tags. Raise the `--auto-threshold` default.
+- **Prompt-zone accuracy** — the 0.50-0.95 bands are where users see prompts.
+  \~50% correct is fine there; users veto bad ones manually.
+- **An empty auto-write band is a finding too.** On the 2026-05-17 bigmedia run
+  nothing from either source reached 0.95 (CV topped out at 0.930, Metron at
+  0.915), so the default policy prompted on every fixture. See
+  [`../../tasks/online-tagging/calibration-notes/2026-08-31-matcher-scoring-audit.md`](../../tasks/online-tagging/calibration-notes/2026-08-31-matcher-scoring-audit.md).
 - **No candidates** — comicbox found nothing. May indicate: bad filename parse,
   source doesn't have the issue, or query is too strict (year off, volume off).
   The "Outcomes worth a look" section lists each one for hand-investigation.

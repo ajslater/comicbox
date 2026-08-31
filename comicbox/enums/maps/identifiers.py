@@ -1,5 +1,6 @@
 """Identifier maps."""
 
+import re
 from types import MappingProxyType
 from typing import Any
 
@@ -94,6 +95,17 @@ def get_id_source_by_alias(
 ) -> IdSources | None:
     """Get id source by alias."""
     return _ID_SOURCE_ALIAS_TO_SOURCE_MAP.get(id_source_alias.lower(), default)
+
+
+# An alternation matching any name a source answers to, for parsers that must
+# find a source name inside free text. Longest first so "Comic Vine" wins over
+# a shorter alias that prefixes it, and escaped because the domain aliases
+# contain dots. Pair it with get_id_source_by_alias, which is what resolves a
+# match; the two are the same vocabulary read in the two directions.
+ID_SOURCE_NAME_RE_EXP = r"|".join(
+    re.escape(alias)
+    for alias in sorted(_ID_SOURCE_ALIAS_TO_SOURCE_MAP, key=len, reverse=True)
+)
 
 
 def _build_source_alias_tree(

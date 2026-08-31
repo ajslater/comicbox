@@ -141,6 +141,17 @@
       file, the `--auto-threshold` help and the matcher all said 0.95, and the
       solo floor was defined off it, so a lone mediocre match could be written
       without a prompt — the failure that floor exists to prevent.
+    - The solo-viable auto-write floor follows the auto-write threshold that is
+      actually configured. It read a fixed 0.95 whatever the setting said, so
+      raising `--auto-threshold` left a lone match under the new bar writing
+      itself anyway, through a back door no setting could close.
+    - A cover comicbox measured is no longer overruled by one it never looked
+      at. When two records match the metadata equally well, comicbox prefers the
+      canonical volume unless the covers say otherwise — but a candidate past
+      the cover-checking cutoff counted as "covers alike" rather than "not
+      checked", and won the tie against a candidate whose cover actually matched
+      the comic. A candidate that was checked and simply has no cover still
+      yields to the canonical volume as before.
     - Actions needing an archive warn instead of raising when there is no path.
       `comicbox --rename` and `comicbox -P f` with no file ended in an
       ArchiveError traceback. The guard that turns those actions off existed but
@@ -158,6 +169,15 @@
       one.
     - `add_metadata(md, fmt=…)` accepts every format instead of raising on the
       ones no source declares, like the online formats.
+    - A page whose archive entry reports no size no longer drops every computed
+      field for the comic.
+    - A date part that cannot exist, like a 30th of February, is dropped instead
+      of being kept.
+    - A notes stamp naming a database of more than one word — `Comic Vine`,
+      `Grand Comics Database`, `League of Comic Geeks` — is read, whatever its
+      case. An unrecognized name is no longer read as ComicVine.
+    - An issue naming a suffix but no number, like `1234AU`, gets its number.
+    - A notes timestamp nothing can parse leaves `updated_at` unset.
 
 - Features
     - New `--merge-mode` option and `write.merge_mode` config key choose how

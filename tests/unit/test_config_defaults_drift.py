@@ -9,9 +9,11 @@ constructs the dataclass directly.
 
 That is exactly how ``OnlineTuningSettings.auto_threshold`` ended up at
 0.85 while the YAML, the ``--auto-threshold`` help text, and the
-matcher's own constant all said 0.95 — and, through
-``DEFAULT_SOLO_THRESHOLD``, dropped the solo-viable auto-write floor to
-a value Phase E was written to forbid.
+matcher's own constant all said 0.95 — and, through a second constant
+that mirrored it by hand, dropped the solo-viable auto-write floor to a
+value Phase E was written to forbid. That mirror is gone:
+``resolve_solo_threshold`` reads the source's resolved
+``auto_threshold``, and the test below pins the coupling.
 
 This test walks the two trees together in both directions:
 
@@ -187,8 +189,11 @@ def test_auto_threshold_default_agrees_everywhere() -> None:
     """
     from comicbox.config.settings import (
         DEFAULT_AUTO_THRESHOLD,
-        DEFAULT_SOLO_THRESHOLD,
+        OnlineSettings,
+        OnlineSourceTuning,
         OnlineTuningSettings,
+        resolve_auto_threshold,
+        resolve_solo_threshold,
     )
 
     yaml_value = _load_yaml_defaults()["online"]["tuning"]["auto_threshold"]
@@ -196,8 +201,28 @@ def test_auto_threshold_default_agrees_everywhere() -> None:
     assert yaml_value == DEFAULT_AUTO_THRESHOLD
     # Phase E's solo-viable floor is defined as "the same bar as a
     # multi-candidate unambiguous win". Below it, a lone mediocre
-    # candidate auto-writes silently.
-    assert DEFAULT_SOLO_THRESHOLD == DEFAULT_AUTO_THRESHOLD
+    # candidate auto-writes silently — so it tracks the threshold this
+    # source actually runs at, for every way of setting one.
+    for settings in (
+        OnlineSettings(),
+        OnlineSettings(tuning=OnlineTuningSettings(auto_threshold=0.99)),
+        OnlineSettings(tuning=OnlineTuningSettings(auto_threshold=0.70)),
+        OnlineSettings(
+            tuning=OnlineTuningSettings(
+                per_source={"metron": OnlineSourceTuning(auto_threshold=0.98)}
+            )
+        ),
+    ):
+        assert resolve_solo_threshold(settings, "metron") == resolve_auto_threshold(
+            settings, "metron"
+        )
+    # An explicit per-source solo_threshold still wins.
+    opted_in = OnlineSettings(
+        tuning=OnlineTuningSettings(
+            per_source={"metron": OnlineSourceTuning(solo_threshold=0.50)}
+        )
+    )
+    assert resolve_solo_threshold(opted_in, "metron") == 0.50
 
 
 def test_no_credentials_are_defaulted_in_yaml() -> None:

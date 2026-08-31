@@ -20,7 +20,10 @@ class ComicboxMetadata(ComicboxComputed):
     def _set_computed_merged_metadata_delete(self, merged_md: dict[str, Any]) -> None:
         """Delete keys with glom."""
         sub_data = merged_md.get(ComicboxSchemaMixin.ROOT_TAG)
-        for key_path in sorted(self._config.general.delete_keys):
+        # The computed pass earns delete keys of its own — date parts that
+        # cannot form a real date. Deleting only the config's meant those
+        # were flagged and then kept.
+        for key_path in sorted(self._all_delete_keys()):
             try:
                 delete = Delete(key_path, ignore_missing=True)
                 glom(sub_data, delete)
@@ -28,21 +31,14 @@ class ComicboxMetadata(ComicboxComputed):
                 logger.warning(f"Could not delete key path {key_path}: {exc}")
 
     def _set_computed_merged_metadata(self) -> None:
-        merged_md = self.get_merged_metadata()
-        computed_md = self.get_computed_metadata()
-        # Deep copy, not dict(): the mergers below recurse into nested
-        # dicts, and a shallow copy would share (and mutate) the same
-        # nested objects the _merged_metadata cache still references.
-        merged_md = deepcopy(dict(merged_md))
-
-        # Mergers act on the mapping they're handed, so unwrap the root
-        # tag here — the same shape _set_computed_metadata already merges
-        # each computed delta into.
-        merged_sub_md = merged_md.setdefault(ComicboxSchemaMixin.ROOT_TAG, {})
-        for computed_data in computed_md:
-            computed_sub_data = computed_data.metadata.get(ComicboxSchemaMixin.ROOT_TAG)
-            if computed_sub_data and computed_data.merger:
-                computed_data.merger.merge(merged_sub_md, computed_sub_data)
+        # The computed pass already merged each delta into its own snapshot,
+        # in order, because every action has to see what the ones before it
+        # produced. Replaying the same deltas onto a second copy of the
+        # merged metadata here did that identical work twice.
+        # Deep copy, not dict(): the delete below reaches into nested dicts,
+        # and a shallow copy would mutate the ones the computed cache still
+        # references.
+        merged_md = deepcopy(dict(self.get_computed_merged_metadata()))
         self._set_computed_merged_metadata_delete(merged_md)
         self._metadata = MappingProxyType(merged_md)
         self._metadata_dict_formats = self._dict_formats
