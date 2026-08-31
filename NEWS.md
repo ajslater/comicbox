@@ -1,6 +1,6 @@
 # 📰 News
 
-## v4.8.7
+## v5.0.0
 
 - Breaking Changes
     - Comicbox schema v3.0. Version 2.0 documents no longer load; the fields
@@ -39,12 +39,10 @@
       when it has no title.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
-    - Notes urns omit the default type: `urn:comicvine:145269` instead of
-      `urn:comicvine:issue:145269`. A type is named only when it isn't the
-      implied one, as in `urn:metron:series:178012`. Older urns still read.
-    - An identifier string must be an identifier and nothing else. Tags like
-      `marvel-comics` and year ranges like `2019-2021` no longer become database
-      ids.
+    - Notes urns drop the default type: `urn:comicvine:145269`, and
+      `urn:metron:series:178012` when the type isn't the implied one. Older
+      urns still read.
+    - Tags like `marvel-comics` and `2019-2021` no longer become database ids.
 
 - Fixes
     - Writing MetronInfo no longer invents extra credits. Only `Painter` still
@@ -63,18 +61,17 @@
       Each round trip copied one list into both tags.
     - A MetronInfo `AlternativeName` written without a language is no longer
       dropped.
-    - An identifier source comicbox can't make a urn of, like a hand-written
-      `my_db`, no longer aborts the whole read when stamping notes.
-    - A hand-tagged `key: "series:178012"` keeps its series type, gets the
-      series url, and stamps a series urn.
+    - A hand-written identifier source like `my_db` no longer aborts the read
+      when stamping notes.
+    - A `key: "series:178012"` keeps its series type, url and urn. MetronInfo
+      no longer writes a non-issue id into its issue id list.
     - A urn ending a sentence no longer takes the comma into its id.
     - An unrecognized ComicVine type code reads as an issue, not an arc.
     - An `id_type` comicbox doesn't know no longer leaks into a url.
-    - kitsu.app urls are recognized. The domain was misspelled.
+    - kitsu.app urls are recognized.
 
 - Features
-    - Web urls written into the Notes field are read into `urls`, so links other
-      taggers left there survive.
+    - Web urls in the Notes field are read into `urls`.
     - New `SourceStarted` online event, emitted once per source that actually
       runs, immediately before that source is consulted and after the first-wins
       skip. `SearchStarted` only covers the cold-search path, so a caller
