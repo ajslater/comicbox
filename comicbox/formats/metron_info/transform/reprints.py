@@ -29,7 +29,7 @@ from comicbox.formats.comicbox.schema import (
     REPRINTS_KEY,
 )
 from comicbox.formats.metron_info.schema import ALTERNATIVE_NAMES_TAGPATH, LANG_ATTR
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.formats.metron_info.transform.identifier_attribute import (
     metron_id_attribute_from_cb,
     metron_id_attribute_to_cb,
@@ -53,7 +53,7 @@ def _reprint_to_cb(
 
 
 def _reprints_to_cb(values: dict[str, Any]) -> list:
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     metron_reprints = values.get(REPRINTS_TAGPATH) or ()
     return [
         comicbox_reprint
@@ -80,7 +80,7 @@ def _reprints_from_cb(values: dict[str, Any]) -> list:
     comicbox_reprints = values.get(REPRINTS_KEY)
     if not comicbox_reprints:
         return []
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return [
         metron_reprint
         for comicbox_reprint in comicbox_reprints
@@ -118,7 +118,7 @@ def _alternative_name_to_cb(
 
 
 def _alternative_names_to_cb(values: dict[str, Any]) -> list:
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     metron_alternative_names = values.get(ALTERNATIVE_NAMES_TAGPATH) or ()
     return [
         comicbox_alternative_name
@@ -135,7 +135,7 @@ def _alternative_names_from_cb(values: dict[str, Any]) -> list:
     comicbox_alternative_names = values.get(ALTERNATIVE_NAMES_KEYPATH)
     if not comicbox_alternative_names:
         return []
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     metron_alternative_names = []
     for comicbox_alternative_name in comicbox_alternative_names:
         name = comicbox_alternative_name.get(NAME_KEY)

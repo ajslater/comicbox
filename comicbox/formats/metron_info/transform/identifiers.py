@@ -19,7 +19,7 @@ from comicbox.formats.comicbox.schema import (
     PRIMARY_ID_SOURCE_KEY,
     URLS_KEY,
 )
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import (
     create_identifier,
@@ -117,7 +117,7 @@ def _identifier_to_cb(native_identifier: Any) -> tuple[str, dict]:
     identifier = create_identifier(
         id_source_str,
         id_key,
-        default_id_source_str=DEFAULT_ID_SOURCE.value,
+        default_id_source_str=DEFAULT_ID_SOURCE_STR,
     )
     return id_source_str, identifier
 
@@ -138,7 +138,7 @@ def _identifiers_to_cb_gtin(values: dict[str, Any]) -> dict:
         for tag, id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.items():
             if id_key := metron_gtin.get(tag):
                 identifier = create_identifier(
-                    id_source_str, id_key, default_id_source_str=DEFAULT_ID_SOURCE.value
+                    id_source_str, id_key, default_id_source_str=DEFAULT_ID_SOURCE_STR
                 )
                 if identifier:
                     gtin_identifiers[id_source_str] = identifier
@@ -195,9 +195,7 @@ def identifiers_from_cb(values: dict[str, Any]) -> list:
     comicbox_identifiers = values.get(IDENTIFIERS_KEY)
     if not comicbox_identifiers:
         return []
-    primary_id_source_str = values.get(
-        PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE.value
-    )
+    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     metron_identifiers = []
     id_sources = []
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
@@ -267,9 +265,7 @@ def _urls_from_cb(values: dict[str, Any]) -> list:
     if not urls:
         return []
 
-    primary_id_source_str = values.get(
-        PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE.value
-    )
+    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     url_list = list(urls)
     url_sources = [
         id_source_by_url.get(url) or get_url_id_source(url) for url in url_list

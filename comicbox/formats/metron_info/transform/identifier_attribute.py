@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from loguru import logger
 
 from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.identifiers import ID_KEY_KEY
 from comicbox.identifiers.identifiers import create_identifier
 
@@ -28,7 +28,7 @@ def metron_id_attribute_to_cb(
             str(id_key),
             # The attribute names no type of its own; the tag it hangs on does.
             positional_id_type=id_type,
-            default_id_source_str=DEFAULT_ID_SOURCE.value,
+            default_id_source_str=DEFAULT_ID_SOURCE_STR,
         )
         comicbox_obj[IDENTIFIERS_KEY] = {id_source_str: comicbox_identifier}
     except Exception as exc:
