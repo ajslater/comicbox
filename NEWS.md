@@ -76,6 +76,10 @@
       mtime, as it already did in a CBR.
     - Reading a page no longer depends on the working directory. A directory
       there named like a page made that page read as empty.
+    - A name slug or tracking suffix after the id in a url is no longer the id.
+    - A link to a database's front page no longer becomes an id for it.
+    - Urls are recognized whatever the host's case, and with a port or login.
+    - Notes urns are written only in a form the notes reader reads back.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

@@ -29,6 +29,7 @@ from comicbox.identifiers.identifiers import (
     create_identifier,
 )
 from comicbox.identifiers.urns import (
+    URN_SCAN_EXP,
     parse_urn_identifier,
 )
 from comicbox.merge import AdditiveMerger, Merger
@@ -53,9 +54,10 @@ _NOTES_RE_EXP = (
     + r"?"
 )
 _NOTES_RE = re.compile(_NOTES_RE_EXP, flags=re.IGNORECASE)
-# Notes are prose. A urn ends where its key ends, not at the next space, so
-# the comma or period after it in a sentence isn't read as part of the key.
-_URN_RE_EXP = r"(?P<urn>urn:[A-Za-z0-9][A-Za-z0-9-]{0,30}:[\w%.:-]*[\w%])"
+# One grammar for urns, owned by the urns module that reads and writes them.
+# A hand-maintained copy here drifted: it accepted a one character namespace
+# and a trailing hyphen that the urn parser then rejected.
+_URN_RE_EXP = rf"(?P<urn>{URN_SCAN_EXP})"
 _URN_RE = re.compile(_URN_RE_EXP, flags=re.IGNORECASE)
 _NOTES_IDENTIFIER_EXTRA_EXP = r"\[" + IDENTIFIER_RE_EXP + r"\]"
 _NOTES_IDENTIFIER_EXTRA_RE = re.compile(

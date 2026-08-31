@@ -204,3 +204,53 @@ comicbox:
   notes: "Tagged with Comictagger using info from Metron [Issue ID 145269]"
 """)
     assert sub_md["identifiers"]["metron"]["key"] == "99999"
+
+
+def test_a_known_sites_non_id_page_invents_no_identifier() -> None:
+    """
+    A link to a database's front page or about page is not an id for it.
+
+    The url path used to be handed back as the key whenever the id regex
+    missed, so a comic linking to metron.cloud got the metron id "/about/",
+    which then outranked nothing and looked up as nothing.
+    """
+    non_id_url = "https://metron.cloud/about/"
+    sub_md = _load_yaml(f"""
+comicbox:
+  urls:
+    - {non_id_url}
+""")
+    assert sub_md["urls"] == [non_id_url]
+    assert not sub_md.get("identifiers")
+
+
+def test_a_known_sites_non_id_page_does_not_displace_a_real_id() -> None:
+    """The real id stays, and no url is invented over the one the file has."""
+    sub_md = _load_yaml("""
+comicbox:
+  identifiers:
+    metron:
+      key: "123495"
+  urls:
+    - https://metron.cloud/about/
+""")
+    assert sub_md["identifiers"]["metron"] == {"key": "123495"}
+    assert "https://metron.cloud/issue/123495" in sub_md["urls"]
+
+
+def test_a_url_slug_after_the_id_is_not_the_id() -> None:
+    """
+    Most databases append a name slug the id regex must stop before.
+
+    A greedy match read the slug as the id, so a League of Comic Geeks link
+    recorded the book's title where its number belonged.
+    """
+    sub_md = _load_yaml("""
+comicbox:
+  urls:
+    - https://leagueofcomicgeeks.com/comics/series/178012/batman
+""")
+    assert sub_md["identifiers"]["leagueofcomicgeeks"] == {
+        "key": "178012",
+        "id_type": "series",
+    }
