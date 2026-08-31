@@ -39,6 +39,11 @@ from comicbox.formats.comic_info.schema import (
 from comicbox.formats.comic_info.transform.identifiers import (
     COMICINFO_IDENTIFIERS_TO_CB,
 )
+from comicbox.formats.comic_info.transform.manga import (
+    COMICINFO_MANGA_FROM_CB,
+    COMICINFO_MANGA_TO_CB,
+    COMICINFO_READING_DIRECTION_TO_CB,
+)
 from comicbox.formats.comic_info.transform.pages import (
     comicinfo_bookmark_to_cb,
     comicinfo_pages_from_cb,
@@ -59,7 +64,6 @@ from comicbox.formats.comicbox.schema import (
     GENRES_KEY,
     LANGUAGE_KEY,
     LOCATIONS_KEY,
-    MANGA_KEY,
     MONOCHROME_KEY,
     NOTES_KEY,
     ORIGINAL_FORMAT_KEY,
@@ -188,7 +192,6 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Imprint": IMPRINT_NAME_KEYPATH,
         "LanguageISO": LANGUAGE_KEY,
         "MainCharacterOrTeam": PROTAGONIST_KEY,
-        "Manga": MANGA_KEY,
         "Month": MONTH_KEYPATH,
         "Notes": NOTES_KEY,
         "Number": ISSUE_NAME_KEYPATH,
@@ -224,6 +227,8 @@ class ComicInfoTransform(BaseTransform):
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(ComicInfoRoleTagEnum),
         COMICINFO_IDENTIFIERS_TO_CB,
+        COMICINFO_MANGA_TO_CB,
+        COMICINFO_READING_DIRECTION_TO_CB,
         comicinfo_pages_to_cb("Pages.Page", PAGE_KEY_MAP.inverse),
         comicinfo_bookmark_to_cb("Pages.Page", BOOKMARK_ATTRIBUTE, IMAGE_ATTRIBUTE),
         COMICINFO_REPRINTS_TO_CB,
@@ -235,6 +240,7 @@ class ComicInfoTransform(BaseTransform):
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
         *xml_credits_transform_from_cb(ComicInfoRoleTagEnum, ROLE_ALIASES),
         identifiers_transform_from_cb("GTIN"),
+        COMICINFO_MANGA_FROM_CB,
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
         COMICINFO_REPRINTS_FROM_CB,
         *story_arcs_from_cb("StoryArc", "StoryArcNumber"),

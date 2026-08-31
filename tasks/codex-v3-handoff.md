@@ -108,6 +108,44 @@ case-insensitive match on the old spelling is enough; the only rows that change
 meaning rather than spelling are `Breakdowns`, `Finishes`, `Plotter` and
 `Scripter`, which used to be stored as the coarser role.
 
+### PR 3 — canonical age ratings, `manga` split from reading direction
+
+**`comicbox.age_rating`** is now always one of MetronInfo's seven values:
+`Unknown`, `Everyone`, `Teen`, `Teen Plus`, `Mature`, `Explicit`, `Adult`. It
+used to store whichever vocabulary arrived — ComicInfo's 15 values, or a Marvel,
+DC or generic publisher rating. As with roles, an unrecognized rating is stored
+verbatim, so do not constrain the column to the seven values.
+
+| Rating seen in v2                                                                          | v3          |
+| ------------------------------------------------------------------------------------------ | ----------- |
+| `Everyone`, `Everyone 10+`, `G`, `Kids to Adults`, `Early Childhood`, `All Ages`, `E`, `A` | `Everyone`  |
+| `Teen`, `PG`, `PG13`, `13+`, `T`, `PSR`                                                    | `Teen`      |
+| `MA15+`, `Teen Plus`, `T+`, `PG+`, `PSR+`, `Parental Advisory`, `15+`                      | `Teen Plus` |
+| `Mature 17+`, `M`, `Mature`, `R18+`, `R`, `17+`, `Max`                                     | `Mature`    |
+| `X18+`, `X`, `XXX`, `ExplicitContent`, `Max: Explicit Content`, `Violent`                  | `Explicit`  |
+| `Adults Only 18+`, `Adult`, `Porn`, `Sexually Explicit`                                    | `Adult`     |
+| `Unknown`, `Rating Pending`                                                                | `Unknown`   |
+
+This is lossy in one direction: a ComicInfo library that distinguished
+`Everyone 10+` from `Everyone` no longer can. That was the accepted trade for a
+single scale across formats. ComicInfo files are still written with ComicInfo's
+own vocabulary, so `Teen Plus` writes back as `MA15+`.
+
+**`comicbox.manga`** is now `Yes`, `No` or `Unknown` — never
+`YesAndRightToLeft`. ComicInfo's compound value splits on read into `manga: Yes`
+plus `reading_direction: rtl`, and the two recombine when writing ComicInfo.
+
+| v2 `manga`          | v3 `manga` | v3 `reading_direction` |
+| ------------------- | ---------- | ---------------------- |
+| `Yes`               | `Yes`      | unchanged              |
+| `YesAndRightToLeft` | `Yes`      | `rtl`                  |
+| `No`                | `No`       | unchanged              |
+
+A ComicInfo `Manga` of `Unknown` used to be read as `No`, asserting a book was
+not manga when the file said it did not know; it now reads as `Unknown`. If
+codex derives "read right to left" from `manga`, read `reading_direction`
+instead — it is also what CoMet supplies, for non-manga books too.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 4 credits/primary, PR 5 identifiers/urls, PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
@@ -119,10 +157,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **Age rating canonicalized** to the MetronInfo scale: `Unknown`, `Everyone`,
-  `Teen`, `Teen Plus`, `Mature`, `Explicit`, `Adult`. ComicInfo's 15 values are
-  mapped in on read (`Everyone 10+`, `G`, `Kids to Adults` → `Everyone`, etc.)
-  and projected back out on ComicInfo write.
 - **`credit_primaries` removed**, folded into the role objects as
   `credits.<person>.roles.<role>.primary: true`. The flag is per (person, role):
   a primary Writer who also inked is not thereby a primary Inker.
@@ -134,8 +168,6 @@ Schema) before writing code, since details can shift during implementation.
   remains — it is just no longer stored redundantly.
 - **`manga_volume: string`** added, holding MetronInfo's `MangaVolume` verbatim;
   `volume.number`/`volume.number_to` are parsed from it when unset.
-- **`manga`** becomes tri-state `Yes`/`No`/`Unknown`; the `YesAndRightToLeft`
-  compound is decomposed into `manga: Yes` + `reading_direction: rtl`.
 - **`reprints`** entries gain an authoritative verbatim `name`; structured
   `series`/`volume`/`issue` become derived enrichment.
 - **`series.alternative_names: [{name, language, identifiers}]`** added — Metron
@@ -153,7 +185,10 @@ Schema) before writing code, since details can shift during implementation.
 - [ ] Remove any `alternate_images` and `critical_rating` handling.
 - [ ] Migrate stored credit-role strings to the canonical Metron vocabulary
       (table in the PR 2 section); keep unknown roles permitted.
-- [ ] (later PRs) Update age-rating vocabulary and its migration.
+- [ ] Migrate stored age ratings to the Metron scale (table in the PR 3
+      section); keep unknown ratings permitted.
+- [ ] Split any stored `manga` value of `YesAndRightToLeft`; read right-to-left
+      from `reading_direction`.
 - [ ] (later PRs) Move credit primary flags into the per-role object.
 - [ ] (later PRs) Split stored identifiers/urls; rename
       `identifier_primary_source` → `primary_id_source`.

@@ -139,7 +139,7 @@
         },
         "manga": {
           "type": "string",
-          "enum": ["Yes", "YesAndRightToLeft", "No"]
+          "enum": ["Yes", "No", "Unknown"]
         },
         "monochrome": {
           "type": "boolean"

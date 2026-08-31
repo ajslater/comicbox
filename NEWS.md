@@ -6,6 +6,11 @@
     - Comicbox schema v3.0. Version 2.0 documents still load.
     - Credit roles are stored with MetronInfo's names. Roles it has no name for
       keep their own spelling.
+    - Age ratings are stored on MetronInfo's scale. ComicInfo's finer
+      distinctions, like `Everyone 10+` and `G`, become `Everyone`.
+    - `manga` no longer carries reading direction. `YesAndRightToLeft` splits
+      into `manga` and `reading_direction`, and recombines when writing
+      ComicInfo.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 
@@ -16,6 +21,8 @@
       instead of collapsing into a coarser one.
     - More role spellings are recognized, including `Inks`, `Pencils` and
       `Cover Artist`.
+    - A ComicInfo `Manga` of `Unknown` no longer reads as "not manga".
+    - Marvel's `Max` and `Max: Explicit Content` ratings are recognized.
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually

@@ -22,7 +22,7 @@ from comicbox.formats.base.fields.comicbox import (
 )
 from comicbox.formats.base.fields.enum_fields import (
     AgeRatingField,
-    ComicInfoMangaField,
+    MangaField,
     OriginalFormatField,
     ReadingDirectionField,
 )
@@ -216,7 +216,7 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     issue = Nested(IssueSchema)  # ALL
     language = LanguageField()  # Comet, CBI, CIX, CT, Metron
     locations = SimpleNamedDictField()  # CIX, CT, Metron
-    manga = ComicInfoMangaField()  # CIX ONLY
+    manga = MangaField()  # CIX ONLY
     monochrome = BooleanField()  # CIX ONLY, CT
     notes = StringField()  # CT, Metron, CIX
     page_count = IntegerField(minimum=0)  # CIX, Comet, Metron, CBI

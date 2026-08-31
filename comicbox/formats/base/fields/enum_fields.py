@@ -5,11 +5,10 @@ from types import MappingProxyType
 from typing import Any
 
 from caseconverter import snakecase, titlecase
-from loguru import logger
 from marshmallow import fields
 from typing_extensions import override
 
-from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicbox import MangaEnum, ReadingDirectionEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
 from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
@@ -173,27 +172,28 @@ class EnumBooleanField(EnumField):
 class ComicInfoMangaEnum(Enum):
     """Manga enum for ComicInfo."""
 
+    UNKNOWN = "Unknown"
     YES = "Yes"
     YES_RTL = "YesAndRightToLeft"
     NO = "No"
 
 
 class ComicInfoMangaField(EnumBooleanField):
-    """Manga field from ComicInfo."""
+    """
+    Manga field from ComicInfo.
+
+    Keeps ComicInfo's compound vocabulary, YesAndRightToLeft included. The
+    ComicInfo transform splits that value across comicbox's manga and
+    reading_direction fields and recomposes it on write.
+    """
 
     ENUM = ComicInfoMangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
-    @override
-    def _deserialize(self, value, attr, data, *args, **kwargs):
-        """Match a manga value to an acceptable value."""
-        if data and data.get("reading_direction") == ReadingDirectionEnum.RTL:
-            reason = (
-                f"Coerced manga {value} to {ComicInfoMangaEnum.YES_RTL.value}"
-                "because of reading_direction"
-            )
-            logger.warning(reason)
-            value = ComicInfoMangaEnum.YES_RTL
-        return super()._deserialize(value, attr, data, *args, **kwargs)
+
+class MangaField(EnumBooleanField):
+    """Comicbox manga field: says only whether the book is manga."""
+
+    ENUM = MangaEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class YesNoEnum(Enum):
