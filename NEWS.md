@@ -40,8 +40,8 @@
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
     - Notes urns drop the default type: `urn:comicvine:145269`, and
-      `urn:metron:series:178012` when the type isn't the implied one. Older
-      urns still read.
+      `urn:metron:series:178012` when the type isn't the implied one. Older urns
+      still read.
     - Tags like `marvel-comics` and `2019-2021` no longer become database ids.
 
 - Fixes
@@ -63,8 +63,8 @@
       dropped.
     - A hand-written identifier source like `my_db` no longer aborts the read
       when stamping notes.
-    - A `key: "series:178012"` keeps its series type, url and urn. MetronInfo
-      no longer writes a non-issue id into its issue id list.
+    - A `key: "series:178012"` keeps its series type, url and urn. MetronInfo no
+      longer writes a non-issue id into its issue id list.
     - A urn ending a sentence no longer takes the comma into its id.
     - An unrecognized ComicVine type code reads as an issue, not an arc.
     - An `id_type` comicbox doesn't know no longer leaks into a url.
