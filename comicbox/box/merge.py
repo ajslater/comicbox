@@ -4,7 +4,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from comicbox.box.online_lookup import ComicboxOnlineLookup
-from comicbox.config.settings import WriteMode
+from comicbox.config.settings import MergeMode
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.sources import MetadataSources
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger, UpdateMerger
@@ -12,21 +12,21 @@ from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger, UpdateMerger
 if TYPE_CHECKING:
     from comicbox.formats import MetadataFormats
 
-# Map the public WriteMode enum onto the existing merger classes. The
-# three modes correspond 1:1; see WriteMode docstring for semantics.
-_MERGER_BY_MODE: dict[WriteMode, type[Merger]] = {
-    WriteMode.ADDITIVE: AdditiveMerger,
-    WriteMode.UPDATE: UpdateMerger,
-    WriteMode.REPLACE: ReplaceMerger,
+# Map the public MergeMode enum onto the existing merger classes. The
+# three modes correspond 1:1; see MergeMode docstring for semantics.
+_MERGER_BY_MODE: dict[MergeMode, type[Merger]] = {
+    MergeMode.ADDITIVE: AdditiveMerger,
+    MergeMode.UPDATE: UpdateMerger,
+    MergeMode.REPLACE: ReplaceMerger,
 }
 
 # Sources whose metadata the caller supplied to *this* run: the write
 # API's patch, `-m` on the command line, `--import` files, and the
-# config's own metadata block. `write.mode` describes how that supplied
-# metadata overlays the comic's existing tags, so it applies to exactly
-# these. Everything else — the archive's own files, its comment, its
-# filename, an online lookup's answer — is metadata comicbox discovered,
-# and discovery is always accumulated additively.
+# config's own metadata block. `write.merge_mode` describes how that
+# supplied metadata overlays the comic's existing tags, so it applies to
+# exactly these. Everything else — the archive's own files, its comment,
+# its filename, an online lookup's answer — is metadata comicbox
+# discovered, and discovery is always accumulated additively.
 _PATCH_SOURCES = frozenset(
     {
         MetadataSources.CONFIG,
@@ -75,34 +75,19 @@ class ComicboxMerge(ComicboxOnlineLookup):
             if sub_md := normalized_md.get(ComicboxSchemaMixin.ROOT_TAG):
                 merger.merge(merged_sub_md, sub_md)
 
-    def _resolve_patch_merger(self) -> type[Merger]:
-        """
-        Pick the merger class for caller-supplied metadata.
-
-        ``write.mode`` is the authoritative knob; the legacy ``write.replace``
-        bool is honored as a back-compat alias for ``mode=update`` when the
-        caller didn't set mode explicitly.
-        """
-        write = self._config.write
-        mode = write.mode
-        if mode is WriteMode.ADDITIVE and write.replace:
-            # Caller used the legacy bool; preserve its historical
-            # UpdateMerger semantics.
-            mode = WriteMode.UPDATE
-        return _MERGER_BY_MODE[mode]
-
     def _merger_for_source(self, source: MetadataSources) -> type[Merger]:
         """
-        Cross-source reads are additive; only a patch honors ``write.mode``.
+        Cross-source reads are additive; only a patch honors ``merge_mode``.
 
-        Selecting every source's merger from ``write.mode`` made a plain
-        read depend on write settings — `to_dict()` returned different
-        metadata under `--replace` — and under `update` it was lossy:
-        `dict.update` at the root meant the last source carrying a key
-        dropped every earlier source's contribution to it wholesale.
+        Selecting every source's merger from ``write.merge_mode`` made a
+        plain read depend on write settings — `to_dict()` returned
+        different metadata under a non-default mode — and under `update`
+        it was lossy: `dict.update` at the root meant the last source
+        carrying a key dropped every earlier source's contribution to it
+        wholesale.
         """
         if source in _PATCH_SOURCES:
-            return self._resolve_patch_merger()
+            return _MERGER_BY_MODE[self._config.write.merge_mode]
         return AdditiveMerger
 
     def _set_merged_metadata(self) -> None:

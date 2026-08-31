@@ -36,9 +36,11 @@ from comicbox.config.settings import (
     ComputeSettings,
     ConvertSettings,
     GeneralSettings,
+    MergeMode,
     PrintSettings,
     ReadSettings,
     WriteSettings,
+    parse_enum,
 )
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME
@@ -150,7 +152,10 @@ _TEMPLATE = MappingTemplate(
                 "write": MappingTemplate(
                     {
                         "formats": Optional(_NON_MAPPING_CONTAINER),
-                        "replace": bool,
+                        # Validated in _build_write_settings rather than
+                        # by a Choice template, so a bad value fails with
+                        # an error that names the key and the valid modes.
+                        "merge_mode": String(),
                         "stamp": bool,
                         "stamp_notes": bool,
                         "delete_all_tags": bool,
@@ -254,7 +259,9 @@ def _build_read_settings(read_block: Any) -> ReadSettings:
 def _build_write_settings(write_block: Any) -> WriteSettings:
     return WriteSettings(
         formats=frozenset(write_block.formats or ()),
-        replace=bool(write_block.replace),
+        merge_mode=parse_enum(
+            MergeMode, "write.merge_mode", str(write_block.merge_mode), noun="value"
+        ),
         stamp=bool(write_block.stamp),
         stamp_notes=bool(write_block.stamp_notes),
         delete_all_tags=bool(write_block.delete_all_tags),
