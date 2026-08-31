@@ -1,7 +1,6 @@
 """Comicbox Computed tagger, updated_at and notes stamps."""
 
 from datetime import datetime, timezone
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.pages import ComicboxComputedPages
@@ -15,7 +14,6 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.urns import to_urn_string
-from comicbox.merge import ReplaceMerger
 
 # A field instance is a stateless serializer; one is enough.
 _DATETIME_FIELD = DateTimeField()
@@ -110,10 +108,3 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             return None
 
         return stamp_md
-
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            **ComicboxComputedPages.COMPUTED_ACTIONS,
-            "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger),
-        }
-    )

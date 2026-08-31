@@ -20,8 +20,6 @@ runs at the far end of the pipeline in ``urls``.
 """
 
 import re
-from collections.abc import Callable
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.merge import ComicboxMerge
@@ -33,7 +31,6 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import get_identifier_url
-from comicbox.merge import AdditiveMerger, Merger
 
 _NOTES_URL_RE = re.compile(r"https?://[^\s<>\"']+", flags=re.IGNORECASE)
 # Notes are sentences. A url at the end of one takes the punctuation with it,
@@ -102,18 +99,3 @@ class ComicboxComputedUrlIdentifiers(ComicboxMerge):
         if not new_identifiers:
             return None
         return {IDENTIFIERS_KEY: new_identifiers}
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                "urls from notes": (
-                    _get_computed_urls_from_notes,
-                    AdditiveMerger,
-                ),
-                "identifiers from urls": (
-                    _get_computed_identifiers_from_urls,
-                    AdditiveMerger,
-                ),
-            }
-        )
-    )

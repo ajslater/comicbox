@@ -163,6 +163,15 @@
       one.
     - `add_metadata(md, fmt=…)` accepts every format instead of raising on the
       ones no source declares, like the online formats.
+    - A page whose archive entry reports no size no longer drops every computed
+      field for the comic.
+    - A date part that cannot exist, like a 30th of February, is dropped instead
+      of being kept.
+    - A notes stamp naming a database of more than one word — `Comic Vine`,
+      `Grand Comics Database`, `League of Comic Geeks` — is read, whatever its
+      case. An unrecognized name is no longer read as ComicVine.
+    - An issue naming a suffix but no number, like `1234AU`, gets its number.
+    - A notes timestamp nothing can parse leaves `updated_at` unset.
 
 - Features
     - Web urls in the Notes field are read into `urls`.

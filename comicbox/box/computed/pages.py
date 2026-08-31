@@ -1,6 +1,6 @@
 """Comicbox Computed Pages."""
 
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
 from sys import maxsize
 from types import MappingProxyType
 from typing import Any
@@ -17,7 +17,7 @@ from comicbox.formats.comicbox.schema import (
     PAGE_TYPE_KEY,
     PAGES_KEY,
 )
-from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
+from comicbox.merge import AdditiveMerger
 
 _ENABLE_PAGE_COMPUTE_ATTRS = MappingProxyType(
     {
@@ -56,15 +56,22 @@ class ComicboxComputedPages(ComicboxComputedUrls):
             return {PAGE_COUNT_KEY: real_page_count}
         return None
 
+    @staticmethod
     def _ensure_pages_front_cover_metadata(
-        self, pages: MutableMapping[int, dict[str, Any]]
+        pages: MutableMapping[int, dict[str, Any]],
     ) -> None:
         """Ensure there is a FrontCover page type in pages."""
+        if not pages:
+            return
         for page in pages.values():
             if page.get(PAGE_TYPE_KEY) == ComicInfoPageTypeEnum.FRONT_COVER:
                 return
 
-        pages[0][PAGE_TYPE_KEY] = ComicInfoPageTypeEnum.FRONT_COVER
+        # Index 0 is the front cover when it's there, but it need not be:
+        # a page whose archive entry reported no size gets no entry at all,
+        # and `pages[0]` then raised a KeyError that aborted the entire
+        # computed pass. The lowest page present is the cover.
+        pages[min(pages)][PAGE_TYPE_KEY] = ComicInfoPageTypeEnum.FRONT_COVER
 
     def _get_max_page_index(self) -> int:
         if self._path:
@@ -110,18 +117,11 @@ class ComicboxComputedPages(ComicboxComputedUrls):
                     computed_page[PAGE_SIZE_KEY] = size
                     pages[index] = computed_page
                 index += 1
+            # Inside the guard with the scan that feeds it: merging consults
+            # the archive too, and warn-and-skip is what every sibling action
+            # does with a bad archive.
+            if pages:
+                pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         except Exception as exc:
             logger.warning(f"{self._path}: Compute pages metadata: {exc}")
-        if pages:
-            pages = self._get_computed_merged_pages_metadata(sub_md, pages)
         return {PAGES_KEY: pages}
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                "Page Count": (_get_computed_page_count_metadata, ReplaceMerger),
-                "Pages": (_get_computed_pages_metadata, ReplaceMerger),
-                **ComicboxComputedUrls.COMPUTED_ACTIONS,
-            }
-        )
-    )
