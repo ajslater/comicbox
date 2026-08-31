@@ -76,6 +76,12 @@
       mtime, as it already did in a CBR.
     - Reading a page no longer depends on the working directory. A directory
       there named like a page made that page read as empty.
+    - Writing metadata to a comic no longer rewrites its pages. Metadata is
+      stored after the pages instead of before them, so re-tagging appends to
+      the end of the archive rather than sliding every page down over itself.
+      Tagging is faster, and an interrupted write can no longer damage a page.
+    - Writing a comic claims it for the duration. One archive named twice in a
+      batch was repacked by two threads at once, which destroyed it.
     - A name slug or tracking suffix after the id in a url is no longer the id.
     - A link to a database's front page no longer becomes an id for it.
     - Urls are recognized whatever the host's case, and with a port or login.
