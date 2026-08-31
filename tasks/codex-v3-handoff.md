@@ -238,6 +238,29 @@ rename `identifier_primary_source` to `primary_id_source` keeping only its
 `source` string, and drop identifier rows whose source is a bare hostname (keep
 their url).
 
+### PR 6 — single-valued format tags
+
+No comicbox field changes shape here; what changes is what lands in them, and
+what comicbox writes to other apps' files.
+
+- **ComicInfo `GTIN` is a barcode again.** Comicbox used to dump every
+  identifier into it as a comma-joined urn list. Kavita, Komga and Mylar read
+  GTIN as an actual barcode, so comicbox was corrupting that field for them. It
+  now reads a single value (recording it as `isbn` or `upc` by length) and
+  writes back only an `isbn`, `upc` or `gtin` identifier. Files already written
+  with urns still read — the urn list is still parsed on the way in. Database
+  ids reach ComicInfo through `Web` and the `Notes` urns instead.
+- **`MainCharacterOrTeam`** is read as one name, so `protagonist` keeps a comma
+  in it (`"Hank McCoy, Beast"`) instead of splitting into two.
+- **CoMet `identifier` and `isVersionOf`** are single-valued per their XSD, so
+  `reprints` from CoMet holds at most one entry, and CoMet's `identifier` is
+  written as one urn (the best-ranked source) rather than a set.
+- **ComicInfo `Translator`** now splits on commas like the other seven creator
+  tags, so multi-translator books keep every credit.
+
+**Codex impact:** none to the stored shape. Worth knowing if codex compares
+comicbox's ComicInfo output against files written by older versions.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,

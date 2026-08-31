@@ -41,8 +41,8 @@ class CoMetSubSchema(XmlSubHeadSchema):
     date = XmlDateField()
     description = XmlStringField()
     genre = XmlStringSetField()
-    identifier = XmlStringSetField(as_string=True)
-    isVersionOf = XmlStringSetField(as_string=True)  # noqa: N815
+    identifier = XmlStringField()
+    isVersionOf = XmlStringField()  # noqa: N815
     issue = XmlIssueField()
     language = XmlLanguageField()
     lastMark = XmlIntegerField(minimum=0)  # noqa: N815

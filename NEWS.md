@@ -18,6 +18,11 @@
       written. Identifiers hold only a key, and `identifier_primary_source`
       became `primary_id_source`. Comicbox still fills in a missing url from an
       identifier, and a missing identifier from a url it recognizes.
+    - ComicInfo's `GTIN` holds a barcode again instead of a list of comicbox
+      urns, which is what Kavita, Komga and Mylar expect there. Files already
+      written with urns still read.
+    - `MainCharacterOrTeam` is one name, and CoMet's `identifier` and
+      `isVersionOf` one value each, as their schemas define them.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 
@@ -30,6 +35,8 @@
       `Cover Artist`.
     - A ComicInfo `Manga` of `Unknown` no longer reads as "not manga".
     - Marvel's `Max` and `Max: Explicit Content` ratings are recognized.
+    - ComicInfo's `Translator` accepts several names like every other creator
+      tag.
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually

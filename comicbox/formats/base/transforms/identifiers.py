@@ -38,11 +38,13 @@ def _identifier_to_cb(native_identifier: str, naked_id_source: Any) -> tuple[str
     return id_source_str, comicbox_identifier
 
 
-def identifiers_to_cb(
-    native_identifiers: set[str] | None, naked_id_source: Any
-) -> dict:
+def identifiers_to_cb(native_identifiers: Any, naked_id_source: Any) -> dict:
     """Parse identifier struct from a string or sequence."""
     comicbox_identifiers = {}
+    if isinstance(native_identifiers, str):
+        # A single-valued tag, like CoMet's <identifier>. Iterating the
+        # string itself would parse it one character at a time.
+        native_identifiers = (native_identifiers,)
     if native_identifiers:
         for native_identifier in native_identifiers:
             try:
@@ -60,7 +62,7 @@ def identifiers_transform_to_cb(
 ) -> MetaSpec:
     """Transform identifier tags to comicbox identifiers."""
 
-    def to_cb(native_identifiers: set[str]) -> dict[str, dict[str, str]]:
+    def to_cb(native_identifiers: Any) -> dict[str, dict[str, str]]:
         return identifiers_to_cb(native_identifiers, naked_id_source)
 
     return MetaSpec(
@@ -87,6 +89,31 @@ def identifiers_transform_from_cb(identifiers_tag: str) -> MetaSpec:
     return MetaSpec(
         key_map={identifiers_tag: IDENTIFIERS_KEY},
         spec=_identifiers_from_cb,
+    )
+
+
+def _identifier_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> str:
+    """Unparse the best identifier to a single urn string."""
+    for id_source in IdSources:
+        if (
+            (comicbox_identifier := comicbox_identifiers.get(id_source.value))
+            and (id_key := comicbox_identifier.get(ID_KEY_KEY))
+            and (urn_str := to_urn_string(id_source.value, "issue", id_key))
+        ):
+            return urn_str
+    return ""
+
+
+def identifier_transform_from_cb(identifier_tag: str) -> MetaSpec:
+    """
+    Transform comicbox identifiers to one identifier tag.
+
+    For a format like CoMet that allows a single identifier, the best ranked
+    source wins.
+    """
+    return MetaSpec(
+        key_map={identifier_tag: IDENTIFIERS_KEY},
+        spec=_identifier_from_cb,
     )
 
 
@@ -118,6 +145,8 @@ def identifier_from_url(url_str: str) -> tuple[str, dict]:
 def urls_to_cb(native_urls: Any) -> list[str]:
     """Collect url tags verbatim, in order, without duplicates."""
     urls: dict[str, None] = {}
+    if isinstance(native_urls, str):
+        native_urls = (native_urls,)
     if native_urls:
         for native_url in native_urls:
             if url_str := get_cdata(native_url):

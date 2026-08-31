@@ -30,6 +30,23 @@ from comicbox.merge import AdditiveMerger, Merger
 class ComicboxComputedUrls(ComicboxComputedNotes):
     """Fill identifiers from urls and urls from identifiers."""
 
+    @staticmethod
+    def _url_holds_its_key(
+        id_source_str: str, identifier: dict[str, str], url: str
+    ) -> bool:
+        """
+        Say whether a url contains its database's id rather than a slug.
+
+        A url that rebuilds itself from the key it parsed to is the canonical
+        form for that key. When a comic carries both a slug url and a
+        canonical one for the same database, the canonical one names the id.
+        """
+        id_key = identifier.get(ID_KEY_KEY)
+        if not id_key:
+            return False
+        id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+        return get_identifier_url(id_source_str, id_type, id_key) == url
+
     def _get_computed_identifiers_from_urls(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, dict] | None:
@@ -38,13 +55,17 @@ class ComicboxComputedUrls(ComicboxComputedNotes):
         if not urls:
             return None
         old_identifiers = sub_data.get(IDENTIFIERS_KEY) or {}
-        new_identifiers = {}
+        new_identifiers: dict[str, dict] = {}
         for url in urls:
             id_source_str, identifier = identifier_from_url(str(url))
             # An explicit id always wins. For several databases the url path
             # is a slug, not the id, so it must not overwrite a real key.
-            if id_source_str and identifier and id_source_str not in old_identifiers:
-                new_identifiers.setdefault(id_source_str, identifier)
+            if not (id_source_str and identifier) or id_source_str in old_identifiers:
+                continue
+            if id_source_str not in new_identifiers or self._url_holds_its_key(
+                id_source_str, identifier, str(url)
+            ):
+                new_identifiers[id_source_str] = identifier
         if not new_identifiers:
             return None
         # Update the shared snapshot so the notes stamp sees these too.

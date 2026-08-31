@@ -13,7 +13,6 @@ from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.formats.base.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.base.transforms.identifiers import (
-    identifiers_transform_from_cb,
     urls_transform_from_cb,
     urls_transform_to_cb,
 )
@@ -39,6 +38,7 @@ from comicbox.formats.comic_info.schema import (
     ComicInfoSchema,
 )
 from comicbox.formats.comic_info.transform.identifiers import (
+    COMICINFO_GTIN_FROM_CB,
     COMICINFO_IDENTIFIERS_TO_CB,
 )
 from comicbox.formats.comic_info.transform.manga import (
@@ -242,7 +242,7 @@ class ComicInfoTransform(BaseTransform):
         MetaSpec(key_map=SIMPLE_KEY_MAP),
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
         *xml_credits_transform_from_cb(ComicInfoRoleTagEnum, ROLE_ALIASES),
-        identifiers_transform_from_cb("GTIN"),
+        COMICINFO_GTIN_FROM_CB,
         COMICINFO_MANGA_FROM_CB,
         comicinfo_pages_from_cb("Pages.Page", PAGE_KEY_MAP),
         COMICINFO_REPRINTS_FROM_CB,
