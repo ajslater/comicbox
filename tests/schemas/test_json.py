@@ -125,7 +125,7 @@ READ_COMICBOX_DICT = MappingProxyType(
                 "4": {"size": 4108},
             },
         },
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json",
     }
 )
 

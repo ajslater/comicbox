@@ -16,7 +16,7 @@ from comicbox.formats.comicbox.transform.yaml import ComicboxYamlTransform
 from comicbox.validate.json_validator import JsonValidator
 from comicbox.validate.yaml_validator import YamlValidator
 
-_COMICBOX_SCHEMA_FILE = "v2.0/comicbox-v2.0.schema.json"
+_COMICBOX_SCHEMA_FILE = "v3.0/comicbox-v3.0.schema.json"
 
 YAML_REGISTRATION = FormatRegistration(
     format=MetadataFormat(

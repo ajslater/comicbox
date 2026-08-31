@@ -124,12 +124,12 @@ I have interpreted the
 | Archive       | comet.xml |
 | Import/Export | comet.xml |
 
-### Comicbox 2.0 Schema
+### Comicbox 3.0 Schema
 
 The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
-[Comicbox 2.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
+[Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
 
 #### Comicbox JSON Format
 
