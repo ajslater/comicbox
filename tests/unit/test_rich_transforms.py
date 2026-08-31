@@ -369,9 +369,10 @@ def test_comicvine_arc_identifier_url() -> None:
 
 def test_comicvine_credits_string_roles() -> None:
     bp = _CV_CB["credits"]["Bob Powell"]
-    # Roles come back title-cased from the schema's RoleField.
+    # RoleField canonicalizes to the Metron vocabulary, so ComicVine's
+    # single-l "penciler" arrives as "Penciller".
     roles = {r.lower() for r in bp["roles"]}
-    assert {"writer", "penciler", "inker"} <= roles
+    assert {"writer", "penciller", "inker"} <= roles
 
 
 def test_comicvine_identifiers() -> None:

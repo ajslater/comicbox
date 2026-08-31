@@ -3,14 +3,19 @@
 ## v4.8.7
 
 - Breaking Changes
-    - The comicbox native schema is now v3.0. Documents are validated against
-      `schemas/v3.0/comicbox-v3.0.schema.json` and exported JSON carries that
-      URL. Existing v2.0 documents still load; the v2.0 schema is retained
-      unchanged as the published v2 contract.
-    - Removed the `alternate_images` field. It mapped to no format since the
-      ComicTagger format was dropped, so nothing produced or consumed it.
-    - Removed the `critical_rating` field. It had already stopped mapping to any
-      format; ratings flow through `community_rating`.
+    - Comicbox schema v3.0. Version 2.0 documents still load.
+    - Credit roles are stored with MetronInfo's names. Roles it has no name for
+      keep their own spelling.
+    - Removed the `critical_rating` and `alternate_images` fields, which mapped
+      to no format.
+
+- Fixes
+    - Writing MetronInfo no longer invents extra credits. Only `Painter` still
+      writes Penciller, Inker and Colorist.
+    - `breakdowns`, `finishes`, `plotter` and `scripter` keep their own role
+      instead of collapsing into a coarser one.
+    - More role spellings are recognized, including `Inks`, `Pencils` and
+      `Cover Artist`.
 
 - Features
     - New `SourceStarted` online event, emitted once per source that actually

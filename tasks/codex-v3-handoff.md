@@ -67,6 +67,47 @@ either name, drop it. If codex used `critical_rating` for a _user's personal_
 rating, that is now codex-side state with no comicbox representation — comicbox
 will neither read nor write it.
 
+### PR 2 — canonical role vocabulary
+
+`comicbox.credits.<person>.roles` keys are now always MetronInfo role names. The
+shape is unchanged; the **values of the keys** change, so any codex table,
+filter, or migration keyed on role strings needs updating.
+
+| Role key seen in v2                                      | v3 key       |
+| -------------------------------------------------------- | ------------ |
+| `Colorist`, `colorist`, `Colourist`, `Colorer`           | `Colorist`   |
+| `CoverArtist`, `Cover Artist`, `colorDesigner`, `Covers` | `Cover`      |
+| `Writer`, `writer`, `Author`                             | `Writer`     |
+| `Penciller`, `penciller`, `Penciler`, `Pencils`          | `Penciller`  |
+| `Inker`, `inker`, `Inks`                                 | `Inker`      |
+| `Letterer`, `letterer`, `Letters`                        | `Letterer`   |
+| `Editor`, `editor`, `Edits`, `Editing`                   | `Editor`     |
+| `Translator`, `Translation`                              | `Translator` |
+| `Breakdowns` (was folded into `Penciller`)               | `Breakdowns` |
+| `Finishes` (was folded into `Inker`)                     | `Finishes`   |
+| `Plotter`                                                | `Plot`       |
+| `Scripter`, `Script`                                     | `Script`     |
+| `creator`                                                | `Creator`    |
+| `Painter`, `Painting`                                    | `Painter`    |
+
+The full canonical vocabulary is `MetronRoleEnum` in
+`comicbox/enums/metroninfo.py` — 42 roles: Writer, Script, Story, Plot,
+Interviewer, Artist, Penciller, Breakdowns, Illustrator, Layouts, Inker,
+Embellisher, Finishes, Ink Assists, Colorist, Color Separations, Color Assists,
+Color Flats, Digital Art Technician, Gray Tone, Letterer, Cover, Editor,
+Consulting Editor, Assistant Editor, Associate Editor, Group Editor, Senior
+Editor, Managing Editor, Collection Editor, Production, Designer, Logo Design,
+Translator, Supervising Editor, Executive Editor, Editor In Chief, President,
+Publisher, Chief Creative Officer, Executive Producer, Other. Plus two comicbox
+extras with no Metron equivalent: `Painter` and `Creator`. **Roles comicbox does
+not recognize are still stored verbatim (titlecased)** — the vocabulary is not
+closed, so do not add a database constraint that rejects unknown roles.
+
+**Codex migration:** map existing role rows through the table above. A
+case-insensitive match on the old spelling is enough; the only rows that change
+meaning rather than spelling are `Breakdowns`, `Finishes`, `Plotter` and
+`Scripter`, which used to be stored as the coarser role.
+
 <!-- Subsequent PRs append their shape-change tables here:
      PR 4 credits/primary, PR 5 identifiers/urls, PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
@@ -78,10 +119,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **Roles canonicalized** to the MetronInfo vocabulary (42 roles) at ingest.
-  `Colourist`/`Colorer` → `Colorist`; `CoverArtist`/`Cover Artist` → `Cover`;
-  unmapped role strings pass through verbatim. Codex role tables that assume
-  ComicInfo spellings need a migration.
 - **Age rating canonicalized** to the MetronInfo scale: `Unknown`, `Everyone`,
   `Teen`, `Teen Plus`, `Mature`, `Explicit`, `Adult`. ComicInfo's 15 values are
   mapped in on read (`Everyone 10+`, `G`, `Kids to Adults` → `Everyone`, etc.)
@@ -114,7 +151,8 @@ Schema) before writing code, since details can shift during implementation.
 ## Adoption checklist
 
 - [ ] Remove any `alternate_images` and `critical_rating` handling.
-- [ ] (later PRs) Update role vocabulary and its migration.
+- [ ] Migrate stored credit-role strings to the canonical Metron vocabulary
+      (table in the PR 2 section); keep unknown roles permitted.
 - [ ] (later PRs) Update age-rating vocabulary and its migration.
 - [ ] (later PRs) Move credit primary flags into the per-role object.
 - [ ] (later PRs) Split stored identifiers/urls; rename

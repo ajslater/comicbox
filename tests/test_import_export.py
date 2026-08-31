@@ -92,7 +92,7 @@ FNS = MappingProxyType(
             "country": "US",
             "credits": {
                 "Gibbons, Dave": {"roles": {"Artist": {}, "Letterer": {}}},
-                "Gibbons, John": {"roles": {"Colorer": {}}},
+                "Gibbons, John": {"roles": {"Colorist": {}}},
                 "Kesel, Barbara": {"roles": {"Editor": {}}},
                 "Moore, Alan": {"roles": {"Writer": {}}},
                 "Wein, Len": {"roles": {"Editor": {}}},
