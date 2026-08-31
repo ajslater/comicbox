@@ -205,6 +205,13 @@
       once and reused until the environment changes. As with `OnlineSession`,
       editing a config file mid-run no longer changes settings for the rest of
       the run.
+    - Books with many reprints no longer dominate the computed pass. Reprints
+      were consolidated by deep-diffing every ordered pair of them, which grew
+      quadratically and was 93% of the pass on a forty-reprint book; they are
+      now compared on flattened, normalized fields. A reprint's name is also
+      parsed once per distinct name rather than once per reprint. Reading a
+      forty-reprint book is about seventeen times faster, and a
+      hundred-and-thirty-six-reprint book about fifty.
 
 ## v4.8.6
 

@@ -95,7 +95,7 @@ class ComicboxDump(ComicboxPages):
         if not denormalized_metadata:
             return
         if fmt == MetadataFormats.PDF and not self._config.convert.cbz:
-            schema, denormalized_metadata = self._to_dict(MetadataFormats.PDF)
+            # fmt is PDF here, so the pair above is already the PDF pair.
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if isinstance(mupdf_md, Mapping):
                 pdf_md.update(mupdf_md.get(schema.ROOT_TAG, {}))
