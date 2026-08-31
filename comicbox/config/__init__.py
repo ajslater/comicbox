@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -45,6 +46,12 @@ from comicbox.version import PACKAGE_NAME
 
 if TYPE_CHECKING:
     from argparse import Namespace
+
+# Every env var the config layer reads is COMICBOX-prefixed: confuse's
+# ``set_env`` auto-loading (``COMICBOX_*``), its user-config-dir lookup
+# (``COMICBOXDIR``), and the direct reads in ``online.env`` and
+# ``online.credentials``.
+_ENV_PREFIX = PACKAGE_NAME.upper()
 
 # Any non-Mapping container type — set/frozenset/tuple/list all pass.
 _NON_MAPPING_TYPES = (set, frozenset, tuple, list)
@@ -313,6 +320,58 @@ def _build_settings(
     )
 
 
+def _read_settings(args: Namespace | Mapping | None, modname: str) -> ComicboxSettings:
+    """Layer every config source and reduce the result to settings."""
+    config = Configuration(PACKAGE_NAME, modname=modname, read=False)
+    read_config_sources(config, args)
+
+    config_program = config[PACKAGE_NAME]
+    compute_config(config_program)
+
+    ad = config.get(_TEMPLATE)
+    return _build_settings(ad, args=args)
+
+
+# (environment snapshot, settings built from it). See _get_default_settings.
+_DefaultSettingsMemo = tuple[tuple[tuple[str, str], ...], ComicboxSettings]
+_default_settings_memo: _DefaultSettingsMemo | None = None
+
+
+def _environ_key() -> tuple[tuple[str, str], ...]:
+    """Snapshot the env vars a no-args config build depends on."""
+    return tuple(
+        sorted(item for item in os.environ.items() if item[0].startswith(_ENV_PREFIX))
+    )
+
+
+def _get_default_settings() -> ComicboxSettings:
+    """
+    Build the unparameterized settings once per environment.
+
+    Every ``Comicbox(path)`` constructed without an explicit config lands
+    here, and each one re-parsed ``config_default.yaml`` and the user's
+    ``config.yaml``, re-scanned the environment, and re-ran confuse's
+    template validation — several milliseconds apiece, per comic.
+    ``OnlineSession`` hoisted this same call to once per session for
+    exactly that reason; memoizing it here gives every library caller the
+    same win without each one having to know to hoist.
+
+    Keyed on the environment, so a host that exports ``COMICBOX_*`` (or
+    repoints ``COMICBOXDIR`` at a different user config) still gets a
+    fresh build. Like ``OnlineSession``, an edit to a config file at an
+    unchanged path is not re-read mid-process.
+    """
+    global _default_settings_memo  # noqa: PLW0603
+
+    key = _environ_key()
+    memo = _default_settings_memo
+    if memo is not None and memo[0] == key:
+        return memo[1]
+    settings = _read_settings(None, PACKAGE_NAME)
+    _default_settings_memo = (key, settings)
+    return settings
+
+
 def get_config(
     args: Namespace | Mapping | ComicboxSettings | None = None,
     *,
@@ -323,15 +382,10 @@ def get_config(
     """Get the config dict, layering env and args over defaults."""
     if isinstance(args, ComicboxSettings):
         return post_process_set_for_path(args, path, box=box)
-    if isinstance(args, Mapping):
-        args = dict(args)
-
-    config = Configuration(PACKAGE_NAME, modname=modname, read=False)
-    read_config_sources(config, args)
-
-    config_program = config[PACKAGE_NAME]
-    compute_config(config_program)
-
-    ad = config.get(_TEMPLATE)
-    settings = _build_settings(ad, args=args)
+    if args is None and modname == PACKAGE_NAME:
+        settings = _get_default_settings()
+    else:
+        if isinstance(args, Mapping):
+            args = dict(args)
+        settings = _read_settings(args, modname)
     return post_process_set_for_path(settings, path, box=box)

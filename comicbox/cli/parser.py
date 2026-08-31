@@ -3,17 +3,38 @@
 import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
-from comicbox.cli.epilog import build_epilog
 from comicbox.config.settings import DEFAULT_AUTO_THRESHOLD
+
+if TYPE_CHECKING:
+    from rich.console import Group
 
 # Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
 _WARNED_FLAGS: set[str] = set()
+
+
+class LazyEpilog:
+    """
+    Stand-in for the rich epilog that builds it only when help renders.
+
+    argparse asks for the epilog in `format_help()` and nowhere else, but
+    `build_epilog()` was called eagerly in `build_parser()` — so every
+    `comicbox` invocation imported `comicbox.cli.epilog` (and through it
+    the whole format registry) and assembled seven rich Tables that
+    almost no run ever prints. Rich resolves any object exposing
+    `__rich__` at render time, so the parser can hold this instead.
+    """
+
+    def __rich__(self) -> "Group":
+        """Assemble the real epilog. Called by rich while rendering help."""
+        from comicbox.cli.epilog import build_epilog
+
+        return build_epilog()
 
 
 class CSVAction(Action):
@@ -600,7 +621,7 @@ def build_parser() -> ArgumentParser:
 
     parser = ArgumentParser(
         description=description,
-        epilog=build_epilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
+        epilog=LazyEpilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
         formatter_class=RichHelpFormatter,
         add_help=False,
     )

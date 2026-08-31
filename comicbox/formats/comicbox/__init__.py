@@ -13,8 +13,7 @@ from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comicbox.transform.cli import ComicboxCLITransform
 from comicbox.formats.comicbox.transform.json import ComicboxJsonTransform
 from comicbox.formats.comicbox.transform.yaml import ComicboxYamlTransform
-from comicbox.validate.json_validator import JsonValidator
-from comicbox.validate.yaml_validator import YamlValidator
+from comicbox.validate.spec import ValidatorSpec, ValidatorType
 
 _COMICBOX_SCHEMA_FILE = "v3.0/comicbox-v3.0.schema.json"
 
@@ -33,7 +32,7 @@ YAML_REGISTRATION = FormatRegistration(
             "API": 1,
         }
     ),
-    validator=YamlValidator(_COMICBOX_SCHEMA_FILE),
+    validator_spec=ValidatorSpec(ValidatorType.YAML, _COMICBOX_SCHEMA_FILE),
 )
 
 JSON_REGISTRATION = FormatRegistration(
@@ -51,7 +50,7 @@ JSON_REGISTRATION = FormatRegistration(
             "API": 2,
         }
     ),
-    validator=JsonValidator(_COMICBOX_SCHEMA_FILE),
+    validator_spec=ValidatorSpec(ValidatorType.JSON, _COMICBOX_SCHEMA_FILE),
 )
 
 CLI_YAML_REGISTRATION = FormatRegistration(
@@ -70,5 +69,5 @@ CLI_YAML_REGISTRATION = FormatRegistration(
             "API": 0,
         }
     ),
-    validator=YamlValidator(_COMICBOX_SCHEMA_FILE),
+    validator_spec=ValidatorSpec(ValidatorType.YAML, _COMICBOX_SCHEMA_FILE),
 )

@@ -181,6 +181,17 @@
       rendering "which source is being consulted right now" went blind on the
       explicit-id, stored-id and series-cache fast paths.
 
+- Performance
+    - Comicbox starts about a third faster. Importing it no longer compiles the
+      XSD and JSON Schema documents for every metadata format, and the CLI no
+      longer assembles its help tables on every run. Both are built the first
+      time something asks for them, so `--validate` and `--help` are unchanged.
+    - Building a `Comicbox` is about forty times cheaper. Each one re-read the
+      config files and rescanned the environment; the settings are now built
+      once and reused until the environment changes. As with `OnlineSession`,
+      editing a config file mid-run no longer changes settings for the rest of
+      the run.
+
 ## v4.8.6
 
 - Features
