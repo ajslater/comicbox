@@ -7,7 +7,7 @@ from typing import Any
 
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
-    alt_names_to_reprints,
+    alt_names_to_cb,
     build_identifier,
     credits_to_cb,
     named_dict,
@@ -84,18 +84,18 @@ def test_split_aliases() -> None:
     assert split_aliases(None) == []
 
 
-def test_alt_names_to_reprints_dedups_and_skips_primary() -> None:
-    out = alt_names_to_reprints(
+def test_alt_names_to_cb_dedups_and_skips_primary() -> None:
+    out = alt_names_to_cb(
         ["Alt One", "alt one", " Foo Comics ", "", None], "Foo Comics"
     )
-    # Case-insensitive dupe collapses to the first spelling; the name
-    # matching the primary series is not a reprint of itself.
-    assert out == [{"series": {"name": "Alt One"}}]
+    # Case-insensitive dupe collapses to the first spelling; the series is
+    # not an alternative name for itself.
+    assert out == [{"name": "Alt One"}]
 
 
-def test_alt_names_to_reprints_without_primary_name() -> None:
-    assert alt_names_to_reprints(["Alt One"], None) == [{"series": {"name": "Alt One"}}]
-    assert alt_names_to_reprints(None, "Foo Comics") == []
+def test_alt_names_to_cb_without_primary_name() -> None:
+    assert alt_names_to_cb(["Alt One"], None) == [{"name": "Alt One"}]
+    assert alt_names_to_cb(None, "Foo Comics") == []
 
 
 def test_credits_to_cb_string_role_form() -> None:
@@ -261,8 +261,11 @@ def test_metron_identifiers_cross_sourced() -> None:
 def test_metron_reprints() -> None:
     reprints = _METRON_CB["reprints"]
     assert reprints[0]["issue"] == "Foo Comics #5"
-    # The series' alternative names follow the real reprints.
-    assert {"series": {"name": "Fu Comics"}} in reprints
+
+
+def test_metron_series_alternative_names() -> None:
+    """The series' other names belong to the series, not to reprints."""
+    assert _METRON_CB["series"]["alternative_names"] == [{"name": "Fu Comics"}]
 
 
 def test_metron_cover_image() -> None:
@@ -378,8 +381,8 @@ def test_comicvine_dates() -> None:
     assert "store_date" in _CV_CB["date"]
 
 
-def test_comicvine_volume_aliases_to_reprints() -> None:
-    """CV's newline-separated volume aliases become alternate-series reprints."""
+def test_comicvine_volume_aliases_to_alternative_names() -> None:
+    """CV's newline-separated volume aliases are the series' other names."""
     payload = {
         "comicvine_api": {
             "id": 1,
@@ -396,14 +399,14 @@ def test_comicvine_volume_aliases_to_reprints() -> None:
     }
     cb = dict(ComicVineApiTransform().to_comicbox(payload))["comicbox"]
     # Blank segment dropped; the alias equal to the volume name dropped.
-    assert cb["reprints"] == [
-        {"series": {"name": "Alias One"}},
-        {"series": {"name": "Alias Two"}},
+    assert cb["series"]["alternative_names"] == [
+        {"name": "Alias One"},
+        {"name": "Alias Two"},
     ]
 
 
-def test_comicvine_without_aliases_emits_no_reprints() -> None:
-    assert "reprints" not in _CV_CB
+def test_comicvine_without_aliases_emits_no_alternative_names() -> None:
+    assert "alternative_names" not in _CV_CB["series"]
 
 
 def test_comicvine_handles_minimal_input() -> None:

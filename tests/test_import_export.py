@@ -53,7 +53,11 @@ FNS = MappingProxyType(
             "publisher": {"name": "Bell Features"},
             "reading_direction": ReadingDirectionEnum.LTR,
             "reprints": [
-                {"issue": "001", "series": {"name": "Captain Science Alternate"}}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "issue": "001",
+                    "series": {"name": "Captain Science Alternate"},
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "series": {"name": "Captain Science"},

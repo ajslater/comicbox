@@ -19,7 +19,7 @@ from typing_extensions import override
 
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
-    alt_names_to_reprints,
+    alt_names_to_cb,
     build_identifier,
     credits_to_cb,
     named_block,
@@ -75,15 +75,16 @@ def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
         out["start_year"] = year
     if (sid := s.get("id")) is not None:
         out["identifiers"] = {_METRON: build_identifier(_METRON, "series", sid)}
+    if alt_names := alt_names_to_cb(s.get("alt_names"), s.get("name")):
+        out["alternative_names"] = alt_names
+    if alt_names := alt_names_to_cb(s.get("alt_names"), s.get("name")):
+        out["alternative_names"] = alt_names
     return out
 
 
 def _build_reprints(issue: Mapping[str, Any]) -> list[dict]:
-    """Build the Issue's reprints, followed by the IssueSeries' alt names."""
-    reprints = reprints_to_cb(issue.get("reprints"), source=_METRON)
-    s = issue.get("series") or {}
-    reprints.extend(alt_names_to_reprints(s.get("alt_names"), s.get("name")))
-    return reprints
+    """Build the Issue's reprints. Alt names belong to the series."""
+    return reprints_to_cb(issue.get("reprints"), source=_METRON)
 
 
 def _build_volume(issue: Mapping[str, Any]) -> dict[str, Any]:

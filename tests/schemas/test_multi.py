@@ -99,7 +99,11 @@ READ_METADATA = MappingProxyType(
                 4: {"bookmark": "true", "size": 4108},
             },
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "stories": {
@@ -189,7 +193,11 @@ READ_MULTI_DICT = MappingProxyType(
             "title": "The Beginning COMET",
             "original_format": "Comic",
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "updated_at": TEST_DTTM_STR,

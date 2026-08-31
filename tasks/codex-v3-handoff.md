@@ -4,10 +4,9 @@
 the paired comicbox release that ships schema v3.0. This document is
 self-contained: it does not assume you saw the comicbox conversation or PRs.
 
-**Status:** in progress. Each comicbox PR that changes the internal metadata
-shape appends to the "Shape changes" section below. The **Adoption checklist**
-at the bottom is the actionable summary; read it first, then the details you
-need.
+**Status:** complete. Every schema v3.0 change is recorded below. The **Adoption
+checklist** at the bottom is the actionable summary; read it first, then the
+details you need.
 
 ## Why this exists
 
@@ -367,16 +366,6 @@ job, and solving it here meant overwriting data a file actually contained.
 different title than before — the one in the file rather than one rebuilt from
 its stories. Nothing to migrate.
 
-<!-- Subsequent PRs append their shape-change tables here:
-     PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
-     PR 10 stories/title. -->
-
-## Planned changes not yet landed
-
-Listed so you can plan the codex work ahead of the final release. Shapes here
-are the intended design; confirm against the tables above (and the v3.0 JSON
-Schema) before writing code, since details can shift during implementation.
-
 ## Adoption checklist
 
 - [ ] Remove any `alternate_images` and `critical_rating` handling.
@@ -391,6 +380,10 @@ Schema) before writing code, since details can shift during implementation.
       `primary_id_source` (PR 5 section).
 - [ ] Add the optional `manga_volume` field.
 - [ ] Add `reprints[].name` and `series.alternative_names` (PR 9 section).
+- [ ] Move ComicInfo-sourced reprints to arcs, or re-read those comics (PR 8
+      section).
+- [ ] Expect a `title` a file states to survive rather than being rebuilt from
+      the comic's story names (PR 10 section).
 - [ ] Re-run codex's comicbox integration tests against the paired comicbox
       release; comicbox's own `tests/test_codex_api.py` pins the
       `get_internal_metadata()` contract and is the reference for expected

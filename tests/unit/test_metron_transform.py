@@ -87,8 +87,8 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     assert "language" not in cb
 
 
-def test_alt_names_become_reprints() -> None:
-    """Series alt names land as alternate-series reprints, deduped."""
+def test_alt_names_become_series_alternative_names() -> None:
+    """Series alt names are other names for the series, deduped."""
     transform = MetronApiTransform()
     payload = _sample_issue_dict()
     payload["metron_api"]["series"]["alt_names"] = [
@@ -98,28 +98,29 @@ def test_alt_names_become_reprints() -> None:
         "",
     ]
     result = dict(transform.to_comicbox(payload))
-    assert result["comicbox"]["reprints"] == [{"series": {"name": "Nickname A"}}]
+    assert result["comicbox"]["series"]["alternative_names"] == [{"name": "Nickname A"}]
 
 
-def test_empty_alt_names_emit_no_reprints() -> None:
+def test_empty_alt_names_emit_nothing() -> None:
     transform = MetronApiTransform()
     payload = _sample_issue_dict()
     payload["metron_api"]["series"]["alt_names"] = []
     result = dict(transform.to_comicbox(payload))
+    assert "alternative_names" not in result["comicbox"]["series"]
     assert "reprints" not in result["comicbox"]
 
 
-def test_alt_names_append_after_issue_reprints() -> None:
-    """Real reprints come first; alt names extend the same list."""
+def test_alt_names_do_not_join_the_reprints() -> None:
+    """A reprint is another edition; an alt name is another series name."""
     transform = MetronApiTransform()
     payload = _sample_issue_dict()
     payload["metron_api"]["reprints"] = [{"id": 5001, "issue": "Bar Comics #5"}]
     payload["metron_api"]["series"]["alt_names"] = ["Nickname A"]
     result = dict(transform.to_comicbox(payload))
     reprints = result["comicbox"]["reprints"]
-    assert len(reprints) == 2
+    assert len(reprints) == 1
     assert reprints[0]["issue"] == "Bar Comics #5"
-    assert reprints[1] == {"series": {"name": "Nickname A"}}
+    assert result["comicbox"]["series"]["alternative_names"] == [{"name": "Nickname A"}]
 
 
 def test_prices_currency_mapped_to_country_code() -> None:

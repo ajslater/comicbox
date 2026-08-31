@@ -183,16 +183,17 @@ def named_block(parent: Mapping[str, Any], key: str) -> dict[str, str] | None:
     return None
 
 
-def alt_names_to_reprints(
+def alt_names_to_cb(
     alt_names: Iterable[str | None] | None,
     primary_name: str | None,
 ) -> list[dict]:
     """
-    Convert a series' alternative names into comicbox reprint entries.
+    Convert a series' alternative names into comicbox alternative names.
 
-    Alternative series names become `reprints[].series.name`, matching how
-    MetronInfo.xml's `Series/AlternativeNames` are read. The online APIs
-    carry no language for these, so no `language` is set.
+    These land in `series.alternative_names`, the same place MetronInfo.xml's
+    `Series/AlternativeNames` do. They are other names for this series, not
+    reprints of this issue. The online APIs carry no language for them, so no
+    `language` is set.
 
     Names are stripped; empties, case-insensitive duplicates, and names
     matching the primary series name are dropped.
@@ -206,7 +207,7 @@ def alt_names_to_reprints(
         if not name or (key := name.casefold()) in seen:
             continue
         seen.add(key)
-        out.append({"series": {"name": name}})
+        out.append({"name": name})
     return out
 
 

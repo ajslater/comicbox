@@ -48,8 +48,10 @@ deficiencies that exist with the ComicInfo.xml schema.
 
 ### Metron MangaVolume
 
-The MangaVolume tag is interpreted not as an arbitrary string, but as a range of
-integers delineated by a "-". e.g "1-3".
+The MangaVolume tag is a string, and comicbox stores it as one in
+`manga_volume`. A value that reads as a single number or a "first-last" range,
+like "1-3", also fills in `volume.number` and `volume.number_to`. MangaVolume is
+only written from `manga_volume`, never rebuilt from the volume numbers.
 
 ### Metron CommunityRating
 
@@ -63,6 +65,14 @@ CommunityRating and ComicBookInfo rating also map to) and RatingCount to
 The v1.1 AlternativeNumber tag records a legacy or alternate numbering of the
 same issue. It maps to the comicbox `alternative_issue` object, which is parsed
 into name, number and suffix parts just like `issue`.
+
+### Metron Reprints and AlternativeNames
+
+A Reprint names another edition of this issue's content and maps to `reprints`.
+Series/AlternativeNames are other names the same series goes by — translations,
+romanizations, variant spellings — and map to `series.alternative_names`. A
+reprint's `name` is stored as the file wrote it; the series, volume and issue
+read out of that name are a convenience.
 
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 
@@ -83,7 +93,8 @@ example json into a
 
 #### ComicBookInfo Role primary attribute
 
-Comicbox discards the <Role primary/> attribute.
+The per-credit `primary` flag is kept, on the role it describes:
+`credits.<person>.roles.<role>.primary`.
 
 ### PDF XMP Schema
 
@@ -130,6 +141,11 @@ The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
+
+Comicbox 2.0 documents are still read; they are converted to the 3.0 shape on
+load. The
+[2.0 schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
+is retained unchanged for reference.
 
 #### Comicbox JSON Format
 

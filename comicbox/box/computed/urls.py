@@ -24,7 +24,7 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import get_identifier_url
-from comicbox.merge import AdditiveMerger, Merger
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
 
 
 class ComicboxComputedUrls(ComicboxComputedNotes):
@@ -72,27 +72,33 @@ class ComicboxComputedUrls(ComicboxComputedNotes):
         sub_data.setdefault(IDENTIFIERS_KEY, {}).update(new_identifiers)
         return {IDENTIFIERS_KEY: new_identifiers}
 
-    def _get_computed_urls_from_identifiers(
+    def _get_computed_urls(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, list] | None:
-        """Synthesize a web url for every identifier that lacks one."""
-        identifiers = sub_data.get(IDENTIFIERS_KEY) if sub_data else None
-        if not identifiers:
+        """
+        Synthesize a url for every identifier that lacks one, and dedupe.
+
+        Merging several sources that each name the same url appends it once
+        per source, because the merger extends lists. The result replaces
+        the list rather than extending it, so it is deduped here too.
+        """
+        if not sub_data:
             return None
-        old_urls = [str(url) for url in sub_data.get(URLS_KEY) or ()]
-        new_urls = []
-        for id_source_str, identifier in identifiers.items():
+        # dict keys keep insertion order, so the file's own urls stay first.
+        urls: dict[str, None] = dict.fromkeys(
+            str(url) for url in sub_data.get(URLS_KEY) or ()
+        )
+        for id_source_str, identifier in (sub_data.get(IDENTIFIERS_KEY) or {}).items():
             id_key = identifier.get(ID_KEY_KEY) if identifier else None
             if not id_key:
                 continue
             id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
-            url = get_identifier_url(id_source_str, id_type, id_key)
-            if url and url not in old_urls and url not in new_urls:
-                new_urls.append(url)
-        if not new_urls:
+            if url := get_identifier_url(id_source_str, id_type, id_key):
+                urls.setdefault(url, None)
+        url_list = list(urls)
+        if not url_list or url_list == list(sub_data.get(URLS_KEY) or ()):
             return None
-        # Only the new ones: the additive merger extends the existing list.
-        return {URLS_KEY: new_urls}
+        return {URLS_KEY: url_list}
 
     COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
         MappingProxyType(
@@ -102,10 +108,7 @@ class ComicboxComputedUrls(ComicboxComputedNotes):
                     _get_computed_identifiers_from_urls,
                     AdditiveMerger,
                 ),
-                "urls from identifiers": (
-                    _get_computed_urls_from_identifiers,
-                    AdditiveMerger,
-                ),
+                "urls": (_get_computed_urls, ReplaceMerger),
             }
         )
     )
