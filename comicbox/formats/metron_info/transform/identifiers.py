@@ -203,6 +203,13 @@ def identifiers_from_cb(values: dict[str, Any]) -> list:
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
         if id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.values():
             continue
+        id_type = comicbox_identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+        if id_type != DEFAULT_ID_TYPE:
+            # IDS holds this issue's ids. A series or character id written
+            # here reads back as an issue id, and the url built from it
+            # points at an issue that doesn't exist. It still travels in
+            # URLs and in the Notes urns.
+            continue
         metron_id_source = _metron_id_source(id_source_str)
         if not metron_id_source:
             continue
