@@ -200,6 +200,9 @@ SIMPLE_KEY_MAP = frozenbidict(
         "Review": REVIEW_KEY,
         "ScanInformation": SCAN_INFO_KEY,
         "Series": SERIES_NAME_KEYPATH,
+        # A string set on both sides, not a name object map: comicbox
+        # series_groups is a StringSetField, so the set passes through.
+        "SeriesGroup": SERIES_GROUPS_KEY,
         "Summary": SUMMARY_KEY,
         "Title": TITLE_KEY,
         "Volume": VOLUME_NUMBER_KEYPATH,
@@ -211,7 +214,6 @@ NAME_OBJ_KEY_MAP = frozenbidict(
         "Characters": CHARACTERS_KEY,
         "Genre": GENRES_KEY,
         "Locations": LOCATIONS_KEY,
-        "SeriesGroup": SERIES_GROUPS_KEY,
         "Tags": TAGS_KEY,
         "Teams": TEAMS_KEY,
     }
