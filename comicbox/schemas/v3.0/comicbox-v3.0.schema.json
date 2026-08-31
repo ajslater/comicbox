@@ -77,12 +77,6 @@
         "cover_image": {
           "type": "string"
         },
-        "credit_primaries": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
         "credits": {
           "type": "object",
           "additionalProperties": {

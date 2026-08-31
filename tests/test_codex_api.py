@@ -123,7 +123,9 @@ CBZ_MD = _patch_md(CBZ_MD_PATCH)
 CBR_MD_PATCH = {
     ComicboxSchemaMixin.ROOT_TAG: {
         "country": "US",
-        "credit_primaries": {"Writer": "Joe Orlando"},
+        # The CBR carries ComicBookInfo, whose primary credit flag lands on
+        # the person's role.
+        "credits": {"Joe Orlando": {"roles": {"Writer": {"primary": True}}}},
         "ext": "cbr",
         "page_count": 0,
         "series": {"volume_count": 1},

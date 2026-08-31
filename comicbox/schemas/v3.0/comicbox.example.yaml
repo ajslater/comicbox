@@ -26,13 +26,12 @@ comicbox:
   credits:
     Joe Orlando:
       roles:
-        Writer: {}
+        Writer:
+          primary: true
     Wally Wood:
       roles:
-        Penciller: {}
-  credit_primaries:
-    Joe Orlando: Writer
-    Wally Wood: Penciller
+        Penciller:
+          primary: true
   community_rating:
     average_rating: 4.5
     rating_count: 1250

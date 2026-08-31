@@ -54,7 +54,6 @@ AVERAGE_RATING_KEY = "average_rating"
 BOOKMARK_KEY = "bookmark"
 CHARACTERS_KEY = "characters"
 CREDITS_KEY = "credits"
-CREDIT_PRIMARIES_KEY = "credit_primaries"
 COLLECTION_TITLE_KEY = "collection_title"
 COMMUNITY_RATING_KEY = "community_rating"
 COUNTRY_KEY = "country"
@@ -101,6 +100,7 @@ PERSON_KEY = "person"
 PUBLISHER_KEY = "publisher"
 PRICES_KEY = "prices"
 PRICE_KEY = "price"
+PRIMARY_KEY = "primary"
 PROTAGONIST_KEY = "protagonist"
 RATING_COUNT_KEY = "rating_count"
 READING_DIRECTION_KEY = "reading_direction"
@@ -142,11 +142,24 @@ class ArcSchema(IdentifiedSchema):
     number = IntegerField(minimum=0)  # CIX, Metron
 
 
+class RoleSchema(IdentifiedSchema):
+    """
+    One role a person is credited with.
+
+    ``primary`` marks the person as the headline credit for this role, which
+    is what ComicBookInfo's per-credit ``primary`` flag means. It belongs to
+    the (person, role) pair: a primary Writer who also inked is not thereby
+    the primary Inker.
+    """
+
+    primary = BooleanField()  # CBI ONLY
+
+
 class PersonSchema(IdentifiedSchema):
     """Credit Person Schema."""
 
     roles = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
-        keys=RoleField, allow_empty_values=True
+        keys=RoleField, values=Nested(RoleSchema), allow_empty_values=True
     )
 
 
@@ -204,7 +217,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
     credits = SimpleNamedDictField(  # Comet, CIX, CBI, Metron
         values=Nested(PersonSchema)
     )
-    credit_primaries = DictField(keys=RoleField)  # CBI ONLY
     community_rating = Nested(CommunityRatingSchema)  # CBI, CIX, Metron
     date = Nested(DateSchema)
     ext = StringField()  # Filename ONLY

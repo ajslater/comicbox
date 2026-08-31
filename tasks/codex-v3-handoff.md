@@ -146,8 +146,39 @@ not manga when the file said it did not know; it now reads as `Unknown`. If
 codex derives "read right to left" from `manga`, read `reading_direction`
 instead — it is also what CoMet supplies, for non-manga books too.
 
+### PR 4 — `credit_primaries` folded into the role
+
+The top-level `comicbox.credit_primaries` map is **removed**. The flag it held
+now lives on the role object it describes.
+
+```yaml
+# v2
+credits:
+    Joe Orlando: { roles: { Writer: {} } }
+credit_primaries:
+    Writer: Joe Orlando
+
+# v3
+credits:
+    Joe Orlando: { roles: { Writer: { primary: true } } }
+```
+
+The role object is otherwise unchanged — it already carried `identifiers` — so
+`credits.<person>.roles.<role>` is now `{identifiers?, primary?}`.
+
+**This is a semantic fix, not just a move.** `credit_primaries` was keyed by
+role alone (`{role: person}`), and the write side matched it by comparing the
+person's name to every role they held. A person who was the primary Writer was
+therefore also written as the primary Inker, Colorist and anything else they did
+on the book. The flag now belongs to the (person, role) pair, which is what
+ComicBookInfo's per-credit `primary` field always meant.
+
+**Codex migration:** for each stored `credit_primaries` entry `{role: person}`,
+set `primary` on that person's row for that role only. Only ComicBookInfo
+supplies the flag; no other format reads or writes it.
+
 <!-- Subsequent PRs append their shape-change tables here:
-     PR 4 credits/primary, PR 5 identifiers/urls, PR 7 manga_volume,
+     PR 5 identifiers/urls, PR 7 manga_volume,
      PR 8 CIX Alternate*, PR 9 reprints + series.alternative_names,
      PR 10 stories/title. -->
 
@@ -157,9 +188,6 @@ Listed so you can plan the codex work ahead of the final release. Shapes here
 are the intended design; confirm against the tables above (and the v3.0 JSON
 Schema) before writing code, since details can shift during implementation.
 
-- **`credit_primaries` removed**, folded into the role objects as
-  `credits.<person>.roles.<role>.primary: true`. The flag is per (person, role):
-  a primary Writer who also inked is not thereby a primary Inker.
 - **Identifiers split from URLs**: `identifiers` becomes `{source: {key}}` with
   no per-identifier `url`; a new top-level `urls: [string]` holds verbatim URLs,
   primary first; `identifier_primary_source: {source, url}` collapses to
@@ -189,7 +217,7 @@ Schema) before writing code, since details can shift during implementation.
       section); keep unknown ratings permitted.
 - [ ] Split any stored `manga` value of `YesAndRightToLeft`; read right-to-left
       from `reading_direction`.
-- [ ] (later PRs) Move credit primary flags into the per-role object.
+- [ ] Move credit primary flags onto the per-role object (PR 4 section).
 - [ ] (later PRs) Split stored identifiers/urls; rename
       `identifier_primary_source` → `primary_id_source`.
 - [ ] (later PRs) Handle `manga_volume`, tri-state `manga`, `reprints[].name`,

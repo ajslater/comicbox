@@ -14,7 +14,7 @@ are unique to one format.
 
 ### ComicBookInfo
 
-- credit_primaries
+- credits.\<person\>.roles.\<role\>.primary
 
 ### ComicInfo
 

@@ -17,12 +17,13 @@ from comicbox.formats.comic_book_info.schema import (
     ROLE_TAG,
 )
 from comicbox.formats.comicbox.schema import (
-    CREDIT_PRIMARIES_KEY,
     CREDITS_KEY,
+    PRIMARY_KEY,
     ROLES_KEY,
 )
 from comicbox.formats.comicbox.transform.credits import (
     add_credit_role_to_comicbox_credits,
+    set_credit_role_primary,
 )
 
 # Comicbox stores the Metron role vocabulary, which is far richer than
@@ -114,6 +115,8 @@ def _cbi_credits_to_cb(cbi_credits: list[dict[str, str]]) -> dict:
         try:
             cbi_person, cbi_role = _get_cbi_credit_parts(cbi_credit)
             add_credit_role_to_comicbox_credits(cbi_person, cbi_role, comicbox_credits)
+            if cbi_credit.get(PRIMARY_TAG):
+                set_credit_role_primary(cbi_person, cbi_role, comicbox_credits)
         except Exception as exc:
             logger.warning(f"Parsing credit {cbi_credit}: {exc}")
     return comicbox_credits
@@ -127,53 +130,32 @@ def cbi_credits_transform_to_cb(credits_tag: str) -> MetaSpec:
     )
 
 
-def _cbi_credits_primary_to_cb(cbi_credits: list[dict[str, str]]) -> dict:
-    credit_primaries = {}
-    for cbi_credit in cbi_credits:
-        if cbi_credit.get(PRIMARY_TAG):
-            cbi_person, cbi_role = _get_cbi_credit_parts(cbi_credit)
-            credit_primaries[cbi_role] = cbi_person
-    return credit_primaries
-
-
-def cbi_credits_primary_to_cb(credits_tag: str) -> MetaSpec:
-    """Transform the credit primaries key from cbi credits."""
-    return MetaSpec(
-        key_map={CREDIT_PRIMARIES_KEY: credits_tag}, spec=_cbi_credits_primary_to_cb
-    )
-
-
 def _cbi_credit_from_cb(
     person_name: str,
     comicbox_credit: dict[str, Any],
     cbi_credits: list[Any],
-    credit_primaries: Any,
 ) -> None:
     """Unparse one comicbox credit into cbi credits."""
     if not person_name:
         return
     comicbox_roles = comicbox_credit.get(ROLES_KEY, {})
-    for role_name in comicbox_roles:
+    for role_name, comicbox_role in comicbox_roles.items():
         cbi_role = cbi_role_from_cb(role_name)
         cbi_credit: dict[str, Any] = {PERSON_TAG: person_name, ROLE_TAG: cbi_role}
-        if credit_primaries and credit_primaries.get(role_name) == person_name:
+        if comicbox_role and comicbox_role.get(PRIMARY_KEY):
             cbi_credit[PRIMARY_TAG] = True
         cbi_credits.append(cbi_credit)
 
 
 def _cbi_credits_from_cb(
-    values: dict[str, Any],
+    comicbox_credits: dict[str, Any],
 ) -> list:
-    comicbox_credits = values.get(CREDITS_KEY)
-    credit_primaries = values.get(CREDIT_PRIMARIES_KEY)
     cbi_credits = []
     if not comicbox_credits:
         return cbi_credits
     for person_name, comicbox_credit in comicbox_credits.items():
         try:
-            _cbi_credit_from_cb(
-                person_name, comicbox_credit, cbi_credits, credit_primaries
-            )
+            _cbi_credit_from_cb(person_name, comicbox_credit, cbi_credits)
         except Exception as exc:
             logger.warning(f"Unparsing credit {comicbox_credit} - {exc}")
             logger.exception("debug")
@@ -183,6 +165,6 @@ def _cbi_credits_from_cb(
 def cbi_credits_transform_from_cb(credits_tag: str) -> MetaSpec:
     """Transform for CBI credits."""
     return MetaSpec(
-        key_map={credits_tag: (CREDITS_KEY, CREDIT_PRIMARIES_KEY)},
+        key_map={credits_tag: CREDITS_KEY},
         spec=_cbi_credits_from_cb,
     )

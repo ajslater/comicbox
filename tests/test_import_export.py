@@ -64,10 +64,9 @@ FNS = MappingProxyType(
         },
         "comic-book-info.json": {
             "credits": {
-                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Joe Orlando": {"roles": {"Writer": {"primary": True}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {
@@ -94,10 +93,9 @@ FNS = MappingProxyType(
                 "Gibbons, Dave": {"roles": {"Artist": {}, "Letterer": {}}},
                 "Gibbons, John": {"roles": {"Colorist": {}}},
                 "Kesel, Barbara": {"roles": {"Editor": {}}},
-                "Moore, Alan": {"roles": {"Writer": {}}},
+                "Moore, Alan": {"roles": {"Writer": {"primary": True}}},
                 "Wein, Len": {"roles": {"Editor": {}}},
             },
-            "credit_primaries": {"Writer": "Moore, Alan"},
             "genres": {"Superhero": {}},
             "issue": {
                 "name": "1",

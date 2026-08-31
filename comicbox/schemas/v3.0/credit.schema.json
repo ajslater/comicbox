@@ -10,7 +10,7 @@
     "roles": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "identified-object.schema.json"
+        "$ref": "role.schema.json"
       }
     }
   }

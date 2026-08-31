@@ -11,6 +11,9 @@
     - `manga` no longer carries reading direction. `YesAndRightToLeft` splits
       into `manga` and `reading_direction`, and recombines when writing
       ComicInfo.
+    - The primary credit flag moved from the separate `credit_primaries` map
+      onto each person's role. Being the primary Writer no longer implies being
+      the primary Inker.
     - Removed the `critical_rating` and `alternate_images` fields, which mapped
       to no format.
 

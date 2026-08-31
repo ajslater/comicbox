@@ -12,7 +12,6 @@ comic book metadata formats.
 | characacters              | Characters                                                                               |                                   |                                                                           | character         |
 | country                   |                                                                                          |                                   | country                                                                   |
 | credits                   | Writer, Penciller, Inker, Colorist, Letterer, CoverArtist, Editor, Translator, Publisher | Credits                           | colorist, coverDesigner, creator, editor, inker, letter, penciller writer |
-| credit_primaries          |
 | collection_title          |                                                                                          | CollectionTitle                   |
 | community_rating          | CommunityRating                                                                          | CommunityRating                   | rating                                                                    |
 | cover_image               |                                                                                          |                                   |                                                                           | coverImage        |
