@@ -60,8 +60,6 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from mokkari.session import Session
-
 
 # Mokkari pages issues_list in 28-record pages by default. A cv_id
 # query should return ≤1 issue in practice (CV ids are issue-scoped),
@@ -83,17 +81,18 @@ class _LabelStats:
     errored: int = 0
 
 
-def _build_metron_session() -> Session:
+def _build_metron_source() -> MetronOnlineSource:
     """
-    Return a configured mokkari Session.
+    Return a configured `MetronOnlineSource`.
 
-    Reuses `MetronOnlineSource`'s session-construction logic so
-    credentials and cache directory match the production online-lookup
-    path. Note this transparently returns the process-wide Session
-    memoized per credential set (see `_session_cache` in
-    `metron_api/online_source.py`), whose header-tracked
-    `rate_limit_status` is shared with anything else in this process
-    using the same credentials.
+    The source — not its bare mokkari Session — is what the rest of this
+    script passes around, because `@with_retry()` reads both its
+    exception classifier and its rate-limit listener off the instance it
+    decorates. Its `_get_session()` transparently returns the
+    process-wide Session memoized per credential set (see
+    `_session_cache` in `metron_api/online_source.py`), whose
+    header-tracked `rate_limit_status` is shared with anything else in
+    this process using the same credentials.
     """
     online = get_config(None).online
     creds = online.auth.sources.get("metron")
@@ -104,25 +103,30 @@ def _build_metron_session() -> Session:
     if not source.is_configured():
         msg = "Metron credentials incomplete (need an API token or username + password)"
         raise RuntimeError(msg)
-    return source._get_session()
+    return source
 
 
 @with_retry()
-def _issues_list_by_cv_id(session: Session, cv_id: int) -> list:
+def _issues_list_by_cv_id(source: MetronOnlineSource, cv_id: int) -> list:
     """
     Run the Metron `issues_list(cv_id=...)` call with auto-retry.
 
     `@with_retry()` catches RateLimitError, honors the server's
-    `retry_after` hint, and replays the call — same pattern the
-    matcher uses in production. Without this wrapper, Metron's 20/min
-    cap would cause the labeler to silently mark cv_ids as "no
-    metron coverage" whenever rate-limiting kicked in (false negative
-    on the calibration ground truth).
+    `retry_after` hint, and replays the call — the same pattern, and the
+    same rate-limit schedule, the matcher gets in production. That
+    equivalence is why this takes the source rather than a raw Session:
+    the decorator classifies exceptions with `args[0]`'s
+    `classify_retry_exception`, and a Session has none, which would drop
+    a rate limit onto the generic 31s budget — too short to outlast
+    Metron's window. Without the wrapper entirely, Metron's 20/min cap
+    would make the labeler silently mark cv_ids as "no metron coverage"
+    whenever rate-limiting kicked in (false negative on the calibration
+    ground truth).
     """
-    return list(session.issues_list({"cv_id": cv_id}))
+    return list(source._get_session().issues_list({"cv_id": cv_id}))
 
 
-def lookup_metron_by_cv_id(session: Session, cv_id: int) -> int | None:
+def lookup_metron_by_cv_id(source: MetronOnlineSource, cv_id: int) -> int | None:
     """
     Return the Metron issue id cross-referencing `cv_id`, or None.
 
@@ -137,7 +141,7 @@ def lookup_metron_by_cv_id(session: Session, cv_id: int) -> int | None:
     `except Exception` branch.
     """
     try:
-        results = _issues_list_by_cv_id(session, cv_id)
+        results = _issues_list_by_cv_id(source, cv_id)
     except Exception as exc:
         print(  # noqa: T201
             f"  ! Metron lookup failed for cv_id={cv_id}: {type(exc).__name__}: {exc}",
@@ -182,7 +186,7 @@ def _atomic_write_fixtures(path: Path, fixtures: list[dict[str, Any]]) -> None:
 
 
 def _label_one_fixture(
-    session: Session,
+    source: MetronOnlineSource,
     i: int,
     fixture: dict,
     n: int,
@@ -197,7 +201,7 @@ def _label_one_fixture(
         end="",
         flush=True,
     )
-    metron_id = lookup_metron_by_cv_id(session, cv_id)
+    metron_id = lookup_metron_by_cv_id(source, cv_id)
     if metron_id is None:
         stats.not_found += 1
         print("no metron coverage")  # noqa: T201
@@ -236,7 +240,7 @@ def label_fixtures(
         msg = f"{fixtures_path}: expected a JSON list of fixtures"
         raise TypeError(msg)
 
-    session = _build_metron_session()
+    source = _build_metron_source()
     pending = list(_iter_labelable(raw))
     stats = _initial_label_stats(raw)
 
@@ -256,7 +260,7 @@ def label_fixtures(
         # been learned so far. Atomic write means the file is never
         # left half-updated. Cost is small (a few KB rewritten per
         # lookup); benefit is huge (~25-minute runs stay safe).
-        newly = _label_one_fixture(session, i, fixture, n, len(pending), stats)
+        newly = _label_one_fixture(source, i, fixture, n, len(pending), stats)
         if newly and not dry_run:
             _atomic_write_fixtures(fixtures_path, raw)
 

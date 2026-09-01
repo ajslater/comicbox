@@ -17,12 +17,14 @@ when needed. Downloaded hashes are cached in
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import threading
 import time
 from contextlib import closing, suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
 from typing_extensions import override
@@ -163,17 +165,54 @@ class _SearchBudget:
         return f"search deadline ({_SEARCH_DEADLINE_S:.0f}s) reached"
 
 
+# What each HTTP status means once recovered from a plain ServiceError.
+# simyan raises dedicated classes for 401 and 429/420 when it can parse
+# the error body; these are the same statuses arriving down the
+# unparseable-body path, where everything collapses into ServiceError.
+_STATUS_CATEGORIES: Final = MappingProxyType(
+    {
+        401: RetryCategory.AUTH,
+        404: RetryCategory.NOT_FOUND,
+        420: RetryCategory.RATE_LIMIT,
+        429: RetryCategory.RATE_LIMIT,
+    }
+)
+
+# simyan prefixes the status when it could not parse the error body:
+# ServiceError("429: Unable to parse response from '...' as Json").
+_STATUS_PREFIX_RE: Final = re.compile(r"^(\d{3}):")
+
+
+def _service_error_status(exc: BaseException) -> int | None:
+    """
+    Recover the HTTP status simyan folded into a plain ServiceError.
+
+    The chained requests error carries it whenever the error body parsed
+    as JSON. When it did not, simyan's inner ``except JSONDecodeError as
+    err`` rebinds the cause, and requests' JSONDecodeError has no
+    response — an edge-served HTML 429 would otherwise look like a plain
+    server error and forfeit the rate-limit schedule. The status survives
+    there only as the message's leading token.
+    """
+    response = getattr(exc.__cause__, "response", None)
+    status = getattr(response, "status_code", None)
+    if status is not None:
+        return status
+    match = _STATUS_PREFIX_RE.match(str(exc))
+    return int(match.group(1)) if match else None
+
+
 def _classify_service_error(exc: BaseException) -> RetryCategory:
-    """Disambiguate a plain simyan ServiceError by cause and message."""
+    """Disambiguate a plain simyan ServiceError by cause, status and message."""
     # simyan 3.x client-side cap exhaustion: ServiceError("Service took
     # too long to respond") whose __cause__ is requests'
     # Timeout("Rate limit not cleared within max_delay=..."). Only the
     # cause distinguishes it from a genuine read timeout.
     if "rate limit not cleared" in str(exc.__cause__ or "").lower():
         return RetryCategory.RATE_LIMIT
-    cause_response = getattr(exc.__cause__, "response", None)
-    if getattr(cause_response, "status_code", None) == 404:  # noqa: PLR2004
-        return RetryCategory.NOT_FOUND
+    status = _service_error_status(exc)
+    if status is not None:
+        return _STATUS_CATEGORIES.get(status, RetryCategory.TRANSIENT)
     if "not found" in str(exc).lower():  # literal "Resource not found"
         return RetryCategory.NOT_FOUND
     # CV serves some errors as HTTP 200 bodies that die in pydantic

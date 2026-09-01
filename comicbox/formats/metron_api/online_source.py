@@ -94,27 +94,54 @@ def _bi_resource_url(base_issue: Any) -> str:
     return str(url) if url else ""
 
 
-# mokkari collapses non-429 HTTP errors, connection failures, bad JSON,
-# 2xx {"detail": ...} bodies and pydantic failures into one ApiError whose
-# only status signal is text inside repr(HTTPError) — so classifying
-# mokkari genuinely requires message inspection. Rate-limit markers are
-# checked FIRST: a throttle response served with a non-429 status (a CDN
-# 403/420, or a 2xx "Request was throttled" detail body) must retry even
-# when the same message also mentions credentials or an api key. No bare
-# "429" marker — mokkari raises RateLimitError for exactly-429, so a
-# "429" inside ApiError text can only be a URL/id collision. No bare
-# "auth" marker — it substring-matches "author", and ApiError embeds
-# pydantic dumps of comic metadata with creator fields.
+# Throttle wording, checked before anything else: a throttle response
+# served with a status other than 429 (a CDN 403/420, or a 2xx "Request
+# was throttled" detail body) must retry even when the same message also
+# mentions credentials or an api key.
 _RATE_LIMIT_MARKERS: Final = ("rate limit", "throttl", "too many requests")
+
+# Statuses that mean "these credentials will never work". Metron's 429 is
+# already a RateLimitError, so it never reaches the status check.
+_AUTH_STATUSES: Final = frozenset({401, 403})
+
+# Credential wording, used only for the ApiError paths that carry no
+# chained response (the 2xx `detail` body and pydantic validation).
+# Words only, never bare status numbers: an ApiError message embeds
+# repr(HTTPError) with the full URL, so "401"/"403" substring-match
+# Metron ids like /api/issue/14031/ and would strand a retriable 502.
+# No bare "auth" either — it substring-matches "author", and these
+# messages carry pydantic dumps of comic metadata with creator fields.
 _AUTH_MARKERS: Final = (
-    "401",
-    "403",
     "unauthorized",
     "forbidden",
     "invalid username",
     "invalid password",
     "invalid token",
 )
+
+
+def _classify_api_error(exc: BaseException) -> RetryCategory:
+    """
+    Classify mokkari's catch-all ApiError.
+
+    mokkari collapses non-429 HTTP errors, connection failures, bad JSON,
+    2xx {"detail": ...} bodies and pydantic failures into this one class.
+    Every HTTP failure is chained (``raise ApiError(msg) from err``), so
+    when the requests error carries a response its status is authoritative
+    and the message is not worth reading; the remaining paths have no
+    status at all and leave only the wording to go on.
+    """
+    msg = str(exc).lower()
+    if any(marker in msg for marker in _RATE_LIMIT_MARKERS):
+        return RetryCategory.RATE_LIMIT
+    status = getattr(getattr(exc.__cause__, "response", None), "status_code", None)
+    if status is not None:
+        return (
+            RetryCategory.AUTH if status in _AUTH_STATUSES else RetryCategory.TRANSIENT
+        )
+    if any(marker in msg for marker in _AUTH_MARKERS):
+        return RetryCategory.AUTH
+    return RetryCategory.TRANSIENT
 
 
 class MetronOnlineSource(OnlineSource):
@@ -133,7 +160,7 @@ class MetronOnlineSource(OnlineSource):
     @override
     @staticmethod
     def classify_retry_exception(exc: BaseException) -> RetryCategory | None:
-        """Classify mokkari's exceptions; see the marker tuples above."""
+        """Classify mokkari's exceptions; see `_classify_api_error`."""
         from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
 
         if isinstance(exc, RateLimitError):
@@ -142,12 +169,7 @@ class MetronOnlineSource(OnlineSource):
             # Raised only by Session.__init__ for missing local credentials.
             return RetryCategory.AUTH
         if isinstance(exc, ApiError):
-            msg = str(exc).lower()
-            if any(marker in msg for marker in _RATE_LIMIT_MARKERS):
-                return RetryCategory.RATE_LIMIT
-            if any(marker in msg for marker in _AUTH_MARKERS):
-                return RetryCategory.AUTH
-            return RetryCategory.TRANSIENT
+            return _classify_api_error(exc)
         return None
 
     def _get_cache(self) -> Any:
