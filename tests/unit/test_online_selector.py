@@ -13,6 +13,7 @@ from comicbox.box.online_lookup import ComicboxOnlineLookup, OnlineLookupAborted
 from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import Candidate, CandidateSummary
+from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
@@ -165,21 +166,24 @@ def test_manual_id_for_other_source_skipped(patched_metron) -> None:
     assert patched_metron[0].get_calls == []
 
 
-def test_set_unattended_mutates_session_and_skips(patched_metron) -> None:
+def test_set_unattended_changes_session_state_and_skips(patched_metron) -> None:
     def selector(profile, candidates, ctx):
         return ("set_unattended", None)
 
     cb = _build_cb()
-    assert cb._config.online.lookup.prompts is Prompts.ASK
+    state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+    cb.set_online_session_state(state)
     cb.set_online_selector(selector)
     cb.run_online_lookup()
     # Session was switched; the current prompt collapsed to SKIP, so the
     # mock source's get() was never called.
-    assert cb._config.online.lookup.prompts is Prompts.NEVER
+    assert state.snapshot().prompts is Prompts.NEVER
     assert patched_metron[0].get_calls == []
+    # The policy lives in the session state, never in the frozen settings.
+    assert cb._config.online.lookup.prompts is Prompts.ASK
 
 
-def test_set_policy_mutates_session_and_reprompts(patched_metron) -> None:
+def test_set_policy_changes_session_state_and_reprompts(patched_metron) -> None:
     calls: list[str] = []
 
     def selector(profile, candidates, ctx):
@@ -189,14 +193,56 @@ def test_set_policy_mutates_session_and_reprompts(patched_metron) -> None:
         return ("skip", None)
 
     cb = _build_cb()
-    assert cb._config.online.lookup.match is MatchMode.AUTO
+    state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+    cb.set_online_session_state(state)
     cb.set_online_selector(selector)
     cb.run_online_lookup()
-    assert cb._config.online.lookup.match is MatchMode.EAGER
+    assert state.snapshot().match is MatchMode.EAGER
+    assert cb._config.online.lookup.match is MatchMode.AUTO
     # Either the EAGER re-resolution auto-wrote (candidate fetched) or it
     # re-prompted and the second call skipped — both are valid outcomes
     # depending on the mock candidates' final scores.
     assert len(calls) >= 1
+
+
+def test_set_policy_reaches_the_selector_context(patched_metron) -> None:
+    """A selector reading ctx.settings sees the live policy, not the seed."""
+    seen: list[MatchMode] = []
+
+    def selector(profile, candidates, ctx):
+        seen.append(ctx.settings.online.lookup.match)
+        if len(seen) == 1:
+            return ("set_policy", "careful")
+        return ("skip", None)
+
+    cb = _build_cb()
+    cb.set_online_session_state(
+        OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+    )
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    assert seen[0] is MatchMode.AUTO
+    # CAREFUL keeps the two close candidates ambiguous, so the loop asks
+    # again — and the second ask carries the mode just set.
+    assert seen[1:] == [MatchMode.CAREFUL]
+
+
+def test_set_policy_ask_persists(patched_metron) -> None:
+    """`set_policy: ask` sticks; the session has a handler to do the asking."""
+    calls: list[str] = []
+
+    def selector(profile, candidates, ctx):
+        calls.append("call")
+        if len(calls) == 1:
+            return ("set_policy", "ask")
+        return ("skip", None)
+
+    cb = _build_cb()
+    state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+    cb.set_online_session_state(state)
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    assert state.snapshot().match is MatchMode.ASK
 
 
 def test_set_policy_invalid_payload_declines(patched_metron) -> None:
@@ -204,11 +250,49 @@ def test_set_policy_invalid_payload_declines(patched_metron) -> None:
         return ("set_policy", "nonsense")
 
     cb = _build_cb()
+    state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+    cb.set_online_session_state(state)
     cb.set_online_selector(selector)
     cb.run_online_lookup()
     # Bad payload: match unchanged, no candidate accepted.
-    assert cb._config.online.lookup.match is MatchMode.AUTO
+    assert state.snapshot().match is MatchMode.AUTO
     assert patched_metron[0].get_calls == []
+
+
+def test_session_state_carries_across_boxes(patched_metron) -> None:
+    """A policy change on one file is in force for the next one."""
+    state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
+
+    def selector(profile, candidates, ctx):
+        return ("set_unattended", None)
+
+    first = _build_cb()
+    first.set_online_session_state(state)
+    first.set_online_selector(selector)
+    first.run_online_lookup()
+
+    # No selector on the second box: without the shared state it would
+    # fall back to the CLI prompt and block on a non-tty.
+    second = _build_cb()
+    second.set_online_session_state(state)
+    second.run_online_lookup()
+    assert second._session_online().lookup.prompts is Prompts.NEVER
+    assert all(src.get_calls == [] for src in patched_metron)
+
+
+def test_standalone_box_gets_its_own_state(patched_metron) -> None:
+    """No injected state: the box seeds a private one from its own config."""
+
+    def selector(profile, candidates, ctx):
+        return ("set_unattended", None)
+
+    first = _build_cb()
+    first.set_online_selector(selector)
+    first.run_online_lookup()
+    assert first._session_online().lookup.prompts is Prompts.NEVER
+
+    second = _build_cb()
+    assert second._session_online().lookup.prompts is Prompts.ASK
 
 
 def test_selector_receives_candidates(patched_metron) -> None:

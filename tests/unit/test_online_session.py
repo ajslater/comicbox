@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from comicbox.box import Comicbox
 from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.online_session import (
     OnlineConfigurationError,
@@ -123,30 +124,35 @@ def test_mode_propagates_to_match_setting(mode: MatchMode) -> None:
         credentials=VALID_METRON,
         mode=mode,
     )
-    cfg = session._build_config()
-    assert cfg.online.lookup.match is mode
+    assert session._settings.online.lookup.match is mode
 
 
 def test_unattended_maps_to_prompts_never() -> None:
     session = OnlineSession(
         sources={"metron"}, credentials=VALID_METRON, unattended=True
     )
-    cfg = session._build_config()
-    assert cfg.online.lookup.prompts == Prompts.NEVER
+    assert session._settings.online.lookup.prompts == Prompts.NEVER
 
 
-def test_set_mode_changes_subsequent_config() -> None:
+def _live_lookup(session: OnlineSession):
+    """Resolve what a box spawned by this session would look up under now."""
+    return session._state.overlay(session._settings.online).lookup
+
+
+def test_set_mode_changes_subsequent_lookups() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert session._build_config().online.lookup.match == MatchMode.AUTO
+    assert _live_lookup(session).match == MatchMode.AUTO
     session.set_mode(MatchMode.EAGER)
-    assert session._build_config().online.lookup.match == MatchMode.EAGER
+    assert _live_lookup(session).match == MatchMode.EAGER
 
 
-def test_set_unattended_changes_subsequent_config() -> None:
+def test_set_unattended_changes_subsequent_lookups() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert session._build_config().online.lookup.prompts == Prompts.ASK
+    assert _live_lookup(session).prompts == Prompts.ASK
     session.set_unattended(unattended=True)
-    assert session._build_config().online.lookup.prompts == Prompts.NEVER
+    assert _live_lookup(session).prompts == Prompts.NEVER
+    session.set_unattended(unattended=False)
+    assert _live_lookup(session).prompts == Prompts.ASK
 
 
 # --- credential propagation ---------------------------------------------------
@@ -230,31 +236,49 @@ def test_retry_sleep_wait_passes_when_not_cancelled() -> None:
 
 
 # --- session-level prompt actions ----------------------------------------------
+#
+# The box applies these to the OnlineSessionState the session shares with
+# it, so these go through the box's real `_apply_session_action` rather
+# than a session-side mirror of it.
+
+
+def _apply_via_box(
+    session: OnlineSession, action: str, payload: int | str | None
+) -> bool:
+    """Run one selector action through the box that the session would spawn."""
+    cb = Comicbox(config=session._settings)
+    cb.set_online_session_state(session._state)
+    return cb._apply_session_action("metron", action, payload)
 
 
 def test_set_policy_via_handler_persists_across_files() -> None:
-    """A handler's set_policy must outlive the in-flight file's config."""
+    """A handler's set_policy must outlive the in-flight file."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    session._sync_session_state(PromptResponse(action="set_policy", payload="eager"))
+    assert _apply_via_box(session, "set_policy", "eager") is True
     assert session.mode is MatchMode.EAGER
-    assert session._build_config().online.lookup.match == MatchMode.EAGER
 
 
 def test_set_unattended_via_handler_persists_across_files() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    session._sync_session_state(PromptResponse(action="set_unattended", payload=None))
+    assert _apply_via_box(session, "set_unattended", None) is True
     assert session.unattended is True
-    assert session._build_config().online.lookup.prompts == Prompts.NEVER
 
 
-def test_sync_session_state_ignores_malformed_or_ask_policy() -> None:
-    """Bad payloads and ASK (rejected by set_mode) must not raise or stick."""
+def test_set_policy_ask_persists() -> None:
+    """ASK sticks when a handler asks for it, though set_mode still refuses it."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    session._sync_session_state(PromptResponse(action="set_policy", payload="bogus"))
+    assert _apply_via_box(session, "set_policy", "ask") is True
+    assert session.mode is MatchMode.ASK
+    with pytest.raises(OnlineConfigurationError):
+        session.set_mode(MatchMode.ASK)
+
+
+def test_malformed_set_policy_declines_and_leaves_mode() -> None:
+    """Bad payloads are declined, loudly, and don't move the session."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    assert _apply_via_box(session, "set_policy", "bogus") is False
     assert session.mode is MatchMode.AUTO
-    session._sync_session_state(PromptResponse(action="set_policy", payload="ask"))
-    assert session.mode is MatchMode.AUTO
-    session._sync_session_state(PromptResponse(action="choose", payload=0))
+    assert _apply_via_box(session, "set_policy", 7) is False
     assert session.mode is MatchMode.AUTO
 
 
@@ -303,6 +327,7 @@ class _FakeBox:
 
     def __init__(self, path, config=None) -> None:
         self.selector = None
+        self.session_state = None
         self.won = type(self).next_won
         type(self).last = self
 
@@ -326,6 +351,9 @@ class _FakeBox:
     def set_retry_sleep(self, sleep) -> None:
         pass
 
+    def set_online_session_state(self, state) -> None:
+        self.session_state = state
+
     def run_online_lookup(self) -> bool:
         return self.won
 
@@ -341,6 +369,13 @@ def fake_box(monkeypatch):
     _FakeBox.last = None
     _FakeBox.next_won = False
     return _FakeBox
+
+
+def test_box_shares_the_session_state(tmp_path, fake_box) -> None:
+    """The box gets the session's own state object, not a copy of it."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    session.tag(tmp_path / "f.cbz")
+    assert fake_box.last.session_state is session._state
 
 
 def test_unmatched_lookup_yields_matched_false(tmp_path, fake_box) -> None:
