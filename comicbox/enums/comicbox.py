@@ -29,7 +29,14 @@ class MangaEnum(Enum):
 
 
 class IdSources(Enum):
-    """Comic Database Namespace Identifiers."""
+    """
+    Comic Database Namespace Identifiers.
+
+    Declaration order is the best source ranking. Everything that must pick
+    one source derives its order from this list: ID_SOURCE_VALUES and
+    ranked_id_sources() in comicbox.identifiers, and compare_identifier_source
+    below.
+    """
 
     # Comic DBs
     METRON = "metron"

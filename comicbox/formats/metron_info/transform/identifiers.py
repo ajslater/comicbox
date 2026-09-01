@@ -20,7 +20,13 @@ from comicbox.formats.comicbox.schema import (
     URLS_KEY,
 )
 from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
-from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
+from comicbox.identifiers import (
+    BARCODE_ID_SOURCES,
+    DEFAULT_ID_TYPE,
+    ID_KEY_KEY,
+    ID_TYPE_KEY,
+    ranked_id_sources,
+)
 from comicbox.identifiers.identifiers import (
     create_identifier,
     get_id_source_from_url,
@@ -29,8 +35,14 @@ from comicbox.identifiers.identifiers import (
 
 PRIMARY_ATTRIBUTE = "@primary"
 SOURCE_ATTRIBUTE = "@source"
+# MetronInfo's <GTIN> holds only ISBN and UPC subtags, never the generic
+# GTIN, and its subtag names are the IdSources member names.
 GTIN_SUBTAG_ID_SOURCE_MAP = MappingProxyType(
-    {"ISBN": IdSources.ISBN.value, "UPC": IdSources.UPC.value}
+    {
+        id_source.name: id_source.value
+        for id_source in BARCODE_ID_SOURCES
+        if id_source is not IdSources.GTIN
+    }
 )
 ID_KEYPATH = "IDS.ID"
 URL_KEYPATH = "URLs.URL"
@@ -60,21 +72,12 @@ def _primary_id_source_from_ids(metron_ids: list[Any]) -> str | None:
     return None
 
 
-def get_url_id_source(url: str) -> str:
-    """Name the database a url belongs to, if comicbox knows it."""
-    # Matching only each source's canonical domain missed the other domains
-    # they answer on, like comicvine.com or the ten amazon country domains.
-    with suppress(ValueError):
-        return IdSources(get_id_source_from_url(url)).value
-    return ""
-
-
 def _primary_id_source_from_urls(metron_urls: list[Any]) -> str | None:
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue
         if (url := get_cdata(metron_url)) and (
-            id_source_str := get_url_id_source(str(url))
+            id_source_str := get_id_source_from_url(str(url))
         ):
             return id_source_str
     return None
@@ -183,10 +186,8 @@ def _primary_index(candidates: list[str], primary_id_source_str: str) -> int:
     """
     if primary_id_source_str in candidates:
         return candidates.index(primary_id_source_str)
-    ranked = [id_source.value for id_source in IdSources]
-    for id_source_str in ranked:
-        if id_source_str in candidates:
-            return candidates.index(id_source_str)
+    if best_id_source_str := next(ranked_id_sources(candidates), ""):
+        return candidates.index(best_id_source_str)
     return 0
 
 
@@ -268,7 +269,7 @@ def _urls_from_cb(values: dict[str, Any]) -> list:
     primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     url_list = list(urls)
     url_sources = [
-        id_source_by_url.get(url) or get_url_id_source(url) for url in url_list
+        id_source_by_url.get(url) or get_id_source_from_url(url) for url in url_list
     ]
     index = _primary_index(url_sources, primary_id_source_str)
     metron_urls: list[dict[str, Any]] = [{"#text": url} for url in url_list]
