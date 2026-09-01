@@ -21,6 +21,7 @@ from comicbox.formats.base.online.series_cache import (
     SeriesCache,
     filename_series_fingerprint,
 )
+from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.logger import init_logging
 
 if TYPE_CHECKING:
@@ -60,6 +61,14 @@ class Runner:
         #: read and write it, and `_maybe_populate_series_cache` needs
         #: `in` / `__setitem__` to stay consistent between them.
         self._series_cache = SeriesCache()
+        #: Batch-wide owner of the two mutable lookup settings. Seeded from
+        #: the config-resolved values; a `set_policy` / `set_unattended`
+        #: answered at any file's prompt applies to the rest of the batch.
+        #: Built here rather than after `_maybe_auto_engage_api_budget`
+        #: because that only rewrites per-source effort, never match or
+        #: prompts — and `run_on_file` is a public entry point that never
+        #: goes through `run()`.
+        self._online_state = OnlineSessionState.from_lookup(self._config.online.lookup)
         init_logging(self._config.general.loglevel)
 
     def _iter_recurse(self, path: Path) -> Iterator[Path]:
@@ -137,6 +146,7 @@ class Runner:
         with Comicbox(path, config=self._config) as car:
             if self._config.online.lookup.enabled:
                 car.set_series_cache(self._series_cache)
+                car.set_online_session_state(self._online_state)
             car.print_file_header()
             car.run()
 

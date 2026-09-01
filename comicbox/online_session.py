@@ -38,6 +38,7 @@ from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 # the ComicboxError base.
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
 from comicbox.formats.base.online.series_cache import filename_series_fingerprint
+from comicbox.formats.base.online.session_state import OnlineSessionState
 
 # Re-exported so batch callers get the run estimator off the same Codex-facing
 # façade as the session it estimates; the implementation lives in
@@ -264,8 +265,11 @@ class OnlineSession:
 
     Construction validates per-source credentials and pre-computes the
     ComicboxSettings layer that each per-file Comicbox instance will see.
-    Mutable state — ``mode``, ``unattended``, the cancel token — lives on
-    the instance and may be updated from any thread.
+    Mutable state — the lookup policy (``mode`` / ``unattended``) and the
+    cancel token — lives on the instance and may be updated from any
+    thread. The policy lives in an ``OnlineSessionState`` shared with
+    every box the session spawns, so a change made at a prompt needs no
+    mirroring back: the box and the session read the same owner.
 
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources
@@ -299,8 +303,10 @@ class OnlineSession:
         self._validate_ids(self._sources, self._ids)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
-        self._mode: MatchMode = self._validate_mode(mode)
-        self._unattended = unattended
+        self._state = OnlineSessionState(
+            match=self._validate_mode(mode),
+            prompts=Prompts.NEVER if unattended else Prompts.ASK,
+        )
         self._prompt_handler = prompt_handler
         self._on_event = on_event
         self._rematch = rematch
@@ -312,12 +318,14 @@ class OnlineSession:
         # batches plus a behavioral surprise where a config-file edit
         # mid-batch changed settings for the remaining files.
         self._base_settings: ComicboxSettings = get_config()
+        # Nothing in the settings tree varies per file: the mutable
+        # policy lives in _state and each box overlays it for itself.
+        self._settings: ComicboxSettings = self._build_config()
 
         # Cancel token. Set when cancel() is called; checked between files
         # in tag_many() and consulted by the wired retry sleep
         # (_retry_sleep_wait), which aborts an in-flight rate-limit wait.
         self._cancel = threading.Event()
-        self._state_lock = threading.Lock()
 
         # Prompt-dedup cache. Keyed by fingerprint of (source, normalized
         # series, sorted distinct candidate volume_ids); the stored entry
@@ -350,26 +358,27 @@ class OnlineSession:
 
     @property
     def mode(self) -> MatchMode:
-        """Current session mode (read-only; mutate via set_mode())."""
-        with self._state_lock:
-            return self._mode
+        """
+        Current session mode (read-only; mutate via set_mode()).
+
+        May report ``MatchMode.ASK`` even though ``set_mode`` rejects it:
+        a prompt handler answering ``set_policy: "ask"`` can put the
+        session there, since that path has a handler to do the asking.
+        """
+        return self._state.snapshot().match
 
     @property
     def unattended(self) -> bool:
         """Current session unattended flag."""
-        with self._state_lock:
-            return self._unattended
+        return self._state.snapshot().unattended
 
     def set_mode(self, mode: MatchMode) -> None:
         """Change the session mode for subsequent file lookups."""
-        validated = self._validate_mode(mode)
-        with self._state_lock:
-            self._mode = validated
+        self._state.set_match(self._validate_mode(mode))
 
     def set_unattended(self, *, unattended: bool) -> None:
         """Toggle the unattended flag for subsequent file lookups."""
-        with self._state_lock:
-            self._unattended = unattended
+        self._state.set_prompts(Prompts.NEVER if unattended else Prompts.ASK)
 
     def cancel(self) -> None:
         """Stop accepting new files. In-flight lookup runs to completion."""
@@ -536,8 +545,7 @@ class OnlineSession:
     # -- internals ----------------------------------------------------------
 
     def _run_one(self, path: Path) -> tuple[dict[str, Any], bool]:
-        config = self._build_config()
-        with Comicbox(path, config=config) as cb:
+        with Comicbox(path, config=self._settings) as cb:
             # Bridge the selector when we have a handler, when defer
             # mode is on (defer produces no handler call but still needs
             # to intercept the prompt to queue it), or when resolutions
@@ -555,6 +563,7 @@ class OnlineSession:
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
             cb.set_retry_sleep(self._retry_sleep_wait)
+            cb.set_online_session_state(self._state)
             matched = cb.run_online_lookup()
             payload = cb.to_dict()
         return payload.get("comicbox", {}), matched
@@ -615,46 +624,23 @@ class OnlineSession:
                     "is disabled; cannot resolve an ambiguous match"
                 )
                 raise RuntimeError(msg)
+            policy = self._state.snapshot()
             prompt = OnlinePrompt(
                 path=ctx.file_path,
                 source=ctx.source,
                 profile_summary=_summarise_profile(profile),
                 candidates=cand_tuple,
-                mode=self.mode,
-                unattended=self.unattended,
+                mode=policy.match,
+                unattended=policy.unattended,
             )
             response = handler.request(prompt)
-            self._sync_session_state(response)
+            # No session-state sync here: the box applies set_policy /
+            # set_unattended to the OnlineSessionState this session shares
+            # with it, so the change is already ours.
             self._store_prompt_resolution(fingerprint, response, cand_tuple)
             return (response.action, response.payload)
 
         return _selector
-
-    def _sync_session_state(self, response: PromptResponse) -> None:
-        """
-        Mirror session-level prompt actions into the session's own state.
-
-        The box applies set_policy / set_unattended to its per-file config,
-        but _run_one rebuilds that config for every file from the session's
-        _mode / _unattended — without this sync the handler's decision
-        would silently revert on the next file, despite PromptResponse
-        documenting these as session-level actions.
-        """
-        if response.action == "set_unattended":
-            self.set_unattended(unattended=True)
-            return
-        if response.action != "set_policy" or not isinstance(response.payload, str):
-            return
-        try:
-            mode = MatchMode(response.payload)
-        except ValueError:
-            # Malformed payload: the box logs and declines it; nothing to sync.
-            return
-        if mode is MatchMode.ASK:
-            # The session's set_mode rejects ASK (no built-in CLI prompt);
-            # the box still honors it for the in-flight file.
-            return
-        self.set_mode(mode)
 
     def _defer_prompt(
         self,
@@ -664,14 +650,15 @@ class OnlineSession:
         ctx: SelectorContext,
     ) -> None:
         """Queue this prompt for later resolution and emit PromptDeferred."""
+        policy = self._state.snapshot()
         deferred = DeferredPrompt(
             path=ctx.file_path,
             source=ctx.source,
             fingerprint=fingerprint,
             profile_summary=_summarise_profile(profile),
             candidates=candidates,
-            mode=self.mode,
-            unattended=self.unattended,
+            mode=policy.match,
+            unattended=policy.unattended,
         )
         with self._deferred_lock:
             self._deferred.append(deferred)
@@ -743,17 +730,18 @@ class OnlineSession:
         we need to set (``enabled``, ``sources``, per-source auth dict)
         live on runtime-only fields the CLI namespace parser ignores.
 
-        ``mode`` / ``unattended`` are session-mutable, so the cheap
-        ``replace`` layering stays per-file; the disk read happened once
-        in ``__init__``.
+        Built once in ``__init__``. ``match`` / ``prompts`` are the seed
+        values only: every box overlays the live ``OnlineSessionState``
+        over them, so a mid-run policy change needs no rebuild here.
         """
         base = self._base_settings
+        policy = self._state.snapshot()
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=self._sources,
             ids=self._ids,
-            match=self.mode,
-            prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
+            match=policy.match,
+            prompts=policy.prompts,
             rematch=self._rematch,
             first_wins=self._first_wins,
         )

@@ -443,10 +443,11 @@ def test_runner_owns_one_series_cache_for_the_batch() -> None:
     assert len(runner._series_cache) == 0
 
 
-def test_series_cache_is_wired_into_each_box(tmp_path: Path) -> None:
-    """Every file of an online batch shares the runner's one cache."""
+def test_batch_collaborators_are_wired_into_each_box(tmp_path: Path) -> None:
+    """Every file of an online batch shares the runner's cache and policy."""
     runner, paths = _online_runner(tmp_path, ["Spider-Man #001 (2018).cbz"])
     seen: list[Any] = []
+    states: list[Any] = []
 
     class _FakeBox:
         def __enter__(self) -> Self:
@@ -458,6 +459,9 @@ def test_series_cache_is_wired_into_each_box(tmp_path: Path) -> None:
         def set_series_cache(self, cache: Any) -> None:
             seen.append(cache)
 
+        def set_online_session_state(self, state: Any) -> None:
+            states.append(state)
+
         def print_file_header(self) -> None:
             return None
 
@@ -467,6 +471,9 @@ def test_series_cache_is_wired_into_each_box(tmp_path: Path) -> None:
     with patch("comicbox.run.Comicbox", lambda *_a, **_kw: _FakeBox()):
         runner.run_on_file(paths[0])
     assert seen == [runner._series_cache]
+    # One owner for the batch: a prompt answered on any file is in force
+    # for the rest of it.
+    assert states == [runner._online_state]
 
 
 def test_online_batch_is_clustered_by_series(tmp_path: Path) -> None:
