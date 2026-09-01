@@ -240,7 +240,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         dest="general.metadata_cli",
         help=(
             "Set metadata fields with linear YAML. (e.g.: [green]'keyA: value,"
-            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
+            " keyB: \\[valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
             " Place a space after colons so they are properly parsed as YAML key"
             " value pairs. If your value contains a special YAML character (e.g."
             " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
