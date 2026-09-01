@@ -28,6 +28,10 @@ def _comet_to_cb(native: dict[str, Any]) -> dict:
     return dict(_COMET.to_comicbox(loaded).get("comicbox", {}))
 
 
+def _comet_from_cb(sub_md: dict[str, Any]) -> dict:
+    return dict(_COMET.from_comicbox({"comicbox": sub_md}).get("comet", {}))
+
+
 def test_main_character_or_team_is_one_name() -> None:
     """A protagonist with a comma in their name is not two characters."""
     sub_md = _cix_to_cb({"MainCharacterOrTeam": "Hank McCoy, Beast"})
@@ -87,6 +91,24 @@ def test_comet_identifier_is_one_value() -> None:
     """CoMet's identifier is maxOccurs=1, so it is read whole."""
     sub_md = _comet_to_cb({"identifier": "urn:comicvine:issue:145269"})
     assert sub_md["identifiers"]["comicvine"]["key"] == "145269"
+
+
+def test_comet_identifier_writes_the_best_ranked_source() -> None:
+    """
+    One tag, many ids: the best ranked source wins.
+
+    Rank is IdSources declaration order, where metron precedes comicvine.
+    """
+    comet = _comet_from_cb(
+        {
+            "identifiers": {
+                "comicvine": {"key": "145269", "id_type": "issue"},
+                "metron": {"key": "99999", "id_type": "issue"},
+            }
+        }
+    )
+    # The issue type is the default, so the urn leaves it implicit.
+    assert comet["identifier"] == "urn:metron:99999"
 
 
 def test_comet_is_version_of_is_one_value() -> None:

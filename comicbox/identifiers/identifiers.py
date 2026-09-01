@@ -369,7 +369,12 @@ def create_identifier(
 
 
 def get_id_source_from_url(url: str) -> str:
-    """Parse the id source for a url."""
+    """
+    Name the database a url belongs to, or "" for one comicbox doesn't know.
+
+    Matches every domain a source answers on, like comicvine.com or the ten
+    amazon country domains, not just its canonical one.
+    """
     obj = urlparse(url)
     # The hostname, not the netloc: it is lowercased and carries neither the
     # port nor the userinfo, so metron.cloud:443 and Metron.Cloud both name
@@ -379,12 +384,10 @@ def get_id_source_from_url(url: str) -> str:
 
     parts.reverse()
     node = SOURCE_ALIAS_TREE
-    id_source_str = hostname
     for part in parts:
         node = node.get(part)
         if isinstance(node, IdSources):
-            id_source_str = node.value
-            break
+            return node.value
         if not node:
             break
-    return id_source_str
+    return ""

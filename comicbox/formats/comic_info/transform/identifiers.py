@@ -13,13 +13,12 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comic_info.schema import GTIN_TAG
 from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
-from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers import BARCODE_ID_SOURCES, ID_KEY_KEY
 from comicbox.identifiers.identifiers import create_identifier
 from comicbox.identifiers.urns import parse_string_identifier
 
 # A GTIN-13 or GTIN-14 barcode is all digits; an ISBN may carry hyphens and a
 # trailing X check digit. Comicbox records the one it looks like.
-_GTIN_ID_SOURCES = (IdSources.ISBN, IdSources.UPC, IdSources.GTIN)
 _ISBN_LENGTHS = frozenset({10, 13})
 
 
@@ -70,7 +69,7 @@ def _to_cb(cix_gtin: Any) -> dict:
 
 def _from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> str:
     """Write only a real barcode, never a database id."""
-    for id_source in _GTIN_ID_SOURCES:
+    for id_source in BARCODE_ID_SOURCES:
         identifier = comicbox_identifiers.get(id_source.value)
         if identifier and (id_key := identifier.get(ID_KEY_KEY)):
             return id_key

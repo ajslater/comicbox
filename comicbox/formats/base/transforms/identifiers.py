@@ -12,7 +12,7 @@ from comicbox.formats.comicbox.schema import (
     PRIMARY_ID_SOURCE_KEY,
     URLS_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY, ranked_id_sources
 from comicbox.identifiers.identifiers import (
     IDENTIFIER_PARTS_MAP,
     create_identifier,
@@ -73,13 +73,13 @@ def identifiers_transform_to_cb(
 
 def _identifier_from_cb(comicbox_identifiers: dict[str, dict[str, str]]) -> str:
     """Unparse the best identifier to a single urn string."""
-    for id_source in IdSources:
+    for id_source_str in ranked_id_sources(comicbox_identifiers):
         if (
-            (comicbox_identifier := comicbox_identifiers.get(id_source.value))
+            (comicbox_identifier := comicbox_identifiers.get(id_source_str))
             and (id_key := comicbox_identifier.get(ID_KEY_KEY))
             and (
                 urn_str := to_urn_string(
-                    id_source.value, comicbox_identifier.get(ID_TYPE_KEY, ""), id_key
+                    id_source_str, comicbox_identifier.get(ID_TYPE_KEY, ""), id_key
                 )
             )
         ):
@@ -111,11 +111,9 @@ def identifier_from_url(url_str: str) -> tuple[str, dict]:
     if not url_str:
         return "", {}
     id_source_str = get_id_source_from_url(url_str)
-    try:
-        id_source = IdSources(id_source_str)
-    except ValueError:
+    if not id_source_str:
         return "", {}
-    id_parts = IDENTIFIER_PARTS_MAP.get(id_source)
+    id_parts = IDENTIFIER_PARTS_MAP.get(IdSources(id_source_str))
     if not id_parts:
         return "", {}
     id_type, id_key = id_parts.parse_url_path(url_str)
