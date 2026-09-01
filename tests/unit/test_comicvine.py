@@ -9,6 +9,8 @@ from datetime import timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from requests.exceptions import Timeout
+from simyan.errors import AuthenticationError, RateLimitError, ServiceError
 from typing_extensions import override
 
 from comicbox.config.online.settings import (
@@ -22,6 +24,7 @@ from comicbox.config.online.settings import (
     OnlineTuningSettings,
 )
 from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.retry import RetryCategory
 from comicbox.formats.base.online.series_filter import max_calls_for
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
@@ -34,6 +37,23 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
+
+
+class _HintedRateLimitError(RateLimitError):
+    """
+    Real simyan RateLimitError plus the ``retry_after`` duck attribute.
+
+    simyan sets no such attribute (mokkari does); the decorator's generic
+    hint probe picks it up regardless of library, and a tiny hint keeps
+    the real sleep path fast. The classifier still sees a genuine simyan
+    ``RateLimitError`` instance.
+    """
+
+    def __init__(
+        self, message: str = "Rate limit exceeded", retry_after: float = 0.001
+    ) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 # ------------------------------------------ two-step volume → issues search
@@ -260,11 +280,6 @@ def test_search_retries_volume_search_on_rate_limit(
     vol1 = _FakeBasicVolume(vid=100, name="A")
     issues = {100: [_FakeBasicIssue(iid=5001, number="1", volume_name="A")]}
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float = 0) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedCV(_FakeCV):
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
@@ -277,7 +292,7 @@ def test_search_retries_volume_search_on_rate_limit(
                     {"query": query, "max_results": max_results}
                 )
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().search_volumes(query, max_results)
 
     fake_cv = _RateLimitedCV(volumes=[vol1], issues_by_volume=issues)
@@ -582,11 +597,6 @@ def test_get_retries_get_volume_on_rate_limit(
         vid=999, name="X-Men", publisher=_FakeGenericEntry(eid=1, name="Marvel")
     )
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float = 0) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedGetCV(_FakeCVForGet):
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
@@ -597,7 +607,7 @@ def test_get_retries_get_volume_on_rate_limit(
             if self._fail_count < 1:
                 self.get_volume_calls.append(volume_id)
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().get_volume(volume_id)
 
     fake_cv = _RateLimitedGetCV(issue=issue, volume=volume)
@@ -811,11 +821,6 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     vol = _FakeBasicVolume(vid=100, name="Foo", start_year=2020)
     issue = _FakeBasicIssue(iid=5001, number="1", volume_name="Foo")
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedCV(_FakeCV):
         def __init__(self, *args: object, **kwargs: object) -> None:
             super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
@@ -826,7 +831,7 @@ def test_list_issues_by_volume_retries_on_rate_limit(
             if self._fail_count < 1:
                 self.list_issues_calls.append(dict(params or {}))
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().list_issues(params, max_results)
 
     fake = _RateLimitedCV(volumes=[vol], issues_by_volume={100: [issue]})
@@ -836,6 +841,102 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     assert [c.issue_id for c in candidates] == [5001]
     # Two list_issues calls: failed + replay.
     assert len(fake.list_issues_calls) == 2
+
+
+# ------------------------------------------- retry-exception classification
+
+
+def test_classify_rate_limit_error_tolerates_none_message() -> None:
+    """Simyan raises RateLimitError on HTTP 429/420; the message may be None."""
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(RateLimitError(None))
+        is RetryCategory.RATE_LIMIT
+    )
+
+
+def test_classify_authentication_error_is_auth() -> None:
+    exc = AuthenticationError("Invalid API Key")
+    assert ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.AUTH
+
+
+def test_classify_client_side_cap_timeout_is_rate_limit() -> None:
+    """
+    Simyan 3.x client-side cap exhaustion is only visible in __cause__.
+
+    The ServiceError message is the generic "Service took too long to
+    respond"; the chained requests Timeout carries the rate-limit text.
+    """
+    exc = ServiceError("Service took too long to respond")
+    exc.__cause__ = Timeout("Rate limit not cleared within max_delay=40.0s")
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.RATE_LIMIT
+    )
+
+
+def test_classify_genuine_read_timeout_is_transient() -> None:
+    """The same ServiceError with a plain read timeout cause stays generic."""
+    exc = ServiceError("Service took too long to respond")
+    exc.__cause__ = Timeout(
+        "HTTPSConnectionPool(host='comicvine.gamespot.com', port=443): Read timed out."
+    )
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.TRANSIENT
+    )
+
+
+def test_classify_resource_not_found() -> None:
+    exc = ServiceError("Resource not found")
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.NOT_FOUND
+    )
+
+
+def test_classify_404_cause_without_not_found_text() -> None:
+    """
+    A 404 is caught by its cause's status even when the message doesn't say so.
+
+    The message branch below only fires on simyan's literal "Resource not
+    found"; this probes `__cause__.response.status_code`, which is where
+    `requests.HTTPError` actually carries the status.
+    """
+    from requests import HTTPError, Response
+
+    response = Response()
+    response.status_code = 404
+    cause = HTTPError(
+        "404 Client Error for url: https://comicvine.gamespot.com/api/",
+        response=response,
+    )
+    exc = ServiceError("404: Unable to parse response as Json")
+    exc.__cause__ = cause
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.NOT_FOUND
+    )
+
+
+def test_classify_server_error_is_transient() -> None:
+    exc = ServiceError("500: {'error': 'Internal Server Error'}")
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.TRANSIENT
+    )
+
+
+def test_classify_cv_status_107_body_is_rate_limit() -> None:
+    """CV serves some rate-limit errors as 200 bodies that die in pydantic."""
+    exc = ServiceError(
+        "1 validation error for VolumeListResponse\n"
+        "  Value error, {'error': 'Rate Limit Exceeded', 'status_code': 107}"
+        " [type=value_error]"
+    )
+    assert (
+        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.RATE_LIMIT
+    )
+
+
+def test_classify_non_simyan_exception_is_unclaimed() -> None:
+    """Anything outside simyan's hierarchy returns None (decorator fallback)."""
+    exc = RuntimeError("connection reset by peer")
+    assert ComicVineOnlineSource.classify_retry_exception(exc) is None
 
 
 # ------------------------------------------------------- client construction

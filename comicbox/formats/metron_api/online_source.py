@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 import threading
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
 from typing_extensions import override
@@ -23,7 +23,7 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.formats.base.online.retry import with_retry
+from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
 )
@@ -94,6 +94,29 @@ def _bi_resource_url(base_issue: Any) -> str:
     return str(url) if url else ""
 
 
+# mokkari collapses non-429 HTTP errors, connection failures, bad JSON,
+# 2xx {"detail": ...} bodies and pydantic failures into one ApiError whose
+# only status signal is text inside repr(HTTPError) — so classifying
+# mokkari genuinely requires message inspection. Rate-limit markers are
+# checked FIRST: a throttle response served with a non-429 status (a CDN
+# 403/420, or a 2xx "Request was throttled" detail body) must retry even
+# when the same message also mentions credentials or an api key. No bare
+# "429" marker — mokkari raises RateLimitError for exactly-429, so a
+# "429" inside ApiError text can only be a URL/id collision. No bare
+# "auth" marker — it substring-matches "author", and ApiError embeds
+# pydantic dumps of comic metadata with creator fields.
+_RATE_LIMIT_MARKERS: Final = ("rate limit", "throttl", "too many requests")
+_AUTH_MARKERS: Final = (
+    "401",
+    "403",
+    "unauthorized",
+    "forbidden",
+    "invalid username",
+    "invalid password",
+    "invalid token",
+)
+
+
 class MetronOnlineSource(OnlineSource):
     """Wraps mokkari for the Metron API."""
 
@@ -106,6 +129,26 @@ class MetronOnlineSource(OnlineSource):
         """Metron accepts an API token (key), or both username and password."""
         credentials = self._credentials
         return bool(credentials.key or (credentials.user and credentials.password))
+
+    @override
+    @staticmethod
+    def classify_retry_exception(exc: BaseException) -> RetryCategory | None:
+        """Classify mokkari's exceptions; see the marker tuples above."""
+        from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
+
+        if isinstance(exc, RateLimitError):
+            return RetryCategory.RATE_LIMIT
+        if isinstance(exc, AuthenticationError):
+            # Raised only by Session.__init__ for missing local credentials.
+            return RetryCategory.AUTH
+        if isinstance(exc, ApiError):
+            msg = str(exc).lower()
+            if any(marker in msg for marker in _RATE_LIMIT_MARKERS):
+                return RetryCategory.RATE_LIMIT
+            if any(marker in msg for marker in _AUTH_MARKERS):
+                return RetryCategory.AUTH
+            return RetryCategory.TRANSIENT
+        return None
 
     def _get_cache(self) -> Any:
         resolved = self._resolve_response_cache()

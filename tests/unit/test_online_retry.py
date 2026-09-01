@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from functools import partial, wraps
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import pytest
 
@@ -10,6 +11,7 @@ from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online.retry import (
     _MAX_TOTAL_WAIT_S,
     _RATE_LIMIT_SCHEDULE,
+    RetryCategory,
     clear_cancel,
     interruptible_sleep,
     request_cancel,
@@ -19,24 +21,60 @@ from comicbox.formats.base.online.retry import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+T = TypeVar("T")
 
-class _FakeRateLimitError(Exception):
+
+class _RateLimitedError(Exception):
+    """Stands in for a client library's rate-limit error."""
+
     def __init__(
         self, msg: str = "rate limited", retry_after: float | None = None
     ) -> None:
         super().__init__(msg)
-        self.retry_after = retry_after
+        if retry_after is not None:
+            self.retry_after = retry_after
 
 
-# Match what mokkari raises by name (the retry decorator key off the class name).
-_FakeRateLimitError.__name__ = "RateLimitError"
+class _AuthFailedError(Exception):
+    """Stands in for a client library's auth error."""
 
 
-class _FakeAuthError(Exception):
-    pass
+class _NotFoundError(Exception):
+    """Stands in for a client library's permanent not-found response."""
 
 
-_FakeAuthError.__name__ = "AuthenticationError"
+class _StubSource:
+    """The minimal source shape the retry decorator reads off ``args[0]``."""
+
+    name = "stub"
+    on_rate_limit: Any = None
+    retry_sleep: Any = None
+
+    @staticmethod
+    def classify_retry_exception(exc: BaseException) -> RetryCategory | None:
+        if isinstance(exc, _RateLimitedError):
+            return RetryCategory.RATE_LIMIT
+        if isinstance(exc, _AuthFailedError):
+            return RetryCategory.AUTH
+        if isinstance(exc, _NotFoundError):
+            return RetryCategory.NOT_FOUND
+        return None
+
+
+def _stub_retry(
+    source: _StubSource | None = None, **retry_kwargs: Any
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Like ``with_retry``, but bound to a stub source instance as ``args[0]``."""
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @with_retry(**retry_kwargs)
+        @wraps(func)
+        def method(_self: _StubSource, *args: Any, **kwargs: Any) -> T:
+            return func(*args, **kwargs)
+
+        return partial(method, source if source is not None else _StubSource())
+
+    return decorator
 
 
 def _capture_sleeps() -> tuple[list[float], Callable[[float], None]]:
@@ -94,12 +132,12 @@ def test_rate_limit_retries_use_longer_schedule() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(sleep=fake_sleep)
+    @_stub_retry(sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
         if calls < 3:
-            raise _FakeRateLimitError
+            raise _RateLimitedError
         return "ok"
 
     assert fn() == "ok"
@@ -114,12 +152,12 @@ def test_honors_retry_after_hint_over_rate_limit_schedule() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(sleep=fake_sleep)
+    @_stub_retry(sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
         if calls < 2:
-            raise _FakeRateLimitError(retry_after=12.5)
+            raise _RateLimitedError(retry_after=12.5)
         return "ok"
 
     fn()
@@ -138,12 +176,12 @@ def test_zero_retry_after_hint_falls_back_to_schedule() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(sleep=fake_sleep)
+    @_stub_retry(sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
         if calls < 2:
-            raise _FakeRateLimitError(retry_after=0.0)
+            raise _RateLimitedError(retry_after=0.0)
         return "ok"
 
     fn()
@@ -180,13 +218,13 @@ def test_rate_limit_has_its_own_budget() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(max_retries=1, sleep=fake_sleep)
+    @_stub_retry(max_retries=1, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
-        raise _FakeRateLimitError
+        raise _RateLimitedError
 
-    with pytest.raises(_FakeRateLimitError):
+    with pytest.raises(_RateLimitedError):
         fn()
     # 1 + len(_RATE_LIMIT_SCHEDULE) attempts, with len(schedule) sleeps.
     assert calls == 1 + len(_RATE_LIMIT_SCHEDULE)
@@ -198,54 +236,31 @@ def test_auth_error_does_not_retry() -> None:
     calls = 0
     msg = "401 unauthorized"
 
-    @with_retry(max_retries=5, sleep=fake_sleep)
+    @_stub_retry(max_retries=5, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
-        raise _FakeAuthError(msg)
+        raise _AuthFailedError(msg)
 
-    with pytest.raises(_FakeAuthError):
+    with pytest.raises(_AuthFailedError):
         fn()
     assert calls == 1
     assert sleeps == []
 
 
-def test_auth_error_terminal_without_message_marker() -> None:
-    """Simyan's AuthenticationError carries CV's marker-less 'Invalid API Key'."""
+def test_not_found_error_does_not_retry() -> None:
+    """A NOT_FOUND verdict is terminal: no replay, no sleeps."""
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
-    msg = "Invalid API Key"
+    msg = "Resource not found"
 
-    @with_retry(max_retries=5, sleep=fake_sleep)
+    @_stub_retry(max_retries=5, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
-        raise _FakeAuthError(msg)
+        raise _NotFoundError(msg)
 
-    with pytest.raises(_FakeAuthError):
-        fn()
-    assert calls == 1
-    assert sleeps == []
-
-
-def test_api_error_with_credential_message_does_not_retry() -> None:
-    """Mokkari raises generic ApiError with the server's credential message."""
-
-    class _FakeApiError(Exception):
-        pass
-
-    _FakeApiError.__name__ = "ApiError"
-    sleeps, fake_sleep = _capture_sleeps()
-    calls = 0
-    msg = "Invalid username/password."
-
-    @with_retry(max_retries=5, sleep=fake_sleep)
-    def fn() -> str:
-        nonlocal calls
-        calls += 1
-        raise _FakeApiError(msg)
-
-    with pytest.raises(_FakeApiError):
+    with pytest.raises(_NotFoundError):
         fn()
     assert calls == 1
     assert sleeps == []
@@ -264,29 +279,6 @@ def test_lookup_error_does_not_retry() -> None:
         raise LookupError(msg)
 
     with pytest.raises(LookupError):
-        fn()
-    assert calls == 1
-    assert sleeps == []
-
-
-def test_service_error_not_found_does_not_retry() -> None:
-    """Simyan maps upstream 404s to ServiceError('Resource not found')."""
-
-    class _FakeServiceError(Exception):
-        pass
-
-    _FakeServiceError.__name__ = "ServiceError"
-    sleeps, fake_sleep = _capture_sleeps()
-    calls = 0
-    msg = "Resource not found"
-
-    @with_retry(max_retries=5, sleep=fake_sleep)
-    def fn() -> str:
-        nonlocal calls
-        calls += 1
-        raise _FakeServiceError(msg)
-
-    with pytest.raises(_FakeServiceError):
         fn()
     assert calls == 1
     assert sleeps == []
@@ -405,7 +397,7 @@ def test_mixed_failures_track_budgets_independently() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(max_retries=3, sleep=fake_sleep)
+    @_stub_retry(max_retries=3, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
@@ -413,7 +405,7 @@ def test_mixed_failures_track_budgets_independently() -> None:
             msg = "transient"
             raise RuntimeError(msg)  # generic attempt 0
         if calls == 2:
-            raise _FakeRateLimitError  # rate-limit attempt 0
+            raise _RateLimitedError  # rate-limit attempt 0
         if calls == 3:
             msg = "transient"
             raise RuntimeError(msg)  # generic attempt 1
@@ -433,15 +425,23 @@ def test_simyan_client_cap_timeout_uses_rate_limit_schedule() -> None:
     Timeout("Rate limit not cleared within max_delay=...") and simyan
     wraps it in ServiceError("Service took too long to respond"). That is
     a rate-limit condition — the generic 31s budget can't outlast an
-    hourly cap. Uses the real simyan/requests classes to pin the shape.
+    hourly cap. Uses the real simyan/requests classes AND the real
+    ComicVine classifier to pin the shape end-to-end.
     """
     from requests.exceptions import Timeout
     from simyan.errors import ServiceError
 
+    from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
+
+    class _ComicVineStub(_StubSource):
+        classify_retry_exception = staticmethod(
+            ComicVineOnlineSource.classify_retry_exception
+        )
+
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(max_retries=5, sleep=fake_sleep)
+    @_stub_retry(source=_ComicVineStub(), max_retries=5, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
@@ -460,10 +460,17 @@ def test_genuine_timeout_stays_on_generic_schedule() -> None:
     from requests.exceptions import Timeout
     from simyan.errors import ServiceError
 
+    from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
+
+    class _ComicVineStub(_StubSource):
+        classify_retry_exception = staticmethod(
+            ComicVineOnlineSource.classify_retry_exception
+        )
+
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @with_retry(max_retries=5, sleep=fake_sleep)
+    @_stub_retry(source=_ComicVineStub(), max_retries=5, sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
@@ -545,11 +552,11 @@ def test_total_wait_ceiling_stops_a_server_hint_loop() -> None:
     """
     sleeps, fake_sleep = _capture_sleeps()
 
-    @with_retry(max_retries=1, sleep=fake_sleep)
+    @_stub_retry(max_retries=1, sleep=fake_sleep)
     def fn() -> str:
-        raise _FakeRateLimitError(retry_after=3600.0)
+        raise _RateLimitedError(retry_after=3600.0)
 
-    with pytest.raises(_FakeRateLimitError):
+    with pytest.raises(_RateLimitedError):
         fn()
     assert sum(sleeps) <= _MAX_TOTAL_WAIT_S
     # One 3600s hint exactly fills the ceiling; a second would breach it.
@@ -560,11 +567,11 @@ def test_total_wait_ceiling_is_configurable_per_call() -> None:
     """A tighter ceiling ends the loop sooner, without truncating a delay."""
     sleeps, fake_sleep = _capture_sleeps()
 
-    @with_retry(max_retries=1, sleep=fake_sleep, max_wait_s=100.0)
+    @_stub_retry(max_retries=1, sleep=fake_sleep, max_wait_s=100.0)
     def fn() -> str:
-        raise _FakeRateLimitError
+        raise _RateLimitedError
 
-    with pytest.raises(_FakeRateLimitError):
+    with pytest.raises(_RateLimitedError):
         fn()
     # 30 + 60 = 90 fits; the next scheduled delay (120) would breach 100,
     # so the loop ends rather than sleeping a shortened, useless wait.
@@ -595,11 +602,11 @@ def test_default_sleep_is_interruptible() -> None:
     """
     calls = 0
 
-    @with_retry(max_retries=3)
+    @_stub_retry(max_retries=3)
     def fn() -> str:
         nonlocal calls
         calls += 1
-        raise _FakeRateLimitError
+        raise _RateLimitedError
 
     request_cancel()
     try:
@@ -621,17 +628,16 @@ def test_instance_retry_sleep_still_overrides_the_new_default() -> None:
     """OnlineSession's per-instance cancellable sleep keeps winning."""
     sleeps, fake_sleep = _capture_sleeps()
 
-    class _Source:
+    class _Source(_StubSource):
         retry_sleep = staticmethod(fake_sleep)
-        on_rate_limit = None
 
         @with_retry(max_retries=2)
         def fetch(self) -> str:
-            raise _FakeRateLimitError
+            raise _RateLimitedError
 
     request_cancel()
     try:
-        with pytest.raises(_FakeRateLimitError):
+        with pytest.raises(_RateLimitedError):
             _Source().fetch()
     finally:
         clear_cancel()

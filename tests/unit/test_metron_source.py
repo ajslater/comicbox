@@ -14,10 +14,16 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
 from typing_extensions import override
 
 from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.retry import (
+    _RATE_LIMIT_SCHEDULE,
+    RetryCategory,
+    with_retry,
+)
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 
@@ -216,13 +222,6 @@ def test_search_retries_per_call_on_rate_limit(
         "A": [_FakeBaseIssue(iid=5001, number="1", series_name="A", series_id=100)],
     }
 
-    # mokkari-shaped exception: the retry decorator keys on the type
-    # name string "RateLimitError" and the `retry_after` attribute.
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedMokkari(_FakeMokkari):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
@@ -234,7 +233,11 @@ def test_search_retries_per_call_on_rate_limit(
                 # Record the failed attempt too so we can assert retry count.
                 self.issues_list_calls.append(dict(params or {}))
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                # Real mokkari exception: `classify_retry_exception` keys on
+                # the type, and the tiny `retry_after` hint keeps the real
+                # sleep path fast.
+                msg = "Rate limit exceeded"
+                raise RateLimitError(msg, retry_after=0.001)
             return super().issues_list(params)
 
     fake = _RateLimitedMokkari(issues_by_key=issues)
@@ -638,3 +641,112 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     second = src._get_session()
     assert first is second
     assert builds["n"] == 1
+
+
+# ---------------------------------------------------- retry classification
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        pytest.param(
+            RateLimitError(
+                "Rate limit exceeded: You have reached the 20 requests per "
+                "minute limit. Please wait 30 seconds before making another "
+                "request.",
+                retry_after=0.0,
+            ),
+            RetryCategory.RATE_LIMIT,
+            id="rate-limit-error",
+        ),
+        # mokkari's AuthenticationError takes no arguments; it bakes in its
+        # own "Missing authorization information" message.
+        pytest.param(
+            AuthenticationError(),
+            RetryCategory.AUTH,
+            id="authentication-error",
+        ),
+        pytest.param(
+            ApiError(
+                "HTTP error: HTTPError('401 Client Error: Unauthorized for "
+                "url: https://metron.cloud/api/issue/1/') | Response body: "
+                '{"detail": "Invalid token."}'
+            ),
+            RetryCategory.AUTH,
+            id="api-error-401",
+        ),
+        pytest.param(
+            ApiError("Invalid username/password."),
+            RetryCategory.AUTH,
+            id="api-error-bad-credentials",
+        ),
+        # SPEC-BUG regression: a throttle body served as ApiError must
+        # classify as RATE_LIMIT (rate-limit markers are checked FIRST),
+        # not fall through to AUTH or TRANSIENT.
+        pytest.param(
+            ApiError("Rate limit exceeded for this api key. Expires in 42 seconds."),
+            RetryCategory.RATE_LIMIT,
+            id="api-error-throttle-body",
+        ),
+        pytest.param(
+            ApiError("Connection error: ReadTimeout(ReadTimeoutError(...))"),
+            RetryCategory.TRANSIENT,
+            id="api-error-connection",
+        ),
+        # Pins that the old bare-"auth" marker is gone: an ApiError carrying
+        # a pydantic dump with a creator-ish "authors" field must not
+        # substring-match into AUTH.
+        pytest.param(
+            ApiError(
+                "Validation error: {'name': 'Watchmen #5', 'authors': ['Alan Moore']}"
+            ),
+            RetryCategory.TRANSIENT,
+            id="api-error-authors-field-not-auth",
+        ),
+        # Not a mokkari exception — the classifier declines and the retry
+        # decorator's conservative fallback takes over.
+        pytest.param(
+            LookupError("metron: issue 5 not found"),
+            None,
+            id="non-mokkari-declined",
+        ),
+    ],
+)
+def test_classify_retry_exception(
+    exc: BaseException, expected: RetryCategory | None
+) -> None:
+    assert MetronOnlineSource.classify_retry_exception(exc) is expected
+
+
+def test_with_retry_replays_api_error_throttle_body() -> None:
+    """
+    End-to-end SPEC-BUG regression through the decorator.
+
+    A throttle response surfaced as `ApiError` (no `retry_after` hint)
+    must be classified RATE_LIMIT, sleep the rate-limit schedule's first
+    delay, and replay the call — not raise or use the generic schedule.
+    """
+    sleeps: list[float] = []
+    calls = {"n": 0}
+
+    class _Stub:
+        classify_retry_exception = staticmethod(
+            MetronOnlineSource.classify_retry_exception
+        )
+        on_rate_limit = None
+        retry_sleep = None
+        name = "metron"
+
+        @with_retry(sleep=sleeps.append)
+        def fetch(self) -> str:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                msg = "Rate limit exceeded for this api key."
+                raise ApiError(msg)
+            return "ok"
+
+    assert _Stub().fetch() == "ok"
+    # The call was replayed: the throttled attempt + the successful one.
+    assert calls["n"] == 2
+    # No retry_after hint on ApiError, so the rate-limit schedule applies.
+    assert sleeps == [_RATE_LIMIT_SCHEDULE[0]]

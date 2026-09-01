@@ -34,7 +34,7 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
-from comicbox.formats.base.online.retry import with_retry
+from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.series_filter import (
     max_calls_for,
     should_keep_volume_name,
@@ -163,6 +163,27 @@ class _SearchBudget:
         return f"search deadline ({_SEARCH_DEADLINE_S:.0f}s) reached"
 
 
+def _classify_service_error(exc: BaseException) -> RetryCategory:
+    """Disambiguate a plain simyan ServiceError by cause and message."""
+    # simyan 3.x client-side cap exhaustion: ServiceError("Service took
+    # too long to respond") whose __cause__ is requests'
+    # Timeout("Rate limit not cleared within max_delay=..."). Only the
+    # cause distinguishes it from a genuine read timeout.
+    if "rate limit not cleared" in str(exc.__cause__ or "").lower():
+        return RetryCategory.RATE_LIMIT
+    cause_response = getattr(exc.__cause__, "response", None)
+    if getattr(cause_response, "status_code", None) == 404:  # noqa: PLR2004
+        return RetryCategory.NOT_FOUND
+    if "not found" in str(exc).lower():  # literal "Resource not found"
+        return RetryCategory.NOT_FOUND
+    # CV serves some errors as HTTP 200 bodies that die in pydantic
+    # validation; a 200-body "Rate Limit Exceeded" (CV status 107)
+    # surfaces here with the offending dict in the message.
+    if "rate limit" in str(exc).lower():
+        return RetryCategory.RATE_LIMIT
+    return RetryCategory.TRANSIENT
+
+
 class ComicVineOnlineSource(OnlineSource):
     """Wraps simyan for the ComicVine API."""
 
@@ -174,6 +195,27 @@ class ComicVineOnlineSource(OnlineSource):
     def is_configured(self) -> bool:
         """ComicVine requires an api_key."""
         return bool(self._credentials.key)
+
+    @override
+    @staticmethod
+    def classify_retry_exception(exc: BaseException) -> RetryCategory | None:
+        """
+        Classify simyan's exceptions.
+
+        simyan encodes HTTP status in its class hierarchy (ServiceError >
+        AuthenticationError on 401, RateLimitError on 429/420), so no
+        message sniffing is needed except where the status can't tell
+        (see `_classify_service_error`).
+        """
+        from simyan.errors import AuthenticationError, RateLimitError, ServiceError
+
+        if isinstance(exc, RateLimitError):  # HTTP 429/420; message may be None
+            return RetryCategory.RATE_LIMIT
+        if isinstance(exc, AuthenticationError):  # raised on HTTP 401 only
+            return RetryCategory.AUTH
+        if isinstance(exc, ServiceError):
+            return _classify_service_error(exc)
+        return None
 
     def _get_session(self) -> Comicvine:
         """

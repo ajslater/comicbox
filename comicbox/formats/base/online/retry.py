@@ -6,12 +6,21 @@ Wraps a callable that talks to an upstream API. Retries transient errors
 upstream's `retry_after` hint when present (mokkari sets this on
 `RateLimitError`). Permanent failures — auth errors and not-found
 responses — are never retried.
+
+Which failure is which is the source's call, not this module's: the
+bound instance's ``classify_retry_exception`` (each source contributes
+one for its own client library; see
+`OnlineSource.classify_retry_exception`) returns a `RetryCategory`.
+Exceptions no classifier claims fall back to a conservative default:
+programmer/config errors (`_NON_RETRIABLE`) raise immediately,
+everything else retries on the generic schedule.
 """
 
 from __future__ import annotations
 
 import re
 import threading
+from enum import Enum, auto
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Final, TypeVar
 
@@ -23,6 +32,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 T = TypeVar("T")
+
+
+class RetryCategory(Enum):
+    """How a classified exception drives the retry loop."""
+
+    RATE_LIMIT = auto()  # rate-limit schedule + budget; on_rate_limit fires
+    AUTH = auto()  # never retried
+    NOT_FOUND = auto()  # never retried
+    TRANSIENT = auto()  # generic exponential schedule
+
 
 # ComicVine sends the API key as a query param (simyan 3.x), and requests
 # embeds the full URL — key included — in HTTPError/ConnectionError
@@ -177,51 +196,19 @@ def interruptible_sleep(seconds: float) -> None:
         raise OnlineLookupAbortedError(msg)
 
 
-def _is_rate_limit(exc: BaseException) -> bool:
-    if type(exc).__name__ == "RateLimitError":
-        return True
-    # simyan 3.x client-side cap exhaustion surfaces as ServiceError whose
-    # __cause__ is requests' Timeout("Rate limit not cleared within
-    # max_delay=..."). Route it to the rate-limit schedule — the generic
-    # 31s budget can't outlast an hourly cap.
-    return (
-        type(exc).__name__ == "ServiceError"
-        and "rate limit not cleared" in str(exc.__cause__ or "").lower()
-    )
+def _classify(exc: BaseException, args: tuple[Any, ...]) -> RetryCategory | None:
+    """
+    Ask the source instance's per-library classifier, if any.
 
-
-_AUTH_MARKERS = (
-    "auth",
-    "401",
-    "403",
-    "forbidden",
-    # mokkari raises its generic ApiError with the server's message for
-    # bad Metron credentials; simyan's AuthenticationError carries CV's
-    # marker-less "Invalid API Key".
-    "invalid username",
-    "invalid password",
-    "api key",
-)
-
-
-def _is_auth_error(exc: BaseException) -> bool:
-    name = type(exc).__name__
-    if name == "AuthenticationError":
-        # The class name alone is conclusive; the message is whatever the
-        # server sent (CV: "Invalid API Key", no recognizable marker).
-        return True
-    return name == "ApiError" and any(
-        marker in str(exc).lower() for marker in _AUTH_MARKERS
-    )
-
-
-def _is_not_found_error(exc: BaseException) -> bool:
-    """Permanent not-found responses (bad explicit id) — never retriable."""
-    if type(exc).__name__ != "ServiceError":
-        return False
-    if getattr(exc.__cause__, "status_code", None) == 404:  # noqa: PLR2004
-        return True
-    return "not found" in str(exc).lower()
+    ``args[0]`` is the bound source instance at every production call
+    site — the same seam `_resolve_sleep` and `_notify_rate_limit_listener`
+    read. Plain functions and fakes without the method fall back to None,
+    which `_is_retriable` treats conservatively.
+    """
+    if not args:
+        return None
+    classify = getattr(args[0], "classify_retry_exception", None)
+    return classify(exc) if classify is not None else None
 
 
 # Exceptions that signal programmer errors / bad config — NOT retriable. The
@@ -238,16 +225,20 @@ _NON_RETRIABLE: tuple[type[BaseException], ...] = (
 )
 
 
-def _is_retriable(exc: BaseException) -> bool:
+def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     """
     Return True for transient errors worth retrying.
 
-    Auth errors, not-found responses, and programmer/config errors raise
-    immediately without retry.
+    A classifier's AUTH / NOT_FOUND verdicts are terminal; its RATE_LIMIT
+    and TRANSIENT verdicts are trusted (no vendor exception subclasses
+    the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise immediately
+    when they signal programmer/config errors and retry otherwise.
     """
-    if _is_auth_error(exc) or _is_not_found_error(exc):
+    if category in (RetryCategory.AUTH, RetryCategory.NOT_FOUND):
         return False
-    return not isinstance(exc, _NON_RETRIABLE)
+    if category is None:
+        return not isinstance(exc, _NON_RETRIABLE)
+    return True
 
 
 def _retry_after(exc: BaseException) -> float | None:
@@ -284,6 +275,7 @@ def _delay_for_rate_limit(attempt: int) -> float:
 def _plan_retry(
     exc: BaseException,
     *,
+    category: RetryCategory | None,
     attempt: int,
     rate_limit_attempt: int,
     max_retries: int,
@@ -304,7 +296,7 @@ def _plan_retry(
     shortened delay: waiting out only part of a rate-limit window spends
     an attempt on a request that is still going to be refused.
     """
-    is_rate_limit = _is_rate_limit(exc)
+    is_rate_limit = category is RetryCategory.RATE_LIMIT
     if is_rate_limit:
         if rate_limit_attempt >= _MAX_RATE_LIMIT_RETRIES:
             return None
@@ -328,10 +320,11 @@ def _plan_retry(
     return delay, budget, is_rate_limit
 
 
-def _handle_retry_exception(
+def _handle_retry_exception(  # noqa: PLR0913
     exc: Exception,
     *,
     func_name: str,
+    category: RetryCategory | None,
     attempt: int,
     rate_limit_attempt: int,
     max_retries: int,
@@ -348,10 +341,11 @@ def _handle_retry_exception(
     out of its retry loop. The returned delay feeds back in as
     ``waited`` on the next call.
     """
-    if not _is_retriable(exc):
+    if not _is_retriable(exc, category):
         raise exc
     plan = _plan_retry(
         exc,
+        category=category,
         attempt=attempt,
         rate_limit_attempt=rate_limit_attempt,
         max_retries=max_retries,
@@ -376,18 +370,20 @@ def _notify_rate_limit_listener(
     exc: BaseException,
     args: tuple[Any, ...],
     *,
+    category: RetryCategory | None,
     attempt: int,
     rate_limit_attempt: int,
     max_retries: int,
 ) -> None:
     """Invoke ``instance.on_rate_limit`` for rate-limit failures, if defined."""
-    if not args or not _is_rate_limit(exc):
+    if not args or category is not RetryCategory.RATE_LIMIT:
         return
     instance_cb = getattr(args[0], "on_rate_limit", None)
     if instance_cb is None:
         return
     plan = _plan_retry(
         exc,
+        category=category,
         attempt=attempt,
         rate_limit_attempt=rate_limit_attempt,
         max_retries=max_retries,
@@ -443,9 +439,11 @@ def _run_with_retries(
         except Exception as exc:
             _redact_api_keys(exc)
             last_exc = exc
+            category = _classify(exc, args)
             _notify_rate_limit_listener(
                 exc,
                 args,
+                category=category,
                 attempt=attempt,
                 rate_limit_attempt=rate_limit_attempt,
                 max_retries=max_retries,
@@ -453,6 +451,7 @@ def _run_with_retries(
             slept = _handle_retry_exception(
                 exc,
                 func_name=func.__name__,  # ty: ignore[unresolved-attribute]
+                category=category,
                 attempt=attempt,
                 rate_limit_attempt=rate_limit_attempt,
                 max_retries=max_retries,
@@ -463,7 +462,7 @@ def _run_with_retries(
             if slept is None:
                 break
             waited += slept
-            if _is_rate_limit(exc):
+            if category is RetryCategory.RATE_LIMIT:
                 rate_limit_attempt += 1
             else:
                 attempt += 1

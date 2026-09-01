@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
+    from comicbox.formats.base.online.retry import RetryCategory
     from comicbox.formats.sources import MetadataSources
 
 # Cache paths already wiped this process under CacheMode.REFRESH.
@@ -121,6 +122,22 @@ class OnlineSource(ABC):
         precomputed cover hash. The matcher scores them; the lookup mixin
         decides AUTO_WRITE / PROMPT / SKIP / NO_MATCH.
         """
+
+    @staticmethod
+    def classify_retry_exception(exc: BaseException) -> RetryCategory | None:  # noqa: ARG004
+        """
+        Classify one exception from this source's client library.
+
+        Consulted by the with_retry decorator (retry._classify) off the
+        bound instance — the same seam as retry_sleep/on_rate_limit. Each
+        subclass owns its client library's taxonomy: isinstance against
+        the real exception classes, imported inside the method to honor
+        the package-wide lazy-import convention. Return None for
+        exceptions this library did not raise; retry.py then falls back
+        to its conservative default (programmer/config errors raise, the
+        rest retry on the generic schedule).
+        """
+        return None
 
     def lookup_issue(
         self, volume_id: int, issue_number: str | None
