@@ -248,6 +248,74 @@ def test_auth_error_does_not_retry() -> None:
     assert sleeps == []
 
 
+def test_base_source_declines_every_exception() -> None:
+    """
+    A source that doesn't override the hook classifies nothing.
+
+    The decorator then applies its conservative fallback, so a new source
+    degrades to generic retries rather than inheriting another library's
+    taxonomy.
+    """
+    from comicbox.formats.base.online.sources.base import OnlineSource
+
+    assert OnlineSource.classify_retry_exception(RuntimeError("boom")) is None
+
+
+def test_rate_limit_notifies_the_instance_listener() -> None:
+    """
+    A RATE_LIMIT verdict fires `on_rate_limit`, which drives the user notice.
+
+    `online_lookup` wires this to the `RateLimited` event, so a source
+    whose classifier stopped saying RATE_LIMIT would still retry — just
+    silently, leaving the user staring at an unexplained stall.
+    """
+    _sleeps, fake_sleep = _capture_sleeps()
+    notices: list[tuple[str, float | None]] = []
+
+    class _ListeningSource(_StubSource):
+        on_rate_limit: Any = staticmethod(
+            lambda name, delay: notices.append((name, delay))
+        )
+
+    calls = 0
+
+    @_stub_retry(_ListeningSource(), max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise _RateLimitedError
+        return "ok"
+
+    assert fn() == "ok"
+    assert notices == [("stub", _RATE_LIMIT_SCHEDULE[0])]
+
+
+def test_transient_error_does_not_notify_the_listener() -> None:
+    """Only rate limits reach `on_rate_limit`; a generic 5xx must not."""
+    _sleeps, fake_sleep = _capture_sleeps()
+    notices: list[tuple[str, float | None]] = []
+
+    class _ListeningSource(_StubSource):
+        on_rate_limit: Any = staticmethod(
+            lambda name, delay: notices.append((name, delay))
+        )
+
+    calls = 0
+
+    @_stub_retry(_ListeningSource(), max_retries=5, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            msg = "502 bad gateway"
+            raise RuntimeError(msg)
+        return "ok"
+
+    assert fn() == "ok"
+    assert notices == []
+
+
 def test_not_found_error_does_not_retry() -> None:
     """A NOT_FOUND verdict is terminal: no replay, no sleeps."""
     sleeps, fake_sleep = _capture_sleeps()

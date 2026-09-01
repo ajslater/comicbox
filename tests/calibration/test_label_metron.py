@@ -1,7 +1,7 @@
 """
 Unit tests for the Metron labeler's pure-Python helpers.
 
-The live `_build_metron_session` and `lookup_metron_by_cv_id` paths need
+The live `_build_metron_source` and `lookup_metron_by_cv_id` paths need
 real Metron credentials, so they're exercised by the calibration runs
 themselves. These tests cover the surrounding logic: iteration, idempotent
 re-runs, atomic writes, and stats accounting.
@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from tests.calibration.label_metron import (
     _atomic_write_fixtures,
     _iter_labelable,
@@ -93,7 +94,25 @@ class _FakeIssue:
         self.id = issue_id
 
 
-class _FakeSession:
+class _FakeSourceBase:
+    """
+    The `MetronOnlineSource` surface the labeler and the decorator use.
+
+    `@with_retry()` reads its classifier off `args[0]`, so the fakes must
+    carry the real one: that is what routes a rate limit onto the
+    production schedule instead of the classifier-less fallback.
+    """
+
+    name = "metron"
+    on_rate_limit = None
+    retry_sleep = None
+    classify_retry_exception = staticmethod(MetronOnlineSource.classify_retry_exception)
+
+    def _get_session(self) -> _FakeSourceBase:
+        return self
+
+
+class _FakeSession(_FakeSourceBase):
     """
     Captures cv_id lookups and replays a canned mapping.
 
@@ -131,7 +150,7 @@ def test_label_fixtures_writes_back_new_metron_ids(
     path = _write_fixtures(tmp_path, fixtures)
     fake = _FakeSession({100: 500, 200: 600})
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: fake,
     )
 
@@ -151,7 +170,7 @@ def test_label_fixtures_leaves_metron_null_when_no_coverage(
     path = _write_fixtures(tmp_path, fixtures)
     fake = _FakeSession({})  # nothing on Metron
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: fake,
     )
 
@@ -172,7 +191,7 @@ def test_label_fixtures_preserves_existing_metron_ids(
     path = _write_fixtures(tmp_path, fixtures)
     fake = _FakeSession({100: 9999, 200: 600})  # 100 would clobber if queried
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: fake,
     )
 
@@ -194,7 +213,7 @@ def test_label_fixtures_dry_run_does_not_write(
     path = _write_fixtures(tmp_path, fixtures)
     fake = _FakeSession({100: 500})
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: fake,
     )
 
@@ -215,7 +234,7 @@ def test_label_fixtures_respects_limit(
     path = _write_fixtures(tmp_path, fixtures)
     fake = _FakeSession({100 + i: 500 + i for i in range(10)})
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: fake,
     )
 
@@ -234,7 +253,7 @@ def test_label_fixtures_handles_non_retriable_exception(
     is marked no-coverage, and the loop continues to the next fixture.
     """
 
-    class _FlakySession:
+    class _FlakySession(_FakeSourceBase):
         def __init__(self) -> None:
             self.calls = 0
 
@@ -251,7 +270,7 @@ def test_label_fixtures_handles_non_retriable_exception(
     ]
     path = _write_fixtures(tmp_path, fixtures)
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         _FlakySession,
     )
 
@@ -269,15 +288,15 @@ def test_label_fixtures_retries_rate_limit_then_succeeds(
 
     Before this fix, Metron's 20/min cap would silently mark CVids as
     "no metron coverage" whenever rate-limiting kicked in (false
-    negative on the calibration ground truth). The mokkari Session has
-    no `classify_retry_exception`, so the decorator takes its
-    conservative fallback path: RateLimitError isn't in
-    `_NON_RETRIABLE`, so it's retried, and the `retry_after` server
-    hint is still honored over the generic schedule.
+    negative on the calibration ground truth). The labeler passes a
+    source, so the decorator classifies with the real Metron
+    classifier and a hintless 429 would get the full rate-limit
+    schedule; the tiny `retry_after` here wins over that schedule and
+    keeps the test fast.
     """
     from mokkari.exceptions import RateLimitError
 
-    class _RateLimitedSession:
+    class _RateLimitedSession(_FakeSourceBase):
         def __init__(self) -> None:
             self.calls = 0
 
@@ -294,7 +313,7 @@ def test_label_fixtures_retries_rate_limit_then_succeeds(
     path = _write_fixtures(tmp_path, fixtures)
     session_instance = _RateLimitedSession()
     monkeypatch.setattr(
-        "tests.calibration.label_metron._build_metron_session",
+        "tests.calibration.label_metron._build_metron_source",
         lambda: session_instance,
     )
 
@@ -318,7 +337,7 @@ def test_label_fixtures_writes_incrementally(
     """
     on_disk_after_calls: dict[int, list[dict]] = {}
 
-    class _Spy:
+    class _Spy(_FakeSourceBase):
         def __init__(self) -> None:
             self.calls = 0
 
@@ -340,7 +359,7 @@ def test_label_fixtures_writes_incrementally(
         {"file": "/b.cbz", "metron": None, "comicvine": 200},
     ]
     path = _write_fixtures(tmp_path, fixtures)
-    monkeypatch.setattr("tests.calibration.label_metron._build_metron_session", _Spy)
+    monkeypatch.setattr("tests.calibration.label_metron._build_metron_source", _Spy)
 
     label_fixtures(path)
     # Before the second call's exception, /a's metron was already on disk.
@@ -365,7 +384,7 @@ def test_lookup_metron_by_cv_id_returns_first_on_ambiguous(
 ) -> None:
     """Multi-hit responses log a warning but still return the first id."""
 
-    class _MultiHitSession:
+    class _MultiHitSession(_FakeSourceBase):
         def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
             return [_FakeIssue(700), _FakeIssue(800)]
 
@@ -387,7 +406,7 @@ def test_lookup_metron_by_cv_id_swallows_non_retriable_exception(
     the retry path — see `test_label_fixtures_retries_rate_limit_then_succeeds`.
     """
 
-    class _BrokenSession:
+    class _BrokenSession(_FakeSourceBase):
         def issues_list(self, params: dict[str, int]) -> list[_FakeIssue]:
             msg = "bad param"
             raise ValueError(msg)
