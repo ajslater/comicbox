@@ -286,11 +286,16 @@ def test_metron_url_path_strips_trailing_slash() -> None:
     )
 
 
-def test_get_id_source_from_url_unknown_domain_returns_hostname() -> None:
-    """An unrecognized domain falls back to returning the hostname itself."""
-    assert get_id_source_from_url("https://example.com/foo") == "example.com"
-    # The hostname is lowercased, so the fallback is too.
-    assert get_id_source_from_url("https://Example.COM/foo") == "example.com"
+def test_get_id_source_from_url_unknown_domain_names_nothing() -> None:
+    """
+    An unrecognized domain names no source.
+
+    It used to return the hostname itself, but a hostname is not a source:
+    every caller threw that result away, and inventing a source from it only
+    produced keys nothing could look up.
+    """
+    assert get_id_source_from_url("https://example.com/foo") == ""
+    assert get_id_source_from_url("https://Example.COM/foo") == ""
 
 
 def test_get_id_source_from_url_ignores_port_case_and_userinfo() -> None:

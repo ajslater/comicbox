@@ -1,16 +1,32 @@
 """Identifier consts."""
 
 import re
+from collections.abc import Container, Iterator
 
 from comicbox.enums.comicbox import AlternateIdSources, IdSources
 
+# Ordered best source first, because IdSources declares them that way.
 ID_SOURCE_VALUES = tuple(id_source.value for id_source in IdSources)
 DEFAULT_ID_SOURCE = IdSources.COMICVINE
 DEFAULT_ID_TYPE = "issue"
 
+# The GTIN family: sources that are a barcode rather than a database id.
+# Ordered by write preference for a format with a single barcode tag: ISBN
+# first as the most specific, the generic GTIN last.
+BARCODE_ID_SOURCES = (IdSources.ISBN, IdSources.UPC, IdSources.GTIN)
+
 # Field names inside the comicbox identifier dict shape.
 ID_KEY_KEY = "key"
 ID_TYPE_KEY = "id_type"
+
+
+def ranked_id_sources(candidates: Container[str]) -> Iterator[str]:
+    """Yield the id source values in candidates, best ranked source first."""
+    return (
+        id_source_str
+        for id_source_str in ID_SOURCE_VALUES
+        if id_source_str in candidates
+    )
 
 
 _ALTERNATE_ID_SOURCES = tuple(id_source.value for id_source in AlternateIdSources)

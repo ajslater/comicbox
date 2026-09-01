@@ -92,7 +92,7 @@ class MetronInfoTransform(BaseTransform):
     SCHEMA_CLASS = MetronInfoSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(key_map=SIMPLE_KEY_MAP.inverse),
-        METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,  # must come before most other resources
+        METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
         METRON_ARCS_TRANSFORM_TO_CB,
         METRON_COMMUNITY_RATING_TRANSFORM_TO_CB,
         METRON_CREDITS_TRANSFORM_TO_CB,
