@@ -18,8 +18,7 @@ from comicbox.formats.comicbox.schema import (
     IDENTIFIERS_KEY,
     URLS_KEY,
 )
-from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
-from comicbox.identifiers.identifiers import get_identifier_url
+from comicbox.identifiers.identifiers import get_url_from_identifier
 
 
 class ComicboxComputedUrls(ComicboxComputedIdentifiers):
@@ -37,18 +36,13 @@ class ComicboxComputedUrls(ComicboxComputedIdentifiers):
         """
         if not sub_data:
             return None
+        old_urls = sub_data.get(URLS_KEY) or ()
         # dict keys keep insertion order, so the file's own urls stay first.
-        urls: dict[str, None] = dict.fromkeys(
-            str(url) for url in sub_data.get(URLS_KEY) or ()
-        )
+        urls: dict[str, None] = dict.fromkeys(str(url) for url in old_urls)
         for id_source_str, identifier in (sub_data.get(IDENTIFIERS_KEY) or {}).items():
-            id_key = identifier.get(ID_KEY_KEY) if identifier else None
-            if not id_key:
-                continue
-            id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
-            if url := get_identifier_url(id_source_str, id_type, id_key):
+            if url := get_url_from_identifier(id_source_str, identifier):
                 urls.setdefault(url, None)
         url_list = list(urls)
-        if not url_list or url_list == list(sub_data.get(URLS_KEY) or ()):
+        if not url_list or url_list == list(old_urls):
             return None
         return {URLS_KEY: url_list}
