@@ -88,6 +88,9 @@
     - The ambiguous-match prompt trims its per-candidate detail lines on a
       quieted run (`-QQ` and up, or a `loglevel` above `INFO` in the config). It
       always claimed to and never did.
+    - A match mode or unattended choice made at a prompt applies to the whole
+      rest of the batch. Under `-j N` a sibling file could resolve partly under
+      the old setting, and `ask` never stuck at all in library sessions.
     - Writing MetronInfo no longer invents extra credits. Only `Painter` still
       writes Penciller, Inker and Colorist.
     - `breakdowns`, `finishes`, `plotter` and `scripter` keep their own role

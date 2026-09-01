@@ -70,6 +70,7 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.prompt import cli_selector
 from comicbox.formats.base.online.selector import SelectorContext
 from comicbox.formats.base.online.series_cache import claim_series
+from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
@@ -274,11 +275,20 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     # Process-wide lock around the selector callback. Under `-j N` parallel
     # batch runs we serialise prompts so output stays readable and the user
-    # can see which file is being asked about.
+    # can see which file is being asked about. It guards only the callback
+    # itself; the mutable lookup policy has its own lock (OnlineSessionState).
     _PROMPT_LOCK: ClassVar[threading.Lock] = threading.Lock()
 
     # Per-instance selector override; falls back to the default CLI prompt.
     _online_selector: SelectorCallback | None = None
+
+    # Session-supplied owner of the two mutable lookup settings (match and
+    # prompts). A Runner or OnlineSession shares one across every box it
+    # spawns so a `set_policy` / `set_unattended` answered on one file is
+    # in force for the next. Unset for a standalone Comicbox: the lazy
+    # fallback below then makes a private one seeded from this box's
+    # config, keeping single-file use self-contained.
+    _online_session_state: OnlineSessionState | None = None
 
     # Per-instance event handler; emits SearchStarted / AutoWritten / etc.
     # for callers driving online lookup programmatically (OnlineSession).
@@ -328,6 +338,30 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """Register a session-level series cache for series-first batching."""
         self._series_cache = cache
 
+    def set_online_session_state(self, state: OnlineSessionState | None) -> None:
+        """
+        Register the session-level owner of match mode and prompt policy.
+
+        Share one across every box of a batch so a `set_policy` /
+        `set_unattended` answered at a prompt outlives the file it was
+        answered on. A sibling worker already resolving a file finishes it
+        under the policy it started with and picks the change up on its
+        next file.
+        """
+        self._online_session_state = state
+
+    def _get_online_session_state(self) -> OnlineSessionState:
+        """Get the session state, defaulting to a box-private one."""
+        if self._online_session_state is None:
+            self._online_session_state = OnlineSessionState.from_lookup(
+                self._config.online.lookup
+            )
+        return self._online_session_state
+
+    def _session_online(self) -> OnlineSettings:
+        """Read the live lookup policy onto this box's online settings."""
+        return self._get_online_session_state().overlay(self._config.online)
+
     def set_retry_sleep(self, sleep: Callable[[float], None] | None) -> None:
         """
         Register a retry-sleep override for this box's online sources.
@@ -354,14 +388,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _mark_online_lookup_done(self) -> None:
         self._online_lookup_done_flag = True
 
-    def _warn_unconfigured_source(self, name: str) -> None:
+    def _warn_unconfigured_source(self, name: str, online: OnlineSettings) -> None:
         """
         Loud warning when a user-requested source can't run for credential reasons.
 
         Quiet skip when the source was only included via the `all` sentinel
         — in that case we don't know the user wanted this specific source.
         """
-        online = self._config.online
         explicit_id = online.lookup.ids.get(name)
         if explicit_id is not None:
             logger.warning(
@@ -384,7 +417,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"configured (missing credentials); skipping"
             )
 
-    def _build_active_online_sources(self) -> list[OnlineSource]:
+    def _build_active_online_sources(
+        self, online: OnlineSettings
+    ) -> list[OnlineSource]:
         """
         Resolve which configured online sources participate in this run.
 
@@ -394,7 +429,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Metron the fallback. An empty/None selection runs every
         configured source in the factory map's default order.
         """
-        online: OnlineSettings = self._config.online
         selected = online.lookup.sources
         names = selected or tuple(self._ONLINE_SOURCE_FACTORIES)
         active: list[OnlineSource] = []
@@ -407,11 +441,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 continue
             creds = online.auth.sources.get(name)
             if creds is None:
-                self._warn_unconfigured_source(name)
+                self._warn_unconfigured_source(name, online)
                 continue
             source = factory(creds, online)
             if not source.is_configured():
-                self._warn_unconfigured_source(name)
+                self._warn_unconfigured_source(name, online)
                 continue
             source.on_rate_limit = self._on_source_rate_limit
             source.retry_sleep = self._retry_sleep
@@ -703,7 +737,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         return self._local_cover_phash_value
 
     def _resolve_with_matcher(
-        self, source_name: str, candidates: list[Candidate]
+        self, source_name: str, candidates: list[Candidate], online: OnlineSettings
     ) -> Resolution:
         from comicbox.config.online.settings import (
             resolve_auto_threshold,
@@ -711,7 +745,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             resolve_min_confidence,
         )
 
-        online = self._config.online
         threshold = resolve_auto_threshold(online, source_name)
         min_conf = resolve_min_confidence(online, source_name)
         margin = resolve_disambiguation_margin(online, source_name)
@@ -730,28 +763,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _selector_for_run(self) -> SelectorCallback:
         return self._online_selector or cli_selector
 
-    def _apply_session_lookup_override(self, **changes: Any) -> None:
-        """
-        Mutate the shared ``OnlineLookupSettings`` in place for session changes.
-
-        Used for ``set_unattended`` / ``set_policy`` from the prompt path.
-        The dataclasses are frozen, but the box's config is shared by
-        reference across all Comicbox instances spawned from the same
-        Runner. Replacing the nested slot via ``object.__setattr__``
-        propagates the change to every in-flight worker thread without
-        breaking the dataclass invariants for other callers.
-
-        The read-replace-write swap runs under the class-level
-        ``_PROMPT_LOCK`` (never held here — callers run after the locked
-        selector call returns) so two workers resolving prompts
-        back-to-back under ``-j N`` can't lose one of the two changes to
-        a stale snapshot.
-        """
-        with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
-            new_lookup = replace(self._config.online.lookup, **changes)
-            new_online = replace(self._config.online, lookup=new_lookup)
-            object.__setattr__(self._config, "online", new_online)
-
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
     ) -> bool:
@@ -762,8 +773,8 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         so concurrent worker threads (when `-j N > 1`) don't garble each
         other's prompts. Re-resolves and re-prompts when the selector
         requests a session-level setting change (`set_unattended` /
-        `set_policy`) so the new setting takes effect on the current
-        candidate set immediately.
+        `set_policy`), reading the session state back so the new setting
+        takes effect on the current candidate set immediately.
 
         Returns True when the prompt led to accepted metadata.
         """
@@ -790,9 +801,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 )
             )
             if action in {"set_unattended", "set_policy"}:
-                if not self._apply_session_action(source, action, payload):
+                if not self._apply_session_action(source.name, action, payload):
                     return False
-                resolution = self._resolve_existing(source.name, list(current))
+                resolution = self._resolve_existing(
+                    source.name, list(current), self._session_online()
+                )
                 terminal = self._apply_terminal_resolution(
                     source, resolution, path, context="after session change"
                 )
@@ -820,53 +833,58 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         ctx = SelectorContext(
             file_path=getattr(self, "_path", None),
             source=source.name,
-            settings=self._config,
+            # Overlaid so a selector reading the current match mode or
+            # prompt policy sees the live session values, not the ones
+            # config resolution started the run with.
+            settings=replace(self._config, online=self._session_online()),
             triggered_hashing=any(c.cover_score is not None for c in candidates),
         )
         with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
             return selector(self._build_profile(), candidates, ctx)
 
     def _apply_session_action(
-        self, source: OnlineSource, action: str, payload: int | str | None
+        self, source_name: str, action: str, payload: int | str | None
     ) -> bool:
         """
         Apply a `set_unattended` / `set_policy` action to the session.
 
-        Returns True on success, False if the payload was malformed (in
-        which case the prompt has been recorded as declined and the
+        The single validator for these two actions: the session reads the
+        state this writes, so there is no second implementation to keep in
+        step. Returns True on success, False if the payload was malformed
+        (in which case the prompt has been recorded as declined and the
         caller should bail out).
         """
         if action == "set_unattended":
-            self._apply_session_lookup_override(prompts=Prompts.NEVER)
-            logger.info(f"online {source.name}: session set to unattended via prompt")
+            self._get_online_session_state().set_prompts(Prompts.NEVER)
+            logger.info(f"online {source_name}: session set to unattended via prompt")
             return True
         if not isinstance(payload, str):
             logger.warning(
-                f"online {source.name}: set_policy requires a policy name; "
+                f"online {source_name}: set_policy requires a policy name; "
                 f"got {payload!r}"
             )
-            outcome_stats.record_prompt_declined(source.name)
+            outcome_stats.record_prompt_declined(source_name)
             return False
         try:
             new_match = MatchMode(payload)
         except ValueError:
             logger.warning(
-                f"online {source.name}: unknown match mode {payload!r}; "
+                f"online {source_name}: unknown match mode {payload!r}; "
                 "expected one of ask | careful | auto | eager"
             )
-            outcome_stats.record_prompt_declined(source.name)
+            outcome_stats.record_prompt_declined(source_name)
             return False
-        self._apply_session_lookup_override(match=new_match)
+        self._get_online_session_state().set_match(new_match)
         logger.info(
-            f"online {source.name}: session match mode set to {new_match.value} via prompt"
+            f"online {source_name}: session match mode set to {new_match.value} via prompt"
         )
         return True
 
     def _resolve_existing(
-        self, source_name: str, ranked: list[Candidate]
+        self, source_name: str, ranked: list[Candidate], online: OnlineSettings
     ) -> Resolution:
         """Re-apply policy to an already-ranked candidate list."""
-        return OnlineMatcher().resolve(ranked, self._config.online, source_name)
+        return OnlineMatcher().resolve(ranked, online, source_name)
 
     def _apply_terminal_resolution(
         self,
@@ -1019,7 +1037,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         # ResolutionKind.PROMPT — invoke the selector callback.
         return self._handle_prompt(source, resolution.candidates)
 
-    def _search_path(self, source: OnlineSource) -> bool:
+    def _search_path(self, source: OnlineSource, online: OnlineSettings) -> bool:
         """Search → rank → resolve → fetch on accept. True when accepted."""
         profile = self._build_profile()
         path = getattr(self, "_path", None)
@@ -1039,7 +1057,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 "(no matching issues in the database)"
             )
             return False
-        resolution = self._resolve_with_matcher(source.name, candidates)
+        resolution = self._resolve_with_matcher(source.name, candidates, online)
         return self._apply_resolution(source, resolution, path)
 
     def _emit_auto_written(self, source: OnlineSource, issue_id: int) -> None:
@@ -1061,7 +1079,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
         )
 
-    def _lookup_one_source(self, source: OnlineSource) -> _SourceOutcome:
+    def _lookup_one_source(
+        self, source: OnlineSource, online: OnlineSettings
+    ) -> _SourceOutcome:
         """
         Drive the lookup for one source and report what it did.
 
@@ -1072,7 +1092,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         fuzzy-matching behind a failed pin, but only a landed fetch
         reports ``applied``.
         """
-        online = self._config.online
         # Explicit --id is the strongest user signal. It overrides
         # --rematch and the stored-id fast path.
         explicit_ids = online.lookup.ids
@@ -1113,7 +1132,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if not online.lookup.rematch and self._try_series_cache_lookup(source):
             return _SourceOutcome(applied=True)
 
-        return _SourceOutcome(applied=self._search_path(source))
+        return _SourceOutcome(applied=self._search_path(source, online))
 
     def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
         """
@@ -1240,7 +1259,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             # can take, including the explicit-id, stored-id and
             # series-cache fast paths that never reach a SearchStarted.
             self._emit(SourceStarted(path=path, source=source.name))
-            outcome = self._lookup_one_source(source)
+            outcome = self._lookup_one_source(source, online)
             applied_any = applied_any or outcome.applied
             satisfied = satisfied or outcome.applied or outcome.claimed
         return applied_any
@@ -1259,17 +1278,23 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         folded into this return value; it only gates the first-wins skip
         below. Reporting "applied" for a claim is what let a failed
         ``--id`` fetch surface as ``written``.
+
+        The lookup policy is read once here and threaded down, so the
+        whole file resolves under one generation even while a sibling
+        ``-j N`` worker is answering a prompt that changes it. The one
+        exception is the prompt loop, which re-reads on purpose so the
+        answer applies to the candidates being asked about.
         """
         if self._online_lookup_already_done():
             return self._online_lookup_won
         self._mark_online_lookup_done()
-        online = self._config.online
+        online = self._session_online()
         path = getattr(self, "_path", None)
         if not online.lookup.enabled:
             return False
         if online.lookup.prompts is not Prompts.NEVER:
             _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
-        active_sources = self._build_active_online_sources()
+        active_sources = self._build_active_online_sources(online)
         if not active_sources and online.lookup.sources is None:
             logger.warning(
                 "online: --online all requested but no sources are configured "
