@@ -516,18 +516,20 @@ def test_partial_rate_limit_override() -> None:
 # ----------------------------------------------------- with_retry retry_after
 
 
+class _StubMetronSource:
+    """Minimal instance seam for `with_retry`: real Metron classifier, no session."""
+
+    classify_retry_exception = staticmethod(MetronOnlineSource.classify_retry_exception)
+    on_rate_limit = None
+    retry_sleep = None
+    name = "metron"
+
+
 def test_with_retry_honors_long_retry_after() -> None:
     """A server hint of 300s is honored, not capped at our 60s schedule."""
+    from mokkari.exceptions import RateLimitError
+
     from comicbox.formats.base.online.retry import with_retry
-
-    # mokkari-style RateLimitError with retry_after attribute.
-    class FakeRateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__(f"retry after {retry_after}")
-            self.retry_after = retry_after
-
-    # Override the type-name check by naming the class accordingly.
-    FakeRateLimitError.__name__ = "RateLimitError"
 
     sleeps: list[float] = []
     call_count = {"n": 0}
@@ -535,41 +537,40 @@ def test_with_retry_honors_long_retry_after() -> None:
     def fake_sleep(s: float) -> None:
         sleeps.append(s)
 
-    @with_retry(max_retries=2, sleep=fake_sleep)
-    def flaky() -> str:
-        call_count["n"] += 1
-        if call_count["n"] == 1:
-            raise FakeRateLimitError(retry_after=300.0)
-        return "ok"
+    class Stub(_StubMetronSource):
+        @with_retry(max_retries=2, sleep=fake_sleep)
+        def flaky(self) -> str:
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                msg = "retry after 300.0"
+                raise RateLimitError(msg, retry_after=300.0)
+            return "ok"
 
-    result = flaky()
+    result = Stub().flaky()
     assert result == "ok"
     assert sleeps == [300.0]  # exact server hint, NOT clamped to 60s
 
 
 def test_with_retry_clamps_excessive_retry_after() -> None:
     """A wildly-large hint (e.g. 1 day) is clamped to the 1-hour ceiling."""
+    from mokkari.exceptions import RateLimitError
+
     from comicbox.formats.base.online.retry import with_retry
-
-    class FakeRateLimitError(Exception):
-        def __init__(self) -> None:
-            super().__init__("nope")
-            self.retry_after = 86_400.0  # 1 day
-
-    FakeRateLimitError.__name__ = "RateLimitError"
 
     sleeps: list[float] = []
 
     def fake_sleep(s: float) -> None:
         sleeps.append(s)
 
-    @with_retry(max_retries=1, sleep=fake_sleep)
-    def flaky() -> str:
-        if not sleeps:
-            raise FakeRateLimitError
-        return "ok"
+    class Stub(_StubMetronSource):
+        @with_retry(max_retries=1, sleep=fake_sleep)
+        def flaky(self) -> str:
+            if not sleeps:
+                msg = "nope"
+                raise RateLimitError(msg, retry_after=86_400.0)  # 1 day
+            return "ok"
 
-    flaky()
+    Stub().flaky()
     assert sleeps == [3600.0]  # clamped to 1-hour ceiling
 
 

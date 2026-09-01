@@ -269,16 +269,13 @@ def test_label_fixtures_retries_rate_limit_then_succeeds(
 
     Before this fix, Metron's 20/min cap would silently mark CVids as
     "no metron coverage" whenever rate-limiting kicked in (false
-    negative on the calibration ground truth). The retry decorator now
-    catches RateLimitError, honors `retry_after`, and replays.
+    negative on the calibration ground truth). The mokkari Session has
+    no `classify_retry_exception`, so the decorator takes its
+    conservative fallback path: RateLimitError isn't in
+    `_NON_RETRIABLE`, so it's retried, and the `retry_after` server
+    hint is still honored over the generic schedule.
     """
-
-    # Mokkari-shaped exception: the retry decorator keys on the type's
-    # name string "RateLimitError" and on `retry_after`.
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
+    from mokkari.exceptions import RateLimitError
 
     class _RateLimitedSession:
         def __init__(self) -> None:
@@ -289,7 +286,8 @@ def test_label_fixtures_retries_rate_limit_then_succeeds(
             if self.calls == 1:
                 # Tiny retry_after so the test runs fast — the decorator
                 # honors the server hint over its default schedule.
-                raise RateLimitError(retry_after=0.001)
+                msg = "Rate limit exceeded"
+                raise RateLimitError(msg, retry_after=0.001)
             return [_FakeIssue(500)]
 
     fixtures = [{"file": "/a.cbz", "metron": None, "comicvine": 100}]

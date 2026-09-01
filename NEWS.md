@@ -70,6 +70,9 @@
       GiB. Output is unchanged.
 
 - Fixes
+    - Online lookup retries rate-limit errors whose message mentions an API key
+      instead of misreading them as permanent auth failures. Each metadata
+      source now classifies its own client library's errors.
     - Reading a comic no longer fails when two reprints tie on every sort key up
       to one that only one of them has. A reprint carrying a `volume` with an
       `issue_count` but no `number` used to abort the whole dump with
