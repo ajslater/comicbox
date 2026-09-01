@@ -77,8 +77,6 @@ def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
         out["identifiers"] = {_METRON: build_identifier(_METRON, "series", sid)}
     if alt_names := alt_names_to_cb(s.get("alt_names"), s.get("name")):
         out["alternative_names"] = alt_names
-    if alt_names := alt_names_to_cb(s.get("alt_names"), s.get("name")):
-        out["alternative_names"] = alt_names
     return out
 
 
