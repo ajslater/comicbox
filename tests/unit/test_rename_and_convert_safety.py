@@ -132,13 +132,11 @@ def test_conversion_temp_files_do_not_collide(tmp_path: Path) -> None:
     )
 
 
-def test_same_stem_conversions_keep_both_originals(tmp_path: Path) -> None:
+def _convert_same_stem_pair(tmp_path: Path) -> tuple[Path, Path, list, list]:
     """
-    Two archives converging on one .cbz must not destroy each other.
+    Convert two archives that converge on one .cbz name.
 
-    Both convert to the same destination name. Whichever loses has to
-    fail cleanly — before, its original was unlinked while its contents
-    only ever reached a file the winner overwrote.
+    Both convert to the same destination, so one of them has to lose.
     """
     cbt = tmp_path / "Clash v1 #001 (2001).cbt"
     cb7 = tmp_path / "Clash v1 #001 (2001).cb7"
@@ -156,13 +154,30 @@ def test_same_stem_conversions_keep_both_originals(tmp_path: Path) -> None:
 
     written = [r for r in results if r.written]
     failed = [r for r in results if not r.written]
+    return cbt, cb7, written, failed
+
+
+def test_same_stem_conversions_refuse_the_loser(tmp_path: Path) -> None:
+    """Exactly one of the two claims the destination; the other is refused."""
+    _cbt, _cb7, written, failed = _convert_same_stem_pair(tmp_path)
+
     assert len(written) == 1
     assert len(failed) == 1
     # Refused either as an in-flight claim or as a finished file, depending
     # on whether the two writes actually overlapped.
     error = str(failed[0].error)
     assert "already being written" in error or "already exists" in error
-    # Neither archive is destroyed: the loser never reached the destination.
+
+
+def test_same_stem_conversions_keep_both_originals(tmp_path: Path) -> None:
+    """
+    Two archives converging on one .cbz must not destroy each other.
+
+    The loser has to fail cleanly — before, its original was unlinked while
+    its contents only ever reached a file the winner overwrote.
+    """
+    cbt, cb7, _written, _failed = _convert_same_stem_pair(tmp_path)
+
     assert cbt.exists()
     assert cb7.exists()
     assert (tmp_path / "Clash v1 #001 (2001).cbz").exists()

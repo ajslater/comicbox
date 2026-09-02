@@ -30,7 +30,7 @@ from comicbox.identifiers import (
 from comicbox.identifiers.identifiers import (
     create_identifier,
     get_id_source_from_url,
-    get_identifier_url,
+    get_url_from_identifier,
 )
 
 PRIMARY_ATTRIBUTE = "@primary"
@@ -258,11 +258,9 @@ def _urls_from_cb(values: dict[str, Any]) -> list:
     comicbox_identifiers = values.get(IDENTIFIERS_KEY) or {}
     id_source_by_url: dict[str, str] = {}
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
-        if id_key := comicbox_identifier.get(ID_KEY_KEY):
-            id_type = comicbox_identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
-            if url := get_identifier_url(id_source_str, id_type, id_key):
-                urls.setdefault(url, None)
-                id_source_by_url.setdefault(url, id_source_str)
+        if url := get_url_from_identifier(id_source_str, comicbox_identifier):
+            urls.setdefault(url, None)
+            id_source_by_url.setdefault(url, id_source_str)
     if not urls:
         return []
 

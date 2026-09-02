@@ -138,6 +138,29 @@ def _normalize(value: Any) -> Any:
     return value
 
 
+def _assert_leaf_agrees(path: str, yaml_value: Any, value: Any) -> None:
+    """Compare one YAML leaf against the dataclass default behind it."""
+    decoder = _VALUE_DECODERS.get(path)
+    decoded = decoder(yaml_value) if decoder else yaml_value
+    assert _normalize(decoded) == _normalize(value), (
+        f"{path}: config_default.yaml says {yaml_value!r} but the "
+        f"dataclass default is {value!r}. The YAML wins at runtime, so "
+        f"the dataclass is lying to anyone who builds it directly."
+    )
+
+
+def _assert_every_field_has_a_key(
+    field_names: set[str], seen: set[str], prefix: str
+) -> None:
+    """Every field the YAML never named has to say why it has no key."""
+    for name in field_names - seen:
+        path = f"{prefix}{name}"
+        assert path in _NO_YAML_KEY, (
+            f"{path}: ComicboxSettings field with no config_default.yaml "
+            f"key. Add the key, or declare it in _NO_YAML_KEY with a reason."
+        )
+
+
 def _walk(yaml_node: Mapping[str, Any], settings: Any, prefix: str = "") -> None:
     """Compare one YAML mapping against the dataclass that mirrors it."""
     field_names = {f.name for f in fields(settings)}
@@ -145,11 +168,11 @@ def _walk(yaml_node: Mapping[str, Any], settings: Any, prefix: str = "") -> None
 
     for key, yaml_value in yaml_node.items():
         path = f"{prefix}{key}"
+        name = _FIELD_ALIASES.get(path, key)
         if path in _KNOWN_DIVERGENCES:
             # Still record the field so the reverse check stays honest.
-            seen.add(_FIELD_ALIASES.get(path, key))
+            seen.add(name)
             continue
-        name = _FIELD_ALIASES.get(path, key)
         assert name in field_names, (
             f"{path}: config_default.yaml declares a key with no "
             f"ComicboxSettings field. Add the field or drop the key."
@@ -158,21 +181,10 @@ def _walk(yaml_node: Mapping[str, Any], settings: Any, prefix: str = "") -> None
         value = getattr(settings, name)
         if is_dataclass(value) and isinstance(yaml_value, Mapping):
             _walk(yaml_value, value, f"{path}.")
-            continue
-        decoder = _VALUE_DECODERS.get(path)
-        decoded = decoder(yaml_value) if decoder else yaml_value
-        assert _normalize(decoded) == _normalize(value), (
-            f"{path}: config_default.yaml says {yaml_value!r} but the "
-            f"dataclass default is {value!r}. The YAML wins at runtime, so "
-            f"the dataclass is lying to anyone who builds it directly."
-        )
+        else:
+            _assert_leaf_agrees(path, yaml_value, value)
 
-    for name in field_names - seen:
-        path = f"{prefix}{name}"
-        assert path in _NO_YAML_KEY, (
-            f"{path}: ComicboxSettings field with no config_default.yaml "
-            f"key. Add the key, or declare it in _NO_YAML_KEY with a reason."
-        )
+    _assert_every_field_has_a_key(field_names, seen, prefix)
 
 
 def test_dataclass_defaults_match_yaml_defaults() -> None:

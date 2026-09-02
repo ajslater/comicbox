@@ -29,8 +29,7 @@ from comicbox.formats.comicbox.schema import (
     NOTES_KEY,
     URLS_KEY,
 )
-from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
-from comicbox.identifiers.identifiers import get_identifier_url
+from comicbox.identifiers.identifiers import get_url_from_identifier
 
 _NOTES_URL_RE = re.compile(r"https?://[^\s<>\"']+", flags=re.IGNORECASE)
 # Notes are sentences. A url at the end of one takes the punctuation with it,
@@ -71,11 +70,25 @@ class ComicboxComputedUrlIdentifiers(ComicboxMerge):
         form for that key. When a comic carries both a slug url and a
         canonical one for the same database, the canonical one names the id.
         """
-        id_key = identifier.get(ID_KEY_KEY)
-        if not id_key:
-            return False
-        id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
-        return get_identifier_url(id_source_str, id_type, id_key) == url
+        return get_url_from_identifier(id_source_str, identifier) == url
+
+    @classmethod
+    def _add_identifier_from_url(
+        cls,
+        url: str,
+        old_identifiers: dict[str, Any],
+        new_identifiers: dict[str, dict],
+    ) -> None:
+        """Record the id one url names, if it beats what the url list holds."""
+        id_source_str, identifier = identifier_from_url(url)
+        # An explicit id always wins. For several databases the url path
+        # is a slug, not the id, so it must not overwrite a real key.
+        if not (id_source_str and identifier) or id_source_str in old_identifiers:
+            return
+        if id_source_str not in new_identifiers or cls._url_holds_its_key(
+            id_source_str, identifier, url
+        ):
+            new_identifiers[id_source_str] = identifier
 
     def _get_computed_identifiers_from_urls(
         self, sub_data: dict[str, Any], **_kwargs: Any
@@ -87,15 +100,7 @@ class ComicboxComputedUrlIdentifiers(ComicboxMerge):
         old_identifiers = sub_data.get(IDENTIFIERS_KEY) or {}
         new_identifiers: dict[str, dict] = {}
         for url in urls:
-            id_source_str, identifier = identifier_from_url(str(url))
-            # An explicit id always wins. For several databases the url path
-            # is a slug, not the id, so it must not overwrite a real key.
-            if not (id_source_str and identifier) or id_source_str in old_identifiers:
-                continue
-            if id_source_str not in new_identifiers or self._url_holds_its_key(
-                id_source_str, identifier, str(url)
-            ):
-                new_identifiers[id_source_str] = identifier
+            self._add_identifier_from_url(str(url), old_identifiers, new_identifiers)
         if not new_identifiers:
             return None
         return {IDENTIFIERS_KEY: new_identifiers}

@@ -1,6 +1,7 @@
 """Identifiers functions."""
 
 import re
+from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -331,6 +332,25 @@ def get_identifier_url(id_source_str: str, id_type: str, id_key: str) -> str:
         if id_parts := IDENTIFIER_PARTS_MAP.get(id_source):
             url = id_parts.unparse_url(id_type, id_key)
     return url
+
+
+def get_url_from_identifier(
+    id_source_str: str, identifier: Mapping[str, str] | None
+) -> str:
+    """
+    Get the url a whole identifier names, or none if it names no key.
+
+    An identifier stores only its key, and its type only when that type
+    isn't the implied one, so reading a url off one always means the same
+    three steps. They live here so every caller takes them the same way.
+    """
+    if not identifier:
+        return ""
+    id_key = identifier.get(ID_KEY_KEY)
+    if not id_key:
+        return ""
+    id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+    return get_identifier_url(id_source_str, id_type, id_key)
 
 
 def create_identifier(

@@ -67,8 +67,8 @@ comicbox:
       match: auto
       # Whether prompts are allowed. One of: ask, never.
       prompts: ask
-      # Force a fresh search even if the comic has a stored upstream id
-      # and skip files already tagged from this source.
+      # Force a fresh search even if the comic has a stored upstream id,
+      # skipping the stored-id refresh and series-cache fast paths.
       rematch: False
       # Ordered source selection and run priority. The first listed
       # source runs first; with first_wins True its match ends the

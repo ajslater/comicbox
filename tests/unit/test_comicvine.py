@@ -2,40 +2,32 @@
 
 from __future__ import annotations
 
-import sqlite3
 import time
-from contextlib import closing
-from datetime import timedelta
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
 from requests.exceptions import Timeout
 from simyan.errors import AuthenticationError, RateLimitError, ServiceError
+from simyan.errors import RateLimitError
 from typing_extensions import override
 
 from comicbox.config.online.settings import (
-    CacheMode,
     Effort,
-    OnlineCacheSettings,
     OnlineSettings,
     OnlineSourceCredentials,
-    OnlineSourceLimits,
     OnlineSourceTuning,
     OnlineTuningSettings,
 )
 from comicbox.formats.base.online.profile import ComicProfile
-from comicbox.formats.base.online.retry import RetryCategory
 from comicbox.formats.base.online.series_filter import max_calls_for
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     _SearchBudget,
-    reset_shared_sessions,
 )
-from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from pathlib import Path
+    import pytest
 
 
 class _HintedRateLimitError(RateLimitError):

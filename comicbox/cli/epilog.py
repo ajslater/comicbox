@@ -110,8 +110,8 @@ Everywhere else the schema nests dicts, where the two behave identically.
 _MATCH_MODE_ROWS = (
     ("ask", "prompt", "prompt", "prompt"),
     ("careful", "auto-write", "prompt", "prompt"),
-    ("auto (default)", "auto-write", "auto-write", "prompt"),
-    ("eager", "auto-write", "auto-write", "auto-write"),
+    ("auto (default)", "auto-write", "prompt *", "prompt"),
+    ("eager", "auto-write", "prompt *", "auto-write"),
 )
 
 # (name, required credentials, accepted --id forms, website) — derived
@@ -131,7 +131,14 @@ Two knobs:
                        [green]ask[/green] · [green]careful[/green] · [green]auto[/green] (default) · [green]eager[/green]
   [cyan]--prompts never[/cyan]   never prompt — turn 'prompt' decisions into 'skip'
 
-Each mode row below shows what happens to three kinds of candidate sets.
+Each row shows what a mode does with three kinds of candidate set: an
+[green]unambiguous top[/green] that clears [cyan]--auto-threshold[/cyan] well clear of the
+runner-up, a lone [green]solo viable[/green] candidate that does not clear it, and a
+[green]close call[/green] that clears it with the runner-up close behind.
+
+[green]*[/green] A lone candidate under the threshold auto-writes only where a per-source
+[cyan]solo_threshold[/cyan] is set lower. That floor defaults to the auto-write threshold,
+so out of the box [green]auto[/green] decides exactly as [green]careful[/green] does.
 """,
     style="argparse.text",
 )
@@ -186,10 +193,11 @@ def _get_match_mode_table() -> Table:
     )
     table.add_column("--match", style="green")
     # "Unambiguous" = top above threshold AND clear gap to runner-up.
-    # "Solo viable" = exactly one candidate above min_confidence.
+    # "Solo viable" = exactly one candidate above min_confidence, and below
+    #                 the auto-write threshold — above it, it is unambiguous.
     # "Close call"  = top above threshold but runner-up close (gap < 0.10).
     table.add_column("unambiguous top")
-    table.add_column("solo viable")
+    table.add_column("solo viable, under threshold")
     table.add_column("close call")
     for row in _MATCH_MODE_ROWS:
         table.add_row(*row)
