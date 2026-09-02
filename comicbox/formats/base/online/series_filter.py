@@ -105,11 +105,11 @@ _THRESHOLDS: Final[MappingProxyType[Effort, float]] = MappingProxyType(
 
 # Per-budget cap on how many discovered volumes / series to expand into
 # per-volume issue queries. The production default is 20 (held in the
-# source classes' `_MAX_*_PER_SEARCH` constants); `fast` overrides to 5.
+# source classes' `_MAX_*_PER_SEARCH` constants); `minimal` overrides to 5.
 #
 # Rationale: even after the pre-filter at threshold 0.7 drops obvious
 # mismatches, the long tail of weakly-matching volumes can still
-# survive (anything in 0.7-1.0 range). For `fast`, additionally cap at
+# survive (anything in 0.7-1.0 range). For `minimal`, additionally cap at
 # top 5 — the matcher's downstream signals favor name-similarity-leading
 # candidates anyway, so the rank-6+ tail rarely changes the verdict.
 # Phase B didn't formally measure this (the pre-filter alone hit the

@@ -873,7 +873,7 @@ def test_search_budget_is_pre_call_not_post_call(
     """
     The budget drops CALLS, never results.
 
-    Effort/api_budget is a pre-call fan-out throttle; every candidate
+    Effort is a pre-call fan-out throttle; every candidate
     that a spent call returned still reaches the matcher.
     """
     src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)

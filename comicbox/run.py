@@ -64,7 +64,7 @@ class Runner:
         #: Batch-wide owner of the two mutable lookup settings. Seeded from
         #: the config-resolved values; a `set_policy` / `set_unattended`
         #: answered at any file's prompt applies to the rest of the batch.
-        #: Built here rather than after `_maybe_auto_engage_api_budget`
+        #: Built here rather than after `_maybe_auto_engage_effort`
         #: because that only rewrites per-source effort, never match or
         #: prompts — and `run_on_file` is a public entry point that never
         #: goes through `run()`.
@@ -252,17 +252,17 @@ class Runner:
             for line in outcome_stats.summary_lines():
                 logger.info(line)
 
-    def _maybe_auto_engage_api_budget(self, batch_size: int) -> None:
+    def _maybe_auto_engage_effort(self, batch_size: int) -> None:
         """
-        Auto-engage `api_budget=fast` for large unattended runs.
+        Auto-engage `effort=minimal` for large unattended runs.
 
         Mutates `self._config` in place (well, replaces via
         `dataclasses.replace`) so downstream Comicbox instances see the
-        engaged budget. No-op when:
+        engaged effort. No-op when:
 
-        - `online` isn't enabled (the only consumer of api_budget)
+        - `online` isn't enabled (the only consumer of effort)
         - batch is small (single-fixture interactive use)
-        - user pinned the global budget or any per-source budget
+        - user pinned the global effort or any per-source effort
 
         See `comicbox.formats.base.online.auto_engage` for the trigger semantics.
         """
@@ -285,7 +285,7 @@ class Runner:
             # which handles directory expansion under `--recurse`, so the
             # actual processing is unchanged.
             paths = self._expand_paths()
-            self._maybe_auto_engage_api_budget(len(paths))
+            self._maybe_auto_engage_effort(len(paths))
             if self._config.online.lookup.enabled:
                 # Online serial runs dispatch over the EXPANDED, clustered
                 # list so the series cache sees same-series files
@@ -305,7 +305,7 @@ class Runner:
         if not paths:
             logger.warning("No files to process")
             return
-        self._maybe_auto_engage_api_budget(len(paths))
+        self._maybe_auto_engage_effort(len(paths))
         if len(paths) == 1:
             self._run_one(paths[0])
             return
