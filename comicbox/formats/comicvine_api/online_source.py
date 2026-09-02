@@ -808,7 +808,7 @@ class ComicVineOnlineSource(OnlineSource):
             )
             return []
 
-        # Phase D: `fast` budget caps the volume-search breadth more
+        # Phase D: `minimal` effort caps the volume-search breadth more
         # aggressively than the class default (20 → 5). Cuts the per-volume
         # `list_issues` fan-out further at scale; the pre-filter already
         # drops obvious mismatches but the long tail of weakly-matching
@@ -827,10 +827,10 @@ class ComicVineOnlineSource(OnlineSource):
             query=f"series={profile.series!r}",
         )
 
-        # Pre-call filter threshold from the resolved API budget. At the
+        # Pre-call filter threshold from the resolved effort. At the
         # `balanced` default this resolves to 0.0 (filter is a no-op), so
         # Phase A behaviour is identical to today's. Phase B calibration
-        # picks the real values for `fast` (currently 0.7 placeholder).
+        # picks the real values for `minimal` (currently 0.7 placeholder).
         name_threshold = self._effort_name_threshold()
 
         budget = self._new_search_budget()
@@ -854,8 +854,8 @@ class ComicVineOnlineSource(OnlineSource):
                 f"online {self.name}: {budget.exhausted_reason()} after "
                 f"{budget.spent} issue-list call(s) for "
                 f"series={profile.series!r}; {budget.dropped} volume(s) "
-                "not queried. Raise api_budget to `thorough` to search "
-                "them all."
+                "not queried. Use `--effort thorough` (config key "
+                "`online.tuning.effort`) to search them all."
             )
         return candidates
 
@@ -884,7 +884,7 @@ class ComicVineOnlineSource(OnlineSource):
         Pre-filters in order: start_year causality (skip volumes that
         started after the comic), then series-name fuzzy match (skip
         volumes whose name diverges from `profile.series` past the
-        api_budget threshold), then the per-search call/deadline budget.
+        effort threshold), then the per-search call/deadline budget.
         The name filters log at debug level so calibration runs can audit
         drops; the budget's drops are counted and reported once by the
         caller. The actual `list_issues` call only fires for volumes that
@@ -911,7 +911,7 @@ class ComicVineOnlineSource(OnlineSource):
                 f"online {self.name}: skipping volume {vol.id} "
                 f"({vol.name!r}); name dissimilar to "
                 f"profile.series={profile.series!r} (threshold="
-                f"{name_threshold:.2f}, api_budget pre-filter)."
+                f"{name_threshold:.2f}, effort pre-filter)."
             )
             return []
         if budget is not None and not budget.take():
