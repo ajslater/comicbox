@@ -8,6 +8,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+import pytest
 from requests.exceptions import Timeout
 from simyan.errors import AuthenticationError, RateLimitError, ServiceError
 
@@ -29,8 +30,6 @@ from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def test_classify_rate_limit_error_tolerates_none_message() -> None:
@@ -78,23 +77,58 @@ def test_classify_resource_not_found() -> None:
     )
 
 
-def test_classify_404_cause_without_not_found_text() -> None:
+def _unparseable_body_error(status: int) -> ServiceError:
     """
-    A 404 is caught by its cause's status even when the message doesn't say so.
+    Build the ServiceError simyan raises when an error body isn't JSON.
 
-    The message branch below only fires on simyan's literal "Resource not
-    found"; this probes `__cause__.response.status_code`, which is where
-    `requests.HTTPError` actually carries the status.
+    simyan parses the body inside its `except HTTPError` block, and the
+    inner `except JSONDecodeError as err` rebinds the cause — so the
+    HTTPError (and its status) is gone, and requests' JSONDecodeError
+    carries no response. The status survives only as the message prefix.
     """
-    from requests import HTTPError, Response
+    from requests.exceptions import JSONDecodeError
+
+    exc = ServiceError(
+        f"{status}: Unable to parse response from "
+        "'https://comicvine.gamespot.com/api/issues/' as Json"
+    )
+    exc.__cause__ = JSONDecodeError("Expecting value", "<html>", 0)
+    return exc
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (401, RetryCategory.AUTH),
+        (404, RetryCategory.NOT_FOUND),
+        (420, RetryCategory.RATE_LIMIT),
+        (429, RetryCategory.RATE_LIMIT),
+        (503, RetryCategory.TRANSIENT),
+    ],
+)
+def test_classify_unparseable_error_body_by_status(
+    status: int, expected: RetryCategory
+) -> None:
+    """
+    An HTML- or empty-bodied error keeps its status through the message.
+
+    Without this, an edge-served 429 looks like a plain server error: it
+    would take the generic 31s budget instead of the rate-limit schedule
+    and never fire the `on_rate_limit` notice.
+    """
+    exc = _unparseable_body_error(status)
+    assert ComicVineOnlineSource.classify_retry_exception(exc) is expected
+
+
+def test_classify_404_from_chained_response_status() -> None:
+    """Simyan's parseable-body 404 is caught by the chained response."""
+    from requests import Response
+    from requests.exceptions import HTTPError
 
     response = Response()
     response.status_code = 404
-    cause = HTTPError(
-        "404 Client Error for url: https://comicvine.gamespot.com/api/",
-        response=response,
-    )
-    exc = ServiceError("404: Unable to parse response as Json")
+    cause = HTTPError("404 Client Error", response=response)
+    exc = ServiceError("Resource not found")
     exc.__cause__ = cause
     assert (
         ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.NOT_FOUND
