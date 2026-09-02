@@ -30,10 +30,174 @@
       `merge_mode` instead of `mode` and defaults to the config's
       `write.merge_mode`; `WriteMode` is now `MergeMode`.
     - Environment variables name their config key with `__` between levels, and
-      every key can be set that way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old
-      flat names warn, and a value that doesn't fit its key is an error.
-    - `deepdiff` is no longer a dependency, and `resolve_credentials` no longer
-      takes an `env` argument.
+      every config key can be set that way: `COMICBOX_GENERAL__RECURSE`,
+      `COMICBOX_ONLINE__AUTH__METRON__KEY`. The old flat names like
+      `COMICBOX_ONLINE_MATCH` and `COMICBOX_METRON_KEY` warn and name their
+      replacement.
+    - An environment variable that doesn't fit its config key is an error
+      instead of being silently ignored.
+    - `resolve_credentials` no longer takes an `env` argument.
+
+- Performance
+    - Converting a CB7 reads its pages in batches instead of one at a time.
+      Every 7z read decompressed the archive's solid block from the start, so
+      conversion cost grew with the square of the page count, and py7zr's page
+      buffers were held until the file was closed. A 200 page, 117 MiB CB7
+      converts in 6.2s instead of 232s, with 318 MiB peak RSS instead of 1.9
+      GiB. Output is unchanged.
+
+- Fixes
+    - Online lookup retries rate-limit errors whose message mentions an API key
+      instead of misreading them as permanent auth failures.
+    - Reading a comic no longer fails when two reprints tie on every sort key up
+      to one that only one of them has. A reprint carrying a `volume` with an
+      `issue_count` but no `number` used to abort the whole dump with
+      `TypeError: '<' not supported between instances of 'int' and 'str'`.
+    - A comic that can't be read no longer ends the batch. Every dispatch path —
+      serial, `--recurse` and `-j N` — now logs the file and keeps going.
+      Previously `comicbox a.cbz b.cbz c.cbz` stopped at the first unreadable
+      file and left the rest untouched, while the same batch under `-j 2`
+      processed all of them.
+    - `comicbox` exits non-zero when any file failed, instead of only when the
+      failure happened to end the run. A batch where every file failed used to
+      exit 0 under `-j N`.
+    - The ambiguous-match prompt trims its per-candidate detail lines on a
+      quieted run (`-QQ` and up, or a `loglevel` above `INFO` in the config). It
+      always claimed to and never did.
+    - A match mode or unattended choice made at a prompt applies to the whole
+      rest of the batch. Under `-j N` a sibling file could resolve partly under
+      the old setting, and `ask` never stuck at all in library sessions.
+    - Writing MetronInfo no longer invents extra credits. Only `Painter` still
+      writes Penciller, Inker and Colorist.
+    - `breakdowns`, `finishes`, `plotter` and `scripter` keep their own role
+      instead of collapsing into a coarser one.
+    - More role spellings are recognized, including `Inks`, `Pencils` and
+      `Cover Artist`.
+    - A ComicInfo `Manga` of `Unknown` no longer reads as "not manga".
+    - Marvel's `Max` and `Max: Explicit Content` ratings are recognized.
+    - ComicInfo's `Translator` accepts several names like every other creator
+      tag.
+    - Writing MetronInfo no longer stamps a `MangaVolume` onto comics that never
+      had one. It was rebuilt from the volume number on every write.
+    - Writing MetronInfo no longer duplicates reprints and alternative names.
+      Each round trip copied one list into both tags.
+    - A MetronInfo `AlternativeName` written without a language is no longer
+      dropped.
+    - A hand-written identifier source like `my_db` no longer aborts the read
+      when stamping notes.
+    - A `key: "series:178012"` keeps its series type, url and urn. MetronInfo no
+      longer writes a non-issue id into its issue id list.
+    - A urn ending a sentence no longer takes the comma into its id.
+    - An unrecognized ComicVine type code reads as an issue, not an arc.
+    - An `id_type` comicbox doesn't know no longer leaks into a url.
+    - kitsu.app urls are recognized.
+    - `--recurse` finds `.cb7` archives, which it silently skipped.
+    - Renaming refuses a name another file already holds instead of replacing
+      that file. Two comics whose metadata predicts one name kept both.
+    - A ComicBookInfo comment in a CBZ dates the metadata by the file's own
+      mtime, as it already did in a CBR.
+    - Reading a page no longer depends on the working directory. A directory
+      there named like a page made that page read as empty.
+    - Writing metadata to a comic no longer rewrites its pages. Metadata is
+      stored after the pages instead of before them, so re-tagging appends to
+      the end of the archive rather than sliding every page down over itself.
+      Tagging is faster, and an interrupted write can no longer damage a page.
+    - Writing a comic claims it for the duration. One archive named twice in a
+      batch was repacked by two threads at once, which destroyed it.
+    - A name slug or tracking suffix after the id in a url is no longer the id.
+    - A link to a database's front page no longer becomes an id for it.
+    - Urls are recognized whatever the host's case, and with a port or login.
+    - Notes urns are written only in a form the notes reader reads back.
+    - An XML tag that carries an attribute is read instead of being dropped.
+      Every XML field looked for the tag's text only after its value parser had
+      already failed on the whole tag, so a `<Series lang="en">` took the file's
+      entire metadata down with it.
+    - Two reprints that sort alike are combined instead of becoming one empty
+      entry. Any list that deduplicates was affected.
+    - Metadata that comicbox skips is named in a warning with the value it came
+      from. Malformed tags were dropped as silently as absent ones.
+    - Schema-wide validation hooks run. The first one added to any schema would
+      have failed on a bad call.
+    - Online tagging reports a match only when metadata was actually applied. A
+      `--id` fetch or a stored-id refresh that failed still reported the comic
+      as written, so a batch run counted it as tagged and the file was rewritten
+      with its own existing metadata.
+    - The online summary and the `AutoWritten` event are emitted after the issue
+      fetch lands, not before it. A failed fetch used to be counted as an
+      auto-write.
+    - A prompt whose answer keeps changing the session's match policy without
+      ever choosing now gives up instead of asking forever, and a chosen
+      candidate number outside the offered list is refused. A negative one
+      silently tagged the comic with the last candidate.
+    - Aborting at a prompt ends the run. `--recurse` walked on to the next comic
+      and `--jobs` worked through the rest of the batch; a cancelled retry
+      inside a Comic Vine volume or a Metron year-retry was swallowed like an
+      ordinary API failure.
+    - MetronInfo `id` attributes are read from files that name no primary id
+      source. A file with no `<ID primary="true">` and no url comicbox
+      recognizes dropped every tag-level id — on Publisher, Imprint, Series,
+      Arc, Universe, Creator, Role, Story and Reprint. The fallback source that
+      should have caught this never ran, and the ids were filed under a null
+      source and discarded on load. They now read as Metron ids, the database
+      that writes the format.
+    - A MetronInfo `AlternativeName`'s `id` attribute is read. The schema
+      dropped it before the transform that handles it ever saw it.
+    - `-c/--config` loads the file it names. The flag parsed into
+      `general.config`, the loader looked for it one level up under `config`,
+      and a `suppress` around the lookup hid the mismatch, so every alternate
+      config file was silently ignored in favor of the defaults.
+    - An unknown `--online` source name is an error instead of a silent
+      widening. Unknown names were dropped with a warning; when every name was
+      unknown, the empty result was the "all sources" sentinel, so a typo like
+      `--online metrn` queried every configured database rather than the one
+      that was asked for. `COMICBOX_ONLINE_SOURCES` and the
+      `online.lookup.sources` config key are checked the same way.
+    - The solo-viable auto-write floor is back at the auto-write threshold.
+      `OnlineTuningSettings.auto_threshold` had drifted to 0.85 while the config
+      file, the `--auto-threshold` help and the matcher all said 0.95, and the
+      solo floor was defined off it, so a lone mediocre match could be written
+      without a prompt — the failure that floor exists to prevent.
+    - The solo-viable auto-write floor follows the auto-write threshold that is
+      actually configured. It read a fixed 0.95 whatever the setting said, so
+      raising `--auto-threshold` left a lone match under the new bar writing
+      itself anyway, through a back door no setting could close.
+    - A cover comicbox measured is no longer overruled by one it never looked
+      at. When two records match the metadata equally well, comicbox prefers the
+      canonical volume unless the covers say otherwise — but a candidate past
+      the cover-checking cutoff counted as "covers alike" rather than "not
+      checked", and won the tie against a candidate whose cover actually matched
+      the comic. A candidate that was checked and simply has no cover still
+      yields to the canonical volume as before.
+    - Actions needing an archive warn instead of raising when there is no path.
+      `comicbox --rename` and `comicbox -P f` with no file ended in an
+      ArchiveError traceback. The guard that turns those actions off existed but
+      never ran for a CLI run, which passes settings already built.
+    - Reading metadata no longer depends on write settings. Every source's merge
+      strategy came from `write.mode`, so `--replace` changed what a plain read
+      returned, and under `update` the last source carrying a key dropped every
+      earlier source's contribution to it. Sources merge additively now; the
+      write mode applies only to metadata the caller supplied — the write API's
+      patch, `-m`, `--import` and the config's metadata block.
+    - What an online lookup fetched survives a write. The lookup runs once per
+      archive and the post-write cache reset discarded its results, so
+      `--online --write … --rename` named the file from pre-online metadata.
+      Metadata added through the API now survives in full, not just the first
+      one.
+    - `add_metadata(md, fmt=…)` accepts every format instead of raising on the
+      ones no source declares, like the online formats.
+    - A page whose archive entry reports no size no longer drops every computed
+      field for the comic.
+    - A date part that cannot exist, like a 30th of February, is dropped instead
+      of being kept.
+    - A notes stamp naming a database of more than one word — `Comic Vine`,
+      `Grand Comics Database`, `League of Comic Geeks` — is read, whatever its
+      case. An unrecognized name is no longer read as ComicVine.
+    - An issue naming a suffix but no number, like `1234AU`, gets its number.
+    - A notes timestamp nothing can parse leaves `updated_at` unset.
+    - ComicInfo's `SeriesGroup` is read back. The tag was written correctly and
+      then dropped on load: it was mapped like `Characters` and `Tags`, whose
+      comicbox fields hold a name and its ids, while `series_groups` holds plain
+      names.
 
 - Features
     - New `--merge-mode` option and `write.merge_mode` config key choose how

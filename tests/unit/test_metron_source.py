@@ -15,6 +15,8 @@ from typing import Any
 
 import pytest
 from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
+from requests import Response
+from requests.exceptions import HTTPError
 from typing_extensions import override
 
 from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
@@ -646,6 +648,25 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
 # ---------------------------------------------------- retry classification
 
 
+def _http_api_error(
+    status: int, url: str, body: str = "<html>error</html>"
+) -> ApiError:
+    """
+    Build the ApiError shape mokkari raises for an HTTP failure.
+
+    mokkari chains the requests error (``raise ApiError(msg) from err``)
+    and inlines ``repr(HTTPError)`` — full URL included — in the message,
+    which is why the classifier reads the chained response's status
+    rather than hunting for digits in the text.
+    """
+    response = Response()
+    response.status_code = status
+    cause = HTTPError(f"{status} Error for url: {url}", response=response)
+    exc = ApiError(f"HTTP error: {cause!r} | Response body: {body}")
+    exc.__cause__ = cause
+    return exc
+
+
 @pytest.mark.parametrize(
     ("exc", "expected"),
     [
@@ -692,6 +713,38 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
             ApiError("Connection error: ReadTimeout(ReadTimeoutError(...))"),
             RetryCategory.TRANSIENT,
             id="api-error-connection",
+        ),
+        # The chained response's status is authoritative, so a Metron id
+        # that merely contains "401"/"403" can't strand a retriable 5xx as
+        # a permanent auth failure.
+        pytest.param(
+            _http_api_error(502, "https://metron.cloud/api/issue/14031/"),
+            RetryCategory.TRANSIENT,
+            id="api-error-5xx-id-contains-401",
+        ),
+        pytest.param(
+            _http_api_error(503, "https://metron.cloud/api/issue/?cv_id=44013"),
+            RetryCategory.TRANSIENT,
+            id="api-error-5xx-cv-id-contains-403",
+        ),
+        pytest.param(
+            _http_api_error(401, "https://metron.cloud/api/issue/1/"),
+            RetryCategory.AUTH,
+            id="api-error-chained-401",
+        ),
+        pytest.param(
+            _http_api_error(403, "https://metron.cloud/api/issue/1/"),
+            RetryCategory.AUTH,
+            id="api-error-chained-403",
+        ),
+        # A throttle served with a non-429 status still retries: the
+        # wording is checked before the status.
+        pytest.param(
+            _http_api_error(
+                403, "https://metron.cloud/api/issue/1/", body="Request was throttled."
+            ),
+            RetryCategory.RATE_LIMIT,
+            id="api-error-cdn-throttle-403",
         ),
         # Pins that the old bare-"auth" marker is gone: an ApiError carrying
         # a pydantic dump with a creator-ish "authors" field must not
