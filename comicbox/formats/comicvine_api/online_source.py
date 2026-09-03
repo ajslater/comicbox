@@ -165,6 +165,24 @@ class _SearchBudget:
         return f"search deadline ({_SEARCH_DEADLINE_S:.0f}s) reached"
 
 
+# Comic Vine reports application-level failures as an HTTP 200 whose body
+# carries a non-1 `status_code`. simyan raises the typed
+# AuthenticationError (CV 100 "Invalid API Key") and RateLimitError (CV
+# 107 "Rate Limit Exceeded") for the two it recognizes, and a plain
+# ServiceError carrying the body's `error` string for everything else —
+# so for those the message is the only signal. Matched as lower-cased
+# substrings; first hit wins.
+_CV_BODY_ERRORS: Final[tuple[tuple[str, RetryCategory], ...]] = (
+    # CV 101, plus simyan's own wording for an HTTP 404.
+    ("object not found", RetryCategory.NOT_FOUND),
+    ("resource not found", RetryCategory.NOT_FOUND),
+    # CV 102 / 104: comicbox sent a malformed url or filter expression.
+    # That is our bug, not a server hiccup, so replaying it verbatim can
+    # only fail the same way — fail fast and let the traceback show.
+    ("error in url format", RetryCategory.INVALID),
+    ("filter error", RetryCategory.INVALID),
+)
+
 # What each HTTP status means once recovered from a plain ServiceError.
 # simyan raises dedicated classes for 401 and 429/420 when it can parse
 # the error body; these are the same statuses arriving down the
@@ -202,9 +220,27 @@ def _service_error_status(exc: BaseException) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _classify_body_error(message: str) -> RetryCategory | None:
+    """Match a Comic Vine body `error` string; None when unrecognized."""
+    lowered = message.lower()
+    for phrase, category in _CV_BODY_ERRORS:
+        if phrase in lowered:
+            return category
+    return None
+
+
 def _classify_service_error(exc: BaseException) -> RetryCategory:
-    """Disambiguate a plain simyan ServiceError by cause, status and message."""
-    # simyan 3.x client-side cap exhaustion: ServiceError("Service took
+    """
+    Disambiguate a plain simyan ServiceError by cause, status and message.
+
+    Three signals, in order of reliability: the chained cause (the only
+    thing that distinguishes a client-side rate-limit wait from a real
+    read timeout), the HTTP status, and finally Comic Vine's body `error`
+    string. Anything unrecognized is treated as transient — the
+    conservative choice, since retrying a permanent failure only costs
+    time while giving up on a transient one loses the lookup.
+    """
+    # Client-side rate-limit cap exhaustion: ServiceError("Service took
     # too long to respond") whose __cause__ is requests'
     # Timeout("Rate limit not cleared within max_delay=..."). Only the
     # cause distinguishes it from a genuine read timeout.
@@ -213,14 +249,7 @@ def _classify_service_error(exc: BaseException) -> RetryCategory:
     status = _service_error_status(exc)
     if status is not None:
         return _STATUS_CATEGORIES.get(status, RetryCategory.TRANSIENT)
-    if "not found" in str(exc).lower():  # literal "Resource not found"
-        return RetryCategory.NOT_FOUND
-    # CV serves some errors as HTTP 200 bodies that die in pydantic
-    # validation; a 200-body "Rate Limit Exceeded" (CV status 107)
-    # surfaces here with the offending dict in the message.
-    if "rate limit" in str(exc).lower():
-        return RetryCategory.RATE_LIMIT
-    return RetryCategory.TRANSIENT
+    return _classify_body_error(str(exc)) or RetryCategory.TRANSIENT
 
 
 class ComicVineOnlineSource(OnlineSource):
@@ -241,16 +270,20 @@ class ComicVineOnlineSource(OnlineSource):
         """
         Classify simyan's exceptions.
 
-        simyan encodes HTTP status in its class hierarchy (ServiceError >
-        AuthenticationError on 401, RateLimitError on 429/420), so no
-        message sniffing is needed except where the status can't tell
-        (see `_classify_service_error`).
+        simyan encodes the failure in its class hierarchy (ServiceError >
+        AuthenticationError on HTTP 401 and Comic Vine body status 100,
+        RateLimitError on HTTP 429/420 and body status 107), so the two
+        cases worth retrying differently arrive already typed. The
+        remaining ServiceErrors need `_classify_service_error`.
+
+        RateLimitError and AuthenticationError both subclass
+        ServiceError, so they must be tested before it.
         """
         from simyan.errors import AuthenticationError, RateLimitError, ServiceError
 
-        if isinstance(exc, RateLimitError):  # HTTP 429/420; message may be None
+        if isinstance(exc, RateLimitError):  # 429/420 or body 107; msg may be None
             return RetryCategory.RATE_LIMIT
-        if isinstance(exc, AuthenticationError):  # raised on HTTP 401 only
+        if isinstance(exc, AuthenticationError):  # HTTP 401 or body status 100
             return RetryCategory.AUTH
         if isinstance(exc, ServiceError):
             return _classify_service_error(exc)
@@ -321,36 +354,31 @@ class ComicVineOnlineSource(OnlineSource):
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
         client = Comicvine(**kwargs)
-        if resolved is None:  # CacheMode.OFF
-            self._disable_response_cache(client)
-        else:
+        if resolved is not None:
             self._maintain_cache(client, cache_path)
         return client
 
     @staticmethod
     def _cache_expiry(resolved: tuple[Path, timedelta] | None) -> Any:
-        """Map comicbox's resolved cache mode/ttl onto simyan's `cache_expiry`."""
+        """
+        Map comicbox's resolved cache mode/ttl onto simyan's `cache_expiry`.
+
+        `DO_NOT_CACHE` is the whole of CacheMode.OFF: simyan no longer
+        passes `cache_control`, so a response's own cache headers cannot
+        re-derive an expiry and get themselves written anyway, and
+        requests_cache counts "disabled by expiration" against reads and
+        writes alike. Under simyan 3.x this needed a private reach-in to
+        set `session.settings.disabled`.
+
+        A zero ttl means "keep forever" rather than "expire instantly" —
+        `NEVER_EXPIRE`, since OFF already covers not caching.
+        """
         from requests_cache import DO_NOT_CACHE, NEVER_EXPIRE
 
         if resolved is None:  # CacheMode.OFF
             return DO_NOT_CACHE
         _, ttl = resolved
         return ttl if ttl.total_seconds() > 0 else NEVER_EXPIRE
-
-    def _disable_response_cache(self, client: Comicvine) -> None:
-        """
-        Make CacheMode.OFF mean no cache reads AND no cache writes.
-
-        `DO_NOT_CACHE` alone skips reads, but simyan enables
-        `cache_control`, which lets a response carrying explicit cache
-        headers re-derive an expiry and get written anyway. The settings
-        flag turns the session into a plain requests one. Best-effort
-        private reach-in; `DO_NOT_CACHE` remains as the fallback signal.
-        """
-        try:
-            client._session.settings.disabled = True  # noqa: SLF001
-        except Exception as exc:
-            logger.debug(f"online {self.name}: cache disable skipped: {exc}")
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
         from comicbox.config.online.settings import resolve_rate_limit

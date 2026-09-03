@@ -40,6 +40,7 @@ class RetryCategory(Enum):
     RATE_LIMIT = auto()  # rate-limit schedule + budget; on_rate_limit fires
     AUTH = auto()  # never retried
     NOT_FOUND = auto()  # never retried
+    INVALID = auto()  # never retried; malformed request, a bug on our side
     TRANSIENT = auto()  # generic exponential schedule
 
 
@@ -229,12 +230,23 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     """
     Return True for transient errors worth retrying.
 
-    A classifier's AUTH / NOT_FOUND verdicts are terminal; its RATE_LIMIT
-    and TRANSIENT verdicts are trusted (no vendor exception subclasses
-    the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise immediately
-    when they signal programmer/config errors and retry otherwise.
+    A classifier's AUTH / NOT_FOUND / INVALID verdicts are terminal; its
+    RATE_LIMIT and TRANSIENT verdicts are trusted (no vendor exception
+    subclasses the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise
+    immediately when they signal programmer/config errors and retry
+    otherwise.
+
+    INVALID is the classified twin of `_NON_RETRIABLE`: the upstream
+    rejected the request itself, so replaying it verbatim can only fail
+    the same way. It exists because some libraries report a malformed
+    request as a generic service error rather than as a distinct
+    exception class, leaving the message as the only signal.
     """
-    if category in (RetryCategory.AUTH, RetryCategory.NOT_FOUND):
+    if category in (
+        RetryCategory.AUTH,
+        RetryCategory.NOT_FOUND,
+        RetryCategory.INVALID,
+    ):
         return False
     if category is None:
         return not isinstance(exc, _NON_RETRIABLE)

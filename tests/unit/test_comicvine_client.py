@@ -21,7 +21,7 @@ from comicbox.config.online.settings import (
     OnlineSourceTuning,
     OnlineTuningSettings,
 )
-from comicbox.formats.base.online.retry import RetryCategory
+from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     reset_shared_sessions,
@@ -32,22 +32,42 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_classify_rate_limit_error_tolerates_none_message() -> None:
-    """Simyan raises RateLimitError on HTTP 429/420; the message may be None."""
-    assert (
-        ComicVineOnlineSource.classify_retry_exception(RateLimitError(None))
-        is RetryCategory.RATE_LIMIT
-    )
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        # Typed by simyan from the HTTP status...
+        (RateLimitError(None), RetryCategory.RATE_LIMIT),
+        (AuthenticationError("Invalid API Key"), RetryCategory.AUTH),
+        # ...and from Comic Vine's HTTP-200 body `status_code` (107, 100).
+        (RateLimitError("Rate Limit Exceeded"), RetryCategory.RATE_LIMIT),
+        # Body errors simyan leaves as a plain ServiceError: CV 101, 102, 104.
+        (ServiceError("Object Not Found"), RetryCategory.NOT_FOUND),
+        (ServiceError("Error in URL Format"), RetryCategory.INVALID),
+        (ServiceError("Filter Error"), RetryCategory.INVALID),
+        # simyan's own wording for an HTTP 404.
+        (ServiceError("Resource not found"), RetryCategory.NOT_FOUND),
+        # Unrecognized bodies stay retriable rather than failing a lookup.
+        (ServiceError("Something new upstream"), RetryCategory.TRANSIENT),
+        (ServiceError(None), RetryCategory.TRANSIENT),
+    ],
+)
+def test_classify_by_exception_type_and_body_message(
+    exc: BaseException, expected: RetryCategory
+) -> None:
+    """
+    Simyan 4 types the two retry-relevant failures; the rest read as messages.
 
-
-def test_classify_authentication_error_is_auth() -> None:
-    exc = AuthenticationError("Invalid API Key")
-    assert ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.AUTH
+    RateLimitError on HTTP 429/420 and CV body status 107,
+    AuthenticationError on HTTP 401 and body status 100. Comic Vine's
+    other body errors arrive as a bare ServiceError carrying only the
+    body's `error` string, so the message is the only signal left.
+    """
+    assert ComicVineOnlineSource.classify_retry_exception(exc) is expected
 
 
 def test_classify_client_side_cap_timeout_is_rate_limit() -> None:
     """
-    Simyan 3.x client-side cap exhaustion is only visible in __cause__.
+    Client-side rate-limit cap exhaustion is only visible in __cause__.
 
     The ServiceError message is the generic "Service took too long to
     respond"; the chained requests Timeout carries the rate-limit text.
@@ -70,11 +90,38 @@ def test_classify_genuine_read_timeout_is_transient() -> None:
     )
 
 
-def test_classify_resource_not_found() -> None:
-    exc = ServiceError("Resource not found")
-    assert (
-        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.NOT_FOUND
-    )
+@pytest.mark.parametrize(
+    "exc",
+    [
+        # CV 102/104: comicbox built a bad url or filter expression.
+        # Replaying it verbatim can only fail identically, which is the
+        # point of INVALID over TRANSIENT.
+        ServiceError("Filter Error"),
+        ServiceError("Error in URL Format"),
+        # CV 100 / HTTP 401: burning the generic 5-attempt budget on a
+        # key that will never work just delays the failure ~31s.
+        AuthenticationError("Invalid API Key"),
+        # CV 101 / HTTP 404.
+        ServiceError("Object Not Found"),
+    ],
+)
+def test_terminal_failures_are_called_exactly_once(exc: BaseException) -> None:
+    """A terminal classification must not be replayed by the retry loop."""
+    calls = {"n": 0}
+
+    class _Source:
+        classify_retry_exception = staticmethod(
+            ComicVineOnlineSource.classify_retry_exception
+        )
+
+        @with_retry()
+        def call(self) -> None:
+            calls["n"] += 1
+            raise exc
+
+    with pytest.raises(type(exc)):
+        _Source().call()
+    assert calls["n"] == 1
 
 
 def _unparseable_body_error(status: int) -> ServiceError:
@@ -142,18 +189,6 @@ def test_classify_server_error_is_transient() -> None:
     )
 
 
-def test_classify_cv_status_107_body_is_rate_limit() -> None:
-    """CV serves some rate-limit errors as 200 bodies that die in pydantic."""
-    exc = ServiceError(
-        "1 validation error for VolumeListResponse\n"
-        "  Value error, {'error': 'Rate Limit Exceeded', 'status_code': 107}"
-        " [type=value_error]"
-    )
-    assert (
-        ComicVineOnlineSource.classify_retry_exception(exc) is RetryCategory.RATE_LIMIT
-    )
-
-
 def test_classify_non_simyan_exception_is_unclaimed() -> None:
     """Anything outside simyan's hierarchy returns None (decorator fallback)."""
     exc = RuntimeError("connection reset by peer")
@@ -164,14 +199,13 @@ def test_classify_non_simyan_exception_is_unclaimed() -> None:
 
 
 class _FakeComicvine:
-    """Captures simyan v3 constructor kwargs; stands in for the client."""
+    """Captures simyan constructor kwargs; stands in for the client."""
 
     def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
         self.cache_deletes: list[dict] = []
         self._session = SimpleNamespace(
             cache=SimpleNamespace(delete=lambda **kw: self.cache_deletes.append(kw)),
-            settings=SimpleNamespace(disabled=False),
         )
 
 
@@ -215,7 +249,7 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     assert builds["n"] == 1
 
 
-def test_build_session_passes_v3_kwargs(
+def test_build_session_passes_simyan_kwargs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Cache and rate-limit files land in comicbox's cache dir, ttl → expiry."""
@@ -236,16 +270,19 @@ def test_build_session_passes_v3_kwargs(
 def test_build_session_cache_off_uses_do_not_cache(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """OFF pins cache_path (never ~/.cache/simyan) and disables the session cache."""
+    """
+    OFF pins cache_path (never ~/.cache/simyan) and passes DO_NOT_CACHE.
+
+    That flag is the whole of OFF now: simyan stopped passing
+    `cache_control`, so no response can talk its way back into the cache
+    on its own headers. See `_cache_expiry`.
+    """
     from requests_cache import DO_NOT_CACHE
 
     settings = _make_cache_settings(tmp_path, mode=CacheMode.OFF)
     client = _build_with_fake(monkeypatch, settings)
     assert client.kwargs["cache_expiry"] == DO_NOT_CACHE
     assert client.kwargs["cache_path"] == tmp_path / "comicvine_cache.sqlite"
-    # DO_NOT_CACHE alone still allows header-driven writes; the settings
-    # flag makes OFF mean no reads AND no writes.
-    assert client._session.settings.disabled is True
 
 
 def test_build_session_zero_ttl_never_expires(
@@ -299,7 +336,7 @@ def test_get_session_warns_on_ignored_rate_limit_override(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """
-    CV per_second/per_hour overrides can't flow into simyan 3.x — warn.
+    CV per_second/per_hour overrides can't flow into simyan — warn.
 
     Driven through `_get_session`, not `_build_session`: the warning
     deliberately fires on every source that carries the ignored config,
