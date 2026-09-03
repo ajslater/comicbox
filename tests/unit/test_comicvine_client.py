@@ -7,7 +7,7 @@ import time
 from contextlib import closing
 from datetime import timedelta
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 from requests.exceptions import Timeout
@@ -28,6 +28,7 @@ from comicbox.formats.comicvine_api.online_source import (
     reset_shared_sessions,
 )
 from comicbox.version import USER_AGENT
+from tests.util.online_client import comicvine_client, spend
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -434,19 +435,6 @@ def test_get_session_warns_when_reused_with_different_cache_settings(
 # ------------------------------------------------------- rate-limit status
 
 
-def _spend(client: Any, pool: str, times: int) -> None:
-    """
-    Claim `times` slots in a limiter pool via pyrate-limiter's public API.
-
-    `client._session` is simyan's private session, typed Any here for
-    the same reason the source module does: it is deliberately not part
-    of simyan's public surface.
-    """
-    limiter = client._session.limiter
-    for _ in range(times):
-        limiter.try_acquire(pool, weight=1, blocking=True, timeout=5)
-
-
 def test_rate_limit_status_reads_per_pool_budget(tmp_path: Path) -> None:
     """
     Comic Vine's remaining budget is readable per endpoint pool.
@@ -456,24 +444,17 @@ def test_rate_limit_status_reads_per_pool_budget(tmp_path: Path) -> None:
     pyrate-limiter changes the table naming or the timestamp units, the
     numbers here stop matching rather than silently reading as full.
     """
-    from simyan.comicvine import Comicvine
-
     from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
     from comicbox.formats.comicvine_api.online_source import (
         shared_client_rate_limit_status,
     )
 
-    client = Comicvine(
-        api_key="k",
-        cache_path=tmp_path / "comicvine_cache.sqlite",
-        ratelimit_path=tmp_path / "comicvine_rate_limit.sqlite",
-    )
-    _spend(client, "issues", 3)
-    _spend(client, "search", 1)
-
-    status = shared_client_rate_limit_status(
-        OnlineSettings(cache=OnlineCacheSettings(dir=tmp_path))
-    )
+    with comicvine_client(tmp_path) as client:
+        spend(client, "issues", 3)
+        spend(client, "search", 1)
+        status = shared_client_rate_limit_status(
+            OnlineSettings(cache=OnlineCacheSettings(dir=tmp_path))
+        )
 
     assert status["issues"]["remaining"] == COMICVINE_DEFAULT_PER_HOUR - 3
     assert status["issues"]["limit"] == COMICVINE_DEFAULT_PER_HOUR

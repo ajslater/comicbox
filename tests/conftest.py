@@ -71,6 +71,12 @@ def _hermetic_comicbox_env(  # pyright: ignore[reportUnusedFunction]
     """
     Strip ``COMICBOX_*`` env vars and isolate confuse from user config.
 
+    Also pins the online cache directory into ``tmp_path``. Left unset it
+    resolves to the developer's real platformdirs cache, which holds live
+    response and rate-limit sqlite files from actual tagging runs — so a
+    test reading either would depend on that machine's history, and one
+    writing either would corrupt it.
+
     Also clears the online sources' process-wide client caches on the way
     out. Both Metron and Comic Vine memoize their upstream client by
     credential set at module scope so a batch reuses one connection pool;
@@ -82,6 +88,7 @@ def _hermetic_comicbox_env(  # pyright: ignore[reportUnusedFunction]
         if key.startswith("COMICBOX"):
             monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("COMICBOXDIR", str(tmp_path))
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__DIR", str(tmp_path / "online-cache"))
     yield
     _reset_shared_online_sessions()
 
