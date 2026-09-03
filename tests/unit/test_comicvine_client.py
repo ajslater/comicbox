@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from contextlib import closing
 from datetime import timedelta
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from requests.exceptions import Timeout
@@ -428,3 +429,82 @@ def test_get_session_warns_when_reused_with_different_cache_settings(
         loguru_logger.remove(handler_id)
         reset_shared_sessions()
     assert any("ignored in favor of" in message for message in messages)
+
+
+# ------------------------------------------------------- rate-limit status
+
+
+def _spend(client: Any, pool: str, times: int) -> None:
+    """
+    Claim `times` slots in a limiter pool via pyrate-limiter's public API.
+
+    `client._session` is simyan's private session, typed Any here for
+    the same reason the source module does: it is deliberately not part
+    of simyan's public surface.
+    """
+    limiter = client._session.limiter
+    for _ in range(times):
+        limiter.try_acquire(pool, weight=1, blocking=True, timeout=5)
+
+
+def test_rate_limit_status_reads_per_pool_budget(tmp_path: Path) -> None:
+    """
+    Comic Vine's remaining budget is readable per endpoint pool.
+
+    simyan exposes no budget accessor, but requests-ratelimiter persists
+    one bucket table per pool. This test pins that layout: if a future
+    pyrate-limiter changes the table naming or the timestamp units, the
+    numbers here stop matching rather than silently reading as full.
+    """
+    from simyan.comicvine import Comicvine
+
+    from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
+    from comicbox.formats.comicvine_api.online_source import (
+        shared_client_rate_limit_status,
+    )
+
+    client = Comicvine(
+        api_key="k",
+        cache_path=tmp_path / "comicvine_cache.sqlite",
+        ratelimit_path=tmp_path / "comicvine_rate_limit.sqlite",
+    )
+    _spend(client, "issues", 3)
+    _spend(client, "search", 1)
+
+    status = shared_client_rate_limit_status(
+        OnlineSettings(cache=OnlineCacheSettings(dir=tmp_path))
+    )
+
+    assert status["issues"]["remaining"] == COMICVINE_DEFAULT_PER_HOUR - 3
+    assert status["issues"]["limit"] == COMICVINE_DEFAULT_PER_HOUR
+    assert status["search"]["remaining"] == COMICVINE_DEFAULT_PER_HOUR - 1
+    # An untouched pool has no table, so it is absent rather than full.
+    assert "volumes" not in status
+    # reset_epoch is when the oldest in-window request ages out: an hour
+    # out, give or take the time this test took.
+    assert status["issues"]["reset_epoch"] == pytest.approx(time.time() + 3600, abs=60)
+
+
+def test_rate_limit_status_empty_without_bucket_file(tmp_path: Path) -> None:
+    """No requests yet means no file; report {} rather than a full budget."""
+    from comicbox.formats.comicvine_api.online_source import (
+        shared_client_rate_limit_status,
+    )
+
+    status = shared_client_rate_limit_status(
+        OnlineSettings(cache=OnlineCacheSettings(dir=tmp_path))
+    )
+    assert status == {}
+
+
+def test_rate_limit_status_does_not_create_the_cache_dir(tmp_path: Path) -> None:
+    """A status read must have no side effects on the filesystem."""
+    from comicbox.formats.comicvine_api.online_source import (
+        shared_client_rate_limit_status,
+    )
+
+    missing = tmp_path / "not-yet"
+    shared_client_rate_limit_status(
+        OnlineSettings(cache=OnlineCacheSettings(dir=missing))
+    )
+    assert not missing.exists()

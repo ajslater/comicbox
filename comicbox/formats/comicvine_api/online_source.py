@@ -36,6 +36,7 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
+from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.series_filter import (
     max_calls_for,
@@ -43,6 +44,7 @@ from comicbox.formats.base.online.series_filter import (
 )
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
+    resolve_cache_db_path,
 )
 from comicbox.formats.base.online.transform_helpers import split_aliases
 from comicbox.formats.base.online.warn_once import warn_once
@@ -55,6 +57,7 @@ if TYPE_CHECKING:
 
     from simyan.comicvine import Comicvine
 
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.profile import ComicProfile
 
 # Cache files already housekept this process. Keyed by cache PATH, not by
@@ -71,6 +74,10 @@ _maintenance_lock = threading.Lock()
 # batch behind one pathological comic. The volume discovery calls
 # themselves are outside it: they are the search, not the fan-out.
 _SEARCH_DEADLINE_S = 45.0
+
+# Comic Vine's cap is per hour, so its sliding window is an hour wide.
+# In milliseconds to match pyrate-limiter's `item_timestamp` stamps.
+_RATE_LIMIT_WINDOW_MS: Final[int] = 3600 * 1000
 
 # Clients are shared process-wide across the credential set that built
 # them (see `_get_session`), keyed by (api_key, base_url). Sources are
@@ -105,6 +112,96 @@ def reset_shared_sessions() -> None:
     """
     with _session_cache_lock:
         _session_cache.clear()
+
+
+def _bucket_window(conn: sqlite3.Connection, table: str, now_ms: int) -> dict[str, Any]:
+    """Summarize one bucket table as a `limit`/`remaining`/`reset_epoch` window."""
+    window_start = now_ms - _RATE_LIMIT_WINDOW_MS
+    # Quoted, not parameterized: sqlite takes no placeholder for an
+    # identifier. The name comes from sqlite_master filtered to our own
+    # `bucket_%` prefix, so it is never caller-supplied.
+    row = conn.execute(
+        f'SELECT COUNT(*), MIN(item_timestamp) FROM "{table}" '  # noqa: S608
+        "WHERE item_timestamp >= ?",
+        (window_start,),
+    ).fetchone()
+    used, oldest = (row[0] or 0), row[1]
+    # A sliding window frees its next slot when the oldest request in it
+    # ages out, so that — not the top of the hour — is the reset instant.
+    reset_epoch = (
+        (oldest + _RATE_LIMIT_WINDOW_MS) / 1000 if oldest is not None else None
+    )
+    return {
+        "limit": COMICVINE_DEFAULT_PER_HOUR,
+        "remaining": max(0, COMICVINE_DEFAULT_PER_HOUR - used),
+        "reset_epoch": reset_epoch,
+    }
+
+
+def _read_rate_limit_buckets(path: Path) -> dict[str, dict[str, Any]]:
+    """
+    Read each rate-limit pool's remaining hourly budget from its bucket file.
+
+    simyan builds its limiter internally and exposes no budget to read,
+    but requests-ratelimiter persists one pyrate-limiter ``SQLiteBucket``
+    table per endpoint pool (``bucket_issues``, ``bucket_search``, …),
+    each row one request stamped in epoch milliseconds. Counting the rows
+    still inside the hour window is therefore an exact read of what
+    Comic Vine's 200-per-resource-per-hour cap has left.
+
+    Opened read-only so a live limiter's connection is never disturbed,
+    and so this cannot create the file. Best-effort: a missing, locked or
+    unexpected database reports ``{}`` rather than failing a caller who
+    only asked for a status. Reads the file rather than the in-process
+    client on purpose — the budget outlives the process that spent it,
+    so a fresh run can show it before issuing any request.
+    """
+    if not path.exists():
+        return {}
+    windows: dict[str, dict[str, Any]] = {}
+    now_ms = int(time.time() * 1000)
+    try:
+        with closing(
+            sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=1.0)
+        ) as conn:
+            tables = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name LIKE 'bucket_%'"
+                )
+            ]
+            for table in tables:
+                pool = table.removeprefix("bucket_")
+                windows[pool] = _bucket_window(conn, table, now_ms)
+    except sqlite3.Error as exc:
+        logger.debug(f"online comicvine: rate-limit status unavailable: {exc}")
+        return {}
+    return windows
+
+
+def shared_client_rate_limit_status(
+    settings: OnlineSettings,
+) -> dict[str, dict[str, Any]]:
+    """
+    Comic Vine's remaining hourly budget, one window per endpoint pool.
+
+    Comic Vine rate-limits per resource, so there is no single number to
+    report: `{"issues": {...}, "search": {...}}`, each window carrying
+    `limit` / `remaining` / `reset_epoch` exactly as Metron's do. A pool
+    absent from the result has never been used.
+
+    Returns ``{}`` when the bucket file does not exist yet or cannot be
+    read. Needs no client and no credentials — only where the cache
+    lives — so it is safe to call before a session has issued a request.
+    """
+    path = resolve_cache_db_path(
+        settings.cache.dir,
+        ComicVineOnlineSource.name,
+        "rate_limit",
+        create=False,
+    )
+    return _read_rate_limit_buckets(path)
 
 
 def _drop_v2_cache_table(cache_path: Path) -> None:
