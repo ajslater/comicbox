@@ -487,7 +487,7 @@ def test_mixed_failures_track_budgets_independently() -> None:
 
 def test_simyan_client_cap_timeout_uses_rate_limit_schedule() -> None:
     """
-    Simyan 3.x client-side cap exhaustion routes to the rate-limit schedule.
+    Simyan's client-side cap exhaustion routes to the rate-limit schedule.
 
     When the bounded in-limiter wait expires, requests_ratelimiter raises
     Timeout("Rate limit not cleared within max_delay=...") and simyan
@@ -558,7 +558,7 @@ def test_api_key_redacted_from_exception_chain() -> None:
     """
     The retry boundary scrubs `api_key=` values from chained messages.
 
-    simyan 3.x sends the ComicVine key as a query param; requests embeds
+    simyan sends the ComicVine key as a query param; requests embeds
     the full URL in the HTTPError that becomes `__cause__` of every
     simyan error. A full-traceback log of that chain must not print the
     key. Uses the real simyan/requests classes to pin the shape.

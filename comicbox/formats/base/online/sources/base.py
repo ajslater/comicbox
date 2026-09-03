@@ -53,6 +53,25 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
         logger.debug(f"refresh-cache: removed {cache_path}")
 
 
+def resolve_cache_db_path(
+    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
+) -> Path:
+    """
+    Resolve a source's cache sqlite path.
+
+    Honours an explicit ``online.cache_dir``; otherwise uses the
+    platformdirs user cache path for comicbox. ``create=False`` skips
+    making the parent directory, for read-only callers (a budget
+    readout) that must not have side effects.
+    """
+    if cache_dir is None:
+        cache_dir = user_cache_path("comicbox") / "online"
+    cache_dir = Path(cache_dir).expanduser()
+    if create:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{name}_{suffix}.sqlite"
+
+
 class OnlineSource(ABC):
     """
     Contract every online provider must implement.
@@ -236,14 +255,8 @@ class OnlineSource(ABC):
 
     def cache_db_path(self, suffix: str = "cache") -> Path:
         """
-        Resolve the cache sqlite path for this source.
+        Resolve the cache sqlite path for this source, creating its parent.
 
-        Honours `online.cache_dir` when set; otherwise uses the platformdirs
-        user cache path for comicbox. Creates the parent directory.
+        See `resolve_cache_db_path`, which read-only callers share.
         """
-        cache_dir = self._settings.cache.dir
-        if cache_dir is None:
-            cache_dir = user_cache_path("comicbox") / "online"
-        cache_dir = Path(cache_dir).expanduser()
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / f"{self.name}_{suffix}.sqlite"
+        return resolve_cache_db_path(self._settings.cache.dir, self.name, suffix)

@@ -4,8 +4,8 @@ Exponential-backoff retry decorator for online API calls.
 Wraps a callable that talks to an upstream API. Retries transient errors
 (rate-limit, 5xx) with exponential backoff up to `max_retries`. Honors the
 upstream's `retry_after` hint when present (mokkari sets this on
-`RateLimitError`). Permanent failures — auth errors and not-found
-responses — are never retried.
+`RateLimitError`). Permanent failures — auth errors, not-found responses,
+and requests the upstream rejected as malformed — are never retried.
 
 Which failure is which is the source's call, not this module's: the
 bound instance's ``classify_retry_exception`` (each source contributes
@@ -40,12 +40,13 @@ class RetryCategory(Enum):
     RATE_LIMIT = auto()  # rate-limit schedule + budget; on_rate_limit fires
     AUTH = auto()  # never retried
     NOT_FOUND = auto()  # never retried
+    INVALID = auto()  # never retried; malformed request, a bug on our side
     TRANSIENT = auto()  # generic exponential schedule
 
 
-# ComicVine sends the API key as a query param (simyan 3.x), and requests
-# embeds the full URL — key included — in HTTPError/ConnectionError
-# messages that ride along as ``__cause__`` of every simyan error.
+# ComicVine sends the API key as a query param, and requests embeds the
+# full URL — key included — in HTTPError/ConnectionError messages that
+# ride along as ``__cause__`` of every simyan error.
 _API_KEY_RE: Final = re.compile(r"(api_key=)[^&\s'\"]+")
 
 
@@ -229,12 +230,23 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     """
     Return True for transient errors worth retrying.
 
-    A classifier's AUTH / NOT_FOUND verdicts are terminal; its RATE_LIMIT
-    and TRANSIENT verdicts are trusted (no vendor exception subclasses
-    the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise immediately
-    when they signal programmer/config errors and retry otherwise.
+    A classifier's AUTH / NOT_FOUND / INVALID verdicts are terminal; its
+    RATE_LIMIT and TRANSIENT verdicts are trusted (no vendor exception
+    subclasses the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise
+    immediately when they signal programmer/config errors and retry
+    otherwise.
+
+    INVALID is the classified twin of `_NON_RETRIABLE`: the upstream
+    rejected the request itself, so replaying it verbatim can only fail
+    the same way. It exists because some libraries report a malformed
+    request as a generic service error rather than as a distinct
+    exception class, leaving the message as the only signal.
     """
-    if category in (RetryCategory.AUTH, RetryCategory.NOT_FOUND):
+    if category in (
+        RetryCategory.AUTH,
+        RetryCategory.NOT_FOUND,
+        RetryCategory.INVALID,
+    ):
         return False
     if category is None:
         return not isinstance(exc, _NON_RETRIABLE)

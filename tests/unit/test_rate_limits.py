@@ -5,6 +5,7 @@ from __future__ import annotations
 from argparse import Namespace
 from dataclasses import replace
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pytest
 from mokkari.session import RateLimitStatus, RateLimitWindow
@@ -30,6 +31,10 @@ from comicbox.formats.metron_api.online_source import (
     shared_session_rate_limit_status,
 )
 from comicbox.online_session import OnlineCredentials, OnlineSession
+from tests.util.online_client import comicvine_client, spend
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_documented_defaults_match_upstream() -> None:
@@ -46,7 +51,7 @@ def test_documented_defaults_match_upstream() -> None:
     needs a manual look.
     """
     assert METRON_DEFAULT_PER_MINUTE == 20
-    # simyan 3.x hardcodes its rates as literals in Comicvine.__init__ with
+    # simyan hardcodes its rates as literals in Comicvine.__init__ with
     # no importable constant; pin the documented numbers it ships with.
     assert COMICVINE_DEFAULT_PER_SECOND == 1
     assert COMICVINE_DEFAULT_PER_HOUR == 200
@@ -294,11 +299,32 @@ def test_online_session_rate_limit_status_skips_blank_window() -> None:
     }
 
 
-def test_online_session_rate_limit_status_comicvine_always_empty() -> None:
-    """Simyan exposes no budget to read; comic vine stays {} even mid-run."""
+def test_online_session_rate_limit_status_comicvine_empty_before_any_request() -> None:
+    """
+    Comic Vine reports {} until its rate-limit bucket file exists.
+
+    Nothing has spent budget in this session, so there is no file to read
+    and no pool to report — distinct from reporting a full budget, which
+    would be a guess.
+    """
     _seed_shared_session(RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19)))
     session = _make_online_session(sources=("comicvine", "metron"))
     assert session.rate_limit_status()["comicvine"] == {}
+
+
+def test_online_session_rate_limit_status_comicvine_reports_spent_pools(
+    tmp_path: Path,
+) -> None:
+    """Once a pool has spent budget, the session surfaces what it has left."""
+    # The hermetic env fixture pins the online cache dir here, so this is
+    # the same directory the session under test will read.
+    with comicvine_client(tmp_path / "online-cache") as client:
+        spend(client, "issues", 2)
+        status = _make_online_session(sources=("comicvine",)).rate_limit_status()
+
+    assert status["comicvine"]["issues"]["remaining"] == (
+        COMICVINE_DEFAULT_PER_HOUR - 2
+    )
 
 
 def test_metron_rate_limit_override_warns_and_is_ignored(

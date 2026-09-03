@@ -61,7 +61,7 @@ def test_comicvine_requests_scale_with_mode() -> None:
 
 def test_comicvine_pacing_binds_on_busiest_pool_not_total() -> None:
     """
-    Simyan 3.x paces per resource pool (CV's per-resource limit).
+    Simyan paces per resource pool (CV's per-resource limit).
 
     Auto costs more requests than eager, but the extras land in different
     pools, so both sustain the same pace.

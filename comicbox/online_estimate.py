@@ -24,7 +24,7 @@ costs are summed.
 
 Wall-clock paces each source at its sustained throughput: Metron's
 per-minute cap binds a bounded run directly. Comic Vine limits **per
-resource pool** — 200/hour for each endpoint (simyan 3.x keeps a separate
+resource pool** — 200/hour for each endpoint (simyan keeps a separate
 bucket per endpoint, mirroring CV's documented "200 requests per resource
 per hour") — so a run is bound by its busiest single pool, not by the
 request total: discovery and the final fetches land in different pools
@@ -85,7 +85,7 @@ COMICVINE_REQUESTS_BY_MODE: Final = MappingProxyType(
 )
 
 # How many of one comic's Comic Vine requests land in its BUSIEST resource
-# pool. CV rate-limits per resource, and simyan 3.x enforces that client-side
+# pool. CV rate-limits per resource, and simyan enforces that client-side
 # with a separate bucket per endpoint (search / volumes / issues / get_issue /
 # get_volume), so wall-clock is bound by the fullest single pool rather than
 # the request total. Discovery and the final issue/volume fetches each land

@@ -471,18 +471,35 @@ class OnlineSession:
         """
         Snapshot of each enabled source's current rate-limit budget.
 
-        Metron entries carry the live per-account state mokkari>=4 tracks
-        from ``X-RateLimit-*`` response headers, as JSON-safe windows::
+        Every entry maps a window name to a JSON-safe
+        ``limit`` / ``remaining`` / ``reset_epoch`` triple, so one
+        renderer handles both sources; only the window names differ,
+        because the two services meter differently.
+
+        Metron carries the live per-account state mokkari>=4 tracks from
+        ``X-RateLimit-*`` response headers::
 
             {"burst": {"limit": 20, "remaining": 19, "reset_epoch": ...},
              "sustained": {"limit": 5000, "remaining": 4987, "reset_epoch": ...}}
 
         The sustained (daily) limit varies by Metron OpenCollective donor
-        tier, so it is only discoverable from these headers. A source
-        reports ``{}`` until it has data: for Metron that means no request
-        has gone out yet in this process (no shared session, or no header
-        seen). Comic Vine always reports ``{}`` — simyan builds its
-        limiter internally and exposes no budget to read.
+        tier, so it is only discoverable from these headers.
+
+        Comic Vine meters per resource, so it reports one window per
+        endpoint pool it has actually used::
+
+            {"issues": {"limit": 200, "remaining": 197, "reset_epoch": ...},
+             "search": {"limit": 200, "remaining": 199, "reset_epoch": ...}}
+
+        Its numbers are read from the rate-limit bucket file rather than
+        from a live client, so they survive across runs and are available
+        before this session issues a request. ``reset_epoch`` is when the
+        window's oldest request ages out and frees the next slot.
+
+        A source reports ``{}`` until it has data: for Metron that means
+        no request has gone out yet in this process (no shared session,
+        or no header seen); for Comic Vine, that no bucket file exists
+        yet or it could not be read.
         """
         statuses: dict[str, dict[str, Any]] = {name: {} for name in self._sources}
         if "metron" in statuses:
@@ -497,6 +514,14 @@ class OnlineSession:
             )
             if status is not None:
                 statuses["metron"] = _rate_limit_windows(status)
+        if "comicvine" in statuses:
+            from comicbox.formats.comicvine_api.online_source import (
+                shared_client_rate_limit_status,
+            )
+
+            statuses["comicvine"] = shared_client_rate_limit_status(
+                self._settings.online
+            )
         return statuses
 
     # -- per-file tagging ---------------------------------------------------

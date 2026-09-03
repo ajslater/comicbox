@@ -174,7 +174,7 @@ class OnlineSourceLimits:
     # are accepted but ignored with a warning at client build.
     per_minute: int | None = None
     per_day: int | None = None
-    # Historical ComicVine overrides. simyan 3.x builds its rate limiter
+    # Historical ComicVine overrides. simyan builds its rate limiter
     # internally (1/sec, 200/hr) with no injection point; these are
     # accepted but ignored with a warning at client build.
     per_second: int | None = None
