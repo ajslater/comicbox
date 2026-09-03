@@ -42,8 +42,12 @@
     - Web urls in the Notes field are read into `urls`.
     - New `SourceStarted` online event, emitted once per source that actually
       runs, including on the fast paths `SearchStarted` never covered.
+    - `OnlineSession.rate_limit_status()` now reports Comic Vine's remaining
+      hourly budget for each endpoint it has used, not just Metron's.
 
 - Fixes
+    - An invalid Comic Vine API key now fails immediately instead of retrying
+      for half a minute first. A malformed Comic Vine search fails at once too.
     - Online tagging reports a match only when metadata was really applied. A
       failed `--id` fetch or stored-id refresh counted the comic as tagged and
       rewrote it with its own metadata.
@@ -119,6 +123,8 @@
       of calls per comic — `--effort thorough` restores the unbounded search —
       and rate-limit waits are interruptible, so Ctrl-C is no longer ignored for
       minutes.
+    - Cached Comic Vine responses live for the configured `online.cache.ttl`
+      instead of expiring early when Comic Vine's own cache headers said so.
     - Comicbox starts about a third faster and building a `Comicbox` is about
       forty times cheaper: schemas, the CLI help tables and the config files are
       built once instead of on every import or instance. As with

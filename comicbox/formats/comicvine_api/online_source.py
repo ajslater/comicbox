@@ -1,13 +1,25 @@
 """
 ComicVine API source via simyan.
 
-Wraps simyan's `Comicvine` client. simyan 3.x manages its own response
-cache (requests_cache; `api_key` stripped from cache keys) and rate
-limiting (1/sec, 200/hr in per-endpoint buckets) with a *bounded*
-blocking wait (`max_delay = timeout * 2`); waits past that bound surface
-as errors that comicbox's logged, cancellable retry layer handles. We
-point the cache and rate-limit bucket files into comicbox's cache dir
-via `online.cache_dir` / `cache_ttl`.
+Wraps simyan's `Comicvine` client. simyan manages its own response cache
+(requests_cache; `api_key` stripped from cache keys) and rate limiting
+(1/sec, 200/hr in per-endpoint buckets) with a *bounded* blocking wait
+(`max_delay = timeout * 2`); waits past that bound surface as errors that
+comicbox's logged, cancellable retry layer handles. We point the cache
+and rate-limit bucket files into comicbox's cache dir via
+`online.cache_dir` / `cache_ttl`.
+
+Both of those sqlite files are also read directly here, for things
+simyan offers no accessor for: `_maintain_cache` purges expired response
+rows (requests_cache never does so on its own), and
+`shared_client_rate_limit_status` counts rate-limit bucket rows to report
+what each endpoint pool has left of its hourly budget.
+
+Comic Vine reports application-level failures as an HTTP 200 whose body
+carries a non-1 `status_code`. simyan 4.0 turns those into its own typed
+exceptions rather than letting them fail validation downstream, so
+`classify_retry_exception` reads the class first and the message only for
+what the class cannot say.
 
 ComicVine candidates do *not* arrive with a precomputed cover hash, so
 the matcher's hashing path downloads the candidate's `image.thumbnail`
@@ -86,7 +98,7 @@ _RATE_LIMIT_WINDOW_MS: Final[int] = 3600 * 1000
 # batch paid for a fresh `Comicvine`: a new requests session (no
 # connection reuse across files), a new requests_cache sqlite handle, a
 # new ratelimit-bucket file handle, and a re-run of the cache
-# maintenance path. simyan 3.x keeps its rate-limit state in a sqlite
+# maintenance path. simyan keeps its rate-limit state in a sqlite
 # bucket file rather than in memory, so sharing is about connection and
 # handle reuse rather than about rate-limit visibility — that part
 # already worked across instances.
@@ -208,7 +220,7 @@ def _drop_v2_cache_table(cache_path: Path) -> None:
     """
     Drop simyan v2's `queries` table from the shared cache file.
 
-    simyan 3.x (requests_cache) creates its own tables alongside; the old
+    simyan's requests_cache creates its own tables alongside; the old
     blob rows would otherwise sit as dead weight forever. A no-op once
     dropped. Best-effort — a locked/busy db just skips until next build.
     """
@@ -487,7 +499,7 @@ class ComicVineOnlineSource(OnlineSource):
             warn_once(
                 f"{self.name}:rate-limit-override",
                 f"online {self.name}: rate_limit.per_second/per_hour "
-                "overrides are ignored — simyan 3.x manages ComicVine "
+                "overrides are ignored — simyan manages ComicVine "
                 "rates internally (1/sec, 200/hr)",
             )
 

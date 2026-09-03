@@ -4,8 +4,8 @@ Exponential-backoff retry decorator for online API calls.
 Wraps a callable that talks to an upstream API. Retries transient errors
 (rate-limit, 5xx) with exponential backoff up to `max_retries`. Honors the
 upstream's `retry_after` hint when present (mokkari sets this on
-`RateLimitError`). Permanent failures — auth errors and not-found
-responses — are never retried.
+`RateLimitError`). Permanent failures — auth errors, not-found responses,
+and requests the upstream rejected as malformed — are never retried.
 
 Which failure is which is the source's call, not this module's: the
 bound instance's ``classify_retry_exception`` (each source contributes
@@ -44,9 +44,9 @@ class RetryCategory(Enum):
     TRANSIENT = auto()  # generic exponential schedule
 
 
-# ComicVine sends the API key as a query param (simyan 3.x), and requests
-# embeds the full URL — key included — in HTTPError/ConnectionError
-# messages that ride along as ``__cause__`` of every simyan error.
+# ComicVine sends the API key as a query param, and requests embeds the
+# full URL — key included — in HTTPError/ConnectionError messages that
+# ride along as ``__cause__`` of every simyan error.
 _API_KEY_RE: Final = re.compile(r"(api_key=)[^&\s'\"]+")
 
 
