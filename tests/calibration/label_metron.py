@@ -61,11 +61,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-# Mokkari pages issues_list in 28-record pages by default. A cv_id
-# query should return ≤1 issue in practice (CV ids are issue-scoped),
-# but Metron's catalog can have duplicates from data-import quirks;
-# we ask for the first page and log a warning if more than one came
-# back.
+# mokkari's `issues_list` follows every `next` page itself, so what
+# comes back is the whole result set, not a first page. A cv_id query
+# should return ≤1 issue in practice (CV ids are issue-scoped), but
+# Metron's catalog can have duplicates from data-import quirks; we log
+# a warning if more than one came back.
 _EXPECTED_HITS_MAX: int = 1
 
 
