@@ -129,10 +129,15 @@ def _metron_series_probe(session: Any, label: str, query: str) -> None:
 def _debug_metron(profile: object, online: object) -> None:
     print("\n=== Metron debug ===")  # noqa: T201
     creds = online.auth.sources.get("metron")  # ty: ignore[unresolved-attribute]
-    if creds is None or not creds.username or not creds.password:
+    if creds is None:
         print("  metron not configured; skipping")  # noqa: T201
         return
     src = MetronOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
+    # `is_configured()` accepts an API token as well as username + password,
+    # which a hand-rolled credential check here would reject.
+    if not src.is_configured():
+        print("  metron not configured; skipping")  # noqa: T201
+        return
     session = src._get_session()
     series_name = profile.series  # ty: ignore[unresolved-attribute]
 

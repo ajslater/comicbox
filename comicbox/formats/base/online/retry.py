@@ -240,7 +240,10 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     rejected the request itself, so replaying it verbatim can only fail
     the same way. It exists because some libraries report a malformed
     request as a generic service error rather than as a distinct
-    exception class, leaving the message as the only signal.
+    exception class, leaving the message as the only signal. It also
+    covers a client library's own configuration errors, like mokkari's
+    `CacheError` for a cache object missing `get`/`store`, which no
+    replay can fix either.
     """
     if category in (
         RetryCategory.AUTH,

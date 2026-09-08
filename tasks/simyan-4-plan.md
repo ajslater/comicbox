@@ -1,8 +1,9 @@
 # simyan 4.0.0 adoption plan
 
-**Status:** phases 1, 2, 4, 5 and 6 landed on branch `simyan-4` (off `develop`,
-2026-09-03). Phase 3 is filed upstream and blocked on a simyan release. No
-version bump — NEWS lines went under the existing `v5.0.0` section.
+**Status:** phases 1, 2, 4, 5 and 6 landed on `develop` via PR #200
+(2026-09-03). Phase 3's fix merged upstream on 2026-09-04 (Simyan PR #310,
+commit `5bd7947`) and now awaits a simyan release. No version bump — NEWS lines
+went under the existing `v5.0.0` section.
 
 Decisions taken (the three questions this plan originally left open):
 
@@ -165,7 +166,7 @@ Files: `comicbox/formats/comicvine_api/online_source.py`,
 - [x] Keep `_drop_v2_cache_table` (eight lines, once per process, harmless);
       revisit at the next major.
 
-### Phase 3 — Upstream pagination fix, then a floor bump ⛔ blocked upstream
+### Phase 3 — Upstream pagination fix, then a floor bump ⏳ merged upstream, awaiting release
 
 Filed as [Simyan#309](https://github.com/Metron-Project/Simyan/issues/309) with
 the fake-transport reproduction, a verified before/after table, and the patch
@@ -174,10 +175,17 @@ per-instance: every returned result set is identical and the request count drops
 by one in each non-boundary case, including a full 100-item page — which only
 the `number_of_total_results` check catches, not the short-page test.
 
+Merged upstream 2026-09-04 as
+[Simyan PR #310](https://github.com/Metron-Project/Simyan/pull/310), commit
+`5bd7947`, which took both loop exits and also stopped the loops mutating the
+caller's `params` dict. Not in any release yet: simyan 4.0.0 (2026-09-03) is
+still the latest on PyPI and still carries the old loops, so every item below
+stays open until a tag ships.
+
 - [x] Open the issue, including the doc nit that the `Comicvine` docstring still
       promises "Response cache-headers take precedence" after 4.0 dropped
       `cache_control`, and that both loops mutate the caller's `params` dict.
-- [ ] Offer the PR if the maintainer approves the approach.
+- [x] Offer the PR if the maintainer approves the approach.
 - [ ] When it ships: `simyan>=4.1.0,<5` (or whatever the tag is), `uv lock`,
       NEWS (Dev): "Require simyan ≥ 4.1.0."
 - [ ] Re-run the fake-transport probe to confirm one request per short page.
@@ -241,7 +249,7 @@ the `number_of_total_results` check catches, not the short-page test.
       calibration notes: one `--online` lookup, confirm the new
       `rate_limit_status()` entry moves.
 - [x] Commit per phase.
-- [ ] PR `simyan-4` → `develop`.
+- [x] PR `simyan-4` → `develop` (#200, 2026-09-03).
 
 ## Out of scope
 
