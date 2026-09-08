@@ -3,138 +3,64 @@
 ## v5.0.0
 
 - Breaking Changes
-    - Comicbox schema v3.0. Version 2.0 documents no longer load, and the fields
-      below that moved or were removed are ignored if a 2.0 file supplies them.
-    - Credit roles and age ratings are stored with MetronInfo's names and scale,
-      so ComicInfo's finer ratings like `Everyone 10+` become `Everyone`. The
-      primary-credit flag moved onto each person's role: the primary Writer is
-      no longer also the primary Inker.
-    - `manga` no longer carries reading direction. `YesAndRightToLeft` splits
-      into `manga` and `reading_direction` and recombines for ComicInfo. New
-      `manga_volume` holds MetronInfo's `MangaVolume` string as written.
-    - Web links moved out of `identifiers` into their own `urls` list.
-      Identifiers hold only a key, and `identifier_primary_source` became
-      `primary_id_source`. Comicbox still derives either one from the other.
-    - ComicInfo's `GTIN` holds a barcode again instead of comicbox urns, which
-      is what Kavita, Komga and Mylar expect, and notes urns drop the default
-      type (`urn:comicvine:145269`). Files written the old way still read.
-    - A stated `title` is kept as written, and stories are read out of it only
-      when the comic lists none. Reprints keep the name the file gave them, a
-      series' other names live in `series.alternative_names`, and ComicInfo's
-      `AlternateSeries` / `AlternateNumber` read as a story arc.
+    - Comicbox schema v3.0. Version 2.0 documents no longer load.
+    - Credit roles and age ratings use MetronInfo's names and scale, so finer
+      ComicInfo ratings like `Everyone 10+` become `Everyone`. The primary
+      credit flag is now per role, not per person.
+    - `manga` no longer carries reading direction. See the new
+      `reading_direction` and `manga_volume` fields.
+    - Web links moved out of `identifiers` into a new `urls` list, and
+      `identifier_primary_source` became `primary_id_source`.
+    - ComicInfo's `GTIN` holds a barcode again instead of a comicbox urn, which
+      is what Kavita, Komga and Mylar expect. Files written the old way read.
+    - A stated `title` is kept as written and stories are only read out of it
+      when the comic lists none. A series' other names live in
+      `series.alternative_names`.
     - Removed `critical_rating` and `alternate_images`, which mapped to no
-      format. `MainCharacterOrTeam` is one name, and CoMet's `identifier` and
-      `isVersionOf` one value each, as their schemas define them.
-    - Removed `--replace` and `write.replace`, which performed the `update`
-      merge despite the name — use `--merge-mode update`. The write API takes
-      `merge_mode` instead of `mode` and defaults to the config's
-      `write.merge_mode`; `WriteMode` is now `MergeMode`.
-    - Environment variables name their config key with `__` between levels, and
-      every key can be set that way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old
-      flat names warn, and a value that doesn't fit its key is an error.
-    - `deepdiff` is no longer a dependency, and `resolve_credentials` no longer
-      takes an `env` argument.
+      format.
+    - Removed `--replace`; use `--merge-mode update`. The write API takes
+      `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
+    - Environment variables nest with `__`, and every config key can be set that
+      way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
 
 - Features
-    - New `--merge-mode` option and `write.merge_mode` config key choose how
-      supplied metadata merges into a comic's existing tags: `additive` (the
-      default), `replace` or `update`. Only the write API could set it before.
+    - New `--merge-mode` chooses how supplied metadata merges into a comic's
+      existing tags: `additive` (the default), `replace` or `update`.
     - Web urls in the Notes field are read into `urls`.
-    - New `SourceStarted` online event, emitted once per source that actually
-      runs, including on the fast paths `SearchStarted` never covered.
-    - `OnlineSession.rate_limit_status()` now reports Comic Vine's remaining
-      hourly budget for each endpoint it has used, not just Metron's.
+    - Online API: new `SourceStarted` event, and `rate_limit_status()` now
+      covers Comic Vine as well as Metron.
 
 - Fixes
-    - An invalid Comic Vine API key now fails immediately instead of retrying
-      for half a minute first. A malformed Comic Vine search fails at once too.
-    - Online tagging reports a match only when metadata was really applied. A
-      failed `--id` fetch or stored-id refresh counted the comic as tagged and
-      rewrote it with its own metadata.
-    - A lone mediocre match no longer auto-writes without a prompt: the
-      solo-viable floor is back at the auto-write threshold and follows the one
-      actually configured. A candidate too far down to be cover-checked no
-      longer wins a tie against one whose cover matched.
-    - Rate-limit errors that mention an API key are retried instead of being
-      misread as permanent auth failures.
-    - Prompts hold up under batch and parallel runs. A match mode or unattended
-      choice sticks for the rest of the batch, aborting ends the run, a prompt
-      that never resolves gives up, a candidate number outside the list is
-      refused, and `-QQ` really does trim the candidate detail.
+    - Two silent data losses: an XML tag carrying an attribute, like
+      `<Series lang="en">`, took the file's whole metadata down with it, and
+      MetronInfo tag-level ids were discarded in files that name no primary id
+      source.
+    - Writing metadata no longer rewrites a comic's pages, so tagging is faster
+      and an interrupted write can't damage a page. One archive named twice in a
+      batch is no longer repacked by two threads at once and destroyed.
+    - Online tagging reports a match only when metadata was really applied, and
+      a lone mediocre match no longer auto-writes without a prompt. Prompts hold
+      up under batch and parallel runs.
+    - `-c/--config` loads the file it names instead of being ignored, and an
+      unknown `--online` source is an error rather than a silent widening: a
+      typo like `--online metrn` queried every configured database.
+    - Reading metadata no longer depends on write settings, so
+      `--online --write … --rename` no longer names the file from stale data.
     - A comic that can't be read no longer ends the batch, and `comicbox` exits
       non-zero whenever any file failed.
-    - Writing metadata no longer rewrites a comic's pages. It is stored after
-      them, so re-tagging appends to the archive: tagging is faster and an
-      interrupted write can't damage a page. A write also claims its archive,
-      since one archive named twice in a batch was repacked by two threads at
-      once and destroyed. Renaming refuses a name another file holds.
-    - An XML tag that carries an attribute is read instead of dropped. A
-      `<Series lang="en">` took the file's entire metadata down with it.
-    - MetronInfo ids are read from files that name no primary id source. Without
-      an `<ID primary="true">` or a recognized url, every tag-level id —
-      Publisher, Imprint, Series, Arc, Universe, Creator, Role, Story and
-      Reprint — was discarded, as was an `AlternativeName`'s `id`.
-    - Writing MetronInfo no longer invents credits, stamps a `MangaVolume` onto
-      comics that never had one, duplicates reprints and alternative names,
-      drops an `AlternativeName` that names no language, or writes a non-issue
-      id into the issue id list.
-    - Credit roles survive better both ways: `breakdowns`, `finishes`, `plotter`
-      and `scripter` keep their own role, and more spellings are recognized,
-      including `Inks`, `Pencils` and `Cover Artist`.
-    - More tags read back: ComicInfo's `SeriesGroup`, a `Manga` of `Unknown`,
-      Marvel's `Max` ratings, and `Translator` under several names.
-    - Identifiers and urls are read more carefully. A name slug, tracking
-      suffix, front page or trailing comma is no longer an id; hosts are
-      recognized whatever their case and with a port or login; kitsu.app is
-      recognized; an unknown ComicVine type code reads as an issue; an unknown
-      `id_type` no longer leaks into a url; and a hand-written source like
-      `my_db` no longer aborts the read. Notes naming a database of more than
-      one word are read, and an unrecognized name is no longer ComicVine.
-    - Odd data no longer costs a whole comic. An impossible date part is
-      dropped, an unparseable notes timestamp leaves `updated_at` unset, an
-      issue like `1234AU` gets its number, reprints that sort alike neither
-      abort the dump nor collapse into one empty entry, and a page whose entry
-      reports no size no longer drops every computed field.
-    - Metadata comicbox skips is named in a warning with the value it came from,
-      rather than dropped as silently as an absent tag.
-    - `-c/--config` loads the file it names, which was silently ignored in favor
-      of the defaults, and an unknown `--online` source is an error instead of a
-      silent widening — a typo like `--online metrn` queried every configured
-      database.
-    - Reading metadata no longer depends on write settings. Sources merge
-      additively; the write mode applies only to metadata the caller supplied.
-      What an online lookup fetched survives the write, so
-      `--online --write … --rename` no longer names the file from stale data.
-    - Smaller repairs: `--recurse` finds `.cb7`; reading a page no longer
-      depends on the working directory; a ComicBookInfo comment in a CBZ dates
-      by the file's own mtime; actions needing an archive warn instead of
-      raising when there is no path; schema-wide validation hooks run; and
-      `add_metadata(md, fmt=…)` accepts every format, including online ones.
+    - Many smaller repairs to credit roles, tag coverage, identifiers, urls and
+      odd data that used to cost a whole comic. Metadata comicbox skips is now
+      named in a warning instead of dropped silently.
 
 - Performance
-    - Converting a CB7 reads its pages in batches. Every 7z read decompressed
-      the solid block from the start, so cost grew with the square of the page
-      count: a 200 page, 117 MiB CB7 now converts in 6.2s instead of 232s, with
-      318 MiB peak RSS instead of 1.9 GiB.
-    - Online tagging is faster. Covers download in parallel over one connection,
-      Comic Vine reuses one client, series caching spans a series that ran
-      across several years, and `--online` batches by series, so a run costs one
-      search instead of one per issue. Comic Vine also spends a bounded number
-      of calls per comic — `--effort thorough` restores the unbounded search —
-      and rate-limit waits are interruptible, so Ctrl-C is no longer ignored for
-      minutes.
-    - Cached Comic Vine responses live for the configured `online.cache.ttl`
-      instead of expiring early when Comic Vine's own cache headers said so.
+    - A 200 page, 117 MiB CB7 converts in 6.2s instead of 232s, with 318 MiB
+      peak RSS instead of 1.9 GiB.
+    - Online tagging batches by series, downloads covers in parallel and bounds
+      Comic Vine calls per comic (`--effort thorough` restores the unbounded
+      search). Rate-limit waits are interruptible again.
     - Comicbox starts about a third faster and building a `Comicbox` is about
-      forty times cheaper: schemas, the CLI help tables and the config files are
-      built once instead of on every import or instance. As with
-      `OnlineSession`, editing a config file mid-run no longer changes settings
-      for the rest of the run.
-    - Books with many reprints no longer dominate the computed pass. Reprints
-      were consolidated by deep-diffing every ordered pair; they are now
-      compared on flattened, normalized fields. A forty-reprint book reads about
-      seventeen times faster, and a hundred-and-thirty-six-reprint book about
-      fifty.
+      forty times cheaper. Books with many reprints read up to fifty times
+      faster.
 
 - Dev
     - Require simyan >= 4.0.0.
