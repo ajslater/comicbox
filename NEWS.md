@@ -55,6 +55,8 @@
       `--online --write … --rename` no longer names the file from stale data.
     - A comic that can't be read no longer ends the batch, and `comicbox` exits
       non-zero whenever any file failed.
+    - MetronInfo alternative name ids link to their series, and reprint ids to
+      the issue they reprint, instead of to pages that don't exist.
     - Many smaller repairs to credit roles, tag coverage, identifiers, urls and
       odd data that used to cost a whole comic. Metadata comicbox skips is now
       named in a warning instead of dropped silently.
