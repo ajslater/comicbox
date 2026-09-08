@@ -310,11 +310,12 @@ def _build_tuning(
         if auto_threshold_raw is not None
         else DEFAULT_AUTO_THRESHOLD
     )
+    # Left None when no layer named an effort. Defaulting it to
+    # BALANCED here is what made an explicit `--effort balanced`
+    # indistinguishable from silence, so auto-engagement overrode it.
     effort_raw = _coalesce(cli("effort"), online_block.tuning.effort)
     effort_value = (
-        parse_enum(Effort, "--effort", str(effort_raw))
-        if effort_raw
-        else Effort.BALANCED
+        parse_enum(Effort, "--effort", str(effort_raw)) if effort_raw else None
     )
     retry_budget = int(_coalesce(online_block.tuning.retry_budget, 5))
     per_source = _build_per_source_tuning(online_block)

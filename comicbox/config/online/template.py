@@ -79,7 +79,7 @@ ONLINE_TEMPLATE = MappingTemplate(
         "tuning": MappingTemplate(
             {
                 "auto_threshold": Number(),
-                "effort": String(),
+                "effort": Optional(String()),
                 "retry_budget": Integer(),
                 "per_source": Optional(dict),
             }

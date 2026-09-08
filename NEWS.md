@@ -48,17 +48,19 @@
     - Online tagging reports a match only when metadata was really applied, and
       a lone mediocre match no longer auto-writes without a prompt. Prompts hold
       up under batch and parallel runs.
+    - `--effort balanced` is honored; a large unattended run no longer quietly
+      downgrades it to `minimal` for Comic Vine.
     - `-c/--config` loads the file it names instead of being ignored, and an
       unknown `--online` source is an error rather than a silent widening: a
       typo like `--online metrn` queried every configured database.
-    - The hint printed when no TTY is detected told you to pass `--unattended`,
-      a flag comicbox has never had. It names `--prompts never` now.
     - Reading metadata no longer depends on write settings, so
       `--online --write … --rename` no longer names the file from stale data.
     - A comic that can't be read no longer ends the batch, and `comicbox` exits
       non-zero whenever any file failed.
     - MetronInfo alternative name ids link to their series, and reprint ids to
       the issue they reprint, instead of to pages that don't exist.
+    - The no-TTY hint names `--prompts never` instead of `--unattended`, which
+      never existed.
     - Many smaller repairs to credit roles, tag coverage, identifiers, urls and
       odd data that used to cost a whole comic. Metadata comicbox skips is now
       named in a warning instead of dropped silently.
