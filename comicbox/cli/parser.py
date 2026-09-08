@@ -21,7 +21,13 @@ from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
-from comicbox.config.online.settings import DEFAULT_AUTO_THRESHOLD
+from comicbox.config.online.settings import (
+    DEFAULT_AUTO_THRESHOLD,
+    CacheMode,
+    Effort,
+    MatchMode,
+    Prompts,
+)
 from comicbox.config.settings import MergeMode
 
 if TYPE_CHECKING:
@@ -517,7 +523,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         "--match",
         action="store",
         default=None,
-        choices=("ask", "careful", "auto", "eager"),
+        choices=tuple(mode.value for mode in MatchMode),
         metavar="MODE",
         dest="match",
         help=(
@@ -531,7 +537,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         "--prompts",
         action="store",
         default=None,
-        choices=("ask", "never"),
+        choices=tuple(prompts.value for prompts in Prompts),
         metavar="MODE",
         dest="prompts",
         help=(
@@ -596,7 +602,7 @@ def _add_online_cache_group(parser: ArgumentParser) -> None:
         "--cache",
         action="store",
         default=None,
-        choices=("on", "off", "refresh"),
+        choices=tuple(mode.value for mode in CacheMode),
         metavar="MODE",
         dest="cache",
         help=(
@@ -642,7 +648,7 @@ def _add_online_tuning_group(parser: ArgumentParser) -> None:
         "--effort",
         action="store",
         default=None,
-        choices=("minimal", "balanced", "thorough"),
+        choices=tuple(effort.value for effort in Effort),
         metavar="MODE",
         dest="effort",
         help=(

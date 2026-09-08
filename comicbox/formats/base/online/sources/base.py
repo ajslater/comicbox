@@ -42,7 +42,7 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
     an unguarded unlink wiped the response cache between calls — e.g.
     between search() and get() of the same file — defeating the
     +1-API-call-per-unique-volume amortization get() relies on and
-    re-spending API budget on every file of a --refresh-cache batch.
+    re-spending API budget on every file of a `--cache refresh` batch.
     """
     with _refresh_lock:
         if str(cache_path) in _refreshed_cache_paths:

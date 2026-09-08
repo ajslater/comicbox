@@ -166,9 +166,9 @@ def test_manual_id_for_other_source_skipped(patched_metron) -> None:
     assert patched_metron[0].get_calls == []
 
 
-def test_set_unattended_changes_session_state_and_skips(patched_metron) -> None:
+def test_set_prompts_changes_session_state_and_skips(patched_metron) -> None:
     def selector(profile, candidates, ctx):
-        return ("set_unattended", None)
+        return ("set_prompts", "never")
 
     cb = _build_cb()
     state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
@@ -264,7 +264,7 @@ def test_session_state_carries_across_boxes(patched_metron) -> None:
     state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
 
     def selector(profile, candidates, ctx):
-        return ("set_unattended", None)
+        return ("set_prompts", "never")
 
     first = _build_cb()
     first.set_online_session_state(state)
@@ -284,7 +284,7 @@ def test_standalone_box_gets_its_own_state(patched_metron) -> None:
     """No injected state: the box seeds a private one from its own config."""
 
     def selector(profile, candidates, ctx):
-        return ("set_unattended", None)
+        return ("set_prompts", "never")
 
     first = _build_cb()
     first.set_online_selector(selector)

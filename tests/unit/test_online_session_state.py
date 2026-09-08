@@ -27,20 +27,14 @@ def test_from_lookup_seeds_both_fields() -> None:
     assert policy.prompts is Prompts.NEVER
 
 
-def test_unattended_is_derived_from_prompts() -> None:
-    assert LookupPolicy(MatchMode.AUTO, Prompts.NEVER).unattended is True
-    assert LookupPolicy(MatchMode.AUTO, Prompts.ASK).unattended is False
-
-
 def test_setters_move_only_their_own_field() -> None:
     state = OnlineSessionState(match=MatchMode.AUTO, prompts=Prompts.ASK)
     state.set_match(MatchMode.CAREFUL)
     assert state.snapshot() == LookupPolicy(MatchMode.CAREFUL, Prompts.ASK)
     state.set_prompts(Prompts.NEVER)
     assert state.snapshot() == LookupPolicy(MatchMode.CAREFUL, Prompts.NEVER)
-    # Unattended is reversible, unlike the one-way prompt action.
     state.set_prompts(Prompts.ASK)
-    assert state.snapshot().unattended is False
+    assert state.snapshot() == LookupPolicy(MatchMode.CAREFUL, Prompts.ASK)
 
 
 def test_overlay_replaces_the_policy_and_nothing_else() -> None:

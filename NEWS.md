@@ -20,6 +20,12 @@
       format.
     - Removed `--replace`; use `--merge-mode update`. The write API takes
       `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
+    - `OnlineSession` takes `match` and `prompts` instead of `mode` and
+      `unattended`, matching `--match` and `--prompts`. `set_mode` and
+      `set_unattended` are `set_match` and `set_prompts`, the prompt objects
+      carry `match` and `prompts`, and the `set_unattended` selector action is
+      `set_prompts`, which names the policy it sets and so can turn prompts back
+      on.
     - Environment variables nest with `__`, and every config key can be set that
       way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
     - `estimate_run()` and `requests_per_comic()` take an `effort` instead of a
@@ -48,6 +54,8 @@
     - Online tagging reports a match only when metadata was really applied, and
       a lone mediocre match no longer auto-writes without a prompt. Prompts hold
       up under batch and parallel runs.
+    - `--effort balanced` is honored; a large unattended run no longer quietly
+      downgrades it to `minimal` for Comic Vine.
     - `-c/--config` loads the file it names instead of being ignored, and an
       unknown `--online` source is an error rather than a silent widening: a
       typo like `--online metrn` queried every configured database.
@@ -57,6 +65,8 @@
       non-zero whenever any file failed.
     - MetronInfo alternative name ids link to their series, and reprint ids to
       the issue they reprint, instead of to pages that don't exist.
+    - The no-TTY hint names `--prompts never` instead of `--unattended`, which
+      never existed.
     - Many smaller repairs to credit roles, tag coverage, identifiers, urls and
       odd data that used to cost a whole comic. Metadata comicbox skips is now
       named in a warning instead of dropped silently.

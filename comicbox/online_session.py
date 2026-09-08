@@ -77,6 +77,7 @@ __all__ = (
     "OnlineSession",
     "PromptHandler",
     "PromptResponse",
+    "Prompts",
     "RunEstimate",
     "SourceName",
     "estimate_run",
@@ -115,8 +116,8 @@ class OnlinePrompt:
     source: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: MatchMode
-    unattended: bool
+    match: MatchMode
+    prompts: Prompts
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,11 +127,12 @@ class PromptResponse:
 
     ``action`` mirrors :data:`SelectorAction`; ``payload`` is the index for
     ``choose``, the ``"<source>:<id>"`` string for ``manual``, the new
-    :class:`MatchMode` value (e.g. ``"auto"``) for ``set_policy``, or
+    :class:`MatchMode` value (e.g. ``"auto"``) for ``set_policy``, the new
+    :class:`Prompts` value (e.g. ``"never"``) for ``set_prompts``, or
     ``None`` otherwise.
     """
 
-    action: Literal["choose", "skip", "manual", "abort", "set_unattended", "set_policy"]
+    action: Literal["choose", "skip", "manual", "abort", "set_prompts", "set_policy"]
     payload: int | str | None = None
 
 
@@ -222,7 +224,7 @@ class DeferredPrompt:
     A prompt the session skipped under defer_prompts mode.
 
     Captures everything Codex needs to render the prompt later in a
-    review-tagging UI: the file it came from, source, candidates, mode
+    review-tagging UI: the file it came from, source, candidates, match
     context, and the fingerprint used to key the dedup cache. Codex
     feeds the user's resolution back via :meth:`OnlineSession.preload_resolution`.
     """
@@ -232,8 +234,8 @@ class DeferredPrompt:
     fingerprint: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: MatchMode
-    unattended: bool
+    match: MatchMode
+    prompts: Prompts
 
 
 # --- session ---------------------------------------------------------------
@@ -267,7 +269,7 @@ class OnlineSession:
 
     Construction validates per-source credentials and pre-computes the
     ComicboxSettings layer that each per-file Comicbox instance will see.
-    Mutable state — the lookup policy (``mode`` / ``unattended``) and the
+    Mutable state — the lookup policy (``match`` / ``prompts``) and the
     cancel token — lives on the instance and may be updated from any
     thread. The policy lives in an ``OnlineSessionState`` shared with
     every box the session spawns, so a change made at a prompt needs no
@@ -292,8 +294,8 @@ class OnlineSession:
         sources: Iterable[str] = ("metron", "comicvine"),
         ids: Mapping[str, int] | None = None,
         credentials: OnlineCredentials | None = None,
-        mode: MatchMode = MatchMode.AUTO,
-        unattended: bool = False,
+        match: MatchMode = MatchMode.AUTO,
+        prompts: Prompts = Prompts.ASK,
         prompt_handler: PromptHandler | None = None,
         on_event: EventHandler | None = None,
         rematch: bool = False,
@@ -315,8 +317,8 @@ class OnlineSession:
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
         self._state = OnlineSessionState(
-            match=self._validate_mode(mode),
-            prompts=Prompts.NEVER if unattended else Prompts.ASK,
+            match=self._validate_match(match),
+            prompts=prompts,
         )
         self._prompt_handler = prompt_handler
         self._on_event = on_event
@@ -372,28 +374,28 @@ class OnlineSession:
     # -- mutable session state ----------------------------------------------
 
     @property
-    def mode(self) -> MatchMode:
+    def match(self) -> MatchMode:
         """
-        Current session mode (read-only; mutate via set_mode()).
+        Current session match mode (read-only; mutate via set_match()).
 
-        May report ``MatchMode.ASK`` even though ``set_mode`` rejects it:
-        a prompt handler answering ``set_policy: "ask"`` can put the
+        May report ``MatchMode.ASK`` even though ``set_match`` rejects
+        it: a prompt handler answering ``set_policy: "ask"`` can put the
         session there, since that path has a handler to do the asking.
         """
         return self._state.snapshot().match
 
     @property
-    def unattended(self) -> bool:
-        """Current session unattended flag."""
-        return self._state.snapshot().unattended
+    def prompts(self) -> Prompts:
+        """Current session prompt policy."""
+        return self._state.snapshot().prompts
 
-    def set_mode(self, mode: MatchMode) -> None:
-        """Change the session mode for subsequent file lookups."""
-        self._state.set_match(self._validate_mode(mode))
+    def set_match(self, match: MatchMode) -> None:
+        """Change the session match mode for subsequent file lookups."""
+        self._state.set_match(self._validate_match(match))
 
-    def set_unattended(self, *, unattended: bool) -> None:
-        """Toggle the unattended flag for subsequent file lookups."""
-        self._state.set_prompts(Prompts.NEVER if unattended else Prompts.ASK)
+    def set_prompts(self, prompts: Prompts) -> None:
+        """Change the session prompt policy for subsequent file lookups."""
+        self._state.set_prompts(prompts)
 
     def cancel(self) -> None:
         """Stop accepting new files. In-flight lookup runs to completion."""
@@ -670,12 +672,12 @@ class OnlineSession:
                 source=ctx.source,
                 profile_summary=_summarise_profile(profile),
                 candidates=cand_tuple,
-                mode=policy.match,
-                unattended=policy.unattended,
+                match=policy.match,
+                prompts=policy.prompts,
             )
             response = handler.request(prompt)
             # No session-state sync here: the box applies set_policy /
-            # set_unattended to the OnlineSessionState this session shares
+            # set_prompts to the OnlineSessionState this session shares
             # with it, so the change is already ours.
             self._store_prompt_resolution(fingerprint, response, cand_tuple)
             return (response.action, response.payload)
@@ -697,8 +699,8 @@ class OnlineSession:
             fingerprint=fingerprint,
             profile_summary=_summarise_profile(profile),
             candidates=candidates,
-            mode=policy.match,
-            unattended=policy.unattended,
+            match=policy.match,
+            prompts=policy.prompts,
         )
         with self._deferred_lock:
             self._deferred.append(deferred)
@@ -749,9 +751,9 @@ class OnlineSession:
                 chosen_volume_id = candidates[response.payload].volume_id
             except IndexError:
                 chosen_volume_id = None
-        # Session-level actions (set_unattended / set_policy / abort) are
+        # Session-level actions (set_prompts / set_policy / abort) are
         # not cached: they apply once, not as a deferred decision.
-        if response.action in {"set_unattended", "set_policy", "abort"}:
+        if response.action in {"set_prompts", "set_policy", "abort"}:
             return
         entry = _CachedResolution(
             action=response.action,
@@ -851,18 +853,18 @@ class OnlineSession:
             raise OnlineConfigurationError(msg)
 
     @staticmethod
-    def _validate_mode(mode: MatchMode) -> MatchMode:
-        if not isinstance(mode, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
-            msg = f"OnlineSession.mode must be a MatchMode enum value; got {mode!r}."  # pyright: ignore[reportUnreachable]
+    def _validate_match(match: MatchMode) -> MatchMode:
+        if not isinstance(match, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
+            msg = f"OnlineSession.match must be a MatchMode enum value; got {match!r}."  # pyright: ignore[reportUnreachable]
             raise OnlineConfigurationError(msg)
-        if mode is MatchMode.ASK:
+        if match is MatchMode.ASK:
             msg = (
-                "OnlineSession.mode does not accept MatchMode.ASK; "
+                "OnlineSession.match does not accept MatchMode.ASK; "
                 "the session has no built-in prompt resolver. Use a "
                 "PromptHandler or defer_prompts=True instead."
             )
             raise OnlineConfigurationError(msg)
-        return mode
+        return match
 
 
 def _summarise_profile(profile: ComicProfile) -> dict[str, Any]:

@@ -127,8 +127,10 @@ def test_different_fingerprint_re_prompts() -> None:
 
 
 def test_session_actions_are_not_cached() -> None:
-    """set_unattended / set_policy / abort should not be cached — they're once-off."""
-    recorder = _Recorder(response=PromptResponse(action="set_unattended"), seen=[])
+    """set_prompts / set_policy / abort should not be cached — they're once-off."""
+    recorder = _Recorder(
+        response=PromptResponse(action="set_prompts", payload="never"), seen=[]
+    )
     session = OnlineSession(
         sources={"metron"}, credentials=VALID, prompt_handler=recorder
     )

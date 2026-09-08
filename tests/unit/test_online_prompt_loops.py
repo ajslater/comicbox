@@ -165,11 +165,11 @@ def test_ask_policy_choice_none_reply_aborts(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.parametrize("reply", ["u", "unattended", "U"])
-def test_ask_session_options_unattended(
+def test_ask_session_options_prompts(
     monkeypatch: pytest.MonkeyPatch, reply: str
 ) -> None:
     monkeypatch.setattr(prompt, "_prompt_line", ScriptedPrompt(reply))
-    assert prompt._ask_session_options() == ("set_unattended", None)
+    assert prompt._ask_session_options() == ("set_prompts", "never")
 
 
 @pytest.mark.parametrize("reply", ["p", "policy"])
@@ -186,7 +186,7 @@ def test_ask_session_options_policy_back_unwinds_one_level(
     """`b` in the policy submenu returns to session options, not the top."""
     scripted = ScriptedPrompt("p", "b", "u")
     monkeypatch.setattr(prompt, "_prompt_line", scripted)
-    assert prompt._ask_session_options() == ("set_unattended", None)
+    assert prompt._ask_session_options() == ("set_prompts", "never")
     assert scripted.messages == ["Option:", "Policy:", "Option:"]
 
 
@@ -203,7 +203,7 @@ def test_ask_session_options_reprompts_on_garbage(
 ) -> None:
     scripted = ScriptedPrompt("nope", "u")
     monkeypatch.setattr(prompt, "_prompt_line", scripted)
-    assert prompt._ask_session_options() == ("set_unattended", None)
+    assert prompt._ask_session_options() == ("set_prompts", "never")
     assert len(scripted.messages) == 2
     assert "unrecognized: 'nope'" in capsys.readouterr().out
 
@@ -258,7 +258,7 @@ def test_resolve_cli_selector_input_options_delegates(
 ) -> None:
     monkeypatch.setattr(prompt, "_prompt_line", ScriptedPrompt("u"))
     result = prompt._resolve_cli_selector_input("o", [make_candidate()], "metron")
-    assert result == ("set_unattended", None)
+    assert result == ("set_prompts", "never")
 
 
 def test_resolve_cli_selector_input_options_back_reprompts(

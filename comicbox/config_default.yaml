@@ -105,7 +105,11 @@ comicbox:
       auto_threshold: 0.95
       # Per-comic API effort for fan-out sources (ComicVine): minimal,
       # balanced, thorough. Metron doesn't fan out, so it ignores this.
-      effort: balanced
+      # null = unset, which resolves to balanced and lets a large
+      # unattended run auto-engage minimal for ComicVine. Naming a value
+      # here (or with --effort / COMICBOX_ONLINE__TUNING__EFFORT) pins
+      # it: an explicit `balanced` is honored, not auto-engaged away.
+      effort: null
       # Retry budget for transient API failures.
       retry_budget: 5
       # Per-source overrides — keyed by source name (metron, comicvine).

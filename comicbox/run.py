@@ -62,7 +62,7 @@ class Runner:
         #: `in` / `__setitem__` to stay consistent between them.
         self._series_cache = SeriesCache()
         #: Batch-wide owner of the two mutable lookup settings. Seeded from
-        #: the config-resolved values; a `set_policy` / `set_unattended`
+        #: the config-resolved values; a `set_policy` / `set_prompts`
         #: answered at any file's prompt applies to the rest of the batch.
         #: Built here rather than after `_maybe_auto_engage_effort`
         #: because that only rewrites per-source effort, never match or

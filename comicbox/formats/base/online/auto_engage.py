@@ -20,16 +20,18 @@ This module's `resolve_auto_engaged_budget` watches for two signals,
 both of which indicate the user is unlikely to want a multi-hour
 foreground wait:
 
-- `--unattended` + batch size ≥ per-source `_UNATTENDED_THRESHOLD`
+- `--prompts never` + batch size ≥ per-source `_UNATTENDED_THRESHOLD`
 - stdin is not a TTY + batch size ≥ per-source `_NON_TTY_THRESHOLD`
   (4x looser — cron-shaped invocations get the suggestion at a higher
   bar so manual `xargs` pipelines don't surprise the user)
 
 When either fires, the resolved `OnlineSettings` gets a per-source
-override pinning `effort=minimal` for the matching source(s). The
-user can suppress with a YAML per-source override
-(`online.tuning.per_source.<source>.effort`) or with `--effort`
-(`online.tuning.effort`) set globally to anything non-default.
+override pinning `effort=minimal` for the matching source(s). The user
+can suppress with a YAML per-source override
+(`online.tuning.per_source.<source>.effort`) or by naming any global
+effort at all — `--effort`, `COMICBOX_ONLINE__TUNING__EFFORT`, or
+`online.tuning.effort` in a config file. `--effort balanced` is a
+choice, not silence, and is honored as one.
 
 Thresholds are placeholders from `06-api-budget-spec.md`; Phase B's
 calibration data validated the per-source-cap reasoning but didn't pin
@@ -53,7 +55,7 @@ if TYPE_CHECKING:
 
 
 # Batch-size threshold at which to auto-engage `minimal` for a source
-# under `--unattended`. Keyed by source and intentionally listing only
+# under `--prompts never`. Keyed by source and intentionally listing only
 # FAN-OUT sources — the ones where `minimal` actually reduces per-comic API
 # calls. Metron is excluded: its single-call search (PR #143) costs the
 # same at any effort, so auto-engaging `minimal` for it would be a
@@ -72,8 +74,8 @@ _UNATTENDED_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(
 # 4x the unattended thresholds. The conservative bar for "stdin is not
 # a TTY but the user didn't explicitly say unattended" — could be a
 # cron job, could be a manual xargs pipeline. Bump the threshold so
-# manual invocations don't surprise users; explicit `--unattended` is
-# the cleaner signal of intent.
+# manual invocations don't surprise users; explicit `--prompts never`
+# is the cleaner signal of intent.
 _NON_TTY_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(
     {source: count * 4 for source, count in _UNATTENDED_THRESHOLDS.items()}
 )
@@ -118,15 +120,13 @@ def resolve_auto_engaged_budget(
       expansion. Pass 0 or 1 to disable auto-engagement.
 
     Behavior: walks each known source; for each, if the user did NOT
-    set a per-source override AND the global effort is `BALANCED`
-    (today's default, also what we want to upgrade FROM), check the
+    set a per-source override AND named no global effort, check the
     triggers in order. Per-source override pinned only when at least
     one trigger fires.
 
     User-set per-source overrides — even to `BALANCED` — block
-    auto-engagement for that source. Setting the global `--effort`
-    to a non-default also blocks auto-engagement (the user has
-    spoken).
+    auto-engagement for that source. Any global effort blocks it
+    everywhere, `balanced` included: the user has spoken.
 
     Logs an INFO line per source the engagement fires for, so the user
     sees what's happening and knows how to override.
@@ -134,9 +134,10 @@ def resolve_auto_engaged_budget(
     if batch_size <= 1:
         return online
 
-    # User pinned the global effort to anything non-default → respect it,
-    # auto-engagement is for "user didn't choose, we should help" cases.
-    if online.tuning.effort is not Effort.BALANCED:
+    # Any global effort at all means the user named one — on the command
+    # line, in the environment, or in a config file. Auto-engagement is
+    # for the "user didn't choose, we should help" case only.
+    if online.tuning.effort is not None:
         return online
 
     from comicbox.config.online.settings import OnlineSourceTuning

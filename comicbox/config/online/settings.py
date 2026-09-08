@@ -205,9 +205,13 @@ class OnlineSourceTuning:
 class OnlineTuningSettings:
     """Global tuning defaults plus per-source overrides."""
 
-    # Global defaults.
+    # Global defaults. ``effort`` is None when no layer named one:
+    # it resolves to ``Effort.BALANCED`` either way, but only an unset
+    # effort may be auto-engaged down to ``MINIMAL`` for a large
+    # unattended run (see ``auto_engage``). Collapsing the two states
+    # meant an explicit ``--effort balanced`` was silently downgraded.
     auto_threshold: float = DEFAULT_AUTO_THRESHOLD
-    effort: Effort = Effort.BALANCED
+    effort: Effort | None = None
     retry_budget: int = 5
 
     # Per-source overrides (keyed by source name).
@@ -243,9 +247,11 @@ def resolve_auto_threshold(settings: OnlineSettings, source_name: str) -> float:
 
 
 def resolve_effort(settings: OnlineSettings, source_name: str) -> Effort:
-    """Per-source effort override > global default."""
+    """Per-source effort override > global setting > ``BALANCED``."""
     override = _tuning_for(settings, source_name).effort
-    return override if override is not None else settings.tuning.effort
+    if override is not None:
+        return override
+    return settings.tuning.effort or Effort.BALANCED
 
 
 def resolve_min_confidence(settings: OnlineSettings, source_name: str) -> float:
