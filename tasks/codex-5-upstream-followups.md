@@ -5,15 +5,11 @@
 self-contained: it does not assume you saw the codex conversation or PRs. It is
 the return leg of `tasks/codex-v3-handoff.md`.
 
-**Status:** items 1, 2 and 4 are done. Item 1 is
-[PR #203](https://github.com/ajslater/comicbox/pull/203); items 2 and 4 are
-[PR #204](https://github.com/ajslater/comicbox/pull/204), stacked on it. Items 3
-and 5 need no comicbox change. Sections below record what shipped and what codex
-has to change to match; the checklist at the end is codex's.
-
-Two of the three fixes change comicbox's public surface, so codex's `comicbox-5`
-branch does not build against them unchanged. Nothing here is urgent — none of
-it is a regression — but all of it lands before 5.0.0 ships.
+**Status:** closed. Items 1, 2 and 4 shipped as
+[PR #203](https://github.com/ajslater/comicbox/pull/203) and
+[PR #204](https://github.com/ajslater/comicbox/pull/204); items 3 and 5 needed
+no comicbox change. Codex has adopted all of it — see the checklist at the end,
+which is now a record rather than a to-do.
 
 ## Context
 
@@ -213,22 +209,39 @@ here only so the next person does not read the compensation as a comicbox bug.
 
 ## What codex should change
 
-- [ ] `estimate_run(comics, mode, sources, ...)` ->
-      `estimate_run(comics, sources, *, effort=...)` at
-      `codex/librarian/onlinetag/estimate.py` and `codex/choices/onlinetag.py`.
-      Same for `requests_per_comic(source, mode)` ->
-      `requests_per_comic(source, effort)`.
-- [ ] Pass `resolve_effort(settings.online, "comicvine")`, not the global
-      `tuning.effort`, so a per-source override reaches the estimate.
-- [ ] Import `Effort` from `comicbox.online_session` if you want it off the same
-      facade as `estimate_run`.
-- [ ] Drop any import of `COMICVINE_REQUESTS_BY_MODE` or
-      `COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE`; they are gone.
-- [ ] Expect the default projection to triple (20 s -> 60 s per comic) and
-      decide whether the launcher's copy needs to say a batch beats it.
-- [ ] Drop the `id_type: series` injection for series `alternative_names`.
-- [ ] Map a reprint identifier to `issue` (or call `get_url_from_identifier`) so
-      reprint links stop coming back empty.
+All done, on `comicbox-5`.
+
+- [x] `estimate_run` / `requests_per_comic` re-keyed off effort, and the axis
+      followed all the way out: match mode no longer appears in the launcher's
+      client-side estimate either, since it never changed a request count.
+- [x] Effort read back through `resolve_effort(settings.online, "comicvine")`,
+      so a per-source override reaches the estimate.
+- [x] `Effort` imported from `comicbox.online_session`.
+- [x] `COMICVINE_REQUESTS_BY_MODE` and `COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE`
+      gone; the launcher's per-comic cost is rebuilt from
+      `COMICVINE_DISCOVERY_REQUESTS`, `COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT`
+      and `COMICVINE_FETCH_REQUESTS`, which gives {minimal 5, balanced 7,
+      thorough 8}.
+- [x] The tripled projection is in codex's changelog, in the terms you put it
+      in: the estimate prices every comic as a fresh search, and a real scan
+      searches once per series and beats it.
+- [x] The `id_type: series` injection is gone.
+- [x] Reprint identifiers resolve as issues. Codex's own id-type column still
+      says `reprint` — it names the table the id hangs on — so the fix is a
+      separate `positional_id_type()`, which is what a stated type falls back
+      to. That distinction is worth knowing if anything else in comicbox starts
+      filing ids by position.
+
+Two notes back, neither needing a change:
+
+- **Effort is not threaded into the by-id fetch path.** `source.get(issue_id)`
+  has no candidates to fan out over, so there is nothing for a budget to bound.
+  Said here in case that ever stops being true.
+- **Prompts saved before the upgrade are discarded, not migrated.** A prompt is
+  replayed by fingerprint, so one built under the old scheme could never match
+  again — it would sit in the review queue forever and answering it would
+  silently do nothing. Codex stamps a scheme version on each stored prompt and
+  drops the stale ones at daemon start and nightly.
 
 ## Where the codex work lives
 
@@ -237,6 +250,10 @@ here only so the next person does not read the compensation as a comicbox bug.
 | `comicbox-5` | `1f1c593` | Moved and renamed APIs, derived identifier urls, v3 fixtures        |
 | `comicbox-5` | `07188d9` | Identifier type vocabulary bridge, reprint name fallback            |
 | `comicbox-5` | `0db3cf0` | manga, manga_volume, urls, Credit.primary, Reprint.alternative_name |
+| `comicbox-5` | `aa02fe6` | Effort end to end, estimate re-keyed, CV budget, prompt versioning  |
+| `comicbox-5` | `b1d8670` | One-time re-read migration                                          |
+| `comicbox-5` | `60f0863` | Changelog                                                           |
 
-Remaining codex phases: online extras (effort setting, Comic Vine rate-limit
-display), the one-time re-read migration, and docs.
+The codex side is complete: 1064 python tests and 478 frontend tests pass, and
+lint, typecheck, complexity and migration checks are at their pre-existing
+baseline. What is left is a manual pass through the running app.
