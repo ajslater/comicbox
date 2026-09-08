@@ -964,10 +964,10 @@ class ComicVineOnlineSource(OnlineSource):
             query=f"series={profile.series!r}",
         )
 
-        # Pre-call filter threshold from the resolved effort. At the
-        # `balanced` default this resolves to 0.0 (filter is a no-op), so
-        # Phase A behaviour is identical to today's. Phase B calibration
-        # picks the real values for `minimal` (currently 0.7 placeholder).
+        # Pre-call filter threshold from the resolved effort. The values
+        # are calibrated and live in `series_filter.threshold_for`: at the
+        # `balanced` default the filter drops obvious mismatches before
+        # they cost a call, and `thorough` turns it off.
         name_threshold = self._effort_name_threshold()
 
         budget = self._new_search_budget()

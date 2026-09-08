@@ -22,13 +22,16 @@
       `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
     - Environment variables nest with `__`, and every config key can be set that
       way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
+    - `estimate_run()` and `requests_per_comic()` take an `effort` instead of a
+      match mode, which never changed what a search costs.
 
 - Features
     - New `--merge-mode` chooses how supplied metadata merges into a comic's
       existing tags: `additive` (the default), `replace` or `update`.
     - Web urls in the Notes field are read into `urls`.
-    - Online API: new `SourceStarted` event, and `rate_limit_status()` now
-      covers Comic Vine as well as Metron.
+    - Online API: new `SourceStarted` event, `Effort` is exported alongside
+      `MatchMode`, and `rate_limit_status()` now covers Comic Vine as well as
+      Metron.
     - `OnlineSession` accepts a `config`, the settings it layers its tagging
       preferences over. An embedder that already holds configured settings —
       naming its own cache directory or effort — hands them over instead of

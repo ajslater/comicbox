@@ -33,9 +33,9 @@ matcher's `s_series`; the matcher gets to be permissive because it sees
 the full candidate. The pre-filter has to decide before any API call
 goes out.
 
-Driven by the `Effort` resolved per-source. See
-`tasks/online-tagging/06-api-budget-spec.md` for the threshold rationale
-(Phase B picks the real numbers; Phase A ships with the lever dormant).
+Driven by the `Effort` resolved per-source. The thresholds below are
+calibrated against the fixture set, not placeholders; each carries the
+measurement that chose it.
 """
 
 from __future__ import annotations

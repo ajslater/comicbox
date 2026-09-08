@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_che
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.config.online.settings import (
+    Effort,
     MatchMode,
     OnlineAuthSettings,
     OnlineLookupSettings,
@@ -67,6 +68,7 @@ __all__ = (
     "SOURCE_RATE_PER_MINUTE",
     "BatchedPromptHandler",
     "DeferredPrompt",
+    "Effort",
     "MatchMode",
     "OnlineConfigurationError",
     "OnlineCredentials",
