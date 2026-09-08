@@ -9,13 +9,17 @@ from typing import TYPE_CHECKING
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+from comicbox.formats.sources import MetadataSources
 from tests.const import CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from comicbox.config.settings import ComicboxSettings
 
 
 @pytest.fixture
@@ -92,3 +96,51 @@ def test_mupdf_config_key_present() -> None:
     """The natural spelling."""
     keys = MetadataFormats.PDF.value.config_keys
     assert "mupdf" in keys
+
+
+def _cix_write_config() -> ComicboxSettings:
+    return get_config({"comicbox": {"write": {"formats": ["cix"]}}})
+
+
+def test_online_sources_survive_a_write(tmp_cbz: Path) -> None:
+    """
+    A write must not discard what the online lookup fetched.
+
+    The post-write reset kept only the API source, but the lookup is
+    once-per-box (`_online_lookup_done_flag` outlives the reset), so the
+    online sources were gone for good — leaving the post-write rename,
+    and every later read, on pre-online metadata minus whatever the
+    written formats happened to carry back. `sort_name` is Metron-only,
+    so re-reading the ComicInfo.xml this write produced can't recover it.
+    """
+    payload = {
+        "metron_api": {
+            "id": 99,
+            "series": {"name": "Online Series", "sort_name": "Online Series, The"},
+        }
+    }
+    with Comicbox(tmp_cbz, config=_cix_write_config()) as cb:
+        cb.add_source(
+            MetadataSources.METRON_API, payload, fmt=MetadataFormats.METRON_API
+        )
+        before = cb.to_dict()["comicbox"]["series"]
+        cb.dump()
+        after = cb.to_dict()["comicbox"]["series"]
+    assert before["sort_name"] == "Online Series, The"
+    assert after == before
+
+
+def test_every_added_api_metadata_survives_a_write(tmp_cbz: Path) -> None:
+    """
+    All added API metadata is carried across the write, not just the first.
+
+    The reset re-seeded the API source from `_sources[API][0]`, so a
+    second add_metadata() was dropped on the floor by any write.
+    """
+    with Comicbox(tmp_cbz, config=_cix_write_config()) as cb:
+        cb.add_metadata({"comicbox": {"publisher": {"name": "AddedPub"}}})
+        cb.add_metadata({"comicbox": {"series": {"sort_name": "Zed, The"}}})
+        cb.dump()
+        after = cb.to_dict()["comicbox"]
+    assert after["publisher"]["name"] == "AddedPub"
+    assert after["series"]["sort_name"] == "Zed, The"

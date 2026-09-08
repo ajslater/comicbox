@@ -25,10 +25,9 @@ METADATA = MappingProxyType(
     {
         ComicboxSchemaMixin.ROOT_TAG: {
             "credits": {
-                "Joe Orlando": {"roles": {"Writer": {}}},
+                "Joe Orlando": {"roles": {"Writer": {"primary": True}}},
                 "Wally Wood": {"roles": {"Penciller": {}}},
             },
-            "credit_primaries": {"Writer": "Joe Orlando"},
             "country": "US",
             "genres": {"Science Fiction": {}},
             "issue": {

@@ -49,6 +49,50 @@ def test_series_fingerprint_ignores_issue_level_fields() -> None:
     assert _series_fingerprint(p1) == _series_fingerprint(p2)
 
 
+def test_series_fingerprint_ignores_per_issue_cover_year() -> None:
+    """
+    A run spanning several years is ONE series, so it is one cache key.
+
+    This is the case the cache exists for and the one it used to miss:
+    `year` is the issue's cover year, so every calendar year of a run
+    minted its own key. The fixtures above all pin the same year, which
+    is why nothing caught it.
+    """
+    p1 = ComicProfile(series="Spider-Man", issue="1", year=2018, publisher="Marvel")
+    p2 = ComicProfile(series="Spider-Man", issue="14", year=2019, publisher="Marvel")
+    p3 = ComicProfile(series="Spider-Man", issue="27", year=2020, publisher="Marvel")
+    assert _series_fingerprint(p1) == _series_fingerprint(p2) == _series_fingerprint(p3)
+
+
+def test_series_fingerprint_separates_volume_ordinals() -> None:
+    """A reboot carrying "Vol. 2" doesn't share a key with Vol. 1."""
+    p1 = ComicProfile(series="Spider-Man", year=2018, publisher="Marvel", volume=1)
+    p2 = ComicProfile(series="Spider-Man", year=2018, publisher="Marvel", volume=2)
+    assert _series_fingerprint(p1) != _series_fingerprint(p2)
+
+
+def test_series_fingerprint_separates_series_start_years() -> None:
+    """Two runs of the same name are distinct when their start years differ."""
+    p1 = ComicProfile(
+        series="Batman", year=1975, publisher="DC", series_start_year=1940
+    )
+    p2 = ComicProfile(
+        series="Batman", year=2015, publisher="DC", series_start_year=2011
+    )
+    assert _series_fingerprint(p1) != _series_fingerprint(p2)
+
+
+def test_series_fingerprint_start_year_is_series_level_not_issue_level() -> None:
+    """Two issues of one run share a key even at different cover years."""
+    p1 = ComicProfile(
+        series="Batman", year=2011, publisher="DC", series_start_year=2011
+    )
+    p2 = ComicProfile(
+        series="Batman", year=2015, publisher="DC", series_start_year=2011
+    )
+    assert _series_fingerprint(p1) == _series_fingerprint(p2)
+
+
 # --- mock source ------------------------------------------------------------
 
 

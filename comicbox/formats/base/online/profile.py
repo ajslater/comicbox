@@ -33,6 +33,13 @@ class ComicProfile:
     # used as a soft search filter for sources that support it (Metron's
     # `series_volume`); CV's API has no ordinal-volume filter.
     volume: int | None = None
+    # The year the SERIES began, not this issue's cover year (that's
+    # `year`). Only some sources populate it — Metron writes
+    # `comicbox.series.start_year`, most embedded formats don't — so it
+    # is frequently None. Used by the series-level fingerprints, where a
+    # per-issue field would fork the key for every issue of a
+    # multi-year run.
+    series_start_year: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +73,13 @@ class Candidate:
     score: float = 0.0
     url: str = ""
     precomputed_cover_hash: str | None = None
+    # True once the matcher tried to hash this candidate's cover, whatever
+    # came of it. With `cover_score` it forms a tri-state the tiebreak
+    # needs: scored (attempted, comparable), attempted-but-unscored (the
+    # candidate has no usable cover — a real absence of signal), and
+    # never-attempted (outside the hashing top-K, so its absence is our
+    # cost cap talking, not the data).
+    cover_hash_attempted: bool = False
     # The parent container's id — CV's `volume.id`, Metron's `series.id`.
     # Two issues sharing a volume_id are siblings in the same series run;
     # this is what calibration uses to distinguish "variant cover of the
@@ -193,5 +207,8 @@ def accumulate_profile_fields(fields: dict[str, Any], md: dict) -> None:
     )
     if (parsed := parse_year(raw_year)) is not None:
         fields["year"] = parsed
+    raw_start = glom(md, "comicbox.series.start_year", default=None)
+    if (parsed_start := parse_year(raw_start)) is not None:
+        fields["series_start_year"] = parsed_start
     if (v := _resolve_volume(md)) is not None:
         fields["volume"] = v

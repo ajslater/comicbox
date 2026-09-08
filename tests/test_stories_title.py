@@ -13,7 +13,6 @@ from tests.const import PRINT_CONFIG
 STORIES = {"a": {"identifiers": {"comicvine": {"key": "123"}}}, "d": {}}
 TITLE = "a; b; c"
 TITLE_FROM_STORIES = "a; d"
-ALL_STORIES = {"b": {}, "c": {}, **STORIES}
 
 FIXTURES = MappingProxyType(
     {
@@ -35,11 +34,12 @@ FIXTURES = MappingProxyType(
                 }
             ),
         ),
+        # Both stated: each is kept as given. Neither is derived, so the
+        # title is not rewritten from the stories and the stories do not
+        # gain the title's entries.
         "Yes Stories, Yes Title": (
             (True, True),
-            MappingProxyType(
-                {"comicbox": {STORIES_KEY: ALL_STORIES, TITLE_KEY: TITLE_FROM_STORIES}}
-            ),
+            MappingProxyType({"comicbox": {STORIES_KEY: STORIES, TITLE_KEY: TITLE}}),
         ),
     }
 )

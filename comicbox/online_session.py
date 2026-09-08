@@ -24,7 +24,8 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_che
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
+    Effort,
     MatchMode,
     OnlineAuthSettings,
     OnlineLookupSettings,
@@ -37,6 +38,8 @@ from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 # import path; the definition lives in comicbox.exceptions so it shares
 # the ComicboxError base.
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
+from comicbox.formats.base.online.series_cache import filename_series_fingerprint
+from comicbox.formats.base.online.session_state import OnlineSessionState
 
 # Re-exported so batch callers get the run estimator off the same Codex-facing
 # façade as the session it estimates; the implementation lives in
@@ -65,6 +68,7 @@ __all__ = (
     "SOURCE_RATE_PER_MINUTE",
     "BatchedPromptHandler",
     "DeferredPrompt",
+    "Effort",
     "MatchMode",
     "OnlineConfigurationError",
     "OnlineCredentials",
@@ -73,6 +77,7 @@ __all__ = (
     "OnlineSession",
     "PromptHandler",
     "PromptResponse",
+    "Prompts",
     "RunEstimate",
     "SourceName",
     "estimate_run",
@@ -111,8 +116,8 @@ class OnlinePrompt:
     source: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: MatchMode
-    unattended: bool
+    match: MatchMode
+    prompts: Prompts
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,11 +127,12 @@ class PromptResponse:
 
     ``action`` mirrors :data:`SelectorAction`; ``payload`` is the index for
     ``choose``, the ``"<source>:<id>"`` string for ``manual``, the new
-    :class:`MatchMode` value (e.g. ``"auto"``) for ``set_policy``, or
+    :class:`MatchMode` value (e.g. ``"auto"``) for ``set_policy``, the new
+    :class:`Prompts` value (e.g. ``"never"``) for ``set_prompts``, or
     ``None`` otherwise.
     """
 
-    action: Literal["choose", "skip", "manual", "abort", "set_unattended", "set_policy"]
+    action: Literal["choose", "skip", "manual", "abort", "set_prompts", "set_policy"]
     payload: int | str | None = None
 
 
@@ -218,7 +224,7 @@ class DeferredPrompt:
     A prompt the session skipped under defer_prompts mode.
 
     Captures everything Codex needs to render the prompt later in a
-    review-tagging UI: the file it came from, source, candidates, mode
+    review-tagging UI: the file it came from, source, candidates, match
     context, and the fingerprint used to key the dedup cache. Codex
     feeds the user's resolution back via :meth:`OnlineSession.preload_resolution`.
     """
@@ -228,8 +234,8 @@ class DeferredPrompt:
     fingerprint: str
     profile_summary: dict[str, Any]
     candidates: tuple[Candidate, ...]
-    mode: MatchMode
-    unattended: bool
+    match: MatchMode
+    prompts: Prompts
 
 
 # --- session ---------------------------------------------------------------
@@ -263,12 +269,23 @@ class OnlineSession:
 
     Construction validates per-source credentials and pre-computes the
     ComicboxSettings layer that each per-file Comicbox instance will see.
-    Mutable state — ``mode``, ``unattended``, the cancel token — lives on
-    the instance and may be updated from any thread.
+    Mutable state — the lookup policy (``match`` / ``prompts``) and the
+    cancel token — lives on the instance and may be updated from any
+    thread. The policy lives in an ``OnlineSessionState`` shared with
+    every box the session spawns, so a change made at a prompt needs no
+    mirroring back: the box and the session read the same owner.
 
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources
     search, so one run can mix id retrieval and search and merge both.
+
+    ``config`` supplies the settings the session layers its tagging
+    preferences over. An embedder that already holds configured
+    ``ComicboxSettings`` — naming its own cache directory or effort,
+    neither of which an ``OnlineSession`` keyword covers — passes them
+    here instead of exporting environment variables for the settings
+    loader to find. Omitted, the session reads config files and the
+    environment itself.
     """
 
     def __init__(  # noqa: PLR0913
@@ -277,14 +294,15 @@ class OnlineSession:
         sources: Iterable[str] = ("metron", "comicvine"),
         ids: Mapping[str, int] | None = None,
         credentials: OnlineCredentials | None = None,
-        mode: MatchMode = MatchMode.AUTO,
-        unattended: bool = False,
+        match: MatchMode = MatchMode.AUTO,
+        prompts: Prompts = Prompts.ASK,
         prompt_handler: PromptHandler | None = None,
         on_event: EventHandler | None = None,
         rematch: bool = False,
         first_wins: bool = True,
         defer_prompts: bool = False,
         series_batching: bool = True,
+        config: ComicboxSettings | None = None,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
         # Order is run priority: the first source runs first and, under
@@ -298,8 +316,10 @@ class OnlineSession:
         self._validate_ids(self._sources, self._ids)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
-        self._mode: MatchMode = self._validate_mode(mode)
-        self._unattended = unattended
+        self._state = OnlineSessionState(
+            match=self._validate_match(match),
+            prompts=prompts,
+        )
         self._prompt_handler = prompt_handler
         self._on_event = on_event
         self._rematch = rematch
@@ -309,14 +329,20 @@ class OnlineSession:
         # Read config files / env exactly once per session. _build_config
         # used to call get_config() per file — wasted disk I/O on big
         # batches plus a behavioral surprise where a config-file edit
-        # mid-batch changed settings for the remaining files.
-        self._base_settings: ComicboxSettings = get_config()
+        # mid-batch changed settings for the remaining files. A caller
+        # that passes its own settings skips the read entirely: they are
+        # already the answer this would have gone looking for.
+        self._base_settings: ComicboxSettings = (
+            config if config is not None else get_config()
+        )
+        # Nothing in the settings tree varies per file: the mutable
+        # policy lives in _state and each box overlays it for itself.
+        self._settings: ComicboxSettings = self._build_config()
 
         # Cancel token. Set when cancel() is called; checked between files
         # in tag_many() and consulted by the wired retry sleep
         # (_retry_sleep_wait), which aborts an in-flight rate-limit wait.
         self._cancel = threading.Event()
-        self._state_lock = threading.Lock()
 
         # Prompt-dedup cache. Keyed by fingerprint of (source, normalized
         # series, sorted distinct candidate volume_ids); the stored entry
@@ -348,27 +374,28 @@ class OnlineSession:
     # -- mutable session state ----------------------------------------------
 
     @property
-    def mode(self) -> MatchMode:
-        """Current session mode (read-only; mutate via set_mode())."""
-        with self._state_lock:
-            return self._mode
+    def match(self) -> MatchMode:
+        """
+        Current session match mode (read-only; mutate via set_match()).
+
+        May report ``MatchMode.ASK`` even though ``set_match`` rejects
+        it: a prompt handler answering ``set_policy: "ask"`` can put the
+        session there, since that path has a handler to do the asking.
+        """
+        return self._state.snapshot().match
 
     @property
-    def unattended(self) -> bool:
-        """Current session unattended flag."""
-        with self._state_lock:
-            return self._unattended
+    def prompts(self) -> Prompts:
+        """Current session prompt policy."""
+        return self._state.snapshot().prompts
 
-    def set_mode(self, mode: MatchMode) -> None:
-        """Change the session mode for subsequent file lookups."""
-        validated = self._validate_mode(mode)
-        with self._state_lock:
-            self._mode = validated
+    def set_match(self, match: MatchMode) -> None:
+        """Change the session match mode for subsequent file lookups."""
+        self._state.set_match(self._validate_match(match))
 
-    def set_unattended(self, *, unattended: bool) -> None:
-        """Toggle the unattended flag for subsequent file lookups."""
-        with self._state_lock:
-            self._unattended = unattended
+    def set_prompts(self, prompts: Prompts) -> None:
+        """Change the session prompt policy for subsequent file lookups."""
+        self._state.set_prompts(prompts)
 
     def cancel(self) -> None:
         """Stop accepting new files. In-flight lookup runs to completion."""
@@ -461,18 +488,35 @@ class OnlineSession:
         """
         Snapshot of each enabled source's current rate-limit budget.
 
-        Metron entries carry the live per-account state mokkari>=4 tracks
-        from ``X-RateLimit-*`` response headers, as JSON-safe windows::
+        Every entry maps a window name to a JSON-safe
+        ``limit`` / ``remaining`` / ``reset_epoch`` triple, so one
+        renderer handles both sources; only the window names differ,
+        because the two services meter differently.
+
+        Metron carries the live per-account state mokkari>=4 tracks from
+        ``X-RateLimit-*`` response headers::
 
             {"burst": {"limit": 20, "remaining": 19, "reset_epoch": ...},
              "sustained": {"limit": 5000, "remaining": 4987, "reset_epoch": ...}}
 
         The sustained (daily) limit varies by Metron OpenCollective donor
-        tier, so it is only discoverable from these headers. A source
-        reports ``{}`` until it has data: for Metron that means no request
-        has gone out yet in this process (no shared session, or no header
-        seen). Comic Vine always reports ``{}`` — simyan builds its
-        limiter internally and exposes no budget to read.
+        tier, so it is only discoverable from these headers.
+
+        Comic Vine meters per resource, so it reports one window per
+        endpoint pool it has actually used::
+
+            {"issues": {"limit": 200, "remaining": 197, "reset_epoch": ...},
+             "search": {"limit": 200, "remaining": 199, "reset_epoch": ...}}
+
+        Its numbers are read from the rate-limit bucket file rather than
+        from a live client, so they survive across runs and are available
+        before this session issues a request. ``reset_epoch`` is when the
+        window's oldest request ages out and frees the next slot.
+
+        A source reports ``{}`` until it has data: for Metron that means
+        no request has gone out yet in this process (no shared session,
+        or no header seen); for Comic Vine, that no bucket file exists
+        yet or it could not be read.
         """
         statuses: dict[str, dict[str, Any]] = {name: {} for name in self._sources}
         if "metron" in statuses:
@@ -487,6 +531,14 @@ class OnlineSession:
             )
             if status is not None:
                 statuses["metron"] = _rate_limit_windows(status)
+        if "comicvine" in statuses:
+            from comicbox.formats.comicvine_api.online_source import (
+                shared_client_rate_limit_status,
+            )
+
+            statuses["comicvine"] = shared_client_rate_limit_status(
+                self._settings.online
+            )
         return statuses
 
     # -- per-file tagging ---------------------------------------------------
@@ -525,7 +577,7 @@ class OnlineSession:
         """
         path_list = list(paths)
         if self._series_batching:
-            path_list = sorted(path_list, key=_filename_series_fingerprint)
+            path_list = sorted(path_list, key=filename_series_fingerprint)
         for path in path_list:
             if self._cancel.is_set():
                 yield OnlineResult(path=path, cancelled=True)
@@ -535,8 +587,7 @@ class OnlineSession:
     # -- internals ----------------------------------------------------------
 
     def _run_one(self, path: Path) -> tuple[dict[str, Any], bool]:
-        config = self._build_config()
-        with Comicbox(path, config=config) as cb:
+        with Comicbox(path, config=self._settings) as cb:
             # Bridge the selector when we have a handler, when defer
             # mode is on (defer produces no handler call but still needs
             # to intercept the prompt to queue it), or when resolutions
@@ -554,6 +605,7 @@ class OnlineSession:
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
             cb.set_retry_sleep(self._retry_sleep_wait)
+            cb.set_online_session_state(self._state)
             matched = cb.run_online_lookup()
             payload = cb.to_dict()
         return payload.get("comicbox", {}), matched
@@ -614,46 +666,23 @@ class OnlineSession:
                     "is disabled; cannot resolve an ambiguous match"
                 )
                 raise RuntimeError(msg)
+            policy = self._state.snapshot()
             prompt = OnlinePrompt(
                 path=ctx.file_path,
                 source=ctx.source,
                 profile_summary=_summarise_profile(profile),
                 candidates=cand_tuple,
-                mode=self.mode,
-                unattended=self.unattended,
+                match=policy.match,
+                prompts=policy.prompts,
             )
             response = handler.request(prompt)
-            self._sync_session_state(response)
+            # No session-state sync here: the box applies set_policy /
+            # set_prompts to the OnlineSessionState this session shares
+            # with it, so the change is already ours.
             self._store_prompt_resolution(fingerprint, response, cand_tuple)
             return (response.action, response.payload)
 
         return _selector
-
-    def _sync_session_state(self, response: PromptResponse) -> None:
-        """
-        Mirror session-level prompt actions into the session's own state.
-
-        The box applies set_policy / set_unattended to its per-file config,
-        but _run_one rebuilds that config for every file from the session's
-        _mode / _unattended — without this sync the handler's decision
-        would silently revert on the next file, despite PromptResponse
-        documenting these as session-level actions.
-        """
-        if response.action == "set_unattended":
-            self.set_unattended(unattended=True)
-            return
-        if response.action != "set_policy" or not isinstance(response.payload, str):
-            return
-        try:
-            mode = MatchMode(response.payload)
-        except ValueError:
-            # Malformed payload: the box logs and declines it; nothing to sync.
-            return
-        if mode is MatchMode.ASK:
-            # The session's set_mode rejects ASK (no built-in CLI prompt);
-            # the box still honors it for the in-flight file.
-            return
-        self.set_mode(mode)
 
     def _defer_prompt(
         self,
@@ -663,14 +692,15 @@ class OnlineSession:
         ctx: SelectorContext,
     ) -> None:
         """Queue this prompt for later resolution and emit PromptDeferred."""
+        policy = self._state.snapshot()
         deferred = DeferredPrompt(
             path=ctx.file_path,
             source=ctx.source,
             fingerprint=fingerprint,
             profile_summary=_summarise_profile(profile),
             candidates=candidates,
-            mode=self.mode,
-            unattended=self.unattended,
+            match=policy.match,
+            prompts=policy.prompts,
         )
         with self._deferred_lock:
             self._deferred.append(deferred)
@@ -721,9 +751,9 @@ class OnlineSession:
                 chosen_volume_id = candidates[response.payload].volume_id
             except IndexError:
                 chosen_volume_id = None
-        # Session-level actions (set_unattended / set_policy / abort) are
+        # Session-level actions (set_prompts / set_policy / abort) are
         # not cached: they apply once, not as a deferred decision.
-        if response.action in {"set_unattended", "set_policy", "abort"}:
+        if response.action in {"set_prompts", "set_policy", "abort"}:
             return
         entry = _CachedResolution(
             action=response.action,
@@ -742,17 +772,18 @@ class OnlineSession:
         we need to set (``enabled``, ``sources``, per-source auth dict)
         live on runtime-only fields the CLI namespace parser ignores.
 
-        ``mode`` / ``unattended`` are session-mutable, so the cheap
-        ``replace`` layering stays per-file; the disk read happened once
-        in ``__init__``.
+        Built once in ``__init__``. ``match`` / ``prompts`` are the seed
+        values only: every box overlays the live ``OnlineSessionState``
+        over them, so a mid-run policy change needs no rebuild here.
         """
         base = self._base_settings
+        policy = self._state.snapshot()
         new_lookup = OnlineLookupSettings(
             enabled=True,
             sources=self._sources,
             ids=self._ids,
-            match=self.mode,
-            prompts=Prompts.NEVER if self.unattended else Prompts.ASK,
+            match=policy.match,
+            prompts=policy.prompts,
             rematch=self._rematch,
             first_wins=self._first_wins,
         )
@@ -822,18 +853,18 @@ class OnlineSession:
             raise OnlineConfigurationError(msg)
 
     @staticmethod
-    def _validate_mode(mode: MatchMode) -> MatchMode:
-        if not isinstance(mode, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
-            msg = f"OnlineSession.mode must be a MatchMode enum value; got {mode!r}."  # pyright: ignore[reportUnreachable]
+    def _validate_match(match: MatchMode) -> MatchMode:
+        if not isinstance(match, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
+            msg = f"OnlineSession.match must be a MatchMode enum value; got {match!r}."  # pyright: ignore[reportUnreachable]
             raise OnlineConfigurationError(msg)
-        if mode is MatchMode.ASK:
+        if match is MatchMode.ASK:
             msg = (
-                "OnlineSession.mode does not accept MatchMode.ASK; "
+                "OnlineSession.match does not accept MatchMode.ASK; "
                 "the session has no built-in prompt resolver. Use a "
                 "PromptHandler or defer_prompts=True instead."
             )
             raise OnlineConfigurationError(msg)
-        return mode
+        return match
 
 
 def _summarise_profile(profile: ComicProfile) -> dict[str, Any]:
@@ -860,6 +891,14 @@ def _prompt_fingerprint(
     to the same fingerprint because their candidate volume_ids match —
     enabling the cache to auto-apply the user's prior series choice to
     every subsequent issue of that run.
+
+    Series-level means series-level: the issue's own cover year is
+    excluded for the same reason `_series_fingerprint` excludes it (see
+    comicbox/box/online_lookup.py) — it forked the key per issue on any
+    run spanning more than one year, so the user was re-prompted for a
+    series they had already disambiguated. The volume ordinal and the
+    series start year take its place, on top of the candidate
+    volume_ids, which already carry most of the discrimination.
     """
     series = (profile.series or "").strip().lower()
     publisher = (profile.publisher or "").strip().lower()
@@ -871,26 +910,12 @@ def _prompt_fingerprint(
     # fingerprint, equivalent to "same exact candidate list."
     if not volume_ids:
         volume_ids = tuple(sorted(c.issue_id for c in candidates))
-    parts = (source, series, str(profile.year or ""), publisher, repr(volume_ids))
+    parts = (
+        source,
+        series,
+        str(profile.volume or ""),
+        str(profile.series_start_year or ""),
+        publisher,
+        repr(volume_ids),
+    )
     return "|".join(parts)
-
-
-def _filename_series_fingerprint(path: Path) -> str:
-    """
-    Lightweight series fingerprint derived from the filename alone.
-
-    Used by ``tag_many`` to group same-series comics together *before*
-    opening any archives. Falls back to the bare filename when comicfn2dict
-    can't extract a series — those files won't benefit from series
-    batching but won't break it either (they sort to a deterministic
-    "by filename" bucket).
-    """
-    from comicfn2dict import comicfn2dict
-
-    try:
-        parsed = comicfn2dict(path.name)
-    except Exception:  # pragma: no cover — comicfn2dict is permissive
-        return path.name.lower()
-    series = str(parsed.get("series") or "").strip().lower()
-    year = str(parsed.get("year") or "")
-    return f"{series}|{year}" if series else f"~{path.name.lower()}"

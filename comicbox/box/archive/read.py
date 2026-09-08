@@ -8,12 +8,24 @@ from sys import maxsize
 from typing import TYPE_CHECKING, cast
 
 from comicbox.box.archive.archive import Archive
+from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.init import ComicboxArchiveInit
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import ArchiveError, UnsupportedArchiveTypeError
 
+# Decompressed bytes one batched 7z extract may hold resident at once.
+# A solid 7z folder is decompressed from its start on every extract call,
+# so pulling members out one at a time costs a full pass per member —
+# quadratic in page count. Batching buys back a linear number of passes
+# for a bounded amount of resident page data.
+_7Z_BATCH_MAX_BYTES = 64 * 1024 * 1024
+
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping, Sequence
+
     from pdffile import PDFFile
+    from py7zr import FileInfo as SevenZipInfo
+    from py7zr import SevenZipFile
     from py7zr.io import BytesIOFactory
 
     from comicbox.box.archive.archiveinfo import InfoType
@@ -63,6 +75,17 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._infolist = infolist
         return self._infolist
 
+    def dirnames(self) -> frozenset[str]:
+        """Get the names of the archive's directory entries."""
+        self._ensure_read_archive()
+        if self._dirnames is None:
+            self._dirnames: frozenset[str] | None = frozenset(
+                self._get_info_fn(info)
+                for info in self.infolist()
+                if ArchiveInfo.is_dir(info)
+            )
+        return self._dirnames
+
     @classmethod
     def check_unrar_executable(cls) -> bool:
         """Check for the unrar executable."""
@@ -93,6 +116,52 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
             self._7zfactory: BytesIOFactory | None = BytesIOFactory(maxsize)
         return self._7zfactory
 
+    def _get_7z_sizes(self) -> Mapping[str, int]:
+        """Map 7z member name to decompressed size, for batch budgeting."""
+        return {
+            info.filename: info.uncompressed
+            for info in cast("tuple[SevenZipInfo, ...]", self.infolist())
+        }
+
+    def _prefetch_7z(self, filenames: Sequence[str]) -> None:
+        """Decompress a batch of 7z members into the shared factory."""
+        factory = self._get_7zfactory()
+        if not factory:
+            return
+        archive = cast("SevenZipFile", self._get_archive())
+        Archive.extract_7zipfile(archive, factory, filenames)
+
+    def _iter_prefetched(self, filenames: Sequence[str]) -> Iterator[str]:
+        """
+        Yield filenames, decompressing them ahead in batches where it pays.
+
+        Only 7z benefits: every other archive type this reads can seek to
+        a member and decompress just that member, so they pass straight
+        through. Members already decompressed are still batched — the
+        reader pops each buffer as it consumes it, so a name can only be
+        resident once.
+        """
+        if self._file_type != FileTypeEnum.CB7:
+            yield from filenames
+            return
+        sizes = self._get_7z_sizes()
+        batch: list[str] = []
+        batch_bytes = 0
+        for filename in filenames:
+            size = sizes.get(filename, 0)
+            # Never emit an empty batch: a single member over the cap is
+            # its own batch rather than an error.
+            if batch and batch_bytes + size > _7Z_BATCH_MAX_BYTES:
+                self._prefetch_7z(batch)
+                yield from batch
+                batch = []
+                batch_bytes = 0
+            batch.append(filename)
+            batch_bytes += size
+        if batch:
+            self._prefetch_7z(batch)
+            yield from batch
+
     def _get_pdf_format(self, pdf_format: str = "", default: str = "") -> str:
         return pdf_format or (self._config.convert.pdf_pages or default)
 
@@ -116,9 +185,13 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
         """Read an archive file to memory."""
         # Consider chunking files by 4096 bytes and streaming them.
         data = b""
-        if Path(filename).is_dir():
-            return data
         self._ensure_read_archive()
+        # Ask the archive, not the filesystem. Path(filename).is_dir()
+        # resolved an archive-internal name against the process cwd, so a
+        # directory that happened to share a page's name made the read
+        # return b"" -- and a real directory entry was never caught at all.
+        if filename in self.dirnames():
+            return data
         archive = self._get_archive()
         factory = self._get_7zfactory()
         pdf_format = self._get_pdf_format(pdf_format)

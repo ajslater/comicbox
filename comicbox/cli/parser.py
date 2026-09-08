@@ -1,18 +1,83 @@
-"""Argparse layer for the comicbox CLI."""
+"""
+Argparse layer for the comicbox CLI.
+
+Config-tree args name their ``dest`` after the confuse template path they
+set (``general.config``, ``read.except``, ...). ``set_args(dots=True)``
+splits those dots into the nested config tree, so the parser and the
+template share one string instead of a hand-maintained reshaping table.
+
+Online runtime args (``--online``, ``--id``, ``--match``, ...) are the
+exception: they stay flat and are consumed by ``runtime_online_inputs`` /
+``build_online_settings`` directly, which need typed per-flag errors and
+dynamically keyed maps that a fixed template can't express.
+"""
 
 import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich_argparse import RichHelpFormatter
 from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
-from comicbox.cli.epilog import build_epilog
+from comicbox.config.online.settings import (
+    DEFAULT_AUTO_THRESHOLD,
+    CacheMode,
+    Effort,
+    MatchMode,
+    Prompts,
+)
+from comicbox.config.settings import MergeMode
+
+if TYPE_CHECKING:
+    from rich.console import Group
 
 # Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
 _WARNED_FLAGS: set[str] = set()
+
+# Dests that deliberately do not name a config template path. Everything
+# else must, and the dest drift test enforces it.
+ONLINE_RUNTIME_DESTS = frozenset(
+    {
+        "online_sources",
+        "explicit_ids",
+        "explicit_series_ids",
+        "match",
+        "prompts",
+        "rematch",
+        "all_sources",
+        "auth",
+        "cache",
+        "cache_dir",
+        "cache_ttl",
+        "auto_threshold",
+        "effort",
+        # Not online, but also not template paths:
+        "paths",  # positional; already the template key
+        "extract_pages",  # PageRangeAction writes convert.extract_pages_*
+        "help",
+    }
+)
+
+
+class LazyEpilog:
+    """
+    Stand-in for the rich epilog that builds it only when help renders.
+
+    argparse asks for the epilog in `format_help()` and nowhere else, but
+    `build_epilog()` was called eagerly in `build_parser()` — so every
+    `comicbox` invocation imported `comicbox.cli.epilog` (and through it
+    the whole format registry) and assembled seven rich Tables that
+    almost no run ever prints. Rich resolves any object exposing
+    `__rich__` at render time, so the parser can hold this instead.
+    """
+
+    def __rich__(self) -> "Group":
+        """Assemble the real epilog. Called by rich while rendering help."""
+        from comicbox.cli.epilog import build_epilog
+
+        return build_epilog()
 
 
 class CSVAction(Action):
@@ -62,10 +127,12 @@ class PageRangeAction(Action):
         else:
             index_to = None
 
+        # Dotted keys, matching the confuse template path directly. This
+        # action's own dest stays None and is dropped by confuse.
         if index_from is not None:
-            namespace.extract_pages_from = index_from
+            setattr(namespace, "convert.extract_pages_from", index_from)
         if index_to is not None:
-            namespace.extract_pages_to = index_to
+            setattr(namespace, "convert.extract_pages_to", index_to)
 
 
 def _warn_once(key: str, message: str) -> None:
@@ -106,7 +173,7 @@ class AuthAction(Action):
                     "auth_pass",
                     (
                         "warning: --auth <source>:pass=... leaks into shell history; "
-                        "prefer COMICBOX_<SOURCE>_PASS env var or keyring"
+                        "prefer COMICBOX_ONLINE__AUTH__<SOURCE>__PASS or keyring"
                     ),
                 )
             items.append(raw)
@@ -121,7 +188,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         metavar="PATH",
         action="store",
         default=None,
-        dest="general_config",
+        dest="general.config",
         help="Path to an alternate config file.",
     )
     group.add_argument(
@@ -129,7 +196,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--recurse",
         action="store_true",
         default=None,
-        dest="general_recurse",
+        dest="general.recurse",
         help="Perform selected actions recursively on directory arguments.",
     )
     group.add_argument(
@@ -137,7 +204,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--dry-run",
         action="store_true",
         default=None,
-        dest="general_dry_run",
+        dest="general.dry_run",
         help="Do not write anything to the filesystem. Report on what would be done.",
     )
     group.add_argument(
@@ -145,7 +212,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--quiet",
         action="count",
         default=None,
-        dest="general_quiet",
+        dest="general.quiet",
         help=(
             "Increasingly quiet success messages, warnings, and errors with more Qs."
         ),
@@ -156,7 +223,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         type=int,
         default=None,
         metavar="N",
-        dest="general_jobs",
+        dest="general.jobs",
         help=(
             "Parallel workers across files. Default [green]1[/green] (serial). "
             "[green]4[/green] is the recommended ceiling for cold-cache batch runs."
@@ -166,7 +233,8 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "-d",
         "--dest-path",
         default=None,
-        dest="general_dest_path",
+        metavar="PATH",
+        dest="general.dest_path",
         help="Destination path for extracting pages and metadata.",
     )
     group.add_argument(
@@ -175,10 +243,10 @@ def _add_general_group(parser: ArgumentParser) -> None:
         action="append",
         default=None,
         metavar="YAML",
-        dest="general_metadata_cli",
+        dest="general.metadata_cli",
         help=(
             "Set metadata fields with linear YAML. (e.g.: [green]'keyA: value,"
-            " keyB: [valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
+            " keyB: \\[valueA,valueB,valueC], keyC: {subkey: {subsubkey: value}'[/green])"
             " Place a space after colons so they are properly parsed as YAML key"
             " value pairs. If your value contains a special YAML character (e.g."
             " :[]{}) quote the value. Linear YAML delineates subkeys with curly"
@@ -190,7 +258,8 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--delete-keys",
         action=CSVAction,
         default=None,
-        dest="general_delete_keys",
+        metavar="KEYS",
+        dest="general.delete_keys",
         help=(
             "Delete a comma delimited list of comicbox glom key paths entirely from the final "
             "metadata. Example below."
@@ -200,7 +269,7 @@ def _add_general_group(parser: ArgumentParser) -> None:
         "--delete-orig",
         action="store_true",
         default=None,
-        dest="general_delete_orig",
+        dest="general.delete_orig",
         help="Delete the original cbr, cbt, or cb7 file if it was converted to a cbz successfully.",
     )
 
@@ -213,7 +282,7 @@ def _add_read_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="read_formats",
+        dest="read.formats",
         help="Metadata formats to read. Defaults to all. Keys listed below.",
     )
     group.add_argument(
@@ -221,7 +290,7 @@ def _add_read_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="read_except",
+        dest="read.except",
         help="Subtract these formats from the read formats.",
     )
 
@@ -234,24 +303,32 @@ def _add_write_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         metavar="FORMATS",
         default=None,
-        dest="write_formats",
+        dest="write.formats",
         help=(
             "Write comic metadata formats back to the archive. cbt and cbr files are always"
             " exported to a cbz file. Format keys listed below."
         ),
     )
     group.add_argument(
-        "--replace",
-        action="store_true",
+        "--merge-mode",
+        action="store",
         default=None,
-        dest="write_replace",
-        help="Replace metadata keys instead of merging them.",
+        choices=tuple(mode.value for mode in MergeMode),
+        metavar="MODE",
+        dest="write.merge_mode",
+        help=(
+            "How supplied metadata merges into a comic's existing tags: "
+            "[green]additive[/green] (default; dicts recurse, lists concatenate), "
+            "[green]replace[/green] (dicts recurse, lists overwrite), "
+            "[green]update[/green] (top level keys replaced wholesale, "
+            "siblings of a patched key are dropped). Table below."
+        ),
     )
     group.add_argument(
         "--stamp",
         action="store_true",
         default=None,
-        dest="write_stamp",
+        dest="write.stamp",
         help=(
             "Normally comicbox only updates the notes (if enabled), tagger, and updated_at "
             "tags when performing a write or export action. This adds the stamps anyway."
@@ -261,7 +338,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         "--no-stamp-notes",
         action="store_false",
         default=None,
-        dest="write_stamp_notes",
+        dest="write.stamp_notes",
         help=(
             "Do not write the notes field with tagger, timestamp and identifiers "
             "when writing metadata out to a file."
@@ -271,7 +348,7 @@ def _add_write_group(parser: ArgumentParser) -> None:
         "--delete-all-tags",
         action="store_true",
         default=None,
-        dest="write_delete_all_tags",
+        dest="write.delete_all_tags",
         help="Delete all tags from the archive. Overrides --write.",
     )
 
@@ -284,7 +361,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
         action="store",
         default=None,
         metavar="PHASES",
-        dest="print_phases",
+        dest="print.phases",
         help=(
             "Print one or more phases of metadata processing. Pass a string of phase"
             " characters listed below (e.g. [green]slcm[/green])."
@@ -295,7 +372,7 @@ def _add_print_group(parser: ArgumentParser) -> None:
         "--print-metadata",
         action="store_true",
         default=None,
-        dest="print_metadata",
+        dest="print.metadata",
         help="Print merged metadata. Shortcut for [green]--print p[/green].",
     )
     group.add_argument(
@@ -303,14 +380,14 @@ def _add_print_group(parser: ArgumentParser) -> None:
         "--version",
         action="store_true",
         default=None,
-        dest="print_version",
+        dest="print.version",
         help="Print software version. Shortcut for [green]--print v[/green].",
     )
     group.add_argument(
         "--validate",
         action="store_true",
         default=None,
-        dest="print_validate",
+        dest="print.validate",
         help=(
             "Validate formats against schema if available. Schemas like ComicInfo enforce a "
             "strict tag order. Schemas available at "
@@ -326,7 +403,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--cbz",
         action="store_true",
         default=None,
-        dest="convert_cbz",
+        dest="convert.cbz",
         help=(
             "Export the archive to CBZ format and rewrite all metadata formats found. "
             "When converting PDFs, by default a pixmap is taken of the page. "
@@ -338,7 +415,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--rename",
         action="store_true",
         default=None,
-        dest="convert_rename",
+        dest="convert.rename",
         help="Rename the file with comicbox's filename format.",
     )
     group.add_argument(
@@ -358,7 +435,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         "--extract-covers",
         action="store_true",
         default=None,
-        dest="convert_extract_covers",
+        dest="convert.extract_covers",
         help="Extract cover pages.",
     )
     group.add_argument(
@@ -367,7 +444,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         action="append",
         default=None,
         metavar="PATH",
-        dest="convert_import_paths",
+        dest="convert.import_paths",
         help="Import metadata from external files. Accepts quoted globs. Repeatable.",
     )
     group.add_argument(
@@ -376,7 +453,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         action=CSVAction,
         default=None,
         metavar="FORMATS",
-        dest="convert_export_formats",
+        dest="convert.export_formats",
         help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
     if PDF_ENABLED:
@@ -386,7 +463,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
             default=None,
             choices=PAGE_FORMAT_VALUES,
             metavar="MODE",
-            dest="convert_pdf_pages",
+            dest="convert.pdf_pages",
             help="Method to extract pdf pages and covers. Valid values listed below.",
         )
 
@@ -446,7 +523,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         "--match",
         action="store",
         default=None,
-        choices=("ask", "careful", "auto", "eager"),
+        choices=tuple(mode.value for mode in MatchMode),
         metavar="MODE",
         dest="match",
         help=(
@@ -460,7 +537,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         "--prompts",
         action="store",
         default=None,
-        choices=("ask", "never"),
+        choices=tuple(prompts.value for prompts in Prompts),
         metavar="MODE",
         dest="prompts",
         help=(
@@ -513,7 +590,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "the ComicVine API endpoint; Metron's deprecated "
             "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
             "(warns: leaks into shell history) still work, but prefer a token. "
-            "Use the [cyan]COMICBOX_<SOURCE>_<FIELD>[/cyan] env vars where possible."
+            "Use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__<FIELD>[/cyan] "
+            "env vars where possible."
         ),
     )
 
@@ -524,7 +602,7 @@ def _add_online_cache_group(parser: ArgumentParser) -> None:
         "--cache",
         action="store",
         default=None,
-        choices=("on", "off", "refresh"),
+        choices=tuple(mode.value for mode in CacheMode),
         metavar="MODE",
         dest="cache",
         help=(
@@ -562,14 +640,15 @@ def _add_online_tuning_group(parser: ArgumentParser) -> None:
         dest="auto_threshold",
         help=(
             "Global auto-write threshold in [green][0, 1][/green]. Default "
-            "[green]0.95[/green]. Per-source overrides via YAML only."
+            f"[green]{DEFAULT_AUTO_THRESHOLD}[/green]. "
+            "Per-source overrides via YAML only."
         ),
     )
     group.add_argument(
         "--effort",
         action="store",
         default=None,
-        choices=("minimal", "balanced", "thorough"),
+        choices=tuple(effort.value for effort in Effort),
         metavar="MODE",
         dest="effort",
         help=(
@@ -598,7 +677,7 @@ def build_parser() -> ArgumentParser:
 
     parser = ArgumentParser(
         description=description,
-        epilog=build_epilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
+        epilog=LazyEpilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
         formatter_class=RichHelpFormatter,
         add_help=False,
     )

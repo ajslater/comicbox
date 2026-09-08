@@ -1,7 +1,6 @@
 """Comicbox Computed tagger, updated_at and notes stamps."""
 
 from datetime import datetime, timezone
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.box.computed.pages import ComicboxComputedPages
@@ -13,9 +12,11 @@ from comicbox.formats.comicbox.schema import (
     TAGGER_KEY,
     UPDATED_AT_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.urns import to_urn_string
-from comicbox.merge import ReplaceMerger
+
+# A field instance is a stateless serializer; one is enough.
+_DATETIME_FIELD = DateTimeField()
 
 
 class ComicboxComputedStamp(ComicboxComputedPages):
@@ -30,7 +31,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if (
             sub_data
             and (updated_at := sub_data.get(UPDATED_AT_KEY))
-            and (ts := DateTimeField()._serialize(updated_at))  # noqa: SLF001
+            and (ts := _DATETIME_FIELD._serialize(updated_at))  # noqa: SLF001
         ):
             notes += f" on {ts}"
 
@@ -51,14 +52,15 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if not identifiers:
             return notes
         urn_strs = set()
-        # issues is the top level type.
-        id_type = "issue"
         for id_source, identifier in identifiers.items():
             id_key = identifier.get(ID_KEY_KEY)
             if not id_key:
                 continue
-            urn_str = to_urn_string(id_source, id_type, id_key)
-            urn_strs.add(urn_str)
+            # Issue is the top level type, so an id_type only appears here
+            # when the key overrode it.
+            id_type = identifier.get(ID_TYPE_KEY, "")
+            if urn_str := to_urn_string(id_source, id_type, id_key):
+                urn_strs.add(urn_str)
         notes += " ".join(sorted(urn_strs))
         return notes
 
@@ -106,10 +108,3 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             return None
 
         return stamp_md
-
-    COMPUTED_ACTIONS = MappingProxyType(
-        {
-            **ComicboxComputedPages.COMPUTED_ACTIONS,
-            "Tagger Stamp": (_get_tagger_stamp, ReplaceMerger),
-        }
-    )

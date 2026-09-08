@@ -17,7 +17,6 @@ from comicbox.formats.base.transforms.spec import (
 )
 from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
 from comicbox.formats.comic_book_info.transform.credits import (
-    cbi_credits_primary_to_cb,
     cbi_credits_transform_from_cb,
     cbi_credits_transform_to_cb,
 )
@@ -97,7 +96,6 @@ class ComicBookInfoTransform(BaseTransform):
             key_map=SIMPLE_KEYPATHS.inverse,
         ),
         cbi_credits_transform_to_cb("credits"),
-        cbi_credits_primary_to_cb("credits"),
         cbi_rating_to_cb(),
         name_obj_to_cb(NAME_OBJ_KEYPATHS.inverse),
         format_root_keypath=ComicBookInfoSchema.ROOT_KEYPATH,

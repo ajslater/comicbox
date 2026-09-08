@@ -1,0 +1,361 @@
+"""
+Default CLI selector tests — `comicbox.formats.base.online.prompt`.
+
+`prompt.cli_selector` is what every interactive run gets when no
+programmatic selector was registered (`box/online_lookup.py`,
+`_resolve_selector`), so its formatting, its reply grammar, and its
+submenu loops are user-facing surface. Most of the module is pure and
+needs no mocks; the loops are driven by monkeypatching `_prompt_line`
+and `_read_input` with scripted reply sequences.
+"""
+
+from __future__ import annotations
+
+from argparse import Namespace
+from typing import TYPE_CHECKING
+
+import pytest
+
+from comicbox.config import get_config
+from comicbox.formats.base.online import prompt
+from comicbox.formats.base.online.profile import (
+    ComicProfile,
+)
+from tests.util.online_prompt import (
+    make_candidate,
+    make_settings,
+)
+
+if TYPE_CHECKING:
+    from comicbox.config.settings import ComicboxSettings
+
+
+# --- _format_candidate_line -------------------------------------------------
+
+
+def test_format_candidate_line_full() -> None:
+    line = prompt._format_candidate_line(1, make_candidate())
+    assert line == "1. Foo Comics #5 (2020)   score=0.91 [metron:101]"
+
+
+def test_format_candidate_line_without_year() -> None:
+    """No year → the parenthetical is dropped, not rendered as `(None)`."""
+    line = prompt._format_candidate_line(3, make_candidate(year=None))
+    assert "(None)" not in line
+    assert line == "3. Foo Comics #5   score=0.91 [metron:101]"
+
+
+def test_format_candidate_line_shows_cover_score() -> None:
+    """A hashed candidate carries its cover score beside the total."""
+    line = prompt._format_candidate_line(2, make_candidate(cover_score=0.75))
+    assert "score=0.91 (cov=0.75)" in line
+
+
+def test_format_candidate_line_shows_zero_cover_score() -> None:
+    """cover_score=0.0 is a measurement, not an absence — it must render."""
+    line = prompt._format_candidate_line(1, make_candidate(cover_score=0.0))
+    assert "(cov=0.00)" in line
+
+
+# --- _format_aux_lines ------------------------------------------------------
+
+
+def test_format_aux_lines_details_and_url() -> None:
+    aux = prompt._format_aux_lines(make_candidate(url="https://example.test/1"))
+    assert aux == [
+        "   publisher='Quality Comics', pages=24, year=2020",
+        "   https://example.test/1",
+    ]
+
+
+def test_format_aux_lines_empty_when_nothing_to_show() -> None:
+    bare = make_candidate(publisher=None, page_count=None, year=None, url="")
+    assert prompt._format_aux_lines(bare) == []
+
+
+def test_format_aux_lines_url_only() -> None:
+    bare = make_candidate(publisher=None, page_count=None, year=None, url="u")
+    assert prompt._format_aux_lines(bare) == ["   u"]
+
+
+def test_format_aux_lines_zero_page_count_renders() -> None:
+    """`pages=0` is a real value; `is not None` must win over truthiness."""
+    aux = prompt._format_aux_lines(
+        make_candidate(publisher=None, page_count=0, year=None)
+    )
+    assert aux == ["   pages=0"]
+
+
+# --- _build_lines -----------------------------------------------------------
+
+
+def test_build_lines_header_names_the_file() -> None:
+    lines = prompt._build_lines(
+        ComicProfile(series="Foo"), [make_candidate()], "/comics/foo.cbz", terse=False
+    )
+    assert lines[1] == "Ambiguous match for /comics/foo.cbz"
+
+
+def test_build_lines_header_without_a_path() -> None:
+    lines = prompt._build_lines(
+        ComicProfile(series="Foo"), [make_candidate()], None, terse=False
+    )
+    assert lines[1] == "Ambiguous match"
+
+
+def test_build_lines_existing_row_summarizes_the_profile() -> None:
+    profile = ComicProfile(series="Foo", issue="5", year=2020, publisher="Quality")
+    lines = prompt._build_lines(profile, [make_candidate()], None, terse=False)
+    assert lines[2] == (
+        "  Existing: series='Foo' issue=#5 year=2020 publisher='Quality'"
+    )
+
+
+def test_build_lines_omits_existing_row_for_an_empty_profile() -> None:
+    """Nothing known about the comic → no misleading all-None summary line."""
+    lines = prompt._build_lines(ComicProfile(), [make_candidate()], None, terse=False)
+    assert not any("Existing:" in line for line in lines)
+
+
+def test_build_lines_includes_the_action_menu() -> None:
+    lines = prompt._build_lines(ComicProfile(), [make_candidate()], None, terse=False)
+    assert lines[-4:] == [
+        "  s. Skip this file",
+        "  m. Enter ID manually",
+        "  o. Session options ...",
+        "  q. Abort entire run",
+    ]
+
+
+def test_build_lines_terse_drops_aux_lines() -> None:
+    candidates = [make_candidate(url="https://example.test/1")]
+    verbose = prompt._build_lines(ComicProfile(), candidates, None, terse=False)
+    terse = prompt._build_lines(ComicProfile(), candidates, None, terse=True)
+    assert any("publisher=" in line for line in verbose)
+    assert not any("publisher=" in line for line in terse)
+    assert not any("example.test" in line for line in terse)
+    assert any("1. Foo Comics" in line for line in terse)
+
+
+def test_build_lines_caps_the_candidate_list_at_nine() -> None:
+    """`_MAX_DISPLAYED` is the display contract `_interpret` also enforces."""
+    candidates = [make_candidate(issue_id=100 + i) for i in range(12)]
+    lines = prompt._build_lines(ComicProfile(), candidates, None, terse=True)
+    numbered = [line for line in lines if line.strip()[:2].rstrip(".").isdigit()]
+    assert len(numbered) == prompt._MAX_DISPLAYED
+    assert numbered[-1].strip().startswith("9.")
+    assert not any("[metron:110]" in line for line in lines)
+
+
+# --- _interpret -------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("s", ("skip", None)),
+        ("skip", ("skip", None)),
+        ("q", ("abort", None)),
+        ("quit", ("abort", None)),
+        ("abort", ("abort", None)),
+        ("m", ("manual", "")),
+        ("manual", ("manual", "")),
+    ],
+)
+def test_interpret_word_aliases(raw: str, expected: tuple) -> None:
+    assert prompt._interpret(raw, 3) == expected
+
+
+@pytest.mark.parametrize("raw", ["o", "options", "  OPTIONS  "])
+def test_interpret_options_sentinel(raw: str) -> None:
+    assert prompt._interpret(raw, 3) == prompt._OPTIONS_SENTINEL
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("S", ("skip", None)), (" s ", ("skip", None)), ("\tQ\n", ("abort", None))],
+)
+def test_interpret_strips_and_lowercases(raw: str, expected: tuple) -> None:
+    assert prompt._interpret(raw, 3) == expected
+
+
+@pytest.mark.parametrize(("raw", "index"), [("1", 0), ("2", 1), ("3", 2)])
+def test_interpret_digits_in_range(raw: str, index: int) -> None:
+    assert prompt._interpret(raw, 3) == ("choose", index)
+
+
+@pytest.mark.parametrize("raw", ["0", "4", "10", "99"])
+def test_interpret_digits_out_of_range(raw: str) -> None:
+    """An out-of-range index is a typo, not a from-the-end lookup."""
+    assert prompt._interpret(raw, 3) is None
+
+
+@pytest.mark.parametrize("raw", ["", "   ", "\t\n"])
+def test_interpret_empty_input(raw: str) -> None:
+    assert prompt._interpret(raw, 3) is None
+
+
+@pytest.mark.parametrize("raw", ["x", "yes", "-1", "1.5", "1a", "sq"])
+def test_interpret_unrecognized_input(raw: str) -> None:
+    assert prompt._interpret(raw, 3) is None
+
+
+# --- _read_input / _ask_manual_id -------------------------------------------
+
+
+def test_read_input_returns_the_line(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _message: "  typed  ")
+    assert prompt._read_input("> ") == "  typed  "
+
+
+def test_read_input_treats_eof_as_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A closed stdin must not blow up a batch run."""
+
+    def _raise(_message: str) -> str:
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _raise)
+    assert prompt._read_input("> ") == ""
+
+
+def test_ask_manual_id_qualifies_a_bare_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(prompt, "_read_input", lambda _message: " 4242 ")
+    assert prompt._ask_manual_id("metron") == "metron:4242"
+
+
+def test_ask_manual_id_keeps_an_explicit_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prompt, "_read_input", lambda _message: "comicvine:9")
+    assert prompt._ask_manual_id("metron") == "comicvine:9"
+
+
+def test_ask_manual_id_empty_backs_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(prompt, "_read_input", lambda _message: "   ")
+    assert prompt._ask_manual_id("metron") is None
+
+
+# --- _resolve_policy_input --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("1", "ask"), ("2", "careful"), ("3", "auto"), ("4", "eager")],
+)
+def test_resolve_policy_input_by_key(raw: str, expected: str) -> None:
+    key_to_name = dict(prompt._POLICY_CHOICES)
+    assert prompt._resolve_policy_input(raw, key_to_name=key_to_name) == expected
+
+
+@pytest.mark.parametrize("name", ["ask", "careful", "auto", "eager"])
+def test_resolve_policy_input_by_name(name: str) -> None:
+    key_to_name = dict(prompt._POLICY_CHOICES)
+    assert prompt._resolve_policy_input(name, key_to_name=key_to_name) == name
+
+
+@pytest.mark.parametrize("raw", ["", "5", "0", "nonsense", "Ask"])
+def test_resolve_policy_input_unrecognized(raw: str) -> None:
+    """Inputs arrive pre-lowercased; anything else is unrecognized."""
+    key_to_name = dict(prompt._POLICY_CHOICES)
+    assert prompt._resolve_policy_input(raw, key_to_name=key_to_name) is None
+
+
+def test_policy_menu_lists_every_choice_and_back() -> None:
+    lines = prompt._build_policy_lines()
+    for key, name in prompt._POLICY_CHOICES:
+        assert f"    {key}. {name}" in lines
+    assert lines[-1] == "    b. Back"
+
+
+def test_options_menu_lists_unattended_policy_and_back() -> None:
+    text = "\n".join(prompt._build_options_lines())
+    assert "u. Unattended" in text
+    assert "p. Change match policy" in text
+    assert "b. Back" in text
+
+
+# --- _handle_manual_result --------------------------------------------------
+
+
+def test_handle_manual_result_passes_other_actions_through() -> None:
+    assert prompt._handle_manual_result(("skip", None), "metron") == ("skip", None)
+
+
+def test_handle_manual_result_passes_a_filled_manual_through() -> None:
+    result = ("manual", "metron:5")
+    assert prompt._handle_manual_result(result, "metron") == result
+
+
+def test_handle_manual_result_prompts_for_an_empty_manual(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prompt, "_read_input", lambda _message: "7")
+    assert prompt._handle_manual_result(("manual", ""), "metron") == (
+        "manual",
+        "metron:7",
+    )
+
+
+def test_handle_manual_result_none_when_the_user_backs_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty id means "never mind" — the caller re-prompts, not skips."""
+    monkeypatch.setattr(prompt, "_read_input", lambda _message: "")
+    assert prompt._handle_manual_result(("manual", ""), "metron") is None
+
+
+# --- _resolve_terse ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("loglevel", ["SUCCESS", "WARNING", "ERROR", "CRITICAL", 30])
+def test_resolve_terse_engages_above_info(loglevel: str | int) -> None:
+    assert prompt._resolve_terse(make_settings(loglevel)) is True
+
+
+@pytest.mark.parametrize("loglevel", ["INFO", "DEBUG", "TRACE", "info", 10])
+def test_resolve_terse_stays_off_at_or_below_info(loglevel: str | int) -> None:
+    assert prompt._resolve_terse(make_settings(loglevel)) is False
+
+
+def test_resolve_terse_ignores_an_unknown_level() -> None:
+    """A bad `--loglevel` is the logger's problem to report, not ours."""
+    assert prompt._resolve_terse(make_settings("NONSENSE")) is False
+
+
+# --- terse against the real config ------------------------------------------
+
+
+def _settings_for(*argv: str) -> ComicboxSettings:
+    """Resolve settings the way the CLI does, `-Q` folding included."""
+    from comicbox.cli import get_args
+
+    return get_config(Namespace(comicbox=get_args(("comicbox", *argv))))
+
+
+def test_real_config_default_is_verbose() -> None:
+    assert prompt._resolve_terse(_settings_for("x.cbz")) is False
+
+
+def test_real_config_double_quiet_is_terse() -> None:
+    """`-QQ` resolves to SUCCESS, the first level that means "less"."""
+    assert prompt._resolve_terse(_settings_for("-QQ", "x.cbz")) is True
+
+
+def test_real_config_single_quiet_changes_nothing() -> None:
+    """
+    Documents `-Q`'s no-op first level.
+
+    `comicbox.config.computed._QUIET_LOGLEVEL` maps one `-Q` to INFO, which is
+    already `config_default.yaml`'s level, so a single `-Q` neither
+    quiets the log nor trims the prompt. Two Qs is where it starts.
+    """
+    assert prompt._resolve_terse(_settings_for("-Q", "x.cbz")) is False
+
+
+def test_real_config_yaml_loglevel_is_terse() -> None:
+    """`loglevel` is a config-file key; `-Q` is just its CLI shorthand."""
+    assert prompt._resolve_terse(make_settings("WARNING")) is True
+
+
+if __name__ == "__main__":  # pragma: no cover
+    pytest.main([__file__, "-v"])

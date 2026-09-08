@@ -2,33 +2,45 @@
 
 from __future__ import annotations
 
-import sqlite3
-from contextlib import closing
-from datetime import timedelta
-from types import SimpleNamespace
+import time
 from typing import TYPE_CHECKING
 
+from simyan.errors import RateLimitError
 from typing_extensions import override
 
-from comicbox.config.settings import (
-    CacheMode,
-    OnlineCacheSettings,
+from comicbox.config.online.settings import (
+    Effort,
     OnlineSettings,
     OnlineSourceCredentials,
-    OnlineSourceLimits,
     OnlineSourceTuning,
     OnlineTuningSettings,
 )
 from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.series_filter import max_calls_for
 from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
+    _SearchBudget,
 )
-from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     import pytest
+
+
+class _HintedRateLimitError(RateLimitError):
+    """
+    Real simyan RateLimitError plus the ``retry_after`` duck attribute.
+
+    simyan sets no such attribute (mokkari does); the decorator's generic
+    hint probe picks it up regardless of library, and a tiny hint keeps
+    the real sleep path fast. The classifier still sees a genuine simyan
+    ``RateLimitError`` instance.
+    """
+
+    def __init__(
+        self, message: str = "Rate limit exceeded", retry_after: float = 0.001
+    ) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 # ------------------------------------------ two-step volume → issues search
@@ -255,11 +267,6 @@ def test_search_retries_volume_search_on_rate_limit(
     vol1 = _FakeBasicVolume(vid=100, name="A")
     issues = {100: [_FakeBasicIssue(iid=5001, number="1", volume_name="A")]}
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float = 0) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedCV(_FakeCV):
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
@@ -272,7 +279,7 @@ def test_search_retries_volume_search_on_rate_limit(
                     {"query": query, "max_results": max_results}
                 )
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().search_volumes(query, max_results)
 
     fake_cv = _RateLimitedCV(volumes=[vol1], issues_by_volume=issues)
@@ -288,7 +295,7 @@ def test_search_retries_volume_search_on_rate_limit(
 def _make_cv_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake_cv: _FakeCV, series_id: int
 ) -> ComicVineOnlineSource:
-    from comicbox.config.settings import OnlineLookupSettings
+    from comicbox.config.online.settings import OnlineLookupSettings
 
     creds = OnlineSourceCredentials(key="test-key")
     settings = OnlineSettings(
@@ -376,7 +383,7 @@ def test_search_alias_rescues_volume_from_prefilter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A localized volume survives the pre-call name gate via its alias."""
-    from comicbox.config.settings import (
+    from comicbox.config.online.settings import (
         Effort,
         OnlineSourceTuning,
         OnlineTuningSettings,
@@ -577,11 +584,6 @@ def test_get_retries_get_volume_on_rate_limit(
         vid=999, name="X-Men", publisher=_FakeGenericEntry(eid=1, name="Marvel")
     )
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float = 0) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedGetCV(_FakeCVForGet):
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
@@ -592,7 +594,7 @@ def test_get_retries_get_volume_on_rate_limit(
             if self._fail_count < 1:
                 self.get_volume_calls.append(volume_id)
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().get_volume(volume_id)
 
     fake_cv = _RateLimitedGetCV(issue=issue, volume=volume)
@@ -806,11 +808,6 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     vol = _FakeBasicVolume(vid=100, name="Foo", start_year=2020)
     issue = _FakeBasicIssue(iid=5001, number="1", volume_name="Foo")
 
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedCV(_FakeCV):
         def __init__(self, *args: object, **kwargs: object) -> None:
             super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
@@ -821,7 +818,7 @@ def test_list_issues_by_volume_retries_on_rate_limit(
             if self._fail_count < 1:
                 self.list_issues_calls.append(dict(params or {}))
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                raise _HintedRateLimitError
             return super().list_issues(params, max_results)
 
     fake = _RateLimitedCV(volumes=[vol], issues_by_volume={100: [issue]})
@@ -833,161 +830,95 @@ def test_list_issues_by_volume_retries_on_rate_limit(
     assert len(fake.list_issues_calls) == 2
 
 
-# ------------------------------------------------------- client construction
+# ------------------------------------------------ per-search fan-out budget
 
 
-class _FakeComicvine:
-    """Captures simyan v3 constructor kwargs; stands in for the client."""
-
-    def __init__(self, **kwargs: object) -> None:
-        self.kwargs = kwargs
-        self.cache_deletes: list[dict] = []
-        self._session = SimpleNamespace(
-            cache=SimpleNamespace(delete=lambda **kw: self.cache_deletes.append(kw)),
-            settings=SimpleNamespace(disabled=False),
-        )
-
-
-def _make_cache_settings(
-    tmp_path: Path,
-    mode: CacheMode = CacheMode.ON,
-    ttl: timedelta | None = None,
-) -> OnlineSettings:
-    if ttl is None:
-        ttl = timedelta(days=7)
-    cache = OnlineCacheSettings(mode=mode, dir=tmp_path, ttl=ttl)
-    return OnlineSettings(cache=cache)
+def _many_volume_source(
+    monkeypatch: pytest.MonkeyPatch, count: int, effort: Effort
+) -> tuple[ComicVineOnlineSource, _FakeCV]:
+    """Build a CV source facing `count` equally-plausible volumes."""
+    volumes = [_FakeBasicVolume(vid=i, name="Conan") for i in range(1, count + 1)]
+    issues = {
+        i: [_FakeBasicIssue(iid=i * 10, number="7", volume_name="Conan")]
+        for i in range(1, count + 1)
+    }
+    fake_cv = _FakeCV(volumes=volumes, issues_by_volume=issues)
+    tuning = OnlineTuningSettings(
+        per_source={"comicvine": OnlineSourceTuning(effort=effort)}
+    )
+    src = ComicVineOnlineSource(
+        OnlineSourceCredentials(key="test-key"), OnlineSettings(tuning=tuning)
+    )
+    monkeypatch.setattr(src, "_get_session", lambda: fake_cv)
+    return src, fake_cv
 
 
-def _build_with_fake(
-    monkeypatch: pytest.MonkeyPatch, settings: OnlineSettings
-) -> _FakeComicvine:
-    creds = OnlineSourceCredentials(key="test-key")
-    src = ComicVineOnlineSource(creds, settings)
-    monkeypatch.setattr("simyan.comicvine.Comicvine", _FakeComicvine)
-    client = src._build_session()
-    assert isinstance(client, _FakeComicvine)
-    return client
-
-
-def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The upstream client is built once per source lifetime, then reused."""
-    creds = OnlineSourceCredentials(key="test-key")
-    settings = OnlineSettings()
-    src = ComicVineOnlineSource(creds, settings)
-    builds = {"n": 0}
-
-    def fake_build() -> object:
-        builds["n"] += 1
-        return object()
-
-    monkeypatch.setattr(src, "_build_session", fake_build)
-    first = src._get_session()
-    second = src._get_session()
-    assert first is second
-    assert builds["n"] == 1
-
-
-def test_build_session_passes_v3_kwargs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_search_caps_issue_list_calls_at_the_effort_budget(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Cache and rate-limit files land in comicbox's cache dir, ttl → expiry."""
-    settings = _make_cache_settings(tmp_path)
-    client = _build_with_fake(monkeypatch, settings)
-    kw = client.kwargs
-    assert kw["api_key"] == "test-key"
-    assert kw["user_agent"] == USER_AGENT
-    assert kw["cache_path"] == tmp_path / "comicvine_cache.sqlite"
-    assert kw["ratelimit_path"] == tmp_path / "comicvine_rate_limit.sqlite"
-    assert kw["cache_expiry"] == timedelta(days=7)  # ttl flows through as-is
-    assert "base_url" not in kw  # no creds.url set
-    # v2 kwargs must be gone.
-    assert "cache" not in kw
-    assert "limiter" not in kw
+    """
+    A wide fan-out can't spend unbounded rate-limited calls on one comic.
+
+    Every surviving volume costs a `list_issues` call at CV's 1/sec, so
+    an uncapped fan-out is minutes of wall clock for a single file.
+    """
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+    src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(fake_cv.list_issues_calls) == max_calls_for(Effort.BALANCED)
 
 
-def test_build_session_cache_off_uses_do_not_cache(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_search_budget_is_pre_call_not_post_call(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """OFF pins cache_path (never ~/.cache/simyan) and disables the session cache."""
-    from requests_cache import DO_NOT_CACHE
+    """
+    The budget drops CALLS, never results.
 
-    settings = _make_cache_settings(tmp_path, mode=CacheMode.OFF)
-    client = _build_with_fake(monkeypatch, settings)
-    assert client.kwargs["cache_expiry"] == DO_NOT_CACHE
-    assert client.kwargs["cache_path"] == tmp_path / "comicvine_cache.sqlite"
-    # DO_NOT_CACHE alone still allows header-driven writes; the settings
-    # flag makes OFF mean no reads AND no writes.
-    assert client._session.settings.disabled is True
+    Effort is a pre-call fan-out throttle; every candidate
+    that a spent call returned still reaches the matcher.
+    """
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+    candidates = src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(candidates) == len(fake_cv.list_issues_calls)
 
 
-def test_build_session_zero_ttl_never_expires(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_thorough_effort_keeps_the_unbounded_fan_out(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from requests_cache import NEVER_EXPIRE
+    """`thorough` means spend freely — no per-search cap."""
+    assert max_calls_for(Effort.THOROUGH) is None
+    src, fake_cv = _many_volume_source(monkeypatch, count=40, effort=Effort.THOROUGH)
+    src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
+    assert len(fake_cv.list_issues_calls) == 40
 
-    settings = _make_cache_settings(tmp_path, ttl=timedelta(0))
-    client = _build_with_fake(monkeypatch, settings)
-    assert client.kwargs["cache_expiry"] == NEVER_EXPIRE
 
-
-def test_build_session_maintains_cache_once_per_process(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_search_reports_volumes_it_did_not_query(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The expired-row purge runs once per process per cache file."""
-    cache_path = tmp_path / "comicvine_cache.sqlite"
-    with closing(sqlite3.connect(cache_path)) as conn:
-        conn.execute("CREATE TABLE t (x)")
-        conn.commit()
-
-    settings = _make_cache_settings(tmp_path)
-    first = _build_with_fake(monkeypatch, settings)
-    assert first.cache_deletes == [{"expired": True, "vacuum": False}]
-    # A second source over the same cache file skips the housekeeping.
-    second = _build_with_fake(monkeypatch, settings)
-    assert second.cache_deletes == []
-
-
-def test_build_session_drops_v2_queries_table(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Simyan v2's `queries` table is dropped from the shared cache file."""
-    cache_path = tmp_path / "comicvine_cache.sqlite"
-    with closing(sqlite3.connect(cache_path)) as conn:
-        conn.execute("CREATE TABLE queries (query, response, query_date)")
-        conn.commit()
-
-    settings = _make_cache_settings(tmp_path)
-    _build_with_fake(monkeypatch, settings)
-
-    with closing(sqlite3.connect(cache_path)) as conn:
-        tables = {
-            row[0]
-            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        }
-    assert "queries" not in tables
-
-
-def test_build_session_warns_on_ignored_rate_limit_override(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """CV per_second/per_hour overrides can't flow into simyan 3.x — warn."""
+    """Truncation is never silent — a short candidate list says why."""
     from loguru import logger as loguru_logger
 
     messages: list[str] = []
-    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    handler_id = loguru_logger.add(messages.append, level="INFO", format="{message}")
     try:
-        tuning = OnlineTuningSettings(
-            per_source={
-                "comicvine": OnlineSourceTuning(
-                    rate_limit=OnlineSourceLimits(per_second=2)
-                )
-            }
-        )
-        settings = OnlineSettings(
-            cache=OnlineCacheSettings(dir=tmp_path), tuning=tuning
-        )
-        _build_with_fake(monkeypatch, settings)
+        src, _ = _many_volume_source(monkeypatch, count=40, effort=Effort.BALANCED)
+        src.search(ComicProfile(series="Conan", issue="7", issue_int=7))
     finally:
         loguru_logger.remove(handler_id)
-    assert any("ignored" in message for message in messages)
+    assert any("not queried" in message for message in messages)
+
+
+def test_search_budget_deadline_stops_the_fan_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stalled fan-out stops on the clock even with calls left."""
+    budget = _SearchBudget(max_calls=100, deadline=time.monotonic() - 1.0)
+    assert budget.take() is False
+    assert budget.dropped == 1
+    assert "deadline" in budget.exhausted_reason()
+
+
+def test_search_budget_unlimited_never_stops() -> None:
+    """`max_calls=None` with no deadline is the THOROUGH contract."""
+    budget = _SearchBudget(max_calls=None, deadline=None)
+    assert all(budget.take() for _ in range(50))
+    assert budget.dropped == 0

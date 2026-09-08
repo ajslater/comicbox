@@ -29,6 +29,8 @@ COMICINFO_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
         MarvelAgeRatingEnum.T_PLUS: ComicInfoAgeRatingEnum.MA_17_PLUS,
         MarvelAgeRatingEnum.T: ComicInfoAgeRatingEnum.MA_15_PLUS,
         MarvelAgeRatingEnum.EXPLICIT_CONTENT: ComicInfoAgeRatingEnum.X_18_PLUS,
+        MarvelAgeRatingEnum.MAX: ComicInfoAgeRatingEnum.MA_17_PLUS,
+        MarvelAgeRatingEnum.MAX_EXPLICIT_CONTENT: ComicInfoAgeRatingEnum.X_18_PLUS,
         DCAgeRatingEnum.E: ComicInfoAgeRatingEnum.EVERYONE,
         DCAgeRatingEnum.EVERYONE: ComicInfoAgeRatingEnum.EVERYONE,
         DCAgeRatingEnum.T: ComicInfoAgeRatingEnum.MA_15_PLUS,
@@ -71,6 +73,8 @@ METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
         MarvelAgeRatingEnum.T_PLUS: MetronAgeRatingEnum.TEEN_PLUS,
         MarvelAgeRatingEnum.T: MetronAgeRatingEnum.TEEN,
         MarvelAgeRatingEnum.EXPLICIT_CONTENT: MetronAgeRatingEnum.EXPLICIT,
+        MarvelAgeRatingEnum.MAX: MetronAgeRatingEnum.MATURE,
+        MarvelAgeRatingEnum.MAX_EXPLICIT_CONTENT: MetronAgeRatingEnum.EXPLICIT,
         DCAgeRatingEnum.E: MetronAgeRatingEnum.EVERYONE,
         DCAgeRatingEnum.EVERYONE: MetronAgeRatingEnum.EVERYONE,
         DCAgeRatingEnum.T: MetronAgeRatingEnum.TEEN,
@@ -111,12 +115,15 @@ METRON_AGE_RATING_MAP: MappingProxyType[Enum, Enum] = MappingProxyType(
     }
 )
 
+# Comicbox stores MetronInfo's age rating scale. It is the smallest of the
+# vocabularies, but MetronInfo is the highest priority format and its own docs
+# argue for a simple scale, so every publisher scheme resolves onto it instead
+# of being stored in whichever vocabulary happened to arrive first.
+# ComicInfo's finer distinctions (Everyone 10+, G, Kids to Adults) are
+# deliberately coarsened to Everyone on read.
 AGE_RATING_ENUM_MAP = MappingProxyType(
     {
-        **{enum: enum for enum in GenericAgeRatingEnum},
-        **{enum: enum for enum in DCAgeRatingEnum},
-        **{enum: enum for enum in MarvelAgeRatingEnum},
-        **{enum: enum for enum in ComicInfoAgeRatingEnum},
+        **METRON_AGE_RATING_MAP,
         **{enum: enum for enum in MetronAgeRatingEnum},
     }
 )

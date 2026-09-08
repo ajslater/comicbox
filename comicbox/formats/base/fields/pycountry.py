@@ -8,12 +8,12 @@ from loguru import logger
 from pycountry.db import Data, Database
 from typing_extensions import override
 
-from comicbox.formats.base.fields.fields import StringField, TrapExceptionsMeta
+from comicbox.formats.base.fields.fields import StringField
 
 _ALPHA_CODES = ("alpha_2", "alpha_3", "alpha_4", "name")
 
 
-class PyCountryField(StringField, ABC, metaclass=TrapExceptionsMeta):
+class PyCountryField(StringField, ABC):
     """A pycountry value."""
 
     DB: Database = pycountry.countries

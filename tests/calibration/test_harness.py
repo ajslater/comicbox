@@ -34,10 +34,10 @@ _make_fixture = make_fixture
 @pytest.mark.parametrize(
     ("score", "expected"),
     [
-        (0.99, "0.95-1.00 (very high)"),
-        (0.95, "0.95-1.00 (very high)"),
-        (0.90, "0.85-0.95 (auto-write)"),
-        (0.85, "0.85-0.95 (auto-write)"),
+        (0.99, "0.95-1.00 (auto-write)"),
+        (0.95, "0.95-1.00 (auto-write)"),
+        (0.90, "0.85-0.95 (near miss)"),
+        (0.85, "0.85-0.95 (near miss)"),
         (0.78, "0.70-0.85 (prompt zone)"),
         (0.55, "0.50-0.70 (solo-viable)"),
         (0.40, "0.00-0.50 (below min_confidence)"),
@@ -138,10 +138,10 @@ def test_aggregate_buckets_by_band() -> None:
         _outcome(score=0.92, correct=False),
     ]
     [report] = _aggregate(outcomes).values()
-    very_high = report.by_band["0.95-1.00 (very high)"]
-    auto_write = report.by_band["0.85-0.95 (auto-write)"]
-    assert very_high == {"correct": 2, "wrong": 0}
-    assert auto_write == {"correct": 1, "wrong": 1}
+    auto_band = report.by_band["0.95-1.00 (auto-write)"]
+    near_miss = report.by_band["0.85-0.95 (near miss)"]
+    assert auto_band == {"correct": 2, "wrong": 0}
+    assert near_miss == {"correct": 1, "wrong": 1}
 
 
 def test_format_report_renders_per_source() -> None:

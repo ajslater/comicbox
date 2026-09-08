@@ -1,7 +1,7 @@
 """
-Drift guard: the published comicbox v2.0 JSON Schema must match the model.
+Drift guard: the published comicbox v3.0 JSON Schema must match the model.
 
-The JSON Schema files in ``comicbox/schemas/v2.0/`` are hand-maintained
+The JSON Schema files in ``comicbox/schemas/v3.0/`` are hand-maintained
 and serve as the production validator for the COMICBOX_JSON/YAML formats, but nothing
 generates them from the Marshmallow schemas in ``comicbox/formats/comicbox/schema/``.
 
@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from enum import Enum
 
-SCHEMA_DIR = SCHEMA_PATH / "v2.0"
-ROOT_SCHEMA = "comicbox-v2.0.schema.json"
+SCHEMA_DIR = SCHEMA_PATH / "v3.0"
+ROOT_SCHEMA = "comicbox-v3.0.schema.json"
 
 # Marshmallow base class -> JSON Schema ``type``. Order matters: ``Integer`` is a
 # ``Number`` but maps to ``"integer"``, so it is tested first. Enum/Date/DateTime
@@ -207,9 +207,9 @@ def _walk(schema: Schema, node: dict, path: str, failures: list[str]) -> None:
 
 
 def test_json_schema_matches_model() -> None:
-    """Every object in the v2.0 JSON Schema must match its Marshmallow fields."""
+    """Every object in the v3.0 JSON Schema must match its Marshmallow fields."""
     failures: list[str] = []
     _walk(ComicboxJsonSchema(), _load(ROOT_SCHEMA), "<root>", failures)
-    assert not failures, "v2.0 JSON Schema drifted from the model:\n" + "\n".join(
+    assert not failures, "v3.0 JSON Schema drifted from the model:\n" + "\n".join(
         failures
     )

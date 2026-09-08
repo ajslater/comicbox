@@ -9,10 +9,10 @@ A `SelectorCallback` receives a profile and a list of ranked
 - `("manual", "<source>:<id>")` — re-tag from an explicit id; falls
   through to the explicit-id code path.
 - `("abort", None)` — abort the entire run.
-- `("set_unattended", None)` — switch the rest of the session to
-  unattended mode. The box re-resolves the current candidates (which
-  collapses to SKIP under unattended) without auto-writing this
-  prompt's selection.
+- `("set_prompts", "<name>")` — switch the rest of the session's
+  prompt policy to `ask` or `never` (a :class:`Prompts` value). The box
+  re-resolves the current candidates (which collapses to SKIP under
+  `never`) without auto-writing this prompt's selection.
 - `("set_policy", "<name>")` — switch the rest of the session's match
   policy to one of `ask | careful | auto | eager` (a
   :class:`MatchMode` value). The box re-resolves the current
@@ -48,7 +48,7 @@ SelectorAction: TypeAlias = Literal[
     "skip",
     "manual",
     "abort",
-    "set_unattended",
+    "set_prompts",
     "set_policy",
 ]
 SelectorResult: TypeAlias = tuple[SelectorAction, "int | str | None"]

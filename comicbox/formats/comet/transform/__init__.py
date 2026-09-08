@@ -12,7 +12,7 @@ from comicbox.enums.generic.role import GenericRoleAliases, GenericRoleEnum
 from comicbox.enums.metroninfo import MetronRoleEnum
 from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.base.transforms.identifiers import (
-    identifiers_transform_from_cb,
+    identifier_transform_from_cb,
     identifiers_transform_to_cb,
 )
 from comicbox.formats.base.transforms.price import (
@@ -174,7 +174,7 @@ class CoMetTransform(BaseTransform):
         MetaSpec(key_map=SIMPLE_KEYMAP),
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
         *xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES),
-        identifiers_transform_from_cb("identifier"),
+        identifier_transform_from_cb("identifier"),
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),
         format_root_keypath=CoMetSchema.ROOT_KEYPATH,

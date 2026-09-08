@@ -21,7 +21,7 @@ from comicbox.formats.comicbox.schema import (
     ROLES_KEY,
 )
 from comicbox.formats.metron_info.schema import CREATOR_TAG
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.formats.metron_info.transform.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
@@ -114,6 +114,12 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
 CREDITS_KEYPATH = "Credits.Credit"
 ROLE_KEYPATH = "Roles.Role"
 
+# The only comicbox roles allowed to write several Metron roles. Painter is a
+# real division of labor one person covers; everything else expanding would
+# invent credits the source never claimed.
+_FAN_OUT_ROLES = frozenset({GenericRoleEnum.PAINTER.value})
+_METRON_ROLE_ORDER = tuple(MetronRoleEnum)
+
 
 def _create_role_variations_to_enum_map(
     role_aliases: MappingProxyType[Any, tuple],
@@ -161,12 +167,31 @@ def _credits_to_cb(
     metron_credits = values.get(CREDITS_KEYPATH)
     if not metron_credits:
         return {}
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     return {
         person_credit[0]: person_credit[1]
         for metron_credit in metron_credits
         if (person_credit := _credit_to_cb(metron_credit, primary_id_source))
     }
+
+
+def _resolve_role_enums(role_name: str, metron_role_enums: set[Any]) -> list[Any]:
+    """
+    Pick which Metron roles one comicbox role writes as.
+
+    An alias can name several Metron roles, but expanding one credit into
+    several is only right for Painter, a real comics convention for one person
+    doing pencils, inks and colors. Everything else resolves to a single role:
+    the one whose own name the comicbox role matches, since comicbox stores the
+    Metron vocabulary, or failing that a stable pick in Metron's own order.
+    """
+    if role_name in _FAN_OUT_ROLES:
+        return sorted(metron_role_enums, key=_METRON_ROLE_ORDER.index)
+    variations = EnumField.get_key_variations(role_name)
+    for metron_role_enum in sorted(metron_role_enums, key=_METRON_ROLE_ORDER.index):
+        if EnumField.get_key_variations(metron_role_enum) & variations:
+            return [metron_role_enum]
+    return sorted(metron_role_enums, key=_METRON_ROLE_ORDER.index)[:1]
 
 
 def _role_from_cb(
@@ -179,9 +204,7 @@ def _role_from_cb(
     metron_roles = []
 
     if metron_role_enums := role_map.get(role_name.lower()):
-        # Handle expanding one role into many.
-        metron_role = []
-        for metron_role_enum in metron_role_enums:
+        for metron_role_enum in _resolve_role_enums(role_name, metron_role_enums):
             metron_role = identified_name_from_cb(
                 metron_role_enum, comicbox_role, id_source
             )
@@ -216,7 +239,7 @@ def _credits_from_cb(
     comicbox_credits = values.get(CREDITS_KEY)
     if comicbox_credits is None:
         comicbox_credits = {}
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return [
         metron_credit
         for person_name, comicbox_credit in comicbox_credits.items()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     Effort,
     OnlineLookupSettings,
     OnlineSettings,
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 def _settings(
     *,
-    effort: Effort = Effort.BALANCED,
+    effort: Effort | None = None,
     per_source: dict[str, OnlineSourceTuning] | None = None,
     unattended: bool = False,
 ) -> OnlineSettings:
@@ -71,12 +71,29 @@ def test_no_op_when_batch_size_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result is settings
 
 
-def test_no_op_when_global_effort_not_balanced(
+def test_no_op_when_global_effort_is_thorough(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """User pinned --effort thorough → respect, never auto-engage."""
     _force_tty(monkeypatch, is_tty=False)
     settings = _settings(effort=Effort.THOROUGH, unattended=True)
+    result = resolve_auto_engaged_budget(settings, batch_size=500)
+    assert result is settings
+
+
+def test_no_op_when_global_effort_is_explicitly_balanced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An explicit `--effort balanced` is a choice, not silence.
+
+    `balanced` is also what an unset effort resolves to, so while the
+    two shared one representation this run was downgraded to `minimal`
+    against the user's stated wish — silently, and only on big batches.
+    An unset effort is None now, so naming the default still pins it.
+    """
+    _force_tty(monkeypatch, is_tty=False)
+    settings = _settings(effort=Effort.BALANCED, unattended=True)
     result = resolve_auto_engaged_budget(settings, batch_size=500)
     assert result is settings
 

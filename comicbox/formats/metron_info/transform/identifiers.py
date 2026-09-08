@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from contextlib import suppress
 from types import MappingProxyType
 from typing import Any
-from urllib.parse import ParseResult, urlparse
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import ID_SOURCE_NAME_MAP
@@ -12,28 +11,38 @@ from comicbox.enums.metroninfo import MetronSourceEnum
 from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.base.transforms.identifiers import (
     PRIMARY_ID_SOURCE_KEYPATH,
-    create_identifier_primary_source,
-    merge_url_and_explicit_identifiers,
-    url_from_cb,
     urls_to_cb,
 )
 from comicbox.formats.base.transforms.spec import GLOBAL_SCOPE_PREFIX, MetaSpec
 from comicbox.formats.comicbox.schema import (
-    ID_SOURCE_KEY,
-    IDENTIFIER_PRIMARY_SOURCE_KEY,
     IDENTIFIERS_KEY,
+    PRIMARY_ID_SOURCE_KEY,
+    URLS_KEY,
 )
-from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE
-from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
+from comicbox.identifiers import (
+    BARCODE_ID_SOURCES,
+    DEFAULT_ID_TYPE,
+    ID_KEY_KEY,
+    ID_TYPE_KEY,
+    ranked_id_sources,
+)
 from comicbox.identifiers.identifiers import (
-    IDENTIFIER_PARTS_MAP,
     create_identifier,
+    get_id_source_from_url,
+    get_url_from_identifier,
 )
 
 PRIMARY_ATTRIBUTE = "@primary"
 SOURCE_ATTRIBUTE = "@source"
+# MetronInfo's <GTIN> holds only ISBN and UPC subtags, never the generic
+# GTIN, and its subtag names are the IdSources member names.
 GTIN_SUBTAG_ID_SOURCE_MAP = MappingProxyType(
-    {"ISBN": IdSources.ISBN.value, "UPC": IdSources.UPC.value}
+    {
+        id_source.name: id_source.value
+        for id_source in BARCODE_ID_SOURCES
+        if id_source is not IdSources.GTIN
+    }
 )
 ID_KEYPATH = "IDS.ID"
 URL_KEYPATH = "URLs.URL"
@@ -52,62 +61,45 @@ def is_item_primary(
     )
 
 
-def _identifier_primary_source_to_cb_ids(
-    metron_ids: list[Any],
-) -> dict[str, Any] | None:
+def _primary_id_source_from_ids(metron_ids: list[Any]) -> str | None:
     for metron_id in metron_ids:
         if (
             is_item_primary(metron_id)
             and (metron_id_source := metron_id.get(SOURCE_ATTRIBUTE))
             and (id_source := getattr(IdSources, metron_id_source.name, None))
-            and (id_parts := IDENTIFIER_PARTS_MAP[id_source])
         ):
-            return {ID_SOURCE_KEY: id_source.value, ID_URL_KEY: id_parts.url_prefix}
+            return id_source.value
     return None
 
 
-def _parse_url(metron_url: Any) -> ParseResult | None:
-    parsed_url = None
-    if url := get_cdata(metron_url):
-        parsed_url = urlparse(str(url))
-    return parsed_url
-
-
-def _identifier_primary_source_to_cb_urls(
-    metron_urls: list[Any],
-) -> dict | None:
+def _primary_id_source_from_urls(metron_urls: list[Any]) -> str | None:
     for metron_url in metron_urls:
         if not is_item_primary(metron_url):
             continue
-        parsed_url = _parse_url(metron_url)
-        if not parsed_url:
-            continue
-        netloc = parsed_url.netloc
-        if not netloc:
-            continue
-        for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
-            if str(netloc).endswith(id_parts.domain):
-                return create_identifier_primary_source(id_source)
+        if (url := get_cdata(metron_url)) and (
+            id_source_str := get_id_source_from_url(str(url))
+        ):
+            return id_source_str
     return None
 
 
-def _identifier_primary_source_to_cb(
+def _primary_id_source_to_cb(
     values: dict[str, Any],
-) -> dict[str, dict | None] | None:
+) -> dict[str, str] | None:
     if (
         (metron_identifiers := values.get(ID_KEYPATH))
-        and (ips := _identifier_primary_source_to_cb_ids(metron_identifiers))
+        and (id_source_str := _primary_id_source_from_ids(metron_identifiers))
     ) or (
         (metron_urls := values.get(URL_KEYPATH))
-        and (ips := _identifier_primary_source_to_cb_urls(metron_urls))
+        and (id_source_str := _primary_id_source_from_urls(metron_urls))
     ):
-        return {IDENTIFIER_PRIMARY_SOURCE_KEY: ips}
+        return {PRIMARY_ID_SOURCE_KEY: id_source_str}
     return None
 
 
 METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB = MetaSpec(
-    key_map={IDENTIFIER_PRIMARY_SOURCE_KEY: (ID_KEYPATH, URL_KEYPATH)},
-    spec=_identifier_primary_source_to_cb,
+    key_map={PRIMARY_ID_SOURCE_KEY: (ID_KEYPATH, URL_KEYPATH)},
+    spec=_primary_id_source_to_cb,
     assign_global=True,
 )
 
@@ -122,107 +114,112 @@ def _identifier_to_cb(native_identifier: Any) -> tuple[str, dict]:
         getattr(IdSources, source_name, None) if isinstance(source_name, str) else None
     )
     id_source_str = id_source.value if id_source else ""
-    id_type = "issue"
     id_key = get_cdata(native_identifier)
     if not isinstance(id_key, str):
         id_key = ""
     identifier = create_identifier(
         id_source_str,
         id_key,
-        id_type=id_type,
-        default_id_source_str=DEFAULT_ID_SOURCE.value,
+        default_id_source_str=DEFAULT_ID_SOURCE_STR,
     )
     return id_source_str, identifier
 
 
-def _identifiers_to_cb_identifiers(
-    values: dict[str, Any],
-) -> dict:
+def _identifiers_to_cb_ids(values: dict[str, Any]) -> dict:
     id_identifiers = {}
     if metron_ids := values.get(ID_KEYPATH):
         for metron_id in metron_ids:
             id_source, identifier = _identifier_to_cb(metron_id)
-            id_identifiers[id_source] = identifier
+            if id_source and identifier:
+                id_identifiers[id_source] = identifier
     return id_identifiers
 
 
-def _identifers_to_cb_gtin(
-    values: dict[str, Any],
-) -> dict:
+def _identifiers_to_cb_gtin(values: dict[str, Any]) -> dict:
     gtin_identifiers = {}
     if metron_gtin := values.get(GTIN_TAG, {}):
         for tag, id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.items():
             if id_key := metron_gtin.get(tag):
                 identifier = create_identifier(
-                    id_source_str, id_key, default_id_source_str=DEFAULT_ID_SOURCE.value
+                    id_source_str, id_key, default_id_source_str=DEFAULT_ID_SOURCE_STR
                 )
-                gtin_identifiers[id_source_str] = identifier
+                if identifier:
+                    gtin_identifiers[id_source_str] = identifier
     return gtin_identifiers
 
 
-def _identifiers_to_cb_urls(
-    values: dict[str, Any],
-) -> dict:
-    metron_urls = values.get(URL_KEYPATH, {})
-    return urls_to_cb(metron_urls)
-
-
 def identifiers_to_cb(values: dict) -> dict:
-    """Aggregate IDS, GTIN and URLs into comicbox identifiers."""
-    id_identifiers = _identifiers_to_cb_identifiers(values)
-    gtin_identifiers = _identifers_to_cb_gtin(values)
-    url_identifiers = _identifiers_to_cb_urls(values)
-    # Explicit <ID>/GTIN ids are authoritative; a <URL> slug must not clobber
-    # the numeric key. GTIN then IDS layer on last so the issue id wins.
-    return merge_url_and_explicit_identifiers(
-        url_identifiers, gtin_identifiers, id_identifiers
-    )
+    """Aggregate IDS and GTIN into comicbox identifiers."""
+    # URLs no longer contribute here. They are kept verbatim in `urls`, and
+    # the computed layer derives an identifier from a recognized url when no
+    # explicit id supplied one. A url path is a slug for several databases,
+    # so it must never overwrite an authoritative <ID>.
+    return {**_identifiers_to_cb_gtin(values), **_identifiers_to_cb_ids(values)}
 
 
 METRON_IDENTIFIERS_TRANSFORM_TO_CB = MetaSpec(
-    {IDENTIFIERS_KEY: (ID_KEYPATH, GTIN_TAG, URL_KEYPATH, SCOPE_PRIMARY_SOURCE)},
+    {IDENTIFIERS_KEY: (ID_KEYPATH, GTIN_TAG)},
     spec=identifiers_to_cb,
 )
 
+METRON_URLS_TRANSFORM_TO_CB = MetaSpec(
+    {URLS_KEY: URL_KEYPATH},
+    spec=urls_to_cb,
+)
+
+
+def _metron_id_source(id_source_str: str) -> MetronSourceEnum | None:
+    with suppress(ValueError):
+        id_source = IdSources(id_source_str)
+        id_source_name = ID_SOURCE_NAME_MAP.get(id_source, "")
+        return MetronSourceEnum(id_source_name)
+    return None
+
+
+def _primary_index(candidates: list[str], primary_id_source_str: str) -> int:
+    """
+    Find which entry to flag primary.
+
+    MetronInfo allows at most one primary. When nothing names a source,
+    fall back to the best ranked source rather than whichever happened to be
+    first, so repeated writes of the same book agree.
+    """
+    if primary_id_source_str in candidates:
+        return candidates.index(primary_id_source_str)
+    if best_id_source_str := next(ranked_id_sources(candidates), ""):
+        return candidates.index(best_id_source_str)
+    return 0
+
 
 def identifiers_from_cb(values: dict[str, Any]) -> list:
-    """Unparse one identifier to an xml metron GTIN or ID tag."""
+    """Unparse comicbox identifiers to metron ID tags."""
     comicbox_identifiers = values.get(IDENTIFIERS_KEY)
-    primary_id_source_str = values.get(
-        PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE.value
-    )
-    try:
-        primary_id_source = IdSources(primary_id_source_str)
-        primary_metron_id_source = getattr(
-            MetronSourceEnum, primary_id_source.name, None
-        )
-    except ValueError:
-        primary_metron_id_source = None
-    metron_identifiers = []
-    primary_set = False
     if not comicbox_identifiers:
-        return metron_identifiers
+        return []
+    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
+    metron_identifiers = []
+    id_sources = []
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
         if id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.values():
             continue
-        with suppress(ValueError):
-            id_source = IdSources(id_source_str)
-            id_source_name = ID_SOURCE_NAME_MAP.get(id_source, "")
-            metron_id_source = MetronSourceEnum(id_source_name)
-            if id_key := comicbox_identifier.get(ID_KEY_KEY):
-                metron_identifier = {
-                    SOURCE_ATTRIBUTE: metron_id_source,
-                    "#text": id_key,
-                }
-                if metron_id_source == primary_metron_id_source:
-                    metron_identifier[PRIMARY_ATTRIBUTE] = True
-                    primary_set = True
-                metron_identifiers.append(metron_identifier)
-    if metron_identifiers and not primary_set:
-        # This can ignore identifiers aggregated from series alternative names.
-        # But I think that's usually fine.
-        metron_identifiers[0][PRIMARY_ATTRIBUTE] = True
-
+        id_type = comicbox_identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+        if id_type != DEFAULT_ID_TYPE:
+            # IDS holds this issue's ids. A series or character id written
+            # here reads back as an issue id, and the url built from it
+            # points at an issue that doesn't exist. It still travels in
+            # URLs and in the Notes urns.
+            continue
+        metron_id_source = _metron_id_source(id_source_str)
+        if not metron_id_source:
+            continue
+        if id_key := comicbox_identifier.get(ID_KEY_KEY):
+            metron_identifiers.append(
+                {SOURCE_ATTRIBUTE: metron_id_source, "#text": id_key}
+            )
+            id_sources.append(id_source_str)
+    if metron_identifiers:
+        index = _primary_index(id_sources, primary_id_source_str)
+        metron_identifiers[index][PRIMARY_ATTRIBUTE] = True
     return metron_identifiers
 
 
@@ -249,26 +246,36 @@ METRON_GTIN_TRANSFORM_FROM_CB = MetaSpec(
 
 
 def _urls_from_cb(values: dict[str, Any]) -> list:
-    comicbox_identifiers = values.get(IDENTIFIERS_KEY)
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
-    metron_urls = []
-    primary_set = False
-    if not comicbox_identifiers:
-        return metron_urls
-    for id_source, comicbox_identifier in comicbox_identifiers.items():
-        if url := url_from_cb(id_source, comicbox_identifier):
-            metron_url: dict[str, Any] = {"#text": url}
-            if primary_id_source == id_source:
-                metron_url[PRIMARY_ATTRIBUTE] = True
-                primary_set = True
-            metron_urls.append(metron_url)
-    if metron_urls and not primary_set:
-        metron_urls[0][PRIMARY_ATTRIBUTE] = True
+    """
+    Write the verbatim urls, plus a derived one for any id lacking one.
 
+    A stored url always wins: it came from the file, while a derived one is
+    comicbox's best guess from the id.
+    """
+    urls: dict[str, None] = {}
+    for url in values.get(URLS_KEY) or ():
+        urls[str(url)] = None
+    comicbox_identifiers = values.get(IDENTIFIERS_KEY) or {}
+    id_source_by_url: dict[str, str] = {}
+    for id_source_str, comicbox_identifier in comicbox_identifiers.items():
+        if url := get_url_from_identifier(id_source_str, comicbox_identifier):
+            urls.setdefault(url, None)
+            id_source_by_url.setdefault(url, id_source_str)
+    if not urls:
+        return []
+
+    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
+    url_list = list(urls)
+    url_sources = [
+        id_source_by_url.get(url) or get_id_source_from_url(url) for url in url_list
+    ]
+    index = _primary_index(url_sources, primary_id_source_str)
+    metron_urls: list[dict[str, Any]] = [{"#text": url} for url in url_list]
+    metron_urls[index][PRIMARY_ATTRIBUTE] = True
     return metron_urls
 
 
 METRON_URLS_TRANSFORM_FROM_CB = MetaSpec(
-    key_map={URL_KEYPATH: (IDENTIFIERS_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
+    key_map={URL_KEYPATH: (URLS_KEY, IDENTIFIERS_KEY, PRIMARY_ID_SOURCE_KEYPATH)},
     spec=_urls_from_cb,
 )

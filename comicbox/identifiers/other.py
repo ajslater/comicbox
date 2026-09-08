@@ -9,6 +9,7 @@ from comicbox.identifiers import (
     DEFAULT_ID_TYPE,
     IDENTIFIER_RE_EXP,
     PARSE_COMICVINE_RE,
+    match_id_source_str,
 )
 from comicbox.identifiers.identifiers import IDENTIFIER_PARTS_MAP
 
@@ -21,7 +22,7 @@ def _parse_identifier_str_comicvine(
 ) -> tuple[IdSources | None, str, str]:
     id_source = None
     id_type = id_key = ""
-    match = PARSE_COMICVINE_RE.search(full_identifier)
+    match = PARSE_COMICVINE_RE.fullmatch(full_identifier)
     if not match:
         return id_source, id_type, id_key
     id_source = IdSources.COMICVINE
@@ -36,12 +37,11 @@ def _parse_identifier_other_str(
 ) -> tuple[IdSources | None, str, str]:
     id_source = None
     id_type = id_key = ""
-    match = _PARSE_OTHER_RE.search(full_identifier)
+    match = _PARSE_OTHER_RE.fullmatch(full_identifier)
     if not match:
         return id_source, id_type, id_key
     with suppress(IndexError):
-        id_source_str = match.group("id_source") or ""
-        id_source = get_id_source_by_alias(id_source_str)
+        id_source = get_id_source_by_alias(match_id_source_str(match))
         id_type = (match.group("id_type") or DEFAULT_ID_TYPE).lower()
         id_key = match.group("id_key")
     return id_source, id_type, id_key
@@ -50,7 +50,15 @@ def _parse_identifier_other_str(
 def parse_identifier_other_str(
     full_identifier: str,
 ) -> tuple[IdSources | None, str, str]:
-    """Parse an identifier string with optional prefix."""
+    """
+    Parse an identifier string with optional prefix.
+
+    The string has to be an identifier and nothing else. Matching a
+    substring turned every tag and genre that merely contained something
+    identifier shaped into an id: "marvel-comics" was a marvel id, and a
+    year range like "2019-2021" was a comicvine one.
+    """
+    full_identifier = full_identifier.strip()
     id_source, id_type, id_key = _parse_identifier_str_comicvine(full_identifier)
     if not id_key:
         id_source, id_type, id_key = _parse_identifier_other_str(full_identifier)

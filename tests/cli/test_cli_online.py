@@ -4,7 +4,7 @@ from argparse import Namespace
 
 import pytest
 
-from comicbox.cli import get_args, post_process_args
+from comicbox.cli import get_args
 
 
 def _parse(*flags: str) -> Namespace:
@@ -34,12 +34,12 @@ def test_id_repeatable() -> None:
 
 def test_dry_run_short_flag_is_n() -> None:
     args = _parse("-n")
-    assert args.general.dry_run is True
+    assert getattr(args, "general.dry_run") is True
 
 
 def test_dry_run_long_flag() -> None:
     args = _parse("--dry-run")
-    assert args.general.dry_run is True
+    assert getattr(args, "general.dry_run") is True
 
 
 def test_auth_warns_on_pass_field(capsys: pytest.CaptureFixture[str]) -> None:
@@ -70,12 +70,12 @@ def test_id_with_multiple_paths_errors(
 
 def test_id_with_single_path_ok() -> None:
     args = get_args(["comicbox", "--id", "metron:42", "single.cbz"])
-    post_process_args(args)  # idempotent — no raise.
+    assert args.explicit_ids == ["metron:42"]
 
 
 def test_jobs_flag() -> None:
     args = _parse("-j", "4")
-    assert args.general.jobs == 4
+    assert getattr(args, "general.jobs") == 4
 
 
 def test_auto_threshold_flag() -> None:

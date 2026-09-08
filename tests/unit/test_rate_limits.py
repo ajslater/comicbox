@@ -5,12 +5,13 @@ from __future__ import annotations
 from argparse import Namespace
 from dataclasses import replace
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pytest
 from mokkari.session import RateLimitStatus, RateLimitWindow
 
 from comicbox.config import get_config
-from comicbox.config.settings import (
+from comicbox.config.online.settings import (
     CacheMode,
     OnlineCacheSettings,
     OnlineSettings,
@@ -30,6 +31,10 @@ from comicbox.formats.metron_api.online_source import (
     shared_session_rate_limit_status,
 )
 from comicbox.online_session import OnlineCredentials, OnlineSession
+from tests.util.online_client import comicvine_client, spend
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_documented_defaults_match_upstream() -> None:
@@ -46,7 +51,7 @@ def test_documented_defaults_match_upstream() -> None:
     needs a manual look.
     """
     assert METRON_DEFAULT_PER_MINUTE == 20
-    # simyan 3.x hardcodes its rates as literals in Comicvine.__init__ with
+    # simyan hardcodes its rates as literals in Comicvine.__init__ with
     # no importable constant; pin the documented numbers it ships with.
     assert COMICVINE_DEFAULT_PER_SECOND == 1
     assert COMICVINE_DEFAULT_PER_HOUR == 200
@@ -294,11 +299,32 @@ def test_online_session_rate_limit_status_skips_blank_window() -> None:
     }
 
 
-def test_online_session_rate_limit_status_comicvine_always_empty() -> None:
-    """Simyan exposes no budget to read; comic vine stays {} even mid-run."""
+def test_online_session_rate_limit_status_comicvine_empty_before_any_request() -> None:
+    """
+    Comic Vine reports {} until its rate-limit bucket file exists.
+
+    Nothing has spent budget in this session, so there is no file to read
+    and no pool to report — distinct from reporting a full budget, which
+    would be a guess.
+    """
     _seed_shared_session(RateLimitStatus(burst=RateLimitWindow(limit=20, remaining=19)))
     session = _make_online_session(sources=("comicvine", "metron"))
     assert session.rate_limit_status()["comicvine"] == {}
+
+
+def test_online_session_rate_limit_status_comicvine_reports_spent_pools(
+    tmp_path: Path,
+) -> None:
+    """Once a pool has spent budget, the session surfaces what it has left."""
+    # The hermetic env fixture pins the online cache dir here, so this is
+    # the same directory the session under test will read.
+    with comicvine_client(tmp_path / "online-cache") as client:
+        spend(client, "issues", 2)
+        status = _make_online_session(sources=("comicvine",)).rate_limit_status()
+
+    assert status["comicvine"]["issues"]["remaining"] == (
+        COMICVINE_DEFAULT_PER_HOUR - 2
+    )
 
 
 def test_metron_rate_limit_override_warns_and_is_ignored(
@@ -516,18 +542,20 @@ def test_partial_rate_limit_override() -> None:
 # ----------------------------------------------------- with_retry retry_after
 
 
+class _StubMetronSource:
+    """Minimal instance seam for `with_retry`: real Metron classifier, no session."""
+
+    classify_retry_exception = staticmethod(MetronOnlineSource.classify_retry_exception)
+    on_rate_limit = None
+    retry_sleep = None
+    name = "metron"
+
+
 def test_with_retry_honors_long_retry_after() -> None:
     """A server hint of 300s is honored, not capped at our 60s schedule."""
+    from mokkari.exceptions import RateLimitError
+
     from comicbox.formats.base.online.retry import with_retry
-
-    # mokkari-style RateLimitError with retry_after attribute.
-    class FakeRateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__(f"retry after {retry_after}")
-            self.retry_after = retry_after
-
-    # Override the type-name check by naming the class accordingly.
-    FakeRateLimitError.__name__ = "RateLimitError"
 
     sleeps: list[float] = []
     call_count = {"n": 0}
@@ -535,41 +563,40 @@ def test_with_retry_honors_long_retry_after() -> None:
     def fake_sleep(s: float) -> None:
         sleeps.append(s)
 
-    @with_retry(max_retries=2, sleep=fake_sleep)
-    def flaky() -> str:
-        call_count["n"] += 1
-        if call_count["n"] == 1:
-            raise FakeRateLimitError(retry_after=300.0)
-        return "ok"
+    class Stub(_StubMetronSource):
+        @with_retry(max_retries=2, sleep=fake_sleep)
+        def flaky(self) -> str:
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                msg = "retry after 300.0"
+                raise RateLimitError(msg, retry_after=300.0)
+            return "ok"
 
-    result = flaky()
+    result = Stub().flaky()
     assert result == "ok"
     assert sleeps == [300.0]  # exact server hint, NOT clamped to 60s
 
 
 def test_with_retry_clamps_excessive_retry_after() -> None:
     """A wildly-large hint (e.g. 1 day) is clamped to the 1-hour ceiling."""
+    from mokkari.exceptions import RateLimitError
+
     from comicbox.formats.base.online.retry import with_retry
-
-    class FakeRateLimitError(Exception):
-        def __init__(self) -> None:
-            super().__init__("nope")
-            self.retry_after = 86_400.0  # 1 day
-
-    FakeRateLimitError.__name__ = "RateLimitError"
 
     sleeps: list[float] = []
 
     def fake_sleep(s: float) -> None:
         sleeps.append(s)
 
-    @with_retry(max_retries=1, sleep=fake_sleep)
-    def flaky() -> str:
-        if not sleeps:
-            raise FakeRateLimitError
-        return "ok"
+    class Stub(_StubMetronSource):
+        @with_retry(max_retries=1, sleep=fake_sleep)
+        def flaky(self) -> str:
+            if not sleeps:
+                msg = "nope"
+                raise RateLimitError(msg, retry_after=86_400.0)  # 1 day
+            return "ok"
 
-    flaky()
+    Stub().flaky()
     assert sleeps == [3600.0]  # clamped to 1-hour ceiling
 
 

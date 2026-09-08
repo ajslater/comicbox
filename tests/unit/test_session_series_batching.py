@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from comicbox.online_session import (
-    OnlineCredentials,
-    OnlineSession,
-    _filename_series_fingerprint,
-)
+from comicbox.formats.base.online.series_cache import filename_series_fingerprint
+from comicbox.online_session import OnlineCredentials, OnlineSession
 
 VALID = OnlineCredentials(metron_user="u", metron_password="p")
 
@@ -20,19 +17,37 @@ def test_filename_fingerprint_groups_same_series() -> None:
     """Two issues of the same series share a filename fingerprint."""
     a = Path("Spider-Man #001 (2018).cbz")
     b = Path("Spider-Man #002 (2018).cbz")
-    assert _filename_series_fingerprint(a) == _filename_series_fingerprint(b)
+    assert filename_series_fingerprint(a) == filename_series_fingerprint(b)
+
+
+def test_filename_fingerprint_groups_across_cover_years() -> None:
+    """
+    One run spanning several years is one cluster, not one per year.
+
+    The clustering has to agree with the cache key it feeds — keying on
+    the filename year split a multi-year run into a cold-path search per
+    year, which is the batching working against itself.
+    """
+    a = Path("Spider-Man #001 (2018).cbz")
+    b = Path("Spider-Man #014 (2019).cbz")
+    c = Path("Spider-Man #027 (2020).cbz")
+    assert (
+        filename_series_fingerprint(a)
+        == filename_series_fingerprint(b)
+        == filename_series_fingerprint(c)
+    )
 
 
 def test_filename_fingerprint_separates_series() -> None:
     a = Path("Spider-Man #001 (2018).cbz")
     b = Path("Batman #001 (2018).cbz")
-    assert _filename_series_fingerprint(a) != _filename_series_fingerprint(b)
+    assert filename_series_fingerprint(a) != filename_series_fingerprint(b)
 
 
 def test_filename_fingerprint_falls_back_on_unparseable() -> None:
     """When comicfn2dict yields no series, fingerprint prefixes with ~."""
     # Issue-only filenames yield no series under comicfn2dict.
-    fp = _filename_series_fingerprint(Path("#42 (2020).cbz"))
+    fp = filename_series_fingerprint(Path("#42 (2020).cbz"))
     assert fp.startswith("~")
 
 

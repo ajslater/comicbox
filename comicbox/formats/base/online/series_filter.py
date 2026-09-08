@@ -33,9 +33,9 @@ matcher's `s_series`; the matcher gets to be permissive because it sees
 the full candidate. The pre-filter has to decide before any API call
 goes out.
 
-Driven by the `Effort` resolved per-source. See
-`tasks/online-tagging/06-api-budget-spec.md` for the threshold rationale
-(Phase B picks the real numbers; Phase A ships with the lever dormant).
+Driven by the `Effort` resolved per-source. The thresholds below are
+calibrated against the fixture set, not placeholders; each carries the
+measurement that chose it.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING, Final
 
 from rapidfuzz import fuzz
 
-from comicbox.config.settings import Effort
+from comicbox.config.online.settings import Effort
 from comicbox.formats.base.online.signals import normalize_series
 
 if TYPE_CHECKING:
@@ -105,11 +105,11 @@ _THRESHOLDS: Final[MappingProxyType[Effort, float]] = MappingProxyType(
 
 # Per-budget cap on how many discovered volumes / series to expand into
 # per-volume issue queries. The production default is 20 (held in the
-# source classes' `_MAX_*_PER_SEARCH` constants); `fast` overrides to 5.
+# source classes' `_MAX_*_PER_SEARCH` constants); `minimal` overrides to 5.
 #
 # Rationale: even after the pre-filter at threshold 0.7 drops obvious
 # mismatches, the long tail of weakly-matching volumes can still
-# survive (anything in 0.7-1.0 range). For `fast`, additionally cap at
+# survive (anything in 0.7-1.0 range). For `minimal`, additionally cap at
 # top 5 — the matcher's downstream signals favor name-similarity-leading
 # candidates anyway, so the rank-6+ tail rarely changes the verdict.
 # Phase B didn't formally measure this (the pre-filter alone hit the
@@ -120,6 +120,45 @@ _MAX_RESULTS_OVERRIDES: Final[MappingProxyType[Effort, int]] = MappingProxyType(
         Effort.MINIMAL: 5,
     }
 )
+
+
+# Per-budget cap on how many per-volume issue-list API calls one search
+# may spend. Distinct from `_MAX_RESULTS_OVERRIDES`, which caps how many
+# volumes DISCOVERY returns: `_discover_volumes` unions a fuzzy and a
+# narrow result set, each capped at that number, so the surviving volume
+# list can be twice the cap — and each survivor costs one `list_issues`
+# call, or two when the cover-date window comes back empty. A 20-volume
+# cap therefore admits up to ~80 rate-limited calls for ONE comic, which
+# at ComicVine's 1/sec is over a minute of wall clock before the matcher
+# sees anything.
+#
+# This is a pre-call throttle in the same family as the name filter: it
+# decides whether to spend a call, never what to do with a result. The
+# matcher's ranking of whatever comes back is untouched.
+#
+# THOROUGH is deliberately absent — "spend API budget freely" is its
+# whole contract, so it keeps the unbounded fan-out.
+_MAX_CALLS_OVERRIDES: Final[MappingProxyType[Effort, int]] = MappingProxyType(
+    {
+        # BALANCED: 20 covers the full default discovery cap for the
+        # common case where fuzzy and narrow agree, and only bites on
+        # the pathological union where they don't.
+        Effort.BALANCED: 20,
+        # MINIMAL already caps discovery at 5 volumes; 10 lets every one
+        # of them take its year-window retry and stop there.
+        Effort.MINIMAL: 10,
+    }
+)
+
+
+def max_calls_for(budget: Effort) -> int | None:
+    """
+    Return the per-search issue-list call budget, or None for unlimited.
+
+    None means THOROUGH (or an unrecognized budget): no per-search cap,
+    matching that mode's "spend freely" contract.
+    """
+    return _MAX_CALLS_OVERRIDES.get(budget)
 
 
 def threshold_for(budget: Effort) -> float:

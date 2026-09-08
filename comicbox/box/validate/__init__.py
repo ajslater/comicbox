@@ -4,15 +4,7 @@ import sys
 from pathlib import Path
 from types import MappingProxyType
 
-from jsonschema.exceptions import (
-    FormatError,
-    SchemaError,
-    UndefinedTypeCheck,
-    UnknownType,
-    ValidationError,
-)
 from loguru import logger
-from xmlschema.exceptions import XMLSchemaException
 
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
@@ -20,15 +12,18 @@ from comicbox.box.validate.guess_format import guess_format
 from comicbox.exceptions import MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.sources import MetadataSources
+from comicbox.validate.spec import build_validator, validation_failure_exceptions
 
-#: Derived from per-format `REGISTRATION.validator`. Formats whose
-#: registration has `validator=None` (PDF, PDF_XML, Filename, online APIs)
-#: are absent here and trigger the "no validator available" path below.
-FMT_VALIDATOR_MAP = MappingProxyType(
+#: Derived from per-format `REGISTRATION.validator_spec`. Formats whose
+#: registration has `validator_spec=None` (PDF, PDF_XML, Filename, online
+#: APIs) are absent here and trigger the "no validator available" path
+#: below. The specs stay unbuilt: `build_validator()` compiles a schema
+#: the first time this opt-in path actually validates against it.
+FMT_VALIDATOR_SPEC_MAP = MappingProxyType(
     {
-        fmt: registration.validator
+        fmt: registration.validator_spec
         for fmt, registration in FORMAT_REGISTRATIONS.items()
-        if registration.validator is not None
+        if registration.validator_spec is not None
     }
 )
 
@@ -51,24 +46,17 @@ def validate_source(
         reason = "Cannot determine format for source. Can't validate."
         raise MetadataError(reason)
 
-    validator = FMT_VALIDATOR_MAP.get(fmt)
-    if not validator:
+    spec = FMT_VALIDATOR_SPEC_MAP.get(fmt)
+    if not spec:
         # Just pass formats without validators
         logger.warning(f"{fmt.value.label}: no validator available")
         return True
+    validator = build_validator(spec)
     try:
         validator.validate(data)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         logger.info(f"{fmt.value.label}: data validated")
         result = True
-    except (
-        XMLSchemaException,
-        # JsonValidation Errors
-        ValidationError,
-        SchemaError,
-        UndefinedTypeCheck,
-        UnknownType,
-        FormatError,
-    ) as exc:
+    except validation_failure_exceptions() as exc:
         logger.warning(f"{fmt.value.label}: failed validation")
         logger.warning(exc)
         result = False

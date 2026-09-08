@@ -44,6 +44,8 @@ READ_METADATA = MappingProxyType(
             "arcs": {
                 "Captain Arc": {"number": 4},
                 "Other Arc": {"number": 2},
+                # AlternateSeries/AlternateNumber are a crossover arc.
+                "Captain Science Alternate": {"number": 1},
             },
             "date": {
                 "cover_date": date(1950, 11, 1),
@@ -72,9 +74,9 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "pages": {
                 0: {"page_type": ComicInfoPageTypeEnum.FRONT_COVER, "size": 4542},
                 1: {"size": 4065},
@@ -83,9 +85,6 @@ READ_METADATA = MappingProxyType(
                 4: {"size": 4108},
             },
             "page_count": 5,
-            "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
-            ],
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
             "title": "The Beginning; The End",
@@ -109,8 +108,6 @@ READ_CIX_DICT = MappingProxyType(
             "Number": "1",
             "Count": 7,
             "Volume": 1950,
-            "AlternateSeries": "Captain Science Alternate",
-            "AlternateNumber": "001",
             "Notes": TEST_READ_NOTES,
             "Year": 1950,
             "Month": 11,
@@ -124,8 +121,8 @@ READ_CIX_DICT = MappingProxyType(
             "PageCount": 5,
             "LanguageISO": "en",
             "Characters": "Captain Science,Gordon Dane",
-            "StoryArc": "Captain Arc,Other Arc",
-            "StoryArcNumber": "4,2",
+            "StoryArc": "Captain Arc,Other Arc,Captain Science Alternate",
+            "StoryArcNumber": "4,2,1",
             "AgeRating": "Teen",
             "Pages": {
                 "Page": [
@@ -136,7 +133,6 @@ READ_CIX_DICT = MappingProxyType(
                     {"@Image": 4, "@ImageSize": 4108},
                 ]
             },
-            "GTIN": "urn:comicvine:issue:145269",
         }
     }
 )

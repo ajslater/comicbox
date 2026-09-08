@@ -1,12 +1,10 @@
 """Custom Marshmallow fields."""
 
 import re
-from abc import ABCMeta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
 
-from loguru import logger
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
 from typing_extensions import override
@@ -16,45 +14,7 @@ _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
 _HALF_RE = re.compile(r"(½|1/2)")
 
 
-class TrapExceptionsMeta(ABCMeta):
-    """Wrap the deserialize method to never throw."""
-
-    _WRAP_METHODS = ("deserialize",)
-
-    @classmethod
-    def wrap_method(cls, method):
-        """Wrap method to never throw."""
-
-        def wrapper(self, value, attr, *args, **kwargs):
-            """Trap exceptions, log and return None."""
-            try:
-                return method(self, value, attr, *args, **kwargs)
-            except Exception as exc:
-                # Log the exception
-                cls_name = self.__class__.__name__
-                logger.warning(
-                    f"Could not deserialize {attr}:{value} as {cls_name} - {exc}"
-                )
-                return None
-
-        return wrapper
-
-    def __new__(
-        cls, name: str, bases: tuple, attrs: dict[str, Any]
-    ) -> "TrapExceptionsMeta":
-        """Wrap the deserialize method."""
-        new_attrs = {}
-        for attr_name, attr_value in attrs.items():
-            if attr_name in cls._WRAP_METHODS and callable(attr_value):
-                # Override the deserialize method with exception handling and logging
-                new_attr_value = cls.wrap_method(attr_value)
-            else:
-                new_attr_value = attr_value
-            new_attrs[attr_name] = new_attr_value
-        return super().__new__(cls, name, bases, new_attrs)
-
-
-class StringField(fields.String, metaclass=TrapExceptionsMeta):
+class StringField(fields.String):
     """Durable Stripping String Field."""
 
     def __init__(self, *args: Any, clean_tabs: bool = False, **kwargs: Any) -> None:

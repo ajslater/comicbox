@@ -4,9 +4,12 @@ Public write API: single-file ``write_metadata`` and batch ``bulk_write``.
 Wraps the existing ``Comicbox(...).dump()`` plumbing with a documented,
 Codex-facing surface:
 
-- ``mode``: ``"additive"`` / ``"update"`` / ``"replace"`` — picks the
-  merge strategy applied to the patch dict against the comic's
-  existing metadata. See :class:`comicbox.config.settings.WriteMode`.
+- ``merge_mode``: ``"additive"`` / ``"update"`` / ``"replace"`` — picks
+  the merge strategy applied to the patch dict against the comic's
+  existing metadata. ``None`` (the default) defers to the config's
+  ``write.merge_mode``, itself ``additive`` unless a config file or
+  ``--merge-mode`` says otherwise. See
+  :class:`comicbox.config.settings.MergeMode`.
 - ``formats``: which on-archive formats to write back (ComicInfo.xml,
   comicbox.yaml, …). Names match the ``MetadataFormats`` enum value.
 - ``delete_keys``: glom key paths removed from the final metadata
@@ -33,7 +36,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.config.settings import WriteMode
+from comicbox.config.settings import MergeMode
 from comicbox.events import (
     BatchFinished,
     BatchStarted,
@@ -94,7 +97,8 @@ class BulkWriteItem:
 
     path: Path
     patch: Mapping[str, Any]
-    mode: Mode = "additive"
+    # None defers to the base config's write.merge_mode (default: additive).
+    merge_mode: Mode | None = None
     formats: frozenset[FormatName] | None = None
     delete_keys: frozenset[str] | None = None
 
@@ -103,7 +107,7 @@ def write_metadata(
     path: Path,
     patch: Mapping[str, Any],
     *,
-    mode: Mode = "additive",
+    merge_mode: Mode | None = None,
     formats: Iterable[FormatName] | None = None,
     delete_keys: Iterable[str] | None = None,
     dry_run: bool = False,
@@ -116,6 +120,14 @@ def write_metadata(
     ``"comicbox"`` root tag, or the root-wrapped form ``Comicbox.to_dict``
     returns (``{"comicbox": {...}}``); the wrapper is detected and
     unwrapped so the natural round-trip works.
+
+    ``merge_mode`` selects how the patch overlays the comic's existing
+    tags: ``"additive"`` (dicts recurse, lists concatenate),
+    ``"replace"`` (dicts recurse, lists overwrite) or ``"update"``
+    (top level keys replaced wholesale, siblings of a patched key
+    dropped). ``None`` defers to the config's ``write.merge_mode``; an
+    explicit value always wins. See
+    :class:`comicbox.config.settings.MergeMode`.
 
     ``delete_keys`` are glom key paths (relative to the root tag, e.g.
     ``"summary"`` or ``"series.name"``) removed from the final merged
@@ -137,7 +149,7 @@ def write_metadata(
             " unless delete_keys is non-empty"
         )
         raise WriteValidationError(msg)
-    mode_enum = _validate_mode(mode)
+    mode_enum = _validate_merge_mode(merge_mode) if merge_mode is not None else None
     fmt_set = _resolve_formats(formats)
     settings = _build_write_settings(
         mode_enum, fmt_set, delete_keys=delete_key_set, base_config=base_config
@@ -413,18 +425,19 @@ def _write_one(
         return write_metadata(
             item.path,
             item.patch,
-            mode=item.mode,
+            merge_mode=item.merge_mode,
             formats=item.formats,
             delete_keys=item.delete_keys,
             base_config=base_config,
         )
 
 
-def _validate_mode(mode: Mode) -> WriteMode:
+def _validate_merge_mode(merge_mode: Mode) -> MergeMode:
     try:
-        return WriteMode(mode)
+        return MergeMode(merge_mode)
     except ValueError as exc:
-        msg = f"Unknown mode {mode!r}; expected one of {[m.value for m in WriteMode]}"
+        valid = [mode.value for mode in MergeMode]
+        msg = f"Unknown merge mode {merge_mode!r}; expected one of {valid}"
         raise WriteValidationError(msg) from exc
 
 
@@ -458,18 +471,27 @@ def _normalize_delete_keys(delete_keys: Iterable[str] | None) -> frozenset[str]:
 
 
 def _build_write_settings(
-    mode: WriteMode,
+    merge_mode: MergeMode | None,
     formats: frozenset[MetadataFormats],
     *,
     delete_keys: frozenset[str],
     base_config: ComicboxSettings | None,
 ) -> ComicboxSettings:
-    """Layer write.mode / write.formats / general.delete_keys over a base config."""
+    """Layer write.merge_mode / write.formats / general.delete_keys over a base."""
     base = base_config or get_config()
     # replace() carries every other WriteSettings field forward; the old
     # field-by-field copy silently reset any newly added field to its
     # default for every caller passing base_config.
-    new_write = replace(base.write, formats=formats, mode=mode)
+    #
+    # An unset merge_mode must leave the base config's value alone.
+    # Passing a resolved default here instead would overwrite whatever a
+    # config file or --merge-mode had established, making those surfaces
+    # dead for every API caller.
+    new_write = (
+        replace(base.write, formats=formats)
+        if merge_mode is None
+        else replace(base.write, formats=formats, merge_mode=merge_mode)
+    )
     if not delete_keys:
         return replace(base, write=new_write)
     new_general = replace(

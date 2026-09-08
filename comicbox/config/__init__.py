@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -11,7 +12,6 @@ from confuse.templates import (
     Choice,
     Integer,
     MappingTemplate,
-    Number,
     OneOf,
     Optional,
     Sequence,
@@ -22,9 +22,14 @@ from loguru import logger
 from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.online import (
+    ONLINE_TEMPLATE,
     build_online_settings,
     cns_for_overrides,
     runtime_online_inputs,
+)
+from comicbox.config.online.template import (
+    NON_MAPPING_CONTAINER,
+    NON_MAPPING_TYPES,
 )
 from comicbox.config.paths import (
     expand_glob_paths,
@@ -36,9 +41,11 @@ from comicbox.config.settings import (
     ComputeSettings,
     ConvertSettings,
     GeneralSettings,
+    MergeMode,
     PrintSettings,
     ReadSettings,
     WriteSettings,
+    parse_enum,
 )
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME
@@ -46,78 +53,15 @@ from comicbox.version import PACKAGE_NAME
 if TYPE_CHECKING:
     from argparse import Namespace
 
-# Any non-Mapping container type — set/frozenset/tuple/list all pass.
-_NON_MAPPING_TYPES = (set, frozenset, tuple, list)
-_NON_MAPPING_CONTAINER = OneOf(_NON_MAPPING_TYPES)
+# Every env var the config layer reads is COMICBOX-prefixed: the
+# EnvSource mounted on the config tree (``COMICBOX_*``) and confuse's
+# user-config-dir lookup (``COMICBOXDIR``).
+_ENV_PREFIX = PACKAGE_NAME.upper()
 
-
-_RATE_LIMIT_TEMPLATE = MappingTemplate(
-    {
-        "per_minute": Optional(Integer()),
-        "per_day": Optional(Integer()),
-        "per_second": Optional(Integer()),
-        "per_hour": Optional(Integer()),
-    }
-)
-
-
-_PER_SOURCE_TUNING_TEMPLATE = MappingTemplate(
-    {
-        "auto_threshold": Optional(Number()),
-        "effort": Optional(String()),
-        "min_confidence": Optional(Number()),
-        "disambiguation_margin": Optional(Number()),
-        "solo_threshold": Optional(Number()),
-        "rate_limit": Optional(_RATE_LIMIT_TEMPLATE),
-    }
-)
-
-
-_AUTH_SOURCE_TEMPLATE = MappingTemplate(
-    {
-        "user": Optional(str),
-        "pass": Optional(str),
-        "key": Optional(str),
-        "url": Optional(str),
-    }
-)
-
-
-_ONLINE_TEMPLATE = MappingTemplate(
-    {
-        "lookup": MappingTemplate(
-            {
-                "match": String(),
-                "prompts": String(),
-                "rematch": bool,
-                "sources": Optional(_NON_MAPPING_CONTAINER),
-                "first_wins": bool,
-            }
-        ),
-        "auth": MappingTemplate(
-            {
-                "metron": _AUTH_SOURCE_TEMPLATE,
-                "comicvine": _AUTH_SOURCE_TEMPLATE,
-            }
-        ),
-        "cache": MappingTemplate(
-            {
-                "mode": String(),
-                "dir": Optional(OneOf((str, Path))),
-                "ttl": String(),
-            }
-        ),
-        "tuning": MappingTemplate(
-            {
-                "auto_threshold": Number(),
-                "effort": String(),
-                "retry_budget": Integer(),
-                "per_source": Optional(dict),
-            }
-        ),
-    }
-)
-
+# Container and online templates live in the online package; the
+# container types are shared with the groups below.
+_NON_MAPPING_TYPES = NON_MAPPING_TYPES
+_NON_MAPPING_CONTAINER = NON_MAPPING_CONTAINER
 
 _TEMPLATE = MappingTemplate(
     {
@@ -150,7 +94,10 @@ _TEMPLATE = MappingTemplate(
                 "write": MappingTemplate(
                     {
                         "formats": Optional(_NON_MAPPING_CONTAINER),
-                        "replace": bool,
+                        # Validated in _build_write_settings rather than
+                        # by a Choice template, so a bad value fails with
+                        # an error that names the key and the valid modes.
+                        "merge_mode": String(),
                         "stamp": bool,
                         "stamp_notes": bool,
                         "delete_all_tags": bool,
@@ -180,7 +127,7 @@ _TEMPLATE = MappingTemplate(
                         "page_count": bool,
                     }
                 ),
-                "online": _ONLINE_TEMPLATE,
+                "online": ONLINE_TEMPLATE,
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 "computed": Optional(
                     MappingTemplate(
@@ -254,7 +201,9 @@ def _build_read_settings(read_block: Any) -> ReadSettings:
 def _build_write_settings(write_block: Any) -> WriteSettings:
     return WriteSettings(
         formats=frozenset(write_block.formats or ()),
-        replace=bool(write_block.replace),
+        merge_mode=parse_enum(
+            MergeMode, "write.merge_mode", str(write_block.merge_mode), noun="value"
+        ),
         stamp=bool(write_block.stamp),
         stamp_notes=bool(write_block.stamp_notes),
         delete_all_tags=bool(write_block.delete_all_tags),
@@ -313,6 +262,58 @@ def _build_settings(
     )
 
 
+def _read_settings(args: Namespace | Mapping | None, modname: str) -> ComicboxSettings:
+    """Layer every config source and reduce the result to settings."""
+    config = Configuration(PACKAGE_NAME, modname=modname, read=False)
+    read_config_sources(config, args)
+
+    config_program = config[PACKAGE_NAME]
+    compute_config(config_program)
+
+    ad = config.get(_TEMPLATE)
+    return _build_settings(ad, args=args)
+
+
+# (environment snapshot, settings built from it). See _get_default_settings.
+_DefaultSettingsMemo = tuple[tuple[tuple[str, str], ...], ComicboxSettings]
+_default_settings_memo: _DefaultSettingsMemo | None = None
+
+
+def _environ_key() -> tuple[tuple[str, str], ...]:
+    """Snapshot the env vars a no-args config build depends on."""
+    return tuple(
+        sorted(item for item in os.environ.items() if item[0].startswith(_ENV_PREFIX))
+    )
+
+
+def _get_default_settings() -> ComicboxSettings:
+    """
+    Build the unparameterized settings once per environment.
+
+    Every ``Comicbox(path)`` constructed without an explicit config lands
+    here, and each one re-parsed ``config_default.yaml`` and the user's
+    ``config.yaml``, re-scanned the environment, and re-ran confuse's
+    template validation — several milliseconds apiece, per comic.
+    ``OnlineSession`` hoisted this same call to once per session for
+    exactly that reason; memoizing it here gives every library caller the
+    same win without each one having to know to hoist.
+
+    Keyed on the environment, so a host that exports ``COMICBOX_*`` (or
+    repoints ``COMICBOXDIR`` at a different user config) still gets a
+    fresh build. Like ``OnlineSession``, an edit to a config file at an
+    unchanged path is not re-read mid-process.
+    """
+    global _default_settings_memo  # noqa: PLW0603
+
+    key = _environ_key()
+    memo = _default_settings_memo
+    if memo is not None and memo[0] == key:
+        return memo[1]
+    settings = _read_settings(None, PACKAGE_NAME)
+    _default_settings_memo = (key, settings)
+    return settings
+
+
 def get_config(
     args: Namespace | Mapping | ComicboxSettings | None = None,
     *,
@@ -323,15 +324,10 @@ def get_config(
     """Get the config dict, layering env and args over defaults."""
     if isinstance(args, ComicboxSettings):
         return post_process_set_for_path(args, path, box=box)
-    if isinstance(args, Mapping):
-        args = dict(args)
-
-    config = Configuration(PACKAGE_NAME, modname=modname, read=False)
-    read_config_sources(config, args)
-
-    config_program = config[PACKAGE_NAME]
-    compute_config(config_program)
-
-    ad = config.get(_TEMPLATE)
-    settings = _build_settings(ad, args=args)
+    if args is None and modname == PACKAGE_NAME:
+        settings = _get_default_settings()
+    else:
+        if isinstance(args, Mapping):
+            args = dict(args)
+        settings = _read_settings(args, modname)
     return post_process_set_for_path(settings, path, box=box)

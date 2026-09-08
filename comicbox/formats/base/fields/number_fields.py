@@ -11,7 +11,6 @@ from typing_extensions import override
 from comicbox.empty import is_empty
 from comicbox.formats.base.fields.fields import (
     StringField,
-    TrapExceptionsMeta,
     half_replace,
 )
 
@@ -19,10 +18,12 @@ NumberType = int | float | Decimal
 PAGE_COUNT_KEY = "page_count"
 
 
-class RangedNumberMixin(metaclass=TrapExceptionsMeta):
+class RangedNumberMixin:
     """Number range methods."""
 
     ZERO_FILL: int = 0
+    _min: NumberType | None = None
+    _max: NumberType | None = None
 
     def _set_range(
         self, minimum: NumberType | None, maximum: NumberType | None
@@ -144,5 +145,5 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         return self._serialize_post(result)
 
 
-class BooleanField(fields.Boolean, metaclass=TrapExceptionsMeta):
+class BooleanField(fields.Boolean):
     """A liberally parsed boolean field."""

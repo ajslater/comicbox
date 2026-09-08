@@ -73,7 +73,7 @@ class _OutcomeStats:
             self._bucket_for(source_name).prompt_declined += 1
 
     def record_skip(self, source_name: str) -> None:
-        """Record a SKIP (matcher declined under `--unattended`)."""
+        """Record a SKIP (matcher declined under `--prompts never`)."""
         with self._lock:
             self._counts.skip += 1
             self._bucket_for(source_name).skip += 1

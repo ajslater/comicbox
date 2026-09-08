@@ -1,13 +1,88 @@
 # 📰 News
 
-## v4.8.7
+## v5.0.0
+
+- Breaking Changes
+    - Comicbox schema v3.0. Version 2.0 documents no longer load.
+    - Credit roles and age ratings use MetronInfo's names and scale, so finer
+      ComicInfo ratings like `Everyone 10+` become `Everyone`. The primary
+      credit flag is now per role, not per person.
+    - `manga` no longer carries reading direction. See the new
+      `reading_direction` and `manga_volume` fields.
+    - Web links moved out of `identifiers` into a new `urls` list, and
+      `identifier_primary_source` became `primary_id_source`.
+    - ComicInfo's `GTIN` holds a barcode again instead of a comicbox urn, which
+      is what Kavita, Komga and Mylar expect. Files written the old way read.
+    - A stated `title` is kept as written and stories are only read out of it
+      when the comic lists none. A series' other names live in
+      `series.alternative_names`.
+    - Removed `critical_rating` and `alternate_images`, which mapped to no
+      format.
+    - Removed `--replace`; use `--merge-mode update`. The write API takes
+      `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
+    - `OnlineSession` takes `match` and `prompts` instead of `mode` and
+      `unattended`, matching `--match` and `--prompts`. `set_mode` and
+      `set_unattended` are `set_match` and `set_prompts`, the prompt objects
+      carry `match` and `prompts`, and the `set_unattended` selector action is
+      `set_prompts`, which names the policy it sets and so can turn prompts back
+      on.
+    - Environment variables nest with `__`, and every config key can be set that
+      way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
+    - `estimate_run()` and `requests_per_comic()` take an `effort` instead of a
+      match mode, which never changed what a search costs.
 
 - Features
-    - New `SourceStarted` online event, emitted once per source that actually
-      runs, immediately before that source is consulted and after the first-wins
-      skip. `SearchStarted` only covers the cold-search path, so a caller
-      rendering "which source is being consulted right now" went blind on the
-      explicit-id, stored-id and series-cache fast paths.
+    - New `--merge-mode` chooses how supplied metadata merges into a comic's
+      existing tags: `additive` (the default), `replace` or `update`.
+    - Web urls in the Notes field are read into `urls`.
+    - Online API: new `SourceStarted` event, `Effort` is exported alongside
+      `MatchMode`, and `rate_limit_status()` now covers Comic Vine as well as
+      Metron.
+    - `OnlineSession` accepts a `config`, the settings it layers its tagging
+      preferences over. An embedder that already holds configured settings —
+      naming its own cache directory or effort — hands them over instead of
+      exporting environment variables for the settings loader to find.
+
+- Fixes
+    - Two silent data losses: an XML tag carrying an attribute, like
+      `<Series lang="en">`, took the file's whole metadata down with it, and
+      MetronInfo tag-level ids were discarded in files that name no primary id
+      source.
+    - Writing metadata no longer rewrites a comic's pages, so tagging is faster
+      and an interrupted write can't damage a page. One archive named twice in a
+      batch is no longer repacked by two threads at once and destroyed.
+    - Online tagging reports a match only when metadata was really applied, and
+      a lone mediocre match no longer auto-writes without a prompt. Prompts hold
+      up under batch and parallel runs.
+    - `--effort balanced` is honored; a large unattended run no longer quietly
+      downgrades it to `minimal` for Comic Vine.
+    - `-c/--config` loads the file it names instead of being ignored, and an
+      unknown `--online` source is an error rather than a silent widening: a
+      typo like `--online metrn` queried every configured database.
+    - Reading metadata no longer depends on write settings, so
+      `--online --write … --rename` no longer names the file from stale data.
+    - A comic that can't be read no longer ends the batch, and `comicbox` exits
+      non-zero whenever any file failed.
+    - MetronInfo alternative name ids link to their series, and reprint ids to
+      the issue they reprint, instead of to pages that don't exist.
+    - The no-TTY hint names `--prompts never` instead of `--unattended`, which
+      never existed.
+    - Many smaller repairs to credit roles, tag coverage, identifiers, urls and
+      odd data that used to cost a whole comic. Metadata comicbox skips is now
+      named in a warning instead of dropped silently.
+
+- Performance
+    - A 200 page, 117 MiB CB7 converts in 6.2s instead of 232s, with 318 MiB
+      peak RSS instead of 1.9 GiB.
+    - Online tagging batches by series, downloads covers in parallel and bounds
+      Comic Vine calls per comic (`--effort thorough` restores the unbounded
+      search). Rate-limit waits are interruptible again.
+    - Comicbox starts about a third faster and building a `Comicbox` is about
+      forty times cheaper. Books with many reprints read up to fifty times
+      faster.
+
+- Dev
+    - Require simyan >= 4.0.0.
 
 ## v4.8.6
 

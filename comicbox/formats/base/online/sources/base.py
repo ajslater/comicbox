@@ -22,9 +22,10 @@ if TYPE_CHECKING:
     import datetime
     from collections.abc import Callable, Sequence
 
-    from comicbox.config.settings import OnlineSettings, OnlineSourceCredentials
+    from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
+    from comicbox.formats.base.online.retry import RetryCategory
     from comicbox.formats.sources import MetadataSources
 
 # Cache paths already wiped this process under CacheMode.REFRESH.
@@ -41,7 +42,7 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
     an unguarded unlink wiped the response cache between calls — e.g.
     between search() and get() of the same file — defeating the
     +1-API-call-per-unique-volume amortization get() relies on and
-    re-spending API budget on every file of a --refresh-cache batch.
+    re-spending API budget on every file of a `--cache refresh` batch.
     """
     with _refresh_lock:
         if str(cache_path) in _refreshed_cache_paths:
@@ -50,6 +51,25 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
     if cache_path.exists():
         cache_path.unlink()
         logger.debug(f"refresh-cache: removed {cache_path}")
+
+
+def resolve_cache_db_path(
+    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
+) -> Path:
+    """
+    Resolve a source's cache sqlite path.
+
+    Honours an explicit ``online.cache_dir``; otherwise uses the
+    platformdirs user cache path for comicbox. ``create=False`` skips
+    making the parent directory, for read-only callers (a budget
+    readout) that must not have side effects.
+    """
+    if cache_dir is None:
+        cache_dir = user_cache_path("comicbox") / "online"
+    cache_dir = Path(cache_dir).expanduser()
+    if create:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"{name}_{suffix}.sqlite"
 
 
 class OnlineSource(ABC):
@@ -122,6 +142,22 @@ class OnlineSource(ABC):
         decides AUTO_WRITE / PROMPT / SKIP / NO_MATCH.
         """
 
+    @staticmethod
+    def classify_retry_exception(exc: BaseException) -> RetryCategory | None:  # noqa: ARG004
+        """
+        Classify one exception from this source's client library.
+
+        Consulted by the with_retry decorator (retry._classify) off the
+        bound instance — the same seam as retry_sleep/on_rate_limit. Each
+        subclass owns its client library's taxonomy: isinstance against
+        the real exception classes, imported inside the method to honor
+        the package-wide lazy-import convention. Return None for
+        exceptions this library did not raise; retry.py then falls back
+        to its conservative default (programmer/config errors raise, the
+        rest retry on the generic schedule).
+        """
+        return None
+
     def lookup_issue(
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:
@@ -176,7 +212,7 @@ class OnlineSource(ABC):
         REFRESH unlinks the cache once per process (discard at run
         start). The source wraps the result in its vendor cache class.
         """
-        from comicbox.config.settings import CacheMode
+        from comicbox.config.online.settings import CacheMode
 
         cache_mode = self._settings.cache.mode
         if cache_mode is CacheMode.OFF:
@@ -188,7 +224,7 @@ class OnlineSource(ABC):
 
     def _effort_max_results(self, default: int) -> int:
         """Resolve the per-effort discovery breadth cap for this source."""
-        from comicbox.config.settings import resolve_effort
+        from comicbox.config.online.settings import resolve_effort
 
         return max_results_for(
             resolve_effort(self._settings, self.name), default=default
@@ -196,7 +232,7 @@ class OnlineSource(ABC):
 
     def _effort_name_threshold(self) -> float:
         """Resolve the per-effort pre-call name-filter threshold."""
-        from comicbox.config.settings import resolve_effort
+        from comicbox.config.online.settings import resolve_effort
 
         return threshold_for(resolve_effort(self._settings, self.name))
 
@@ -219,14 +255,8 @@ class OnlineSource(ABC):
 
     def cache_db_path(self, suffix: str = "cache") -> Path:
         """
-        Resolve the cache sqlite path for this source.
+        Resolve the cache sqlite path for this source, creating its parent.
 
-        Honours `online.cache_dir` when set; otherwise uses the platformdirs
-        user cache path for comicbox. Creates the parent directory.
+        See `resolve_cache_db_path`, which read-only callers share.
         """
-        cache_dir = self._settings.cache.dir
-        if cache_dir is None:
-            cache_dir = user_cache_path("comicbox") / "online"
-        cache_dir = Path(cache_dir).expanduser()
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / f"{self.name}_{suffix}.sqlite"
+        return resolve_cache_db_path(self._settings.cache.dir, self.name, suffix)

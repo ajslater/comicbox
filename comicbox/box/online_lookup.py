@@ -2,29 +2,30 @@
 Online metadata lookup mixin.
 
 Sits between `ComicboxNormalize` and `ComicboxMerge` in the box chain.
-For M2 the only path implemented is ``--id <db>:<id>`` — exact-issue
-fetch. Search and ranking land in M3.
 
 The mixin runs once per box instance, gated on
 ``settings.online.lookup.enabled``. For each active source (one whose
 required credentials resolve and whose name is in
-``selected_sources`` if that filter is set), it:
+``selected_sources`` if that filter is set), it takes the first path
+that applies:
 
-1. Checks ``--ignore-existing`` against any source data already
-   carrying an identifier from this source's name (we don't re-tag if
-   the user has already done so, even from a different source).
-2. Calls ``source.get(issue_id)`` for every ``explicit_id`` mapped to
-   that source.
-3. Wraps the response under the schema's root tag and pushes it via
-   ``add_source(source.metadata_source, ...)`` so the existing load
-   → normalize → merge pipeline picks it up.
+1. ``--id <db>:<id>`` — fetch that exact issue, skipping every search.
+2. A stored upstream id from a prior tag — refresh via
+   ``source.get(id)``. ``--rematch`` suppresses this.
+3. The session's series cache — ask the source for "issue N in volume
+   V" without searching. ``--rematch`` suppresses this too.
+4. A full search, ranked and resolved under ``--match``.
+
+Whichever path answers, the response is wrapped under the schema's root
+tag and pushed via ``add_source(source.metadata_source, ...)`` so the
+existing load → normalize → merge pipeline picks it up.
 """
 
 from __future__ import annotations
 
 import sys
 import threading
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -33,7 +34,7 @@ from loguru import logger
 from typing_extensions import override
 
 from comicbox.box.normalize import ComicboxNormalize
-from comicbox.config.settings import MatchMode, Prompts
+from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.events import (
     AutoWritten,
     FileFinished,
@@ -69,17 +70,22 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.prompt import cli_selector
 from comicbox.formats.base.online.selector import SelectorContext
+from comicbox.formats.base.online.series_cache import claim_series
+from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableMapping
+    from collections.abc import Callable, MutableMapping, Sequence
     from pathlib import Path
 
-    from comicbox.config.settings import OnlineSettings
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
-    from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
+    from comicbox.formats.base.online.cover_hash import (
+        CoverFetchPool,
+        CoverHashUrlCache,
+    )
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
@@ -107,8 +113,9 @@ def _online_source_enums() -> frozenset[MetadataSources]:
     """
     Derive the set of online MetadataSources from per-format REGISTRATIONs.
 
-    Used to skip self when checking for existing identifiers under
-    `--ignore-existing`.
+    Used to skip online sources when scanning normalized metadata for a
+    stored identifier or for profile fields, so a previous online tag
+    can't feed itself back into this run's search.
     """
     online_source_names = {
         source_name
@@ -120,6 +127,39 @@ def _online_source_enums() -> frozenset[MetadataSources]:
 
 
 _ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = _online_source_enums()
+
+# Hard cap on selector round-trips for a single prompt. Only the two
+# session-level actions (`set_prompts` / `set_policy`) re-prompt, and a
+# user needs at most one of each before landing on a terminal answer, so
+# anything past this is a selector that never terminates -- a buggy or
+# hostile programmatic callback, not a person. Not a match-quality
+# threshold: nothing under tasks/ calibrates it.
+_MAX_PROMPT_ROUNDS = 8
+
+
+@dataclass(frozen=True, slots=True)
+class _SourceOutcome:
+    """
+    What one source's lookup attempt did, as two independent facts.
+
+    ``applied`` -- online metadata actually landed in the source pool.
+    This is the only signal allowed to report success: it feeds
+    ``run_online_lookup()``'s return value, ``FileFinished.outcome`` and
+    ``OnlineSession``'s ``OnlineResult.matched``.
+
+    ``claimed`` -- the source consumed a pinned identity for this comic
+    (a ``--id`` pin, or an id a previous tagging run stored on the file).
+    A claim suppresses the fuzzy fallback on *other* sources under
+    first-wins whether or not the fetch landed: when the user or the file
+    names an exact issue, a transient API failure must not silently hand
+    the comic to a sibling source's guess.
+
+    The two were one boolean until this split, so a failed pinned fetch
+    reported ``written`` with nothing written.
+    """
+
+    applied: bool = False
+    claimed: bool = False
 
 
 class _NoTtyHintGuard:
@@ -152,7 +192,7 @@ class _NoTtyHintGuard:
             self._shown = True
         logger.info(
             "online: no TTY detected and no prompt callback registered; "
-            "pass --unattended if you don't expect to see prompts "
+            "pass --prompts never if you don't expect to see prompts "
             "(interactive mode without a TTY will hang on the first "
             "PROMPT decision)."
         )
@@ -169,11 +209,34 @@ def _series_fingerprint(profile: ComicProfile) -> str:
     step-6 prompt-cache fingerprint which incorporates candidate
     volume_ids. Same series across different issues collapses to the
     same string here.
+
+    Every component must be a property of the SERIES, never of the
+    issue. `profile.year` is the issue's own cover year, so including it
+    (as this did until 2026-08) gave every issue of a run that spans
+    more than one calendar year its own key — the cache missed on
+    exactly the multi-issue batches it exists to accelerate, and the
+    unit fixture that should have caught it held the year constant.
+
+    The two discriminators that replace it are genuinely series-level:
+
+    - `volume` — the ordinal from "Vol. 2", already year-sanitized by
+      `_resolve_volume` (a 4-digit value is rejected as a mis-filed
+      year), so it separates reboots when the file carries one.
+    - `series_start_year` — the year the run began. Sparse (Metron
+      writes it; most embedded formats don't), so it discriminates when
+      present and costs nothing when absent.
+
+    Residual collision: two same-name, same-publisher runs where neither
+    file carries a volume ordinal or a start year now share a key. That
+    resolves itself rather than mis-tagging — `_try_series_cache_lookup`
+    falls back to the full search when the cached volume has no such
+    issue, leaving the entry intact.
     """
     series = (profile.series or "").strip().lower()
     publisher = (profile.publisher or "").strip().lower()
-    year = str(profile.year or "")
-    return f"{series}|{year}|{publisher}"
+    volume = str(profile.volume or "")
+    start_year = str(profile.series_start_year or "")
+    return f"{series}|{volume}|{start_year}|{publisher}"
 
 
 def _detect_cv_id_disagreement(
@@ -214,11 +277,20 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     # Process-wide lock around the selector callback. Under `-j N` parallel
     # batch runs we serialise prompts so output stays readable and the user
-    # can see which file is being asked about.
+    # can see which file is being asked about. It guards only the callback
+    # itself; the mutable lookup policy has its own lock (OnlineSessionState).
     _PROMPT_LOCK: ClassVar[threading.Lock] = threading.Lock()
 
     # Per-instance selector override; falls back to the default CLI prompt.
     _online_selector: SelectorCallback | None = None
+
+    # Session-supplied owner of the two mutable lookup settings (match and
+    # prompts). A Runner or OnlineSession shares one across every box it
+    # spawns so a `set_policy` / `set_prompts` answered on one file is
+    # in force for the next. Unset for a standalone Comicbox: the lazy
+    # fallback below then makes a private one seeded from this box's
+    # config, keeping single-file use self-contained.
+    _online_session_state: OnlineSessionState | None = None
 
     # Per-instance event handler; emits SearchStarted / AutoWritten / etc.
     # for callers driving online lookup programmatically (OnlineSession).
@@ -242,6 +314,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # run_online_lookup() calls report this first-run outcome.
     _online_lookup_won: bool = False
     _cover_hash_url_cache: CoverHashUrlCache | None = None
+    _cover_fetch_pool: CoverFetchPool | None = None
     _local_cover_phash_computed: bool = False
     _local_cover_phash_value: str | None = None
     # Built once per lookup run (5 call sites); invalidated whenever the
@@ -266,6 +339,30 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     ) -> None:
         """Register a session-level series cache for series-first batching."""
         self._series_cache = cache
+
+    def set_online_session_state(self, state: OnlineSessionState | None) -> None:
+        """
+        Register the session-level owner of match mode and prompt policy.
+
+        Share one across every box of a batch so a `set_policy` /
+        `set_prompts` answered at a prompt outlives the file it was
+        answered on. A sibling worker already resolving a file finishes it
+        under the policy it started with and picks the change up on its
+        next file.
+        """
+        self._online_session_state = state
+
+    def _get_online_session_state(self) -> OnlineSessionState:
+        """Get the session state, defaulting to a box-private one."""
+        if self._online_session_state is None:
+            self._online_session_state = OnlineSessionState.from_lookup(
+                self._config.online.lookup
+            )
+        return self._online_session_state
+
+    def _session_online(self) -> OnlineSettings:
+        """Read the live lookup policy onto this box's online settings."""
+        return self._get_online_session_state().overlay(self._config.online)
 
     def set_retry_sleep(self, sleep: Callable[[float], None] | None) -> None:
         """
@@ -293,14 +390,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     def _mark_online_lookup_done(self) -> None:
         self._online_lookup_done_flag = True
 
-    def _warn_unconfigured_source(self, name: str) -> None:
+    def _warn_unconfigured_source(self, name: str, online: OnlineSettings) -> None:
         """
         Loud warning when a user-requested source can't run for credential reasons.
 
         Quiet skip when the source was only included via the `all` sentinel
         — in that case we don't know the user wanted this specific source.
         """
-        online = self._config.online
         explicit_id = online.lookup.ids.get(name)
         if explicit_id is not None:
             logger.warning(
@@ -323,7 +419,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"configured (missing credentials); skipping"
             )
 
-    def _build_active_online_sources(self) -> list[OnlineSource]:
+    def _build_active_online_sources(
+        self, online: OnlineSettings
+    ) -> list[OnlineSource]:
         """
         Resolve which configured online sources participate in this run.
 
@@ -333,7 +431,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Metron the fallback. An empty/None selection runs every
         configured source in the factory map's default order.
         """
-        online: OnlineSettings = self._config.online
         selected = online.lookup.sources
         names = selected or tuple(self._ONLINE_SOURCE_FACTORIES)
         active: list[OnlineSource] = []
@@ -346,30 +443,16 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 continue
             creds = online.auth.sources.get(name)
             if creds is None:
-                self._warn_unconfigured_source(name)
+                self._warn_unconfigured_source(name, online)
                 continue
             source = factory(creds, online)
             if not source.is_configured():
-                self._warn_unconfigured_source(name)
+                self._warn_unconfigured_source(name, online)
                 continue
             source.on_rate_limit = self._on_source_rate_limit
             source.retry_sleep = self._retry_sleep
             active.append(source)
         return active
-
-    def _has_existing_identifier(self, source_name: str) -> bool:
-        """Return True if any non-online source's data already has this source's id."""
-        keypath = f"comicbox.identifiers.{source_name}"
-        for src in MetadataSources:
-            if src in _ONLINE_SOURCE_ENUMS:
-                continue
-            normalized = self.get_normalized_metadata(src)
-            if not normalized:
-                continue
-            for loaded in normalized:
-                if glom(dict(loaded.metadata), keypath, default=None):
-                    return True
-        return False
 
     def _stored_identifier(self, source_name: str) -> int | None:
         """
@@ -453,20 +536,50 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             publisher=fields.get("publisher"),
             page_count=fields.get("page_count"),
             volume=fields.get("volume"),
+            series_start_year=fields.get("series_start_year"),
         )
         self._profile_cache = profile
         return profile
 
-    def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> bool:
+    def _accept(
+        self,
+        source: OnlineSource,
+        issue_id: int,
+        record: Callable[[str], None],
+        *,
+        emit_auto_written: bool,
+        candidate: Candidate | None = None,
+    ) -> bool:
         """
-        Fetch the full record for an accepted candidate and inject it.
+        Turn an issue id into applied metadata; the one accept chokepoint.
 
-        Returns True when the fetch succeeded and metadata was added —
-        acceptance alone isn't a "win" if the follow-up fetch fails.
+        Every accepting path funnels through here so "we counted a win"
+        and "metadata was added" cannot drift apart: the outcome counter,
+        the ``AutoWritten`` event and the series-cache population all run
+        *after* the fetch and only when it succeeded. Ordering used to be
+        per-caller, and three of them recorded the win first, so a failed
+        follow-up fetch still incremented the summary and emitted the
+        event. `_fetch_explicit_id` logs its own failure, so a False
+        return is silent here.
         """
-        added = self._fetch_explicit_id(source, candidate.issue_id)
-        self._maybe_populate_series_cache(source, candidate)
-        return added
+        if not self._fetch_explicit_id(source, issue_id):
+            return False
+        record(source.name)
+        if candidate is not None:
+            self._maybe_populate_series_cache(source, candidate)
+        if emit_auto_written:
+            self._emit_auto_written(source, issue_id)
+        return True
+
+    def _accept_candidate(self, source: OnlineSource, candidate: Candidate) -> bool:
+        """Accept a ranked candidate as an auto-write. True when applied."""
+        return self._accept(
+            source,
+            candidate.issue_id,
+            outcome_stats.record_auto_write,
+            emit_auto_written=True,
+            candidate=candidate,
+        )
 
     def _maybe_populate_series_cache(
         self, source: OnlineSource, candidate: Candidate
@@ -477,17 +590,21 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         First-writer-wins: a falsy-group collision (two unrelated comics
         that happened to share a series fingerprint) can't overwrite an
         already-resolved entry. Fires ``SeriesIdentified`` only on first
-        population for this fingerprint. Locking — when needed for
-        concurrent callers — is the OnlineSession's responsibility; the
-        cache passed in here can be a thread-safe wrapper.
+        population for this fingerprint.
+
+        ``claim_series`` makes "was I the first writer?" a single
+        operation, so concurrent callers (the CLI's `-j N` pool, which
+        shares one cache across workers) get exactly one winner and
+        therefore exactly one event. A plain dict from a single-threaded
+        caller still works — it degrades to the check-then-set this used
+        to do inline.
         """
         if self._series_cache is None or candidate.volume_id is None:
             return
         fingerprint = _series_fingerprint(self._build_profile())
         key = (source.name, fingerprint)
-        if key in self._series_cache:
+        if not claim_series(self._series_cache, key, candidate.volume_id):
             return
-        self._series_cache[key] = candidate.volume_id
         self._emit(
             SeriesIdentified(
                 path=getattr(self, "_path", None),
@@ -497,58 +614,95 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
         )
 
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
+    def _get_cover_hash_cache(self) -> CoverHashUrlCache | None:
         """
-        Download a candidate cover from URL and return its pHash, with caching.
+        Lazily open the shared cover-hash sqlite cache; None when caching is OFF.
 
-        Used by the matcher for sources that don't ship a precomputed hash
-        (ComicVine, GCD). Local writes go through the shared
-        cover-hashes sqlite cache.
+        One connection for the box's lifetime (see `CoverHashUrlCache`),
+        so a top-K batch costs one query in and one transaction out
+        instead of two connections per candidate.
         """
-        from comicbox.formats.base.online.cover_hash import (
-            CoverHashUrlCache,
-            compute_phash,
-        )
+        from comicbox.config.online.settings import CacheMode
 
-        if not url:
+        if self._config.online.cache.mode is CacheMode.OFF:
             return None
+        if self._cover_hash_url_cache is None:
+            from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
 
-        cache = self._cover_hash_url_cache
-        if cache is None:
             cache_dir = self._config.online.cache.dir
             if cache_dir is None:
                 from platformdirs import user_cache_path
 
                 cache_dir = user_cache_path("comicbox") / "online"
             cache_dir.mkdir(parents=True, exist_ok=True)
-            cache = CoverHashUrlCache(cache_dir / "cover_hashes.sqlite")
-            self._cover_hash_url_cache = cache
+            self._cover_hash_url_cache = CoverHashUrlCache(
+                cache_dir / "cover_hashes.sqlite"
+            )
+        return self._cover_hash_url_cache
 
-        from comicbox.config.settings import CacheMode
+    def _get_cover_fetch_pool(self) -> CoverFetchPool:
+        """Lazily build the bounded download pool; one httpx client per box."""
+        if self._cover_fetch_pool is None:
+            from comicbox.formats.base.online.cover_hash import CoverFetchPool
 
-        if self._config.online.cache.mode is CacheMode.OFF:
-            cache = None
-        if cache is not None and (cached := cache.get(url)):
-            return cached
+            self._cover_fetch_pool = CoverFetchPool()
+        return self._cover_fetch_pool
 
-        try:
-            import httpx
+    def _candidate_cover_hash_batch_fetcher(
+        self, urls: Sequence[str]
+    ) -> dict[str, str]:
+        """
+        Resolve many candidate cover URLs to pHashes in one pass.
 
-            response = httpx.get(url, timeout=15.0, follow_redirects=True)
-            response.raise_for_status()
-        except Exception as exc:
-            logger.warning(f"online: cover download failed ({url}): {exc}")
+        Used by the matcher for sources that don't ship a precomputed
+        hash (ComicVine, GCD). Cache lookups collapse into a single
+        query; the remaining misses download concurrently over one
+        shared HTTP client and are written back in one transaction.
+        URLs that fail to download or hash are simply absent from the
+        result — the matcher reads that as "no cover signal".
+        """
+        wanted = [u for u in dict.fromkeys(urls) if u]
+        if not wanted:
+            return {}
+        cache = self._get_cover_hash_cache()
+        resolved = cache.get_many(wanted) if cache is not None else {}
+        missing = [u for u in wanted if u not in resolved]
+        if not missing:
+            return resolved
+        fetched = self._get_cover_fetch_pool().fetch_hashes(missing)
+        if cache is not None and fetched:
+            cache.set_many(fetched.items())
+        resolved.update(fetched)
+        return resolved
+
+    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
+        """
+        Download a candidate cover from URL and return its pHash, with caching.
+
+        The single-URL entry point, kept for callers that resolve one
+        candidate at a time; the matcher's hot path goes through
+        `_candidate_cover_hash_batch_fetcher` instead.
+        """
+        if not url:
             return None
+        return self._candidate_cover_hash_batch_fetcher((url,)).get(url)
 
+    def _close_cover_hash_resources(self) -> None:
+        """Release the cover-hash sqlite connection and HTTP client."""
+        if self._cover_hash_url_cache is not None:
+            self._cover_hash_url_cache.close()
+            self._cover_hash_url_cache = None
+        if self._cover_fetch_pool is not None:
+            self._cover_fetch_pool.close()
+            self._cover_fetch_pool = None
+
+    @override
+    def close(self) -> None:
+        """Close the archive, then release online-lookup resources."""
         try:
-            phash = compute_phash(response.content)
-        except Exception as exc:
-            logger.warning(f"online: cover pHash failed ({url}): {exc}")
-            return None
-
-        if cache is not None:
-            cache.set(url, phash)
-        return phash
+            super().close()
+        finally:
+            self._close_cover_hash_resources()
 
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""
@@ -571,15 +725,14 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         return self._local_cover_phash_value
 
     def _resolve_with_matcher(
-        self, source_name: str, candidates: list[Candidate]
+        self, source_name: str, candidates: list[Candidate], online: OnlineSettings
     ) -> Resolution:
-        from comicbox.config.settings import (
+        from comicbox.config.online.settings import (
             resolve_auto_threshold,
             resolve_disambiguation_margin,
             resolve_min_confidence,
         )
 
-        online = self._config.online
         threshold = resolve_auto_threshold(online, source_name)
         min_conf = resolve_min_confidence(online, source_name)
         margin = resolve_disambiguation_margin(online, source_name)
@@ -588,7 +741,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             self._build_profile(),
             candidates,
             local_hash_provider=self._local_cover_phash,
-            candidate_hash_fetcher=self._candidate_cover_hash_fetcher,
+            candidate_hash_batch_fetcher=self._candidate_cover_hash_batch_fetcher,
             threshold=threshold,
             min_confidence=min_conf,
             disambiguation_margin=margin,
@@ -597,28 +750,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     def _selector_for_run(self) -> SelectorCallback:
         return self._online_selector or cli_selector
-
-    def _apply_session_lookup_override(self, **changes: Any) -> None:
-        """
-        Mutate the shared ``OnlineLookupSettings`` in place for session changes.
-
-        Used for ``set_unattended`` / ``set_policy`` from the prompt path.
-        The dataclasses are frozen, but the box's config is shared by
-        reference across all Comicbox instances spawned from the same
-        Runner. Replacing the nested slot via ``object.__setattr__``
-        propagates the change to every in-flight worker thread without
-        breaking the dataclass invariants for other callers.
-
-        The read-replace-write swap runs under the class-level
-        ``_PROMPT_LOCK`` (never held here — callers run after the locked
-        selector call returns) so two workers resolving prompts
-        back-to-back under ``-j N`` can't lose one of the two changes to
-        a stale snapshot.
-        """
-        with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
-            new_lookup = replace(self._config.online.lookup, **changes)
-            new_online = replace(self._config.online, lookup=new_lookup)
-            object.__setattr__(self._config, "online", new_online)
 
     def _handle_prompt(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
@@ -629,16 +760,16 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Acquires the class-level `_PROMPT_LOCK` around the selector call
         so concurrent worker threads (when `-j N > 1`) don't garble each
         other's prompts. Re-resolves and re-prompts when the selector
-        requests a session-level setting change (`set_unattended` /
-        `set_policy`) so the new setting takes effect on the current
-        candidate set immediately.
+        requests a session-level setting change (`set_prompts` /
+        `set_policy`), reading the session state back so the new setting
+        takes effect on the current candidate set immediately.
 
         Returns True when the prompt led to accepted metadata.
         """
         current = candidates
         path = getattr(self, "_path", None)
         prompt_id = f"{source.name}:{id(candidates)}"
-        while True:
+        for _ in range(_MAX_PROMPT_ROUNDS):
             self._emit(
                 PromptQueued(
                     path=path,
@@ -657,10 +788,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                     action=action,
                 )
             )
-            if action in {"set_unattended", "set_policy"}:
-                if not self._apply_session_action(source, action, payload):
+            if action in {"set_prompts", "set_policy"}:
+                if not self._apply_session_action(source.name, action, payload):
                     return False
-                resolution = self._resolve_existing(source.name, list(current))
+                resolution = self._resolve_existing(
+                    source.name, list(current), self._session_online()
+                )
                 terminal = self._apply_terminal_resolution(
                     source, resolution, path, context="after session change"
                 )
@@ -671,6 +804,15 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return self._dispatch_terminal_prompt_action(
                 source, current, action, payload
             )
+        # Only `set_prompts` / `set_policy` reach here; every other
+        # action returned above. A selector that keeps asking for session
+        # changes without ever deciding would have spun forever.
+        logger.warning(
+            f"online {source.name}: selector requested a session change "
+            f"{_MAX_PROMPT_ROUNDS} times without choosing; skipping"
+        )
+        outcome_stats.record_prompt_declined(source.name)
+        return False
 
     def _invoke_selector(
         self, source: OnlineSource, candidates: tuple[Candidate, ...]
@@ -679,53 +821,64 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         ctx = SelectorContext(
             file_path=getattr(self, "_path", None),
             source=source.name,
-            settings=self._config,
+            # Overlaid so a selector reading the current match mode or
+            # prompt policy sees the live session values, not the ones
+            # config resolution started the run with.
+            settings=replace(self._config, online=self._session_online()),
             triggered_hashing=any(c.cover_score is not None for c in candidates),
         )
         with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
             return selector(self._build_profile(), candidates, ctx)
 
     def _apply_session_action(
-        self, source: OnlineSource, action: str, payload: int | str | None
+        self, source_name: str, action: str, payload: int | str | None
     ) -> bool:
         """
-        Apply a `set_unattended` / `set_policy` action to the session.
+        Apply a `set_prompts` / `set_policy` action to the session.
 
-        Returns True on success, False if the payload was malformed (in
-        which case the prompt has been recorded as declined and the
-        caller should bail out).
+        The single validator for these two actions: the session reads the
+        state this writes, so there is no second implementation to keep in
+        step. Both name their new value as a string payload, so both parse
+        it the same way. Returns True on success, False if the payload was
+        malformed (in which case the prompt has been recorded as declined
+        and the caller should bail out).
         """
-        if action == "set_unattended":
-            self._apply_session_lookup_override(prompts=Prompts.NEVER)
-            logger.info(f"online {source.name}: session set to unattended via prompt")
-            return True
+        enum_class: type[Prompts | MatchMode] = (
+            Prompts if action == "set_prompts" else MatchMode
+        )
+        noun = "prompt policy" if action == "set_prompts" else "match mode"
         if not isinstance(payload, str):
             logger.warning(
-                f"online {source.name}: set_policy requires a policy name; "
+                f"online {source_name}: {action} requires a {noun} name; "
                 f"got {payload!r}"
             )
-            outcome_stats.record_prompt_declined(source.name)
+            outcome_stats.record_prompt_declined(source_name)
             return False
         try:
-            new_match = MatchMode(payload)
+            new_value = enum_class(payload)
         except ValueError:
+            expected = " | ".join(member.value for member in enum_class)
             logger.warning(
-                f"online {source.name}: unknown match mode {payload!r}; "
-                "expected one of ask | careful | auto | eager"
+                f"online {source_name}: unknown {noun} {payload!r}; "
+                f"expected one of {expected}"
             )
-            outcome_stats.record_prompt_declined(source.name)
+            outcome_stats.record_prompt_declined(source_name)
             return False
-        self._apply_session_lookup_override(match=new_match)
+        state = self._get_online_session_state()
+        if isinstance(new_value, Prompts):
+            state.set_prompts(new_value)
+        else:
+            state.set_match(new_value)
         logger.info(
-            f"online {source.name}: session match mode set to {new_match.value} via prompt"
+            f"online {source_name}: session {noun} set to {new_value.value} via prompt"
         )
         return True
 
     def _resolve_existing(
-        self, source_name: str, ranked: list[Candidate]
+        self, source_name: str, ranked: list[Candidate], online: OnlineSettings
     ) -> Resolution:
         """Re-apply policy to an already-ranked candidate list."""
-        return OnlineMatcher().resolve(ranked, self._config.online, source_name)
+        return OnlineMatcher().resolve(ranked, online, source_name)
 
     def _apply_terminal_resolution(
         self,
@@ -753,16 +906,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 f"id={resolution.chosen.issue_id} "
                 f"(score={resolution.chosen.score:.2f}){suffix}"
             )
-            outcome_stats.record_auto_write(source.name)
-            accepted = self._accept_candidate(source, resolution.chosen)
-            self._emit(
-                AutoWritten(
-                    path=path,
-                    source=source.name,
-                    candidate_summary=str(resolution.chosen.issue_id),
-                )
-            )
-            return accepted
+            return self._accept_candidate(source, resolution.chosen)
         if resolution.kind is ResolutionKind.NO_MATCH:
             logger.info(
                 f"online {source.name}: no match cleared min_confidence{suffix}"
@@ -792,10 +936,26 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     ) -> bool:
         """Apply a terminal prompt action. True when metadata was accepted."""
         if action == "choose" and isinstance(payload, int):
+            if not 0 <= payload < len(candidates):
+                # A selector index is untrusted input, same as in
+                # OnlineSession._store_prompt_resolution. Unguarded, a
+                # negative index is a legal Python from-the-end lookup, so
+                # the comic gets tagged with a candidate nobody chose.
+                logger.warning(
+                    f"online {source.name}: prompt chose index {payload} but "
+                    f"only {len(candidates)} candidate(s) were offered; skipping"
+                )
+                outcome_stats.record_prompt_declined(source.name)
+                return False
             chosen = candidates[payload]
             logger.info(f"online {source.name}: prompt-chose id={chosen.issue_id}")
-            outcome_stats.record_prompt_accepted(source.name)
-            return self._accept_candidate(source, chosen)
+            return self._accept(
+                source,
+                chosen.issue_id,
+                outcome_stats.record_prompt_accepted,
+                emit_auto_written=False,
+                candidate=chosen,
+            )
         if action == "manual" and isinstance(payload, str):
             try:
                 src_name, _, raw_id = payload.partition(":")
@@ -811,8 +971,12 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 )
                 outcome_stats.record_prompt_declined(source.name)
                 return False
-            outcome_stats.record_prompt_accepted(source.name)
-            return self._fetch_explicit_id(source, issue_id)
+            return self._accept(
+                source,
+                issue_id,
+                outcome_stats.record_prompt_accepted,
+                emit_auto_written=False,
+            )
         if action == "abort":
             reason = "online: aborted by user from prompt"
             raise OnlineLookupAbortedError(reason)
@@ -867,7 +1031,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         # ResolutionKind.PROMPT — invoke the selector callback.
         return self._handle_prompt(source, resolution.candidates)
 
-    def _search_path(self, source: OnlineSource) -> bool:
+    def _search_path(self, source: OnlineSource, online: OnlineSettings) -> bool:
         """Search → rank → resolve → fetch on accept. True when accepted."""
         profile = self._build_profile()
         path = getattr(self, "_path", None)
@@ -887,19 +1051,19 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 "(no matching issues in the database)"
             )
             return False
-        resolution = self._resolve_with_matcher(source.name, candidates)
+        resolution = self._resolve_with_matcher(source.name, candidates, online)
         return self._apply_resolution(source, resolution, path)
 
     def _emit_auto_written(self, source: OnlineSource, issue_id: int) -> None:
         """
-        Emit AutoWritten for an id-fetch fast-path win.
+        Emit AutoWritten for a win, however the issue id was obtained.
 
-        The cold-path search and series-cache wins emit AutoWritten directly,
-        but the explicit ``--id`` fetch and the stored-id refresh used to win
-        silently — leaving event consumers (e.g. Codex's status table) unable
-        to attribute the matched source for previously-tagged comics. Emitting
-        it here means every auto-write carries its source and path, however the
-        issue id was obtained.
+        Called only from `_accept`, and only once the fetch has landed, so
+        every auto-write — cold-path search, series-cache hit, ``--id``
+        pin, stored-id refresh — carries its source and path, and no
+        failed fetch announces one. Event consumers (e.g. Codex's status
+        table) need it on the fast paths too, or they can't attribute the
+        matched source for previously-tagged comics.
         """
         self._emit(
             AutoWritten(
@@ -909,24 +1073,31 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             )
         )
 
-    def _lookup_one_source(self, source: OnlineSource) -> bool:
+    def _lookup_one_source(
+        self, source: OnlineSource, online: OnlineSettings
+    ) -> _SourceOutcome:
         """
-        Drive the lookup for one source; return True iff the source "won".
+        Drive the lookup for one source and report what it did.
 
-        A win is any of: explicit-id fetch, --ignore-existing skip on a
-        pre-tagged file, stored-id refresh, or an accepted search result.
-        The win signal feeds the first-wins early-exit in `run_online_lookup`.
+        Two facts come back, not one (see `_SourceOutcome`): whether
+        metadata was applied, and whether the source consumed a pinned
+        identity for this comic. The two pinned-id fast paths claim the
+        comic either way, so first-wins still keeps a sibling source from
+        fuzzy-matching behind a failed pin, but only a landed fetch
+        reports ``applied``.
         """
-        online = self._config.online
         # Explicit --id is the strongest user signal. It overrides
         # --rematch and the stored-id fast path.
         explicit_ids = online.lookup.ids
         issue_id = explicit_ids.get(source.name)
         if issue_id is not None:
-            outcome_stats.record_explicit_id(source.name)
-            if self._fetch_explicit_id(source, issue_id):
-                self._emit_auto_written(source, issue_id)
-            return True
+            applied = self._accept(
+                source,
+                issue_id,
+                outcome_stats.record_explicit_id,
+                emit_auto_written=True,
+            )
+            return _SourceOutcome(applied=applied, claimed=True)
 
         # Fast refresh: a stored upstream id from a prior tag lets us
         # call source.get(id) instead of walking the full search path.
@@ -938,9 +1109,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 logger.info(
                     f"online {source.name}: refreshing via stored id={stored_id}"
                 )
-                if self._fetch_explicit_id(source, stored_id):
-                    self._emit_auto_written(source, stored_id)
-                return True
+                applied = self._accept(
+                    source,
+                    stored_id,
+                    outcome_stats.record_auto_write,
+                    emit_auto_written=True,
+                )
+                return _SourceOutcome(applied=applied, claimed=True)
 
         # Series-first batching fast path (plan §3.10). When the session
         # has cached a resolved volume_id for this comic's series
@@ -949,9 +1124,9 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         # path too (consistent with its "don't trust prior verdict"
         # intent).
         if not online.lookup.rematch and self._try_series_cache_lookup(source):
-            return True
+            return _SourceOutcome(applied=True)
 
-        return self._search_path(source)
+        return _SourceOutcome(applied=self._search_path(source, online))
 
     def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
         """
@@ -996,15 +1171,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             f"online {source.name}: series-cache hit; accepted "
             f"id={candidate.issue_id} via volume_id={volume_id}"
         )
-        outcome_stats.record_auto_write(source.name)
-        path = getattr(self, "_path", None)
-        self._emit(
-            AutoWritten(
-                path=path,
-                source=source.name,
-                candidate_summary=str(candidate.issue_id),
-            )
-        )
         return self._accept_candidate(source, candidate)
 
     def _first_normalized(self, src: MetadataSources) -> dict | None:
@@ -1043,44 +1209,40 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         )
 
     def _should_skip_first_wins(
-        self, source: OnlineSource, online: OnlineSettings, *, won_any: bool
+        self, source: OnlineSource, online: OnlineSettings, *, satisfied: bool
     ) -> bool:
-        """First-wins skip; explicit-id sources always run."""
-        if not won_any or not online.lookup.first_wins:
+        """
+        First-wins skip; explicit-id sources always run.
+
+        ``satisfied`` means an earlier source either applied metadata or
+        claimed the comic with a pinned id. The claim half is what keeps a
+        failed ``--id`` fetch from handing the comic to a sibling source's
+        fuzzy search.
+        """
+        if not satisfied or not online.lookup.first_wins:
             return False
         has_explicit = (
             source.name in online.lookup.ids or source.name in online.lookup.series_ids
         )
         return not has_explicit
 
-    def run_online_lookup(self) -> bool:
+    def _run_active_sources(
+        self,
+        active_sources: list[OnlineSource],
+        online: OnlineSettings,
+        path: Path | None,
+    ) -> bool:
         """
-        Idempotent: populate online MetadataSources once per box instance.
+        Query each source in order; return whether any applied metadata.
 
-        Returns whether any source won — i.e. whether online metadata was
-        actually applied to this box. A repeat call returns the first
-        run's outcome. ``False`` means the comic's metadata is unchanged
-        (disabled, no sources, no match, skipped, or deferred prompt), so
-        callers can avoid pointless re-writes of existing tags.
+        ``satisfied`` accumulates both halves of `_SourceOutcome` because
+        first-wins stops on either one, while only ``applied`` is reported
+        back to the caller.
         """
-        if self._online_lookup_already_done():
-            return self._online_lookup_won
-        self._mark_online_lookup_done()
-        online = self._config.online
-        path = getattr(self, "_path", None)
-        if not online.lookup.enabled:
-            return False
-        if online.lookup.prompts is not Prompts.NEVER:
-            _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
-        active_sources = self._build_active_online_sources()
-        if not active_sources and online.lookup.sources is None:
-            logger.warning(
-                "online: --online all requested but no sources are configured "
-                "(no credentials available for any known source)"
-            )
-        won_any = False
+        applied_any = False
+        satisfied = False
         for source in active_sources:
-            if self._should_skip_first_wins(source, online, won_any=won_any):
+            if self._should_skip_first_wins(source, online, satisfied=satisfied):
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "
                     f"use --all-sources to query every source)"
@@ -1091,11 +1253,51 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             # can take, including the explicit-id, stored-id and
             # series-cache fast paths that never reach a SearchStarted.
             self._emit(SourceStarted(path=path, source=source.name))
-            if self._lookup_one_source(source):
-                won_any = True
-        self._online_lookup_won = won_any
+            outcome = self._lookup_one_source(source, online)
+            applied_any = applied_any or outcome.applied
+            satisfied = satisfied or outcome.applied or outcome.claimed
+        return applied_any
+
+    def run_online_lookup(self) -> bool:
+        """
+        Idempotent: populate online MetadataSources once per box instance.
+
+        Returns whether online metadata was actually applied to this box.
+        A repeat call returns the first run's outcome. ``False`` means the
+        comic's metadata is unchanged (disabled, no sources, no match,
+        skipped, deferred prompt, or a pinned-id fetch that failed), so
+        callers can avoid pointless re-writes of existing tags.
+
+        A source claiming the comic via a pinned id is deliberately *not*
+        folded into this return value; it only gates the first-wins skip
+        below. Reporting "applied" for a claim is what let a failed
+        ``--id`` fetch surface as ``written``.
+
+        The lookup policy is read once here and threaded down, so the
+        whole file resolves under one generation even while a sibling
+        ``-j N`` worker is answering a prompt that changes it. The one
+        exception is the prompt loop, which re-reads on purpose so the
+        answer applies to the candidates being asked about.
+        """
+        if self._online_lookup_already_done():
+            return self._online_lookup_won
+        self._mark_online_lookup_done()
+        online = self._session_online()
+        path = getattr(self, "_path", None)
+        if not online.lookup.enabled:
+            return False
+        if online.lookup.prompts is not Prompts.NEVER:
+            _no_tty_hint.maybe_log(has_callback=self._online_selector is not None)
+        active_sources = self._build_active_online_sources(online)
+        if not active_sources and online.lookup.sources is None:
+            logger.warning(
+                "online: --online all requested but no sources are configured "
+                "(no credentials available for any known source)"
+            )
+        applied_any = self._run_active_sources(active_sources, online, path)
+        self._online_lookup_won = applied_any
         self._cross_source_cv_id_check()
         self._emit(
-            FileFinished(path=path, outcome="written" if won_any else "no_change")
+            FileFinished(path=path, outcome="written" if applied_any else "no_change")
         )
-        return won_any
+        return applied_any

@@ -1,8 +1,9 @@
 """Identifiers functions."""
 
 import re
+from collections.abc import Mapping
 from contextlib import suppress
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from types import MappingProxyType
 from urllib.parse import urlparse
 
@@ -15,8 +16,8 @@ from comicbox.identifiers import (
     DEFAULT_ID_SOURCE,
     DEFAULT_ID_TYPE,
     ID_KEY_KEY,
+    ID_TYPE_KEY,
     ID_TYPE_NAMES,
-    ID_URL_KEY,
     PARSE_COMICVINE_RE,
 )
 
@@ -53,18 +54,31 @@ class IdentifierTypes:
     def map(self) -> frozenbidict:
         """Initialize reverse dict."""
         if not self._map:
-            trimmed_dict = {key: value for key, value in asdict(self).items() if value}
+            # Only the slug fields. The memo fields are also fields, so
+            # walking every one of them put _default_type's value in the
+            # map, colliding with the type it was remembering.
+            trimmed_dict = {
+                name: value
+                for name in ID_TYPE_NAMES
+                if (value := getattr(self, name, ""))
+            }
             self._map = frozenbidict(trimmed_dict)
         return self._map
 
     @property
     def default_slug_type(self) -> str:
-        """Return the first allocated slug type."""
+        """Return the type to assume when a url names one we don't know."""
         if not self._default_type:
-            for key, value in self.map.items():
-                if value:
-                    self._default_type = key
-                    break
+            # A comic's own page is the issue's, so that's the type an
+            # unrecognized one most likely is. Falling back to whichever
+            # type happened to be declared first made them all arcs.
+            if self.issue:
+                self._default_type = DEFAULT_ID_TYPE
+            else:
+                for key, value in self.map.items():
+                    if value:
+                        self._default_type = key
+                        break
         return self._default_type
 
 
@@ -91,11 +105,14 @@ class IdentifierParts:
         return self.id_type.map.inverse.get(id_type_code, default)
 
     def parse_url_path(self, url: str) -> tuple[str, str]:
-        """Parse URL path with regex."""
+        """Parse URL path with regex, or return no match."""
         obj = urlparse(url)
         match = self.url_path_regex_compiled.search(obj.path[1:])
         if not match:
-            return "", obj.path
+            # A known database's own site is full of pages that are not an
+            # id: /about, /search, the front page. Handing the raw path back
+            # as the key minted ids like "/about/" that nothing can look up.
+            return "", ""
         try:
             id_type_slug = match.group("id_type")
         except IndexError:
@@ -111,7 +128,10 @@ class IdentifierParts:
             # A prefix normalize_key didn't recognize; no source uses colons
             # in its path segments, so emit no url rather than a broken one.
             return url
-        if type_value := getattr(self.id_type, id_type, None):
+        # A type is looked up in the slug map, never fetched off the
+        # dataclass: id_type is unvalidated, and an "id_type: map" put the
+        # repr of the map itself in the url.
+        if type_value := self.id_type.map.get(id_type):
             path = self.url_path_template.format(id_type=type_value, id_key=id_key)
             url = self.url_prefix + path
         return url
@@ -128,7 +148,9 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
         IdSources.ASIN: IdentifierParts(
             domain="www.amazon.com",
             id_type=IdentifierTypes(issue="issue"),
-            url_path_regex=r"dp/(?P<id_key>\S+)",
+            # An asin is one path segment. \S+ swallowed the /ref=... amazon
+            # appends to nearly every url into the id.
+            url_path_regex=r"dp/(?P<id_key>[^/]+)",
             url_path_template="dp/{id_key}",
         ),
         IdSources.COMICVINE: IdentifierParts(
@@ -168,13 +190,15 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
         IdSources.ISBN: IdentifierParts(
             domain="isbndb.com",
             id_type=IdentifierTypes(issue="book", series="series"),
-            url_path_regex=r"(?P<id_type>book)/(?P<id_key>[\d-]+)",
+            # Both declared slugs, or a series url unparse_url built parsed
+            # back as nothing.
+            url_path_regex=r"(?P<id_type>book|series)/(?P<id_key>[\d-]+)",
             url_path_template="{id_type}/{id_key}",
         ),
         IdSources.KITSU: IdentifierParts(
             domain="kitsu.app",
             id_type=IdentifierTypes(series="manga"),
-            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>\S+)",
+            url_path_regex=r"(?P<id_type>manga)/(?P<id_key>[^/]+)",
             url_path_template="{id_type}/{id_key}",
         ),
         IdSources.LCG: IdentifierParts(
@@ -182,19 +206,23 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             id_type=IdentifierTypes(
                 issue="comic", series="comics/series", publisher="comics"
             ),
-            url_path_regex=rf"(?P<id_type>\S+)/(?P<id_key>\S+){_SLUG_REXP}",
+            # The series slug is two segments, so the type is spelled out
+            # longest first rather than matched generically. A greedy \S+ for
+            # either group ate the whole path and read the trailing name slug
+            # as the id.
+            url_path_regex=rf"(?P<id_type>comics/series|comics|comic)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGADEX: IdentifierParts(
             domain="mangadex.org",
             id_type=IdentifierTypes(series="title"),
-            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_regex=rf"(?P<id_type>title)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MANGAUPDATES: IdentifierParts(
             domain="mangaupdates.com",
             id_type=IdentifierTypes(series="series"),
-            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>\S+){_SLUG_REXP}",
+            url_path_regex=rf"(?P<id_type>series)/(?P<id_key>[^/]+){_SLUG_REXP}",
             url_path_template="{id_type}/{id_key}/s",
         ),
         IdSources.MARVEL: IdentifierParts(
@@ -306,44 +334,80 @@ def get_identifier_url(id_source_str: str, id_type: str, id_key: str) -> str:
     return url
 
 
+def get_url_from_identifier(
+    id_source_str: str, identifier: Mapping[str, str] | None
+) -> str:
+    """
+    Get the url a whole identifier names, or none if it names no key.
+
+    An identifier stores only its key, and its type only when that type
+    isn't the implied one, so reading a url off one always means the same
+    three steps. They live here so every caller takes them the same way.
+    """
+    if not identifier:
+        return ""
+    id_key = identifier.get(ID_KEY_KEY)
+    if not id_key:
+        return ""
+    id_type = identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE
+    return get_identifier_url(id_source_str, id_type, id_key)
+
+
 def create_identifier(
     id_source_str: str,
     id_key: str,
     *,
     id_type: str = "",
-    url: str = "",
+    positional_id_type: str = DEFAULT_ID_TYPE,
     default_id_source_str: str = DEFAULT_ID_SOURCE.value,
 ) -> dict:
-    """Create identifier dict from parts."""
+    """
+    Create identifier dict from parts.
+
+    ``id_type`` is the type the identifier string itself named, if any.
+    ``positional_id_type`` is the type implied by where the identifier sits:
+    an id under ``series`` is a series id. The type is stored only when the
+    two disagree, because that is when it decides which url the key builds.
+
+    Only the key is stored. A url for it is derived on demand with
+    ``get_identifier_url``; keeping a synthesized copy inside the identifier
+    let the two disagree and made a guessed url look like source data.
+    """
     identifier = {}
     if not id_source_str:
         id_source_str = default_id_source_str
-    if not id_type:
-        id_type = DEFAULT_ID_TYPE
     if id_key:
-        id_type, id_key = normalize_key(id_source_str, id_type, id_key)
+        id_type, id_key = normalize_key(
+            id_source_str, id_type or positional_id_type, id_key
+        )
         if id_key:
             identifier[ID_KEY_KEY] = id_key
-    if not url:
-        url = get_identifier_url(id_source_str, id_type, id_key)
-    if url:
-        identifier[ID_URL_KEY] = url
+            if id_type != positional_id_type:
+                # The string named a type that isn't the one where it sits.
+                identifier[ID_TYPE_KEY] = id_type
     return identifier
 
 
 def get_id_source_from_url(url: str) -> str:
-    """Parse the id source for a url."""
+    """
+    Name the database a url belongs to, or "" for one comicbox doesn't know.
+
+    Matches every domain a source answers on, like comicvine.com or the ten
+    amazon country domains, not just its canonical one.
+    """
     obj = urlparse(url)
-    parts = obj.netloc.split(".")
+    # The hostname, not the netloc: it is lowercased and carries neither the
+    # port nor the userinfo, so metron.cloud:443 and Metron.Cloud both name
+    # metron instead of falling through as unknown domains.
+    hostname = obj.hostname or ""
+    parts = hostname.split(".")
 
     parts.reverse()
     node = SOURCE_ALIAS_TREE
-    id_source_str = obj.netloc
     for part in parts:
         node = node.get(part)
         if isinstance(node, IdSources):
-            id_source_str = node.value
-            break
+            return node.value
         if not node:
             break
-    return id_source_str
+    return ""

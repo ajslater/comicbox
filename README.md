@@ -67,14 +67,17 @@ A full cross-format
 Different formats spell the same idea in different ways. Comicbox reconciles
 them so you never have to:
 
-- **Identifiers** — IDs, GTINs, and URLs from every format are aggregated into a
-  single `identifiers` structure, and written back out as
+- **Identifiers** — database IDs and GTINs from every format are aggregated into
+  a single `identifiers` structure, and written back out as
   [URNs](https://en.wikipedia.org/wiki/Uniform_Resource_Name) in the Notes
-  field.
+  field. Web links live beside them in their own `urls` list, kept as the file
+  wrote them. Comicbox fills in a missing url from an identifier and a missing
+  identifier from a url it recognizes, so you get both.
 - **Reprints** — Alternate Names, Aliases, and "is version of" relationships
   collapse into one `reprints` list.
 - **Notes mining** — the heavily-abused Notes field is parsed for embedded data
-  (tagger, timestamps, and identifiers) that formats don't otherwise carry.
+  (tagger, timestamps, identifiers, and web links) that formats don't otherwise
+  carry.
 - **Liberal value parsing** — fuzzy, caseless values for enum-like fields (Age
   Rating, Format, credit roles) are accepted, tidied to Title Case, and
   converted to each output format's own enum on write.
@@ -107,10 +110,10 @@ ComicVine — Metron doesn't fan out, so it ignores effort and always searches a
 full strength. Credentials come from `--auth`, `COMICBOX_*` environment
 variables, the config file, or your system keyring. Metron authenticates with an
 API token generated on your metron.cloud account page — pass it as
-`--auth metron:TOKEN` or `COMICBOX_METRON_KEY`. ComicVine takes its key the same
-way, as `--auth comicvine:KEY`. A Metron username and password still work but
-are deprecated and will be removed in a future release. See `comicbox -h` for
-the full set of online, caching, and tuning options.
+`--auth metron:TOKEN` or `COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes
+its key the same way, as `--auth comicvine:KEY`. A Metron username and password
+still work but are deprecated and will be removed in a future release. See
+`comicbox -h` for the full set of online, caching, and tuning options.
 
 ### 🖼️ Pages, Covers & Conversion
 
@@ -268,8 +271,8 @@ swallowing unrelated programming errors.
 
 ## ⚙️ Configuration
 
-Comicbox is configured by command line arguments, an optional config file, and
-environment variables (in that order of precedence).
+Comicbox is configured by command line arguments, environment variables, and an
+optional config file, in that order of precedence.
 
 - **Defaults** live in
   [`config_default.yaml`](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml),
@@ -277,7 +280,21 @@ environment variables (in that order of precedence).
   `convert`, `compute`, and `online`).
 - **Config file** — point at one with `-c PATH`, or place it at
   `~/.config/comicbox/config.yaml`.
-- **Environment variables** are prefixed with `COMICBOX_`.
+- **Environment variables** are prefixed with `COMICBOX_`, and name their config
+  key with `__` between levels. Every config key can be set this way:
+
+    ```sh
+    COMICBOX_GENERAL__RECURSE=true
+    COMICBOX_ONLINE__AUTH__METRON__KEY=your-token
+    COMICBOX_ONLINE__TUNING__AUTO_THRESHOLD=0.9
+    ```
+
+    Values are parsed as YAML scalars, so `true`, `0.9`, and `24h` get the types
+    the config file would give them. A value that doesn't fit its key is an
+    error rather than being silently ignored. For list-valued keys use either an
+    indexed form (`COMICBOX_READ__FORMATS__0=cix`) or, for
+    `online.lookup.sources`, a comma-separated string.
+
 - **Log level** is set with the `LOGLEVEL` environment variable:
 
 ```sh

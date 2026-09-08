@@ -1,7 +1,8 @@
 """Marshmallow collection fields."""
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from decimal import Decimal
 from typing import Any
 
 from glom import glom
@@ -10,11 +11,34 @@ from marshmallow.utils import is_collection
 from typing_extensions import override
 
 from comicbox.empty import filter_list_empty, is_empty
-from comicbox.formats.base.fields.fields import (
-    StringField,
-    TrapExceptionsMeta,
-)
+from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+
+# Sort keys are compared element by element, so every element in a slot must be
+# comparable with its siblings. Nothing guarantees they share a type: a reprint
+# missing `volume.number` substitutes an empty value into a slot where its
+# sibling holds an int, and `int < str` is a TypeError. Ranking the type first
+# means unlike types are ordered by rank and never compared to each other.
+_EMPTY_RANK = 0
+_NUMBER_RANK = 1
+_STRING_RANK = 2
+_OTHER_RANK = 3
+_NUMBER_TYPES = (int, float, Decimal)
+
+
+def _comparable(value: Any) -> tuple[int, Any]:
+    """Pair a sort key element with a rank for its comparability class."""
+    if is_empty(value):
+        # Absent and explicitly empty elements share a rank so they still
+        # dedupe together, and sort first like the old empty string did.
+        return (_EMPTY_RANK, "")
+    if isinstance(value, str):
+        return (_STRING_RANK, value)
+    if isinstance(value, _NUMBER_TYPES):
+        # Numbers stay numbers: 2 must keep sorting before 10.
+        return (_NUMBER_RANK, value)
+    # Dates, and anything else unhashable or unorderable against its own kind.
+    return (_OTHER_RANK, str(value))
 
 
 def case_insensitive_dict(d: dict) -> dict:
@@ -23,7 +47,7 @@ def case_insensitive_dict(d: dict) -> dict:
     return {v[0]: v[1] for v in cid.values()}
 
 
-class ListField(fields.List, metaclass=TrapExceptionsMeta):
+class ListField(fields.List):
     """List that guarauntees no empty values."""
 
     def __init__(
@@ -60,7 +84,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         """Override in XmlListField."""
         return value
 
-    def _sort_value(self, value: dict[str, Any], sort_dict: dict[Any, Any]) -> None:
+    def _sort_value(self, value: Any, sort_dict: dict[Any, Any]) -> None:
         if is_empty(value):
             return
         key = []
@@ -68,21 +92,26 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
             for key_path in self._sort_keys:
                 sort_value = glom(value, key_path, default=None)
                 sort_value = self.get_tag_value(sort_value)
-                sort_value = "" if sort_value is None else sort_value
-                key.append(sort_value)
+                key.append(_comparable(sort_value))
         else:
-            key = (self.get_tag_value(value),)
+            key = (_comparable(self.get_tag_value(value)),)
         key = tuple(key)
 
-        # combine elements by key
-        if old_value := sort_dict.get(key):
-            new_value = old_value.update(value)
+        # Combine elements that dedupe to the same key. dict.update() returns
+        # None, so assigning its result dropped the merged element and left a
+        # null in the serialized list. Merge into a new dict instead of
+        # mutating in place so the caller's data is never modified.
+        old_value = sort_dict.get(key)
+        if isinstance(old_value, Mapping) and isinstance(value, Mapping):
+            new_value = {**old_value, **value}
         else:
+            # Non mappings (and first sightings) can't merge: the later
+            # element wins, which is what update() would have done anyway.
             new_value = value
 
         sort_dict[key] = new_value
 
-    def _sorted(self, values: list[dict[str, Any]]) -> list:
+    def _sorted(self, values: list[Any]) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
             return values
@@ -109,7 +138,7 @@ class ListField(fields.List, metaclass=TrapExceptionsMeta):
         return self._sorted(values)
 
 
-class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
+class DictField(fields.Dict):
     """Dict field for nested schemas with case insensitive keys and sorting."""
 
     def __init__(
@@ -160,7 +189,7 @@ class DictField(fields.Dict, metaclass=TrapExceptionsMeta):
         return result_dict
 
 
-class StringListField(fields.List, metaclass=TrapExceptionsMeta):
+class StringListField(fields.List):
     """A list of non empty strings."""
 
     FIELD: type[fields.Field] = StringField

@@ -19,9 +19,8 @@ isolated too.
 
 The fixture:
 
-* strips every ``COMICBOX_*`` env var (covers confuse's ``set_env``
-  prefix and the direct reads in ``credentials.read_credential_env`` /
-  ``env.read_online_env``);
+* strips every ``COMICBOX_*`` env var (the prefix of the EnvSource
+  mounted on the config tree, so this covers every config key);
 * points ``COMICBOXDIR`` at an empty tmpdir so confuse's
   ``_add_user_source`` finds no ``config.yaml``.
 
@@ -32,6 +31,7 @@ real defaults — just nothing from the user's machine.
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from typing import TYPE_CHECKING
 
@@ -40,6 +40,7 @@ import pytest
 import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 
@@ -66,9 +67,38 @@ _scrub_environ_at_collection()
 @pytest.fixture(autouse=True)
 def _hermetic_comicbox_env(  # pyright: ignore[reportUnusedFunction]
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Strip ``COMICBOX_*`` env vars and isolate confuse from user config."""
+) -> Iterator[None]:
+    """
+    Strip ``COMICBOX_*`` env vars and isolate confuse from user config.
+
+    Also pins the online cache directory into ``tmp_path``. Left unset it
+    resolves to the developer's real platformdirs cache, which holds live
+    response and rate-limit sqlite files from actual tagging runs — so a
+    test reading either would depend on that machine's history, and one
+    writing either would corrupt it.
+
+    Also clears the online sources' process-wide client caches on the way
+    out. Both Metron and Comic Vine memoize their upstream client by
+    credential set at module scope so a batch reuses one connection pool;
+    that cache outlives a test, so without this a fake client built with
+    throwaway credentials would be handed to every later test that
+    happens to reuse them.
+    """
     for key in list(os.environ):
         if key.startswith("COMICBOX"):
             monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("COMICBOXDIR", str(tmp_path))
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__DIR", str(tmp_path / "online-cache"))
+    yield
+    _reset_shared_online_sessions()
+
+
+def _reset_shared_online_sessions() -> None:
+    """Clear both sources' shared-client caches, if they were imported."""
+    comicvine = sys.modules.get("comicbox.formats.comicvine_api.online_source")
+    if comicvine is not None:
+        comicvine.reset_shared_sessions()
+    metron = sys.modules.get("comicbox.formats.metron_api.online_source")
+    if metron is not None:
+        with metron._session_cache_lock:
+            metron._session_cache.clear()

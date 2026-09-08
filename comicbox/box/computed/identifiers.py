@@ -1,10 +1,10 @@
 """Comicbox computed identifiers."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
-from comicbox.box.computed.issue import ComicboxComputedIssue
+from comicbox.box.computed.notes import ComicboxComputedNotes
 from comicbox.formats.comicbox.schema import (
     ARCS_KEY,
     CHARACTERS_KEY,
@@ -21,10 +21,9 @@ from comicbox.formats.comicbox.schema import (
     TEAMS_KEY,
     UNIVERSES_KEY,
 )
-from comicbox.identifiers import ID_KEY_KEY, ID_URL_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.identifiers.identifiers import (
     create_identifier,
-    get_identifier_url,
     normalize_key,
 )
 from comicbox.identifiers.other import (
@@ -33,7 +32,6 @@ from comicbox.identifiers.other import (
 from comicbox.identifiers.urns import (
     parse_urn_identifier,
 )
-from comicbox.merge import AdditiveMerger, Merger
 
 _IDENTIFIED_KEYS = (PUBLISHER_KEY, IMPRINT_KEY, SERIES_KEY)
 _IDENTIFIED_TAG_KEYS = (
@@ -55,7 +53,7 @@ _IRREGULAR_SINGULAR_ID_TYPES = MappingProxyType(
 _PARSE_AS_IDENTIFIERS = frozenset({TAGS_KEY, GENRES_KEY})
 
 
-class ComicboxComputedIdentifiers(ComicboxComputedIssue):
+class ComicboxComputedIdentifiers(ComicboxComputedNotes):
     """Comicbox computed identifiers."""
 
     @staticmethod
@@ -90,59 +88,63 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
         return {IDENTIFIERS_KEY: identifiers}
 
     @staticmethod
-    def _url_deltas_for_tag_identifiers(
+    def _key_deltas_for_tag_identifiers(
         id_type: str, identifiers: Mapping | None
     ) -> dict[str, dict[str, str]]:
         """
-        Compute missing urls and normalized keys for one identifiers map.
+        Clean hand-tagged identifier keys for one identifiers map.
 
-        Returns ``{source: {"key": ..., "url": ...}}`` deltas instead of
-        writing into the input: computed actions must not mutate the merged
-        metadata they derive from (it's cached); the action's return value
-        is merged by its declared merger like every other action.
+        Returns ``{source: {"key": ...}}`` deltas instead of writing into the
+        input: computed actions must not mutate the merged metadata they
+        derive from (it's cached); the action's return value is merged by its
+        declared merger like every other action.
 
-        Hand-tagged keys may carry a type prefix ("series:178012") that
-        overrides the positional id_type, or a comicvine long code; the
-        cleaned key is emitted as a delta alongside the url.
+        Hand-tagged keys often mirror the urn form comicbox writes to notes,
+        carrying a type prefix ("series:178012") or a comicvine long code.
+        Keys read through a format transform were cleaned on the way in; these
+        are the ones written by hand.
         """
         deltas: dict[str, dict[str, str]] = {}
         if not identifiers:
             return deltas
         for id_source_str, identifier in identifiers.items():
-            if identifier.get(ID_URL_KEY):
-                continue
             if not (id_key := identifier.get(ID_KEY_KEY)):
                 continue
-            norm_id_type, norm_id_key = normalize_key(id_source_str, id_type, id_key)
+            old_id_type = identifier.get(ID_TYPE_KEY) or id_type
+            norm_id_type, norm_id_key = normalize_key(
+                id_source_str, old_id_type, id_key
+            )
             delta = {}
             if norm_id_key != id_key:
                 delta[ID_KEY_KEY] = norm_id_key
-            if url := get_identifier_url(id_source_str, norm_id_type, norm_id_key):
-                delta[ID_URL_KEY] = url
+            if norm_id_type != old_id_type:
+                # The prefix in the key named a type. Keeping it is what
+                # decides which url the key builds.
+                delta[ID_TYPE_KEY] = norm_id_type
             if delta:
                 deltas[id_source_str] = delta
         return deltas
 
     @classmethod
-    def _url_deltas_for_tag(cls, id_type: str, tag: Mapping | None) -> dict | None:
-        """Delta subtree for one identified tag, or None when complete."""
+    def _key_deltas_for_tag(cls, id_type: str, tag: Mapping | None) -> dict | None:
+        """Delta subtree for one identified tag, or None when clean."""
         if not tag:
             return None
-        deltas = cls._url_deltas_for_tag_identifiers(id_type, tag.get(IDENTIFIERS_KEY))
+        deltas = cls._key_deltas_for_tag_identifiers(id_type, tag.get(IDENTIFIERS_KEY))
         return {IDENTIFIERS_KEY: deltas} if deltas else None
 
     @classmethod
-    def _url_deltas_for_multiple_tags(cls, key: str, all_tags: Mapping) -> dict:
+    def _key_deltas_for_multiple_tags(cls, key: str, all_tags: Mapping) -> dict:
         """Delta subtrees for a name-keyed tag map (credits incl. roles)."""
         id_type = _IRREGULAR_SINGULAR_ID_TYPES.get(key, key[:-1])
         tag_deltas: dict[str, Any] = {}
         for name, tag in all_tags.items():
-            delta = cls._url_deltas_for_tag(id_type, tag) or {}
+            delta = cls._key_deltas_for_tag(id_type, tag) or {}
             if key == CREDITS_KEY and tag and (roles := tag.get(ROLES_KEY)):
                 role_deltas = {
                     role_name: role_delta
                     for role_name, role in roles.items()
-                    if (role_delta := cls._url_deltas_for_tag(id_type, role))
+                    if (role_delta := cls._key_deltas_for_tag(id_type, role))
                 }
                 if role_deltas:
                     delta = {**delta, ROLES_KEY: role_deltas}
@@ -150,33 +152,20 @@ class ComicboxComputedIdentifiers(ComicboxComputedIssue):
                 tag_deltas[name] = delta
         return tag_deltas
 
-    def _add_urls_to_all_identifiers(self, sub_data: dict[str, Any]) -> dict | None:
-        """Compute missing identifier urls as a mergeable delta tree."""
+    def _normalize_all_identifier_keys(self, sub_data: dict[str, Any]) -> dict | None:
+        """Clean hand-tagged identifier keys as a mergeable delta tree."""
         tree: dict[str, Any] = {}
-        if deltas := self._url_deltas_for_tag_identifiers(
+        if deltas := self._key_deltas_for_tag_identifiers(
             "issue", sub_data.get(IDENTIFIERS_KEY)
         ):
             tree[IDENTIFIERS_KEY] = deltas
         for key in _IDENTIFIED_KEYS:
-            if delta := self._url_deltas_for_tag(key, sub_data.get(key)):
+            if delta := self._key_deltas_for_tag(key, sub_data.get(key)):
                 tree[key] = delta
         for key in _IDENTIFIED_TAG_KEYS:
             all_tags = sub_data.get(key)
             if not all_tags:
                 continue
-            if tag_deltas := self._url_deltas_for_multiple_tags(key, all_tags):
+            if tag_deltas := self._key_deltas_for_multiple_tags(key, all_tags):
                 tree[key] = tag_deltas
         return tree or None
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                **ComicboxComputedIssue.COMPUTED_ACTIONS,
-                "from tags": (_get_computed_from_tags, AdditiveMerger),
-                "add urls to identifiers": (
-                    _add_urls_to_all_identifiers,
-                    AdditiveMerger,
-                ),
-            }
-        )
-    )

@@ -82,9 +82,12 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "summary": "A long example description",
             "bookmark": 4,
             "original_format": "Comic",
@@ -96,7 +99,11 @@ READ_METADATA = MappingProxyType(
                 4: {"bookmark": "true", "size": 4108},
             },
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "stories": {
@@ -111,7 +118,7 @@ READ_METADATA = MappingProxyType(
 WRITE_METADATA = create_write_metadata(READ_METADATA)
 READ_MULTI_DICT = MappingProxyType(
     {
-        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json",
+        "schema": "https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json",
         "appID": "comicbox dev",
         ComicboxJsonSchema.ROOT_TAG: {
             "country": "US",
@@ -173,9 +180,12 @@ READ_MULTI_DICT = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
                 }
             },
+            "urls": [
+                "https://comicvine.gamespot.com/captain-science-1/4000-145269/",
+                "https://comicvine.gamespot.com/c/4000-145269/",
+            ],
             "summary": "A long example description",
             "stories": {
                 "The Beginning COMET": {},
@@ -183,7 +193,11 @@ READ_MULTI_DICT = MappingProxyType(
             "title": "The Beginning COMET",
             "original_format": "Comic",
             "reprints": [
-                {"series": {"name": "Captain Science Alternate"}, "issue": "001"}
+                {
+                    "name": "Captain Science Alternate #001",
+                    "series": {"name": "Captain Science Alternate"},
+                    "issue": "001",
+                }
             ],
             "rights": "Copyright (c) 1950 Bell Features",
             "updated_at": TEST_DTTM_STR,

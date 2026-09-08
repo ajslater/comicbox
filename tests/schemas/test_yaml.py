@@ -20,7 +20,7 @@ FN = "yaml.cbz"
 TMP_DIR = get_tmp_dir(__file__)
 TEST_EXPORT_PATH = TMP_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
 YAML_PATH = TEST_METADATA_DIR / MetadataFormats.COMICBOX_CLI_YAML.value.filename
-YAML_NOTES = TEST_READ_NOTES + " urn:comicvine:issue:145269"
+YAML_NOTES = TEST_READ_NOTES + " urn:comicvine:145269"
 
 READ_CONFIG = get_config(
     Namespace(comicbox=Namespace(read=Namespace(formats=("yaml",))))
@@ -39,9 +39,9 @@ READ_METADATA = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
             "imprint": {"name": "TestImprint"},
             "notes": YAML_NOTES,
             "publisher": {"name": "TestPub"},
@@ -68,7 +68,6 @@ READ_YAML_DICT = MappingProxyType(
             "identifiers": {
                 "comicvine": {
                     "key": "145269",
-                    "url": "https://comicvine.gamespot.com/c/4000-145269/",
                 }
             },
             "imprint": {"name": "TestImprint"},
@@ -89,6 +88,7 @@ READ_YAML_DICT = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
             "updated_at": TEST_DATETIME,
+            "urls": ["https://comicvine.gamespot.com/c/4000-145269/"],
         }
     }
 )

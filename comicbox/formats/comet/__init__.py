@@ -8,7 +8,7 @@ from types import MappingProxyType
 
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comet.transform import CoMetTransform
-from comicbox.validate.xml_validator import XmlValidator
+from comicbox.validate.spec import ValidatorSpec, ValidatorType
 
 REGISTRATION = FormatRegistration(
     format=MetadataFormat(
@@ -26,5 +26,5 @@ REGISTRATION = FormatRegistration(
             "API": 6,
         }
     ),
-    validator=XmlValidator("CoMet-v1.1.xsd"),
+    validator_spec=ValidatorSpec(ValidatorType.XML, "CoMet-v1.1.xsd"),
 )

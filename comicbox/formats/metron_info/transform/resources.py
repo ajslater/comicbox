@@ -29,6 +29,7 @@ from comicbox.formats.metron_info.schema import (
     DESIGNATION_TAG,
     NUMBER_TAG,
 )
+from comicbox.formats.metron_info.transform.const import DEFAULT_ID_SOURCE_STR
 from comicbox.formats.metron_info.transform.identified_name import (
     identified_name_from_cb,
     identified_name_to_cb,
@@ -36,7 +37,6 @@ from comicbox.formats.metron_info.transform.identified_name import (
     identified_name_with_tag_to_cb,
 )
 from comicbox.formats.metron_info.transform.identifiers import SCOPE_PRIMARY_SOURCE
-from comicbox.identifiers import DEFAULT_ID_SOURCE
 
 ARC_KEYPATH = "Arcs.Arc"
 UNIVERSES_KEYPATH = "Universes.Universe"
@@ -92,7 +92,7 @@ def _resources_to_cb(metron_resources: Any, id_type: str, id_source: Any) -> dic
 
 def _resources_from_cb(cb_key: str, values: dict[str, Any]) -> list:
     comicbox_resources = values.get(cb_key)
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return comicbox_dict_to_metron_list(
         comicbox_resources, primary_id_source, identified_name_from_cb
     )
@@ -103,7 +103,7 @@ def _create_resource_transform_to(metron_key_path: str, cb_key: str) -> MetaSpec
 
     def to_cb(values: dict[str, Any]) -> dict[str, dict[Any, Any]]:
         metron_resources = values.get(metron_key_path)
-        id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+        id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
         return _resources_to_cb(metron_resources, id_type, id_source)
 
     return MetaSpec(
@@ -159,7 +159,7 @@ def _arc_to_cb(
 
 def _arcs_to_cb(values: dict[str, Any]) -> dict:
     metron_arcs = values.get(ARC_KEYPATH, [])
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     return metron_list_to_comicbox_dict(
         metron_arcs, "arc", primary_id_source, _arc_to_cb
     )
@@ -174,7 +174,7 @@ def _arc_from_cb(name: str, comicbox_arc: Any, primary_id_source: str) -> dict:
 
 def _arcs_from_cb(values: dict[str, Any]) -> list:
     comicbox_arcs = values.get(ARCS_KEY)
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return comicbox_dict_to_metron_list(comicbox_arcs, primary_id_source, _arc_from_cb)
 
 
@@ -229,7 +229,7 @@ def _universe_to_cb(
 
 def _universes_to_cb(values: dict[str, Any]) -> dict:
     metron_universes = values.get(UNIVERSES_KEYPATH)
-    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(SCOPE_PRIMARY_SOURCE, DEFAULT_ID_SOURCE_STR)
     return metron_list_to_comicbox_dict(
         metron_universes, "universe", primary_id_source, _universe_to_cb
     )
@@ -248,7 +248,7 @@ def _universe_from_cb(
 
 def _universes_from_cb(values: dict[str, Any]) -> list:
     comicbox_universes = values.get(UNIVERSES_KEY)
-    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE)
+    primary_id_source = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
     return comicbox_dict_to_metron_list(
         comicbox_universes, primary_id_source, _universe_from_cb
     )

@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.comic_info.transform import ComicInfoTransform
-from comicbox.validate.xml_validator import XmlValidator
+from comicbox.validate.spec import ValidatorSpec, ValidatorType
 
 REGISTRATION = FormatRegistration(
     format=MetadataFormat(
@@ -23,6 +23,6 @@ REGISTRATION = FormatRegistration(
             "API": 4,
         }
     ),
-    validator=XmlValidator("ComicInfo-v2.1-Draft.xsd"),
+    validator_spec=ValidatorSpec(ValidatorType.XML, "ComicInfo-v2.1-Draft.xsd"),
     has_tags_without_ids=True,
 )

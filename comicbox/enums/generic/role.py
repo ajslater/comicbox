@@ -8,6 +8,7 @@ class GenericRoleEnum(Enum):
 
     AUTHOR = "Author"
     COLOURIST = "Colourist"
+    CREATOR = "Creator"
     PAINTER = "Painter"
 
 

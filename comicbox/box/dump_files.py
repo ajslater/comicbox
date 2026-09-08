@@ -5,6 +5,7 @@ from typing import Any
 
 from loguru import logger
 
+from comicbox.box.archive.write import _claim_destination, _release_destination
 from comicbox.box.dump import ComicboxDump
 from comicbox.exceptions import ArchiveWriteError, ExportError
 from comicbox.formats import MetadataFormats
@@ -71,6 +72,39 @@ class ComicboxDumpToFiles(ComicboxDump):
             fn = str(Path(fn).with_suffix(self._path.suffix))
         return fn
 
+    @staticmethod
+    def _is_same_file(old_path: Path, new_path: Path) -> bool:
+        """Return whether both names already refer to one file on disk."""
+        # Not just `==`: on a case-insensitive filesystem a rename that only
+        # changes case lands on the same inode, and refusing it would make
+        # `--rename` fail on every macOS library.
+        try:
+            return new_path.samefile(old_path)
+        except OSError:
+            return False
+
+    def _rename_to(self, old_path: Path, new_path: Path) -> None:
+        """
+        Rename onto a destination no one else holds.
+
+        Path.rename() replaces an existing destination silently on posix,
+        so two archives whose metadata predicts one name -- the same issue
+        carried twice, or a scheme that renders too few fields -- left only
+        the last one written. Claim the destination for the same reason
+        conversions do (comicbox.box.archive.write): the finished-file
+        check alone can't see a rename still in flight on another thread.
+        """
+        if self._is_same_file(old_path, new_path):
+            return
+        _claim_destination(new_path)
+        try:
+            if new_path.exists():
+                reason = f"{new_path} already exists."
+                raise ArchiveWriteError(reason)
+            old_path.rename(new_path)
+        finally:
+            _release_destination(new_path)
+
     def rename_file(self) -> None:
         """Rename the archive."""
         if not self._path:
@@ -85,6 +119,6 @@ class ComicboxDumpToFiles(ComicboxDump):
         if self._config.general.dry_run:
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
-        self._path.rename(new_path)
+        self._rename_to(old_path, new_path)
         self._path: Path | None = new_path
         logger.info(f"Renamed:\n{old_path} ==> {new_path}")

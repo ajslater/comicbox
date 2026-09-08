@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comicbox.config.settings import Effort
+from comicbox.config.online.settings import Effort
 from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,

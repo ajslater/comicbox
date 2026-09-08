@@ -80,12 +80,38 @@ _PDF_PAGE_FORMAT_DESC = MappingProxyType(
     }
 )
 
+# (mode, dict-typed fields, list-typed fields, top level keys)
+_MERGE_MODE_ROWS = (
+    ("additive (default)", "recurse", "concatenate", "kept"),
+    ("replace", "recurse", "overwrite", "kept"),
+    (
+        "update",
+        "replaced wholesale",
+        "replaced wholesale",
+        "replaced, siblings dropped",
+    ),
+)
+_MERGE_MODE_INTRO = Styled(
+    """
+[bold]Merging supplied metadata[/bold]
+
+[cyan]--merge-mode <mode>[/cyan] controls how metadata you supply — [cyan]-m[/cyan],
+[cyan]--import[/cyan], and the config metadata block — overlays the tags already in
+the comic. Metadata comicbox discovers on its own is always additive.
+
+[green]additive[/green] and [green]replace[/green] differ only on the five list typed fields:
+[green]remainders[/green], [green]reprints[/green], [green]series_groups[/green], [green]urls[/green] and [green]series.alternative_names[/green].
+Everywhere else the schema nests dicts, where the two behave identically.
+""",
+    style="argparse.text",
+)
+
 # (mode, behavior on unambiguous top, on solo viable, on close call near top)
 _MATCH_MODE_ROWS = (
     ("ask", "prompt", "prompt", "prompt"),
     ("careful", "auto-write", "prompt", "prompt"),
-    ("auto (default)", "auto-write", "auto-write", "prompt"),
-    ("eager", "auto-write", "auto-write", "auto-write"),
+    ("auto (default)", "auto-write", "prompt *", "prompt"),
+    ("eager", "auto-write", "prompt *", "auto-write"),
 )
 
 # (name, required credentials, accepted --id forms, website) — derived
@@ -105,7 +131,14 @@ Two knobs:
                        [green]ask[/green] · [green]careful[/green] · [green]auto[/green] (default) · [green]eager[/green]
   [cyan]--prompts never[/cyan]   never prompt — turn 'prompt' decisions into 'skip'
 
-Each mode row below shows what happens to three kinds of candidate sets.
+Each row shows what a mode does with three kinds of candidate set: an
+[green]unambiguous top[/green] that clears [cyan]--auto-threshold[/cyan] well clear of the
+runner-up, a lone [green]solo viable[/green] candidate that does not clear it, and a
+[green]close call[/green] that clears it with the runner-up close behind.
+
+[green]*[/green] A lone candidate under the threshold auto-writes only where a per-source
+[cyan]solo_threshold[/cyan] is set lower. That floor defaults to the auto-write threshold,
+so out of the box [green]auto[/green] decides exactly as [green]careful[/green] does.
 """,
     style="argparse.text",
 )
@@ -139,6 +172,20 @@ def _get_pdf_page_format_phases_table() -> Table:
     return table
 
 
+def _get_merge_mode_table() -> Table:
+    table = Table(
+        title="[dark_cyan]--merge-mode[/dark_cyan] values",
+        **_TABLE_ARGS,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+    )
+    table.add_column("--merge-mode", style="green")
+    table.add_column("dict fields")
+    table.add_column("list fields")
+    table.add_column("top level keys")
+    for row in _MERGE_MODE_ROWS:
+        table.add_row(*row)
+    return table
+
+
 def _get_match_mode_table() -> Table:
     table = Table(
         title="[dark_cyan]Online — Match Resolution[/dark_cyan]",
@@ -146,10 +193,11 @@ def _get_match_mode_table() -> Table:
     )
     table.add_column("--match", style="green")
     # "Unambiguous" = top above threshold AND clear gap to runner-up.
-    # "Solo viable" = exactly one candidate above min_confidence.
+    # "Solo viable" = exactly one candidate above min_confidence, and below
+    #                 the auto-write threshold — above it, it is unambiguous.
     # "Close call"  = top above threshold but runner-up close (gap < 0.10).
     table.add_column("unambiguous top")
-    table.add_column("solo viable")
+    table.add_column("solo viable, under threshold")
     table.add_column("close call")
     for row in _MATCH_MODE_ROWS:
         table.add_row(*row)
@@ -201,6 +249,8 @@ def build_epilog() -> Group:
         _get_help_print_phases_table(),
         _METADATA_EXAMPLES,
         _DELETE_KEYS_EXAMPLES,
+        _MERGE_MODE_INTRO,
+        _get_merge_mode_table(),
         _get_online_sources_table(),
         _MATCH_MODE_INTRO,
         _get_match_mode_table(),

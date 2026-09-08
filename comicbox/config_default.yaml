@@ -35,7 +35,10 @@ comicbox:
 
   write:
     formats: []
-    replace: False
+    # How supplied metadata (-m, --import, the write API's patch, the
+    # config metadata block) merges into a comic's existing tags.
+    # One of: additive, update, replace.
+    merge_mode: additive
     stamp: False
     stamp_notes: True
     delete_all_tags: False
@@ -64,8 +67,8 @@ comicbox:
       match: auto
       # Whether prompts are allowed. One of: ask, never.
       prompts: ask
-      # Force a fresh search even if the comic has a stored upstream id
-      # and skip files already tagged from this source.
+      # Force a fresh search even if the comic has a stored upstream id,
+      # skipping the stored-id refresh and series-cache fast paths.
       rematch: False
       # Ordered source selection and run priority. The first listed
       # source runs first; with first_wins True its match ends the
@@ -102,7 +105,11 @@ comicbox:
       auto_threshold: 0.95
       # Per-comic API effort for fan-out sources (ComicVine): minimal,
       # balanced, thorough. Metron doesn't fan out, so it ignores this.
-      effort: balanced
+      # null = unset, which resolves to balanced and lets a large
+      # unattended run auto-engage minimal for ComicVine. Naming a value
+      # here (or with --effort / COMICBOX_ONLINE__TUNING__EFFORT) pins
+      # it: an explicit `balanced` is honored, not auto-engaged away.
+      effort: null
       # Retry budget for transient API failures.
       retry_budget: 5
       # Per-source overrides — keyed by source name (metron, comicvine).

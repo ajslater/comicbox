@@ -1,13 +1,11 @@
 """Comicbox Computed Date tags."""
 
-from collections.abc import Callable
 from datetime import date
-from types import MappingProxyType
 from typing import Any
 
 from loguru import logger
 
-from comicbox.box.computed.identifiers import ComicboxComputedIdentifiers
+from comicbox.box.computed.issue import ComicboxComputedIssue
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
@@ -15,12 +13,11 @@ from comicbox.formats.comicbox.schema import (
     MONTH_KEY,
     YEAR_KEY,
 )
-from comicbox.merge import AdditiveMerger, Merger
 
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 
 
-class ComicboxComputedDate(ComicboxComputedIdentifiers):
+class ComicboxComputedDate(ComicboxComputedIssue):
     """Comicbox Computed Date tags."""
 
     def _set_computed_from_date_cover_date(
@@ -85,13 +82,3 @@ class ComicboxComputedDate(ComicboxComputedIdentifiers):
         if not computed_date:
             return None
         return {DATE_KEY: computed_date}
-
-    COMPUTED_ACTIONS: MappingProxyType[str, tuple[Callable, type[Merger] | None]] = (
-        MappingProxyType(
-            {
-                # Order is important here
-                **ComicboxComputedIdentifiers.COMPUTED_ACTIONS,
-                "from date": (_get_computed_from_date, AdditiveMerger),
-            }
-        )
-    )

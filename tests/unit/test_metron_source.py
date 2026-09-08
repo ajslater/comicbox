@@ -14,13 +14,23 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from mokkari.exceptions import (
+    ApiError,
+    AuthenticationError,
+    CacheError,
+    RateLimitError,
+)
+from requests import Response
+from requests.exceptions import HTTPError
 from typing_extensions import override
 
-from comicbox.config.settings import (
-    OnlineSettings,
-    OnlineSourceCredentials,
-)
+from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.retry import (
+    _RATE_LIMIT_SCHEDULE,
+    RetryCategory,
+    with_retry,
+)
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 
@@ -45,7 +55,8 @@ class _FakeBaseIssue:
         self.number = number
         self.cover_date = date(cover_year, 1, 1)
         self.image = f"https://example.com/issue/{iid}.jpg"
-        self.resource_url = f"https://example.com/issue/{iid}"
+        # No `resource_url`: mokkari's `BaseIssue` carries none, so the
+        # candidate url has to be derived from the id.
         self.cover_hash = None
         # mokkari `BaseIssue.series` is `BasicSeries` — since mokkari 3.28.0
         # / Metron server commit 3b1e46b it carries a real `.id` alongside
@@ -219,13 +230,6 @@ def test_search_retries_per_call_on_rate_limit(
         "A": [_FakeBaseIssue(iid=5001, number="1", series_name="A", series_id=100)],
     }
 
-    # mokkari-shaped exception: the retry decorator keys on the type
-    # name string "RateLimitError" and the `retry_after` attribute.
-    class RateLimitError(Exception):
-        def __init__(self, retry_after: float) -> None:
-            super().__init__("Rate limit exceeded")
-            self.retry_after = retry_after
-
     class _RateLimitedMokkari(_FakeMokkari):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
@@ -237,7 +241,11 @@ def test_search_retries_per_call_on_rate_limit(
                 # Record the failed attempt too so we can assert retry count.
                 self.issues_list_calls.append(dict(params or {}))
                 self._fail_count += 1
-                raise RateLimitError(retry_after=0.001)
+                # Real mokkari exception: `classify_retry_exception` keys on
+                # the type, and the tiny `retry_after` hint keeps the real
+                # sleep path fast.
+                msg = "Rate limit exceeded"
+                raise RateLimitError(msg, retry_after=0.001)
             return super().issues_list(params)
 
     fake = _RateLimitedMokkari(issues_by_key=issues)
@@ -258,7 +266,7 @@ def test_search_retries_per_call_on_rate_limit(
 def _make_metron_source_with_series_id(
     monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari, series_id: int
 ) -> MetronOnlineSource:
-    from comicbox.config.settings import OnlineLookupSettings
+    from comicbox.config.online.settings import OnlineLookupSettings
 
     creds = OnlineSourceCredentials(user="u", password="p")
     settings = OnlineSettings(
@@ -321,6 +329,29 @@ def test_to_candidate_propagates_series_id_from_search_result(
     profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.volume_id == 10455
+
+
+def test_to_candidate_url_is_metron_issue_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Candidates link to Metron's public page for the issue.
+
+    mokkari's `BaseIssue` carries no url, so the link is derived from the
+    issue id. Metron redirects the numeric-id path to the slug url.
+    """
+    issues = {
+        "Watchmen": [
+            _FakeBaseIssue(
+                iid=27650, number="5", series_name="Watchmen", series_id=10455
+            )
+        ],
+    }
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    [cand] = src.search(profile)
+    assert cand.url == "https://metron.cloud/issue/27650"
 
 
 def test_to_candidate_propagates_series_id_from_series_id_fastpath(
@@ -641,3 +672,205 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     second = src._get_session()
     assert first is second
     assert builds["n"] == 1
+
+
+# ---------------------------------------------------- retry classification
+
+
+def _http_api_error(
+    status: int, url: str, body: str = "<html>error</html>"
+) -> ApiError:
+    """
+    Build the ApiError shape mokkari raises for an HTTP failure.
+
+    mokkari chains the requests error (``raise ApiError(msg) from err``)
+    and inlines ``repr(HTTPError)`` — full URL included — in the message,
+    which is why the classifier reads the chained response's status
+    rather than hunting for digits in the text.
+    """
+    response = Response()
+    response.status_code = status
+    cause = HTTPError(f"{status} Error for url: {url}", response=response)
+    exc = ApiError(f"HTTP error: {cause!r} | Response body: {body}")
+    exc.__cause__ = cause
+    return exc
+
+
+@pytest.mark.parametrize(
+    ("exc", "expected"),
+    [
+        pytest.param(
+            RateLimitError(
+                "Rate limit exceeded: You have reached the 20 requests per "
+                "minute limit. Please wait 30 seconds before making another "
+                "request.",
+                retry_after=0.0,
+            ),
+            RetryCategory.RATE_LIMIT,
+            id="rate-limit-error",
+        ),
+        # mokkari's AuthenticationError takes no arguments; it bakes in its
+        # own "Missing authorization information" message.
+        pytest.param(
+            AuthenticationError(),
+            RetryCategory.AUTH,
+            id="authentication-error",
+        ),
+        pytest.param(
+            ApiError(
+                "HTTP error: HTTPError('401 Client Error: Unauthorized for "
+                "url: https://metron.cloud/api/issue/1/') | Response body: "
+                '{"detail": "Invalid token."}'
+            ),
+            RetryCategory.AUTH,
+            id="api-error-401",
+        ),
+        pytest.param(
+            ApiError("Invalid username/password."),
+            RetryCategory.AUTH,
+            id="api-error-bad-credentials",
+        ),
+        # SPEC-BUG regression: a throttle body served as ApiError must
+        # classify as RATE_LIMIT (rate-limit markers are checked FIRST),
+        # not fall through to AUTH or TRANSIENT.
+        pytest.param(
+            ApiError("Rate limit exceeded for this api key. Expires in 42 seconds."),
+            RetryCategory.RATE_LIMIT,
+            id="api-error-throttle-body",
+        ),
+        pytest.param(
+            ApiError("Connection error: ReadTimeout(ReadTimeoutError(...))"),
+            RetryCategory.TRANSIENT,
+            id="api-error-connection",
+        ),
+        # The chained response's status is authoritative, so a Metron id
+        # that merely contains "401"/"403" can't strand a retriable 5xx as
+        # a permanent auth failure.
+        pytest.param(
+            _http_api_error(502, "https://metron.cloud/api/issue/14031/"),
+            RetryCategory.TRANSIENT,
+            id="api-error-5xx-id-contains-401",
+        ),
+        pytest.param(
+            _http_api_error(503, "https://metron.cloud/api/issue/?cv_id=44013"),
+            RetryCategory.TRANSIENT,
+            id="api-error-5xx-cv-id-contains-403",
+        ),
+        pytest.param(
+            _http_api_error(401, "https://metron.cloud/api/issue/1/"),
+            RetryCategory.AUTH,
+            id="api-error-chained-401",
+        ),
+        pytest.param(
+            _http_api_error(403, "https://metron.cloud/api/issue/1/"),
+            RetryCategory.AUTH,
+            id="api-error-chained-403",
+        ),
+        # A throttle served with a non-429 status still retries: the
+        # wording is checked before the status.
+        pytest.param(
+            _http_api_error(
+                403, "https://metron.cloud/api/issue/1/", body="Request was throttled."
+            ),
+            RetryCategory.RATE_LIMIT,
+            id="api-error-cdn-throttle-403",
+        ),
+        # Pins that the old bare-"auth" marker is gone: an ApiError carrying
+        # a pydantic dump with a creator-ish "authors" field must not
+        # substring-match into AUTH.
+        pytest.param(
+            ApiError(
+                "Validation error: {'name': 'Watchmen #5', 'authors': ['Alan Moore']}"
+            ),
+            RetryCategory.TRANSIENT,
+            id="api-error-authors-field-not-auth",
+        ),
+        # A cache object missing get()/store() is a wiring bug; replaying
+        # the request can only fail the same way.
+        pytest.param(
+            CacheError(
+                "Cache object passed in is missing attribute: AttributeError('get')"
+            ),
+            RetryCategory.INVALID,
+            id="cache-error-invalid",
+        ),
+        # Not a mokkari exception — the classifier declines and the retry
+        # decorator's conservative fallback takes over.
+        pytest.param(
+            LookupError("metron: issue 5 not found"),
+            None,
+            id="non-mokkari-declined",
+        ),
+    ],
+)
+def test_classify_retry_exception(
+    exc: BaseException, expected: RetryCategory | None
+) -> None:
+    assert MetronOnlineSource.classify_retry_exception(exc) is expected
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        # A cache object missing get()/store() is a wiring bug: mokkari
+        # raises this on the first request, not in Session.__init__, so it
+        # lands inside the retry loop.
+        CacheError("Cache object passed in is missing attribute: get"),
+        # Missing local credentials; replaying cannot conjure them.
+        AuthenticationError(),
+        # Metron rejected the request itself.
+        _http_api_error(401, "https://metron.cloud/api/issue/1/"),
+    ],
+    ids=["cache-error", "auth-error", "http-401"],
+)
+def test_terminal_failures_are_called_exactly_once(exc: BaseException) -> None:
+    """A terminal classification must not be replayed by the retry loop."""
+    calls = {"n": 0}
+
+    class _Source:
+        classify_retry_exception = staticmethod(
+            MetronOnlineSource.classify_retry_exception
+        )
+
+        @with_retry()
+        def call(self) -> None:
+            calls["n"] += 1
+            raise exc
+
+    with pytest.raises(type(exc)):
+        _Source().call()
+    assert calls["n"] == 1
+
+
+def test_with_retry_replays_api_error_throttle_body() -> None:
+    """
+    End-to-end SPEC-BUG regression through the decorator.
+
+    A throttle response surfaced as `ApiError` (no `retry_after` hint)
+    must be classified RATE_LIMIT, sleep the rate-limit schedule's first
+    delay, and replay the call — not raise or use the generic schedule.
+    """
+    sleeps: list[float] = []
+    calls = {"n": 0}
+
+    class _Stub:
+        classify_retry_exception = staticmethod(
+            MetronOnlineSource.classify_retry_exception
+        )
+        on_rate_limit = None
+        retry_sleep = None
+        name = "metron"
+
+        @with_retry(sleep=sleeps.append)
+        def fetch(self) -> str:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                msg = "Rate limit exceeded for this api key."
+                raise ApiError(msg)
+            return "ok"
+
+    assert _Stub().fetch() == "ok"
+    # The call was replayed: the throttled attempt + the successful one.
+    assert calls["n"] == 2
+    # No retry_after hint on ApiError, so the rate-limit schedule applies.
+    assert sleeps == [_RATE_LIMIT_SCHEDULE[0]]
