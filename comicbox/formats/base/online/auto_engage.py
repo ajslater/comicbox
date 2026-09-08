@@ -20,7 +20,7 @@ This module's `resolve_auto_engaged_budget` watches for two signals,
 both of which indicate the user is unlikely to want a multi-hour
 foreground wait:
 
-- `--unattended` + batch size ≥ per-source `_UNATTENDED_THRESHOLD`
+- `--prompts never` + batch size ≥ per-source `_UNATTENDED_THRESHOLD`
 - stdin is not a TTY + batch size ≥ per-source `_NON_TTY_THRESHOLD`
   (4x looser — cron-shaped invocations get the suggestion at a higher
   bar so manual `xargs` pipelines don't surprise the user)
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 
 
 # Batch-size threshold at which to auto-engage `minimal` for a source
-# under `--unattended`. Keyed by source and intentionally listing only
+# under `--prompts never`. Keyed by source and intentionally listing only
 # FAN-OUT sources — the ones where `minimal` actually reduces per-comic API
 # calls. Metron is excluded: its single-call search (PR #143) costs the
 # same at any effort, so auto-engaging `minimal` for it would be a
@@ -72,8 +72,8 @@ _UNATTENDED_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(
 # 4x the unattended thresholds. The conservative bar for "stdin is not
 # a TTY but the user didn't explicitly say unattended" — could be a
 # cron job, could be a manual xargs pipeline. Bump the threshold so
-# manual invocations don't surprise users; explicit `--unattended` is
-# the cleaner signal of intent.
+# manual invocations don't surprise users; explicit `--prompts never`
+# is the cleaner signal of intent.
 _NON_TTY_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(
     {source: count * 4 for source, count in _UNATTENDED_THRESHOLDS.items()}
 )

@@ -2,22 +2,23 @@
 Online metadata lookup mixin.
 
 Sits between `ComicboxNormalize` and `ComicboxMerge` in the box chain.
-For M2 the only path implemented is ``--id <db>:<id>`` — exact-issue
-fetch. Search and ranking land in M3.
 
 The mixin runs once per box instance, gated on
 ``settings.online.lookup.enabled``. For each active source (one whose
 required credentials resolve and whose name is in
-``selected_sources`` if that filter is set), it:
+``selected_sources`` if that filter is set), it takes the first path
+that applies:
 
-1. Checks ``--ignore-existing`` against any source data already
-   carrying an identifier from this source's name (we don't re-tag if
-   the user has already done so, even from a different source).
-2. Calls ``source.get(issue_id)`` for every ``explicit_id`` mapped to
-   that source.
-3. Wraps the response under the schema's root tag and pushes it via
-   ``add_source(source.metadata_source, ...)`` so the existing load
-   → normalize → merge pipeline picks it up.
+1. ``--id <db>:<id>`` — fetch that exact issue, skipping every search.
+2. A stored upstream id from a prior tag — refresh via
+   ``source.get(id)``. ``--rematch`` suppresses this.
+3. The session's series cache — ask the source for "issue N in volume
+   V" without searching. ``--rematch`` suppresses this too.
+4. A full search, ranked and resolved under ``--match``.
+
+Whichever path answers, the response is wrapped under the schema's root
+tag and pushed via ``add_source(source.metadata_source, ...)`` so the
+existing load → normalize → merge pipeline picks it up.
 """
 
 from __future__ import annotations
@@ -112,8 +113,9 @@ def _online_source_enums() -> frozenset[MetadataSources]:
     """
     Derive the set of online MetadataSources from per-format REGISTRATIONs.
 
-    Used to skip self when checking for existing identifiers under
-    `--ignore-existing`.
+    Used to skip online sources when scanning normalized metadata for a
+    stored identifier or for profile fields, so a previous online tag
+    can't feed itself back into this run's search.
     """
     online_source_names = {
         source_name
@@ -190,7 +192,7 @@ class _NoTtyHintGuard:
             self._shown = True
         logger.info(
             "online: no TTY detected and no prompt callback registered; "
-            "pass --unattended if you don't expect to see prompts "
+            "pass --prompts never if you don't expect to see prompts "
             "(interactive mode without a TTY will hang on the first "
             "PROMPT decision)."
         )
@@ -451,20 +453,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             source.retry_sleep = self._retry_sleep
             active.append(source)
         return active
-
-    def _has_existing_identifier(self, source_name: str) -> bool:
-        """Return True if any non-online source's data already has this source's id."""
-        keypath = f"comicbox.identifiers.{source_name}"
-        for src in MetadataSources:
-            if src in _ONLINE_SOURCE_ENUMS:
-                continue
-            normalized = self.get_normalized_metadata(src)
-            if not normalized:
-                continue
-            for loaded in normalized:
-                if glom(dict(loaded.metadata), keypath, default=None):
-                    return True
-        return False
 
     def _stored_identifier(self, source_name: str) -> int | None:
         """

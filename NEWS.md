@@ -51,6 +51,8 @@
     - `-c/--config` loads the file it names instead of being ignored, and an
       unknown `--online` source is an error rather than a silent widening: a
       typo like `--online metrn` queried every configured database.
+    - The hint printed when no TTY is detected told you to pass `--unattended`,
+      a flag comicbox has never had. It names `--prompts never` now.
     - Reading metadata no longer depends on write settings, so
       `--online --write … --rename` no longer names the file from stale data.
     - A comic that can't be read no longer ends the batch, and `comicbox` exits

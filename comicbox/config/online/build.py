@@ -386,7 +386,7 @@ def _resolve_runtime_sources(
     online_arg: Any, explicit_id_sources: tuple[str, ...]
 ) -> tuple[bool, tuple[str, ...] | None]:
     """
-    Decide (enabled, selected) from --online-sources + explicit-id presence.
+    Decide (enabled, selected) from --online + explicit-id presence.
 
     ``selected`` is ordered (run priority). None = the CLI didn't choose,
     so selection falls through to env/config; ALL_SOURCES = an explicit
