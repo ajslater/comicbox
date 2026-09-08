@@ -74,6 +74,10 @@ romanizations, variant spellings — and map to `series.alternative_names`. A
 reprint's `name` is stored as the file wrote it; the series, volume and issue
 read out of that name are a convenience.
 
+A Reprint's `id` attribute is the reprinted issue's id. An AlternativeName's
+`id` is a series id, and comicbox records `id_type: series` on it, because an
+alternative name is a name rather than a series and implies no type of its own.
+
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 
 The schema used by the defunct

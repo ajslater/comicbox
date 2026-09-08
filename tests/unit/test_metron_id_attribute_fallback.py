@@ -17,6 +17,7 @@ Every id was then filed under a ``None`` key and dropped by schema load.
 
 from __future__ import annotations
 
+from argparse import Namespace
 from collections.abc import Iterator, Mapping
 from types import MappingProxyType
 from typing import Any
@@ -24,10 +25,12 @@ from typing import Any
 import pytest
 from glom import glom
 
+from comicbox.box import Comicbox
 from comicbox.enums.comicbox import IdSources
-from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY
+from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY, ComicboxSchemaMixin
 from comicbox.formats.metron_info.transform import MetronInfoTransform
-from comicbox.identifiers import ID_KEY_KEY
+from comicbox.identifiers import ID_KEY_KEY, ID_TYPE_KEY
+from comicbox.identifiers.identifiers import get_url_from_identifier
 from tests.const import TEST_METADATA_DIR
 
 NO_PRIMARY_FN = "metroninfo-no-primary-id.xml"
@@ -103,17 +106,48 @@ def test_tag_id_attribute_survives_and_is_attributed_to_metron(
 
 
 def test_reprint_id_attribute_survives() -> None:
+    """A Reprint's id names the reprinted issue, so its type is implied."""
     reprints = _to_comicbox()["reprints"]
     assert len(reprints) == 1
     identifiers = reprints[0][IDENTIFIERS_KEY]
     assert identifiers == {METRON: {ID_KEY_KEY: "4444"}}
+    assert (
+        get_url_from_identifier(METRON, identifiers[METRON])
+        == "https://metron.cloud/issue/4444"
+    )
 
 
 def test_alternative_name_id_attribute_survives() -> None:
+    """
+    An alternative name's id states that it names a series.
+
+    A name is not the thing it names, so where the id sits implies nothing
+    about it. Without the stated type a reader takes it for an issue id and
+    builds a url to the wrong page.
+    """
     alternative_names = _to_comicbox()["series"]["alternative_names"]
     assert len(alternative_names) == 1
     identifiers = alternative_names[0][IDENTIFIERS_KEY]
-    assert identifiers == {METRON: {ID_KEY_KEY: "3333"}}
+    assert identifiers == {METRON: {ID_KEY_KEY: "3333", ID_TYPE_KEY: "series"}}
+    assert (
+        get_url_from_identifier(METRON, identifiers[METRON])
+        == "https://metron.cloud/series/3333"
+    )
+
+
+def test_alternative_name_id_type_survives_the_whole_read() -> None:
+    """The stated type has to reach the metadata a library reads, not just the transform."""
+    cns = Namespace(
+        convert=Namespace(import_paths=[TEST_METADATA_DIR / NO_PRIMARY_FN]),
+        print=Namespace(phases="ncp"),
+    )
+    with Comicbox(config=Namespace(comicbox=cns)) as car:
+        md = car.get_internal_metadata()
+    alternative_names = md[ComicboxSchemaMixin.ROOT_TAG]["series"]["alternative_names"]
+    assert alternative_names[0][IDENTIFIERS_KEY][METRON] == {
+        ID_KEY_KEY: "3333",
+        ID_TYPE_KEY: "series",
+    }
 
 
 def test_sourced_id_tag_keeps_its_own_source() -> None:
@@ -151,3 +185,8 @@ def test_roundtrip_writes_the_id_attributes_back() -> None:
     assert metron["Publisher"]["@id"] == "11"
     assert metron["Publisher"]["Imprint"]["@id"] == "222"
     assert metron["Series"]["@id"] == "2222"
+    # A stated type is comicbox's own note about the key. It must not
+    # disturb the attribute it was read from.
+    alternative_name = metron["Series"]["AlternativeNames"]["AlternativeName"][0]
+    assert alternative_name["@id"] == "3333"
+    assert metron["Reprints"]["Reprint"][0]["@id"] == "4444"

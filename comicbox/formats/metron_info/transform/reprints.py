@@ -46,8 +46,10 @@ def _reprint_to_cb(
     comicbox_reprint: dict[str, Any] = {}
     if name := get_cdata(metron_reprint):
         comicbox_reprint[NAME_KEY] = str(name)
+        # A Reprint's id is the reprinted issue's metron id, which is what
+        # the online api transform files it as too.
         metron_id_attribute_to_cb(
-            "reprint", metron_reprint, comicbox_reprint, primary_id_source
+            "issue", metron_reprint, comicbox_reprint, primary_id_source
         )
     return comicbox_reprint
 
@@ -111,8 +113,14 @@ def _alternative_name_to_cb(
         return comicbox_alternative_name
     if lang := metron_alternative_name.get(LANG_ATTR):
         comicbox_alternative_name[LANGUAGE_KEY] = lang
+    # An alternative name is a name, not a series, so its id says which
+    # series it names instead of leaving the type to its position.
     metron_id_attribute_to_cb(
-        "series", metron_alternative_name, comicbox_alternative_name, primary_id_source
+        "series",
+        metron_alternative_name,
+        comicbox_alternative_name,
+        primary_id_source,
+        implied=False,
     )
     return comicbox_alternative_name
 

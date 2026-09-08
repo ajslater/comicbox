@@ -20,7 +20,9 @@ class IdentifierSchema(BaseSubSchema):  # Comet, CIX, CT, Metron
     differs from the type implied by where the identifier sits — every id
     under ``series`` is a series id, so it says nothing. A hand-tagged key
     like ``series:178012`` written at the issue level is the case that needs
-    it, since the type decides which url the key builds.
+    it, since the type decides which url the key builds. So is a container
+    that is a name rather than the thing named: a series alternative name
+    implies nothing about its own id, so that id states ``series``.
     """
 
     key = StringField()
