@@ -189,12 +189,16 @@ stays open until a tag ships.
 - [ ] When it ships: `simyan>=4.1.0,<5` (or whatever the tag is), `uv lock`,
       NEWS (Dev): "Require simyan ≥ 4.1.0."
 - [ ] Re-run the fake-transport probe to confirm one request per short page.
-- [ ] Decide then whether to re-derive `COMICVINE_REQUESTS_BY_MODE` and
-      `COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE` in `comicbox/online_estimate.py`
-      with the 2× list cost. Deliberately not done now: those numbers are a
-      projection shown to an operator before a run, and doubling them to
-      describe a bug we are fixing upstream would make them wrong again as soon
-      as the floor bumps. Revisit only if comicbox 5.0.0 ships first.
+- [ ] Decide then whether to re-derive `COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT`
+      in `comicbox/online_estimate.py` with the 2× list cost. (It replaced
+      `COMICVINE_REQUESTS_BY_MODE` and
+      `COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE`, and its values were re-anchored
+      to a measured cold search — see
+      `tasks/online-tagging/calibration-notes/2026-09-08-estimator-cold-search-cost.md`
+      — which does not settle this question.) Deliberately not done now: those
+      numbers are a projection shown to an operator before a run, and doubling
+      them to describe a bug we are fixing upstream would make them wrong again
+      as soon as the floor bumps. Revisit only if comicbox 5.0.0 ships first.
 - [ ] No interim client-side workaround: shrinking `_MAX_VOLUMES_PER_SEARCH` to
       10 would save the second `/search/` page but changes calibrated recall,
       and nothing else can stop a short page early.
