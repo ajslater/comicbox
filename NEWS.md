@@ -136,6 +136,9 @@
       seventeen times faster, and a hundred-and-thirty-six-reprint book about
       fifty.
 
+- Dev
+    - Require simyan >= 4.0.0.
+
 ## v4.8.6
 
 - Features

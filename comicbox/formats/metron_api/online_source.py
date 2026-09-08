@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final
 from loguru import logger
 from typing_extensions import override
 
+from comicbox.enums.comicbox import IdSources
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
@@ -29,6 +30,8 @@ from comicbox.formats.base.online.sources.base import (
 )
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
+from comicbox.identifiers import DEFAULT_ID_TYPE
+from comicbox.identifiers.identifiers import get_identifier_url
 from comicbox.version import USER_AGENT
 
 if TYPE_CHECKING:
@@ -88,10 +91,16 @@ def _bi_series_id(bi_series: Any) -> int | None:
     return getattr(bi_series, "id", None) if bi_series is not None else None
 
 
-def _bi_resource_url(base_issue: Any) -> str:
-    """Return the issue's resource URL as a string; "" when missing."""
-    url = getattr(base_issue, "resource_url", None)
-    return str(url) if url else ""
+def _issue_url(issue_id: int) -> str:
+    """
+    Metron's web page for an issue.
+
+    mokkari's `BaseIssue` carries no url at all, and the full `Issue`'s
+    `resource_url` is the API endpoint rather than a page a human should
+    be shown. Metron routes `issue/<int:pk>/` through a redirect to the
+    slug url, so the numeric id is a stable public link.
+    """
+    return get_identifier_url(IdSources.METRON.value, DEFAULT_ID_TYPE, str(issue_id))
 
 
 # Throttle wording, checked before anything else: a throttle response
@@ -161,13 +170,22 @@ class MetronOnlineSource(OnlineSource):
     @staticmethod
     def classify_retry_exception(exc: BaseException) -> RetryCategory | None:
         """Classify mokkari's exceptions; see `_classify_api_error`."""
-        from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
+        from mokkari.exceptions import (
+            ApiError,
+            AuthenticationError,
+            CacheError,
+            RateLimitError,
+        )
 
         if isinstance(exc, RateLimitError):
             return RetryCategory.RATE_LIMIT
         if isinstance(exc, AuthenticationError):
             # Raised only by Session.__init__ for missing local credentials.
             return RetryCategory.AUTH
+        if isinstance(exc, CacheError):
+            # Raised on the first request, not in Session.__init__, when the
+            # cache object lacks get()/store(): a wiring bug, never transient.
+            return RetryCategory.INVALID
         if isinstance(exc, ApiError):
             return _classify_api_error(exc)
         return None
@@ -430,7 +448,7 @@ class MetronOnlineSource(OnlineSource):
             source=self.name,
             issue_id=base_issue.id,
             summary=summary,
-            url=_bi_resource_url(base_issue),
+            url=_issue_url(base_issue.id),
             precomputed_cover_hash=getattr(base_issue, "cover_hash", None) or None,
             volume_id=series_id if series_id is not None else _bi_series_id(bi_series),
         )
@@ -641,6 +659,12 @@ class MetronOnlineSource(OnlineSource):
         `retry_after`, sleeps, and replays the single failed call rather
         than spamming "issue-list … failed" warnings and dropping the
         data.
+
+        `_record_api_call` counts one call here, but mokkari follows
+        `next` pages inside it, so a result set longer than one Metron
+        page costs more HTTP requests than the count shows. The
+        production filters (series, number, cover_year) keep results
+        well under a page.
         """
         self._record_api_call("issues_list")
         return session.issues_list(params=params)

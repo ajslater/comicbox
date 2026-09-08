@@ -14,7 +14,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from mokkari.exceptions import ApiError, AuthenticationError, RateLimitError
+from mokkari.exceptions import (
+    ApiError,
+    AuthenticationError,
+    CacheError,
+    RateLimitError,
+)
 from requests import Response
 from requests.exceptions import HTTPError
 from typing_extensions import override
@@ -50,7 +55,8 @@ class _FakeBaseIssue:
         self.number = number
         self.cover_date = date(cover_year, 1, 1)
         self.image = f"https://example.com/issue/{iid}.jpg"
-        self.resource_url = f"https://example.com/issue/{iid}"
+        # No `resource_url`: mokkari's `BaseIssue` carries none, so the
+        # candidate url has to be derived from the id.
         self.cover_hash = None
         # mokkari `BaseIssue.series` is `BasicSeries` — since mokkari 3.28.0
         # / Metron server commit 3b1e46b it carries a real `.id` alongside
@@ -323,6 +329,29 @@ def test_to_candidate_propagates_series_id_from_search_result(
     profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.volume_id == 10455
+
+
+def test_to_candidate_url_is_metron_issue_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Candidates link to Metron's public page for the issue.
+
+    mokkari's `BaseIssue` carries no url, so the link is derived from the
+    issue id. Metron redirects the numeric-id path to the slug url.
+    """
+    issues = {
+        "Watchmen": [
+            _FakeBaseIssue(
+                iid=27650, number="5", series_name="Watchmen", series_id=10455
+            )
+        ],
+    }
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    [cand] = src.search(profile)
+    assert cand.url == "https://metron.cloud/issue/27650"
 
 
 def test_to_candidate_propagates_series_id_from_series_id_fastpath(
@@ -756,6 +785,15 @@ def _http_api_error(
             RetryCategory.TRANSIENT,
             id="api-error-authors-field-not-auth",
         ),
+        # A cache object missing get()/store() is a wiring bug; replaying
+        # the request can only fail the same way.
+        pytest.param(
+            CacheError(
+                "Cache object passed in is missing attribute: AttributeError('get')"
+            ),
+            RetryCategory.INVALID,
+            id="cache-error-invalid",
+        ),
         # Not a mokkari exception — the classifier declines and the retry
         # decorator's conservative fallback takes over.
         pytest.param(
@@ -769,6 +807,39 @@ def test_classify_retry_exception(
     exc: BaseException, expected: RetryCategory | None
 ) -> None:
     assert MetronOnlineSource.classify_retry_exception(exc) is expected
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        # A cache object missing get()/store() is a wiring bug: mokkari
+        # raises this on the first request, not in Session.__init__, so it
+        # lands inside the retry loop.
+        CacheError("Cache object passed in is missing attribute: get"),
+        # Missing local credentials; replaying cannot conjure them.
+        AuthenticationError(),
+        # Metron rejected the request itself.
+        _http_api_error(401, "https://metron.cloud/api/issue/1/"),
+    ],
+    ids=["cache-error", "auth-error", "http-401"],
+)
+def test_terminal_failures_are_called_exactly_once(exc: BaseException) -> None:
+    """A terminal classification must not be replayed by the retry loop."""
+    calls = {"n": 0}
+
+    class _Source:
+        classify_retry_exception = staticmethod(
+            MetronOnlineSource.classify_retry_exception
+        )
+
+        @with_retry()
+        def call(self) -> None:
+            calls["n"] += 1
+            raise exc
+
+    with pytest.raises(type(exc)):
+        _Source().call()
+    assert calls["n"] == 1
 
 
 def test_with_retry_replays_api_error_throttle_body() -> None:
