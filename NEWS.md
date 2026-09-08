@@ -20,6 +20,12 @@
       format.
     - Removed `--replace`; use `--merge-mode update`. The write API takes
       `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
+    - `OnlineSession` takes `match` and `prompts` instead of `mode` and
+      `unattended`, matching `--match` and `--prompts`. `set_mode` and
+      `set_unattended` are `set_match` and `set_prompts`, the prompt objects
+      carry `match` and `prompts`, and the `set_unattended` selector action is
+      `set_prompts`, which names the policy it sets and so can turn prompts back
+      on.
     - Environment variables nest with `__`, and every config key can be set that
       way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
     - `estimate_run()` and `requests_per_comic()` take an `effort` instead of a

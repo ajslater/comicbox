@@ -30,8 +30,8 @@ VALID_BOTH = OnlineCredentials(metron_user="u", metron_password="p", comicvine_k
 def test_construct_with_valid_creds() -> None:
     """Construction works when every enabled source has its required fields."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert session.mode is MatchMode.AUTO
-    assert session.unattended is False
+    assert session.match is MatchMode.AUTO
+    assert session.prompts is Prompts.ASK
     assert session.cancelled is False
 
 
@@ -48,7 +48,7 @@ def test_rejects_empty_sources() -> None:
 def test_construct_with_metron_token_only() -> None:
     """An API token authenticates Metron without a username or password."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON_TOKEN)
-    assert session.mode is MatchMode.AUTO
+    assert session.match is MatchMode.AUTO
 
 
 def test_rejects_metron_without_creds() -> None:
@@ -69,21 +69,21 @@ def test_rejects_comicvine_without_key() -> None:
         OnlineSession(sources={"comicvine"}, credentials=VALID_METRON)
 
 
-def test_rejects_non_enum_mode() -> None:
+def test_rejects_non_enum_match() -> None:
     with pytest.raises(OnlineConfigurationError, match="must be a MatchMode"):
         OnlineSession(
             sources={"metron"},
             credentials=VALID_METRON,
-            mode="normal",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+            match="normal",  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
         )
 
 
-def test_rejects_ask_mode() -> None:
+def test_rejects_ask_match() -> None:
     with pytest.raises(OnlineConfigurationError, match=r"MatchMode\.ASK"):
         OnlineSession(
             sources={"metron"},
             credentials=VALID_METRON,
-            mode=MatchMode.ASK,
+            match=MatchMode.ASK,
         )
 
 
@@ -119,21 +119,21 @@ def test_rejects_ids_for_a_source_not_in_the_session() -> None:
 
 
 @pytest.mark.parametrize(
-    "mode",
+    "match",
     [MatchMode.CAREFUL, MatchMode.AUTO, MatchMode.EAGER],
 )
-def test_mode_propagates_to_match_setting(mode: MatchMode) -> None:
+def test_match_propagates_to_match_setting(match: MatchMode) -> None:
     session = OnlineSession(
         sources={"metron"},
         credentials=VALID_METRON,
-        mode=mode,
+        match=match,
     )
-    assert session._settings.online.lookup.match is mode
+    assert session._settings.online.lookup.match is match
 
 
-def test_unattended_maps_to_prompts_never() -> None:
+def test_prompts_propagates_to_prompts_setting() -> None:
     session = OnlineSession(
-        sources={"metron"}, credentials=VALID_METRON, unattended=True
+        sources={"metron"}, credentials=VALID_METRON, prompts=Prompts.NEVER
     )
     assert session._settings.online.lookup.prompts == Prompts.NEVER
 
@@ -143,19 +143,19 @@ def _live_lookup(session: OnlineSession):
     return session._state.overlay(session._settings.online).lookup
 
 
-def test_set_mode_changes_subsequent_lookups() -> None:
+def test_set_match_changes_subsequent_lookups() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _live_lookup(session).match == MatchMode.AUTO
-    session.set_mode(MatchMode.EAGER)
+    session.set_match(MatchMode.EAGER)
     assert _live_lookup(session).match == MatchMode.EAGER
 
 
-def test_set_unattended_changes_subsequent_lookups() -> None:
+def test_set_prompts_changes_subsequent_lookups() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _live_lookup(session).prompts == Prompts.ASK
-    session.set_unattended(unattended=True)
+    session.set_prompts(Prompts.NEVER)
     assert _live_lookup(session).prompts == Prompts.NEVER
-    session.set_unattended(unattended=False)
+    session.set_prompts(Prompts.ASK)
     assert _live_lookup(session).prompts == Prompts.ASK
 
 
@@ -292,31 +292,49 @@ def test_set_policy_via_handler_persists_across_files() -> None:
     """A handler's set_policy must outlive the in-flight file."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _apply_via_box(session, "set_policy", "eager") is True
-    assert session.mode is MatchMode.EAGER
+    assert session.match is MatchMode.EAGER
 
 
-def test_set_unattended_via_handler_persists_across_files() -> None:
+def test_set_prompts_via_handler_persists_across_files() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_unattended", None) is True
-    assert session.unattended is True
+    assert _apply_via_box(session, "set_prompts", "never") is True
+    assert session.prompts is Prompts.NEVER
+
+
+def test_set_prompts_via_handler_is_reversible() -> None:
+    """The action names its new value, so it goes back the way it came."""
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, prompts=Prompts.NEVER
+    )
+    assert _apply_via_box(session, "set_prompts", "ask") is True
+    assert session.prompts is Prompts.ASK
 
 
 def test_set_policy_ask_persists() -> None:
-    """ASK sticks when a handler asks for it, though set_mode still refuses it."""
+    """ASK sticks when a handler asks for it, though set_match still refuses it."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _apply_via_box(session, "set_policy", "ask") is True
-    assert session.mode is MatchMode.ASK
+    assert session.match is MatchMode.ASK
     with pytest.raises(OnlineConfigurationError):
-        session.set_mode(MatchMode.ASK)
+        session.set_match(MatchMode.ASK)
 
 
-def test_malformed_set_policy_declines_and_leaves_mode() -> None:
+def test_malformed_set_policy_declines_and_leaves_match() -> None:
     """Bad payloads are declined, loudly, and don't move the session."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _apply_via_box(session, "set_policy", "bogus") is False
-    assert session.mode is MatchMode.AUTO
+    assert session.match is MatchMode.AUTO
     assert _apply_via_box(session, "set_policy", 7) is False
-    assert session.mode is MatchMode.AUTO
+    assert session.match is MatchMode.AUTO
+
+
+def test_malformed_set_prompts_declines_and_leaves_prompts() -> None:
+    """set_prompts validates its payload the same way set_policy does."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    assert _apply_via_box(session, "set_prompts", "bogus") is False
+    assert session.prompts is Prompts.ASK
+    assert _apply_via_box(session, "set_prompts", None) is False
+    assert session.prompts is Prompts.ASK
 
 
 # --- prompt-handler bridging --------------------------------------------------

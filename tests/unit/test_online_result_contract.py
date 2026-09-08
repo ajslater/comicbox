@@ -420,7 +420,7 @@ def test_prompt_loop_caps_repeated_session_changes(monkeypatch) -> None:
     """
     A selector that only ever asks for session changes must terminate.
 
-    ``set_policy`` / ``set_unattended`` re-resolve and re-prompt, so a
+    ``set_policy`` / ``set_prompts`` re-resolve and re-prompt, so a
     callback that never returns a terminal action span the loop forever.
     """
     instances = _patch_metron(

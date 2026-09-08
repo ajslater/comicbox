@@ -129,7 +129,7 @@ def _online_source_enums() -> frozenset[MetadataSources]:
 _ONLINE_SOURCE_ENUMS: frozenset[MetadataSources] = _online_source_enums()
 
 # Hard cap on selector round-trips for a single prompt. Only the two
-# session-level actions (`set_unattended` / `set_policy`) re-prompt, and a
+# session-level actions (`set_prompts` / `set_policy`) re-prompt, and a
 # user needs at most one of each before landing on a terminal answer, so
 # anything past this is a selector that never terminates -- a buggy or
 # hostile programmatic callback, not a person. Not a match-quality
@@ -286,7 +286,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
 
     # Session-supplied owner of the two mutable lookup settings (match and
     # prompts). A Runner or OnlineSession shares one across every box it
-    # spawns so a `set_policy` / `set_unattended` answered on one file is
+    # spawns so a `set_policy` / `set_prompts` answered on one file is
     # in force for the next. Unset for a standalone Comicbox: the lazy
     # fallback below then makes a private one seeded from this box's
     # config, keeping single-file use self-contained.
@@ -345,7 +345,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Register the session-level owner of match mode and prompt policy.
 
         Share one across every box of a batch so a `set_policy` /
-        `set_unattended` answered at a prompt outlives the file it was
+        `set_prompts` answered at a prompt outlives the file it was
         answered on. A sibling worker already resolving a file finishes it
         under the policy it started with and picks the change up on its
         next file.
@@ -760,7 +760,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         Acquires the class-level `_PROMPT_LOCK` around the selector call
         so concurrent worker threads (when `-j N > 1`) don't garble each
         other's prompts. Re-resolves and re-prompts when the selector
-        requests a session-level setting change (`set_unattended` /
+        requests a session-level setting change (`set_prompts` /
         `set_policy`), reading the session state back so the new setting
         takes effect on the current candidate set immediately.
 
@@ -788,7 +788,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                     action=action,
                 )
             )
-            if action in {"set_unattended", "set_policy"}:
+            if action in {"set_prompts", "set_policy"}:
                 if not self._apply_session_action(source.name, action, payload):
                     return False
                 resolution = self._resolve_existing(
@@ -804,7 +804,7 @@ class ComicboxOnlineLookup(ComicboxNormalize):
             return self._dispatch_terminal_prompt_action(
                 source, current, action, payload
             )
-        # Only `set_unattended` / `set_policy` reach here; every other
+        # Only `set_prompts` / `set_policy` reach here; every other
         # action returned above. A selector that keeps asking for session
         # changes without ever deciding would have spun forever.
         logger.warning(
@@ -834,37 +834,43 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         self, source_name: str, action: str, payload: int | str | None
     ) -> bool:
         """
-        Apply a `set_unattended` / `set_policy` action to the session.
+        Apply a `set_prompts` / `set_policy` action to the session.
 
         The single validator for these two actions: the session reads the
         state this writes, so there is no second implementation to keep in
-        step. Returns True on success, False if the payload was malformed
-        (in which case the prompt has been recorded as declined and the
-        caller should bail out).
+        step. Both name their new value as a string payload, so both parse
+        it the same way. Returns True on success, False if the payload was
+        malformed (in which case the prompt has been recorded as declined
+        and the caller should bail out).
         """
-        if action == "set_unattended":
-            self._get_online_session_state().set_prompts(Prompts.NEVER)
-            logger.info(f"online {source_name}: session set to unattended via prompt")
-            return True
+        enum_class: type[Prompts | MatchMode] = (
+            Prompts if action == "set_prompts" else MatchMode
+        )
+        noun = "prompt policy" if action == "set_prompts" else "match mode"
         if not isinstance(payload, str):
             logger.warning(
-                f"online {source_name}: set_policy requires a policy name; "
+                f"online {source_name}: {action} requires a {noun} name; "
                 f"got {payload!r}"
             )
             outcome_stats.record_prompt_declined(source_name)
             return False
         try:
-            new_match = MatchMode(payload)
+            new_value = enum_class(payload)
         except ValueError:
+            expected = " | ".join(member.value for member in enum_class)
             logger.warning(
-                f"online {source_name}: unknown match mode {payload!r}; "
-                "expected one of ask | careful | auto | eager"
+                f"online {source_name}: unknown {noun} {payload!r}; "
+                f"expected one of {expected}"
             )
             outcome_stats.record_prompt_declined(source_name)
             return False
-        self._get_online_session_state().set_match(new_match)
+        state = self._get_online_session_state()
+        if isinstance(new_value, Prompts):
+            state.set_prompts(new_value)
+        else:
+            state.set_match(new_value)
         logger.info(
-            f"online {source_name}: session match mode set to {new_match.value} via prompt"
+            f"online {source_name}: session {noun} set to {new_value.value} via prompt"
         )
         return True
 

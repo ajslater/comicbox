@@ -41,6 +41,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from comicbox.config.online.settings import Prompts
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -271,7 +273,7 @@ def _ask_session_options() -> SelectorResult | None:
         if s in {"b", "back", ""}:
             return None
         if s in {"u", "unattended"}:
-            return ("set_unattended", None)
+            return ("set_prompts", Prompts.NEVER.value)
         if s in {"p", "policy"}:
             sub = _ask_policy_choice()
             if sub is not None:

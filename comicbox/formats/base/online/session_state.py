@@ -2,7 +2,7 @@
 One owner for the online session's mutable lookup policy.
 
 Two settings change mid-run when a selector answers ``set_policy`` or
-``set_unattended``: ``match`` and ``prompts``. Everything else in
+``set_prompts``: ``match`` and ``prompts``. Everything else in
 ``OnlineSettings`` is resolved once at config time and never moves.
 
 This module owns that pair for the whole run. Readers take a
@@ -22,13 +22,15 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING
 
-from comicbox.config.online.settings import (
-    MatchMode,
-    OnlineLookupSettings,
-    OnlineSettings,
-    Prompts,
-)
+if TYPE_CHECKING:
+    from comicbox.config.online.settings import (
+        MatchMode,
+        OnlineLookupSettings,
+        OnlineSettings,
+        Prompts,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,11 +39,6 @@ class LookupPolicy:
 
     match: MatchMode
     prompts: Prompts
-
-    @property
-    def unattended(self) -> bool:
-        """Whether comicbox may not prompt."""
-        return self.prompts is Prompts.NEVER
 
 
 class OnlineSessionState:
