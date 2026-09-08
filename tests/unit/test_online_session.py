@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 import pytest
 
 from comicbox.box import Comicbox
-from comicbox.config.online.settings import MatchMode, Prompts
+from comicbox.config import get_config
+from comicbox.config.online.settings import Effort, MatchMode, Prompts
 from comicbox.online_session import (
     OnlineConfigurationError,
     OnlineCredentials,
@@ -184,6 +188,39 @@ def test_only_enabled_sources_appear_in_auth() -> None:
     cfg = session._build_config()
     assert "metron" in cfg.online.auth.sources
     assert "comicvine" not in cfg.online.auth.sources
+
+
+def test_supplied_config_is_the_base_the_session_layers_over() -> None:
+    """Settings an embedder passes in survive into every per-file config."""
+    base = get_config()
+    cache = replace(base.online.cache, dir=Path("/tmp/codex-cache"))
+    tuning = replace(base.online.tuning, effort=Effort.THOROUGH)
+    supplied = replace(base, online=replace(base.online, cache=cache, tuning=tuning))
+
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, config=supplied
+    )
+
+    cfg = session._build_config()
+    assert cfg.online.cache.dir == Path("/tmp/codex-cache")
+    assert cfg.online.tuning.effort is Effort.THOROUGH
+    # The session's own preferences still win over what it was handed.
+    assert cfg.online.lookup.sources == ("metron",)
+    assert cfg.online.lookup.enabled is True
+
+
+def test_supplied_config_skips_the_settings_read(monkeypatch) -> None:
+    """A caller with settings in hand pays no config-file or env read."""
+
+    def _fail() -> None:
+        msg = "get_config() should not be called when config= is supplied"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr("comicbox.online_session.get_config", _fail)
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, config=get_config()
+    )
+    assert session._build_config().online.lookup.sources == ("metron",)
 
 
 # --- cancellation -------------------------------------------------------------

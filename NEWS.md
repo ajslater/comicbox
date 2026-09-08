@@ -29,6 +29,10 @@
     - Web urls in the Notes field are read into `urls`.
     - Online API: new `SourceStarted` event, and `rate_limit_status()` now
       covers Comic Vine as well as Metron.
+    - `OnlineSession` accepts a `config`, the settings it layers its tagging
+      preferences over. An embedder that already holds configured settings —
+      naming its own cache directory or effort — hands them over instead of
+      exporting environment variables for the settings loader to find.
 
 - Fixes
     - Two silent data losses: an XML tag carrying an attribute, like

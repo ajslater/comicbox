@@ -274,6 +274,14 @@ class OnlineSession:
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources
     search, so one run can mix id retrieval and search and merge both.
+
+    ``config`` supplies the settings the session layers its tagging
+    preferences over. An embedder that already holds configured
+    ``ComicboxSettings`` — naming its own cache directory or effort,
+    neither of which an ``OnlineSession`` keyword covers — passes them
+    here instead of exporting environment variables for the settings
+    loader to find. Omitted, the session reads config files and the
+    environment itself.
     """
 
     def __init__(  # noqa: PLR0913
@@ -290,6 +298,7 @@ class OnlineSession:
         first_wins: bool = True,
         defer_prompts: bool = False,
         series_batching: bool = True,
+        config: ComicboxSettings | None = None,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
         # Order is run priority: the first source runs first and, under
@@ -316,8 +325,12 @@ class OnlineSession:
         # Read config files / env exactly once per session. _build_config
         # used to call get_config() per file — wasted disk I/O on big
         # batches plus a behavioral surprise where a config-file edit
-        # mid-batch changed settings for the remaining files.
-        self._base_settings: ComicboxSettings = get_config()
+        # mid-batch changed settings for the remaining files. A caller
+        # that passes its own settings skips the read entirely: they are
+        # already the answer this would have gone looking for.
+        self._base_settings: ComicboxSettings = (
+            config if config is not None else get_config()
+        )
         # Nothing in the settings tree varies per file: the mutable
         # policy lives in _state and each box overlays it for itself.
         self._settings: ComicboxSettings = self._build_config()
