@@ -33,7 +33,7 @@ dependencies = [
   "rich~=15.0",
   "ruamel-yaml~=0.18",
   "simplejson~=4.0",
-  "simyan>=4.0.0,<5",
+  "simyan>=4.1.0,<5",
   "typing-extensions~=4.13",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
@@ -81,7 +81,7 @@ dev = [
   "packaging>=26.1",
   "pyclean~=3.1",
   "pypi-cleanup~=0.1.10",
-  "semver~=3.0.4",
+  "semver~=3.1.0",
   "toml-cli~=0.7",
   "tomlkit~=0.14",
 ]
