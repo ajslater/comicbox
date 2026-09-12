@@ -39,9 +39,9 @@ sets the pace; merging pays every source per comic, so their paces sum.
 The projection prices a cold search for every comic. A real run batches by
 series, where one search answers for the whole series and the issues after
 it cost about one issue-list call each, so a library finishes ahead of this
-number. Comic Vine also spends about 2x what these counts say, from simyan
-paginating a short page; that correction waits on the upstream fix (see
-``tasks/simyan-4-plan.md``).
+number. Each call counted here is one HTTP request: simyan 4.1.0 stops
+paginating on a short page, so a Comic Vine list call no longer spends two
+of its pool's hourly budget (Simyan#309, see ``tasks/simyan-4-plan.md``).
 """
 
 from __future__ import annotations

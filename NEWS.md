@@ -1,5 +1,18 @@
 # 📰 News
 
+## v5.0.1
+
+- Performance
+    - Comic Vine tagging spends half the API budget it used to. simyan 4.1.0
+      stops paginating past a short page, so each candidate volume's issue
+      lookup costs one request against Comic Vine's 200-per-hour `issues` pool
+      instead of two. That pool paces a Comic Vine run, so runs are faster as
+      well as cheaper, and `estimate_run()` now projects the request count
+      rather than a floor half its size.
+
+- Dev
+    - Require simyan >= 4.1.0.
+
 ## v5.0.0
 
 - Breaking Changes

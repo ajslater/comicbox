@@ -71,15 +71,17 @@ Per comic that gives `2 + n + 2` requests and `60 * n / 3` seconds (Comic Vine's
 
 The default projection therefore rises from 20 s to 60 s per comic.
 
-## Two known under-counts, both still open
+## Two known under-counts, one now closed
 
-- **simyan pagination.** `Comicvine._offset` loops until it gets an empty page,
-  so every fan-out `list_issues` spends two of the 200/hour `issues` budget
-  rather than one. `tasks/simyan-4-plan.md` documents this and defers the
-  correction to the upstream fix, on the grounds that doubling the numbers to
-  describe a bug being fixed elsewhere makes them wrong again as soon as the fix
-  lands. That decision stands; the constants above are therefore a floor for
-  wall clock.
+- **simyan pagination — CLOSED by simyan 4.1.0 (2026-09-11).**
+  `Comicvine._offset` used to loop until it got an empty page, so every fan-out
+  `list_issues` spent two of the 200/hour `issues` budget rather than one, and
+  the constants above were a floor for wall clock. 4.1.0 stops on a short page
+  (Simyan#309 / PR #310, the fix this project filed), verified by fake-transport
+  probe at 1 request per call. **The constants above needed no change**: they
+  count comicbox-level `api_call_counts` calls, so they always described logical
+  calls, and one logical call is now one request. The 2026-09-08 decision not to
+  double them is what makes this a no-op rather than a second correction.
 - **Metron.** `_record_api_call` counts one call where mokkari may follow `next`
   pages inside it. The production filters keep results under a page, so the flat
   2 holds in practice.
