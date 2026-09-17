@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def _clean_registry() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+def _clean_registry() -> Iterator[None]:
     """Isolate the unlink-once registry, which is a module global."""
     saved = set(sources_base._refreshed_cache_paths)
     sources_base._refreshed_cache_paths.clear()

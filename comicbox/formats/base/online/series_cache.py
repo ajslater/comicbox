@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import threading
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
+from loguru import logger
 from typing_extensions import override
 
 if TYPE_CHECKING:
@@ -182,6 +183,62 @@ class SeriesCache(MutableMapping[SeriesCacheKey, int]):
         """Membership test."""
         with self._lock:
             return key in self._data
+
+
+# How long a worker waits for another to resolve the series they share.
+#
+# Bounds one pathological case: a leader wedged on a slow source or an
+# unanswered prompt must not hold its whole cluster hostage. Generous on
+# purpose — the wait is what saves the cluster's other members a cold
+# search each, and a leader blocked at the rate gate behind a rejection
+# can legitimately take a minute. On timeout the waiter falls back to the
+# cold search it would have done anyway, so overshooting costs latency
+# and undershooting costs API budget.
+SERIES_LEAD_TIMEOUT_S: Final[float] = 120.0
+
+
+def lead_series(
+    cache: MutableMapping[SeriesCacheKey, int], key: SeriesCacheKey
+) -> bool:
+    """
+    Claim the right to resolve `key`, on any MutableMapping.
+
+    False for a mapping without the single-flight API — a plain dict from
+    a sequential caller, which has nothing to race. A True caller MUST
+    pair this with `release_series` in a ``finally``.
+    """
+    lead = getattr(cache, "lead", None)
+    return bool(lead(key)) if lead is not None else False
+
+
+def release_series(
+    cache: MutableMapping[SeriesCacheKey, int], key: SeriesCacheKey
+) -> None:
+    """Hand leadership of `key` back, on any MutableMapping."""
+    release = getattr(cache, "release", None)
+    if release is not None:
+        release(key)
+
+
+def await_series_leader(
+    cache: MutableMapping[SeriesCacheKey, int],
+    key: SeriesCacheKey,
+    timeout: float = SERIES_LEAD_TIMEOUT_S,
+) -> None:
+    """
+    Block while another caller resolves `key`, if one is.
+
+    Returns as soon as there is no leader to wait for, which is also the
+    plain-dict case. The caller re-reads the cache either way: a leader
+    can finish without having resolved anything.
+    """
+    wait = getattr(cache, "wait", None)
+    if wait is None or wait(key, timeout):
+        return
+    logger.debug(
+        f"online: gave up waiting {timeout:.0f}s for the series leader of "
+        f"{key[1]!r}; searching independently"
+    )
 
 
 def claim_series(
