@@ -18,6 +18,7 @@ from loguru import logger
 from typing_extensions import override
 
 from comicbox.enums.comicbox import IdSources
+from comicbox.events import SKIP_QUOTA_RESERVED
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
@@ -737,6 +738,9 @@ class MetronOnlineSource(OnlineSource):
         ``--series-id metron:<id>`` still short-circuits straight to a
         single `issues_list({series_id: ...})` call — unchanged.
         """
+        # Owns its own lifetime: set when this search declines to run,
+        # cleared here so it can never be read as the next comic's answer.
+        self.reset_search_skip_reason()
         session = self._get_session()
         if not self._may_start_cold_search():
             return []
@@ -779,12 +783,15 @@ class MetronOnlineSource(OnlineSource):
         finishes one. Spending the last of the day on new searches would
         leave a trail of comics that matched and were never written.
 
-        Returning [] reads downstream as "no candidates", which the
-        lookup already handles as a clean NO_MATCH.
+        Returning [] reads downstream as "no candidates", so the reason is
+        recorded alongside it: the lookup reports a `Skipped` with
+        `SKIP_QUOTA_RESERVED` rather than a NO_MATCH, since this comic was
+        never actually looked at and should be tried again tomorrow.
         """
         gate = self._gate()
         if gate is None or gate.allow_cold_search():
             return True
+        self._note_search_skipped(SKIP_QUOTA_RESERVED)
         logger.info(
             f"online {self.name}: daily quota nearly spent; skipping this "
             "search so the remaining budget finishes comics that matched"

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Final, Literal, TypeAlias
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -220,9 +220,25 @@ class PromptResolvedFromCache(Event):
     kind: Literal["prompt_resolved_from_cache"] = "prompt_resolved_from_cache"
 
 
+#: ``Skipped.reason`` when the matcher saw this file's candidates and
+#: declined them.
+SKIP_MATCHER_DECLINED: Final = "matcher_declined"
+
+#: ``Skipped.reason`` when the source never searched at all, because the
+#: day's API quota is down to the reserve that finishes comics which already
+#: matched. Distinct from a real miss on purpose: the comic was not looked
+#: at, so an embedding application should leave it queued for the next run
+#: rather than record "this source found nothing for it".
+SKIP_QUOTA_RESERVED: Final = "quota_reserved"
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Skipped(Event):
-    """Matcher declined to write metadata for this file."""
+    """
+    A source wrote no metadata for this file, and says why.
+
+    ``reason`` is one of the ``SKIP_*`` constants above.
+    """
 
     source: str = ""
     reason: str = ""

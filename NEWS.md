@@ -1,5 +1,20 @@
 # 📰 News
 
+## v5.1.1
+
+- Features
+    - A run that stops itself says why. `OnlineSession.abort_reason` carries the
+      reason a lookup aborted the batch — most usefully a spent daily API quota,
+      which stops a run nobody asked to stop. A caller's own `cancel()` leaves
+      it unset, so an embedding application can tell a pause it initiated from
+      one the server forced.
+    - A search the daily-quota reserve stopped now reports `Skipped` with
+      `reason="quota_reserved"` instead of passing for a source that looked and
+      found nothing. Those two call for opposite handling: a comic nobody
+      searched for should be tried again tomorrow, and one that genuinely missed
+      should not. The matcher's own reason is now the exported constant
+      `SKIP_MATCHER_DECLINED` alongside `SKIP_QUOTA_RESERVED`.
+
 ## v5.1.0
 
 - Fixes
