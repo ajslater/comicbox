@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 import threading
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -70,6 +71,50 @@ _session_cache_lock = threading.Lock()
 # rate_gate.py`); sharing the Session was only ever enough to share
 # mokkari's *observation* of the limit, not to enforce it.
 _gate_cache: dict[tuple[str, str, str], RateGate] = {}
+
+
+# Prefetched issue lists, keyed by Metron series id: {number: BaseIssue}.
+# Filled by `MetronOnlineSource.prefetch_volume` for a series a batch
+# holds many comics from, so the rest of that cluster answers "issue N in
+# volume V" from memory instead of one `issues_list` each.
+#
+# Bounded, unlike `_session_cache`: this holds real payloads, and a big
+# library run touches many series. Oldest-first eviction is right here —
+# a batch is ordered by series, so the series that filled the oldest
+# entry is the one the run has finished with.
+_PREFETCH_MAX_VOLUMES: Final[int] = 64
+# Metron's DRF `PAGE_SIZE`, which decides how many requests listing a
+# whole series takes.
+_METRON_PAGE_SIZE: Final[int] = 100
+# Below this a prefetch cannot pay for itself: the `series(id)` call plus
+# at least one list page is already 2 requests, so a 2-comic cluster
+# breaks even at best.
+_PREFETCH_MIN_CLUSTER: Final[int] = 3
+
+_prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
+_prefetch_lock = threading.Lock()
+
+
+def _has_prefetch(volume_id: int) -> bool:
+    """Whether this volume's issue list has already been pulled."""
+    with _prefetch_lock:
+        return volume_id in _prefetch_cache
+
+
+def _store_prefetch(volume_id: int, by_number: dict[str, Any]) -> None:
+    """Record a volume's issue list, evicting the oldest volume if full."""
+    with _prefetch_lock:
+        _prefetch_cache[volume_id] = by_number
+        _prefetch_cache.move_to_end(volume_id)
+        while len(_prefetch_cache) > _PREFETCH_MAX_VOLUMES:
+            _prefetch_cache.popitem(last=False)
+
+
+def _prefetched_issue(volume_id: int, number: str) -> Any:
+    """Return a prefetched `BaseIssue` for this volume and number, or None."""
+    with _prefetch_lock:
+        volume = _prefetch_cache.get(volume_id)
+        return volume.get(number) if volume else None
 
 
 def shared_gate(
@@ -550,6 +595,9 @@ class MetronOnlineSource(OnlineSource):
         number = strip_issue_leading_zeros(issue_number)
         if not number:
             return None
+        prefetched = _prefetched_issue(volume_id, number)
+        if prefetched is not None:
+            return self._to_candidate(prefetched, series_id=volume_id)
         session = self._get_session()
         params: dict[str, Any] = {"series_id": volume_id, "number": number}
         issues = self._issues_list_with_retry(session, params)
@@ -560,6 +608,84 @@ class MetronOnlineSource(OnlineSource):
         # `number`), accept the first — caller would otherwise need to
         # decide between variants which is a different problem.
         return self._to_candidate(issue_list[0], series_id=volume_id)
+
+    @override
+    def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:
+        """
+        Pull a whole series' issue list once instead of once per comic.
+
+        With `PAGE_SIZE=100` a series is one or a few pages, so a long run
+        costs `1 + pages` requests to list instead of one `issues_list`
+        per comic. Only worth it when that is actually cheaper than the
+        lookups it replaces, which is what the `series(id)` call buys: its
+        `issue_count` says how many pages the list will take before
+        committing to fetching it.
+
+        The `issue(id)` detail fetch still happens per comic — `BaseIssue`
+        carries no credits or characters — so this takes a cluster from
+        about two requests per comic to about one.
+
+        Best effort throughout: anything that goes wrong leaves the
+        per-comic path exactly as it was.
+        """
+        if cluster_size < _PREFETCH_MIN_CLUSTER or _has_prefetch(volume_id):
+            return
+        try:
+            self._prefetch_volume_issues(volume_id, cluster_size)
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.debug(
+                f"online {self.name}: series prefetch for volume {volume_id} "
+                f"failed: {exc}; falling back to per-issue lookups"
+            )
+
+    def _prefetch_volume_issues(self, volume_id: int, cluster_size: int) -> None:
+        """Do the two-step prefetch; see `prefetch_volume` for the policy."""
+        session = self._get_session()
+        series = self._series_with_retry(session, volume_id)
+        issue_count = getattr(series, "issue_count", None) if series else None
+        if not issue_count:
+            return
+        pages = math.ceil(issue_count / _METRON_PAGE_SIZE)
+        # `1` for the series() call already spent, plus a page each. The
+        # comparison is against what the cluster would otherwise pay: one
+        # issues_list per comic.
+        if 1 + pages >= cluster_size:
+            logger.debug(
+                f"online {self.name}: not prefetching volume {volume_id} — "
+                f"{1 + pages} requests to list {issue_count} issues is not "
+                f"cheaper than {cluster_size} per-issue lookups"
+            )
+            return
+        issues = self._issues_list_with_retry(session, {"series_id": volume_id})
+        by_number: dict[str, Any] = {}
+        for issue in issues:
+            number = strip_issue_leading_zeros(getattr(issue, "number", None))
+            # First writer wins, mirroring `_lookup_issue_in_volume`'s
+            # "accept the first" rule for cover variants sharing a number.
+            if number and number not in by_number:
+                by_number[number] = issue
+        _store_prefetch(volume_id, by_number)
+        logger.info(
+            f"online {self.name}: prefetched {len(by_number)} issues of volume "
+            f"{volume_id} in {1 + pages} requests, for {cluster_size} comics"
+        )
+
+    @with_retry(max_retries=1)
+    def _series_with_retry(self, session: Session, series_id: int) -> Any:
+        """
+        Per-call retry wrapper around `session.series`.
+
+        Deliberately a tighter budget than the rest of the source. This
+        call only decides whether a prefetch is worth doing, and there is
+        a working fallback one line away, so burning the user's full
+        retry budget (and its 31s of backoff) on it would cost more than
+        the optimization can ever save. Rate-limit errors keep their own
+        budget, which the gate makes free to spend.
+        """
+        self._record_api_call("series")
+        return session.series(series_id)
 
     def _search_by_explicit_series_id(
         self, session: Session, profile: ComicProfile, series_id: int

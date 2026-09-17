@@ -802,7 +802,7 @@ def test_instance_retry_budget_overrides_the_decorator_default() -> None:
     sleeps, fake_sleep = _capture_sleeps()
     calls = 0
 
-    @_stub_retry(_BudgetSource(2), max_retries=5, sleep=fake_sleep)
+    @_stub_retry(_BudgetSource(2), sleep=fake_sleep)
     def fn() -> str:
         nonlocal calls
         calls += 1
@@ -813,6 +813,30 @@ def test_instance_retry_budget_overrides_the_decorator_default() -> None:
         fn()
     assert calls == 3  # the initial attempt plus 2 retries
     assert sleeps == [1.0, 2.0]
+
+
+def test_an_explicit_max_retries_wins_over_the_configured_budget() -> None:
+    """
+    A call site that pins its budget means it.
+
+    The prefetch probe is the case: it has a working fallback one line
+    away, so it must give up cheaply rather than spend a user's whole
+    budget and its backoff on an optimization.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_BudgetSource(5), max_retries=1, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError):
+        fn()
+    assert calls == 2
+    assert sleeps == [1.0]
 
 
 def test_absent_retry_budget_keeps_the_decorator_default() -> None:

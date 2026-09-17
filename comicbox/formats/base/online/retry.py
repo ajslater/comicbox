@@ -86,6 +86,10 @@ def _redact_api_keys(exc: BaseException) -> None:
         stack.extend(_scrub_node_and_link(node))
 
 
+# Attempts for generic (non-rate-limit) failures when neither the call
+# site nor `online.tuning.retry_budget` says otherwise.
+_DEFAULT_MAX_RETRIES: Final[int] = 5
+
 _BASE_DELAY_S = 1.0
 # Cap our own exponential-backoff schedule at 60s. Server-supplied
 # retry_after hints are honored beyond this — see _MAX_RETRY_AFTER_S —
@@ -317,15 +321,21 @@ def _paces_itself(args: tuple[Any, ...]) -> bool:
     return bool(args) and bool(getattr(args[0], "paces_rate_limit", False))
 
 
-def _resolve_max_retries(args: tuple[Any, ...], default: int) -> int:
+def _resolve_max_retries(args: tuple[Any, ...], explicit: int | None) -> int:
     """
-    Prefer a ``retry_budget`` supplied by the instance at call time.
+    Resolve the generic-error attempt budget for one call.
 
-    `online.tuning.retry_budget` is a documented knob; the decorator's
-    `max_retries` binds at class-definition time, so the instance is the
-    only seam that can carry a user's value in — the same pattern as
-    `retry_sleep` and `on_rate_limit`.
+    An ``explicit`` ``max_retries`` at the call site wins: it is a
+    statement about that specific call, like the prefetch probe whose
+    whole point is to give up cheaply and fall back. Otherwise
+    `online.tuning.retry_budget` from the instance applies — a documented
+    knob the decorator cannot read itself, since `max_retries` binds at
+    class-definition time. Same seam as `retry_sleep` and
+    `on_rate_limit`.
     """
+    if explicit is not None:
+        return explicit
+    default = _DEFAULT_MAX_RETRIES
     if not args:
         return default
     budget = getattr(args[0], "retry_budget", None)
@@ -500,7 +510,7 @@ def _run_with_retries(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
     *,
-    max_retries: int,
+    max_retries: int | None,
     sleep: Callable[[float], None],
     max_wait: float = _MAX_TOTAL_WAIT_S,
 ) -> T:
@@ -558,7 +568,7 @@ def _run_with_retries(
 
 def with_retry(
     *,
-    max_retries: int = 5,
+    max_retries: int | None = None,
     sleep: Callable[[float], None] = interruptible_sleep,
     max_wait_s: float = _MAX_TOTAL_WAIT_S,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
@@ -587,9 +597,11 @@ def with_retry(
     already absorbed the server's hint, and sleeping it again here would
     double the wait and then release every worker at the same instant.
 
-    ``max_retries`` is a default. An instance carrying a ``retry_budget``
-    (from ``online.tuning.retry_budget``) overrides it per call — the
-    decorator binds too early to read config itself.
+    ``max_retries`` left unset means "whatever the user configured":
+    ``online.tuning.retry_budget`` off the instance, or 5. Passing it
+    explicitly pins that call site instead, for calls that should give up
+    cheaply rather than spend a user's whole budget — an optional
+    prefetch, say, which has a working fallback.
 
     The default ``sleep`` is `interruptible_sleep`, so a cancel wakes
     waiting calls everywhere rather than only in `OnlineSession`, which

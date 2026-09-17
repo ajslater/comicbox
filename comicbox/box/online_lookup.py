@@ -27,7 +27,7 @@ import sys
 import threading
 from dataclasses import dataclass, replace
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from glom import glom
 from loguru import logger
@@ -201,6 +201,18 @@ class _NoTtyHintGuard:
 _no_tty_hint = _NoTtyHintGuard()
 
 
+# How long a worker waits for another to resolve the series they share.
+#
+# Bounds one pathological case: a leader wedged on a slow source or an
+# unanswered prompt must not hold its whole cluster hostage. Generous on
+# purpose — the wait is what saves the cluster's other members a cold
+# search each, and a leader blocked at the rate gate behind a rejection
+# can legitimately take a minute. On timeout the waiter falls back to the
+# cold search it would have done anyway, so overshooting costs latency
+# and undershooting costs API budget.
+_SERIES_LEAD_TIMEOUT_S: Final[float] = 120.0
+
+
 def _series_fingerprint(profile: ComicProfile) -> str:
     """
     Deterministic series-level key for the series-cache (plan §3.10).
@@ -305,6 +317,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # don't get to overwrite the original.
     _series_cache: MutableMapping[tuple[str, str], int] | None = None
 
+    # How many comics of THIS comic's series the current batch holds.
+    # Set by the dispatcher (CLI `Runner`, `OnlineSession.tag_many`);
+    # 1 for a standalone file. The source that resolves the series uses
+    # it to decide whether listing the whole series once is cheaper than
+    # one lookup per comic (see `OnlineSource.prefetch_volume`).
+    _series_cluster_size: int = 1
+
     # Session-supplied retry-sleep override propagated to every active
     # online source (see set_retry_sleep).
     _retry_sleep: Callable[[float], None] | None = None
@@ -339,6 +358,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     ) -> None:
         """Register a session-level series cache for series-first batching."""
         self._series_cache = cache
+
+    def set_series_cluster_size(self, size: int) -> None:
+        """Tell this box how many comics of its series the batch holds."""
+        self._series_cluster_size = max(1, size)
 
     def set_online_session_state(self, state: OnlineSessionState | None) -> None:
         """
@@ -613,6 +636,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 volume_id=candidate.volume_id,
             )
         )
+        # This worker resolved the series, so it is the one that pays for
+        # the prefetch — and it does so while still holding the
+        # single-flight lead, so the rest of the cluster waits for a warm
+        # list rather than racing it with per-issue lookups.
+        source.prefetch_volume(candidate.volume_id, self._series_cluster_size)
 
     def _get_cover_hash_cache(self) -> CoverHashUrlCache | None:
         """
@@ -1126,9 +1154,86 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if not online.lookup.rematch and self._try_series_cache_lookup(source):
             return _SourceOutcome(applied=True)
 
-        return _SourceOutcome(applied=self._search_path(source, online))
+        # Single-flight the cold search. Under `-j N` the first N files of
+        # a cluster start together, all miss the cache and all pay for the
+        # same search; whoever leads releases the rest, which then find
+        # the resolved id waiting for them.
+        key = self._series_lead_key(source, online)
+        try:
+            return _SourceOutcome(applied=self._search_path(source, online))
+        finally:
+            self._release_series_lead(key)
 
-    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
+    def _series_cache_key(self, source: OnlineSource) -> tuple[str, str] | None:
+        """
+        Key this comic's series takes in the cache, or None if it has none.
+
+        A volume-scoped lookup needs an issue number to scope with.
+        Without one the source would list the whole series and accept
+        whatever row came first — a mis-tag plus unbounded pagination.
+        The search path already handles issue-less comics.
+        """
+        if self._series_cache is None:
+            return None
+        profile = self._build_profile()
+        if not profile.series or not strip_issue_leading_zeros(profile.issue):
+            return None
+        return (source.name, _series_fingerprint(profile))
+
+    def _series_lead_key(
+        self, source: OnlineSource, online: OnlineSettings
+    ) -> tuple[str, str] | None:
+        """
+        Take leadership of this comic's series before a cold search, if free.
+
+        Returns the key to release afterwards, or None when there is
+        nothing to lead — no cache, no usable key, `--rematch` (every
+        file re-searches by definition), a mapping without the
+        single-flight API (a plain dict from a sequential caller, which
+        cannot race anyway), or another worker already leading. The last
+        case is not a problem: that worker is a *different* series or
+        this one already waited for it in
+        `_try_series_cache_lookup` and came back unresolved, and the
+        leader it waited on has since released.
+        """
+        if online.lookup.rematch:
+            return None
+        cache = self._series_cache
+        lead = getattr(cache, "lead", None)
+        if lead is None:
+            return None
+        key = self._series_cache_key(source)
+        if key is None:
+            return None
+        return key if lead(key) else None
+
+    def _release_series_lead(self, key: tuple[str, str] | None) -> None:
+        """Hand leadership back after a cold search, however it ended."""
+        if key is None:
+            return
+        release = getattr(self._series_cache, "release", None)
+        if release is not None:
+            release(key)
+
+    def _await_series_leader(self, key: tuple[str, str]) -> None:
+        """
+        Block while another worker resolves this series, if one is.
+
+        Bounded: a leader that never releases (a wedged source, a prompt
+        nobody answers) must not hold its whole cluster. On timeout the
+        waiter simply takes the cold path it would have taken anyway.
+        """
+        wait = getattr(self._series_cache, "wait", None)
+        if wait is None:
+            return
+        if wait(key, _SERIES_LEAD_TIMEOUT_S):
+            return
+        logger.debug(
+            f"online: gave up waiting {_SERIES_LEAD_TIMEOUT_S:.0f}s for the "
+            f"series leader of {key[1]!r}; searching independently"
+        )
+
+    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:
         """
         Attempt the volume-scoped issue lookup; return True on hit + accept.
 
@@ -1136,20 +1241,23 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         stale-cache "issue not in this volume" response → return False so
         the caller falls through to the cold-path search. The cache entry
         is left alone in that case (first-writer-wins).
+
+        A miss with another worker already resolving this same series
+        WAITS for it instead of racing it. That is the whole value of
+        series batching under `-j N`: without it the first N files of a
+        cluster all start cold, and the plan's measured "one search per
+        series" collapses back to "one search per worker".
         """
-        if self._series_cache is None:
+        key = self._series_cache_key(source)
+        if key is None or self._series_cache is None:
             return False
-        profile = self._build_profile()
-        # A volume-scoped lookup needs an issue number to scope with.
-        # Without one the source would list the whole series and accept
-        # whatever row came first — a mis-tag plus unbounded pagination.
-        # The search path already handles issue-less comics.
-        if not profile.series or not strip_issue_leading_zeros(profile.issue):
-            return False
-        key = (source.name, _series_fingerprint(profile))
         volume_id = self._series_cache.get(key)
         if volume_id is None:
+            self._await_series_leader(key)
+            volume_id = self._series_cache.get(key)
+        if volume_id is None:
             return False
+        profile = self._build_profile()
         try:
             candidate = source.lookup_issue(volume_id, profile.issue)
         except NotImplementedError:

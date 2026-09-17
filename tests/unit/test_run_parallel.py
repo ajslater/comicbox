@@ -414,6 +414,7 @@ def test_batch_collaborators_are_wired_into_each_box(tmp_path: Path) -> None:
     runner, paths = _online_runner(tmp_path, ["Spider-Man #001 (2018).cbz"])
     seen: list[Any] = []
     states: list[Any] = []
+    cluster_sizes: list[int] = []
 
     class _FakeBox:
         def __enter__(self) -> Self:
@@ -428,6 +429,9 @@ def test_batch_collaborators_are_wired_into_each_box(tmp_path: Path) -> None:
         def set_online_session_state(self, state: Any) -> None:
             states.append(state)
 
+        def set_series_cluster_size(self, size: int) -> None:
+            cluster_sizes.append(size)
+
         def print_file_header(self) -> None:
             return None
 
@@ -440,11 +444,13 @@ def test_batch_collaborators_are_wired_into_each_box(tmp_path: Path) -> None:
     # One owner for the batch: a prompt answered on any file is in force
     # for the rest of it.
     assert states == [runner._online_state]
+    # `run_on_file` is one file, so there is no cluster to prefetch for.
+    assert cluster_sizes == [1]
 
 
 def test_online_batch_is_clustered_by_series(tmp_path: Path) -> None:
     """
-    Same-series files run back-to-back so the cache's cold path runs once.
+    Serially, same-series files run back-to-back so the cold path runs once.
 
     Interleaved input order is the realistic case — a recursive walk
     sorts by path, which mixes series whenever they share a directory.
@@ -463,6 +469,67 @@ def test_online_batch_is_clustered_by_series(tmp_path: Path) -> None:
     batman = [i for i, n in enumerate(ordered) if n.startswith("Batman")]
     assert spider == [spider[0], spider[0] + 1]
     assert batman == [batman[0], batman[0] + 1]
+
+
+def test_parallel_online_batch_leads_with_one_file_per_series(
+    tmp_path: Path,
+) -> None:
+    """
+    A pool must not start its first N tasks on the same series.
+
+    Plain clustering hands the first N paths to N workers at once, and
+    they are all the same series — so all N miss the cache and the
+    batching saves nothing for exactly the files it exists for. Leading
+    with one file per cluster gives each worker a different series to
+    resolve; the followers then find the cache warm.
+    """
+    names = [
+        "Spider-Man #001 (2018).cbz",
+        "Spider-Man #014 (2019).cbz",
+        "Spider-Man #027 (2019).cbz",
+        "Batman #001 (2011).cbz",
+        "Batman #027 (2013).cbz",
+    ]
+    runner, paths = _online_runner(tmp_path, names)
+    ordered = [
+        Path(p).name
+        for p in runner._order_for_series_batching(list(map(Path, paths)), jobs=2)
+    ]
+    leaders = {name.split(" #")[0] for name in ordered[:2]}
+    assert leaders == {"Spider-Man", "Batman"}
+    # Every file still runs exactly once, and the followers stay clustered.
+    assert sorted(ordered) == sorted(names)
+    assert [n.split(" #")[0] for n in ordered[2:]] == [
+        "Batman",
+        "Spider-Man",
+        "Spider-Man",
+    ]
+
+
+def test_parallel_series_ordering_is_deterministic(tmp_path: Path) -> None:
+    """
+    The same batch always walks the same cache-key sequence.
+
+    Only the CLUSTER order is contracted, not the order within one — the
+    fingerprint sort is stable, so a cluster keeps the user's input
+    order, exactly as it did before leaders were hoisted out of it.
+    """
+    names = [
+        "Batman #027 (2013).cbz",
+        "Spider-Man #014 (2019).cbz",
+        "Batman #001 (2011).cbz",
+        "Spider-Man #001 (2018).cbz",
+    ]
+    runner, paths = _online_runner(tmp_path, names)
+    first = runner._order_for_series_batching(list(map(Path, paths)), jobs=4)
+    second = runner._order_for_series_batching(list(map(Path, paths)), jobs=4)
+    assert first == second
+    assert [p.name.split(" #")[0] for p in first] == [
+        "Batman",
+        "Spider-Man",
+        "Batman",
+        "Spider-Man",
+    ]
 
 
 def test_offline_batch_keeps_user_order(tmp_path: Path) -> None:

@@ -68,12 +68,29 @@ def filename_series_fingerprint(path: Path) -> str:
 
 
 class SeriesCache(MutableMapping[SeriesCacheKey, int]):
-    """A ``dict`` of resolved volume ids with an atomic first-writer claim."""
+    """
+    A ``dict`` of resolved volume ids with an atomic first-writer claim.
+
+    Also arbitrates SINGLE-FLIGHT resolution of a series. Sorting a batch
+    by series fingerprint makes the cache hit for the second and later
+    issues of a run — but only once the first one has finished, and a
+    ``-j N`` pool starts the first N files of a cluster at the same
+    instant. All N then miss, and all N pay for the cold search: the
+    batching saves nothing for exactly the files it was added for.
+
+    So one caller per key LEADS and the rest WAIT for it, then re-read
+    the cache and take the cheap volume-scoped path. A leader that
+    resolves nothing (no match, prompt declined, source failure) hands
+    leadership to the next waiter rather than stranding the cluster.
+    """
 
     def __init__(self) -> None:
         """Start empty."""
         self._data: dict[SeriesCacheKey, int] = {}
         self._lock = threading.Lock()
+        # Keys currently being resolved, each with the event its waiters
+        # block on. Absent key == nobody is resolving it.
+        self._leaders: dict[SeriesCacheKey, threading.Event] = {}
 
     def claim(self, key: SeriesCacheKey, volume_id: int) -> bool:
         """
@@ -89,6 +106,42 @@ class SeriesCache(MutableMapping[SeriesCacheKey, int]):
                 return False
             self._data[key] = volume_id
             return True
+
+    def lead(self, key: SeriesCacheKey) -> bool:
+        """
+        Claim the right to resolve `key`; True when this caller must do it.
+
+        False means another caller is already resolving it and this one
+        should `wait`. Resolved keys also return False — there is nothing
+        left to lead. A leader MUST call `release` in a ``finally``, or
+        its waiters hold until their timeout.
+        """
+        with self._lock:
+            if key in self._data or key in self._leaders:
+                return False
+            self._leaders[key] = threading.Event()
+            return True
+
+    def wait(self, key: SeriesCacheKey, timeout: float) -> bool:
+        """
+        Block until the current leader of `key` releases, or `timeout`.
+
+        Returns True when a leader released within the timeout. Either
+        way the caller must re-read the cache: a leader can finish
+        without resolving anything.
+        """
+        with self._lock:
+            event = self._leaders.get(key)
+        if event is None:
+            return False
+        return event.wait(timeout)
+
+    def release(self, key: SeriesCacheKey) -> None:
+        """Finish leading `key` and wake everyone waiting on it."""
+        with self._lock:
+            event = self._leaders.pop(key, None)
+        if event is not None:
+            event.set()
 
     def snapshot(self) -> dict[SeriesCacheKey, int]:
         """Return a consistent copy. Useful for persistence."""
