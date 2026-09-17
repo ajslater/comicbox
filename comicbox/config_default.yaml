@@ -11,9 +11,9 @@ comicbox:
     metadata_cli: null
     metadata_format: null
     # Parallel workers across files (1 = serial). Useful with --online for
-    # batch tagging. Workers share one Metron session that tracks the
-    # server's rate-limit headers, and jobs is capped at 20 (Metron's
-    # burst limit) when Metron is an active credentialed source.
+    # batch tagging. Online requests are paced by a process-wide rate gate
+    # that keeps every worker inside the server's window, so this bounds
+    # I/O concurrency rather than request rate.
     jobs: 1
     tagger: null
     theme: gruvbox-dark

@@ -695,12 +695,13 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     # Isolate the process-wide per-credential session cache so this test
     # neither sees nor leaves behind entries for ("u", "p").
     monkeypatch.setattr(metron_online_source, "_session_cache", {})
+    monkeypatch.setattr(metron_online_source, "_gate_cache", {})
     creds = OnlineSourceCredentials(user="u", password="p")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)
     builds = {"n": 0}
 
-    def fake_build():
+    def fake_build(_gate=None):
         builds["n"] += 1
         return object()
 

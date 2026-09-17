@@ -86,6 +86,10 @@ def _redact_api_keys(exc: BaseException) -> None:
         stack.extend(_scrub_node_and_link(node))
 
 
+# Attempts for generic (non-rate-limit) failures when neither the call
+# site nor `online.tuning.retry_budget` says otherwise.
+_DEFAULT_MAX_RETRIES: Final[int] = 5
+
 _BASE_DELAY_S = 1.0
 # Cap our own exponential-backoff schedule at 60s. Server-supplied
 # retry_after hints are honored beyond this — see _MAX_RETRY_AFTER_S —
@@ -110,16 +114,18 @@ _MAX_RETRY_AFTER_S = 3600.0
 # server-side enforcement glitches (clock skew, burst protection) that
 # locally-paced 1/sec calls occasionally trip.
 #
-# The plateau-tail matters under -j N parallel batches: the
-# 2026-05-15-stress-100 run quantified retry-exhaustion cascades on
-# high-fan-out fixtures (a single Conan-titled fixture fans out to 20+
-# candidate series, all hitting Metron's 20/min cap simultaneously
-# under -j 8). 5 attempts wasn't enough to clear the cascade for some
-# candidates — 8 attempts gives a worker that gets repeatedly bucketed
-# enough room to recover without dropping its series.
+# The plateau-tail was tuned for ComicVine's hourly cap, and against a
+# Metron that no longer exists: the 2026-05-15-stress-100 run measured
+# retry-exhaustion cascades when one fixture fanned out to 20+ candidate
+# series (~21 calls per file). Metron dropped that fan-out in server PR
+# #143 (2026-07-03) and a search now costs at most a handful of calls,
+# which comicbox's `RateGate` paces so the cascade cannot form. The
+# schedule stays for ComicVine, whose 200/hour window genuinely needs
+# minutes to slide.
 #
-# Honored only when there's no server-supplied `retry_after` hint;
-# mokkari sets that explicitly, simyan does not.
+# Honored only when there's no server-supplied `retry_after` hint, and
+# not at all for a source that paces itself (`_paces_itself`) — its gate
+# does the waiting.
 _RATE_LIMIT_SCHEDULE: Final[tuple[float, ...]] = (
     30.0,
     60.0,
@@ -149,9 +155,11 @@ _MAX_RATE_LIMIT_RETRIES: Final[int] = len(_RATE_LIMIT_SCHEDULE)
 # free to play out in full. That schedule's 8-attempt plateau tail is not
 # arbitrary: it was tuned against the 2026-05-15-stress-100 run, where a
 # high-fan-out fixture under `-j 8` needed every one of those attempts to
-# clear a rate-limit cascade without dropping its series. A tighter
-# ceiling would silently undo that — 900s, say, would stop it at 4
-# attempts. Lower this only with that regression in hand.
+# clear a rate-limit cascade without dropping its series. That fan-out is
+# gone on Metron's side and gated on ours, but ComicVine's hourly cap can
+# still need the full tail. A tighter ceiling would silently undo that —
+# 900s, say, would stop it at 4 attempts. Lower this only with that
+# regression in hand.
 #
 # Checked BEFORE sleeping: a delay that would breach the ceiling ends the
 # retry loop instead of being truncated, because a truncated rate-limit
@@ -230,6 +238,12 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     """
     Return True for transient errors worth retrying.
 
+    An `OnlineLookupAbortedError` ends the loop before anything else is
+    considered. It is the run saying stop — a cancel, or the rate gate
+    reporting the daily quota spent — and no classifier claims it, so
+    without this it fell through to the "unclaimed exceptions retry"
+    default and got replayed on the rate-limit schedule.
+
     A classifier's AUTH / NOT_FOUND / INVALID verdicts are terminal; its
     RATE_LIMIT and TRANSIENT verdicts are trusted (no vendor exception
     subclasses the `_NON_RETRIABLE` tuple). Unclaimed exceptions raise
@@ -245,6 +259,8 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
     `CacheError` for a cache object missing `get`/`store`, which no
     replay can fix either.
     """
+    if isinstance(exc, OnlineLookupAbortedError):
+        return False
     if category in (
         RetryCategory.AUTH,
         RetryCategory.NOT_FOUND,
@@ -287,6 +303,51 @@ def _delay_for_rate_limit(attempt: int) -> float:
     return _RATE_LIMIT_SCHEDULE[attempt]
 
 
+def _paces_itself(args: tuple[Any, ...]) -> bool:
+    """
+    Whether the source admits its own requests through a rate gate.
+
+    A gated source (Metron, via `PacedSession`) has already absorbed the
+    rejection: its gate rebuilt the server's window from the
+    `Retry-After` hint, so the next `acquire` blocks for exactly as long
+    as the server said and releases ONE worker when a slot frees.
+    Sleeping the same hint again out here would double the wait, and
+    every worker sleeping it in parallel would then stampede the moment
+    it elapsed — which is how a single 429 turns into a burst of them.
+
+    So for these sources the retry loop keeps the attempt budget and
+    hands the waiting to the gate.
+    """
+    return bool(args) and bool(getattr(args[0], "paces_rate_limit", False))
+
+
+def _resolve_max_retries(args: tuple[Any, ...], explicit: int | None) -> int:
+    """
+    Resolve the generic-error attempt budget for one call.
+
+    An ``explicit`` ``max_retries`` at the call site wins: it is a
+    statement about that specific call, like the prefetch probe whose
+    whole point is to give up cheaply and fall back. Otherwise
+    `online.tuning.retry_budget` from the instance applies — a documented
+    knob the decorator cannot read itself, since `max_retries` binds at
+    class-definition time. Same seam as `retry_sleep` and
+    `on_rate_limit`.
+    """
+    if explicit is not None:
+        return explicit
+    default = _DEFAULT_MAX_RETRIES
+    if not args:
+        return default
+    budget = getattr(args[0], "retry_budget", None)
+    if budget is None:
+        return default
+    try:
+        value = int(budget)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
 def _plan_retry(
     exc: BaseException,
     *,
@@ -296,6 +357,7 @@ def _plan_retry(
     max_retries: int,
     waited: float = 0.0,
     max_wait: float = _MAX_TOTAL_WAIT_S,
+    paced: bool = False,
 ) -> tuple[float, str, bool] | None:
     """
     Decide whether and how to retry. Returns (delay, budget_label, is_rate_limit).
@@ -310,6 +372,11 @@ def _plan_retry(
     would push the total past ``max_wait`` returns ``None`` rather than a
     shortened delay: waiting out only part of a rate-limit window spends
     an attempt on a request that is still going to be refused.
+
+    ``paced`` marks a source whose own rate gate holds the pace (see
+    `_paces_itself`). Its rate-limit retries plan a zero delay and go
+    straight back to the gate, which blocks them for as long as the
+    server's hint said and admits one worker when a slot frees.
     """
     is_rate_limit = category is RetryCategory.RATE_LIMIT
     if is_rate_limit:
@@ -317,6 +384,11 @@ def _plan_retry(
             return None
     elif attempt >= max_retries:
         return None
+    if is_rate_limit and paced:
+        budget = (
+            f"rate-limit attempt {rate_limit_attempt + 1}/{_MAX_RATE_LIMIT_RETRIES}"
+        )
+        return 0.0, budget, True
     server_hint = _retry_after(exc)
     if server_hint is not None:
         delay = min(server_hint, _MAX_RETRY_AFTER_S)
@@ -346,6 +418,7 @@ def _handle_retry_exception(  # noqa: PLR0913
     sleep: Callable[[float], None],
     waited: float = 0.0,
     max_wait: float = _MAX_TOTAL_WAIT_S,
+    paced: bool = False,
 ) -> float | None:
     """
     Sleep through one retriable failure. Return the delay slept, or None.
@@ -366,6 +439,7 @@ def _handle_retry_exception(  # noqa: PLR0913
         max_retries=max_retries,
         waited=waited,
         max_wait=max_wait,
+        paced=paced,
     )
     if plan is None:
         if waited > 0:
@@ -376,6 +450,9 @@ def _handle_retry_exception(  # noqa: PLR0913
         return None
     delay, budget, is_rate_limit = plan
     cause = "rate-limit" if is_rate_limit else type(exc).__name__
+    if delay <= 0:
+        logger.info(f"{func_name}: {cause}, retrying at the rate gate ({budget})")
+        return 0.0
     logger.info(f"{func_name}: {cause}, retrying in {delay:.1f}s ({budget})")
     sleep(delay)
     return delay
@@ -402,6 +479,7 @@ def _notify_rate_limit_listener(
         attempt=attempt,
         rate_limit_attempt=rate_limit_attempt,
         max_retries=max_retries,
+        paced=_paces_itself(args),
     )
     delay = plan[0] if plan else None
     source_name = getattr(args[0], "name", "")
@@ -432,7 +510,7 @@ def _run_with_retries(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
     *,
-    max_retries: int,
+    max_retries: int | None,
     sleep: Callable[[float], None],
     max_wait: float = _MAX_TOTAL_WAIT_S,
 ) -> T:
@@ -444,6 +522,8 @@ def _run_with_retries(
     Whichever runs out first ends it.
     """
     sleep = _resolve_sleep(args, sleep)
+    max_retries = _resolve_max_retries(args, max_retries)
+    paced = _paces_itself(args)
     last_exc: BaseException | None = None
     attempt = 0
     rate_limit_attempt = 0
@@ -473,6 +553,7 @@ def _run_with_retries(
                 sleep=sleep,
                 waited=waited,
                 max_wait=max_wait,
+                paced=paced,
             )
             if slept is None:
                 break
@@ -487,7 +568,7 @@ def _run_with_retries(
 
 def with_retry(
     *,
-    max_retries: int = 5,
+    max_retries: int | None = None,
     sleep: Callable[[float], None] = interruptible_sleep,
     max_wait_s: float = _MAX_TOTAL_WAIT_S,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
@@ -510,6 +591,17 @@ def with_retry(
     across all its attempts. Without it the attempt budgets alone allow
     a single call to block for the better part of an hour (rate-limit
     schedule) or several (an honored server hint per attempt).
+
+    A source that sets ``paces_rate_limit`` keeps the attempt budgets but
+    does no sleeping of its own on a rate-limit error: its `RateGate` has
+    already absorbed the server's hint, and sleeping it again here would
+    double the wait and then release every worker at the same instant.
+
+    ``max_retries`` left unset means "whatever the user configured":
+    ``online.tuning.retry_budget`` off the instance, or 5. Passing it
+    explicitly pins that call site instead, for calls that should give up
+    cheaply rather than spend a user's whole budget — an optional
+    prefetch, say, which has a working fallback.
 
     The default ``sleep`` is `interruptible_sleep`, so a cancel wakes
     waiting calls everywhere rather than only in `OnlineSession`, which

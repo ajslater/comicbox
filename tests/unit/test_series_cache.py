@@ -120,6 +120,11 @@ class _CountingMetron:
         self.search_calls = 0
         self.lookup_calls: list[tuple[int, str | None]] = []
         self.get_calls: list[int] = []
+        self.prefetch_calls: list[tuple[int, int]] = []
+
+    def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:
+        """Record the offer; a real source decides whether to take it."""
+        self.prefetch_calls.append((volume_id, cluster_size))
 
     def is_configured(self) -> bool:
         return bool(self._credentials.user and self._credentials.password)

@@ -5,8 +5,56 @@
 - Fixes
     - A comic with no issue number no longer mis-tags itself with the first
       issue of a series matched earlier in the same run.
+    - Metron tagging no longer sends requests the server is going to refuse.
+      Every request now passes through a process-wide rate gate that models
+      Metron's own sliding window, so a `-j N` batch stays inside the per-minute
+      limit instead of discovering it by being rejected. This matters more than
+      it sounds: Metron counts a rejected request against the daily quota
+      exactly like a successful one, so the old behavior spent budget on
+      nothing. Reported as
+      [#207](https://github.com/ajslater/comicbox/issues/207).
+    - A rate-limit rejection now releases one worker when one slot frees, rather
+      than every worker at once. `Retry-After` says when a single request
+      becomes possible, not when the window refills; waiting it out and then
+      sending the whole queue earned one success and a fresh burst of
+      rejections.
+    - `online.tuning.retry_budget` is wired up. It was parsed, defaulted and
+      then never passed to the retry decorator.
+    - An aborted lookup is no longer retried. Nothing classified
+      `OnlineLookupAbortedError`, so it fell through to the retriable default
+      and was replayed on the rate-limit schedule.
+
+- Features
+    - Comicbox warns when Metron's daily quota drops below 10%, stops starting
+      new searches near the floor so the rest of the budget finishes comics that
+      already matched, and stops cleanly at zero. Re-running is cheap — the
+      response cache replays what was already fetched.
+    - The end-of-run summary reports API cost: requests sent per endpoint,
+      rejections, seconds spent pacing, and the remaining per-minute and daily
+      budgets.
+    - `online.tuning.per_source.metron.rate_limit.per_minute` works again, as a
+      ceiling on the server-reported limit. Set it to share one token between
+      several processes. `per_day` is still ignored and still says so.
+    - `--jobs` is no longer capped at 20 for Metron runs. The cap bounded
+      workers, which is not what Metron throttles; the gate bounds requests.
+    - The outgoing User-Agent identifies the entry point, e.g.
+      `comicbox/5.0.1 (cli; jobs=8)`. `OnlineSession(client_name=...)` names an
+      embedding application.
+    - `metron_requests_for_batch(comics, series)` prices a batch the way one
+      actually runs — each series resolved once, the rest of its comics at the
+      warm price — instead of charging every comic a cold search. Pacing math
+      now prefers the burst limit Metron reported over the documented default.
 
 - Performance
+    - A `-j N` batch resolves each series once instead of once per worker.
+      Workers that want the same series wait for whoever is resolving it and
+      then take the warm path, and the dispatcher hands the pool one file per
+      series first, so its first N tasks are N different series rather than N
+      copies of the same cold search.
+    - Metron batches holding many comics from one series fetch that series'
+      issue list once instead of once per comic, when Metron's reported issue
+      count says that is actually cheaper. A 100-issue single-series run drops
+      from about 200 requests to about 102.
     - Comic Vine tagging spends half the API budget it used to. simyan 4.1.0
       stops paginating past a short page, so each candidate volume's issue
       lookup costs one request against Comic Vine's 200-per-hour `issues` pool

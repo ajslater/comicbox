@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from pathlib import Path
@@ -16,13 +17,13 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveTypeError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
-from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.series_cache import (
     SeriesCache,
     filename_series_fingerprint,
 )
 from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.logger import init_logging
+from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -34,6 +35,21 @@ if TYPE_CHECKING:
 #: open. A traceback tells the user nothing the message doesn't, so these
 #: log one line. Anything else is a bug and earns the stack.
 _EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError,)
+
+
+def _leaders_first(clustered: list[Path]) -> list[Path]:
+    """
+    Reorder a fingerprint-sorted list to one file per series, then the rest.
+
+    Preserves each cluster's internal order and the deterministic cluster
+    order the sort produced, so a re-run still walks the same sequence.
+    """
+    groups: dict[str, list[Path]] = {}
+    for path in clustered:
+        groups.setdefault(filename_series_fingerprint(path), []).append(path)
+    leaders = [group[0] for group in groups.values()]
+    followers = [path for group in groups.values() for path in group[1:]]
+    return leaders + followers
 
 
 class Runner:
@@ -69,6 +85,10 @@ class Runner:
         #: prompts — and `run_on_file` is a public entry point that never
         #: goes through `run()`.
         self._online_state = OnlineSessionState.from_lookup(self._config.online.lookup)
+        #: How many comics of each series the batch holds, by filename
+        #: fingerprint. Filled once the paths are expanded; empty for
+        #: `run_on_file`, which is one file and clusters nothing.
+        self._series_cluster_sizes: Counter[str] = Counter()
         init_logging(self._config.general.loglevel)
 
     def _iter_recurse(self, path: Path) -> Iterator[Path]:
@@ -147,26 +167,69 @@ class Runner:
             if self._config.online.lookup.enabled:
                 car.set_series_cache(self._series_cache)
                 car.set_online_session_state(self._online_state)
+                car.set_series_cluster_size(self._cluster_size_for(path))
             car.print_file_header()
             car.run()
 
-    def _order_for_series_batching(self, paths: list[Path]) -> list[Path]:
+    def _cluster_size_for(self, path: Path | str | None) -> int:
         """
-        Cluster same-series files together so the series cache can hit.
+        Return how many comics of this file's series the batch holds.
 
-        Mirrors `OnlineSession.tag_many`: the first issue of each cluster
-        pays for the cold-path search and resolves the volume id; the
-        rest of the cluster reads it back and goes straight to the
-        volume-scoped issue lookup. Sorting by fingerprint makes the
-        cluster order deterministic, so re-runs produce the same
-        cache-key sequence.
+        1 for a pathless box (metadata read from stdin) and for anything
+        the batch never counted, which is the honest answer: a lone comic
+        has no cluster to amortize a prefetch over.
+        """
+        if not path:
+            return 1
+        fingerprint = filename_series_fingerprint(Path(path))
+        return self._series_cluster_sizes.get(fingerprint, 1)
+
+    def _note_series_clusters(self, paths: list[Path]) -> None:
+        """
+        Count the batch's series, so a source can prefetch the big ones.
+
+        Filename-derived, like the batching order itself: it has to be
+        known before any archive is opened, and it only has to be good
+        enough to answer "is listing this whole series cheaper than one
+        lookup per comic".
+        """
+        if not self._config.online.lookup.enabled:
+            return
+        self._series_cluster_sizes = Counter(
+            filename_series_fingerprint(path) for path in paths
+        )
+
+    def _order_for_series_batching(
+        self, paths: list[Path], jobs: int = 1
+    ) -> list[Path]:
+        """
+        Order files so the series cache hits instead of being raced.
+
+        Serially, clustering is enough: the first issue of each cluster
+        pays for the cold-path search and resolves the volume id, and the
+        rest read it back and go straight to the volume-scoped issue
+        lookup. Sorting by fingerprint makes the cluster order
+        deterministic, so re-runs produce the same cache-key sequence.
+
+        In parallel, clustering alone is actively counterproductive. A
+        pool of N takes the first N paths at once — all the same series —
+        so all N miss the cache and the batching saves nothing for
+        exactly the files it exists for. (`SeriesCache`'s single-flight
+        leadership makes that safe, but the followers still sit and wait.)
+        So with a pool, LEADERS GO FIRST: one file from each cluster, then
+        the remainder still clustered. The pool's first N tasks are then N
+        different series, each resolving its own, and the followers arrive
+        to a warm cache instead of a queue.
 
         Only reorders when online lookup is on — for every other
         operation the input order is the user's and we leave it alone.
         """
         if not self._config.online.lookup.enabled:
             return paths
-        return sorted(paths, key=filename_series_fingerprint)
+        clustered = sorted(paths, key=filename_series_fingerprint)
+        if jobs <= 1:
+            return clustered
+        return _leaders_first(clustered)
 
     def recurse(self, path: Path) -> None:
         """Perform operations recursively on files (single-threaded)."""
@@ -183,44 +246,23 @@ class Runner:
         for full_path in self._iter_recurse(path):
             self._run_one(full_path)
 
-    def _metron_is_active(self) -> bool:
-        """Best-effort check: could this run actually hit Metron via mokkari."""
-        online = self._config.online
-        if not online.lookup.enabled:
-            return False
-        # Falsy-collapse matches _build_active_online_sources: both None and
-        # the empty ALL_SOURCES sentinel () mean "every configured source".
-        sources = online.lookup.sources
-        if sources and "metron" not in sources:
-            return False
-        creds = online.auth.sources.get("metron")
-        return bool(creds and (creds.key or (creds.user and creds.password)))
-
     def _run_parallel(self, paths: list[Path], jobs: int) -> None:
         """
         Run files via a thread pool. Online prompts serialize via a class-level lock.
 
-        Threads (not processes): online lookup is I/O-bound, and
-        `MetronOnlineSource` shares one mokkari `Session` per credential
-        set (comicbox/formats/metron_api/online_source.py) so every worker
-        here sees the same `rate_limit_status` mokkari reads off Metron's
-        response headers, instead of each file's source starting cold.
+        Threads (not processes): online lookup is I/O-bound, and the
+        online sources share process-wide state per credential set —
+        one mokkari `Session` and, more to the point, one `RateGate`
+        (comicbox/formats/base/online/rate_gate.py) that every worker's
+        requests are admitted through.
 
-        That check is advisory, not a hard gate — mokkari can't serialize
-        "check the last known headers" with "send the request" across
-        threads, so a burst of workers can each pass the check before any
-        of their responses land. mokkari's own guidance for a shared
-        Session is to cap the pool at the burst limit rather than rely on
-        the header check alone, so we do that here when Metron is an
-        active source for this run.
+        `jobs` is no longer clamped to Metron's burst limit. That clamp
+        bounded the wrong unit: workers, not requests. A pool of 20 still
+        sent far more than 20 requests a minute, because one comic can
+        cost several — which is how a run earned 429s while sitting at
+        the "safe" worker count. The gate bounds requests directly, so
+        the worker count is free to be whatever the I/O wants again.
         """
-        if self._metron_is_active() and jobs > METRON_DEFAULT_PER_MINUTE:
-            logger.info(
-                f"Capping --jobs {jobs} to {METRON_DEFAULT_PER_MINUTE} "
-                "(Metron's burst limit; the shared-session rate-limit check "
-                "is advisory under concurrent threads)"
-            )
-            jobs = METRON_DEFAULT_PER_MINUTE
         logger.info(f"Running {len(paths)} files with {jobs} workers")
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
@@ -276,6 +318,13 @@ class Runner:
     def _run_inner(self) -> None:
         """Dispatch to serial or parallel processing based on `--jobs`."""
         jobs = max(1, self._config.general.jobs)
+        # Stamp the outgoing User-Agent before any client is built: API
+        # clients bake the header in at construction and are memoized per
+        # credential set, so this is the only moment it can be set. Metron
+        # operators read these logs, and `cli; jobs=N` is what tells them
+        # a burst came from one process's thread pool rather than from
+        # several processes sharing a token.
+        set_user_agent_context("cli", jobs=jobs)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:
@@ -286,13 +335,14 @@ class Runner:
             # actual processing is unchanged.
             paths = self._expand_paths()
             self._maybe_auto_engage_effort(len(paths))
+            self._note_series_clusters(paths)
             if self._config.online.lookup.enabled:
                 # Online serial runs dispatch over the EXPANDED, clustered
                 # list so the series cache sees same-series files
                 # back-to-back. Offline runs keep the original
                 # one-call-per-configured-path control flow, which is what
                 # `--recurse` directory handling is written against.
-                for path in self._order_for_series_batching(paths):
+                for path in self._order_for_series_batching(paths, jobs):
                     self._run_one(path)
                 return
             for raw in self._config.paths or ():
@@ -306,7 +356,8 @@ class Runner:
             logger.warning("No files to process")
             return
         self._maybe_auto_engage_effort(len(paths))
+        self._note_series_clusters(paths)
         if len(paths) == 1:
             self._run_one(paths[0])
             return
-        self._run_parallel(self._order_for_series_batching(paths), jobs)
+        self._run_parallel(self._order_for_series_batching(paths, jobs), jobs)

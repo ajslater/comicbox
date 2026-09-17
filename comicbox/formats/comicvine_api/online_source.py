@@ -61,7 +61,7 @@ from comicbox.formats.base.online.sources.base import (
 from comicbox.formats.base.online.transform_helpers import split_aliases
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
-from comicbox.version import USER_AGENT
+from comicbox.version import user_agent
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -455,7 +455,7 @@ class ComicVineOnlineSource(OnlineSource):
         resolved = self._resolve_response_cache()  # REFRESH unlinks in here
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.key,
-            "user_agent": USER_AGENT,
+            "user_agent": user_agent(),
             "cache_path": cache_path,
             "cache_expiry": self._cache_expiry(resolved),
             "ratelimit_path": self.cache_db_path("rate_limit"),

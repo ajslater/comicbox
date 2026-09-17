@@ -66,10 +66,13 @@ __all__ = (
     "DEFAULT_RATE_PER_MINUTE",
     "DEFAULT_REQUESTS_PER_COMIC",
     "METRON_REQUESTS_PER_COMIC",
+    "METRON_REQUESTS_PER_WARM_COMIC",
     "SOURCE_RATE_PER_MINUTE",
     "RunEstimate",
     "estimate_run",
+    "metron_requests_for_batch",
     "requests_per_comic",
+    "source_rate_per_minute",
 )
 
 # Sustained requests/minute used to pace a bounded run. Metron's per-minute
@@ -84,9 +87,18 @@ SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
     }
 )
 
-# API requests one comic costs against Metron: the search and the issue
-# fetch. Metron has no fan-out to throttle, so effort does not move it.
+# API requests one comic costs against Metron when it pays full price:
+# the search and the issue fetch. Metron has no fan-out to throttle, so
+# effort does not move it.
 METRON_REQUESTS_PER_COMIC: Final[int] = 2
+
+# What the comics AFTER the first of a series cost. A batch clustered by
+# series resolves the series once; the rest take the volume-scoped warm
+# path, and when the series was prefetched they take it out of memory. So
+# the tail is the `issue(id)` detail fetch alone — `BaseIssue` carries no
+# credits or characters, which is the floor until Metron offers a leaner
+# detail shape or a `?fields=` projection.
+METRON_REQUESTS_PER_WARM_COMIC: Final[int] = 1
 
 # Comic Vine's cold search, in three parts. Discovery is one
 # ``search_volumes``, plus one narrowed ``list_volumes`` when the comic
@@ -135,6 +147,74 @@ def _comicvine_issue_list_requests(effort: str) -> int:
     )
 
 
+def metron_requests_for_batch(comics: int, series: int) -> int:
+    """
+    Return what a Metron batch of ``comics`` over ``series`` runs costs.
+
+    The per-comic constant prices a comic that resolves its own series.
+    That is the right number for a scattered batch and badly wrong for a
+    library-scale one, where one series answers for a hundred comics:
+    each series pays the cold price once and every other comic of it pays
+    the warm price.
+
+    ``series`` is how many distinct series the batch spans — the CLI and
+    `OnlineSession.tag_many` both count them to decide prefetching, so
+    the caller has the number already. Clamped into range, since a batch
+    cannot span more series than it has comics.
+    """
+    if comics <= 0:
+        return 0
+    series = max(1, min(series, comics))
+    cold = series * METRON_REQUESTS_PER_COMIC
+    warm = (comics - series) * METRON_REQUESTS_PER_WARM_COMIC
+    return cold + warm
+
+
+def source_rate_per_minute(source: str) -> int:
+    """
+    Return the pace to project a run at, preferring the server's number.
+
+    `SOURCE_RATE_PER_MINUTE` holds documented starting points. Metron
+    sends its real per-user burst limit on every response, and comicbox's
+    rate gate paces against that, so once anything has talked to Metron
+    in this process the gate's number is the one a projection should use
+    — a self-hosted instance or a changed server setting makes the
+    constant simply wrong.
+    """
+    if source == "metron":
+        limit = _metron_gate_limit()
+        if limit is not None:
+            return limit
+    return SOURCE_RATE_PER_MINUTE.get(source, DEFAULT_RATE_PER_MINUTE)
+
+
+def _metron_gate_limit() -> int | None:
+    """Burst limit the live Metron gate is pacing at, if one exists."""
+    try:
+        from comicbox.formats.metron_api.online_source import shared_gate
+    except ImportError:  # pragma: no cover - mokkari not installed
+        return None
+    for credentials in _metron_credential_sets():
+        gate = shared_gate(*credentials)
+        if gate is None:
+            continue
+        stats = gate.stats()
+        if stats.burst_limit:
+            return stats.burst_limit
+    return None
+
+
+def _metron_credential_sets() -> tuple[tuple[str, str, str], ...]:
+    """Credential sets with a gate in this process."""
+    from comicbox.formats.metron_api.online_source import (
+        _gate_cache,
+        _session_cache_lock,
+    )
+
+    with _session_cache_lock:
+        return tuple(_gate_cache)
+
+
 def requests_per_comic(source: str, effort: str = Effort.BALANCED.value) -> int:
     """
     Return the API requests one comic costs against ``source`` at ``effort``.
@@ -168,7 +248,7 @@ def _seconds_per_comic(source: str, effort: str) -> float:
     if source == "comicvine":
         pool_requests = _comicvine_issue_list_requests(effort)
         return 60.0 * pool_requests / SOURCE_RATE_PER_MINUTE[source]
-    rate = SOURCE_RATE_PER_MINUTE.get(source, DEFAULT_RATE_PER_MINUTE)
+    rate = source_rate_per_minute(source)
     return 60.0 * requests_per_comic(source, effort) / rate
 
 

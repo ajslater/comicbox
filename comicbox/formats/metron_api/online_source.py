@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 import threading
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -24,6 +25,8 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
+from comicbox.formats.base.online.rate_gate import RateGate
+from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
@@ -32,7 +35,7 @@ from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
-from comicbox.version import USER_AGENT
+from comicbox.version import user_agent
 
 if TYPE_CHECKING:
     from mokkari.session import RateLimitStatus, Session
@@ -42,10 +45,13 @@ if TYPE_CHECKING:
 # Sessions are shared across the credential set that built them (see
 # `_get_session`), keyed by (user, password) — not `db_path` like the old
 # pyrate_limiter override cache, since there's no bucket to key by anymore.
-# A shared `Session` is what lets `Runner._run_parallel`'s thread pool
-# (comicbox/run.py) see one consistent `rate_limit_status` across workers
-# instead of each file's source starting cold; mokkari>=4.0.1 makes this
-# safe (thread-safe `SqliteCache`, `rate_limit_status` lock).
+# A shared `Session` gives `Runner._run_parallel`'s thread pool
+# (comicbox/run.py) one response cache and one consistent
+# `rate_limit_status` instead of each file's source starting cold;
+# mokkari>=4.0.1 makes this safe (thread-safe `SqliteCache`,
+# `rate_limit_status` lock). Sharing the observation was never enough to
+# stay inside the window, though — `_gate_cache` below is what enforces
+# it.
 #
 # Contract: FIRST BUILD WINS. The Session (and the response cache baked
 # into it) is constructed from the settings of whichever source instance
@@ -58,6 +64,70 @@ if TYPE_CHECKING:
 # SqliteCache exposes no close() to release anyway.
 _session_cache: dict[tuple[str, str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
+
+# One `RateGate` per credential set, built alongside that set's Session
+# and under the same lock. The gate is what actually keeps comicbox
+# inside Metron's 20/min window (see `comicbox/formats/base/online/
+# rate_gate.py`); sharing the Session was only ever enough to share
+# mokkari's *observation* of the limit, not to enforce it.
+_gate_cache: dict[tuple[str, str, str], RateGate] = {}
+
+
+# Prefetched issue lists, keyed by Metron series id: {number: BaseIssue}.
+# Filled by `MetronOnlineSource.prefetch_volume` for a series a batch
+# holds many comics from, so the rest of that cluster answers "issue N in
+# volume V" from memory instead of one `issues_list` each.
+#
+# Bounded, unlike `_session_cache`: this holds real payloads, and a big
+# library run touches many series. Oldest-first eviction is right here —
+# a batch is ordered by series, so the series that filled the oldest
+# entry is the one the run has finished with.
+_PREFETCH_MAX_VOLUMES: Final[int] = 64
+# Metron's DRF `PAGE_SIZE`, which decides how many requests listing a
+# whole series takes.
+_METRON_PAGE_SIZE: Final[int] = 100
+# Below this a prefetch cannot pay for itself: the `series(id)` call plus
+# at least one list page is already 2 requests, so a 2-comic cluster
+# breaks even at best.
+_PREFETCH_MIN_CLUSTER: Final[int] = 3
+
+_prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
+_prefetch_lock = threading.Lock()
+
+
+def _has_prefetch(volume_id: int) -> bool:
+    """Whether this volume's issue list has already been pulled."""
+    with _prefetch_lock:
+        return volume_id in _prefetch_cache
+
+
+def _store_prefetch(volume_id: int, by_number: dict[str, Any]) -> None:
+    """Record a volume's issue list, evicting the oldest volume if full."""
+    with _prefetch_lock:
+        _prefetch_cache[volume_id] = by_number
+        _prefetch_cache.move_to_end(volume_id)
+        while len(_prefetch_cache) > _PREFETCH_MAX_VOLUMES:
+            _prefetch_cache.popitem(last=False)
+
+
+def _prefetched_issue(volume_id: int, number: str) -> Any:
+    """Return a prefetched `BaseIssue` for this volume and number, or None."""
+    with _prefetch_lock:
+        volume = _prefetch_cache.get(volume_id)
+        return volume.get(number) if volume else None
+
+
+def shared_gate(
+    user: str | None, password: str | None, key: str | None = None
+) -> RateGate | None:
+    """
+    Return a credential set's rate gate, or None if nothing built one yet.
+
+    Read-only accessor for callers that want the pacing counters without
+    holding a source instance (the end-of-run summary, tests).
+    """
+    with _session_cache_lock:
+        return _gate_cache.get((user or "", password or "", key or ""))
 
 
 def shared_session_rate_limit_status(
@@ -159,6 +229,9 @@ class MetronOnlineSource(OnlineSource):
     name: ClassVar[str] = "metron"
     metadata_source: ClassVar[MetadataSources] = MetadataSources.METRON_API
     metadata_format: ClassVar[MetadataFormats] = MetadataFormats.METRON_API
+    # Every send goes through this credential set's `RateGate` (see
+    # `paced_session`), so the retry loop must not also sleep the hint.
+    paces_rate_limit: ClassVar[bool] = True
 
     @override
     def is_configured(self) -> bool:
@@ -223,9 +296,10 @@ class MetronOnlineSource(OnlineSource):
         rate-limit state. Memoizing by (user, password, key) lets every thread in
         `Runner._run_parallel`'s pool (comicbox/run.py) that logs in with the
         same credentials observe one shared, continuously-updated
-        `rate_limit_status`, which is what actually makes sharing threads
-        (not processes) worthwhile under mokkari>=4.0.1's reactive,
-        header-driven rate limiting.
+        `rate_limit_status` — and, more importantly, queue behind one
+        `RateGate`. Pacing is what makes sharing threads (not processes)
+        worthwhile: a second process would get a second gate and the two
+        would have to split the window between them.
         """
         if self._client is None:
             # Warn here rather than in _build_session so ignored-config
@@ -242,17 +316,25 @@ class MetronOnlineSource(OnlineSource):
         cache = self._settings.cache
         return (cache.mode, cache.dir, cache.ttl)
 
-    def _get_or_build_shared_session(self) -> Session:
-        key = (
+    def _credential_key(self) -> tuple[str, str, str]:
+        """Identity of the credential set a Session and gate are shared by."""
+        return (
             self._credentials.user or "",
             self._credentials.password or "",
             self._credentials.key or "",
         )
+
+    def _get_or_build_shared_session(self) -> Session:
+        key = self._credential_key()
         signature = self._session_config_signature()
         with _session_cache_lock:
             entry = _session_cache.get(key)
             if entry is None:
-                session = self._build_session()
+                gate = _gate_cache.get(key)
+                if gate is None:
+                    gate = self._build_gate()
+                    _gate_cache[key] = gate
+                session = self._build_session(gate)
                 _session_cache[key] = (session, signature)
                 return session
         session, built_signature = entry
@@ -268,18 +350,51 @@ class MetronOnlineSource(OnlineSource):
             )
         return session
 
-    def _build_session(self) -> Session:
-        from mokkari import api
+    def _build_gate(self) -> RateGate:
+        """
+        Build this credential set's rate gate.
 
-        return api(
+        ``rate_limit.per_minute`` is honored here as a CEILING on the
+        server-reported burst limit, never a raise. That gives the knob a
+        real meaning again for the case it exists for: an embedder
+        running several processes against one Metron token has one gate
+        per process, and the only way to keep their sum inside the
+        server's window is for each to take a share.
+        """
+        from comicbox.config.online.settings import resolve_rate_limit
+
+        limits = resolve_rate_limit(self._settings, self.name)
+        return RateGate(
+            default_limit=METRON_DEFAULT_PER_MINUTE,
+            config_limit=limits.per_minute,
+        )
+
+    def _build_session(self, gate: RateGate | None = None) -> Session:
+        """
+        Build a paced mokkari Session.
+
+        Not `mokkari.api()`: that factory hardcodes `Session`, and the
+        pacing has to live inside the client (see `paced_session`). The
+        keyword set is api()'s, minus `dev_mode`, which comicbox has no
+        setting for.
+        """
+        from comicbox.formats.metron_api.paced_session import PacedSession
+
+        return PacedSession(
+            gate=gate,
             username=self._credentials.user,  # mokkari keyword
             passwd=self._credentials.password,
             cache=self._get_cache(),
-            user_agent=USER_AGENT,
+            user_agent=user_agent(),
             # mokkari prefers the token over username/passwd when both are
             # set; None falls back to basic auth.
             api_token=self._credentials.key,
         )
+
+    def _gate(self) -> RateGate | None:
+        """Return the shared rate gate, once a session has been built."""
+        with _session_cache_lock:
+            return _gate_cache.get(self._credential_key())
 
     def _warn_ignored_url(self) -> None:
         if self._credentials.url:
@@ -307,16 +422,26 @@ class MetronOnlineSource(OnlineSource):
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
+        """
+        Warn about `per_day`, which still has nowhere to go.
+
+        `per_minute` is honored again — `_build_gate` takes it as a
+        ceiling on the burst window. `per_day` is not: Metron reports the
+        sustained window per user (donor tiers raise it), the gate tracks
+        what the server says is left, and comicbox keeps no cross-run
+        tally of its own to enforce a smaller daily number against.
+        """
         from comicbox.config.online.settings import resolve_rate_limit
 
         limits = resolve_rate_limit(self._settings, self.name)
-        if limits.per_minute is not None or limits.per_day is not None:
+        if limits.per_day is not None:
             warn_once(
                 f"{self.name}:rate-limit-override",
-                f"online {self.name}: rate_limit.per_minute/per_day "
-                "overrides are ignored — mokkari>=4.0.1 tracks Metron's "
-                "actual per-user rate limits from response headers instead "
-                "of a fixed local bucket",
+                f"online {self.name}: rate_limit.per_day is ignored — "
+                "Metron reports the remaining daily quota per user in its "
+                "response headers and comicbox paces against that. Use "
+                "rate_limit.per_minute to take a smaller share of the "
+                "burst window.",
             )
 
     @with_retry()
@@ -470,6 +595,9 @@ class MetronOnlineSource(OnlineSource):
         number = strip_issue_leading_zeros(issue_number)
         if not number:
             return None
+        prefetched = _prefetched_issue(volume_id, number)
+        if prefetched is not None:
+            return self._to_candidate(prefetched, series_id=volume_id)
         session = self._get_session()
         params: dict[str, Any] = {"series_id": volume_id, "number": number}
         issues = self._issues_list_with_retry(session, params)
@@ -480,6 +608,84 @@ class MetronOnlineSource(OnlineSource):
         # `number`), accept the first — caller would otherwise need to
         # decide between variants which is a different problem.
         return self._to_candidate(issue_list[0], series_id=volume_id)
+
+    @override
+    def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:
+        """
+        Pull a whole series' issue list once instead of once per comic.
+
+        With `PAGE_SIZE=100` a series is one or a few pages, so a long run
+        costs `1 + pages` requests to list instead of one `issues_list`
+        per comic. Only worth it when that is actually cheaper than the
+        lookups it replaces, which is what the `series(id)` call buys: its
+        `issue_count` says how many pages the list will take before
+        committing to fetching it.
+
+        The `issue(id)` detail fetch still happens per comic — `BaseIssue`
+        carries no credits or characters — so this takes a cluster from
+        about two requests per comic to about one.
+
+        Best effort throughout: anything that goes wrong leaves the
+        per-comic path exactly as it was.
+        """
+        if cluster_size < _PREFETCH_MIN_CLUSTER or _has_prefetch(volume_id):
+            return
+        try:
+            self._prefetch_volume_issues(volume_id, cluster_size)
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.debug(
+                f"online {self.name}: series prefetch for volume {volume_id} "
+                f"failed: {exc}; falling back to per-issue lookups"
+            )
+
+    def _prefetch_volume_issues(self, volume_id: int, cluster_size: int) -> None:
+        """Do the two-step prefetch; see `prefetch_volume` for the policy."""
+        session = self._get_session()
+        series = self._series_with_retry(session, volume_id)
+        issue_count = getattr(series, "issue_count", None) if series else None
+        if not issue_count:
+            return
+        pages = math.ceil(issue_count / _METRON_PAGE_SIZE)
+        # `1` for the series() call already spent, plus a page each. The
+        # comparison is against what the cluster would otherwise pay: one
+        # issues_list per comic.
+        if 1 + pages >= cluster_size:
+            logger.debug(
+                f"online {self.name}: not prefetching volume {volume_id} — "
+                f"{1 + pages} requests to list {issue_count} issues is not "
+                f"cheaper than {cluster_size} per-issue lookups"
+            )
+            return
+        issues = self._issues_list_with_retry(session, {"series_id": volume_id})
+        by_number: dict[str, Any] = {}
+        for issue in issues:
+            number = strip_issue_leading_zeros(getattr(issue, "number", None))
+            # First writer wins, mirroring `_lookup_issue_in_volume`'s
+            # "accept the first" rule for cover variants sharing a number.
+            if number and number not in by_number:
+                by_number[number] = issue
+        _store_prefetch(volume_id, by_number)
+        logger.info(
+            f"online {self.name}: prefetched {len(by_number)} issues of volume "
+            f"{volume_id} in {1 + pages} requests, for {cluster_size} comics"
+        )
+
+    @with_retry(max_retries=1)
+    def _series_with_retry(self, session: Session, series_id: int) -> Any:
+        """
+        Per-call retry wrapper around `session.series`.
+
+        Deliberately a tighter budget than the rest of the source. This
+        call only decides whether a prefetch is worth doing, and there is
+        a working fallback one line away, so burning the user's full
+        retry budget (and its 31s of backoff) on it would cost more than
+        the optimization can ever save. Rate-limit errors keep their own
+        budget, which the gate makes free to spend.
+        """
+        self._record_api_call("series")
+        return session.series(series_id)
 
     def _search_by_explicit_series_id(
         self, session: Session, profile: ComicProfile, series_id: int
@@ -532,6 +738,8 @@ class MetronOnlineSource(OnlineSource):
         single `issues_list({series_id: ...})` call — unchanged.
         """
         session = self._get_session()
+        if not self._may_start_cold_search():
+            return []
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
             return self._search_by_explicit_series_id(session, profile, explicit_sid)
@@ -560,6 +768,28 @@ class MetronOnlineSource(OnlineSource):
             )
 
         return candidates
+
+    def _may_start_cold_search(self) -> bool:
+        """
+        Whether the daily quota can still afford to START a search.
+
+        Once Metron reports the sustained window down to its reserve, the
+        gate stops admitting discretionary work. A search only begins a
+        comic; the `issue(id)` fetch that follows a match is what
+        finishes one. Spending the last of the day on new searches would
+        leave a trail of comics that matched and were never written.
+
+        Returning [] reads downstream as "no candidates", which the
+        lookup already handles as a clean NO_MATCH.
+        """
+        gate = self._gate()
+        if gate is None or gate.allow_cold_search():
+            return True
+        logger.info(
+            f"online {self.name}: daily quota nearly spent; skipping this "
+            "search so the remaining budget finishes comics that matched"
+        )
+        return False
 
     def _fetch_candidates_by_name(
         self,
@@ -650,19 +880,17 @@ class MetronOnlineSource(OnlineSource):
         `search()`'s year-retry cascade fires at most 3 calls per
         `include_volume` cycle (year-exact + Y-1 + Y+1), times at most 2
         cycles (with-volume, drop-volume) — at most 6 `issues_list` calls
-        per search. Metron caps every user at 20 req/min; mokkari tracks
-        that from response headers and only pre-empts a request once it
-        already knows the window is exhausted (a shared `Session` makes
-        that check advisory, not a hard gate — see `Runner._run_parallel`
-        in comicbox/run.py), so under -j N batch contention several
-        workers' calls can still collide in the same window and raise
-        `RateLimitError` with a `retry_after` hint.
+        per search.
 
-        Decorating this method with `@with_retry()` means the retry
-        decorator catches that error, honors the server-side
-        `retry_after`, sleeps, and replays the single failed call rather
-        than spamming "issue-list … failed" warnings and dropping the
-        data.
+        `PacedSession` admits every one of those through this credential
+        set's `RateGate`, so under `-j N` they queue instead of colliding
+        and a 429 should not happen at all. It still can — another client
+        on the same token, or a window we had not yet been told the shape
+        of — and when it does, the gate absorbs the `Retry-After` hint
+        and this decorator replays the single failed call rather than
+        spamming "issue-list … failed" warnings and dropping the data.
+        Because the source sets `paces_rate_limit`, the replay does not
+        sleep the hint a second time; it blocks at the gate.
 
         `_record_api_call` counts one call here, but mokkari follows
         `next` pages inside it, so a result set longer than one Metron
