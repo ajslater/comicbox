@@ -22,8 +22,8 @@ from typing import Any
 import pytest
 from typing_extensions import override
 
-from comicbox.formats.base.online import outcome_stats
-from comicbox.formats.base.online.rate_gate import RateGate
+from comicbox.formats.base.online import outcome_stats, warn_once
+from comicbox.formats.base.online.rate_gate import GateState, RateGate
 from comicbox.formats.metron_api.paced_session import PacedSession, endpoint_from_url
 
 _BURST_HEADERS = {
@@ -82,6 +82,7 @@ class _RecordingGate(RateGate):
         super().__init__(default_limit=1000)
         self.acquires = 0
         self.releases = 0
+        self.observes = 0
         self.cooldowns: list[float | None] = []
 
     @override
@@ -95,6 +96,27 @@ class _RecordingGate(RateGate):
         super().release()
 
     @override
+    def observe(
+        self,
+        *,
+        burst_limit: int | None,
+        burst_remaining: int | None,
+        sustained_limit: int | None = None,
+        sustained_remaining: int | None = None,
+        sustained_reset: float | None = None,
+        saw_headers: bool = True,
+    ) -> None:
+        self.observes += 1
+        super().observe(
+            burst_limit=burst_limit,
+            burst_remaining=burst_remaining,
+            sustained_limit=sustained_limit,
+            sustained_remaining=sustained_remaining,
+            sustained_reset=sustained_reset,
+            saw_headers=saw_headers,
+        )
+
+    @override
     def cooldown(self, retry_after: float | None) -> None:
         self.cooldowns.append(retry_after)
         super().cooldown(retry_after)
@@ -103,6 +125,21 @@ class _RecordingGate(RateGate):
 @pytest.fixture(autouse=True)
 def _reset_stats() -> None:
     outcome_stats.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_warn_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`warn_once` dedups for the life of the process; tests get a clean set."""
+    monkeypatch.setattr(warn_once, "_seen", set())
+
+
+def _warnings() -> tuple[list[str], int]:
+    """Collect WARNING-level loguru records; caller removes the handler."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    return messages, handler_id
 
 
 @pytest.fixture
@@ -298,6 +335,104 @@ def test_without_a_gate_mokkari_keeps_its_own_check(gate: _RecordingGate) -> Non
     )
     with pytest.raises(RateLimitError):
         session._check_rate_limit()
+
+
+# ------------------------------------------ responses that missed the API
+
+
+def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
+    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+) -> None:
+    """
+    A bare 200 did not come from Metron's API, and the count says so.
+
+    Every response DRF's throttles touched carries `X-RateLimit-*`, and
+    they run ahead of all view code, so an answer without them came from
+    nginx or from Anubis — whose challenge and deny pages are both HTTP
+    200 HTML. The gate's own handling of a header-less response is
+    unchanged: it still opens, because a server that never throttles is
+    the other thing this looks like.
+    """
+    from loguru import logger as loguru_logger
+
+    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
+    _install_transport(monkeypatch, [_FakeResponse(page, headers={})])
+
+    messages, handler_id = _warnings()
+    try:
+        _session(gate).issues_list(params={"series_id": 7})
+    finally:
+        loguru_logger.remove(handler_id)
+
+    assert outcome_stats.api_snapshot()["metron"].unthrottled == {200: 1}
+    assert gate.observes == 1
+    assert gate._state is GateState.OPEN
+    assert sum("no X-RateLimit-* headers" in m for m in messages) == 1
+
+
+def test_a_header_less_429_cools_down_without_teaching_the_gate(
+    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+) -> None:
+    """
+    Nothing to observe, everything to cool down.
+
+    Every window figure on a bare 429 is None, so `observe` would do
+    nothing but log "pacing disabled" on its way to a `cooldown` that
+    contradicts it a moment later. The cooldown is unchanged — a full
+    window rebuild — because the paced retry path plans a zero delay and
+    would otherwise spend its whole budget back-to-back.
+    """
+    from mokkari.exceptions import RateLimitError
+
+    _install_transport(monkeypatch, [_FakeResponse({}, status_code=429, headers={})])
+
+    with pytest.raises(RateLimitError):
+        _session(gate).issues_list(params={"series_id": 7})
+
+    assert outcome_stats.api_snapshot()["metron"].unthrottled == {429: 1}
+    assert gate.observes == 0
+    assert gate.cooldowns == [None]
+    assert gate.stats().rejections == 1
+
+
+def test_a_headered_304_is_not_counted_as_unthrottled(
+    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+) -> None:
+    """A conditional GET is a real API response and carries the headers."""
+    _install_transport(monkeypatch, [_FakeResponse({}, status_code=304)])
+
+    _session(gate).issue(1, if_modified_since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+
+    assert outcome_stats.api_snapshot()["metron"].unthrottled == {}
+
+
+def test_a_transport_failure_is_counted_separately(
+    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+) -> None:
+    """
+    A send that never produced a response gets its own counter.
+
+    mokkari re-raises `requests` ConnectionError and ReadTimeout as
+    `ApiError` from the one frame the gate wraps; an HTTP status error is
+    raised further up and never reaches it. This is the only shape a
+    firewall-level ban has from in here — Metron's fail2ban jail drops
+    the IP, so the client just stops getting answers.
+    """
+    import requests
+
+    def boom(*_args: Any, **_kwargs: Any) -> None:
+        msg = "down"
+        raise requests.exceptions.ConnectionError(msg)
+
+    monkeypatch.setattr("mokkari.session.requests.request", boom)
+
+    with pytest.raises(Exception, match="Connection error"):
+        _session(gate).issues_list(params={"series_id": 7})
+
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.connection_failures == 1
+    assert api.requests == {"issue_list": 1}
+    assert api.unthrottled == {}
 
 
 # ------------------------------------------------------------ accounting
