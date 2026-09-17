@@ -126,10 +126,43 @@ class OnlineSource(ABC):
         # lifetime. Without this, every public method call constructed a
         # fresh client — new HTTP session, sqlite connection, limiter.
         self._client: Any = None
+        # Why the last `search()` came back empty, when it was not a miss.
+        # See `search_skip_reason`.
+        self._search_skip_reason: str | None = None
 
     def _record_api_call(self, method: str) -> None:
         """Bump `api_call_counts[method]`. Called by source-internal wrappers."""
         self.api_call_counts[method] = self.api_call_counts.get(method, 0) + 1
+
+    # -- why a search returned nothing ---------------------------------------
+
+    @property
+    def search_skip_reason(self) -> str | None:
+        """
+        A ``SKIP_*`` reason for the last empty ``search()``, or None.
+
+        Set by a source that declined to search at all, so the lookup reports
+        the file as skipped-with-a-reason rather than as a source that looked
+        and found nothing. The two are not interchangeable: a comic nobody
+        looked at should be tried again, and one that genuinely missed should
+        not.
+        """
+        return self._search_skip_reason
+
+    def reset_search_skip_reason(self) -> None:
+        """
+        Clear the reason, which a source does at the top of its own search.
+
+        The reason's whole lifetime belongs to the source that sets it. The
+        lookup only reads it, and reads it structurally — a source is
+        whatever implements the search protocol, not necessarily a subclass
+        of this, and most never decline to search at all.
+        """
+        self._search_skip_reason = None
+
+    def _note_search_skipped(self, reason: str) -> None:
+        """Record why this search is returning no candidates."""
+        self._search_skip_reason = reason
 
     @abstractmethod
     def is_configured(self) -> bool:

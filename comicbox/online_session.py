@@ -23,6 +23,11 @@ from collections import Counter
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
+# OnlineConfigurationError keeps its historical comicbox.online_session
+# import path; the definition lives in comicbox.exceptions so it shares
+# the ComicboxError base.
+from loguru import logger
+
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.config.online.settings import (
@@ -34,10 +39,6 @@ from comicbox.config.online.settings import (
     Prompts,
 )
 from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
-
-# OnlineConfigurationError keeps its historical comicbox.online_session
-# import path; the definition lives in comicbox.exceptions so it shares
-# the ComicboxError base.
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
 from comicbox.formats.base.online.series_cache import filename_series_fingerprint
 from comicbox.formats.base.online.session_state import OnlineSessionState
@@ -384,6 +385,8 @@ class OnlineSession:
         # holds, by filename fingerprint. Empty for single-file `tag()`,
         # which clusters nothing.
         self._series_cluster_sizes: Counter[str] = Counter()
+        # Why a lookup aborted the run, if one did. See `abort_reason`.
+        self._abort_reason: str | None = None
 
     # -- mutable session state ----------------------------------------------
 
@@ -419,6 +422,18 @@ class OnlineSession:
     def cancelled(self) -> bool:
         """Whether cancel() has been called."""
         return self._cancel.is_set()
+
+    @property
+    def abort_reason(self) -> str | None:
+        """
+        Why the session stopped itself, or None if nobody's lookup aborted.
+
+        None after a plain :meth:`cancel` — that is the caller's own doing
+        and needs no explanation. Set when a lookup raised
+        `OnlineLookupAbortedError`, most usefully when the day's API quota
+        ran out, which stops a run the caller never asked to stop.
+        """
+        return self._abort_reason
 
     # -- deferred prompts ---------------------------------------------------
 
@@ -563,11 +578,20 @@ class OnlineSession:
             return OnlineResult(path=path, cancelled=True)
         try:
             tags, matched = self._run_one(path)
-        except OnlineLookupAbortedError:
-            # The handler answered "abort" (or a cancelled retry sleep
-            # aborted an in-flight lookup). Abort means "abort the entire
-            # run", not "skip this file": trip the cancel token so
-            # tag_many drains the remaining paths as cancelled.
+        except OnlineLookupAbortedError as exc:
+            # The handler answered "abort", a cancelled retry sleep aborted
+            # an in-flight lookup, or the day's API quota ran out. Abort
+            # means "abort the entire run", not "skip this file": trip the
+            # cancel token so tag_many drains the remaining paths as
+            # cancelled.
+            #
+            # Keep the reason. Every path out of here looks identical to a
+            # caller — a stream of cancelled results — but "the user paused
+            # it" and "Metron has nothing left today" call for different
+            # handling, and the second has to be readable without scraping
+            # the log.
+            self._abort_reason = str(exc)
+            logger.warning(f"online: lookup aborted: {exc}")
             self.cancel()
             return OnlineResult(path=path, cancelled=True)
         except Exception as exc:

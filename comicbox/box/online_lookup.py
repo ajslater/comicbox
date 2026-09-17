@@ -38,6 +38,7 @@ from typing_extensions import override
 from comicbox.box.online_covers import ComicboxOnlineCovers
 from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.events import (
+    SKIP_MATCHER_DECLINED,
     AutoWritten,
     FileFinished,
     NoMatch,
@@ -827,7 +828,7 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             )
             outcome_stats.record_skip(source.name)
             self._emit(
-                Skipped(path=path, source=source.name, reason="matcher_declined")
+                Skipped(path=path, source=source.name, reason=SKIP_MATCHER_DECLINED)
             )
             return False
         return None
@@ -951,13 +952,34 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         if candidates is None:
             return False
         if not candidates:
-            logger.info(
-                f"online {source.name}: 0 candidates for {criteria_summary} "
-                "(no matching issues in the database)"
-            )
+            self._report_empty_search(source, criteria_summary, path)
             return False
         resolution = self._resolve_with_matcher(source.name, candidates, online)
         return self._apply_resolution(source, resolution, path)
+
+    def _report_empty_search(
+        self, source: OnlineSource, criteria_summary: str, path: Path | None
+    ) -> None:
+        """
+        Say why a search produced nothing: a real miss, or no search at all.
+
+        A source that declined to search — today's quota is down to the
+        reserve that finishes comics which already matched — emits `Skipped`
+        carrying that reason. An embedding application needs the difference:
+        a comic nobody looked at should be tried again, while one the source
+        genuinely missed should not.
+        """
+        # Optional capability, read structurally: a source is whatever
+        # implements search() and friends, and most never decline to search.
+        reason = getattr(source, "search_skip_reason", None)
+        if reason:
+            outcome_stats.record_skip(source.name)
+            self._emit(Skipped(path=path, source=source.name, reason=reason))
+            return
+        logger.info(
+            f"online {source.name}: 0 candidates for {criteria_summary} "
+            "(no matching issues in the database)"
+        )
 
     def _emit_auto_written(self, source: OnlineSource, issue_id: int) -> None:
         """

@@ -257,6 +257,38 @@ def test_abort_from_lookup_cancels_the_batch(tmp_path, monkeypatch) -> None:
     assert session.cancelled is True
 
 
+def test_an_abort_keeps_its_reason(tmp_path, monkeypatch) -> None:
+    """
+    The caller can tell a quota stop from a pause it asked for.
+
+    Both end a run as a stream of cancelled results, so without the reason
+    an embedding application has to scrape the log to learn that the day's
+    API budget ran out rather than that a user pressed pause.
+    """
+    from comicbox.box.online_lookup import OnlineLookupAbortedError
+
+    reason = "online: daily API request quota exhausted"
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+
+    def raise_abort(self, path):
+        raise OnlineLookupAbortedError(reason)
+
+    monkeypatch.setattr(OnlineSession, "_run_one", raise_abort)
+    list(session.tag_many([tmp_path / "f0.cbz"]))
+
+    assert session.abort_reason == reason
+
+
+def test_a_plain_cancel_has_no_abort_reason() -> None:
+    """A caller's own pause needs no explanation."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+
+    session.cancel()
+
+    assert session.cancelled is True
+    assert session.abort_reason is None
+
+
 def test_retry_sleep_wait_aborts_when_cancelled() -> None:
     """The wired retry sleep aborts the in-flight lookup on cancel()."""
     from comicbox.box.online_lookup import OnlineLookupAbortedError
