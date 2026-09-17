@@ -1,12 +1,13 @@
 """
 MetronOnlineSource search-flow tests.
 
-Exercises the single-call search: ``issues_list({series_name, number,
-cover_year, series_volume})`` directly, with no separate series-discovery
-step. Since mokkari 3.28.0 / Metron server commit 3b1e46b,
-`BaseIssue.series.id` is populated on list results, so `Candidate.volume_id`
-resolves straight from the search result too. Mocks `_get_session` so we
-never hit the network.
+Exercises the search: ``issues_list({series_name, number, cover_year,
+series_volume})`` directly, with no separate series-discovery step, plus
+the single wide ``cover_date_range_*`` fallback that replaces the old
+six-call miss cascade. Since mokkari 3.28.0 / Metron server commit
+3b1e46b, `BaseIssue.series.id` is populated on list results, so
+`Candidate.volume_id` resolves straight from the search result too. Mocks
+`_get_session` so we never hit the network.
 """
 
 from __future__ import annotations
@@ -35,9 +36,12 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 
 class _FakeBaseSeries:
-    def __init__(self, sid: int, name: str) -> None:
+    def __init__(self, sid: int, name: str, volume: int = 1) -> None:
         self.id = sid
         self.name = name
+        # mokkari's `BasicSeries.volume` is a required int, not optional.
+        # The wide fallback ranks rows by it, so the fake has to have one.
+        self.volume = volume
 
 
 class _FakeBaseIssue:
@@ -48,6 +52,7 @@ class _FakeBaseIssue:
         series_name: str,
         cover_year: int = 1952,
         series_id: int = 999,
+        series_volume: int = 1,
     ) -> None:
         from datetime import date
 
@@ -61,7 +66,27 @@ class _FakeBaseIssue:
         # mokkari `BaseIssue.series` is `BasicSeries` — since mokkari 3.28.0
         # / Metron server commit 3b1e46b it carries a real `.id` alongside
         # `name`, not just a sparse name-only stub.
-        self.series = _FakeBaseSeries(sid=series_id, name=series_name)
+        self.series = _FakeBaseSeries(
+            sid=series_id, name=series_name, volume=series_volume
+        )
+
+
+def _years_requested(params: dict[str, Any]) -> set[int] | None:
+    """
+    Cover years a call constrains itself to, or None for no constraint.
+
+    Metron accepts either `cover_year` (the exact call) or the
+    `cover_date_range_after` / `_before` pair (the wide fallback), and
+    filters on neither when given neither.
+    """
+    cover_year = params.get("cover_year")
+    if cover_year is not None:
+        return {int(cover_year)}
+    after = params.get("cover_date_range_after")
+    before = params.get("cover_date_range_before")
+    if after and before:
+        return set(range(int(str(after)[:4]), int(str(before)[:4]) + 1))
+    return None
 
 
 class _FakeMokkari:
@@ -178,40 +203,34 @@ def test_search_primary_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> N
         src.search(profile)
 
 
-def test_search_year_retry_attempt_failure_does_not_block_sibling(
+def test_search_wide_fallback_failure_reads_as_no_match(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A failing Y-1 retry attempt doesn't block the Y+1 attempt from running."""
+    """
+    A failure in the fallback degrades; it does not fail the search.
 
-    class _FlakyYearMokkari(_FakeMokkari):
+    The exact call keeps the raise-on-failure contract — a hard failure
+    there means the search failed, not that Metron has nothing — but the
+    fallback is an extra chance, so losing it is a miss, mirroring what
+    the per-year retries used to swallow.
+    """
+
+    class _FlakyWideMokkari(_FakeMokkari):
         @override
         def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
             params = dict(params or {})
             self.issues_list_calls.append(params)
-            year = params.get("cover_year")
-            if year == 2019:
-                msg = "boom at 2019"
+            if "cover_date_range_after" in params:
+                msg = "boom on the wide call"
                 raise ValueError(msg)
-            if year == 2021:
-                return [
-                    _FakeBaseIssue(
-                        iid=901,
-                        number="1",
-                        series_name="Foo",
-                        cover_year=2021,
-                        series_id=100,
-                    )
-                ]
             return []
 
-    fake = _FlakyYearMokkari(issues_by_key={})
+    fake = _FlakyWideMokkari(issues_by_key={})
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
-    candidates = src.search(profile)
 
-    assert [c.issue_id for c in candidates] == [901]
-    years_tried = [c.get("cover_year") for c in fake.issues_list_calls]
-    assert years_tried == [2020, 2019, 2021]
+    assert src.search(profile) == []
+    assert len(fake.issues_list_calls) == 2
 
 
 def test_search_retries_per_call_on_rate_limit(
@@ -377,7 +396,12 @@ def test_to_candidate_propagates_series_id_from_series_id_fastpath(
 
 
 class _YearAwareMokkari(_FakeMokkari):
-    """`issues_list` honors `cover_year` so we can exercise retry-on-miss."""
+    """
+    `issues_list` honors `cover_year` AND the wide `cover_date_range_*` pair.
+
+    Both have to work, because a miss now falls through from the exact
+    call to one range call rather than to two more exact ones.
+    """
 
     def __init__(
         self,
@@ -391,16 +415,23 @@ class _YearAwareMokkari(_FakeMokkari):
         params = dict(params or {})
         self.issues_list_calls.append(params)
         name = params.get("series_name")
-        year = params.get("cover_year")
-        if name is None or year is None:
+        if name is None:
             return []
-        return list(self._issues_by_name_and_year.get((name, int(year)), []))
+        years = _years_requested(params)
+        rows: list[_FakeBaseIssue] = []
+        for (key_name, key_year), issues in self._issues_by_name_and_year.items():
+            if key_name != name:
+                continue
+            if years is not None and key_year not in years:
+                continue
+            rows.extend(issues)
+        return rows
 
 
-def test_year_retry_on_miss_finds_at_year_minus_one(
+def test_wide_fallback_on_miss_finds_at_year_minus_one(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Year-exact returns nothing → retry at Y-1 succeeds."""
+    """Year-exact returns nothing → the one range call covers Y-1."""
     issues_by_year = {
         ("Foo", 2019): [
             _FakeBaseIssue(
@@ -414,16 +445,17 @@ def test_year_retry_on_miss_finds_at_year_minus_one(
     candidates = src.search(profile)
 
     assert [c.issue_id for c in candidates] == [900]
-    # Three issues_list calls: the year-exact (2020), then Y-1 (2019)
-    # which hit, then Y+1 (2021) which the implementation runs eagerly.
-    years_tried = [c.get("cover_year") for c in fake.issues_list_calls]
-    assert years_tried == [2020, 2019, 2021]
+    # Two calls, not three: the exact one, then one range call spanning
+    # Y-1..Y+1 in place of the old two separate retries.
+    assert len(fake.issues_list_calls) == 2
+    assert fake.issues_list_calls[0]["cover_year"] == 2020
+    assert "cover_year" not in fake.issues_list_calls[1]
 
 
-def test_year_retry_on_miss_finds_at_year_plus_one(
+def test_wide_fallback_on_miss_finds_at_year_plus_one(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Year-exact returns nothing → retry at Y+1 succeeds."""
+    """The same one range call covers Y+1; there is no second retry."""
     issues_by_year = {
         ("Foo", 2021): [
             _FakeBaseIssue(
@@ -437,6 +469,27 @@ def test_year_retry_on_miss_finds_at_year_plus_one(
     candidates = src.search(profile)
 
     assert [c.issue_id for c in candidates] == [901]
+    assert len(fake.issues_list_calls) == 2
+
+
+def test_wide_fallback_sends_a_three_year_cover_date_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fallback's exact params: name + number + Y-1..Y+1, no volume."""
+    fake = _YearAwareMokkari(issues_by_name_and_year={})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="007", issue_int=7, year=2020, volume=3)
+
+    assert src.search(profile) == []
+
+    assert len(fake.issues_list_calls) == 2
+    wide = fake.issues_list_calls[1]
+    assert wide == {
+        "series_name": "Foo",
+        "number": "7",
+        "cover_date_range_after": "2019-01-01",
+        "cover_date_range_before": "2021-12-31",
+    }
 
 
 def test_year_exact_hit_does_not_trigger_retry(
@@ -460,29 +513,65 @@ def test_year_exact_hit_does_not_trigger_retry(
     assert years_tried == [2020]  # no retries
 
 
-def test_no_year_means_no_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Profile without a year skips the year filter and the retry path."""
+def test_no_year_and_no_volume_means_no_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    With nothing to relax, the fallback would repeat call 1 verbatim.
+
+    Call 1 was already name + number: no year to widen into a range, no
+    volume to drop. Sending it again would spend a request to receive the
+    same empty answer.
+    """
     fake = _YearAwareMokkari(issues_by_name_and_year={})
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Foo", issue="1", issue_int=1)  # no year
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1)  # no year, no volume
     candidates = src.search(profile)
 
     assert candidates == []
-    # Exactly one issues_list call (the original) — no Y-1 / Y+1 because
-    # there's no year to relax.
     assert len(fake.issues_list_calls) == 1
     assert "cover_year" not in fake.issues_list_calls[0]
 
 
+def test_no_issue_number_means_no_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A number-less miss stops at one call. Deliberately not parity.
+
+    The old cascade ran in full here. A wide call with only a series name
+    and a three-year window paginates every issue of every series whose
+    name matches, and the matcher has no issue number to pick between
+    those rows with anyway.
+    """
+    fake = _YearAwareMokkari(issues_by_name_and_year={})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", year=2020, volume=2)  # no issue number
+
+    assert src.search(profile) == []
+    assert len(fake.issues_list_calls) == 1
+
+
 # ---------------------------------------------------------- volume filter
+
+
+def _key_answers(
+    key: tuple, *, ident: Any, years: set[int] | None, vol: int | None
+) -> bool:
+    """Whether a `_VolumeAwareMokkari` fixture key answers this query."""
+    key_ident, key_year, key_vol = key
+    if key_ident != ident or key_vol != vol:
+        return False
+    return years is None or key_year is None or key_year in years
 
 
 class _VolumeAwareMokkari(_FakeMokkari):
     """
     Honor `series_name`/`series_id`, `series_volume`, and `cover_year` filters.
 
-    Used to test both the volume soft-filter and the drop-volume retry,
-    across both the by-name search path and the `--series-id` fast path.
+    Used to test both the volume soft-filter and the wide fallback that
+    drops it, across the by-name search path and the `--series-id` fast
+    path.
     """
 
     def __init__(
@@ -499,19 +588,17 @@ class _VolumeAwareMokkari(_FakeMokkari):
     def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
         params = dict(params or {})
         self.issues_list_calls.append(params)
-        ident = params.get("series_name")
-        if ident is None:
-            ident = params.get("series_id")
+        ident = params.get("series_name", params.get("series_id"))
         if ident is None:
             return []
-        year = params.get("cover_year")
-        vol = params.get("series_volume")
-        key = (
-            ident,
-            int(year) if year is not None else None,
-            int(vol) if vol is not None else None,
-        )
-        return list(self._issues_by_match.get(key, []))
+        years = _years_requested(params)
+        raw_vol = params.get("series_volume")
+        vol = int(raw_vol) if raw_vol is not None else None
+        rows: list[_FakeBaseIssue] = []
+        for key, issues in self._issues_by_match.items():
+            if _key_answers(key, ident=ident, years=years, vol=vol):
+                rows.extend(issues)
+        return rows
 
 
 def test_volume_filter_passed_to_metron(
@@ -544,14 +631,16 @@ def test_volume_filter_passed_to_metron(
     assert call["cover_year"] == 2020
 
 
-def test_volume_filter_drop_retry_finds_match(
+def test_wide_fallback_drops_a_wrong_volume_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    Drop-volume retry path.
+    Wrong `Vol. N` in the filename → the fallback finds it anyway.
 
-    Wrong volume in the filename → year-cycle with volume returns 0 →
-    retry without volume succeeds.
+    Filename-parsed volumes are inconsistent: some scanners drop them,
+    some get the number wrong. The old shape spent three requests proving
+    the volume was wrong before trying without it; the fallback drops it
+    on the one call it makes.
     """
     # Match exists at series_volume=None (i.e. unfiltered), NOT 2.
     issues = {
@@ -573,34 +662,66 @@ def test_volume_filter_drop_retry_finds_match(
     candidates = src.search(profile)
 
     assert [c.issue_id for c in candidates] == [500]
-    # Call sequence: year-exact w/ volume (miss), Y-1 w/ volume (miss),
-    # Y+1 w/ volume (miss), THEN drop-volume year-exact (hit).
-    series_volumes = [c.get("series_volume") for c in fake.issues_list_calls]
-    assert series_volumes[0] == 2  # first pass had volume
-    # The drop-volume retry pass omits series_volume entirely.
-    assert any(sv is None for sv in series_volumes)
+    # Two calls: exact (with the volume) then wide (without it).
+    assert len(fake.issues_list_calls) == 2
+    assert fake.issues_list_calls[0]["series_volume"] == 2
+    assert "series_volume" not in fake.issues_list_calls[1]
 
 
-def test_no_volume_in_profile_no_drop_retry(
+def test_no_year_but_a_volume_falls_back_without_a_range(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Profile without volume skips the drop-volume retry path entirely."""
+    """
+    Degrades to exactly the old drop-volume call: name + number.
+
+    There is no year to build a range from, so no range is sent — and
+    with nothing constraining the cover date there is nothing to guard
+    against and no year to rank by. Every row comes back, which is what
+    the old call returned.
+    """
+    issues = {
+        ("Spider-Man", 1994, None): [
+            _FakeBaseIssue(
+                iid=510,
+                number="1",
+                series_name="Spider-Man",
+                cover_year=1994,
+                series_id=100,
+                series_volume=9,
+            )
+        ],
+    }
+    fake = _VolumeAwareMokkari(issues_by_match=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Spider-Man", issue="1", issue_int=1, volume=2)
+    candidates = src.search(profile)
+
+    assert [c.issue_id for c in candidates] == [510]
+    assert len(fake.issues_list_calls) == 2
+    wide = fake.issues_list_calls[1]
+    assert wide == {"series_name": "Spider-Man", "number": "1"}
+
+
+def test_no_volume_in_profile_still_widens_the_years(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without a volume there is still a year to widen, so the fallback runs."""
     fake = _VolumeAwareMokkari(issues_by_match={})
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)  # no volume
     candidates = src.search(profile)
 
     assert candidates == []
-    # No call ever included series_volume, and there was no second cycle.
+    # No call ever included series_volume — there was none to send.
     assert all("series_volume" not in c for c in fake.issues_list_calls)
-    # Three calls (year-exact + ±1 retry); no fourth-and-beyond drop pass.
-    assert len(fake.issues_list_calls) == 3
+    # Two calls, where the old shape spent three.
+    assert len(fake.issues_list_calls) == 2
 
 
-def test_volume_match_does_not_trigger_drop_retry(
+def test_volume_match_does_not_trigger_the_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Year-exact + volume hits → no drop-volume retry needed."""
+    """Year-exact + volume hits → the fallback never runs."""
     issues = {
         ("Spider-Man", 2020, 2): [
             _FakeBaseIssue(
@@ -620,7 +741,7 @@ def test_volume_match_does_not_trigger_drop_retry(
     candidates = src.search(profile)
 
     assert [c.issue_id for c in candidates] == [600]
-    # Only the first call ran — no year retry, no volume drop.
+    # Only the first call ran — no widening of any kind.
     assert len(fake.issues_list_calls) == 1
 
 
@@ -649,6 +770,187 @@ def test_series_id_path_omits_volume_filter(
     assert [c.issue_id for c in candidates] == [700]
     assert len(fake.issues_list_calls) == 1
     assert "series_volume" not in fake.issues_list_calls[0]
+
+
+# ---------------------------------------- wide fallback: guard + precedence
+
+
+class _RangeIgnoringMokkari(_FakeMokkari):
+    """
+    An un-upgraded Metron: it drops filter params it does not recognize.
+
+    DRF ignores unknown query params rather than rejecting them, so a
+    server that predates the `cover_date_range_*` filters answers the
+    wide call with the whole series instead of three years of it —
+    silently, and with a 200.
+    """
+
+    def __init__(self, rows: list[_FakeBaseIssue]) -> None:
+        super().__init__(issues_by_key={})
+        self._rows = rows
+
+    @override
+    def issues_list(self, params: dict | None = None) -> list[_FakeBaseIssue]:
+        params = dict(params or {})
+        self.issues_list_calls.append(params)
+        if params.get("cover_year") is not None:
+            return []  # the exact call misses; the fallback follows
+        return list(self._rows)
+
+
+def test_rows_outside_the_range_are_dropped_and_warned_about(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A server ignoring the range must not widen the search silently."""
+    from loguru import logger as loguru_logger
+
+    from comicbox.formats.base.online import warn_once as warn_once_module
+
+    monkeypatch.setattr(warn_once_module, "_seen", set())
+    rows = [
+        _FakeBaseIssue(
+            iid=1987, number="1", series_name="Foo", cover_year=1987, series_id=100
+        ),
+        _FakeBaseIssue(
+            iid=2019, number="1", series_name="Foo", cover_year=2019, series_id=100
+        ),
+    ]
+    fake = _RangeIgnoringMokkari(rows=rows)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        candidates = src.search(profile)
+    finally:
+        loguru_logger.remove(handler_id)
+
+    # The 1987 row would have been ranked against a 2020 profile.
+    assert [c.issue_id for c in candidates] == [2019]
+    assert sum("cover-date range" in m for m in messages) == 1
+
+
+def test_rows_inside_the_range_do_not_warn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The guard is silent when the server honored the filter."""
+    from loguru import logger as loguru_logger
+
+    from comicbox.formats.base.online import warn_once as warn_once_module
+
+    monkeypatch.setattr(warn_once_module, "_seen", set())
+    rows = [
+        _FakeBaseIssue(
+            iid=2021, number="1", series_name="Foo", cover_year=2021, series_id=100
+        ),
+    ]
+    fake = _RangeIgnoringMokkari(rows=rows)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Foo", issue="1", issue_int=1, year=2020)
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        candidates = src.search(profile)
+    finally:
+        loguru_logger.remove(handler_id)
+
+    assert [c.issue_id for c in candidates] == [2021]
+    assert not [m for m in messages if "cover-date range" in m]
+
+
+def _wide_search_ids(
+    monkeypatch: pytest.MonkeyPatch,
+    rows: list[_FakeBaseIssue],
+    *,
+    volume: int | None = 2,
+) -> list[int]:
+    """Miss on the exact call, then run the fallback over `rows`."""
+    fake = _RangeIgnoringMokkari(rows=rows)
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(
+        series="Foo", issue="1", issue_int=1, year=2020, volume=volume
+    )
+    return [c.issue_id for c in src.search(profile)]
+
+
+def _row(iid: int, *, year: int, volume: int) -> _FakeBaseIssue:
+    return _FakeBaseIssue(
+        iid=iid,
+        number="1",
+        series_name="Foo",
+        cover_year=year,
+        series_id=100,
+        series_volume=volume,
+    )
+
+
+def test_precedence_prefers_the_profile_volume_at_the_exact_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Tier 1 of the old cascade: the call it would have stopped at.
+
+    The six calls never ranked anything — they stopped at the first one
+    that returned rows, so their ORDER was the ranking. Handing the
+    matcher the whole three-year window instead would flip an
+    adjacent-year reboot from a solo auto-write to a prompt, because the
+    matcher has no volume signal of its own.
+    """
+    rows = [
+        _row(1, year=2019, volume=2),
+        _row(2, year=2020, volume=2),
+        _row(3, year=2020, volume=5),
+        _row(4, year=2021, volume=5),
+    ]
+    assert _wide_search_ids(monkeypatch, rows) == [2]
+
+
+def test_precedence_falls_to_the_profile_volume_at_a_neighboring_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tier 2: the volume still matches, the cover date drifted."""
+    rows = [
+        _row(1, year=2019, volume=2),
+        _row(3, year=2020, volume=5),
+        _row(4, year=2021, volume=5),
+    ]
+    assert _wide_search_ids(monkeypatch, rows) == [1]
+
+
+def test_precedence_falls_to_the_exact_year_at_any_volume(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tier 3: the old drop-volume year-exact call."""
+    rows = [
+        _row(3, year=2020, volume=5),
+        _row(4, year=2021, volume=5),
+        _row(5, year=2020, volume=7),
+    ]
+    assert _wide_search_ids(monkeypatch, rows) == [3, 5]
+
+
+def test_precedence_falls_to_any_volume_at_a_neighboring_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tier 4: the last pair of calls, whose results the old code merged."""
+    rows = [
+        _row(4, year=2021, volume=5),
+        _row(6, year=2019, volume=7),
+    ]
+    assert _wide_search_ids(monkeypatch, rows) == [4, 6]
+
+
+def test_precedence_without_a_profile_volume_is_exact_year_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no volume to match, the first two tiers are empty by definition."""
+    rows = [
+        _row(1, year=2019, volume=2),
+        _row(3, year=2020, volume=5),
+    ]
+    assert _wide_search_ids(monkeypatch, rows, volume=None) == [3]
 
 
 # ------------------------------------------------- volume-scoped lookup

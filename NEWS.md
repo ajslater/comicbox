@@ -15,6 +15,9 @@
       should not. The matcher's own reason is now the exported constant
       `SKIP_MATCHER_DECLINED` alongside `SKIP_QUOTA_RESERVED`.
 
+- Performance
+    - A Metron search that misses now costs 2 API requests instead of 6.
+
 ## v5.1.0
 
 - Fixes
