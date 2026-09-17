@@ -52,6 +52,7 @@ from mokkari.session import (
 from typing_extensions import override
 
 from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
     import requests
@@ -156,7 +157,17 @@ class PacedSession(Session):
             # A send that never produced a response still consumed a slot
             # as far as the server is concerned (it may well have arrived
             # and been counted), so the log entry `acquire` made stays.
+            #
+            # Everything that lands here is a transport failure: mokkari
+            # catches `requests` ConnectionError and ReadTimeout and
+            # re-raises them as `ApiError`, while an HTTP status error is
+            # raised later, out of `_handle_http_response`, and never
+            # reaches this frame. Counting them separately matters
+            # because a firewall-level ban (Metron's fail2ban jail drops
+            # the IP) looks like nothing else from in here: no status, no
+            # headers, just timeouts.
             outcome_stats.record_http_request("metron", endpoint_from_url(url), blocked)
+            outcome_stats.record_connection_failure("metron")
             raise
         else:
             # Observe BEFORE releasing, so the gate's in-flight count
@@ -176,26 +187,19 @@ class PacedSession(Session):
         endpoint = endpoint_from_url(url)
         outcome_stats.record_http_request("metron", endpoint, blocked)
         saw_headers = any(name in headers for name in _RATE_LIMIT_HEADERS)
-        burst_limit = _header_int(headers, HEADER_BURST_LIMIT)
-        burst_remaining = _header_int(headers, HEADER_BURST_REMAINING)
-        sustained_limit = _header_int(headers, HEADER_SUSTAINED_LIMIT)
-        sustained_remaining = _header_int(headers, HEADER_SUSTAINED_REMAINING)
-        gate.observe(
-            burst_limit=burst_limit,
-            burst_remaining=burst_remaining,
-            sustained_limit=sustained_limit,
-            sustained_remaining=sustained_remaining,
-            sustained_reset=_header_int(headers, HEADER_SUSTAINED_RESET),
-            saw_headers=saw_headers,
-        )
-        outcome_stats.record_rate_limit_windows(
-            "metron",
-            burst_limit=burst_limit,
-            burst_remaining=burst_remaining,
-            sustained_limit=sustained_limit,
-            sustained_remaining=sustained_remaining,
-        )
-        if response.status_code != _TOO_MANY_REQUESTS:
+        rejected = response.status_code == _TOO_MANY_REQUESTS
+        if not saw_headers:
+            _report_unthrottled(response)
+        # A header-less 429 has nothing to teach the gate: every window
+        # figure is None, so `observe` would only log "pacing disabled"
+        # on its way to a `cooldown` that overrides it a moment later,
+        # and `record_rate_limit_windows` would be a no-op. Skip straight
+        # to the rejection path. The cooldown itself is unchanged — a
+        # full-window rebuild — because without it the paced retry path
+        # plans a zero delay and fires its whole budget back-to-back.
+        if saw_headers or not rejected:
+            _observe_headers(gate, headers, saw_headers=saw_headers)
+        if not rejected:
             return
         # Metron attaches X-RateLimit-* to 429s too, so the headers above
         # are already folded in. `Retry-After` is the relative hint that
@@ -203,9 +207,67 @@ class PacedSession(Session):
         # around it. mokkari turns this response into a RateLimitError a
         # moment later, which `with_retry` replays.
         outcome_stats.record_rate_limit_rejection("metron")
-        retry_after = headers.get("Retry-After")
-        try:
-            hint = float(retry_after) if retry_after is not None else None
-        except (TypeError, ValueError):
-            hint = None
-        gate.cooldown(hint)
+        gate.cooldown(_retry_after_hint(headers))
+
+
+def _observe_headers(gate: RateGate, headers: Any, *, saw_headers: bool) -> None:
+    """Feed one response's rate-limit windows to the gate and the stats."""
+    burst_limit = _header_int(headers, HEADER_BURST_LIMIT)
+    burst_remaining = _header_int(headers, HEADER_BURST_REMAINING)
+    sustained_limit = _header_int(headers, HEADER_SUSTAINED_LIMIT)
+    sustained_remaining = _header_int(headers, HEADER_SUSTAINED_REMAINING)
+    gate.observe(
+        burst_limit=burst_limit,
+        burst_remaining=burst_remaining,
+        sustained_limit=sustained_limit,
+        sustained_remaining=sustained_remaining,
+        sustained_reset=_header_int(headers, HEADER_SUSTAINED_RESET),
+        saw_headers=saw_headers,
+    )
+    outcome_stats.record_rate_limit_windows(
+        "metron",
+        burst_limit=burst_limit,
+        burst_remaining=burst_remaining,
+        sustained_limit=sustained_limit,
+        sustained_remaining=sustained_remaining,
+    )
+
+
+def _report_unthrottled(response: requests.Response) -> None:
+    """
+    Count and announce a response that carried no rate-limit headers.
+
+    Metron's middleware copies `X-RateLimit-*` onto every response whose
+    request reached DRF's throttles, and those run in `initial()` ahead
+    of all view code, so a real `/api/` answer of ANY status carries
+    them. A bare response therefore did not come from the API: it is a
+    proxy error page, or a bot-check challenge — Anubis serves both its
+    challenge and its deny page as HTTP 200 HTML by default.
+
+    Status, Content-Type and Content-Length are enough to tell those
+    apart and are safe to log. The body is not logged: mokkari's
+    `ApiError` already embeds `response.text` on the paths that fail, and
+    the `Server` header is not logged because nginx overwrites it.
+    """
+    status = response.status_code
+    outcome_stats.record_unthrottled_response("metron", status)
+    headers = response.headers
+    warn_once(
+        "metron:no-rate-limit-headers",
+        "metron: a response arrived with no X-RateLimit-* headers "
+        f"(status {status}, "
+        f"content-type {headers.get('Content-Type', 'unset')}, "
+        f"content-length {headers.get('Content-Length', 'unset')}). "
+        "Metron's API sets those on every response, so this one came "
+        "from something in front of it. The end-of-run summary counts "
+        "them all.",
+    )
+
+
+def _retry_after_hint(headers: Any) -> float | None:
+    """Read `Retry-After` as relative seconds, tolerating absence and junk."""
+    raw = headers.get("Retry-After")
+    try:
+        return float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None

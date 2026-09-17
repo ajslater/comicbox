@@ -53,3 +53,80 @@ def test_reset_clears_state() -> None:
     outcome_stats.reset()
     assert outcome_stats.has_any_activity() is False
     assert outcome_stats.summary_lines() == []
+
+
+# --------------------------------------- responses that missed the API
+
+
+def test_summary_buckets_header_less_responses_by_status() -> None:
+    """
+    The counter Brian can act on: answers that never reached the API.
+
+    Metron's throttles run ahead of all view code and its middleware
+    copies `X-RateLimit-*` onto anything they touched, so a response
+    without them came from in front of Django. Bucketing by status tells
+    a bot-check page (HTTP 200) from a proxy refusal without looking at
+    a single body.
+    """
+    for _ in range(3):
+        outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_unthrottled_response("metron", 200)
+    outcome_stats.record_unthrottled_response("metron", 200)
+    outcome_stats.record_unthrottled_response("metron", 429)
+
+    text = "\n".join(outcome_stats.summary_lines())
+    assert "3 responses without rate-limit headers (200: 2, 429: 1)" in text
+
+
+def test_summary_puts_a_lone_header_less_response_in_the_singular() -> None:
+    outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_unthrottled_response("metron", 403)
+
+    text = "\n".join(outcome_stats.summary_lines())
+    assert "1 response without rate-limit headers (403: 1)" in text
+
+
+def test_summary_reports_connection_failures() -> None:
+    """Transport failures, which is the shape an IP-level ban takes."""
+    outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_connection_failure("metron")
+    assert "1 connection failure" in "\n".join(outcome_stats.summary_lines())
+
+    outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_connection_failure("metron")
+    assert "2 connection failures" in "\n".join(outcome_stats.summary_lines())
+
+
+def test_summary_omits_the_new_counters_when_nothing_went_wrong() -> None:
+    outcome_stats.record_http_request("metron", "issue_list")
+
+    text = "\n".join(outcome_stats.summary_lines())
+    assert "without rate-limit headers" not in text
+    assert "connection failure" not in text
+
+
+def test_api_snapshot_does_not_alias_the_live_counters() -> None:
+    """Both mutable members are copied, or a reader could corrupt the run."""
+    outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_unthrottled_response("metron", 200)
+
+    snapshot = outcome_stats.api_snapshot()["metron"]
+    snapshot.requests["issue_list"] = 99
+    snapshot.unthrottled[200] = 99
+
+    live = outcome_stats.api_snapshot()["metron"]
+    assert live.requests == {"issue_list": 1}
+    assert live.unthrottled == {200: 1}
+
+
+def test_reset_clears_the_api_counters() -> None:
+    outcome_stats.record_http_request("metron", "issue_list")
+    outcome_stats.record_unthrottled_response("metron", 200)
+    outcome_stats.record_connection_failure("metron")
+    assert outcome_stats.has_any_activity() is True
+
+    outcome_stats.reset()
+
+    assert outcome_stats.api_snapshot() == {}
+    assert outcome_stats.summary_lines() == []
+    assert outcome_stats.has_any_activity() is False

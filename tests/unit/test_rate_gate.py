@@ -129,6 +129,39 @@ def test_config_limit_tightens_but_never_widens(clock: _Clock) -> None:
     assert greedy._limit() == 20
 
 
+def test_a_floating_server_limit_reshapes_the_window_both_ways(
+    clock: _Clock,
+) -> None:
+    """
+    Metron's burst limit floats, so the gate has to follow it down.
+
+    20/minute is the documented floor; production commonly reports 45-60
+    and is dialled back toward 20 on peak days. A gate that only ever
+    widened would keep sending at the generous pace it saw first and earn
+    429s for the rest of the run — and on Metron a 429 debits the daily
+    quota exactly like a success.
+
+    `burst_remaining` is left None throughout so this asserts the LIMIT
+    moving the window, not `_tighten_to_remaining` padding the log.
+    """
+    gate = _gate(clock, default_limit=20)
+    gate.observe(burst_limit=60, burst_remaining=None)
+    for _ in range(40):
+        _send(gate)
+    assert gate._limit() == 60
+    assert _pending_wait(gate) == 0.0
+
+    # Peak day: the same 40 recent sends are now over the window.
+    gate.observe(burst_limit=20, burst_remaining=None)
+    assert gate._limit() == 20
+    assert _pending_wait(gate) > 0.0
+
+    # And back out again when the server re-widens.
+    gate.observe(burst_limit=60, burst_remaining=None)
+    assert gate._limit() == 60
+    assert _pending_wait(gate) == 0.0
+
+
 # ------------------------------------------------------ header feedback
 
 
