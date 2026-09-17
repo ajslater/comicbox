@@ -2,6 +2,10 @@
 
 ## v5.0.1
 
+- Fixes
+    - A comic with no issue number no longer mis-tags itself with the first
+      issue of a series matched earlier in the same run.
+
 - Performance
     - Comic Vine tagging spends half the API budget it used to. simyan 4.1.0
       stops paginating past a short page, so each candidate volume's issue

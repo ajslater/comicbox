@@ -922,3 +922,42 @@ def test_search_budget_unlimited_never_stops() -> None:
     budget = _SearchBudget(max_calls=None, deadline=None)
     assert all(budget.take() for _ in range(50))
     assert budget.dropped == 0
+
+
+# ------------------------------------------------- volume-scoped lookup
+
+
+def test_lookup_issue_in_volume_filters_by_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The warm path sends one `volume:` + `issue_number:` request."""
+    issues = {500: [_FakeBasicIssue(iid=9001, number="7", volume_name="Direct")]}
+    fake_cv = _FakeCV(volumes=[], issues_by_volume=issues)
+    src = _make_cv_source(monkeypatch, fake_cv)
+    candidate = src.lookup_issue(500, "007")
+
+    assert candidate is not None
+    assert candidate.issue_id == 9001
+    assert len(fake_cv.list_issues_calls) == 1
+    filter_str = fake_cv.list_issues_calls[0].get("filter", "")
+    assert "volume:500" in filter_str
+    assert "issue_number:7" in filter_str  # leading zeros stripped
+
+
+def test_lookup_issue_in_volume_without_number_makes_no_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    No issue number → no request at all.
+
+    A bare `volume:N` filter lists every issue in the volume and the
+    first row would be accepted as the match. Return None instead and
+    let the caller fall back to the search path.
+    """
+    issues = {500: [_FakeBasicIssue(iid=9001, number="7", volume_name="Direct")]}
+    for issue_number in (None, "", "   "):
+        fake_cv = _FakeCV(volumes=[], issues_by_volume=issues)
+        src = _make_cv_source(monkeypatch, fake_cv)
+
+        assert src.lookup_issue(500, issue_number) is None, issue_number
+        assert fake_cv.list_issues_calls == [], issue_number
