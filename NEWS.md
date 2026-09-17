@@ -1,6 +1,6 @@
 # 📰 News
 
-## v5.0.1
+## v5.1.0
 
 - Fixes
     - A comic with no issue number no longer mis-tags itself with the first
@@ -19,7 +19,8 @@
       sending the whole queue earned one success and a fresh burst of
       rejections.
     - `online.tuning.retry_budget` is wired up. It was parsed, defaulted and
-      then never passed to the retry decorator.
+      then never passed to the retry decorator, so a config that set it kept
+      getting the built-in 5 attempts; it now gets the number it asked for.
     - An aborted lookup is no longer retried. Nothing classified
       `OnlineLookupAbortedError`, so it fell through to the retriable default
       and was replayed on the rate-limit schedule.
@@ -34,11 +35,13 @@
       budgets.
     - `online.tuning.per_source.metron.rate_limit.per_minute` works again, as a
       ceiling on the server-reported limit. Set it to share one token between
-      several processes. `per_day` is still ignored and still says so.
+      several processes. Note that a config which already sets it was being
+      warned it was ignored, and will now actually be held to it. `per_day` is
+      still ignored and still says so.
     - `--jobs` is no longer capped at 20 for Metron runs. The cap bounded
       workers, which is not what Metron throttles; the gate bounds requests.
     - The outgoing User-Agent identifies the entry point, e.g.
-      `comicbox/5.0.1 (cli; jobs=8)`. `OnlineSession(client_name=...)` names an
+      `comicbox/5.1.0 (cli; jobs=8)`. `OnlineSession(client_name=...)` names an
       embedding application.
     - `metron_requests_for_batch(comics, series)` prices a batch the way one
       actually runs — each series resolved once, the rest of its comics at the
