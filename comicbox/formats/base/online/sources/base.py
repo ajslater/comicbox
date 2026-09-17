@@ -84,6 +84,13 @@ class OnlineSource(ABC):
     metadata_source: ClassVar[MetadataSources]
     metadata_format: ClassVar[MetadataFormats]
 
+    #: Whether this source admits its own requests through a rate gate.
+    #: Read by `retry._paces_itself`: a gated source has already absorbed
+    #: a rate-limit rejection into its gate, so the retry loop keeps its
+    #: attempt budget but hands the waiting over instead of sleeping the
+    #: same `Retry-After` a second time in every worker at once.
+    paces_rate_limit: ClassVar[bool] = False
+
     def __init__(
         self,
         credentials: OnlineSourceCredentials,
@@ -92,6 +99,12 @@ class OnlineSource(ABC):
         """Store refs needed for client construction."""
         self._credentials = credentials
         self._settings = settings
+        # Retry attempts for generic (non-rate-limit) failures. The
+        # `with_retry` decorator binds its default at class-definition
+        # time, so `online.tuning.retry_budget` reaches it through the
+        # instance (see `retry._resolve_max_retries`) — until this was
+        # wired the knob was parsed, defaulted and then dropped.
+        self.retry_budget: int = settings.tuning.retry_budget
         # Per-method call counters for calibration / cost telemetry.
         # Counts INVOCATIONS at our wrapper level — includes cache hits
         # (since we can't distinguish them without peeking inside

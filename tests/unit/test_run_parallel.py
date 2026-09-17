@@ -17,7 +17,6 @@ from typing_extensions import Self
 
 from comicbox.config import get_config
 from comicbox.config.online.settings import OnlineAuthSettings, OnlineSourceCredentials
-from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.series_cache import SeriesCache
 from comicbox.run import Runner
 from tests.const import CIX_CBZ_SOURCE_PATH
@@ -144,46 +143,12 @@ def _metron_settings(
     password: str | None = "p",  # noqa: S107
     key: str | None = None,
 ) -> ComicboxSettings:
-    """Prebuilt settings exercising every `_metron_is_active` input."""
+    """Prebuilt settings for an online Metron run."""
     cfg = get_config(Namespace(comicbox=Namespace()))
     lookup = replace(cfg.online.lookup, enabled=enabled, sources=sources)
     creds = {"metron": OnlineSourceCredentials(user=user, password=password, key=key)}
     online = replace(cfg.online, lookup=lookup, auth=OnlineAuthSettings(sources=creds))
     return replace(cfg, online=online)
-
-
-def test_metron_active_when_enabled_selected_and_credentialed() -> None:
-    assert Runner(_metron_settings())._metron_is_active()
-
-
-def test_metron_active_with_token_only() -> None:
-    """A token-authenticated run still gets the burst-limit thread-pool cap."""
-    settings = _metron_settings(user=None, password=None, key="t")
-    assert Runner(settings)._metron_is_active()
-
-
-def test_metron_inactive_when_lookup_disabled() -> None:
-    assert not Runner(_metron_settings(enabled=False))._metron_is_active()
-
-
-def test_metron_inactive_when_not_selected() -> None:
-    assert not Runner(_metron_settings(sources=("comicvine",)))._metron_is_active()
-
-
-def test_metron_inactive_without_credentials() -> None:
-    assert not Runner(_metron_settings(user=None, password=None))._metron_is_active()
-
-
-def test_metron_active_with_empty_sources_sentinel() -> None:
-    """
-    `sources=()` (the public ALL_SOURCES sentinel) means "every source".
-
-    Unreachable via the CLI (config building collapses `()` to None) but
-    reachable with a prebuilt settings object; the heuristic must apply
-    falsy-collapse like `_build_active_online_sources` does, so the jobs
-    cap still engages.
-    """
-    assert Runner(_metron_settings(sources=()))._metron_is_active()
 
 
 def _capture_max_workers(monkeypatch: pytest.MonkeyPatch) -> list[int | None]:
@@ -199,19 +164,20 @@ def _capture_max_workers(monkeypatch: pytest.MonkeyPatch) -> list[int | None]:
     return captured
 
 
-def test_run_parallel_caps_jobs_at_metron_burst_limit(
+def test_run_parallel_does_not_clamp_jobs_for_metron(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """-j above the burst limit is clamped, and the clamp is explained."""
+    """
+    `-j` above Metron's burst limit reaches the pool intact.
+
+    The old clamp bounded workers, which is not the unit the server
+    throttles: 20 workers still send far more than 20 requests a minute,
+    because one comic costs several. `RateGate` bounds requests, so the
+    worker count is I/O concurrency again and nothing here clamps it.
+    """
     captured = _capture_max_workers(monkeypatch)
-    messages: list[str] = []
-    handler_id = loguru_logger.add(messages.append, level="INFO", format="{message}")
-    try:
-        Runner(_metron_settings())._run_parallel([], 32)
-    finally:
-        loguru_logger.remove(handler_id)
-    assert captured == [METRON_DEFAULT_PER_MINUTE]
-    assert any("Capping --jobs 32" in message for message in messages)
+    Runner(_metron_settings())._run_parallel([], 32)
+    assert captured == [32]
 
 
 def test_run_parallel_keeps_jobs_when_metron_inactive(

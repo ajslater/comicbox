@@ -24,6 +24,8 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     strip_issue_leading_zeros,
 )
+from comicbox.formats.base.online.rate_gate import RateGate
+from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
@@ -32,7 +34,7 @@ from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
-from comicbox.version import USER_AGENT
+from comicbox.version import user_agent
 
 if TYPE_CHECKING:
     from mokkari.session import RateLimitStatus, Session
@@ -42,10 +44,13 @@ if TYPE_CHECKING:
 # Sessions are shared across the credential set that built them (see
 # `_get_session`), keyed by (user, password) — not `db_path` like the old
 # pyrate_limiter override cache, since there's no bucket to key by anymore.
-# A shared `Session` is what lets `Runner._run_parallel`'s thread pool
-# (comicbox/run.py) see one consistent `rate_limit_status` across workers
-# instead of each file's source starting cold; mokkari>=4.0.1 makes this
-# safe (thread-safe `SqliteCache`, `rate_limit_status` lock).
+# A shared `Session` gives `Runner._run_parallel`'s thread pool
+# (comicbox/run.py) one response cache and one consistent
+# `rate_limit_status` instead of each file's source starting cold;
+# mokkari>=4.0.1 makes this safe (thread-safe `SqliteCache`,
+# `rate_limit_status` lock). Sharing the observation was never enough to
+# stay inside the window, though — `_gate_cache` below is what enforces
+# it.
 #
 # Contract: FIRST BUILD WINS. The Session (and the response cache baked
 # into it) is constructed from the settings of whichever source instance
@@ -58,6 +63,26 @@ if TYPE_CHECKING:
 # SqliteCache exposes no close() to release anyway.
 _session_cache: dict[tuple[str, str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
+
+# One `RateGate` per credential set, built alongside that set's Session
+# and under the same lock. The gate is what actually keeps comicbox
+# inside Metron's 20/min window (see `comicbox/formats/base/online/
+# rate_gate.py`); sharing the Session was only ever enough to share
+# mokkari's *observation* of the limit, not to enforce it.
+_gate_cache: dict[tuple[str, str, str], RateGate] = {}
+
+
+def shared_gate(
+    user: str | None, password: str | None, key: str | None = None
+) -> RateGate | None:
+    """
+    Return a credential set's rate gate, or None if nothing built one yet.
+
+    Read-only accessor for callers that want the pacing counters without
+    holding a source instance (the end-of-run summary, tests).
+    """
+    with _session_cache_lock:
+        return _gate_cache.get((user or "", password or "", key or ""))
 
 
 def shared_session_rate_limit_status(
@@ -159,6 +184,9 @@ class MetronOnlineSource(OnlineSource):
     name: ClassVar[str] = "metron"
     metadata_source: ClassVar[MetadataSources] = MetadataSources.METRON_API
     metadata_format: ClassVar[MetadataFormats] = MetadataFormats.METRON_API
+    # Every send goes through this credential set's `RateGate` (see
+    # `paced_session`), so the retry loop must not also sleep the hint.
+    paces_rate_limit: ClassVar[bool] = True
 
     @override
     def is_configured(self) -> bool:
@@ -223,9 +251,10 @@ class MetronOnlineSource(OnlineSource):
         rate-limit state. Memoizing by (user, password, key) lets every thread in
         `Runner._run_parallel`'s pool (comicbox/run.py) that logs in with the
         same credentials observe one shared, continuously-updated
-        `rate_limit_status`, which is what actually makes sharing threads
-        (not processes) worthwhile under mokkari>=4.0.1's reactive,
-        header-driven rate limiting.
+        `rate_limit_status` — and, more importantly, queue behind one
+        `RateGate`. Pacing is what makes sharing threads (not processes)
+        worthwhile: a second process would get a second gate and the two
+        would have to split the window between them.
         """
         if self._client is None:
             # Warn here rather than in _build_session so ignored-config
@@ -242,17 +271,25 @@ class MetronOnlineSource(OnlineSource):
         cache = self._settings.cache
         return (cache.mode, cache.dir, cache.ttl)
 
-    def _get_or_build_shared_session(self) -> Session:
-        key = (
+    def _credential_key(self) -> tuple[str, str, str]:
+        """Identity of the credential set a Session and gate are shared by."""
+        return (
             self._credentials.user or "",
             self._credentials.password or "",
             self._credentials.key or "",
         )
+
+    def _get_or_build_shared_session(self) -> Session:
+        key = self._credential_key()
         signature = self._session_config_signature()
         with _session_cache_lock:
             entry = _session_cache.get(key)
             if entry is None:
-                session = self._build_session()
+                gate = _gate_cache.get(key)
+                if gate is None:
+                    gate = self._build_gate()
+                    _gate_cache[key] = gate
+                session = self._build_session(gate)
                 _session_cache[key] = (session, signature)
                 return session
         session, built_signature = entry
@@ -268,18 +305,51 @@ class MetronOnlineSource(OnlineSource):
             )
         return session
 
-    def _build_session(self) -> Session:
-        from mokkari import api
+    def _build_gate(self) -> RateGate:
+        """
+        Build this credential set's rate gate.
 
-        return api(
+        ``rate_limit.per_minute`` is honored here as a CEILING on the
+        server-reported burst limit, never a raise. That gives the knob a
+        real meaning again for the case it exists for: an embedder
+        running several processes against one Metron token has one gate
+        per process, and the only way to keep their sum inside the
+        server's window is for each to take a share.
+        """
+        from comicbox.config.online.settings import resolve_rate_limit
+
+        limits = resolve_rate_limit(self._settings, self.name)
+        return RateGate(
+            default_limit=METRON_DEFAULT_PER_MINUTE,
+            config_limit=limits.per_minute,
+        )
+
+    def _build_session(self, gate: RateGate | None = None) -> Session:
+        """
+        Build a paced mokkari Session.
+
+        Not `mokkari.api()`: that factory hardcodes `Session`, and the
+        pacing has to live inside the client (see `paced_session`). The
+        keyword set is api()'s, minus `dev_mode`, which comicbox has no
+        setting for.
+        """
+        from comicbox.formats.metron_api.paced_session import PacedSession
+
+        return PacedSession(
+            gate=gate,
             username=self._credentials.user,  # mokkari keyword
             passwd=self._credentials.password,
             cache=self._get_cache(),
-            user_agent=USER_AGENT,
+            user_agent=user_agent(),
             # mokkari prefers the token over username/passwd when both are
             # set; None falls back to basic auth.
             api_token=self._credentials.key,
         )
+
+    def _gate(self) -> RateGate | None:
+        """Return the shared rate gate, once a session has been built."""
+        with _session_cache_lock:
+            return _gate_cache.get(self._credential_key())
 
     def _warn_ignored_url(self) -> None:
         if self._credentials.url:
@@ -307,16 +377,26 @@ class MetronOnlineSource(OnlineSource):
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
+        """
+        Warn about `per_day`, which still has nowhere to go.
+
+        `per_minute` is honored again — `_build_gate` takes it as a
+        ceiling on the burst window. `per_day` is not: Metron reports the
+        sustained window per user (donor tiers raise it), the gate tracks
+        what the server says is left, and comicbox keeps no cross-run
+        tally of its own to enforce a smaller daily number against.
+        """
         from comicbox.config.online.settings import resolve_rate_limit
 
         limits = resolve_rate_limit(self._settings, self.name)
-        if limits.per_minute is not None or limits.per_day is not None:
+        if limits.per_day is not None:
             warn_once(
                 f"{self.name}:rate-limit-override",
-                f"online {self.name}: rate_limit.per_minute/per_day "
-                "overrides are ignored — mokkari>=4.0.1 tracks Metron's "
-                "actual per-user rate limits from response headers instead "
-                "of a fixed local bucket",
+                f"online {self.name}: rate_limit.per_day is ignored — "
+                "Metron reports the remaining daily quota per user in its "
+                "response headers and comicbox paces against that. Use "
+                "rate_limit.per_minute to take a smaller share of the "
+                "burst window.",
             )
 
     @with_retry()
@@ -532,6 +612,8 @@ class MetronOnlineSource(OnlineSource):
         single `issues_list({series_id: ...})` call — unchanged.
         """
         session = self._get_session()
+        if not self._may_start_cold_search():
+            return []
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
             return self._search_by_explicit_series_id(session, profile, explicit_sid)
@@ -560,6 +642,28 @@ class MetronOnlineSource(OnlineSource):
             )
 
         return candidates
+
+    def _may_start_cold_search(self) -> bool:
+        """
+        Whether the daily quota can still afford to START a search.
+
+        Once Metron reports the sustained window down to its reserve, the
+        gate stops admitting discretionary work. A search only begins a
+        comic; the `issue(id)` fetch that follows a match is what
+        finishes one. Spending the last of the day on new searches would
+        leave a trail of comics that matched and were never written.
+
+        Returning [] reads downstream as "no candidates", which the
+        lookup already handles as a clean NO_MATCH.
+        """
+        gate = self._gate()
+        if gate is None or gate.allow_cold_search():
+            return True
+        logger.info(
+            f"online {self.name}: daily quota nearly spent; skipping this "
+            "search so the remaining budget finishes comics that matched"
+        )
+        return False
 
     def _fetch_candidates_by_name(
         self,
@@ -650,19 +754,17 @@ class MetronOnlineSource(OnlineSource):
         `search()`'s year-retry cascade fires at most 3 calls per
         `include_volume` cycle (year-exact + Y-1 + Y+1), times at most 2
         cycles (with-volume, drop-volume) — at most 6 `issues_list` calls
-        per search. Metron caps every user at 20 req/min; mokkari tracks
-        that from response headers and only pre-empts a request once it
-        already knows the window is exhausted (a shared `Session` makes
-        that check advisory, not a hard gate — see `Runner._run_parallel`
-        in comicbox/run.py), so under -j N batch contention several
-        workers' calls can still collide in the same window and raise
-        `RateLimitError` with a `retry_after` hint.
+        per search.
 
-        Decorating this method with `@with_retry()` means the retry
-        decorator catches that error, honors the server-side
-        `retry_after`, sleeps, and replays the single failed call rather
-        than spamming "issue-list … failed" warnings and dropping the
-        data.
+        `PacedSession` admits every one of those through this credential
+        set's `RateGate`, so under `-j N` they queue instead of colliding
+        and a 429 should not happen at all. It still can — another client
+        on the same token, or a window we had not yet been told the shape
+        of — and when it does, the gate absorbs the `Retry-After` hint
+        and this decorator replays the single failed call rather than
+        spamming "issue-list … failed" warnings and dropping the data.
+        Because the source sets `paces_rate_limit`, the replay does not
+        sleep the hint a second time; it blocks at the gate.
 
         `_record_api_call` counts one call here, but mokkari follows
         `next` pages inside it, so a result set longer than one Metron

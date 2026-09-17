@@ -17,7 +17,28 @@ Thread-safe so `-j N` parallel batches contribute correctly.
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+
+
+@dataclass
+class _ApiCounts:
+    """
+    HTTP-level cost of one source, alongside its outcome counts.
+
+    Distinct from ``OnlineSource.api_call_counts``, which counts calls at
+    comicbox's wrapper level: that number includes response-cache hits and
+    counts a paginated result as one. These are real HTTP sends, recorded
+    at the one place a request actually leaves the process, so the number
+    a user pastes into a bug report lines up with the server's own logs.
+    """
+
+    requests: dict[str, int] = field(default_factory=dict)
+    rejections: int = 0
+    blocked_seconds: float = 0.0
+    burst_limit: int | None = None
+    burst_remaining: int | None = None
+    sustained_limit: int | None = None
+    sustained_remaining: int | None = None
 
 
 @dataclass
@@ -39,12 +60,14 @@ class _OutcomeStats:
         self._lock = threading.Lock()
         self._counts = _Counts()
         self._per_source: dict[str, _Counts] = {}
+        self._per_source_api: dict[str, _ApiCounts] = {}
 
     def reset(self) -> None:
         """Clear all counters (called at the start of each Runner.run())."""
         with self._lock:
             self._counts = _Counts()
             self._per_source = {}
+            self._per_source_api = {}
 
     def _bucket_for(self, source_name: str) -> _Counts:
         """Get-or-create the per-source bucket. Caller must hold `_lock`."""
@@ -90,21 +113,126 @@ class _OutcomeStats:
             self._counts.explicit_id += 1
             self._bucket_for(source_name).explicit_id += 1
 
+    def _api_bucket_for(self, source_name: str) -> _ApiCounts:
+        """Get-or-create the per-source API bucket. Caller must hold `_lock`."""
+        bucket = self._per_source_api.get(source_name)
+        if bucket is None:
+            bucket = _ApiCounts()
+            self._per_source_api[source_name] = bucket
+        return bucket
+
+    def record_http_request(
+        self, source_name: str, endpoint: str, blocked_seconds: float = 0.0
+    ) -> None:
+        """Record one real HTTP send and what it waited at the rate gate."""
+        with self._lock:
+            bucket = self._api_bucket_for(source_name)
+            bucket.requests[endpoint] = bucket.requests.get(endpoint, 0) + 1
+            bucket.blocked_seconds += blocked_seconds
+
+    def record_rate_limit_rejection(self, source_name: str) -> None:
+        """Record one server rate-limit rejection (a 429 we still paid for)."""
+        with self._lock:
+            self._api_bucket_for(source_name).rejections += 1
+
+    def record_rate_limit_windows(
+        self,
+        source_name: str,
+        *,
+        burst_limit: int | None = None,
+        burst_remaining: int | None = None,
+        sustained_limit: int | None = None,
+        sustained_remaining: int | None = None,
+    ) -> None:
+        """Record the latest rate-limit window figures the server reported."""
+        with self._lock:
+            bucket = self._api_bucket_for(source_name)
+            if burst_limit is not None:
+                bucket.burst_limit = burst_limit
+            if burst_remaining is not None:
+                bucket.burst_remaining = burst_remaining
+            if sustained_limit is not None:
+                bucket.sustained_limit = sustained_limit
+            if sustained_remaining is not None:
+                bucket.sustained_remaining = sustained_remaining
+
+    def api_snapshot(self) -> dict[str, _ApiCounts]:
+        """Return a consistent copy of the per-source HTTP counters."""
+        with self._lock:
+            return {k: _copy_api(v) for k, v in self._per_source_api.items()}
+
     def has_any_activity(self) -> bool:
         """Return True if any outcome was recorded since last reset."""
         with self._lock:
-            return _has_any(self._counts)
+            return _has_any(self._counts) or bool(self._per_source_api)
 
     def summary_lines(self) -> list[str]:
         """Format the end-of-run summary as a list of log lines."""
         with self._lock:
-            if not _has_any(self._counts):
+            has_outcomes = _has_any(self._counts)
+            if not has_outcomes and not self._per_source_api:
                 return []
             counts_snapshot = _Counts(**self._counts.__dict__)
             per_source_snapshot = {
                 k: _Counts(**v.__dict__) for k, v in self._per_source.items()
             }
-        return _format_summary(counts_snapshot, per_source_snapshot)
+            api_snapshot = {k: _copy_api(v) for k, v in self._per_source_api.items()}
+        lines = (
+            _format_summary(counts_snapshot, per_source_snapshot)
+            if has_outcomes
+            else []
+        )
+        lines.extend(_format_api_lines(api_snapshot))
+        return lines
+
+
+def _copy_api(c: _ApiCounts) -> _ApiCounts:
+    """Deep-enough copy: the only mutable member is the request map."""
+    return replace(c, requests=dict(c.requests))
+
+
+def _format_api_lines(per_source: dict[str, _ApiCounts]) -> list[str]:
+    """
+    Format the HTTP-cost block appended to the outcome summary.
+
+    Written so a user can paste it into a bug report and have the numbers
+    line up with what the server logged: total sends, how they split by
+    endpoint, how many the server refused, how long pacing cost, and where
+    the quota stands at the end of the run.
+    """
+    lines: list[str] = []
+    for src in sorted(per_source):
+        api = per_source[src]
+        total = sum(api.requests.values())
+        if not total and not api.rejections:
+            continue
+        breakdown = ", ".join(
+            f"{count} {endpoint}" for endpoint, count in sorted(api.requests.items())
+        )
+        lines.append(f"  {src} API: {total} requests ({breakdown})")
+        detail: list[str] = []
+        if api.rejections:
+            detail.append(f"{api.rejections} rate-limited")
+        if api.blocked_seconds >= 1.0:
+            detail.append(f"{api.blocked_seconds:.0f}s paced")
+        if detail:
+            lines.append(f"    {', '.join(detail)}")
+        budget = _format_budget(api)
+        if budget:
+            lines.append(f"    remaining: {budget}")
+    return lines
+
+
+def _format_budget(api: _ApiCounts) -> str:
+    """Render whatever of the two rate-limit windows the server reported."""
+    parts: list[str] = []
+    if api.burst_remaining is not None:
+        limit = f"/{api.burst_limit}" if api.burst_limit is not None else ""
+        parts.append(f"{api.burst_remaining}{limit} this minute")
+    if api.sustained_remaining is not None:
+        limit = f"/{api.sustained_limit}" if api.sustained_limit is not None else ""
+        parts.append(f"{api.sustained_remaining}{limit} today")
+    return ", ".join(parts)
 
 
 def _has_any(c: _Counts) -> bool:
@@ -183,5 +311,9 @@ record_prompt_declined = _STATS.record_prompt_declined
 record_skip = _STATS.record_skip
 record_no_match = _STATS.record_no_match
 record_explicit_id = _STATS.record_explicit_id
+record_http_request = _STATS.record_http_request
+record_rate_limit_rejection = _STATS.record_rate_limit_rejection
+record_rate_limit_windows = _STATS.record_rate_limit_windows
+api_snapshot = _STATS.api_snapshot
 has_any_activity = _STATS.has_any_activity
 summary_lines = _STATS.summary_lines

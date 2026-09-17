@@ -49,6 +49,7 @@ from comicbox.online_estimate import (
     RunEstimate,
     estimate_run,
 )
+from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -303,8 +304,16 @@ class OnlineSession:
         defer_prompts: bool = False,
         series_batching: bool = True,
         config: ComicboxSettings | None = None,
+        client_name: str | None = None,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
+        # Identify the embedding application in the outgoing User-Agent.
+        # Metron's operators cannot otherwise tell a library embedder —
+        # which may be running several processes against one token, each
+        # with its own rate gate — from the CLI's single-process thread
+        # pool. Set before any source builds its client, since clients
+        # bake the header in at construction.
+        set_user_agent_context("lib", client=client_name)
         # Order is run priority: the first source runs first and, under
         # first_wins, its match ends the lookup for that comic.
         self._sources = tuple(dict.fromkeys(sources))

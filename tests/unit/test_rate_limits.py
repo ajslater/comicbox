@@ -61,7 +61,7 @@ def test_documented_defaults_match_upstream() -> None:
 
 
 class _FakeMokkariSession:
-    """Stands in for mokkari's `Session`; records the kwargs it was built with."""
+    """Stands in for `PacedSession`; records the kwargs it was built with."""
 
     def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
@@ -70,14 +70,11 @@ class _FakeMokkariSession:
         self.rate_limit_status = RateLimitStatus()
 
 
-def _fake_mokkari_api(**kwargs: object) -> _FakeMokkariSession:
-    return _FakeMokkariSession(**kwargs)
-
-
 @pytest.fixture(autouse=True)
 def clear_session_cache(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every test gets its own empty module-level session cache."""
+    """Every test gets its own empty module-level session and gate caches."""
     monkeypatch.setattr(metron_online_source, "_session_cache", {})
+    monkeypatch.setattr(metron_online_source, "_gate_cache", {})
 
 
 @pytest.fixture(autouse=True)
@@ -99,11 +96,14 @@ def _make_metron_source(
     """
     Build a source whose `_build_session` never touches a real cache file.
 
-    `_build_session` calls `_get_cache()` regardless of the fake `mokkari.api`
-    below, which would otherwise open a real `SqliteCache` against the
-    user's actual `~/.cache/comicbox/online/` directory.
+    `_build_session` calls `_get_cache()` regardless of the fake
+    `PacedSession` below, which would otherwise open a real `SqliteCache`
+    against the user's actual `~/.cache/comicbox/online/` directory.
     """
-    monkeypatch.setattr("mokkari.api", _fake_mokkari_api)
+    monkeypatch.setattr(
+        "comicbox.formats.metron_api.paced_session.PacedSession",
+        _FakeMokkariSession,
+    )
     off_cache = OnlineCacheSettings(mode=CacheMode.OFF)
     settings = (
         replace(settings, cache=off_cache)
@@ -327,38 +327,90 @@ def test_online_session_rate_limit_status_comicvine_reports_spent_pools(
     )
 
 
-def test_metron_rate_limit_override_warns_and_is_ignored(
+def _limits_settings(
+    *, per_minute: int | None = None, per_day: int | None = None
+) -> OnlineSettings:
+    """Build settings carrying a Metron rate-limit override."""
+    tuning = OnlineTuningSettings(
+        per_source={
+            "metron": OnlineSourceTuning(
+                rate_limit=OnlineSourceLimits(per_minute=per_minute, per_day=per_day)
+            )
+        }
+    )
+    return OnlineSettings(tuning=tuning)
+
+
+def test_metron_per_minute_override_tightens_the_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """per_minute/per_day overrides can't flow into mokkari>=4.0.1 — warn."""
-    from loguru import logger as loguru_logger
+    """
+    `per_minute` is honored again, as a ceiling on the server's window.
 
-    messages: list[str] = []
-    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
-    try:
-        tuning = OnlineTuningSettings(
-            per_source={
-                "metron": OnlineSourceTuning(
-                    rate_limit=OnlineSourceLimits(per_minute=30)
-                )
-            }
-        )
-        settings = OnlineSettings(tuning=tuning)
-        session = _make_metron_source(monkeypatch, settings=settings)._get_session()
-    finally:
-        loguru_logger.remove(handler_id)
-    assert any("ignored" in message for message in messages)
-    # The "ignored" half: the override must not flow into the session —
-    # mokkari's api() factory takes exactly these five kwargs (dev_mode
-    # excepted), no rate or bucket argument.
+    It exists for the embedder running several processes against one
+    token: each process gets its own gate, so the only way to keep their
+    sum inside Metron's window is for each to take a share.
+    """
+    src = _make_metron_source(monkeypatch, settings=_limits_settings(per_minute=5))
+    session = src._get_session()
+    gate = src._gate()
+    assert gate is not None
+    assert gate._limit() == 5
+    # The override paces comicbox; it is not a mokkari kwarg. The Session
+    # takes api()'s five, plus the gate this wiring adds.
     assert isinstance(session, _FakeMokkariSession)
     assert set(session.kwargs) == {
+        "gate",
         "username",
         "passwd",
         "cache",
         "user_agent",
         "api_token",
     }
+
+
+def test_metron_per_minute_override_never_raises_the_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A `per_minute` above the documented burst limit does not widen it."""
+    src = _make_metron_source(monkeypatch, settings=_limits_settings(per_minute=500))
+    src._get_session()
+    gate = src._gate()
+    assert gate is not None
+    assert gate._limit() == METRON_DEFAULT_PER_MINUTE
+
+
+def test_metron_per_day_override_warns_and_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`per_day` still has nowhere to go: the server owns the daily window."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        src = _make_metron_source(monkeypatch, settings=_limits_settings(per_day=100))
+        src._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert any("per_day is ignored" in message for message in messages)
+
+
+def test_metron_per_minute_override_does_not_warn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Honoring a knob means not also telling the user it was ignored."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        _make_metron_source(
+            monkeypatch, settings=_limits_settings(per_minute=5)
+        )._get_session()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert not any("ignored" in message for message in messages)
 
 
 def _warnings_from_get_session(src: MetronOnlineSource) -> list[str]:
@@ -425,12 +477,7 @@ def test_metron_override_warning_fires_once_per_process(
     """warn_once dedups the ignored-override warning across per-file sources."""
     from loguru import logger as loguru_logger
 
-    tuning = OnlineTuningSettings(
-        per_source={
-            "metron": OnlineSourceTuning(rate_limit=OnlineSourceLimits(per_minute=30))
-        }
-    )
-    settings = OnlineSettings(tuning=tuning)
+    settings = _limits_settings(per_day=100)
     messages: list[str] = []
     handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
     try:

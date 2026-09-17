@@ -16,13 +16,13 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveTypeError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
-from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.series_cache import (
     SeriesCache,
     filename_series_fingerprint,
 )
 from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.logger import init_logging
+from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -183,44 +183,23 @@ class Runner:
         for full_path in self._iter_recurse(path):
             self._run_one(full_path)
 
-    def _metron_is_active(self) -> bool:
-        """Best-effort check: could this run actually hit Metron via mokkari."""
-        online = self._config.online
-        if not online.lookup.enabled:
-            return False
-        # Falsy-collapse matches _build_active_online_sources: both None and
-        # the empty ALL_SOURCES sentinel () mean "every configured source".
-        sources = online.lookup.sources
-        if sources and "metron" not in sources:
-            return False
-        creds = online.auth.sources.get("metron")
-        return bool(creds and (creds.key or (creds.user and creds.password)))
-
     def _run_parallel(self, paths: list[Path], jobs: int) -> None:
         """
         Run files via a thread pool. Online prompts serialize via a class-level lock.
 
-        Threads (not processes): online lookup is I/O-bound, and
-        `MetronOnlineSource` shares one mokkari `Session` per credential
-        set (comicbox/formats/metron_api/online_source.py) so every worker
-        here sees the same `rate_limit_status` mokkari reads off Metron's
-        response headers, instead of each file's source starting cold.
+        Threads (not processes): online lookup is I/O-bound, and the
+        online sources share process-wide state per credential set —
+        one mokkari `Session` and, more to the point, one `RateGate`
+        (comicbox/formats/base/online/rate_gate.py) that every worker's
+        requests are admitted through.
 
-        That check is advisory, not a hard gate — mokkari can't serialize
-        "check the last known headers" with "send the request" across
-        threads, so a burst of workers can each pass the check before any
-        of their responses land. mokkari's own guidance for a shared
-        Session is to cap the pool at the burst limit rather than rely on
-        the header check alone, so we do that here when Metron is an
-        active source for this run.
+        `jobs` is no longer clamped to Metron's burst limit. That clamp
+        bounded the wrong unit: workers, not requests. A pool of 20 still
+        sent far more than 20 requests a minute, because one comic can
+        cost several — which is how a run earned 429s while sitting at
+        the "safe" worker count. The gate bounds requests directly, so
+        the worker count is free to be whatever the I/O wants again.
         """
-        if self._metron_is_active() and jobs > METRON_DEFAULT_PER_MINUTE:
-            logger.info(
-                f"Capping --jobs {jobs} to {METRON_DEFAULT_PER_MINUTE} "
-                "(Metron's burst limit; the shared-session rate-limit check "
-                "is advisory under concurrent threads)"
-            )
-            jobs = METRON_DEFAULT_PER_MINUTE
         logger.info(f"Running {len(paths)} files with {jobs} workers")
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
@@ -276,6 +255,13 @@ class Runner:
     def _run_inner(self) -> None:
         """Dispatch to serial or parallel processing based on `--jobs`."""
         jobs = max(1, self._config.general.jobs)
+        # Stamp the outgoing User-Agent before any client is built: API
+        # clients bake the header in at construction and are memoized per
+        # credential set, so this is the only moment it can be set. Metron
+        # operators read these logs, and `cli; jobs=N` is what tells them
+        # a burst came from one process's thread pool rather than from
+        # several processes sharing a token.
+        set_user_agent_context("cli", jobs=jobs)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:

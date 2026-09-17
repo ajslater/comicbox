@@ -27,7 +27,7 @@ from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     reset_shared_sessions,
 )
-from comicbox.version import USER_AGENT
+from comicbox.version import USER_AGENT, user_agent
 from tests.util.online_client import comicvine_client, spend
 
 if TYPE_CHECKING:
@@ -259,7 +259,8 @@ def test_build_session_passes_simyan_kwargs(
     client = _build_with_fake(monkeypatch, settings)
     kw = client.kwargs
     assert kw["api_key"] == "test-key"
-    assert kw["user_agent"] == USER_AGENT
+    assert kw["user_agent"] == user_agent()
+    assert str(kw["user_agent"]).startswith(USER_AGENT)
     assert kw["cache_path"] == tmp_path / "comicvine_cache.sqlite"
     assert kw["ratelimit_path"] == tmp_path / "comicvine_rate_limit.sqlite"
     assert kw["cache_expiry"] == timedelta(days=7)  # ttl flows through as-is
