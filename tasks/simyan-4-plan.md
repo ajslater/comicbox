@@ -166,7 +166,7 @@ Files: `comicbox/formats/comicvine_api/online_source.py`,
 - [x] Keep `_drop_v2_cache_table` (eight lines, once per process, harmless);
       revisit at the next major.
 
-### Phase 3 — Upstream pagination fix, then a floor bump ⏳ merged upstream, awaiting release
+### Phase 3 — Upstream pagination fix, then a floor bump ✅
 
 Filed as [Simyan#309](https://github.com/Metron-Project/Simyan/issues/309) with
 the fake-transport reproduction, a verified before/after table, and the patch
@@ -178,30 +178,59 @@ the `number_of_total_results` check catches, not the short-page test.
 Merged upstream 2026-09-04 as
 [Simyan PR #310](https://github.com/Metron-Project/Simyan/pull/310), commit
 `5bd7947`, which took both loop exits and also stopped the loops mutating the
-caller's `params` dict. Not in any release yet: simyan 4.0.0 (2026-09-03) is
-still the latest on PyPI and still carries the old loops, so every item below
-stays open until a tag ships.
+caller's `params` dict. **Released as simyan 4.1.0 on 2026-09-11.** Diffing the
+two wheels, that is the whole release: the two loop exits, the `params` copy, a
+version bump, and the removal of the stale "Response cache-headers take
+precedence" docstring line. No new endpoints, resources, schema fields or
+parameters — nothing to adopt, only a halved `issues`-pool spend that arrives
+for free.
+
+Re-probed against both wheels with one script, patching `_request` to count and
+`_convert` to a passthrough so only loop behavior is measured:
+
+| Call                               | Results | 4.0.0 | 4.1.0 |
+| ---------------------------------- | ------- | ----- | ----- |
+| `list_issues(volume+issue_number)` | 2       | 2     | **1** |
+| `list_issues(...)` empty           | 0       | 1     | 1     |
+| `list_volumes(name+start_year)`    | 3       | 2     | **1** |
+| `search_volumes(max_results=20)`   | 7       | 2     | **1** |
+| `list_issues(volume)` whole volume | 43      | 2     | **1** |
+
+Result sets identical in every case. (A 50-result `search_volumes` capped at
+`max_results=20` is 1 request in both versions — `max_results` exits the loop
+before either version's trailing page. The original table's 2 for that row came
+from a fake with a smaller page size.)
 
 - [x] Open the issue, including the doc nit that the `Comicvine` docstring still
       promises "Response cache-headers take precedence" after 4.0 dropped
       `cache_control`, and that both loops mutate the caller's `params` dict.
 - [x] Offer the PR if the maintainer approves the approach.
-- [ ] When it ships: `simyan>=4.1.0,<5` (or whatever the tag is), `uv lock`,
-      NEWS (Dev): "Require simyan ≥ 4.1.0."
-- [ ] Re-run the fake-transport probe to confirm one request per short page.
-- [ ] Decide then whether to re-derive `COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT`
-      in `comicbox/online_estimate.py` with the 2× list cost. (It replaced
-      `COMICVINE_REQUESTS_BY_MODE` and
-      `COMICVINE_BUSIEST_POOL_REQUESTS_BY_MODE`, and its values were re-anchored
-      to a measured cold search — see
-      `tasks/online-tagging/calibration-notes/2026-09-08-estimator-cold-search-cost.md`
-      — which does not settle this question.) Deliberately not done now: those
-      numbers are a projection shown to an operator before a run, and doubling
-      them to describe a bug we are fixing upstream would make them wrong again
-      as soon as the floor bumps. Revisit only if comicbox 5.0.0 ships first.
-- [ ] No interim client-side workaround: shrinking `_MAX_VOLUMES_PER_SEARCH` to
+- [x] When it ships: `simyan>=4.1.0,<5` (or whatever the tag is), `uv lock`,
+      NEWS (Dev): "Require simyan ≥ 4.1.0." — the floor and lock landed with
+      `af8caab` "update deps"; NEWS followed in v5.0.1.
+- [x] Re-run the fake-transport probe to confirm one request per short page —
+      the before/after table above.
+- [x] Decide then whether to re-derive `COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT`
+      in `comicbox/online_estimate.py` with the 2× list cost. **No
+      re-derivation: the constants are already right.** They were anchored to
+      `api_call_counts`, which counts comicbox-level calls, so they always
+      described _logical_ calls rather than HTTP requests. 4.1.0 makes one
+      logical call cost one request, so the table became an accurate request
+      count instead of a floor at half the true cost — and the wall-clock
+      projection, which divides the same numbers by the pool rate, stopped
+      reading ~2× low. The 2026-09-08 deferral (don't double numbers to describe
+      a bug being fixed upstream) is what made this a no-op; had they been
+      doubled, they would now need halving again.
+- [x] No interim client-side workaround: shrinking `_MAX_VOLUMES_PER_SEARCH` to
       10 would save the second `/search/` page but changes calibrated recall,
-      and nothing else can stop a short page early.
+      and nothing else can stop a short page early. Moot — never done, and the
+      release removed the reason.
+
+Nothing in comicbox needed a code change. The `params`-mutation fix cannot reach
+it either: all three `params=` call sites in
+`comicbox/formats/comicvine_api/online_source.py` build a fresh dict literal
+inline. `_cache_expiry`'s `cache_control` comment stays accurate — 4.1.0 deleted
+the stale upstream _docstring_, not the behavior it misdescribed.
 
 ### Phase 4 — Comic Vine budget in `rate_limit_status()` ✅
 

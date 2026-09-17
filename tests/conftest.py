@@ -65,7 +65,7 @@ _scrub_environ_at_collection()
 
 
 @pytest.fixture(autouse=True)
-def _hermetic_comicbox_env(  # pyright: ignore[reportUnusedFunction]
+def _hermetic_comicbox_env(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> Iterator[None]:
     """

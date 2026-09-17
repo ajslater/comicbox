@@ -53,7 +53,7 @@ VOLUME_ID = 42
 
 
 @pytest.fixture(autouse=True)
-def _reset_outcome_stats() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+def _reset_outcome_stats() -> Iterator[None]:
     """Counters are a process-wide singleton; isolate every test."""
     outcome_stats.reset()
     yield

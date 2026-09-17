@@ -19,6 +19,7 @@ this module is a façade.
 from __future__ import annotations
 
 import threading
+from collections import Counter
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
@@ -49,6 +50,7 @@ from comicbox.online_estimate import (
     RunEstimate,
     estimate_run,
 )
+from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
@@ -303,8 +305,16 @@ class OnlineSession:
         defer_prompts: bool = False,
         series_batching: bool = True,
         config: ComicboxSettings | None = None,
+        client_name: str | None = None,
     ) -> None:
         """Validate inputs, build per-session state. See class docstring."""
+        # Identify the embedding application in the outgoing User-Agent.
+        # Metron's operators cannot otherwise tell a library embedder —
+        # which may be running several processes against one token, each
+        # with its own rate gate — from the CLI's single-process thread
+        # pool. Set before any source builds its client, since clients
+        # bake the header in at construction.
+        set_user_agent_context("lib", client=client_name)
         # Order is run priority: the first source runs first and, under
         # first_wins, its match ends the lookup for that comic.
         self._sources = tuple(dict.fromkeys(sources))
@@ -370,6 +380,10 @@ class OnlineSession:
         # In-memory only per the resolved open question.
         self._series_cache: dict[tuple[str, str], int] = {}
         self._series_cache_lock = threading.Lock()
+        # How many comics of each series the current `tag_many` batch
+        # holds, by filename fingerprint. Empty for single-file `tag()`,
+        # which clusters nothing.
+        self._series_cluster_sizes: Counter[str] = Counter()
 
     # -- mutable session state ----------------------------------------------
 
@@ -574,10 +588,19 @@ class OnlineSession:
         within a cluster is the original input order; the cluster order
         itself is deterministic (sorted by fingerprint) so re-runs
         produce identical cache-key sequences.
+
+        Counting each cluster up front also lets the source that resolves
+        a series decide to list the whole thing once rather than once per
+        comic (`OnlineSource.prefetch_volume`) — worth the most here,
+        where the run is sequential and every saved request is saved wall
+        clock too.
         """
         path_list = list(paths)
         if self._series_batching:
             path_list = sorted(path_list, key=filename_series_fingerprint)
+            self._series_cluster_sizes = Counter(
+                filename_series_fingerprint(path) for path in path_list
+            )
         for path in path_list:
             if self._cancel.is_set():
                 yield OnlineResult(path=path, cancelled=True)
@@ -604,6 +627,9 @@ class OnlineSession:
                 cb.set_event_handler(self._on_event)
             if self._series_batching:
                 cb.set_series_cache(self._series_cache)
+                cb.set_series_cluster_size(
+                    self._series_cluster_sizes.get(filename_series_fingerprint(path), 1)
+                )
             cb.set_retry_sleep(self._retry_sleep_wait)
             cb.set_online_session_state(self._state)
             matched = cb.run_online_lookup()

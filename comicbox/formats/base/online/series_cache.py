@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import threading
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
+from loguru import logger
 from typing_extensions import override
 
 if TYPE_CHECKING:
@@ -68,12 +69,29 @@ def filename_series_fingerprint(path: Path) -> str:
 
 
 class SeriesCache(MutableMapping[SeriesCacheKey, int]):
-    """A ``dict`` of resolved volume ids with an atomic first-writer claim."""
+    """
+    A ``dict`` of resolved volume ids with an atomic first-writer claim.
+
+    Also arbitrates SINGLE-FLIGHT resolution of a series. Sorting a batch
+    by series fingerprint makes the cache hit for the second and later
+    issues of a run — but only once the first one has finished, and a
+    ``-j N`` pool starts the first N files of a cluster at the same
+    instant. All N then miss, and all N pay for the cold search: the
+    batching saves nothing for exactly the files it was added for.
+
+    So one caller per key LEADS and the rest WAIT for it, then re-read
+    the cache and take the cheap volume-scoped path. A leader that
+    resolves nothing (no match, prompt declined, source failure) hands
+    leadership to the next waiter rather than stranding the cluster.
+    """
 
     def __init__(self) -> None:
         """Start empty."""
         self._data: dict[SeriesCacheKey, int] = {}
         self._lock = threading.Lock()
+        # Keys currently being resolved, each with the event its waiters
+        # block on. Absent key == nobody is resolving it.
+        self._leaders: dict[SeriesCacheKey, threading.Event] = {}
 
     def claim(self, key: SeriesCacheKey, volume_id: int) -> bool:
         """
@@ -89,6 +107,42 @@ class SeriesCache(MutableMapping[SeriesCacheKey, int]):
                 return False
             self._data[key] = volume_id
             return True
+
+    def lead(self, key: SeriesCacheKey) -> bool:
+        """
+        Claim the right to resolve `key`; True when this caller must do it.
+
+        False means another caller is already resolving it and this one
+        should `wait`. Resolved keys also return False — there is nothing
+        left to lead. A leader MUST call `release` in a ``finally``, or
+        its waiters hold until their timeout.
+        """
+        with self._lock:
+            if key in self._data or key in self._leaders:
+                return False
+            self._leaders[key] = threading.Event()
+            return True
+
+    def wait(self, key: SeriesCacheKey, timeout: float) -> bool:
+        """
+        Block until the current leader of `key` releases, or `timeout`.
+
+        Returns True when a leader released within the timeout. Either
+        way the caller must re-read the cache: a leader can finish
+        without resolving anything.
+        """
+        with self._lock:
+            event = self._leaders.get(key)
+        if event is None:
+            return False
+        return event.wait(timeout)
+
+    def release(self, key: SeriesCacheKey) -> None:
+        """Finish leading `key` and wake everyone waiting on it."""
+        with self._lock:
+            event = self._leaders.pop(key, None)
+        if event is not None:
+            event.set()
 
     def snapshot(self) -> dict[SeriesCacheKey, int]:
         """Return a consistent copy. Useful for persistence."""
@@ -129,6 +183,62 @@ class SeriesCache(MutableMapping[SeriesCacheKey, int]):
         """Membership test."""
         with self._lock:
             return key in self._data
+
+
+# How long a worker waits for another to resolve the series they share.
+#
+# Bounds one pathological case: a leader wedged on a slow source or an
+# unanswered prompt must not hold its whole cluster hostage. Generous on
+# purpose — the wait is what saves the cluster's other members a cold
+# search each, and a leader blocked at the rate gate behind a rejection
+# can legitimately take a minute. On timeout the waiter falls back to the
+# cold search it would have done anyway, so overshooting costs latency
+# and undershooting costs API budget.
+SERIES_LEAD_TIMEOUT_S: Final[float] = 120.0
+
+
+def lead_series(
+    cache: MutableMapping[SeriesCacheKey, int], key: SeriesCacheKey
+) -> bool:
+    """
+    Claim the right to resolve `key`, on any MutableMapping.
+
+    False for a mapping without the single-flight API — a plain dict from
+    a sequential caller, which has nothing to race. A True caller MUST
+    pair this with `release_series` in a ``finally``.
+    """
+    lead = getattr(cache, "lead", None)
+    return bool(lead(key)) if lead is not None else False
+
+
+def release_series(
+    cache: MutableMapping[SeriesCacheKey, int], key: SeriesCacheKey
+) -> None:
+    """Hand leadership of `key` back, on any MutableMapping."""
+    release = getattr(cache, "release", None)
+    if release is not None:
+        release(key)
+
+
+def await_series_leader(
+    cache: MutableMapping[SeriesCacheKey, int],
+    key: SeriesCacheKey,
+    timeout: float = SERIES_LEAD_TIMEOUT_S,
+) -> None:
+    """
+    Block while another caller resolves `key`, if one is.
+
+    Returns as soon as there is no leader to wait for, which is also the
+    plain-dict case. The caller re-reads the cache either way: a leader
+    can finish without having resolved anything.
+    """
+    wait = getattr(cache, "wait", None)
+    if wait is None or wait(key, timeout):
+        return
+    logger.debug(
+        f"online: gave up waiting {timeout:.0f}s for the series leader of "
+        f"{key[1]!r}; searching independently"
+    )
 
 
 def claim_series(

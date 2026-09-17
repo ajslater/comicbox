@@ -711,3 +711,174 @@ def test_instance_retry_sleep_still_overrides_the_new_default() -> None:
         clear_cancel()
     # The instance sleep ran instead of the cancelling default.
     assert sleeps
+
+
+# ----------------------------------------- sources that pace themselves
+
+
+class _PacedSource(_StubSource):
+    """A source whose own rate gate holds the pace (`paces_rate_limit`)."""
+
+    paces_rate_limit = True
+
+
+def test_paced_source_does_not_sleep_the_server_hint() -> None:
+    """
+    The gate already absorbed `Retry-After`; sleeping it again doubles it.
+
+    Worse than doubling: every worker would sleep the same hint in
+    parallel and then send at the same instant, which is how one 429
+    becomes a burst of them. A paced source keeps its attempt budget and
+    blocks at the gate instead.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_PacedSource(), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise _RateLimitedError(retry_after=30.0)
+        return "ok"
+
+    assert fn() == "ok"
+    assert calls == 3
+    assert sleeps == []
+
+
+def test_paced_source_still_spends_its_rate_limit_budget() -> None:
+    """Zero-delay retries are not unlimited retries."""
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_PacedSource(), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        raise _RateLimitedError(retry_after=30.0)
+
+    with pytest.raises(_RateLimitedError):
+        fn()
+    assert calls == len(_RATE_LIMIT_SCHEDULE) + 1
+    assert sleeps == []
+
+
+def test_paced_source_still_sleeps_generic_transient_errors() -> None:
+    """The gate paces rate limits, not 5xx — those keep the normal backoff."""
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_PacedSource(), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls < 2:
+            msg = "boom"
+            raise RuntimeError(msg)
+        return "ok"
+
+    assert fn() == "ok"
+    assert sleeps == [1.0]
+
+
+# --------------------------------------------------- retry_budget wiring
+
+
+class _BudgetSource(_StubSource):
+    """A source carrying `online.tuning.retry_budget`."""
+
+    def __init__(self, budget: int) -> None:
+        self.retry_budget = budget
+
+
+def test_instance_retry_budget_overrides_the_decorator_default() -> None:
+    """
+    `online.tuning.retry_budget` was parsed, defaulted and then dropped.
+
+    The decorator binds `max_retries` at class-definition time, so the
+    instance is the only seam a user's value can arrive through.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_BudgetSource(2), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError):
+        fn()
+    assert calls == 3  # the initial attempt plus 2 retries
+    assert sleeps == [1.0, 2.0]
+
+
+def test_an_explicit_max_retries_wins_over_the_configured_budget() -> None:
+    """
+    A call site that pins its budget means it.
+
+    The prefetch probe is the case: it has a working fallback one line
+    away, so it must give up cheaply rather than spend a user's whole
+    budget and its backoff on an optimization.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_BudgetSource(5), max_retries=1, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError):
+        fn()
+    assert calls == 2
+    assert sleeps == [1.0]
+
+
+def test_absent_retry_budget_keeps_the_decorator_default() -> None:
+    _sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_StubSource(), max_retries=2, sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError):
+        fn()
+    assert calls == 3
+
+
+# ------------------------------------------------------- abort is final
+
+
+def test_abort_raised_by_the_call_is_never_retried() -> None:
+    """
+    An abort ends the run; replaying it on the rate-limit schedule is wrong.
+
+    No classifier claims `OnlineLookupAbortedError`, so it used to reach
+    the "unclaimed exceptions retry" default. The rate gate raises it
+    when Metron's daily quota is spent, which would otherwise have meant
+    eight replays of a request that cannot succeed — each of them a 429
+    debiting the same exhausted quota.
+    """
+    sleeps, fake_sleep = _capture_sleeps()
+    calls = 0
+
+    @_stub_retry(_StubSource(), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        msg = "quota exhausted"
+        raise OnlineLookupAbortedError(msg)
+
+    with pytest.raises(OnlineLookupAbortedError):
+        fn()
+    assert calls == 1
+    assert sleeps == []

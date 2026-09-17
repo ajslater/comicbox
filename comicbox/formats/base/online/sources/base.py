@@ -84,6 +84,13 @@ class OnlineSource(ABC):
     metadata_source: ClassVar[MetadataSources]
     metadata_format: ClassVar[MetadataFormats]
 
+    #: Whether this source admits its own requests through a rate gate.
+    #: Read by `retry._paces_itself`: a gated source has already absorbed
+    #: a rate-limit rejection into its gate, so the retry loop keeps its
+    #: attempt budget but hands the waiting over instead of sleeping the
+    #: same `Retry-After` a second time in every worker at once.
+    paces_rate_limit: ClassVar[bool] = False
+
     def __init__(
         self,
         credentials: OnlineSourceCredentials,
@@ -92,6 +99,12 @@ class OnlineSource(ABC):
         """Store refs needed for client construction."""
         self._credentials = credentials
         self._settings = settings
+        # Retry attempts for generic (non-rate-limit) failures. The
+        # `with_retry` decorator binds its default at class-definition
+        # time, so `online.tuning.retry_budget` reaches it through the
+        # instance (see `retry._resolve_max_retries`) — until this was
+        # wired the knob was parsed, defaulted and then dropped.
+        self.retry_budget: int = settings.tuning.retry_budget
         # Per-method call counters for calibration / cost telemetry.
         # Counts INVOCATIONS at our wrapper level — includes cache hits
         # (since we can't distinguish them without peeking inside
@@ -201,6 +214,25 @@ class OnlineSource(ABC):
     ) -> Candidate | None:
         """One volume-scoped API call; sources without a fast path omit it."""
         raise NotImplementedError
+
+    def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:  # noqa: B027
+        """
+        Optionally pull a whole volume's issue list in one go.
+
+        Deliberately concrete and empty, not abstract: a source that
+        cannot list a volume cheaply has nothing to implement, and making
+        this abstract would force every source to write the same no-op.
+
+        Called once, by the worker that resolved ``volume_id``, when a
+        batch holds ``cluster_size`` comics from that series. A source
+        that can list a volume in fewer requests than the per-comic
+        lookups it would replace should do so and serve the rest of the
+        cluster from memory; one that cannot should do nothing, which is
+        the default.
+
+        Best-effort by contract: a failure here must degrade to the
+        per-comic path, never fail the comic. Implementations own that.
+        """
 
     # -- shared scaffolding ---------------------------------------------------
 

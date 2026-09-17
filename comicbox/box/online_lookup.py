@@ -1,7 +1,9 @@
 """
 Online metadata lookup mixin.
 
-Sits between `ComicboxNormalize` and `ComicboxMerge` in the box chain.
+Sits between `ComicboxOnlineCovers` and `ComicboxMerge` in the box chain.
+The cover-hash cache and download pool this reaches into for candidate
+cover scoring live one layer down, in `online_covers`.
 
 The mixin runs once per box instance, gated on
 ``settings.online.lookup.enabled``. For each active source (one whose
@@ -33,7 +35,7 @@ from glom import glom
 from loguru import logger
 from typing_extensions import override
 
-from comicbox.box.normalize import ComicboxNormalize
+from comicbox.box.online_covers import ComicboxOnlineCovers
 from comicbox.config.online.settings import MatchMode, Prompts
 from comicbox.events import (
     AutoWritten,
@@ -70,22 +72,23 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.prompt import cli_selector
 from comicbox.formats.base.online.selector import SelectorContext
-from comicbox.formats.base.online.series_cache import claim_series
+from comicbox.formats.base.online.series_cache import (
+    await_series_leader,
+    claim_series,
+    lead_series,
+    release_series,
+)
 from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableMapping, Sequence
+    from collections.abc import Callable, MutableMapping
     from pathlib import Path
 
     from comicbox.config.online.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
-    from comicbox.formats.base.online.cover_hash import (
-        CoverFetchPool,
-        CoverHashUrlCache,
-    )
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
@@ -267,7 +270,7 @@ def _detect_cv_id_disagreement(
     return (metron_str, cv_str)
 
 
-class ComicboxOnlineLookup(ComicboxNormalize):
+class ComicboxOnlineLookup(ComicboxOnlineCovers):
     """Pulls online metadata into the source pool before merge runs."""
 
     # Class-level so tests can override (and per-instance attrs override that).
@@ -305,6 +308,13 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # don't get to overwrite the original.
     _series_cache: MutableMapping[tuple[str, str], int] | None = None
 
+    # How many comics of THIS comic's series the current batch holds.
+    # Set by the dispatcher (CLI `Runner`, `OnlineSession.tag_many`);
+    # 1 for a standalone file. The source that resolves the series uses
+    # it to decide whether listing the whole series once is cheaper than
+    # one lookup per comic (see `OnlineSource.prefetch_volume`).
+    _series_cluster_size: int = 1
+
     # Session-supplied retry-sleep override propagated to every active
     # online source (see set_retry_sleep).
     _retry_sleep: Callable[[float], None] | None = None
@@ -313,10 +323,6 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     # Whether the completed lookup applied online metadata; repeat
     # run_online_lookup() calls report this first-run outcome.
     _online_lookup_won: bool = False
-    _cover_hash_url_cache: CoverHashUrlCache | None = None
-    _cover_fetch_pool: CoverFetchPool | None = None
-    _local_cover_phash_computed: bool = False
-    _local_cover_phash_value: str | None = None
     # Built once per lookup run (5 call sites); invalidated whenever the
     # source caches reset because the profile reads non-online sources.
     _profile_cache: ComicProfile | None = None
@@ -339,6 +345,10 @@ class ComicboxOnlineLookup(ComicboxNormalize):
     ) -> None:
         """Register a session-level series cache for series-first batching."""
         self._series_cache = cache
+
+    def set_series_cluster_size(self, size: int) -> None:
+        """Tell this box how many comics of its series the batch holds."""
+        self._series_cluster_size = max(1, size)
 
     def set_online_session_state(self, state: OnlineSessionState | None) -> None:
         """
@@ -613,116 +623,11 @@ class ComicboxOnlineLookup(ComicboxNormalize):
                 volume_id=candidate.volume_id,
             )
         )
-
-    def _get_cover_hash_cache(self) -> CoverHashUrlCache | None:
-        """
-        Lazily open the shared cover-hash sqlite cache; None when caching is OFF.
-
-        One connection for the box's lifetime (see `CoverHashUrlCache`),
-        so a top-K batch costs one query in and one transaction out
-        instead of two connections per candidate.
-        """
-        from comicbox.config.online.settings import CacheMode
-
-        if self._config.online.cache.mode is CacheMode.OFF:
-            return None
-        if self._cover_hash_url_cache is None:
-            from comicbox.formats.base.online.cover_hash import CoverHashUrlCache
-
-            cache_dir = self._config.online.cache.dir
-            if cache_dir is None:
-                from platformdirs import user_cache_path
-
-                cache_dir = user_cache_path("comicbox") / "online"
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            self._cover_hash_url_cache = CoverHashUrlCache(
-                cache_dir / "cover_hashes.sqlite"
-            )
-        return self._cover_hash_url_cache
-
-    def _get_cover_fetch_pool(self) -> CoverFetchPool:
-        """Lazily build the bounded download pool; one httpx client per box."""
-        if self._cover_fetch_pool is None:
-            from comicbox.formats.base.online.cover_hash import CoverFetchPool
-
-            self._cover_fetch_pool = CoverFetchPool()
-        return self._cover_fetch_pool
-
-    def _candidate_cover_hash_batch_fetcher(
-        self, urls: Sequence[str]
-    ) -> dict[str, str]:
-        """
-        Resolve many candidate cover URLs to pHashes in one pass.
-
-        Used by the matcher for sources that don't ship a precomputed
-        hash (ComicVine, GCD). Cache lookups collapse into a single
-        query; the remaining misses download concurrently over one
-        shared HTTP client and are written back in one transaction.
-        URLs that fail to download or hash are simply absent from the
-        result — the matcher reads that as "no cover signal".
-        """
-        wanted = [u for u in dict.fromkeys(urls) if u]
-        if not wanted:
-            return {}
-        cache = self._get_cover_hash_cache()
-        resolved = cache.get_many(wanted) if cache is not None else {}
-        missing = [u for u in wanted if u not in resolved]
-        if not missing:
-            return resolved
-        fetched = self._get_cover_fetch_pool().fetch_hashes(missing)
-        if cache is not None and fetched:
-            cache.set_many(fetched.items())
-        resolved.update(fetched)
-        return resolved
-
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
-        """
-        Download a candidate cover from URL and return its pHash, with caching.
-
-        The single-URL entry point, kept for callers that resolve one
-        candidate at a time; the matcher's hot path goes through
-        `_candidate_cover_hash_batch_fetcher` instead.
-        """
-        if not url:
-            return None
-        return self._candidate_cover_hash_batch_fetcher((url,)).get(url)
-
-    def _close_cover_hash_resources(self) -> None:
-        """Release the cover-hash sqlite connection and HTTP client."""
-        if self._cover_hash_url_cache is not None:
-            self._cover_hash_url_cache.close()
-            self._cover_hash_url_cache = None
-        if self._cover_fetch_pool is not None:
-            self._cover_fetch_pool.close()
-            self._cover_fetch_pool = None
-
-    @override
-    def close(self) -> None:
-        """Close the archive, then release online-lookup resources."""
-        try:
-            super().close()
-        finally:
-            self._close_cover_hash_resources()
-
-    def _local_cover_phash(self) -> str | None:
-        """Compute the comic's pHash on demand, cached on the box instance."""
-        if self._local_cover_phash_computed:
-            return self._local_cover_phash_value
-        self._local_cover_phash_computed = True
-        try:
-            cover_bytes = self.get_cover_page(pdf_format="pixmap", skip_metadata=True)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
-        except Exception as exc:
-            logger.debug(f"local cover: fetch failed: {exc}")
-            return None
-        if not cover_bytes:
-            return None
-        try:
-            from comicbox.formats.base.online.cover_hash import compute_phash
-
-            self._local_cover_phash_value = compute_phash(cover_bytes)
-        except Exception as exc:
-            logger.warning(f"local cover: pHash failed: {exc}")
-        return self._local_cover_phash_value
+        # This worker resolved the series, so it is the one that pays for
+        # the prefetch — and it does so while still holding the
+        # single-flight lead, so the rest of the cluster waits for a warm
+        # list rather than racing it with per-issue lookups.
+        source.prefetch_volume(candidate.volume_id, self._series_cluster_size)
 
     def _resolve_with_matcher(
         self, source_name: str, candidates: list[Candidate], online: OnlineSettings
@@ -1126,26 +1031,86 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         if not online.lookup.rematch and self._try_series_cache_lookup(source):
             return _SourceOutcome(applied=True)
 
-        return _SourceOutcome(applied=self._search_path(source, online))
+        # Single-flight the cold search. Under `-j N` the first N files of
+        # a cluster start together, all miss the cache and all pay for the
+        # same search; whoever leads releases the rest, which then find
+        # the resolved id waiting for them.
+        key = self._series_lead_key(source, online)
+        try:
+            return _SourceOutcome(applied=self._search_path(source, online))
+        finally:
+            self._release_series_lead(key)
 
-    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:  # noqa: PLR0911
+    def _series_cache_key(self, source: OnlineSource) -> tuple[str, str] | None:
+        """
+        Key this comic's series takes in the cache, or None if it has none.
+
+        A volume-scoped lookup needs an issue number to scope with.
+        Without one the source would list the whole series and accept
+        whatever row came first — a mis-tag plus unbounded pagination.
+        The search path already handles issue-less comics.
+        """
+        if self._series_cache is None:
+            return None
+        profile = self._build_profile()
+        if not profile.series or not strip_issue_leading_zeros(profile.issue):
+            return None
+        return (source.name, _series_fingerprint(profile))
+
+    def _series_lead_key(
+        self, source: OnlineSource, online: OnlineSettings
+    ) -> tuple[str, str] | None:
+        """
+        Take leadership of this comic's series before a cold search, if free.
+
+        Returns the key to release afterwards, or None when there is
+        nothing to lead — no cache, no usable key, `--rematch` (every file
+        re-searches by definition), a plain dict (a sequential caller
+        cannot race anyway), or another worker already leading. That last
+        case is not a problem: the other worker holds a *different*
+        series, or this comic already waited for it in
+        `_try_series_cache_lookup` and came back unresolved.
+        """
+        cache = self._series_cache
+        if cache is None or online.lookup.rematch:
+            return None
+        key = self._series_cache_key(source)
+        if key is None or not lead_series(cache, key):
+            return None
+        return key
+
+    def _release_series_lead(self, key: tuple[str, str] | None) -> None:
+        """Hand leadership back after a cold search, however it ended."""
+        if key is not None and self._series_cache is not None:
+            release_series(self._series_cache, key)
+
+    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:
         """
         Attempt the volume-scoped issue lookup; return True on hit + accept.
 
-        Cache miss, source-side failure, or a stale-cache "issue not in
-        this volume" response → return False so the caller falls through
-        to the cold-path search. The cache entry is left alone in that
-        case (first-writer-wins).
+        Cache miss, missing issue number, source-side failure, or a
+        stale-cache "issue not in this volume" response → return False so
+        the caller falls through to the cold-path search. The cache entry
+        is left alone in that case (first-writer-wins).
+
+        A miss with another worker already resolving this same series
+        WAITS for it instead of racing it. That is the whole value of
+        series batching under `-j N`: without it the first N files of a
+        cluster all start cold, and the plan's measured "one search per
+        series" collapses back to "one search per worker".
         """
-        if self._series_cache is None:
+        key = self._series_cache_key(source)
+        if key is None or self._series_cache is None:
             return False
-        profile = self._build_profile()
-        if not profile.series:
-            return False
-        key = (source.name, _series_fingerprint(profile))
         volume_id = self._series_cache.get(key)
         if volume_id is None:
+            # Another worker may be resolving this very series; waiting
+            # for it is the whole value of batching under `-j N`.
+            await_series_leader(self._series_cache, key)
+            volume_id = self._series_cache.get(key)
+        if volume_id is None:
             return False
+        profile = self._build_profile()
         try:
             candidate = source.lookup_issue(volume_id, profile.issue)
         except NotImplementedError:

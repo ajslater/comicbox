@@ -383,6 +383,7 @@ class _FakeBox:
     def __init__(self, path, config=None) -> None:
         self.selector = None
         self.session_state = None
+        self.cluster_size = None
         self.won = type(self).next_won
         type(self).last = self
 
@@ -402,6 +403,9 @@ class _FakeBox:
 
     def set_series_cache(self, cache) -> None:
         pass
+
+    def set_series_cluster_size(self, size) -> None:
+        self.cluster_size = size
 
     def set_retry_sleep(self, sleep) -> None:
         pass

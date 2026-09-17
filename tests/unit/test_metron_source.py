@@ -651,6 +651,43 @@ def test_series_id_path_omits_volume_filter(
     assert "series_volume" not in fake.issues_list_calls[0]
 
 
+# ------------------------------------------------- volume-scoped lookup
+
+
+def test_lookup_issue_in_volume_filters_by_number(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The warm path sends one `series_id` + `number` request."""
+    issues = {300: [_FakeBaseIssue(iid=800, number="7", series_name="Blackhawk")]}
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source(monkeypatch, fake)
+    candidate = src.lookup_issue(300, "007")
+
+    assert candidate is not None
+    assert candidate.issue_id == 800
+    assert fake.issues_list_calls == [{"series_id": 300, "number": "7"}]
+
+
+@pytest.mark.parametrize("issue_number", [None, "", "   "])
+def test_lookup_issue_in_volume_without_number_makes_no_request(
+    monkeypatch: pytest.MonkeyPatch, issue_number: str | None
+) -> None:
+    """
+    No issue number → no request at all.
+
+    A bare `issues_list({"series_id": N})` has no `number` filter, so
+    mokkari pages through every issue in the series and the first row
+    would be accepted as the match. Return None instead and let the
+    caller fall back to the search path.
+    """
+    issues = {300: [_FakeBaseIssue(iid=800, number="7", series_name="Blackhawk")]}
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source(monkeypatch, fake)
+
+    assert src.lookup_issue(300, issue_number) is None
+    assert fake.issues_list_calls == []
+
+
 def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     """The upstream client is built once per credential set, then reused."""
     from comicbox.formats.metron_api import online_source as metron_online_source
@@ -658,12 +695,13 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     # Isolate the process-wide per-credential session cache so this test
     # neither sees nor leaves behind entries for ("u", "p").
     monkeypatch.setattr(metron_online_source, "_session_cache", {})
+    monkeypatch.setattr(metron_online_source, "_gate_cache", {})
     creds = OnlineSourceCredentials(user="u", password="p")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)
     builds = {"n": 0}
 
-    def fake_build():
+    def fake_build(_gate=None):
         builds["n"] += 1
         return object()
 

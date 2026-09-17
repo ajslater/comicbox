@@ -52,6 +52,7 @@ from platformdirs import user_cache_path
 
 from comicbox import cli as _cli_module
 from comicbox.box import online_lookup as _lookup_module
+from comicbox.formats.base.online import outcome_stats
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +74,12 @@ class JobsOutcome:
     # Count of fixtures with an auto-write decision; the rest were skipped.
     decided: int
     skipped: int
+    # HTTP requests actually sent to Metron, and how many it refused. The
+    # acceptance gate for issue #207 is `rejections == 0` at every -j:
+    # Metron debits the daily quota for a refused request exactly as for
+    # a served one, so a 429 is budget spent on nothing.
+    requests: int = 0
+    rejections: int = 0
 
 
 def load_fixtures(path: Path, limit: int | None) -> list[Fixture]:
@@ -156,6 +163,7 @@ def run_with_recording_hook(
 
     Returns (chosen_by_fixture, wall_seconds).
     """
+    outcome_stats.reset()
     chosen: dict[str, int | None] = {str(f.path): None for f in fixtures}
     chosen_lock = threading.Lock()
     original = _lookup_module.ComicboxOnlineLookup._accept_candidate
@@ -186,12 +194,15 @@ def score_outcome(
     """Bucket fixtures into decided / skipped given recorded chosen IDs."""
     decided = sum(1 for f in fixtures if chosen.get(str(f.path)) is not None)
     skipped = len(fixtures) - decided
+    api = outcome_stats.api_snapshot().get("metron")
     return JobsOutcome(
         jobs=jobs,
         wall_seconds=wall_seconds,
         chosen_by_fixture=chosen,
         decided=decided,
         skipped=skipped,
+        requests=sum(api.requests.values()) if api else 0,
+        rejections=api.rejections if api else 0,
     )
 
 
@@ -295,13 +306,25 @@ def format_summary(
         "",
         "## Per-jobs outcome",
         "",
-        "| Jobs | Wall (min) | Decided | Skipped |",
-        "| --- | --- | --- | --- |",
+        "| Jobs | Wall (min) | Decided | Skipped | Requests | 429s |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     lines.extend(
-        f"| {o.jobs} | {o.wall_seconds / 60:.1f} | {o.decided} | {o.skipped} |"
+        f"| {o.jobs} | {o.wall_seconds / 60:.1f} | {o.decided} | {o.skipped} "
+        f"| {o.requests} | {o.rejections} |"
         for o in outcomes
     )
+    offenders = [o for o in outcomes if o.rejections]
+    if offenders:
+        detail = ", ".join(f"-j {o.jobs}: {o.rejections}" for o in offenders)
+        verdict = (
+            f"**FAIL: Metron refused requests ({detail}).** The gate should "
+            "keep this at 0 — every refusal debits the daily quota exactly "
+            "like a served request."
+        )
+        lines += ["", verdict]
+    else:
+        lines += ["", "Metron refused nothing at any -j. "]
     lines += ["", "## Diff vs jobs=1 baseline", ""]
     if not outcomes:
         return "\n".join(lines)

@@ -120,6 +120,11 @@ class _CountingMetron:
         self.search_calls = 0
         self.lookup_calls: list[tuple[int, str | None]] = []
         self.get_calls: list[int] = []
+        self.prefetch_calls: list[tuple[int, int]] = []
+
+    def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:
+        """Record the offer; a real source decides whether to take it."""
+        self.prefetch_calls.append((volume_id, cluster_size))
 
     def is_configured(self) -> bool:
         return bool(self._credentials.user and self._credentials.password)
@@ -174,21 +179,23 @@ def _patch_source(monkeypatch, candidates):
     return instances
 
 
-def _build_cb() -> Comicbox:
-    cli_md = {
+def _build_cb(issue: str | None = "5", prompts: str | None = None) -> Comicbox:
+    cli_md: dict = {
         "comicbox": {
             "series": {"name": "Foo Comics"},
-            "issue": {"name": "5"},
             "date": {"year": 2020},
             "publisher": {"name": "Quality Comics"},
             "page_count": 24,
         }
     }
+    if issue is not None:
+        cli_md["comicbox"]["issue"] = {"name": issue}
     args = Namespace(
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
             auth=["metron:user=u", "metron:pass=p"],
+            prompts=prompts,
         )
     )
     return Comicbox(config=args)
@@ -235,6 +242,38 @@ def test_warm_path_uses_lookup_issue_not_search(monkeypatch) -> None:
     assert src.lookup_calls == [(42, "5")]
     auto = [e for e in events if isinstance(e, AutoWritten)]
     assert len(auto) == 1
+
+
+@pytest.mark.parametrize("issue", [None, ""])
+def test_warm_path_requires_an_issue_number(monkeypatch, issue) -> None:
+    """
+    No issue number → the warm path declines, the search path runs.
+
+    `lookup_issue` scopes its request by issue number. Called without
+    one, Metron's `issues_list({"series_id": N})` pages through the whole
+    series and the first row wins — a mis-tag on top of an unbounded
+    number of requests. The cold search path already handles issue-less
+    comics, so the cached volume_id is simply not used here.
+    """
+    instances = _patch_source(monkeypatch, [_make_candidate(101, volume_id=42)])
+    fp = _series_fingerprint(
+        ComicProfile(series="Foo Comics", year=2020, publisher="Quality Comics")
+    )
+    cache = {("metron", fp): 42}
+    events: list[Event] = []
+    # `prompts=never` keeps the fallback search path non-interactive: an
+    # issue-less profile scores too low to auto-write, and ASK would
+    # block on stdin here.
+    cb = _build_cb(issue=issue, prompts="never")
+    cb.set_series_cache(cache)
+    cb.set_event_handler(events.append)
+    cb.run_online_lookup()
+
+    src = instances[0]
+    assert src.lookup_calls == []
+    assert src.search_calls == 1
+    # Nothing was auto-written off an unfiltered whole-series listing.
+    assert [e for e in events if isinstance(e, AutoWritten)] == []
 
 
 def test_warm_path_falls_back_to_search_on_miss(monkeypatch) -> None:

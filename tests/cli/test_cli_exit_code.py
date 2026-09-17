@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def _restore_logging() -> Iterator[None]:  # pyright: ignore[reportUnusedFunction]
+def _restore_logging() -> Iterator[None]:
     """
     Point loguru back at the real stdout when the test is done.
 
