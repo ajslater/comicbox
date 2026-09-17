@@ -17,12 +17,17 @@ The live-API measurement the plan asked for (§B2: "measure on the Metron fixtur
 set: calls per miss, pages, parity on `top_issue_id`") has NOT been run — see
 "Not measured" below.
 
+**Updated 2026-09-17**: the miss path in the table below is no longer the
+six-call cascade. `cover_date_range_after` / `_before` (Metron server #628)
+collapsed it to a single wide fallback; see "Not measured" for what that leaves
+open.
+
 ## Per-comic cost
 
 | Path                                  | Calls   | Which                                                          |
 | ------------------------------------- | ------- | -------------------------------------------------------------- |
 | Cold, series unresolved               | 2       | `issues_list` (search) + `issue(id)`                           |
-| Cold, search misses at the exact year | up to 8 | 3 year attempts x 2 volume cycles, + `issue(id)` on a late hit |
+| Cold, search misses at the exact year | up to 3 | exact call + one wide `cover_date_range` fallback, + `issue(id)` |
 | Warm, series resolved                 | 2       | `issues_list(series_id, number)` + `issue(id)`                 |
 | Warm, series prefetched               | 1       | `issue(id)` only; the list came from memory                    |
 
@@ -67,31 +72,47 @@ instance may not throttle at all.
 
 ## Not measured
 
-Two things in the plan are still open and deliberately unimplemented:
+### Resolved by the wide fallback (2026-09-17)
 
-1. **Dropping `series_volume` from queries** (§B2). The plan's premise — "the
-   matcher already scores year distance", implying volume is recoverable at
-   scoring time — does not hold. `CandidateSummary` has no volume field at all,
-   and `_contributing_signals` (`matcher.py:163-192`) scores series, issue,
-   year, publisher and pages, where `year` is the ISSUE cover year, not the
-   series start year. Dropping the filter would widen results to sibling reboot
-   volumes with nothing to separate them, and `_candidate_sort_key` breaks the
-   resulting tie on the LOWEST `volume_id` — the oldest series record, which is
-   the wrong answer for a modern reboot.
+Both of the items this note left open were about widening the query without
+losing the precedence the cascade's call ORDER encoded. `cover_date_range_*`
+answers both at once, without the matcher change either of them needed:
 
-    Making it safe needs a volume signal in the matcher first (`BasicSeries`
-    carries `volume` and `year_began`, so the data is already on the wire), and
-    that needs its own calibration run.
+1. **Dropping `series_volume` from queries** (§B2). The objection stands — the
+   matcher has no volume signal, `_contributing_signals` scores the ISSUE cover
+   year rather than the series start year, and `_candidate_sort_key` breaks the
+   resulting tie on the LOWEST `volume_id`, which is the wrong answer for a
+   modern reboot. So the filter is not simply dropped: the fallback drops it on
+   the wire and `_select_precedence_tier` reapplies it client-side, over rows
+   that one call already returned. `CandidateSummary` grew the `volume` field
+   that tiering needs, fed from `BasicSeries.volume`.
 
-2. **Shortening the year cascade** (§B2). Replacing the Y-1/Y+1 pair with one
-   year-less `series_name + number` call would cut a missing search from 3 calls
-   to 2 and strictly widen recall, but it also admits candidates many years off,
-   discriminated only by `W_YEAR` (0.10). Whether that flips matches is exactly
-   the parity question the fixture set answers.
+2. **Shortening the year cascade** (§B2). Not a year-less call, which is what
+   admitted candidates many years off. A bounded Y-1..Y+1 cover-date range asks
+   for exactly the three years the cascade asked for, in one request, and a
+   local guard drops anything outside it in case the server ignores the filter.
 
-Both need `make calibrate` against live Metron with
-`tests/calibration/fixtures.json`, comparing `top_issue_id` before and after.
-There is no offline cassette harness — `tests/calibration/ README.md` and
-`tests/stress/README.md` both require real credentials — so this could not be
-answered from the repository alone. The DB-load half of the question is Brian's
-to answer either way.
+Net: a miss costs 2 `issues_list` calls instead of 6, and for every profile
+with an issue number the candidate set is the one the cascade produced.
+
+### Still open
+
+The **live parity run** (§B2's "parity on `top_issue_id`"). It is confirmation,
+not a gate — the tiering is asserted against a mixed-volume, mixed-year fake in
+`tests/unit/test_metron_source.py` — but it is the only thing that can show the
+range filter behaving as documented against the real server:
+
+```sh
+uv run python -m tests.calibration.run \
+  --fixtures tests/calibration/fixtures-bigmedia.json --sources metron
+```
+
+Run it before and after, on the 47 Metron-labelled fixtures, and compare
+`top_issue_id` and the per-fixture `issues_list` count from `api_call_counts`
+(cache-independent). It needs `/Volumes/Media` mounted and real credentials;
+`make calibrate` takes no arguments and defaults to `fixtures.json`, so invoke
+the module directly. The harness never reads `outcome_stats`, so for HTTP-level
+page counts either read the end-of-run `outcome_stats` `issue_list` total per
+pass with the mokkari cache wiped for both passes, or capture
+`outcome_stats.api_snapshot()` deltas per fixture in `_score_one`. The DB-load
+half of the question is Brian's to answer either way.

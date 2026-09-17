@@ -17,6 +17,9 @@
     - The end-of-run Metron summary counts responses that arrived without
       rate-limit headers, and connection failures.
 
+- Performance
+    - A Metron search that misses now costs 2 API requests instead of 6.
+
 ## v5.1.0
 
 - Fixes
