@@ -461,13 +461,17 @@ class MetronOnlineSource(OnlineSource):
         Volume-scoped issue lookup; cheaper than the fuzzy search path.
 
         Calls ``issues_list`` filtered by ``series_id`` + ``number`` — one
-        request, returns ≤1 result on healthy data. The base class's
-        ``lookup_issue`` wrapper owns the failure semantics.
+        request, returns ≤1 result on healthy data. Returns None without
+        a request when there is no issue number: an unfiltered
+        ``series_id`` query pages through the whole series and the first
+        row would win. The base class's ``lookup_issue`` wrapper owns the
+        failure semantics.
         """
+        number = strip_issue_leading_zeros(issue_number)
+        if not number:
+            return None
         session = self._get_session()
-        params: dict[str, Any] = {"series_id": volume_id}
-        if number := strip_issue_leading_zeros(issue_number):
-            params["number"] = number
+        params: dict[str, Any] = {"series_id": volume_id, "number": number}
         issues = self._issues_list_with_retry(session, params)
         issue_list = list(issues)
         if not issue_list:

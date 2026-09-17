@@ -1132,15 +1132,19 @@ class ComicboxOnlineLookup(ComicboxNormalize):
         """
         Attempt the volume-scoped issue lookup; return True on hit + accept.
 
-        Cache miss, source-side failure, or a stale-cache "issue not in
-        this volume" response → return False so the caller falls through
-        to the cold-path search. The cache entry is left alone in that
-        case (first-writer-wins).
+        Cache miss, missing issue number, source-side failure, or a
+        stale-cache "issue not in this volume" response → return False so
+        the caller falls through to the cold-path search. The cache entry
+        is left alone in that case (first-writer-wins).
         """
         if self._series_cache is None:
             return False
         profile = self._build_profile()
-        if not profile.series:
+        # A volume-scoped lookup needs an issue number to scope with.
+        # Without one the source would list the whole series and accept
+        # whatever row came first — a mis-tag plus unbounded pagination.
+        # The search path already handles issue-less comics.
+        if not profile.series or not strip_issue_leading_zeros(profile.issue):
             return False
         key = (source.name, _series_fingerprint(profile))
         volume_id = self._series_cache.get(key)

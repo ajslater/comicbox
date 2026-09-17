@@ -811,11 +811,16 @@ class ComicVineOnlineSource(OnlineSource):
         Volume-scoped issue lookup; cheaper than the fuzzy search path.
 
         One ``list_issues`` call filtered by ``volume:`` + ``issue_number:``.
-        The base class's ``lookup_issue`` wrapper owns the failure
-        semantics (plan §3.10).
+        Returns None without a request when there is no issue number: a
+        bare ``volume:`` filter lists the whole volume and the first row
+        would win. The base class's ``lookup_issue`` wrapper owns the
+        failure semantics (plan §3.10).
         """
+        number = strip_issue_leading_zeros(issue_number)
+        if not number:
+            return None
         session = self._get_session()
-        candidates = self._list_issues_by_volume(session, volume_id, issue_number)
+        candidates = self._list_issues_by_volume(session, volume_id, number)
         if not candidates:
             return None
         # First-result-wins on variant collisions; same approach as Metron.
