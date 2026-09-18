@@ -1,5 +1,14 @@
 # 📰 News
 
+## v5.1.2
+
+- Features
+    - The end-of-run Metron summary counts connection failures and responses
+      that arrived without rate-limit headers.
+
+- Performance
+    - A Metron search that misses now costs 2 API requests instead of up to 6.
+
 ## v5.1.1
 
 - Features
@@ -14,11 +23,6 @@
       searched for should be tried again tomorrow, and one that genuinely missed
       should not. The matcher's own reason is now the exported constant
       `SKIP_MATCHER_DECLINED` alongside `SKIP_QUOTA_RESERVED`.
-    - The end-of-run Metron summary counts responses that arrived without
-      rate-limit headers, and connection failures.
-
-- Performance
-    - A Metron search that misses now costs 2 API requests instead of 6.
 
 ## v5.1.0
 
