@@ -24,12 +24,12 @@ open.
 
 ## Per-comic cost
 
-| Path                                  | Calls   | Which                                                          |
-| ------------------------------------- | ------- | -------------------------------------------------------------- |
-| Cold, series unresolved               | 2       | `issues_list` (search) + `issue(id)`                           |
+| Path                                  | Calls   | Which                                                            |
+| ------------------------------------- | ------- | ---------------------------------------------------------------- |
+| Cold, series unresolved               | 2       | `issues_list` (search) + `issue(id)`                             |
 | Cold, search misses at the exact year | up to 3 | exact call + one wide `cover_date_range` fallback, + `issue(id)` |
-| Warm, series resolved                 | 2       | `issues_list(series_id, number)` + `issue(id)`                 |
-| Warm, series prefetched               | 1       | `issue(id)` only; the list came from memory                    |
+| Warm, series resolved                 | 2       | `issues_list(series_id, number)` + `issue(id)`                   |
+| Warm, series prefetched               | 1       | `issue(id)` only; the list came from memory                      |
 
 `issue(id)` is the floor. `BaseIssue` from a list carries no credits and no
 characters, so a match always costs one detail fetch. Removing it needs
@@ -92,27 +92,25 @@ answers both at once, without the matcher change either of them needed:
    for exactly the three years the cascade asked for, in one request, and a
    local guard drops anything outside it in case the server ignores the filter.
 
-Net: a miss costs 2 `issues_list` calls instead of 6, and for every profile
-with an issue number the candidate set is the one the cascade produced.
+Net: a miss costs 2 `issues_list` calls instead of up to 6 — 3, when the profile
+carries no volume, which is the case the parity run happened to measure — and
+for every profile with an issue number the candidate set is the one the cascade
+produced.
 
-### Still open
+### Resolved by the parity run (2026-09-17)
 
-The **live parity run** (§B2's "parity on `top_issue_id`"). It is confirmation,
-not a gate — the tiering is asserted against a mixed-volume, mixed-year fake in
-`tests/unit/test_metron_source.py` — but it is the only thing that can show the
-range filter behaving as documented against the real server:
+The live parity run has been done — see
+`2026-09-17-metron-miss-cascade-parity.md`. On the 46 runnable Metron-labelled
+fixtures of `fixtures-bigmedia.json`, `top_issue_id` is identical before and
+after, outcomes are identical (36 correct, 0 wrong, 10 no-candidates, 100%
+accuracy on labelled fixtures), and `issues_list` calls fall 66 → 56. A direct
+two-call probe confirmed `cover_date_range_after/_before` is deployed on
+metron.cloud: `Wolverine #1` returns 132 rows unbounded and 5 in a three-year
+window.
 
-```sh
-uv run python -m tests.calibration.run \
-  --fixtures tests/calibration/fixtures-bigmedia.json --sources metron
-```
+Two caveats recorded there rather than papered over: this set never exercised
+the six-call path (every miss lacked a parsed volume, so the old code spent 3
+calls, not 6), and recall is unchanged rather than improved — the set contains
+no cover-date-drift case. Nothing in it is open enough to block anything.
 
-Run it before and after, on the 47 Metron-labelled fixtures, and compare
-`top_issue_id` and the per-fixture `issues_list` count from `api_call_counts`
-(cache-independent). It needs `/Volumes/Media` mounted and real credentials;
-`make calibrate` takes no arguments and defaults to `fixtures.json`, so invoke
-the module directly. The harness never reads `outcome_stats`, so for HTTP-level
-page counts either read the end-of-run `outcome_stats` `issue_list` total per
-pass with the mokkari cache wiped for both passes, or capture
-`outcome_stats.api_snapshot()` deltas per fixture in `_score_one`. The DB-load
-half of the question is Brian's to answer either way.
+The DB-load half of the question remains Brian's to answer.
