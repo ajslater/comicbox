@@ -251,7 +251,7 @@ def test_comicvine_per_volume_loop_still_degrades_on_api_error(monkeypatch) -> N
     )
 
 
-# --- Metron: the ±1 year-retry loop -----------------------------------------
+# --- Metron: the wide fallback ----------------------------------------------
 
 
 def _metron_source() -> MetronOnlineSource:
@@ -264,42 +264,46 @@ def _metron_profile() -> ComicProfile:
     return ComicProfile(series="Foo Comics", issue="5", year=2020)
 
 
-def test_metron_year_retry_loop_propagates_abort(monkeypatch) -> None:
-    """The Y-1 retry must not swallow an abort to give Y+1 a turn."""
-    src = _metron_source()
-    calls: list[int | None] = []
+def _metron_search(src: MetronOnlineSource, monkeypatch) -> list:
+    """Run `search()` with the session and the quota gate stubbed out."""
+    monkeypatch.setattr(src, "_get_session", lambda: _NO_SESSION)
+    monkeypatch.setattr(src, "_may_start_cold_search", lambda: True)
+    return src.search(_metron_profile())
 
-    def fake_fetch(session, profile, *, cover_year_override, include_volume):
-        calls.append(cover_year_override)
-        if cover_year_override is None:
-            return []  # year-exact miss → the retry cascade runs
+
+def test_metron_wide_fallback_propagates_abort(monkeypatch) -> None:
+    """The fallback must not swallow an abort the way it swallows failures."""
+    src = _metron_source()
+    calls: list[bool] = []
+
+    def fake_fetch(session, profile, *, wide=False):
+        calls.append(wide)
+        if not wide:
+            return []  # exact miss → the fallback runs
         raise _abort()
 
     monkeypatch.setattr(src, "_fetch_candidates_by_name", fake_fetch)
 
     with pytest.raises(OnlineLookupAbortedError):
-        src._search_with_year_retry(_NO_SESSION, _metron_profile(), include_volume=True)
+        _metron_search(src, monkeypatch)
 
-    # Aborted on the first retry; Y+1 never got its turn.
-    assert calls == [None, 2019]
+    # Exactly two calls: the exact one and the fallback that aborted.
+    assert calls == [False, True]
 
 
-def test_metron_year_retry_loop_still_tries_the_sibling_year(monkeypatch) -> None:
-    """An ordinary retry failure still lets the other ±1 year run."""
+def test_metron_wide_fallback_degrades_on_an_ordinary_failure(monkeypatch) -> None:
+    """A source-side failure in the fallback is logged and read as no match."""
     src = _metron_source()
-    calls: list[int | None] = []
+    calls: list[bool] = []
 
-    def fake_fetch(session, profile, *, cover_year_override, include_volume):
-        calls.append(cover_year_override)
-        if cover_year_override == 2019:
+    def fake_fetch(session, profile, *, wide=False):
+        calls.append(wide)
+        if wide:
             msg = "metron 500"
             raise RuntimeError(msg)
         return []
 
     monkeypatch.setattr(src, "_fetch_candidates_by_name", fake_fetch)
 
-    assert (
-        src._search_with_year_retry(_NO_SESSION, _metron_profile(), include_volume=True)
-        == []
-    )
-    assert calls == [None, 2019, 2021]
+    assert _metron_search(src, monkeypatch) == []
+    assert calls == [False, True]

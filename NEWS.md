@@ -1,5 +1,14 @@
 # 📰 News
 
+## v5.1.2
+
+- Features
+    - The end-of-run Metron summary counts connection failures and responses
+      that arrived without rate-limit headers.
+
+- Performance
+    - A Metron search that misses now costs 2 API requests instead of up to 6.
+
 ## v5.1.1
 
 - Features

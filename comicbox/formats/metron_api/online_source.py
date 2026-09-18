@@ -162,6 +162,50 @@ def _bi_series_id(bi_series: Any) -> int | None:
     return getattr(bi_series, "id", None) if bi_series is not None else None
 
 
+def _bi_series_volume(bi_series: Any) -> int | None:
+    """
+    Pull the ordinal volume off `BaseIssue.series`.
+
+    `BasicSeries.volume` is a required int on every issue-list row, so
+    this is None only when the nested object itself is missing. The wide
+    fallback ranks on it, which is the whole reason it is carried.
+    """
+    return getattr(bi_series, "volume", None) if bi_series is not None else None
+
+
+def _select_precedence_tier(
+    candidates: list[Candidate], *, year: int, volume: int | None
+) -> list[Candidate]:
+    """
+    Reproduce the old cascade's precedence from one call's rows.
+
+    The six-call cascade never ranked anything: it stopped at the first
+    call that returned rows, so the ORDER of the calls was the ranking.
+    Best was volume-and-year-exact, then the same volume at Y±1, then any
+    volume at the exact year, then any volume at Y±1. Returning the first
+    non-empty tier gives the matcher the same candidate set it saw
+    before — which matters, because the matcher has no volume signal of
+    its own, and handing it the whole three-year window instead would
+    flip an adjacent-year reboot from a solo auto-write to a prompt (or,
+    under `eager`, to the wrong volume by `volume_id` order).
+
+    With no volume in the profile the first two tiers are empty by
+    definition and this is a plain exact-year-first split.
+    """
+    volume_matched = (
+        [c for c in candidates if c.summary.volume == volume]
+        if volume is not None
+        else []
+    )
+    for pool in (volume_matched, candidates):
+        exact_year = [c for c in pool if c.summary.year == year]
+        if exact_year:
+            return exact_year
+        if pool:
+            return pool
+    return []
+
+
 def _issue_url(issue_id: int) -> str:
     """
     Metron's web page for an issue.
@@ -460,28 +504,23 @@ class MetronOnlineSource(OnlineSource):
         self,
         profile: ComicProfile,
         *,
-        cover_year_override: int | None,
         include_volume: bool,
     ) -> dict[str, Any]:
         """
         Build filters shared by the series_id-keyed and series_name-keyed builders.
 
-        ``cover_year_override`` lets the ±1 retry-on-miss path supply a
-        neighboring year. When None, ``profile.year`` is used as-is.
-
-        ``include_volume`` is the toggle for the drop-volume retry path:
-        passing False omits Metron's ``series_volume`` filter even when
-        ``profile.volume`` is set.
+        ``include_volume`` is the toggle for the ``--series-id`` fast
+        path: passing False omits Metron's ``series_volume`` filter even
+        when ``profile.volume`` is set, because a user who named the
+        series id has been explicit and the soft volume filter would only
+        risk a false zero.
         """
         params: dict[str, Any] = {}
         # Strip leading zeros — Metron stores `number` without padding.
         if number := strip_issue_leading_zeros(profile.issue):
             params["number"] = number
-        cover_year = (
-            cover_year_override if cover_year_override is not None else profile.year
-        )
-        if cover_year is not None:
-            params["cover_year"] = cover_year
+        if profile.year is not None:
+            params["cover_year"] = profile.year
         if include_volume and profile.volume is not None:
             params["series_volume"] = profile.volume
         return params
@@ -491,7 +530,6 @@ class MetronOnlineSource(OnlineSource):
         profile: ComicProfile,
         series_id: int,
         *,
-        cover_year_override: int | None = None,
         include_volume: bool = True,
     ) -> dict[str, Any]:
         """
@@ -507,11 +545,7 @@ class MetronOnlineSource(OnlineSource):
         """
         params: dict[str, Any] = {"series_id": series_id}
         params.update(
-            self._build_common_issue_filters(
-                profile,
-                cover_year_override=cover_year_override,
-                include_volume=include_volume,
-            )
+            self._build_common_issue_filters(profile, include_volume=include_volume)
         )
         return params
 
@@ -519,7 +553,6 @@ class MetronOnlineSource(OnlineSource):
         self,
         profile: ComicProfile,
         *,
-        cover_year_override: int | None = None,
         include_volume: bool = True,
     ) -> dict[str, Any]:
         """
@@ -535,12 +568,30 @@ class MetronOnlineSource(OnlineSource):
         """
         params: dict[str, Any] = {"series_name": profile.series}
         params.update(
-            self._build_common_issue_filters(
-                profile,
-                cover_year_override=cover_year_override,
-                include_volume=include_volume,
-            )
+            self._build_common_issue_filters(profile, include_volume=include_volume)
         )
+        return params
+
+    def _build_wide_issue_params_by_name(self, profile: ComicProfile) -> dict[str, Any]:
+        """
+        Build the one wide fallback call: name + number over a 3-year window.
+
+        Metron's `cover_date_range_after` / `cover_date_range_before`
+        filters (server #628) let one request cover what the old cascade
+        spent up to five on: Y-1, Y and Y+1, with and without the volume
+        filter. The volume filter is dropped here rather than retried
+        separately — `_select_precedence_tier` reproduces the order the
+        old calls ran in, from rows this single call already returned.
+
+        With no year there is no range to send, and the call degrades to
+        exactly the old drop-volume call: name + number.
+        """
+        params: dict[str, Any] = {"series_name": profile.series}
+        if number := strip_issue_leading_zeros(profile.issue):
+            params["number"] = number
+        if profile.year is not None:
+            params["cover_date_range_after"] = f"{profile.year - 1}-01-01"
+            params["cover_date_range_before"] = f"{profile.year + 1}-12-31"
         return params
 
     def _to_candidate(
@@ -569,6 +620,7 @@ class MetronOnlineSource(OnlineSource):
             page_count=None,
             cover_url=str(base_issue.image) if base_issue.image else None,
             variant_label=None,
+            volume=_bi_series_volume(bi_series),
         )
         return Candidate(
             source=self.name,
@@ -717,7 +769,8 @@ class MetronOnlineSource(OnlineSource):
         """
         Search Metron via a direct issues_list(series_name=...) call.
 
-        No series-discovery step, no per-series fan-out.
+        No series-discovery step, no per-series fan-out, and at most two
+        requests: the exact call, and one wide fallback when it misses.
 
         Not decorated with ``@with_retry()``: every API call inside is
         individually retried by its leaf wrapper (`_issues_list_with_retry`),
@@ -755,23 +808,10 @@ class MetronOnlineSource(OnlineSource):
             )
             return []
 
-        candidates = self._search_with_year_retry(session, profile, include_volume=True)
-
-        # Drop-volume retry on miss. Filename-parsed `Vol. N` is moderately
-        # reliable but inconsistent — some scanners drop it, some get the
-        # number wrong. If the volume-filtered cycle (year-exact + Y±1)
-        # returned nothing, retry the whole cycle without the volume
-        # filter. Skipped if no volume was filtering in the first place.
-        if not candidates and profile.volume is not None:
-            logger.info(
-                f"online {self.name}: 0 candidates with series_volume="
-                f"{profile.volume}, retrying without the volume filter"
-            )
-            candidates = self._search_with_year_retry(
-                session, profile, include_volume=False
-            )
-
-        return candidates
+        candidates = self._search_exact(session, profile)
+        if candidates:
+            return candidates
+        return self._search_wide(session, profile)
 
     def _may_start_cold_search(self) -> bool:
         """
@@ -803,79 +843,145 @@ class MetronOnlineSource(OnlineSource):
         session: Session,
         profile: ComicProfile,
         *,
-        cover_year_override: int | None,
-        include_volume: bool,
+        wide: bool = False,
     ) -> list[Candidate]:
-        """One issues_list call filtered by series_name (+ number/year/volume)."""
-        params = self._build_issue_params_by_name(
-            profile,
-            cover_year_override=cover_year_override,
-            include_volume=include_volume,
+        """
+        One issues_list call filtered by series_name.
+
+        ``wide`` swaps the exact filters (cover_year + series_volume) for
+        the fallback's three-year cover-date range and no volume. Both
+        shapes go through here so there is exactly one place a search
+        spends a request by name.
+        """
+        params = (
+            self._build_wide_issue_params_by_name(profile)
+            if wide
+            else self._build_issue_params_by_name(profile)
         )
         issues = self._issues_list_with_retry(session, params)
         return [self._to_candidate(i) for i in issues]
 
-    def _search_with_year_retry(
-        self,
-        session: Session,
-        profile: ComicProfile,
-        *,
-        include_volume: bool,
-    ) -> list[Candidate]:
+    def _search_exact(self, session: Session, profile: ComicProfile) -> list[Candidate]:
         """
-        Year-exact pass plus ±1 retry on miss; volume filter is optional.
+        Make the first and usually only call: name + number + year [+ volume].
 
-        Cover-date drift is real: a comic published in late 2019 can be
-        cover-dated 2020-01. When the year-exact pass returns zero, retry
-        with Y-1 then Y+1. Skipped if there's no year to relax.
-
-        Failure semantics are deliberately asymmetric: the year-exact
-        (primary) call's exception is logged and re-raised — a hard
-        failure here means the whole search failed, not "0 results."
-        Each ±1 retry attempt's exception is logged and swallowed so its
-        sibling still gets a chance, mirroring the old per-series fan-out's
-        "one bad target doesn't kill the others" resilience at the new
-        unit of fan-out (retry attempts instead of series).
+        Keeps the raise-on-failure contract the whole search is built on:
+        a hard failure here means the search failed, not that Metron has
+        nothing. Only a genuine empty result may fall through to the
+        fallback.
         """
         try:
-            candidates = self._fetch_candidates_by_name(
-                session,
-                profile,
-                cover_year_override=None,
-                include_volume=include_volume,
-            )
+            return self._fetch_candidates_by_name(session, profile)
         except Exception as exc:
             logger.warning(
                 f"online {self.name}: issue-list for series_name="
                 f"{profile.series!r} failed: {exc}"
             )
             raise
-        if not candidates and profile.year is not None:
-            for delta in (-1, 1):
-                retry_year = profile.year + delta
-                logger.info(
-                    f"online {self.name}: 0 candidates at year={profile.year}, "
-                    f"retrying with cover_year={retry_year}"
-                )
-                try:
-                    retry = self._fetch_candidates_by_name(
-                        session,
-                        profile,
-                        cover_year_override=retry_year,
-                        include_volume=include_volume,
-                    )
-                except OnlineLookupAbortedError:
-                    # An abort ends the whole lookup; it is not a
-                    # source-side failure to degrade past.
-                    raise
-                except Exception as exc:
-                    logger.warning(
-                        f"online {self.name}: issue-list retry at "
-                        f"cover_year={retry_year} failed: {exc}"
-                    )
-                    continue
-                candidates.extend(retry)
-        return candidates
+
+    def _search_wide(self, session: Session, profile: ComicProfile) -> list[Candidate]:
+        """
+        One wide call replacing the old five-call miss cascade.
+
+        The old shape was a year cycle (Y, then Y-1 and Y+1) run twice —
+        once with `series_volume` and once without — because both filters
+        are guesses a filename made. Cover-date drift is real (a comic
+        published in late 2019 can be cover-dated 2020-01) and a
+        filename's `Vol. N` is inconsistent (some scanners drop it, some
+        get it wrong), so both had to be relaxed. That cost up to six
+        requests to answer one question.
+
+        `cover_date_range_after` / `_before` collapse the year cycle into
+        one filter, and dropping `series_volume` collapses the two cycles
+        into one call. What the cascade's ORDER used to encode — a
+        volume-and-year hit beats a volume hit beats a year hit — is
+        reproduced from the returned rows by `_select_precedence_tier`,
+        so the candidate set is the one the six calls produced.
+
+        Failure here is not failure of the search: an exception is logged
+        and swallowed, mirroring what the per-year retries did, and an
+        abort is re-raised because it ends the whole lookup rather than
+        being a source-side failure to degrade past.
+        """
+        if not self._wide_fallback_worth_a_call(profile):
+            return []
+        logger.info(
+            f"online {self.name}: 0 candidates for series_name="
+            f"{profile.series!r} at cover_year={profile.year}"
+            f"{f', series_volume={profile.volume}' if profile.volume else ''}; "
+            "retrying wide"
+        )
+        try:
+            candidates = self._fetch_candidates_by_name(session, profile, wide=True)
+        except OnlineLookupAbortedError:
+            # An abort ends the whole lookup; it is not a source-side
+            # failure to degrade past.
+            raise
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: wide issue-list retry for series_name="
+                f"{profile.series!r} failed: {exc}"
+            )
+            return []
+        if profile.year is None:
+            # No range was sent, so there is nothing to guard and no year
+            # to rank by. This call IS the old drop-volume call, which
+            # returned every row it got.
+            return candidates
+        candidates = self._drop_out_of_range(candidates, profile.year)
+        return _select_precedence_tier(
+            candidates, year=profile.year, volume=profile.volume
+        )
+
+    def _wide_fallback_worth_a_call(self, profile: ComicProfile) -> bool:
+        """
+        Whether the wide call would ask Metron anything new.
+
+        One case where it would not, and one where asking would cost far
+        more than the answer is worth:
+
+        - No issue number. The old cascade ran in full here, and a wide
+          call with only a series name paginates every issue of every
+          series whose name matches. A deliberate cost cut, not parity:
+          the matcher has nothing to pick between those rows with anyway.
+        - No year AND no volume. Call 1 was already name + number, so the
+          fallback would repeat it verbatim.
+        """
+        if not strip_issue_leading_zeros(profile.issue):
+            logger.debug(
+                f"online {self.name}: no issue number; skipping the wide "
+                "retry rather than paginating a whole series"
+            )
+            return False
+        # With neither a year nor a volume, call 1 was already
+        # name + number and the fallback would repeat it verbatim.
+        return not (profile.year is None and profile.volume is None)
+
+    def _drop_out_of_range(
+        self, candidates: list[Candidate], year: int
+    ) -> list[Candidate]:
+        """
+        Enforce the cover-date window the server was asked for.
+
+        DRF ignores filter params it does not recognize, so a Metron that
+        predates server #628 — or one rolled back — answers the wide call
+        with every issue of the series ever published, silently. That is
+        not a wider search, it is a different one: the tiering below would
+        rank a 1987 issue against a 2020 profile. Dropping the rows the
+        range should already have excluded makes the guard exact, since
+        `cover_date` is non-null on Metron's side and on ours.
+        """
+        allowed = (year - 1, year, year + 1)
+        kept = [c for c in candidates if c.summary.year in allowed]
+        if len(kept) != len(candidates):
+            warn_once(
+                "metron:cover-date-range-ignored",
+                f"online {self.name}: Metron returned issues outside the "
+                "requested cover-date range, so it is ignoring "
+                "cover_date_range_after/_before. Filtering locally; a "
+                "server that supports the filter would not have sent them.",
+            )
+        return kept
 
     @with_retry()
     def _issues_list_with_retry(
@@ -884,10 +990,8 @@ class MetronOnlineSource(OnlineSource):
         """
         Per-call retry wrapper around `session.issues_list`.
 
-        `search()`'s year-retry cascade fires at most 3 calls per
-        `include_volume` cycle (year-exact + Y-1 + Y+1), times at most 2
-        cycles (with-volume, drop-volume) — at most 6 `issues_list` calls
-        per search.
+        `search()` fires at most 2 `issues_list` calls: the exact one,
+        and the wide fallback when it misses.
 
         `PacedSession` admits every one of those through this credential
         set's `RateGate`, so under `-j N` they queue instead of colliding

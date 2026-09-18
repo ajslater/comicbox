@@ -58,6 +58,13 @@ class CandidateSummary:
     # BasicSeries has no `alt_names`. `s_series` scores best-of over
     # `series` and these.
     alt_series: tuple[str, ...] = ()
+    # The series' ordinal volume ("Vol. N"), when the search result
+    # carries one. Metron's `BasicSeries.volume` is a required int on
+    # every issue-list row; ComicVine's search results have no
+    # equivalent, so they leave it None. Read by Metron's wide fallback
+    # to reproduce client-side the precedence its old six-call cascade
+    # got from the order it made the calls in.
+    volume: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +164,7 @@ def _resolve_volume(md: dict) -> int | None:
     (comictagger writes it that way), but Metron's `series_volume`
     filter expects an ordinal (1, 2, 3 — "Vol. N of M"). Sending the
     year as `series_volume` matches no issues and wastes API budget on
-    the drop-volume retry.
+    the wide fallback.
 
     A real volume "Vol. 2019 of 9999" doesn't exist in the wild —
     real ordinal volumes are well under 50 in practice. Treating

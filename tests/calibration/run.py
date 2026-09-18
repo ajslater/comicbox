@@ -940,10 +940,10 @@ def _score_fixture_source(
     outcomes.append(outcome)
 
 
-# Metron's search() cascade: year-exact + Y±1 (3 calls) x up to 2 cycles
-# (with-volume, drop-volume) = at most 6 issues_list calls per search. No
-# series-discovery step to bound separately since mokkari 3.28.0.
-_METRON_MAX_CALLS_PER_SEARCH = 6
+# Metron's search(): the exact issues_list call, plus one wide
+# cover_date_range fallback when it misses = at most 2 calls per search.
+# No series-discovery step to bound separately since mokkari 3.28.0.
+_METRON_MAX_CALLS_PER_SEARCH = 2
 
 
 def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
@@ -952,11 +952,11 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
 
     Per fixture, each source's search costs up to:
 
-      Metron: a fixed-size issues_list(series_name=...) cascade — at most
-              6 calls (year-exact + Y±1, x up to 2 cycles for the
-              drop-volume retry). No series-discovery step since Metron
-              server commit 3b1e46b / mokkari 3.28.0 put series.id
-              directly on issue-list results.
+      Metron: at most 2 issues_list(series_name=...) calls — the exact
+              one, and one wide cover_date_range fallback when it misses.
+              No series-discovery step since Metron server commit 3b1e46b
+              / mokkari 3.28.0 put series.id directly on issue-list
+              results.
       CV:     1 search       + N list_issues (N ≤ _MAX_VOLUMES_PER_SEARCH = 20)
 
     Documented rate limits: Metron 20/min per user (daily limit
@@ -987,7 +987,7 @@ def _print_cost_estimate(n_fixtures: int, sources: list[OnlineSource]) -> None:
                 f"means at least {total}s pacing."
             )
     if "metron" in source_names:
-        # Fixed-size cascade, no discovery step — see the docstring above.
+        # Two calls at worst, no discovery step — see the docstring above.
         per = _METRON_MAX_CALLS_PER_SEARCH
         total = n_fixtures * per
         # Metron's 20/min is the binding constraint at typical fixture counts.
@@ -1300,8 +1300,8 @@ def _build_argparser() -> argparse.ArgumentParser:
         help=(
             "Override the per-fixture volume-search breadth cap for "
             "ComicVine (default 20; total cost per fixture is N+1). "
-            "Metron's search is a fixed-size single-call cascade with "
-            "nothing to cap, so this flag no longer affects it. Lowering "
+            "Metron's search is at most two calls with nothing to cap, "
+            "so this flag no longer affects it. Lowering "
             "this dramatically reduces smoke-test cost for ComicVine — "
             "but it also narrows what's calibrated, since correct matches "
             "outside the top-N volume search will look like 'no "
@@ -1390,7 +1390,7 @@ def _apply_max_per_search_override(args: argparse.Namespace) -> None:
     Honor --max-per-search by patching the per-source class cap.
 
     ComicVine-only: its search still fans out per-volume, so capping the
-    breadth caps cost. Metron's search is a fixed-size single-call cascade
+    breadth caps cost. Metron's search is at most two calls
     (see `_METRON_MAX_CALLS_PER_SEARCH`) with nothing left to cap.
     """
     if args.max_per_search is None:

@@ -17,8 +17,12 @@ constant below is only what the gate paces at before it has been told.
 
 Sources:
 - Metron: the burst window is `DEFAULT_THROTTLE_RATES["burst"]` in the
-  server's settings — 20/minute at the time of writing, and the header
-  is the truth if that changes. The daily sustained limit starts at
+  server's settings. 20/minute is the documented floor and the only
+  figure Metron's maintainer will commit to publishing; production
+  commonly reports 45-60 and is dialled back toward 20 on peak days. So
+  the constant below is a floor to start at, never a ceiling to assume,
+  and the header is authoritative in both directions — the gate adopts a
+  drop as readily as a rise. The daily sustained limit starts at
   5,000/day and is raised for OpenCollective donors (up to 25,000/day),
   so there is no constant to cite for it.
   https://metron.cloud/ — see also mokkari/session.py
@@ -30,9 +34,13 @@ from __future__ import annotations
 
 from typing import Final
 
-# What `RateGate` paces at until Metron reports its own burst limit,
-# and what the run estimator prices a run with. See the module docstring:
-# the header wins the moment one arrives.
+# Metron's documented burst floor. Two jobs, both of them provisional:
+# the pace `RateGate` uses before any response has arrived, and the
+# estimator's fallback for a source no gate has talked to yet. It is NOT
+# a lower bound on either — `source_rate_per_minute` prefers the live
+# gate's reported limit, and a self-hosted instance that reports 10 is
+# both paced and priced at 10. See the module docstring: the header
+# wins the moment one arrives, upward or downward.
 METRON_DEFAULT_PER_MINUTE: Final[int] = 20
 # simyan enforces these internally (hardcoded literals, no importable
 # constant), so these are the only place the numbers appear by name.

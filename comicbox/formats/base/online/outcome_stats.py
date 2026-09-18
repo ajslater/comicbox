@@ -12,6 +12,11 @@ run so the runner can print a summary like:
 
 Process-wide singleton; reset at the start of each `Runner.run()`.
 Thread-safe so `-j N` parallel batches contribute correctly.
+
+Only the CLI prints any of this: `Runner.run()` is the sole caller of
+`summary_lines()`. An embedding application (codex) logs its own spend,
+so a counter an embedder needs has to be readable from `api_snapshot()`
+rather than waited for in a summary that is never printed there.
 """
 
 from __future__ import annotations
@@ -35,6 +40,18 @@ class _ApiCounts:
     requests: dict[str, int] = field(default_factory=dict)
     rejections: int = 0
     blocked_seconds: float = 0.0
+    # Responses that carried no `X-RateLimit-*` header at all, by HTTP
+    # status. A genuine Metron `/api/` response of ANY status carries
+    # them: DRF runs its throttles in `initial()`, before any view code,
+    # before the conditional GET's 304 and before `X-Cache`. So their
+    # absence proves the answer came from something in front of Django
+    # rather than from the API, and bucketing by status catches an Anubis
+    # challenge page (served as HTTP 200 HTML) as readily as a 429.
+    unthrottled: dict[int, int] = field(default_factory=dict)
+    # Sends that never produced a response: mokkari wraps `requests`
+    # ConnectionError and ReadTimeout in `ApiError`. This is the shape a
+    # firewall-level ban takes, where the client only ever sees timeouts.
+    connection_failures: int = 0
     burst_limit: int | None = None
     burst_remaining: int | None = None
     sustained_limit: int | None = None
@@ -135,6 +152,17 @@ class _OutcomeStats:
         with self._lock:
             self._api_bucket_for(source_name).rejections += 1
 
+    def record_unthrottled_response(self, source_name: str, status: int) -> None:
+        """Record a response that carried no rate-limit headers, by status."""
+        with self._lock:
+            bucket = self._api_bucket_for(source_name)
+            bucket.unthrottled[status] = bucket.unthrottled.get(status, 0) + 1
+
+    def record_connection_failure(self, source_name: str) -> None:
+        """Record a send that never produced a response (transport failure)."""
+        with self._lock:
+            self._api_bucket_for(source_name).connection_failures += 1
+
     def record_rate_limit_windows(
         self,
         source_name: str,
@@ -187,8 +215,8 @@ class _OutcomeStats:
 
 
 def _copy_api(c: _ApiCounts) -> _ApiCounts:
-    """Deep-enough copy: the only mutable member is the request map."""
-    return replace(c, requests=dict(c.requests))
+    """Deep-enough copy: the only mutable members are the count maps."""
+    return replace(c, requests=dict(c.requests), unthrottled=dict(c.unthrottled))
 
 
 def _format_api_lines(per_source: dict[str, _ApiCounts]) -> list[str]:
@@ -202,25 +230,64 @@ def _format_api_lines(per_source: dict[str, _ApiCounts]) -> list[str]:
     """
     lines: list[str] = []
     for src in sorted(per_source):
-        api = per_source[src]
-        total = sum(api.requests.values())
-        if not total and not api.rejections:
-            continue
-        breakdown = ", ".join(
-            f"{count} {endpoint}" for endpoint, count in sorted(api.requests.items())
-        )
-        lines.append(f"  {src} API: {total} requests ({breakdown})")
-        detail: list[str] = []
-        if api.rejections:
-            detail.append(f"{api.rejections} rate-limited")
-        if api.blocked_seconds >= 1.0:
-            detail.append(f"{api.blocked_seconds:.0f}s paced")
-        if detail:
-            lines.append(f"    {', '.join(detail)}")
-        budget = _format_budget(api)
-        if budget:
-            lines.append(f"    remaining: {budget}")
+        lines.extend(_format_source_api_lines(src, per_source[src]))
     return lines
+
+
+def _format_source_api_lines(src: str, api: _ApiCounts) -> list[str]:
+    """Format one source's block: the header row and whichever rows apply."""
+    total = sum(api.requests.values())
+    if not total and not api.rejections:
+        return []
+    breakdown = ", ".join(
+        f"{count} {endpoint}" for endpoint, count in sorted(api.requests.items())
+    )
+    rows = (_format_detail(api), _format_unthrottled(api), _format_budget_row(api))
+    lines = [f"  {src} API: {total} requests ({breakdown})"]
+    lines.extend(f"    {row}" for row in rows if row)
+    return lines
+
+
+def _format_detail(api: _ApiCounts) -> str:
+    """Summarize what the server refused, what never arrived, and pacing cost."""
+    detail: list[str] = []
+    if api.rejections:
+        detail.append(f"{api.rejections} rate-limited")
+    if api.connection_failures:
+        detail.append(_plural(api.connection_failures, "connection failure"))
+    if api.blocked_seconds >= 1.0:
+        detail.append(f"{api.blocked_seconds:.0f}s paced")
+    return ", ".join(detail)
+
+
+def _format_budget_row(api: _ApiCounts) -> str:
+    """Where the quota stands, or nothing when the server never said."""
+    budget = _format_budget(api)
+    return f"remaining: {budget}" if budget else ""
+
+
+def _plural(count: int, noun: str) -> str:
+    """Render `count noun` with a naive plural, for summary prose."""
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
+def _format_unthrottled(api: _ApiCounts) -> str:
+    """
+    Report responses that arrived with no rate-limit headers, by status.
+
+    Deliberately not "429s without headers": a header-less response of
+    any status is the interesting event, because it did not come from
+    Metron's API layer at all. Counting every status catches a proxy
+    error page and a bot-check challenge — which are served as HTTP 200 —
+    without inspecting a single response body.
+    """
+    if not api.unthrottled:
+        return ""
+    total = sum(api.unthrottled.values())
+    by_status = ", ".join(
+        f"{status}: {count}" for status, count in sorted(api.unthrottled.items())
+    )
+    return f"{_plural(total, 'response')} without rate-limit headers ({by_status})"
 
 
 def _format_budget(api: _ApiCounts) -> str:
@@ -313,6 +380,8 @@ record_no_match = _STATS.record_no_match
 record_explicit_id = _STATS.record_explicit_id
 record_http_request = _STATS.record_http_request
 record_rate_limit_rejection = _STATS.record_rate_limit_rejection
+record_unthrottled_response = _STATS.record_unthrottled_response
+record_connection_failure = _STATS.record_connection_failure
 record_rate_limit_windows = _STATS.record_rate_limit_windows
 api_snapshot = _STATS.api_snapshot
 has_any_activity = _STATS.has_any_activity
