@@ -11,7 +11,12 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
-from comicbox.events import BatchFinished, BatchStarted, Event, FileParsed
+from comicbox.events import (
+    BatchFinished,
+    BatchStarted,
+    Event,
+    FileParsed,
+)
 from comicbox.write import (
     BulkWriteItem,
     WriteValidationError,

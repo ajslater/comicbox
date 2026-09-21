@@ -10,7 +10,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.read import ComicboxArchiveRead
-from comicbox.exceptions import ArchiveWriteError
+from comicbox.exceptions import ArchiveWriteError, DestinationOccupiedError
 from comicbox.formats.sources import MetadataSources
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
@@ -26,13 +26,12 @@ _INFLIGHT_DESTINATIONS: set[Path] = set()
 _INFLIGHT_GUARD = Lock()
 
 
-def _claim_destination(path: Path) -> None:
+def _claim_destination(destination: Path, source: Path) -> None:
     """Take a conversion destination, refusing one already in flight."""
     with _INFLIGHT_GUARD:
-        if path in _INFLIGHT_DESTINATIONS:
-            reason = f"{path} is already being written by another archive."
-            raise ArchiveWriteError(reason)
-        _INFLIGHT_DESTINATIONS.add(path)
+        if destination in _INFLIGHT_DESTINATIONS:
+            raise DestinationOccupiedError(source, destination, "inflight")
+        _INFLIGHT_DESTINATIONS.add(destination)
 
 
 def _release_destination(path: Path) -> None:
@@ -53,15 +52,36 @@ _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
 class ComicboxArchiveWrite(ComicboxArchiveRead):
     """Comicboxs methods for writing to the archive."""
 
-    def _get_new_archive_path(self) -> Path:
+    def get_write_destination(self) -> Path:
+        """
+        Where a write of this archive lands: in place, or the CBZ it repacks to.
+
+        Decided from the sniffed archive type (``_archive_cls`` /
+        ``_archive_is_pdf``) and ``convert.cbz`` -- never from the suffix. A
+        zip is rewritten in place whatever it is called; a PDF is updated in
+        place unless ``convert.cbz`` asks for a repack; everything else
+        (CBR/CBT/CB7) is unwritable and repacks to ``<stem>.cbz``.
+        """
         if not self._path:
-            reason = "Cannot write zipfile metadata without a path."
+            reason = "Cannot write archive metadata without a path."
             raise ArchiveWriteError(reason)
-        new_path = self._path.with_suffix(_CBZ_SUFFIX)
-        if new_path.is_file() and new_path != self._path:
-            reason = f"{new_path} already exists."
-            raise ArchiveWriteError(reason)
-        return new_path
+        is_zip = self._archive_cls == ZipFile
+        is_pdf_in_place = self._archive_is_pdf and not self._config.convert.cbz
+        if is_zip or is_pdf_in_place:
+            return self._path
+        return self._path.with_suffix(_CBZ_SUFFIX)
+
+    def _get_new_archive_path(self) -> Path:
+        """Return the conversion destination, refusing one already on disk."""
+        destination = self.get_write_destination()
+        if destination != self._path and destination.is_file():
+            # self._path is non-None: get_write_destination raised otherwise.
+            raise DestinationOccupiedError(
+                self._path,  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+                destination,
+                "convert",
+            )
+        return destination
 
     def _cleanup_tmp_archive(self, tmp_path: Path, new_path: Path) -> None:
         if not self._archive_cls or not self._path:
@@ -234,26 +254,20 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
         Every write claims its destination, not just the conversions. An
         in-place rewrite is as destructive as a conversion when two writers
-        overlap on it -- ``bulk_write`` does not deduplicate paths, so one
-        archive named twice in a batch used to be repacked by both threads
-        at once -- and the finished-file check cannot see a write that is
-        still in flight.
+        overlap on it -- ``bulk_write``'s preflight refuses a path named
+        twice; the claim is the backstop for concurrent callers -- and the
+        finished-file check cannot see a write that is still in flight.
         """
         if not self._path:
             reason = "Cannot write archive metadata without a path."
             raise ArchiveWriteError(reason)
+        destination = self.get_write_destination()
         is_zip = self._archive_cls == ZipFile
-        is_pdf_in_place = self._archive_is_pdf and not self._config.convert.cbz
-        destination = (
-            self._path
-            if is_zip or is_pdf_in_place
-            else self._path.with_suffix(_CBZ_SUFFIX)
-        )
-        _claim_destination(destination)
+        _claim_destination(destination, self._path)
         try:
             if is_zip:
                 self._patch_zipfile(files, comment)
-            elif is_pdf_in_place:
+            elif destination == self._path:
                 self._update_pdffile(files, mupdf_metadata)
             else:
                 self._create_zipfile(files, comment)

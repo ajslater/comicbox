@@ -44,15 +44,20 @@ from comicbox.events import (
     FileParsed,
     FileShortCircuited,
 )
+from comicbox.exceptions import ComicboxError
 
-# Historical import path for WriteValidationError; the definition lives in
-# comicbox.exceptions so it shares the ComicboxError base without cycles. The
-# redundant alias marks it as an explicit re-export for the old path.
+# Historical import path for the write exceptions; the definitions live in
+# comicbox.exceptions so they share the ComicboxError base without cycles. The
+# redundant alias marks each as an explicit re-export for the old path.
+from comicbox.exceptions import (
+    DestinationOccupiedError as DestinationOccupiedError,  # noqa: PLC0414
+)
 from comicbox.exceptions import (
     WriteValidationError as WriteValidationError,  # noqa: PLC0414
 )
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.predict import predict_write_destination
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Iterator
@@ -89,6 +94,22 @@ class WriteResult:
     # unless the config sets ``general.delete_orig``). None for dry runs,
     # errors, and cancellations, which leave the archive untouched.
     final_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _BatchOptions:
+    """The settings every stage of the bulk-write pipeline reads."""
+
+    # How many writes may be in the pool at once.
+    window: int
+    base_config: ComicboxSettings | None
+    # The caller's item count, which preflight failures do not reduce:
+    # every event still reports a position in the submitted list.
+    total: int
+    on_event: EventHandler | None
+    stop_on_error: bool
+    cancel: threading.Event | None
+    preflight: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,14 +199,8 @@ def write_metadata(
 
 def _run_bulk_write(
     pool: ThreadPoolExecutor,
-    items: list[BulkWriteItem],
-    *,
-    window: int,
-    base_config: ComicboxSettings | None,
-    total: int,
-    on_event: EventHandler | None,
-    stop_on_error: bool,
-    cancel: threading.Event | None,
+    indexed_items: Iterable[tuple[int, BulkWriteItem]],
+    options: _BatchOptions,
 ) -> Iterator[tuple[WriteResult, bool]]:
     """
     Submit a bounded window of items, drain completions, refill.
@@ -193,26 +208,25 @@ def _run_bulk_write(
     Draining leads submission so a tripped ``cancel`` event genuinely stops
     work: unsubmitted items are never handed to the pool and are yielded as
     cancelled results. Yields (result, ok) pairs.
+
+    Items arrive pre-enumerated: the preflight drops failures from the
+    batch, and the survivors keep the index they were submitted under so
+    their events still report their own position in the caller's list.
     """
-    queue = deque(enumerate(items))
+    cancel = options.cancel
+    queue = deque(indexed_items)
     pending: dict[Future, tuple[int, BulkWriteItem]] = {}
     while pending or queue:
         if cancel is not None and cancel.is_set():
             yield from _flush_cancelled(queue)
         else:
-            while queue and len(pending) < window:
+            while queue and len(pending) < options.window:
                 index, item = queue.popleft()
-                future = pool.submit(_write_one, item, base_config, cancel)
+                future = pool.submit(_write_one, item, options.base_config, cancel)
                 pending[future] = (index, item)
         if not pending:
             break
-        yield from _drain_completed(
-            pending,
-            total=total,
-            on_event=on_event,
-            stop_on_error=stop_on_error,
-            cancel=cancel,
-        )
+        yield from _drain_completed(pending, options)
 
 
 def _flush_cancelled(
@@ -226,11 +240,7 @@ def _flush_cancelled(
 
 def _drain_completed(
     pending: dict[Future, tuple[int, BulkWriteItem]],
-    *,
-    total: int,
-    on_event: EventHandler | None,
-    stop_on_error: bool,
-    cancel: threading.Event | None,
+    options: _BatchOptions,
 ) -> Iterator[tuple[WriteResult, bool]]:
     """Wait for at least one completion; yield and signal cancel on error."""
     done, _running = wait(pending, return_when=FIRST_COMPLETED)
@@ -240,10 +250,104 @@ def _drain_completed(
             result = future.result()
         except Exception as exc:
             result = WriteResult(path=item.path, error=exc)
-        if result.error is not None and stop_on_error and cancel is not None:
-            cancel.set()
-        ok = _emit_write_event(result, index, total, on_event)
+        if (
+            result.error is not None
+            and options.stop_on_error
+            and options.cancel is not None
+        ):
+            options.cancel.set()
+        ok = _emit_write_event(result, index, options.total, options.on_event)
         yield result, ok
+
+
+def _preflight_destinations(
+    indexed_items: list[tuple[int, BulkWriteItem]],
+    options: _BatchOptions,
+) -> tuple[list[tuple[int, BulkWriteItem]], list[tuple[int, WriteResult]]]:
+    """
+    Sniff every destination before any archive is written.
+
+    Returns (survivors, failures) as (index, ...) pairs, both keeping the
+    caller's submission indices.
+
+    Deliberately serial, although the sniff is pure I/O and would run
+    happily on the pool: the claim map's "first submission wins" has to be
+    deterministic, and that determinism *is* the improvement over the
+    ``_INFLIGHT_DESTINATIONS`` thread race it replaces. Parallelizing this
+    loop would optimize a guarantee back into a race.
+    """
+    cancel = options.cancel
+    config = get_config(options.base_config)
+    # Destination -> the first item that claimed it. One item can't collide
+    # with itself, so a single-item batch needs no map.
+    claimed: dict[Path, Path] = {}
+    use_claim_map = len(indexed_items) > 1
+    survivors: list[tuple[int, BulkWriteItem]] = []
+    failures: list[tuple[int, WriteResult]] = []
+    cancelled_from: int | None = None
+    for position, (index, item) in enumerate(indexed_items):
+        if cancel is not None and cancel.is_set():
+            cancelled_from = position
+            break
+        error = _preflight_one(item.path, config, claimed if use_claim_map else None)
+        if error is None:
+            survivors.append((index, item))
+        else:
+            failures.append((index, WriteResult(path=item.path, error=error)))
+    if cancelled_from is not None:
+        # Cancelled mid-sniff: every item still unsniffed, and every
+        # survivor sniffed so far, is reported cancelled rather than run.
+        for index, item in indexed_items[cancelled_from:]:
+            failures.append((index, WriteResult(path=item.path, cancelled=True)))
+        for index, item in survivors:
+            failures.append((index, WriteResult(path=item.path, cancelled=True)))
+        failures.sort(key=lambda pair: pair[0])
+        survivors = []
+    return survivors, failures
+
+
+def _preflight_one(
+    path: Path,
+    config: ComicboxSettings,
+    claimed: dict[Path, Path] | None,
+) -> BaseException | None:
+    """Sniff one destination; return the error that refuses it, or None."""
+    try:
+        dest = predict_write_destination(path, base_config=config)
+    except (ComicboxError, OSError) as exc:
+        # A corrupt, missing, or unsupported archive fails here with the
+        # sniff's own error, instead of after a pool round trip.
+        return exc
+    if dest.occupied:
+        return DestinationOccupiedError(path, dest.destination, "convert")
+    if claimed is None:
+        return None
+    occupant = claimed.get(dest.destination)
+    if occupant is None:
+        claimed[dest.destination] = path
+        return None
+    if dest.converts:
+        return DestinationOccupiedError(path, dest.destination, "convert", occupant)
+    # Not a conversion, so the destination is the path itself: the same
+    # archive was submitted twice. The earlier submission is the writer in
+    # flight for it, which is what the inflight message already says.
+    return DestinationOccupiedError(path, dest.destination, "inflight", occupant)
+
+
+def _preflight_stage(
+    indexed_items: list[tuple[int, BulkWriteItem]], options: _BatchOptions
+) -> tuple[list[tuple[int, BulkWriteItem]], list[tuple[int, WriteResult]]]:
+    """Sniff every destination, then trip ``stop_on_error`` if any refused."""
+    survivors, failures = _preflight_destinations(indexed_items, options)
+    if (
+        options.stop_on_error
+        and options.cancel is not None
+        and any(result.error is not None for _index, result in failures)
+    ):
+        # Set before the pool sees anything, so the survivors flush as
+        # cancelled exactly as a worker error under stop_on_error would.
+        options.cancel.set()
+    return survivors, failures
 
 
 def _emit_batch_finished(
@@ -270,6 +374,7 @@ def bulk_write(
     stop_on_error: bool = False,
     cancel: threading.Event | None = None,
     base_config: ComicboxSettings | None = None,
+    preflight: bool = True,
 ) -> Generator[WriteResult, None, None]:
     """
     Write metadata to many files in parallel.
@@ -290,6 +395,19 @@ def bulk_write(
     one). ``on_event`` receives the shared :class:`comicbox.events`
     stream (``BatchStarted`` / ``FileParsed`` / ``FileError`` /
     ``BatchFinished``); cancelled files emit no per-file event.
+
+    ``preflight`` (default on) sniffs every destination before any
+    archive is written, on the first ``next()`` rather than at call
+    time. It refuses a batch's collisions up front -- a destination
+    already on disk, and two archives converging on one name -- so a
+    batch fails fast instead of repacking an archive and refusing it at
+    the end, and the loser of an in-batch collision is decided by
+    submission order rather than by thread race. It also fails an
+    unreadable or unsupported file here, with the sniff's own error.
+    ``preflight=False`` restores the pre-5.2.0 behavior. The write path's
+    own destination claim stays either way, as the backstop for
+    *concurrent callers*: two ``bulk_write`` calls in one process see
+    each other only through it.
     """
     item_list = list(items)
     total = len(item_list)
@@ -304,44 +422,41 @@ def bulk_write(
     pool = ThreadPoolExecutor(max_workers=workers)
     # Submission window matches the pool width so the pool stays saturated
     # while no item waits in the pool's internal queue beyond cancel's reach.
-    window = workers or _MAX_CONCURRENT_WRITES
-    return _drain_bulk_write(
-        pool,
-        item_list,
-        window=window,
+    options = _BatchOptions(
+        window=workers or _MAX_CONCURRENT_WRITES,
         base_config=base_config,
         total=total,
         on_event=on_event,
         stop_on_error=stop_on_error,
         cancel=cancel,
+        preflight=preflight,
     )
+    return _drain_bulk_write(pool, item_list, options)
 
 
 def _drain_bulk_write(
     pool: ThreadPoolExecutor,
     items: list[BulkWriteItem],
-    *,
-    window: int,
-    base_config: ComicboxSettings | None,
-    total: int,
-    on_event: EventHandler | None,
-    stop_on_error: bool,
-    cancel: threading.Event | None,
+    options: _BatchOptions,
 ) -> Generator[WriteResult, None, None]:
-    """Drain the bulk-write pipeline; owns the pool's lifecycle."""
+    """
+    Drain the bulk-write pipeline; owns the pool's lifecycle.
+
+    The preflight pre-pass runs here, on the first ``next()``, and not in
+    ``bulk_write``: sniffing a 20k-file batch off a network mount must not
+    block the call, where ``cancel`` is never consulted.
+    """
     parsed = 0
     errored = 0
+    indexed_items = list(enumerate(items))
     try:
-        for result, ok in _run_bulk_write(
-            pool,
-            items,
-            window=window,
-            base_config=base_config,
-            total=total,
-            on_event=on_event,
-            stop_on_error=stop_on_error,
-            cancel=cancel,
-        ):
+        if options.preflight:
+            indexed_items, failures = _preflight_stage(indexed_items, options)
+            errored += sum(result.error is not None for _index, result in failures)
+            for index, result in failures:
+                _emit_write_event(result, index, options.total, options.on_event)
+                yield result
+        for result, ok in _run_bulk_write(pool, indexed_items, options):
             if result.error is not None:
                 errored += 1
             elif ok:
@@ -352,7 +467,9 @@ def _drain_bulk_write(
         # close(), and waiting out queued CBZ repacks would stall the
         # caller's error handling. Mirrors iter_process_files.
         pool.shutdown(wait=False, cancel_futures=True)
-        _emit_batch_finished(on_event, total=total, parsed=parsed, errored=errored)
+        _emit_batch_finished(
+            options.on_event, total=options.total, parsed=parsed, errored=errored
+        )
 
 
 def _emit_write_event(
