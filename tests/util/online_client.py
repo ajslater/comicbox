@@ -14,24 +14,17 @@ def close_comicvine_client(client: Any) -> None:
     """
     Release every sqlite connection a simyan `Comicvine` opened.
 
-    `session.close()` alone leaves the rate-limit buckets open:
-    requests-ratelimiter's `HostBucketFactory` keeps its buckets in its
-    own `buckets` dict, which pyrate-limiter's `BucketFactory.close()`
-    does not iterate, so it closes the leaker but not the bucket
-    connections. Closing them here keeps tests from leaking sqlite
-    handles and emitting ResourceWarnings.
+    Delegates to the production close rather than keeping a second copy
+    of the bucket dance it has to do.
     """
-    session = client._session
-    factory = session.limiter.bucket_factory
-    session.close()
-    for bucket in list(getattr(factory, "buckets", {}).values()):
-        bucket.close()
+    from comicbox.formats.comicvine_api.online_source import close_client
+
+    close_client(client)
 
 
-@contextmanager
-def comicvine_client(cache_dir: Path, api_key: str = "k") -> Generator[Any]:
+def build_comicvine_client(cache_dir: Path, api_key: str = "k") -> Any:
     """
-    Yield a real `Comicvine` pointed at `cache_dir`, fully closed on exit.
+    Build a real `Comicvine` pointed at `cache_dir`.
 
     Its file names match what `ComicVineOnlineSource` would choose, so a
     status read against the same directory finds them.
@@ -39,11 +32,17 @@ def comicvine_client(cache_dir: Path, api_key: str = "k") -> Generator[Any]:
     from simyan.comicvine import Comicvine
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    client = Comicvine(
+    return Comicvine(
         api_key=api_key,
         cache_path=cache_dir / "comicvine_cache.sqlite",
         ratelimit_path=cache_dir / "comicvine_rate_limit.sqlite",
     )
+
+
+@contextmanager
+def comicvine_client(cache_dir: Path, api_key: str = "k") -> Generator[Any]:
+    """Yield a real `Comicvine` pointed at `cache_dir`, fully closed on exit."""
+    client = build_comicvine_client(cache_dir, api_key)
     try:
         yield client
     finally:

@@ -37,6 +37,13 @@ if TYPE_CHECKING:
 #: log one line. Anything else is a bug and earns the stack.
 _EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError,)
 
+#: The online sources that hold process-wide clients to release at the
+#: end of a run. Named, not imported: see `_close_shared_online_sessions`.
+_ONLINE_SOURCE_MODULES = (
+    "comicbox.formats.metron_api.online_source",
+    "comicbox.formats.comicvine_api.online_source",
+)
+
 
 def _leaders_first(clustered: list[Path]) -> list[Path]:
     """
@@ -55,15 +62,17 @@ def _leaders_first(clustered: list[Path]) -> list[Path]:
 
 def _close_shared_online_sessions() -> None:
     """
-    Release the pooled Metron connections a run opened, if it opened any.
+    Release the connections and handles a run opened, if it opened any.
 
     Read out of ``sys.modules`` rather than imported: an offline run
     never loads the online packages, and importing one here just to call
-    a no-op would put mokkari's import cost back on every run.
+    a no-op would put mokkari's and simyan's import cost back on every
+    run.
     """
-    metron = sys.modules.get("comicbox.formats.metron_api.online_source")
-    if metron is not None:
-        metron.close_shared_sessions()
+    for name in _ONLINE_SOURCE_MODULES:
+        module = sys.modules.get(name)
+        if module is not None:
+            module.close_shared_sessions()
 
 
 class Runner:
