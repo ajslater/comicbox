@@ -95,10 +95,10 @@ def _hermetic_comicbox_env(
 
 def _reset_shared_online_sessions() -> None:
     """Clear both sources' shared-client caches, if they were imported."""
-    comicvine = sys.modules.get("comicbox.formats.comicvine_api.online_source")
-    if comicvine is not None:
-        comicvine.reset_shared_sessions()
-    metron = sys.modules.get("comicbox.formats.metron_api.online_source")
-    if metron is not None:
-        with metron._session_cache_lock:
-            metron._session_cache.clear()
+    for module_name in (
+        "comicbox.formats.comicvine_api.online_source",
+        "comicbox.formats.metron_api.online_source",
+    ):
+        module = sys.modules.get(module_name)
+        if module is not None:
+            module.reset_shared_sessions()

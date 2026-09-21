@@ -65,6 +65,14 @@ class CandidateSummary:
     # to reproduce client-side the precedence its old six-call cascade
     # got from the order it made the calls in.
     volume: int | None = None
+    # A genuinely larger image of the same cover, for a frontend that
+    # wants a hover or lightbox next to the thumbnail. Display only: the
+    # matcher keeps hashing `cover_url`, because hashing a larger image
+    # moves every score and would need a fresh calibration run (see
+    # `matcher.py`'s audit note). None means this record carries no
+    # larger tier than `cover_url` already is, which is what a frontend
+    # keys "no hover" on.
+    cover_url_full: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

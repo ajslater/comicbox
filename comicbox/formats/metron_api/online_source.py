@@ -10,6 +10,7 @@ and merge. M3 adds search.
 from __future__ import annotations
 
 import math
+import os
 import threading
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, ClassVar, Final
@@ -60,9 +61,13 @@ if TYPE_CHECKING:
 # their own cache settings differ (we warn once when they do — see
 # `_get_or_build_shared_session`). Keying by cache config instead would
 # split `rate_limit_status` across sessions and defeat the sharing.
-# Entries are deliberately never evicted or closed: the cache is bounded
-# by distinct credential sets used in one process, and mokkari's
-# SqliteCache exposes no close() to release anyway.
+# Entries are deliberately never evicted: the cache is bounded by the
+# distinct credential sets used in one process. They are closed, though.
+# Since mokkari 4.8.0 a Session holds a pooled `requests.Session`, and
+# `close_shared_sessions()` releases those connections at the end of a
+# run; the entry stays, because a closed mokkari Session reopens
+# connections on demand and the gate and `rate_limit_status` it carries
+# stay valid.
 _session_cache: dict[tuple[str, str, str], tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
 
@@ -116,6 +121,64 @@ def _prefetched_issue(volume_id: int, number: str) -> Any:
     with _prefetch_lock:
         volume = _prefetch_cache.get(volume_id)
         return volume.get(number) if volume else None
+
+
+def close_shared_sessions() -> None:
+    """
+    Release the pooled HTTP connections every shared session holds.
+
+    Optional: `requests.Session` has no finalizer, so without this the
+    sockets are only freed when they are garbage collected, with a
+    `ResourceWarning` apiece under some interpreters. The cache entries
+    survive -- a closed mokkari Session reopens connections on demand,
+    and its gate and `rate_limit_status` are still the right ones.
+    """
+    with _session_cache_lock:
+        entries = list(_session_cache.values())
+    for session, _signature in entries:
+        # Tests seed fakes that are not real Sessions.
+        close = getattr(session, "close", None)
+        if close is not None:
+            close()
+
+
+def reset_shared_sessions() -> None:
+    """
+    Drop every shared session and gate.
+
+    The test seam, and what the at-fork handler calls in a child. Mirrors
+    the ComicVine source's `reset_shared_sessions`.
+    """
+    with _session_cache_lock:
+        _session_cache.clear()
+        _gate_cache.clear()
+
+
+def _after_fork_in_child() -> None:
+    """
+    Drop the inherited sessions and gates in a forked child.
+
+    A pooled `requests.Session` must not be shared across a fork
+    (mokkari's README says so): parent and child would write into the
+    same sockets. `comicbox/process.py`'s `ProcessPoolExecutor` and
+    codex's `multiprocessing.Process` librarian are the forks this
+    protects.
+
+    The lock is rebound rather than taken: another thread may have held
+    it at the instant of the fork, and that thread does not exist in the
+    child, so acquiring it here would deadlock forever. The inherited
+    sockets are not closed, only dropped -- closing a socket the parent
+    is still using would break the parent. The prefetch cache holds plain
+    dicts and is safe to inherit.
+    """
+    global _session_cache_lock  # noqa: PLW0603
+    _session_cache_lock = threading.Lock()
+    _session_cache.clear()
+    _gate_cache.clear()
+
+
+if hasattr(os, "register_at_fork"):  # POSIX only
+    os.register_at_fork(after_in_child=_after_fork_in_child)
 
 
 def shared_gate(
@@ -292,6 +355,7 @@ class MetronOnlineSource(OnlineSource):
             ApiError,
             AuthenticationError,
             CacheError,
+            RateLimiterError,
             RateLimitError,
         )
 
@@ -303,6 +367,11 @@ class MetronOnlineSource(OnlineSource):
         if isinstance(exc, CacheError):
             # Raised on the first request, not in Session.__init__, when the
             # cache object lacks get()/store(): a wiring bug, never transient.
+            return RetryCategory.INVALID
+        if isinstance(exc, RateLimiterError):
+            # Same shape as CacheError: raised on the first request when the
+            # injected rate limiter lacks a protocol method. A wiring bug no
+            # replay fixes.
             return RetryCategory.INVALID
         if isinstance(exc, ApiError):
             return _classify_api_error(exc)
@@ -414,19 +483,19 @@ class MetronOnlineSource(OnlineSource):
             config_limit=limits.per_minute,
         )
 
-    def _build_session(self, gate: RateGate | None = None) -> Session:
+    def _build_session(self, gate: RateGate) -> Session:
         """
-        Build a paced mokkari Session.
+        Build a mokkari Session paced by this credential set's gate.
 
-        Not `mokkari.api()`: that factory hardcodes `Session`, and the
-        pacing has to live inside the client (see `paced_session`). The
-        keyword set is api()'s, minus `dev_mode`, which comicbox has no
-        setting for.
+        `build_paced_session` registers the gate through mokkari's
+        `rate_limiter` hook and installs the telemetry observer (see
+        `paced_session`). The keyword set is `mokkari.api()`'s, minus
+        `dev_mode`, which comicbox has no setting for.
         """
-        from comicbox.formats.metron_api.paced_session import PacedSession
+        from comicbox.formats.metron_api.paced_session import build_paced_session
 
-        return PacedSession(
-            gate=gate,
+        return build_paced_session(
+            gate,
             username=self._credentials.user,  # mokkari keyword
             passwd=self._credentials.password,
             cache=self._get_cache(),
@@ -612,15 +681,20 @@ class MetronOnlineSource(OnlineSource):
         itself.
         """
         bi_series = getattr(base_issue, "series", None)
+        cover_url = str(base_issue.image) if base_issue.image else None
         summary = CandidateSummary(
             series=_bi_series_name(bi_series) or "",
             issue=base_issue.number,
             year=base_issue.cover_date.year if base_issue.cover_date else None,
             publisher=None,  # BaseIssue from search omits publisher
             page_count=None,
-            cover_url=str(base_issue.image) if base_issue.image else None,
+            cover_url=cover_url,
             variant_label=None,
             volume=_bi_series_volume(bi_series),
+            # Metron serves one image per issue at full size, so the
+            # thumbnail and the full-size url are the same url -- and both
+            # are None when the record has no image at all.
+            cover_url_full=cover_url,
         )
         return Candidate(
             source=self.name,
@@ -993,8 +1067,8 @@ class MetronOnlineSource(OnlineSource):
         `search()` fires at most 2 `issues_list` calls: the exact one,
         and the wide fallback when it misses.
 
-        `PacedSession` admits every one of those through this credential
-        set's `RateGate`, so under `-j N` they queue instead of colliding
+        Every one of those is admitted through this credential set's
+        `RateGate`, so under `-j N` they queue instead of colliding
         and a 429 should not happen at all. It still can — another client
         on the same token, or a window we had not yet been told the shape
         of — and when it does, the gate absorbs the `Retry-After` hint

@@ -1,9 +1,11 @@
 """
 Rate limits for online sources, for citation / audit.
 
-Neither upstream library takes a local override: mokkari reads Metron's
-per-user limits off the `X-RateLimit-*` response headers, and simyan
-builds its ComicVine limiter internally with no injection point at all.
+mokkari reads Metron's per-user limits off the `X-RateLimit-*` response
+headers; since 4.8.0 it also takes an injectable `rate_limiter`, which
+is where comicbox plugs its `RateGate` in (see
+`comicbox/formats/metron_api/paced_session.py`). simyan builds its
+ComicVine limiter internally with no injection point at all.
 This module exists so the numbers are visible in our codebase (rather
 than hidden in transitive dependencies) and can be cited / audited, and
 so the consumers below have a stable constant to work from.

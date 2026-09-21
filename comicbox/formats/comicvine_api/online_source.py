@@ -605,11 +605,23 @@ class ComicVineOnlineSource(OnlineSource):
         "original_url",
     )
 
-    @classmethod
-    def _pick_cover_url(cls, image: Any) -> str | None:
+    # The same field names largest first, for the display-only full-size
+    # url. `small_url` and `thumbnail` are deliberately absent: a record
+    # carrying only those tiers has nothing genuinely larger to show, and
+    # `cover_url_full` stays None rather than repeating the thumbnail.
+    _COVER_URL_FULL_PREFERENCE: ClassVar[tuple[str, ...]] = (
+        "original_url",
+        "super_url",
+        "screen_url",
+        "medium_url",
+    )
+
+    @staticmethod
+    def _pick_cover_url(image: Any, preference: tuple[str, ...]) -> str | None:
+        """Return the first url present on ``image``, in ``preference`` order."""
         if image is None:
             return None
-        for attr in cls._COVER_URL_PREFERENCE:
+        for attr in preference:
             url = getattr(image, attr, None)
             if url:
                 return str(url)
@@ -634,7 +646,8 @@ class ComicVineOnlineSource(OnlineSource):
         bi_volume = basic_issue.volume
         series = volume_name or (bi_volume.name if bi_volume else "") or ""
         cover_year = basic_issue.cover_date.year if basic_issue.cover_date else None
-        cover_url = self._pick_cover_url(basic_issue.image)
+        image = basic_issue.image
+        cover_url = self._pick_cover_url(image, self._COVER_URL_PREFERENCE)
         site_url = str(basic_issue.site_url) if basic_issue.site_url else ""
         summary = CandidateSummary(
             series=series,
@@ -645,6 +658,9 @@ class ComicVineOnlineSource(OnlineSource):
             cover_url=cover_url,
             variant_label=None,
             alt_series=alt_series,
+            # Free: the six Images variants ride in the search response
+            # comicbox already paid for.
+            cover_url_full=self._pick_cover_url(image, self._COVER_URL_FULL_PREFERENCE),
         )
         return Candidate(
             source=self.name,
