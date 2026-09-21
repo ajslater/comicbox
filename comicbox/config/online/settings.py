@@ -168,10 +168,13 @@ class OnlineSourceLimits:
     ``comicbox.formats.base.online.rate_limits`` for citation / audit.
     """
 
-    # Historical Metron overrides. mokkari>=4.0.1 tracks Metron's actual
-    # per-user limits from `X-RateLimit-*` response headers instead of a
-    # fixed local bucket, with no injection point for a custom one; these
-    # are accepted but ignored with a warning at client build.
+    # Metron overrides. mokkari tracks Metron's actual per-user limits
+    # from `X-RateLimit-*` response headers rather than a fixed local
+    # bucket. `per_minute` has been comicbox's `RateGate` ceiling since
+    # 5.1.0 -- it can lower the server-reported burst limit, never raise
+    # it, which is how several processes on one token split the window.
+    # `per_day` is still accepted and ignored with a warning at client
+    # build (see `_warn_ignored_rate_limit_overrides`).
     per_minute: int | None = None
     per_day: int | None = None
     # Historical ComicVine overrides. simyan builds its rate limiter

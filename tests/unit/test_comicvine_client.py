@@ -490,3 +490,76 @@ def test_rate_limit_status_does_not_create_the_cache_dir(tmp_path: Path) -> None
         OnlineSettings(cache=OnlineCacheSettings(dir=missing))
     )
     assert not missing.exists()
+
+
+# --- candidate cover urls ----------------------------------------------------
+
+
+def _basic_issue(image: SimpleNamespace | None) -> SimpleNamespace:
+    """Build a simyan `BasicIssue` stand-in with what _to_candidate reads."""
+    return SimpleNamespace(
+        id=1,
+        number="1",
+        cover_date=None,
+        volume=SimpleNamespace(id=9, name="Vol"),
+        image=image,
+        site_url=None,
+    )
+
+
+def _candidate_summary(image: SimpleNamespace | None):
+    source = ComicVineOnlineSource(
+        OnlineSourceCredentials(key="k"),
+        OnlineSettings(cache=OnlineCacheSettings(mode=CacheMode.OFF)),
+    )
+    return source._to_candidate(_basic_issue(image)).summary
+
+
+def test_a_full_image_set_offers_the_original() -> None:
+    """Largest first: `original_url` wins the full-size url."""
+    image = SimpleNamespace(
+        thumbnail="https://cv/t.jpg",
+        small_url="https://cv/s.jpg",
+        medium_url="https://cv/m.jpg",
+        screen_url="https://cv/sc.jpg",
+        super_url="https://cv/su.jpg",
+        original_url="https://cv/o.jpg",
+    )
+
+    summary = _candidate_summary(image)
+
+    assert summary.cover_url == "https://cv/t.jpg"
+    assert summary.cover_url_full == "https://cv/o.jpg"
+
+
+def test_a_thumbnail_only_record_offers_no_full_size() -> None:
+    """
+    Nothing larger exists, so there is nothing to offer.
+
+    `None` is what a frontend keys "no hover" on; repeating the thumbnail
+    here would promise a bigger image that does not exist.
+    """
+    image = SimpleNamespace(thumbnail="https://cv/t.jpg")
+
+    summary = _candidate_summary(image)
+
+    assert summary.cover_url == "https://cv/t.jpg"
+    assert summary.cover_url_full is None
+
+
+def test_a_partial_image_set_takes_the_largest_present() -> None:
+    """The preference is a fallback chain, not a single field."""
+    image = SimpleNamespace(thumbnail="https://cv/t.jpg", medium_url="https://cv/m.jpg")
+
+    summary = _candidate_summary(image)
+
+    assert summary.cover_url == "https://cv/t.jpg"
+    assert summary.cover_url_full == "https://cv/m.jpg"
+
+
+def test_no_image_leaves_both_urls_unset() -> None:
+    """A record with no image at all has neither url."""
+    summary = _candidate_summary(None)
+
+    assert summary.cover_url is None
+    assert summary.cover_url_full is None

@@ -1,34 +1,55 @@
 """
-A mokkari `Session` that paces every request through a `RateGate`.
+Where mokkari's `Session` meets comicbox's `RateGate`.
 
-mokkari is documented to raise rather than wait, and its own
-`_check_rate_limit` is a fail-fast that reads the last response's
-headers. That contract works for a sequential caller. It does not
-survive a thread pool: the check is not serialized with the send, so
-several workers pass it in the same instant, and
+mokkari's own `_check_rate_limit` is a fail-fast that reads the last
+response's headers and compares an epoch-valued reset against the LOCAL
+clock. That contract works for a sequential caller on a correct clock.
+It does not survive a thread pool: the check is not serialized with the
+send, so several workers pass it in the same instant, and
 `_update_rate_limit_status` is last-write-wins, so a slow response can
 put a stale ``remaining`` back on record after a fresher ``0`` was seen.
-The result is a burst of 429s — and on Metron a burst 429 debits the
+The result is a burst of 429s -- and on Metron a burst 429 debits the
 daily quota exactly like a successful request, because DRF evaluates
 each throttle class independently.
 
 So pacing has to happen at the point where a request actually leaves the
-process, under the same lock that counts it. That point is
-`Session._execute_http_request`: the one place mokkari calls
-`requests.request`, and the one place it reads ``X-RateLimit-*`` back.
-Its three callers — `_request_data`, `_fetch_detail` and `_send_void` —
-funnel every path through it: after the response-cache check in `_get`,
-once per page in `_retrieve_all_results`, and on conditional
-``if_modified_since`` GETs. Overriding `_request_data` instead would
-miss detail fetches and void sends.
+process. comicbox used to get there by subclassing `Session` and
+overriding the private `_execute_http_request`. That was upstream ask U1
+in `tasks/metron-rate-limit-plan.md`, and mokkari 4.8.0 shipped it
+(#167): `Session(rate_limiter=...)` dispatches `acquire` /
+`on_rate_limited` / `release` from that same single point, and with a
+limiter set `_check_rate_limit` is never called at all. The override is
+gone; `GateRateLimiter` below is the registration that replaced it.
 
-This is a deliberate reach into a private method. `tests/unit/
-test_paced_session.py` drives a fake transport through those paths and
-asserts one gate acquisition per HTTP send, so a mokkari rename fails
-loudly here instead of silently unpacing the client. The upstream ask
-that retires it is `tasks/metron-rate-limit-plan.md` U1 — an opt-in
-`Session(rate_limiter=...)` hook — after which this collapses to a
-registration.
+### Why comicbox keeps `RateGate` and not mokkari's `HeaderPacedRateLimiter`
+
+4.8.0 ships a reference limiter. comicbox does not adopt it:
+
+| Concern | `RateGate` (comicbox) | `HeaderPacedRateLimiter` (mokkari) |
+| --- | --- | --- |
+| Before the first response | `UNKNOWN` serializes to one in-flight send, so the first response's headers land before a pool can burst | `limit=None` means no wait at all; N threads send at once |
+| A server that never throttles | flips to `OPEN` and stops gating | keeps pacing at whatever it last saw (never, so never paces) |
+| Stale out-of-order responses | tighten-only with an in-flight discount | tighten-only for sustained; burst re-read from every response |
+| A 429 | rebuilds the server's window and admits ONE worker at `Retry-After`, pacing the rest behind it | blocks EVERY caller until `now + Retry-After`, then spaces evenly |
+| Daily quota | warns at 10 %, stops cold searches at 2 %/min 25, aborts with `OnlineLookupAbortedError` at 0 (5.1.1's `Skipped(reason="quota_reserved")` depends on this) | raises `RateLimitError` from the server's epoch reset against the LOCAL clock -- the clock-drift trap the gate was designed around |
+| `rate_limit.per_minute` ceiling | honoured, as `config_limit` | none |
+| Stats for the end-of-run summary | `stats()` | none |
+| Clock | monotonic only; never converts a `-Reset` | mixes monotonic (burst) and wall clock (sustained) |
+
+### The one remaining private reach
+
+The `rate_limiter` hook carries no URL, no status code and no raw
+headers. comicbox's telemetry -- per-endpoint request counts, and
+"responses that arrived without rate-limit headers, by status", both
+shipped in 5.1.2 and reported to Metron's maintainer -- needs all three.
+So header observation stays where it can see the raw response, on a
+`requests` response hook: a public, stable extension point reached
+through one private attribute, `Session._http`. Pacing no longer depends
+on any private seam. If mokkari renames `_http`,
+`install_response_observer` raises `AttributeError` at session build and
+the suite fails loudly, which is the same fail-loud posture the old
+override had over a far smaller reach. A public accessor is upstream
+ask U7.
 """
 
 from __future__ import annotations
@@ -36,6 +57,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
+
+import mokkari
+from loguru import logger
 
 # Imported by name on purpose: these are mokkari's own header constants,
 # so an upstream rename breaks the import rather than quietly parsing
@@ -47,15 +71,15 @@ from mokkari.session import (
     HEADER_SUSTAINED_LIMIT,
     HEADER_SUSTAINED_REMAINING,
     HEADER_SUSTAINED_RESET,
-    Session,
 )
-from typing_extensions import override
 
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
     import requests
+    from mokkari.rate_limit import RateLimitStatus
+    from mokkari.session import Session
 
     from comicbox.formats.base.online.rate_gate import RateGate
 
@@ -102,112 +126,130 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
-class PacedSession(Session):
-    """A mokkari Session whose every HTTP send passes through a gate."""
+class GateRateLimiter:
+    """
+    Adapts a `RateGate` to mokkari's `RateLimiter` protocol.
 
-    def __init__(self, *, gate: RateGate | None = None, **kwargs: Any) -> None:
-        """Build a Session, optionally paced by ``gate``."""
-        super().__init__(**kwargs)
+    mokkari dispatches `acquire` immediately before every HTTP send and
+    `release` after it returns, from the one frame every public method
+    funnels through. The protocol is not `runtime_checkable`; mokkari
+    duck-types it and turns a missing method into `RateLimiterError`.
+    """
+
+    def __init__(self, gate: RateGate) -> None:
+        """Pace one Session through ``gate``."""
         self._gate = gate
 
-    @override
-    def _check_rate_limit(self) -> None:
+    def acquire(self, status: RateLimitStatus) -> None:  # noqa: ARG002
         """
-        Disabled: the gate owns pacing now.
+        Block at the gate until a slot is free, recording the wait.
 
-        mokkari's check compares the epoch-valued ``X-RateLimit-*-Reset``
-        against the LOCAL clock, so on a NAS or in a container whose
-        clock has drifted it raises `RateLimitError` for a window that
-        has actually cleared — and under threads it races the send it is
-        meant to guard. The gate replaces it with a monotonic sliding log
-        that is serialized with the send and never reads a wall clock.
+        ``status`` is deliberately unused. It is mokkari's own merged
+        view -- `_parse_rate_limit_window` preserves the previous window
+        when a response carries none -- so it cannot tell a header-less
+        response from the one before it, and folding it in after the
+        response observer already did would pad the log a second time.
+        Header observation belongs to the observer, which sees the raw
+        response.
 
-        Left as an override rather than deleted so the method still
-        exists on this class: if mokkari renames it, the `@override`
-        check fails instead of this silently ceasing to suppress
-        anything.
+        Raises `OnlineLookupAbortedError` when the daily quota is spent.
+        mokkari only wraps `AttributeError` here, so the abort propagates
+        out of the list or detail call, and `with_retry` never replays
+        it. mokkari calls `_acquire_rate_limit_slot` BEFORE its
+        try/finally, so a raise here is never paired with a `release`.
         """
-        if self._gate is None:
-            super()._check_rate_limit()
-
-    @override
-    def _execute_http_request(
-        self,
-        method: str,
-        url: str,
-        params: dict[str, str | int],
-        header: dict[str, str],
-        data_dict: str | dict[str, Any] | None,
-        files: dict[str, tuple[str, bytes]] | None,
-    ) -> requests.Response:
-        """Wait for a slot, send, then feed the response's headers back."""
-        gate = self._gate
-        if gate is None:
-            return super()._execute_http_request(
-                method, url, params, header, data_dict, files
-            )
         started = time.monotonic()
-        gate.acquire()
-        blocked = time.monotonic() - started
-        try:
-            response = super()._execute_http_request(
-                method, url, params, header, data_dict, files
-            )
-        except Exception:
-            # A send that never produced a response still consumed a slot
-            # as far as the server is concerned (it may well have arrived
-            # and been counted), so the log entry `acquire` made stays.
-            #
-            # Everything that lands here is a transport failure: mokkari
-            # catches `requests` ConnectionError and ReadTimeout and
-            # re-raises them as `ApiError`, while an HTTP status error is
-            # raised later, out of `_handle_http_response`, and never
-            # reaches this frame. Counting them separately matters
-            # because a firewall-level ban (Metron's fail2ban jail drops
-            # the IP) looks like nothing else from in here: no status, no
-            # headers, just timeouts.
-            outcome_stats.record_http_request("metron", endpoint_from_url(url), blocked)
-            outcome_stats.record_connection_failure("metron")
-            raise
-        else:
-            # Observe BEFORE releasing, so the gate's in-flight count
-            # still includes this request and its tighten-only math
-            # discounts only the OTHER sends the server may not have
-            # counted yet.
-            self._feed_gate(gate, url, response, blocked)
-            return response
-        finally:
-            gate.release()
+        self._gate.acquire()
+        outcome_stats.record_gate_wait("metron", time.monotonic() - started)
 
-    def _feed_gate(
-        self, gate: RateGate, url: str, response: requests.Response, blocked: float
-    ) -> None:
-        """Fold one response's rate-limit headers into the gate and the stats."""
-        headers = response.headers
-        endpoint = endpoint_from_url(url)
-        outcome_stats.record_http_request("metron", endpoint, blocked)
-        saw_headers = any(name in headers for name in _RATE_LIMIT_HEADERS)
-        rejected = response.status_code == _TOO_MANY_REQUESTS
-        if not saw_headers:
-            _report_unthrottled(response)
-        # A header-less 429 has nothing to teach the gate: every window
-        # figure is None, so `observe` would only log "pacing disabled"
-        # on its way to a `cooldown` that overrides it a moment later,
-        # and `record_rate_limit_windows` would be a no-op. Skip straight
-        # to the rejection path. The cooldown itself is unchanged — a
-        # full-window rebuild — because without it the paced retry path
-        # plans a zero delay and fires its whole budget back-to-back.
-        if saw_headers or not rejected:
-            _observe_headers(gate, headers, saw_headers=saw_headers)
-        if not rejected:
-            return
-        # Metron attaches X-RateLimit-* to 429s too, so the headers above
-        # are already folded in. `Retry-After` is the relative hint that
-        # says when ONE slot frees; the gate rebuilds the server's window
-        # around it. mokkari turns this response into a RateLimitError a
-        # moment later, which `with_retry` replays.
+    def on_rate_limited(self, retry_after: float) -> None:
+        """
+        Rebuild the server's window around a 429's `Retry-After`.
+
+        mokkari passes 0 when the response carried no `Retry-After`; the
+        gate reads None as "assume the whole window is spent", which is
+        what keeps the paced retry path from planning a zero delay and
+        firing its whole budget back-to-back.
+        """
         outcome_stats.record_rate_limit_rejection("metron")
-        gate.cooldown(_retry_after_hint(headers))
+        self._gate.cooldown(retry_after if retry_after > 0 else None)
+
+    def release(self, status: RateLimitStatus | None) -> None:
+        """
+        Release the slot `acquire` took.
+
+        A None ``status`` means the send never produced a response:
+        mokkari re-raises `requests` ConnectionError and ReadTimeout as
+        `ApiError` from the same frame. Counting those separately matters
+        because a firewall-level ban (Metron's fail2ban jail drops the
+        IP) looks like nothing else from in here -- no status, no
+        headers, just timeouts.
+
+        The gate's log entry stays either way: a send that never answered
+        may well have arrived and been counted by the server.
+        """
+        if status is None:
+            outcome_stats.record_connection_failure("metron")
+        self._gate.release()
+
+
+def install_response_observer(session: Session, gate: RateGate) -> None:
+    """
+    Feed every raw response's rate-limit headers to ``gate`` and the stats.
+
+    The hook fires inside `Session._http.request(...)`, so it runs
+    BEFORE mokkari's `_update_rate_limit_status`, `_report_rate_limited`
+    and `release`. That preserves the order the old override had:
+    observe, then cool down, then release. Observing before the release
+    matters -- the gate's in-flight count still includes this request, so
+    its tighten-only math discounts only the OTHER sends the server may
+    not have counted yet.
+    """
+
+    def _observe_response(response: requests.Response, **_kwargs: Any) -> None:
+        # A `requests` response hook runs inside `_http.request`, outside
+        # mokkari's `except (ConnectionError, ReadTimeout)`. An exception
+        # escaping here would surface as some other error entirely and
+        # `release(None)` would then miscount it as a connection failure,
+        # so nothing in this hook may raise.
+        try:
+            _feed_gate(gate, response)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug(f"metron: rate-limit observation failed: {exc!r}")
+
+    # The pooled requests.Session is private; see the module docstring.
+    session._http.hooks["response"].append(_observe_response)  # noqa: SLF001
+
+
+def build_paced_session(gate: RateGate, **session_kwargs: Any) -> Session:
+    """
+    Build a mokkari Session paced by ``gate`` and observed for telemetry.
+
+    `mokkari.api()` is usable again now that no subclass is needed. Its
+    keyword set is ``username``, ``passwd``, ``cache``, ``user_agent``,
+    ``dev_mode``, ``api_token``, ``rate_limiter``.
+    """
+    session = mokkari.api(rate_limiter=GateRateLimiter(gate), **session_kwargs)
+    install_response_observer(session, gate)
+    return session
+
+
+def _feed_gate(gate: RateGate, response: requests.Response) -> None:
+    """Fold one response's rate-limit headers into the gate and the stats."""
+    headers = response.headers
+    request = response.request
+    outcome_stats.record_http_request("metron", endpoint_from_url(request.url or ""))
+    saw_headers = any(name in headers for name in _RATE_LIMIT_HEADERS)
+    rejected = response.status_code == _TOO_MANY_REQUESTS
+    if not saw_headers:
+        _report_unthrottled(response)
+    # A header-less 429 has nothing to teach the gate: every window
+    # figure is None, so `observe` would only log "pacing disabled" on
+    # its way to a `cooldown` that overrides it a moment later, and
+    # `record_rate_limit_windows` would be a no-op. Worse, it would flip
+    # the gate OPEN a moment before the cooldown sets it PACED.
+    if saw_headers or not rejected:
+        _observe_headers(gate, headers, saw_headers=saw_headers)
 
 
 def _observe_headers(gate: RateGate, headers: Any, *, saw_headers: bool) -> None:
@@ -262,12 +304,3 @@ def _report_unthrottled(response: requests.Response) -> None:
         "from something in front of it. The end-of-run summary counts "
         "them all.",
     )
-
-
-def _retry_after_hint(headers: Any) -> float | None:
-    """Read `Retry-After` as relative seconds, tolerating absence and junk."""
-    raw = headers.get("Retry-After")
-    try:
-        return float(raw) if raw is not None else None
-    except (TypeError, ValueError):
-        return None

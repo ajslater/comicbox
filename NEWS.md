@@ -1,5 +1,20 @@
 # 📰 News
 
+## v5.2.0
+
+- Features
+    - Match candidates carry a full-size cover url alongside the thumbnail.
+    - `OnlineSession.close()` releases the pooled Metron connections; the CLI
+      does this at the end of every run.
+
+- Performance
+    - Metron requests reuse one pooled connection per run instead of a new TLS
+      handshake each (mokkari 4.8.0).
+
+- Dependencies
+    - Requires mokkari 4.8.0. Metron pacing now registers through mokkari's
+      `rate_limiter` hook instead of overriding a private method.
+
 ## v5.1.2
 
 - Features

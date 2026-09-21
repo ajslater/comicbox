@@ -32,9 +32,11 @@ class _ApiCounts:
 
     Distinct from ``OnlineSource.api_call_counts``, which counts calls at
     comicbox's wrapper level: that number includes response-cache hits and
-    counts a paginated result as one. These are real HTTP sends, recorded
-    at the one place a request actually leaves the process, so the number
-    a user pastes into a bug report lines up with the server's own logs.
+    counts a paginated result as one. ``requests`` counts responses
+    RECEIVED, per endpoint, recorded where the raw response arrives, so
+    the number a user pastes into a bug report lines up with the server's
+    own logs. A send that never answered is counted only in
+    ``connection_failures``.
     """
 
     requests: dict[str, int] = field(default_factory=dict)
@@ -138,14 +140,16 @@ class _OutcomeStats:
             self._per_source_api[source_name] = bucket
         return bucket
 
-    def record_http_request(
-        self, source_name: str, endpoint: str, blocked_seconds: float = 0.0
-    ) -> None:
-        """Record one real HTTP send and what it waited at the rate gate."""
+    def record_http_request(self, source_name: str, endpoint: str) -> None:
+        """Record one response received, by endpoint."""
         with self._lock:
             bucket = self._api_bucket_for(source_name)
             bucket.requests[endpoint] = bucket.requests.get(endpoint, 0) + 1
-            bucket.blocked_seconds += blocked_seconds
+
+    def record_gate_wait(self, source_name: str, seconds: float) -> None:
+        """Record what one send waited at the rate gate before going out."""
+        with self._lock:
+            self._api_bucket_for(source_name).blocked_seconds += seconds
 
     def record_rate_limit_rejection(self, source_name: str) -> None:
         """Record one server rate-limit rejection (a 429 we still paid for)."""
@@ -379,6 +383,7 @@ record_skip = _STATS.record_skip
 record_no_match = _STATS.record_no_match
 record_explicit_id = _STATS.record_explicit_id
 record_http_request = _STATS.record_http_request
+record_gate_wait = _STATS.record_gate_wait
 record_rate_limit_rejection = _STATS.record_rate_limit_rejection
 record_unthrottled_response = _STATS.record_unthrottled_response
 record_connection_failure = _STATS.record_connection_failure
