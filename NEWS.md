@@ -3,21 +3,13 @@
 ## v5.2.0
 
 - Features
-    - Match candidates carry a full-size cover url alongside the thumbnail.
-    - `OnlineSession.close()` releases the pooled Metron connections; the CLI
-      does this at the end of every run.
-
-- Performance
-    - Metron requests reuse one pooled connection per run instead of a new TLS
-      handshake each (mokkari 4.8.0).
-
-- Dependencies
-    - Requires mokkari 4.8.0. Metron pacing now registers through mokkari's
-      `rate_limiter` hook instead of overriding a private method.
     - `comicbox.predict.predict_write_destination()` reports where a write would
       land, and whether that path is taken, before anything is written.
     - A destination collision raises `DestinationOccupiedError`, which names the
       occupied path and says which kind of collision it was.
+    - Match candidates carry a full-size cover url alongside the thumbnail.
+    - `OnlineSession.close()` releases the pooled Metron connections; the CLI
+      does this at the end of every run.
 
 - Fixes
     - `bulk_write` checks every destination before doing any work, so a batch
@@ -27,6 +19,14 @@
       deterministically, by submission order, instead of by thread race.
     - A kept-original CBR whose CBZ twin already exists is refused before its
       metadata is read, on the command line as well as the API.
+
+- Performance
+    - Metron requests reuse one pooled connection per run instead of a new TLS
+      handshake each (mokkari 4.8.0).
+
+- Dependencies
+    - Requires mokkari 4.8.0. Metron pacing now registers through mokkari's
+      `rate_limiter` hook instead of overriding a private method.
 
 ## v5.1.2
 
