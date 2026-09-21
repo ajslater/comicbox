@@ -1,5 +1,11 @@
 # 📰 News
 
+## v5.2.1
+
+- Fixes
+    - `OnlineSession.close()` releases Comic Vine's connections and sqlite
+      handles too, not just Metron's.
+
 ## v5.2.0
 
 - Features
