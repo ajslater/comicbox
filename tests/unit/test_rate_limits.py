@@ -61,9 +61,10 @@ def test_documented_defaults_match_upstream() -> None:
 
 
 class _FakeMokkariSession:
-    """Stands in for `PacedSession`; records the kwargs it was built with."""
+    """Stands in for a built mokkari Session; records its build kwargs."""
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, gate: object = None, **kwargs: object) -> None:
+        self.gate = gate
         self.kwargs = kwargs
         # Mirrors mokkari: a fresh Session holds an empty RateLimitStatus
         # until a response reports X-RateLimit-* headers.
@@ -96,12 +97,12 @@ def _make_metron_source(
     """
     Build a source whose `_build_session` never touches a real cache file.
 
-    `_build_session` calls `_get_cache()` regardless of the fake
-    `PacedSession` below, which would otherwise open a real `SqliteCache`
-    against the user's actual `~/.cache/comicbox/online/` directory.
+    `_build_session` calls `_get_cache()` regardless of the fake session
+    below, which would otherwise open a real `SqliteCache` against the
+    user's actual `~/.cache/comicbox/online/` directory.
     """
     monkeypatch.setattr(
-        "comicbox.formats.metron_api.paced_session.PacedSession",
+        "comicbox.formats.metron_api.paced_session.build_paced_session",
         _FakeMokkariSession,
     )
     off_cache = OnlineCacheSettings(mode=CacheMode.OFF)
@@ -357,10 +358,11 @@ def test_metron_per_minute_override_tightens_the_gate(
     assert gate is not None
     assert gate._limit() == 5
     # The override paces comicbox; it is not a mokkari kwarg. The Session
-    # takes api()'s five, plus the gate this wiring adds.
+    # takes api()'s five; the gate goes in positionally, registered
+    # through mokkari's own `rate_limiter` hook.
     assert isinstance(session, _FakeMokkariSession)
+    assert session.gate is gate
     assert set(session.kwargs) == {
-        "gate",
         "username",
         "passwd",
         "cache",

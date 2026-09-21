@@ -57,6 +57,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
     from pathlib import Path
 
+    from typing_extensions import Self
+
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import EventHandler
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
@@ -417,6 +419,29 @@ class OnlineSession:
     def cancel(self) -> None:
         """Stop accepting new files. In-flight lookup runs to completion."""
         self._cancel.set()
+
+    def close(self) -> None:
+        """
+        Release the pooled Metron HTTP connections.
+
+        Optional, and not a cancel: the session stays usable afterwards,
+        at the cost of a reconnect on its next request. The mokkari
+        session is process-wide per credential set, so closing while
+        another `OnlineSession` in the same process is mid-run costs that
+        run a reconnect too. Acceptable, and the alternative -- leaving
+        the sockets to be finalized -- is what emits `ResourceWarning`.
+        """
+        from comicbox.formats.metron_api.online_source import close_shared_sessions
+
+        close_shared_sessions()
+
+    def __enter__(self) -> Self:
+        """Enter the context manager, returning this session."""
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        """Exit the context manager, releasing pooled connections."""
+        self.close()
 
     @property
     def cancelled(self) -> bool:

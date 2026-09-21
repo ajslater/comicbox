@@ -1,78 +1,41 @@
 """
-Guard tests for `PacedSession`.
+Guard tests for the mokkari `rate_limiter` adoption.
 
-`PacedSession` overrides a PRIVATE mokkari method, `_execute_http_request`.
-That is deliberate — it is the one place mokkari calls `requests.request`,
-so it is the only place a gate can sit that covers list calls, detail
-fetches, every page of a paginated result and conditional GETs alike. The
-risk of reaching into a private seam is that an upstream rename makes the
-override silently stop overriding anything, leaving comicbox unpaced and
-back to earning 429s.
-
-So these drive REAL mokkari methods against a fake transport and assert
-one gate acquisition per HTTP send. If mokkari moves the seam, these fail
-rather than the behavior quietly disappearing.
+Pacing reaches mokkari through a public hook now (`GateRateLimiter`),
+but telemetry still rides one private attribute, `Session._http`, via a
+`requests` response hook. These tests drive REAL mokkari methods against
+a fake transport adapter mounted on that pooled session and assert one
+gate acquisition per HTTP send, so if mokkari moves either seam they
+fail rather than the behavior quietly disappearing.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from typing_extensions import override
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats, warn_once
 from comicbox.formats.base.online.rate_gate import GateState, RateGate
-from comicbox.formats.metron_api.paced_session import PacedSession, endpoint_from_url
+from comicbox.formats.metron_api.paced_session import (
+    GateRateLimiter,
+    build_paced_session,
+    endpoint_from_url,
+    install_response_observer,
+)
+from tests.util.metron_transport import (
+    BURST_HEADERS,
+    Reply,
+    connection_error,
+    install,
+    issue_page,
+    issue_row,
+)
 
-_BURST_HEADERS = {
-    "X-RateLimit-Burst-Limit": "20",
-    "X-RateLimit-Burst-Remaining": "19",
-    "X-RateLimit-Sustained-Limit": "5000",
-    "X-RateLimit-Sustained-Remaining": "4999",
-}
-
-
-def _issue_row(issue_id: int) -> dict[str, Any]:
-    """Build a BaseIssue payload with every field mokkari requires."""
-    return {
-        "id": issue_id,
-        "number": str(issue_id),
-        "cover_date": "2020-01-01",
-        "modified": "2020-01-01T00:00:00-05:00",
-        "issue_name": f"Test #{issue_id}",
-        "series": {
-            "id": 7,
-            "name": "Test Series",
-            "volume": 1,
-            "year_began": 2020,
-        },
-    }
-
-
-class _FakeResponse:
-    """Just enough of `requests.Response` for mokkari's handling path."""
-
-    def __init__(
-        self, payload: dict[str, Any], status_code: int = 200, headers: Any = None
-    ) -> None:
-        self._payload = payload
-        self.status_code = status_code
-        self.headers = dict(_BURST_HEADERS if headers is None else headers)
-        self.text = ""
-
-    def raise_for_status(self) -> None:
-        if self.status_code >= 400:
-            import requests
-
-            err = requests.exceptions.HTTPError(f"{self.status_code}")
-            # A duck-typed stand-in; requests only reads `.status_code`.
-            err.response = self  # ty: ignore[invalid-assignment]  # pyright: ignore[reportAttributeAccessIssue]
-            raise err
-
-    def json(self) -> dict[str, Any]:
-        return self._payload
+_IF_MODIFIED = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
 
 class _RecordingGate(RateGate):
@@ -122,6 +85,21 @@ class _RecordingGate(RateGate):
         super().cooldown(retry_after)
 
 
+class _NoWaitGate(_RecordingGate):
+    """
+    Records a cooldown without serving out the wait.
+
+    For tests about mokkari's retry bound rather than the gate's timing:
+    a real cooldown with no `Retry-After` rebuilds the whole 60-second
+    window, and three of those in a row is three minutes of real sleep to
+    prove a counter.
+    """
+
+    @override
+    def cooldown(self, retry_after: float | None) -> None:
+        self.cooldowns.append(retry_after)
+
+
 @pytest.fixture(autouse=True)
 def _reset_stats() -> None:
     outcome_stats.reset()
@@ -147,129 +125,114 @@ def gate() -> _RecordingGate:
     return _RecordingGate()
 
 
-def _session(gate: RateGate | None) -> PacedSession:
-    return PacedSession(gate=gate, username="u", passwd="p", cache=None)
+def _session(gate: RateGate) -> Any:
+    return build_paced_session(gate, username="u", passwd="p", cache=None)
 
 
-def _install_transport(
-    monkeypatch: pytest.MonkeyPatch, responses: list[_FakeResponse]
-) -> list[str]:
-    """Replace mokkari's `requests.request`; return the URLs it is handed."""
-    seen: list[str] = []
-    queue = list(responses)
-
-    def fake_request(_method: str, url: str, **_kwargs: Any) -> _FakeResponse:
-        seen.append(url)
-        return queue.pop(0)
-
-    monkeypatch.setattr("mokkari.session.requests.request", fake_request)
-    return seen
+def _paged(gate: RateGate, replies: list[Reply]) -> tuple[Any, Any]:
+    """Build a paced session with a canned transport; return both."""
+    session = _session(gate)
+    return session, install(session, replies)
 
 
 # --------------------------------------------------- one acquire per send
 
 
-def test_list_call_takes_exactly_one_slot(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
-    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
-    urls = _install_transport(monkeypatch, [_FakeResponse(page)])
+def test_the_gate_is_registered_as_the_rate_limiter(gate: _RecordingGate) -> None:
+    """
+    Mokkari owns the pacing switch now; comicbox only registers.
 
-    issues = _session(gate).issues_list(params={"series_id": 7})
+    With a `rate_limiter` set, mokkari never calls its own
+    `_check_rate_limit` -- the local pre-emption comicbox used to
+    override away is gone from the code path entirely.
+    """
+    session = _session(gate)
+
+    assert isinstance(session.rate_limiter, GateRateLimiter)
+
+
+def test_list_call_takes_exactly_one_slot(gate: _RecordingGate) -> None:
+    _session_, adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
+
+    issues = _session_.issues_list(params={"series_id": 7})
 
     assert len(issues) == 1
-    assert len(urls) == 1
+    assert len(adapter.urls) == 1
     assert gate.acquires == 1
     assert gate.releases == 1
 
 
-def test_every_page_of_a_paginated_result_takes_a_slot(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_every_page_of_a_paginated_result_takes_a_slot(gate: _RecordingGate) -> None:
     """
     Pagination is the case a wrapper one level up would miss.
 
     `issues_list` is one call to us and N HTTP requests to Metron, each
-    one debiting both throttle windows. Gating `_request_data` would
-    catch these but miss detail fetches; gating the wrapper method would
-    catch neither.
+    one debiting both throttle windows.
     """
-    page1 = {
-        "count": 2,
-        "next": "https://metron.cloud/api/issue/?page=2",
-        "previous": None,
-        "results": [_issue_row(1)],
-    }
-    page2 = {"count": 2, "next": None, "previous": None, "results": [_issue_row(2)]}
-    urls = _install_transport(monkeypatch, [_FakeResponse(page1), _FakeResponse(page2)])
+    session, adapter = _paged(
+        gate,
+        [
+            Reply(issue_page([issue_row(1)], "https://metron.cloud/api/issue/?page=2")),
+            Reply(issue_page([issue_row(2)])),
+        ],
+    )
 
-    issues = _session(gate).issues_list(params={"series_id": 7})
+    issues = session.issues_list(params={"series_id": 7})
 
     assert len(issues) == 2
-    assert len(urls) == 2
+    assert len(adapter.urls) == 2
     assert gate.acquires == 2
     assert gate.releases == 2
 
 
-def test_conditional_detail_fetch_takes_a_slot(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_conditional_detail_fetch_takes_a_slot(gate: _RecordingGate) -> None:
     """
     `issue(id, if_modified_since=...)` goes through `_fetch_detail`.
 
     A 304 costs a request against both windows exactly like a 200 does,
     so it has to be paced even though it carries no body.
     """
-    urls = _install_transport(monkeypatch, [_FakeResponse({}, status_code=304)])
+    session, adapter = _paged(gate, [Reply(status_code=304)])
 
-    result = _session(gate).issue(
-        1, if_modified_since=datetime(2020, 1, 1, tzinfo=timezone.utc)
-    )
+    result = session.issue(1, if_modified_since=_IF_MODIFIED)
 
     assert result is None
-    assert len(urls) == 1
+    assert len(adapter.urls) == 1
     assert gate.acquires == 1
     assert gate.releases == 1
 
 
-def test_a_failed_send_still_releases_its_slot(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_a_failed_send_still_releases_its_slot(gate: _RecordingGate) -> None:
     """A connection error must not leak an in-flight count and wedge the gate."""
-    import requests
-
-    def boom(*_args: Any, **_kwargs: Any) -> None:
-        msg = "down"
-        raise requests.exceptions.ConnectionError(msg)
-
-    monkeypatch.setattr("mokkari.session.requests.request", boom)
+    session, _adapter = _paged(gate, [connection_error()])
 
     with pytest.raises(Exception, match="Connection error"):
-        _session(gate).issues_list(params={"series_id": 7})
+        session.issues_list(params={"series_id": 7})
 
     assert gate.acquires == 1
     assert gate.releases == 1
 
 
-def test_no_gate_leaves_mokkari_untouched(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Without a gate, `PacedSession` is an ordinary Session."""
-    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
-    urls = _install_transport(monkeypatch, [_FakeResponse(page)])
+def test_the_observer_needs_the_pooled_session(gate: _RecordingGate) -> None:
+    """
+    A mokkari rename of `_http` fails loudly at session build.
 
-    assert len(_session(None).issues_list(params={"series_id": 7})) == 1
-    assert len(urls) == 1
+    That is the whole point of reaching for a private attribute in the
+    open rather than defensively: the suite breaks instead of the
+    telemetry silently going quiet.
+    """
+    not_a_session = cast("Any", object())
+    with pytest.raises(AttributeError):
+        install_response_observer(not_a_session, gate)
 
 
 # ------------------------------------------------------- header feedback
 
 
-def test_response_headers_reach_the_gate(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
-    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
-    _install_transport(monkeypatch, [_FakeResponse(page)])
+def test_response_headers_reach_the_gate(gate: _RecordingGate) -> None:
+    session, _adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
 
-    _session(gate).issues_list(params={"series_id": 7})
+    session.issues_list(params={"series_id": 7})
 
     stats = gate.stats()
     assert stats.burst_limit == 20
@@ -278,9 +241,7 @@ def test_response_headers_reach_the_gate(
     assert stats.sustained_remaining == 4999
 
 
-def test_a_429_cools_the_gate_down_with_the_server_hint(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_a_429_cools_the_gate_down_with_the_server_hint(gate: _RecordingGate) -> None:
     """
     The gate reacts to the rejection, and mokkari still raises.
 
@@ -289,59 +250,21 @@ def test_a_429_cools_the_gate_down_with_the_server_hint(
     """
     from mokkari.exceptions import RateLimitError
 
-    headers = {**_BURST_HEADERS, "X-RateLimit-Burst-Remaining": "0", "Retry-After": "7"}
-    _install_transport(
-        monkeypatch, [_FakeResponse({}, status_code=429, headers=headers)]
-    )
+    headers = {**BURST_HEADERS, "X-RateLimit-Burst-Remaining": "0", "Retry-After": "7"}
+    session, _adapter = _paged(gate, [Reply(status_code=429, headers=headers)])
 
     with pytest.raises(RateLimitError):
-        _session(gate).issues_list(params={"series_id": 7})
+        session.issues_list(params={"series_id": 7})
 
     assert gate.cooldowns == [7.0]
     assert gate.stats().rejections == 1
-
-
-def test_mokkari_local_pre_emption_is_disabled(gate: _RecordingGate) -> None:
-    """
-    The gate replaces mokkari's own check, which is not safe here.
-
-    mokkari compares the epoch-valued reset header against the LOCAL
-    clock, so a NAS or container whose clock has drifted raises for a
-    window that already cleared — and under threads the check races the
-    send it guards.
-    """
-    session = _session(gate)
-    session._update_rate_limit_status(
-        {
-            "X-RateLimit-Burst-Limit": "20",
-            "X-RateLimit-Burst-Remaining": "0",
-            "X-RateLimit-Burst-Reset": "99999999999",
-        }
-    )
-    session._check_rate_limit()  # would raise on a plain Session
-
-
-def test_without_a_gate_mokkari_keeps_its_own_check(gate: _RecordingGate) -> None:
-    """Suppression is tied to the gate, not to the subclass."""
-    from mokkari.exceptions import RateLimitError
-
-    session = _session(None)
-    session._update_rate_limit_status(
-        {
-            "X-RateLimit-Burst-Limit": "20",
-            "X-RateLimit-Burst-Remaining": "0",
-            "X-RateLimit-Burst-Reset": "99999999999",
-        }
-    )
-    with pytest.raises(RateLimitError):
-        session._check_rate_limit()
 
 
 # ------------------------------------------ responses that missed the API
 
 
 def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+    gate: _RecordingGate,
 ) -> None:
     """
     A bare 200 did not come from Metron's API, and the count says so.
@@ -355,12 +278,11 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
     """
     from loguru import logger as loguru_logger
 
-    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
-    _install_transport(monkeypatch, [_FakeResponse(page, headers={})])
+    session, _adapter = _paged(gate, [Reply(issue_page([issue_row(1)]), headers={})])
 
     messages, handler_id = _warnings()
     try:
-        _session(gate).issues_list(params={"series_id": 7})
+        session.issues_list(params={"series_id": 7})
     finally:
         loguru_logger.remove(handler_id)
 
@@ -371,23 +293,24 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
 
 
 def test_a_header_less_429_cools_down_without_teaching_the_gate(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
+    gate: _RecordingGate,
 ) -> None:
     """
     Nothing to observe, everything to cool down.
 
     Every window figure on a bare 429 is None, so `observe` would do
     nothing but log "pacing disabled" on its way to a `cooldown` that
-    contradicts it a moment later. The cooldown is unchanged — a full
-    window rebuild — because the paced retry path plans a zero delay and
-    would otherwise spend its whole budget back-to-back.
+    contradicts it a moment later. mokkari passes 0 for a missing
+    `Retry-After`; the gate reads that as None and rebuilds the whole
+    window, because the paced retry path plans a zero delay and would
+    otherwise spend its whole budget back-to-back.
     """
     from mokkari.exceptions import RateLimitError
 
-    _install_transport(monkeypatch, [_FakeResponse({}, status_code=429, headers={})])
+    session, _adapter = _paged(gate, [Reply(status_code=429, headers={})])
 
     with pytest.raises(RateLimitError):
-        _session(gate).issues_list(params={"series_id": 7})
+        session.issues_list(params={"series_id": 7})
 
     assert outcome_stats.api_snapshot()["metron"].unthrottled == {429: 1}
     assert gate.observes == 0
@@ -395,60 +318,127 @@ def test_a_header_less_429_cools_down_without_teaching_the_gate(
     assert gate.stats().rejections == 1
 
 
-def test_a_headered_304_is_not_counted_as_unthrottled(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_a_headered_304_is_not_counted_as_unthrottled(gate: _RecordingGate) -> None:
     """A conditional GET is a real API response and carries the headers."""
-    _install_transport(monkeypatch, [_FakeResponse({}, status_code=304)])
+    session, _adapter = _paged(gate, [Reply(status_code=304)])
 
-    _session(gate).issue(1, if_modified_since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    session.issue(1, if_modified_since=_IF_MODIFIED)
 
     assert outcome_stats.api_snapshot()["metron"].unthrottled == {}
 
 
-def test_a_transport_failure_is_counted_separately(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
+def test_a_transport_failure_is_counted_separately(gate: _RecordingGate) -> None:
     """
     A send that never produced a response gets its own counter.
 
-    mokkari re-raises `requests` ConnectionError and ReadTimeout as
-    `ApiError` from the one frame the gate wraps; an HTTP status error is
-    raised further up and never reaches it. This is the only shape a
-    firewall-level ban has from in here — Metron's fail2ban jail drops
-    the IP, so the client just stops getting answers.
+    It is NOT counted under its endpoint any more: `requests` counts
+    responses received, which is what the server's own logs show.
+    mokkari signals it by passing `status=None` to `release`.
+
+    This is the only shape a firewall-level ban has from in here —
+    Metron's fail2ban jail drops the IP, so the client just stops
+    getting answers.
     """
-    import requests
-
-    def boom(*_args: Any, **_kwargs: Any) -> None:
-        msg = "down"
-        raise requests.exceptions.ConnectionError(msg)
-
-    monkeypatch.setattr("mokkari.session.requests.request", boom)
+    session, _adapter = _paged(gate, [connection_error()])
 
     with pytest.raises(Exception, match="Connection error"):
-        _session(gate).issues_list(params={"series_id": 7})
+        session.issues_list(params={"series_id": 7})
 
     api = outcome_stats.api_snapshot()["metron"]
     assert api.connection_failures == 1
-    assert api.requests == {"issue_list": 1}
+    assert api.requests == {}
     assert api.unthrottled == {}
+
+
+# --------------------------------------------- mokkari 4.8.0 pagination
+
+
+def test_a_paginated_429_retries_through_the_gate_without_sleeping(
+    gate: _RecordingGate, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    With a limiter set, mokkari hands the wait to the gate.
+
+    Before 4.8.0 a 429 mid-pagination slept inside mokkari, on top of
+    whatever the gate was already doing. Now the page is simply retried:
+    `acquire` blocks on the window the cooldown just rebuilt.
+    """
+    slept: list[float] = []
+    monkeypatch.setattr("mokkari.session.time.sleep", slept.append)
+    page2 = "https://metron.cloud/api/issue/?page=2"
+    headers = {**BURST_HEADERS, "Retry-After": "1"}
+    session, _adapter = _paged(
+        gate,
+        [
+            Reply(issue_page([issue_row(1)], page2)),
+            Reply(status_code=429, headers=headers),
+            Reply(issue_page([issue_row(2)])),
+        ],
+    )
+
+    issues = session.issues_list(params={"series_id": 7})
+
+    assert len(issues) == 2
+    assert gate.cooldowns == [1.0]
+    assert not slept
+
+
+def test_a_paginated_429_storm_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Untimed 429s stop after a bounded number of retries, not forever.
+
+    mokkari 4.8.0 caps a page's retries at 3 without a `Retry-After`
+    (`MAX_UNTIMED_RATE_LIMIT_RETRIES`); before, this looped indefinitely.
+    """
+    from mokkari.exceptions import RateLimitError
+
+    monkeypatch.setattr("mokkari.session.time.sleep", lambda _s: None)
+    page2 = "https://metron.cloud/api/issue/?page=2"
+    replies = [Reply(issue_page([issue_row(1)], page2))]
+    replies += [Reply(status_code=429, headers=BURST_HEADERS) for _ in range(8)]
+    no_wait = _NoWaitGate()
+    session, _adapter = _paged(no_wait, replies)
+
+    with pytest.raises(RateLimitError):
+        session.issues_list(params={"series_id": 7})
+
+    # Three untimed retries, then the fourth 429 propagates.
+    assert no_wait.cooldowns == [None] * 4
+
+
+def test_a_spent_quota_aborts_from_inside_a_list_call(gate: _RecordingGate) -> None:
+    """
+    The 5.1.1 abort semantics now hold mid-pagination too.
+
+    `RateGate.acquire` raises `OnlineLookupAbortedError`, not a
+    `RateLimitError`, so it propagates straight out of `issues_list`:
+    mokkari only wraps `AttributeError` at that seam, and its pagination
+    retry only catches `RateLimitError`. Nothing is sent.
+    """
+    gate.observe(
+        burst_limit=20,
+        burst_remaining=19,
+        sustained_limit=5000,
+        sustained_remaining=0,
+    )
+    session, adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
+
+    with pytest.raises(OnlineLookupAbortedError):
+        session.issues_list(params={"series_id": 7})
+
+    assert not adapter.urls
 
 
 # ------------------------------------------------------------ accounting
 
 
-def test_requests_are_counted_per_endpoint(
-    monkeypatch: pytest.MonkeyPatch, gate: _RecordingGate
-) -> None:
-    page = {"count": 1, "next": None, "previous": None, "results": [_issue_row(1)]}
-    _install_transport(
-        monkeypatch, [_FakeResponse(page), _FakeResponse({}, status_code=304)]
+def test_requests_are_counted_per_endpoint(gate: _RecordingGate) -> None:
+    session, _adapter = _paged(
+        gate, [Reply(issue_page([issue_row(1)])), Reply(status_code=304)]
     )
 
-    session = _session(gate)
     session.issues_list(params={"series_id": 7})
-    session.issue(1, if_modified_since=datetime(2020, 1, 1, tzinfo=timezone.utc))
+    session.issue(1, if_modified_since=_IF_MODIFIED)
 
     api = outcome_stats.api_snapshot()["metron"]
     assert api.requests == {"issue_list": 1, "issue": 1}

@@ -19,6 +19,7 @@ from mokkari.exceptions import (
     ApiError,
     AuthenticationError,
     CacheError,
+    RateLimiterError,
     RateLimitError,
 )
 from requests import Response
@@ -53,13 +54,17 @@ class _FakeBaseIssue:
         cover_year: int = 1952,
         series_id: int = 999,
         series_volume: int = 1,
+        image: str | None = None,
     ) -> None:
         from datetime import date
 
         self.id = iid
         self.number = number
         self.cover_date = date(cover_year, 1, 1)
-        self.image = f"https://example.com/issue/{iid}.jpg"
+        # "" asks for a record with no image at all.
+        self.image: str | None = (
+            f"https://example.com/issue/{iid}.jpg" if image is None else image or None
+        )
         # No `resource_url`: mokkari's `BaseIssue` carries none, so the
         # candidate url has to be derived from the id.
         self.cover_hash = None
@@ -1134,6 +1139,17 @@ def _http_api_error(
             RetryCategory.INVALID,
             id="cache-error-invalid",
         ),
+        # Same shape as CacheError: an injected rate limiter missing a
+        # protocol method. mokkari raises it on the first request, and a
+        # replay can only fail the same way.
+        pytest.param(
+            RateLimiterError(
+                "Rate limiter object passed in is missing attribute: "
+                "AttributeError('release')"
+            ),
+            RetryCategory.INVALID,
+            id="rate-limiter-error-invalid",
+        ),
         # Not a mokkari exception — the classifier declines and the retry
         # decorator's conservative fallback takes over.
         pytest.param(
@@ -1214,3 +1230,32 @@ def test_with_retry_replays_api_error_throttle_body() -> None:
     assert calls["n"] == 2
     # No retry_after hint on ApiError, so the rate-limit schedule applies.
     assert sleeps == [_RATE_LIMIT_SCHEDULE[0]]
+
+
+# --- candidate cover urls ----------------------------------------------------
+
+
+def _summary_for(image: str | None):
+    """Build a candidate summary from a BaseIssue carrying ``image``."""
+    src = MetronOnlineSource(
+        OnlineSourceCredentials(user="u", password="p"),
+        OnlineSettings(),
+    )
+    base_issue = _FakeBaseIssue(1, "1", "Captain Science", image=image or "")
+    return src._to_candidate(base_issue).summary
+
+
+def test_metron_full_cover_url_is_the_cover_url() -> None:
+    """Metron serves one image per issue, already at full size."""
+    summary = _summary_for("https://metron.cloud/issue/1.jpg")
+
+    assert summary.cover_url == "https://metron.cloud/issue/1.jpg"
+    assert summary.cover_url_full == summary.cover_url
+
+
+def test_metron_no_image_leaves_both_urls_unset() -> None:
+    """No image means no thumbnail and nothing larger either."""
+    summary = _summary_for(None)
+
+    assert summary.cover_url is None
+    assert summary.cover_url_full is None

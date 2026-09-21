@@ -7,7 +7,11 @@ from loguru import logger
 
 from comicbox.box.archive.write import _claim_destination, _release_destination
 from comicbox.box.dump import ComicboxDump
-from comicbox.exceptions import ArchiveWriteError, ExportError
+from comicbox.exceptions import (
+    ArchiveWriteError,
+    DestinationOccupiedError,
+    ExportError,
+)
 from comicbox.formats import MetadataFormats
 
 
@@ -96,11 +100,10 @@ class ComicboxDumpToFiles(ComicboxDump):
         """
         if self._is_same_file(old_path, new_path):
             return
-        _claim_destination(new_path)
+        _claim_destination(new_path, old_path)
         try:
             if new_path.exists():
-                reason = f"{new_path} already exists."
-                raise ArchiveWriteError(reason)
+                raise DestinationOccupiedError(old_path, new_path, "rename")
             old_path.rename(new_path)
         finally:
             _release_destination(new_path)

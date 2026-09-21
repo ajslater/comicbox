@@ -130,3 +130,37 @@ def test_reset_clears_the_api_counters() -> None:
     assert outcome_stats.api_snapshot() == {}
     assert outcome_stats.summary_lines() == []
     assert outcome_stats.has_any_activity() is False
+
+
+def test_gate_waits_are_recorded_apart_from_the_send() -> None:
+    """
+    Pacing time comes in on its own hook now.
+
+    mokkari's `rate_limiter` sees the wait; the response hook sees the
+    response. Neither knows the other's half, so they report separately
+    and the summary adds them up as before.
+    """
+    outcome_stats.record_gate_wait("metron", 1.5)
+    outcome_stats.record_gate_wait("metron", 2.0)
+    outcome_stats.record_http_request("metron", "issue_list")
+
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.blocked_seconds == 3.5
+    assert api.requests == {"issue_list": 1}
+    assert "4s paced" in "\n".join(outcome_stats.summary_lines())
+
+
+def test_a_send_that_never_answered_is_not_counted_as_a_request() -> None:
+    """
+    ``requests`` counts responses RECEIVED, which is what the server logs.
+
+    A transport failure produced no response, so it appears only under
+    connection failures. It used to be counted under its endpoint too,
+    which made comicbox's number disagree with Metron's.
+    """
+    outcome_stats.record_gate_wait("metron", 0.1)
+    outcome_stats.record_connection_failure("metron")
+
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.requests == {}
+    assert api.connection_failures == 1

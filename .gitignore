@@ -113,6 +113,7 @@ share/python-wheels
 share/python-wheels/
 target
 target/
+tasks/
 test-results
 TODO.md
 var

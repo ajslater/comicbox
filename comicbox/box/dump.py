@@ -146,15 +146,30 @@ class ComicboxDump(ComicboxPages):
         }
         self._reset_archive(None, None, keep_sources)
 
+    def _is_write_disabled(self) -> bool:
+        """Return whether the config asks for no write at all."""
+        write = self._config.write
+        return self._config.general.dry_run or not (
+            write.formats or self._config.convert.cbz or write.delete_all_tags
+        )
+
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
         write = self._config.write
         convert = self._config.convert
-        if self._config.general.dry_run or not (
-            write.formats or convert.cbz or write.delete_all_tags
-        ):
+        if self._is_write_disabled():
             logger.info(f"Not writing metadata for: {self._path}")
             return None
+
+        if self._path:
+            # Refuse an occupied conversion destination before any metadata
+            # is read. _get_dump_formats() below loads and merges every
+            # source, which is the expensive part of a write that was only
+            # ever going to be refused -- a kept-original CBR whose CBZ twin
+            # already exists is the common case, and it reaches here from
+            # the CLI as well as the API. _create_zipfile repeats the check
+            # (it is idempotent) so direct callers stay guarded.
+            self._get_new_archive_path()
 
         # Must get metadata *before* get write formats
         if formats is None:

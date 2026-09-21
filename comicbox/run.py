@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -50,6 +51,19 @@ def _leaders_first(clustered: list[Path]) -> list[Path]:
     leaders = [group[0] for group in groups.values()]
     followers = [path for group in groups.values() for path in group[1:]]
     return leaders + followers
+
+
+def _close_shared_online_sessions() -> None:
+    """
+    Release the pooled Metron connections a run opened, if it opened any.
+
+    Read out of ``sys.modules`` rather than imported: an offline run
+    never loads the online packages, and importing one here just to call
+    a no-op would put mokkari's import cost back on every run.
+    """
+    metron = sys.modules.get("comicbox.formats.metron_api.online_source")
+    if metron is not None:
+        metron.close_shared_sessions()
 
 
 class Runner:
@@ -252,9 +266,14 @@ class Runner:
 
         Threads (not processes): online lookup is I/O-bound, and the
         online sources share process-wide state per credential set —
-        one mokkari `Session` and, more to the point, one `RateGate`
-        (comicbox/formats/base/online/rate_gate.py) that every worker's
-        requests are admitted through.
+        one mokkari `Session`, whose `rate_limiter` hook is this
+        credential set's `RateGate`
+        (comicbox/formats/base/online/rate_gate.py), and every worker's
+        requests are admitted through it. Since mokkari 4.8.0 that one
+        Session also pools its HTTP connections (`HTTP_POOL_MAXSIZE` is
+        32): above 32 workers the extra threads just fall back to a
+        connection apiece with a urllib3 warning, and the gate bounds
+        in-flight sends regardless.
 
         `jobs` is no longer clamped to Metron's burst limit. That clamp
         bounded the wrong unit: workers, not requests. A pool of 20 still
@@ -293,6 +312,7 @@ class Runner:
         finally:
             for line in outcome_stats.summary_lines():
                 logger.info(line)
+            _close_shared_online_sessions()
 
     def _maybe_auto_engage_effort(self, batch_size: int) -> None:
         """

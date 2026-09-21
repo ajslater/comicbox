@@ -307,7 +307,7 @@ def _paces_itself(args: tuple[Any, ...]) -> bool:
     """
     Whether the source admits its own requests through a rate gate.
 
-    A gated source (Metron, via `PacedSession`) has already absorbed the
+    A gated source (Metron, via `GateRateLimiter`) has already absorbed the
     rejection: its gate rebuilt the server's window from the
     `Retry-After` hint, so the next `acquire` blocks for exactly as long
     as the server said and releases ONE worker when a slot frees.
