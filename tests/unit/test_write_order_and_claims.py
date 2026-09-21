@@ -15,7 +15,7 @@ import zipfile
 from typing import TYPE_CHECKING
 
 from comicbox.box.archive.write import _claim_destination, _release_destination
-from comicbox.exceptions import ArchiveWriteError
+from comicbox.exceptions import DestinationOccupiedError
 from comicbox.write import BulkWriteItem, bulk_write, write_metadata
 from tests.const import CIX_CBT_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
@@ -122,14 +122,15 @@ def test_an_in_place_write_respects_a_held_destination(tmp_path: Path) -> None:
     shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
     before = cbz.read_bytes()
 
-    _claim_destination(cbz)
+    _claim_destination(cbz, cbz)
     try:
         result = write_metadata(cbz, patch={"title": "z"}, formats=_CIX)
     finally:
         _release_destination(cbz)
 
     assert not result.written
-    assert isinstance(result.error, ArchiveWriteError)
+    assert isinstance(result.error, DestinationOccupiedError)
+    assert result.error.kind == "inflight"
     assert "already being written" in str(result.error)
     # Refused before touching anything.
     assert cbz.read_bytes() == before
@@ -142,9 +143,10 @@ def test_one_archive_named_twice_in_a_batch_survives(tmp_path: Path) -> None:
     """
     Two writers on one path: one wins, one is refused, the comic is intact.
 
-    ``bulk_write`` does not deduplicate paths, so this ran two concurrent
-    in-place repacks over the same bytes. It destroyed every page in
-    roughly one run out of three.
+    Two concurrent in-place repacks over the same bytes destroyed every
+    page in roughly one run out of three. The batch preflight now refuses
+    the second submission before either starts; the in-flight claim stays
+    as the backstop for two ``bulk_write`` calls in one process.
     """
     cbz = tmp_path / "Twice v1 #001 (2001).cbz"
     shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)

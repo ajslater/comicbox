@@ -22,7 +22,7 @@ from comicbox.box.archive.write import (
     _release_destination,
 )
 from comicbox.config import get_config
-from comicbox.exceptions import ArchiveWriteError
+from comicbox.exceptions import DestinationOccupiedError
 from comicbox.write import BulkWriteItem, bulk_write
 from tests.const import CIX_CBT_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
@@ -111,14 +111,19 @@ def test_a_claimed_destination_is_refused(tmp_path: Path) -> None:
     originals.
     """
     dest = tmp_path / "Held v1 #001 (2001).cbz"
-    _claim_destination(dest)
+    # The source path only labels the refusal; any path stands in for the
+    # rival writer that would be holding this destination.
+    source = tmp_path / "Held v1 #001 (2001).cbt"
+    _claim_destination(dest, source)
     try:
-        with pytest.raises(ArchiveWriteError):
-            _claim_destination(dest)
+        with pytest.raises(DestinationOccupiedError) as exc_info:
+            _claim_destination(dest, source)
     finally:
         _release_destination(dest)
+    assert exc_info.value.kind == "inflight"
+    assert exc_info.value.destination == dest
     # Free again once that write is done.
-    _claim_destination(dest)
+    _claim_destination(dest, source)
     _release_destination(dest)
 
 
@@ -159,14 +164,16 @@ def _convert_same_stem_pair(tmp_path: Path) -> tuple[Path, Path, list, list]:
 
 def test_same_stem_conversions_refuse_the_loser(tmp_path: Path) -> None:
     """Exactly one of the two claims the destination; the other is refused."""
-    _cbt, _cb7, written, failed = _convert_same_stem_pair(tmp_path)
+    cbt, _cb7, written, failed = _convert_same_stem_pair(tmp_path)
 
     assert len(written) == 1
     assert len(failed) == 1
-    # Refused either as an in-flight claim or as a finished file, depending
-    # on whether the two writes actually overlapped.
-    error = str(failed[0].error)
-    assert "already being written" in error or "already exists" in error
+    # The batch preflight decides this by submission order, so the CBT
+    # submitted first is always the one named as the occupant.
+    error = failed[0].error
+    assert isinstance(error, DestinationOccupiedError)
+    assert error.kind == "convert"
+    assert error.occupant == cbt
 
 
 def test_same_stem_conversions_keep_both_originals(tmp_path: Path) -> None:
@@ -214,7 +221,7 @@ def test_a_conversion_respects_a_held_destination(tmp_path: Path) -> None:
     shutil.copy(CIX_CBT_SOURCE_PATH, cbt)
     dest = tmp_path / "Wired v1 #001 (2001).cbz"
 
-    _claim_destination(dest)
+    _claim_destination(dest, cbt)
     try:
         result = next(
             iter(
@@ -227,6 +234,10 @@ def test_a_conversion_respects_a_held_destination(tmp_path: Path) -> None:
         _release_destination(dest)
 
     assert not result.written
+    # The preflight can't see an in-memory claim -- nothing is on disk --
+    # so the write path's own claim is what refuses this one.
+    assert isinstance(result.error, DestinationOccupiedError)
+    assert result.error.kind == "inflight"
     assert "already being written" in str(result.error)
     assert cbt.exists()
     assert not dest.exists()
@@ -247,8 +258,14 @@ def test_rename_refuses_an_existing_destination(tmp_path: Path) -> None:
         occupied = tmp_path / car.predict_filename()
     occupied.write_bytes(b"already-here")
 
-    with pytest.raises(ArchiveWriteError, match="already exists"), Comicbox(cbz) as car:
+    with (
+        pytest.raises(DestinationOccupiedError, match="already exists") as exc_info,
+        Comicbox(cbz) as car,
+    ):
         car.rename_file()
+    assert exc_info.value.kind == "rename"
+    assert exc_info.value.destination == occupied
+    assert exc_info.value.source == cbz
 
     # Both files survive: the destination is untouched and the source stays
     # where it was, so a later run can still find it.
@@ -269,15 +286,18 @@ def test_rename_respects_a_held_destination(tmp_path: Path) -> None:
     with Comicbox(cbz) as car:
         dest = tmp_path / car.predict_filename()
 
-    _claim_destination(dest)
+    _claim_destination(dest, cbz)
     try:
         with (
-            pytest.raises(ArchiveWriteError, match="already being written"),
+            pytest.raises(
+                DestinationOccupiedError, match="already being written"
+            ) as ei,
             Comicbox(cbz) as car,
         ):
             car.rename_file()
     finally:
         _release_destination(dest)
+    assert ei.value.kind == "inflight"
 
     assert cbz.exists()
     assert not dest.exists()

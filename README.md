@@ -262,12 +262,23 @@ result = write_metadata(
 print(result.written)
 ```
 
+`comicbox.predict.predict_write_destination` reports where a write would land —
+in place, or the CBZ an unwritable archive repacks to — and whether that path is
+already taken, without opening the archive or reading any metadata:
+
+```python
+from comicbox.predict import predict_write_destination
+
+dest = predict_write_destination("comic.cbr")
+print(dest.destination, dest.converts, dest.occupied)
+```
+
 Every operational error these APIs raise derives from
 `comicbox.exceptions.ComicboxError` — `ArchiveError`, `ArchiveWriteError`,
-`MetadataError`, `ExportError`, `WriteValidationError`,
-`OnlineConfigurationError`, `OnlineLookupAbortedError`, and
-`UnsupportedArchiveTypeError` — so consumers can `except ComicboxError` without
-swallowing unrelated programming errors.
+`DestinationOccupiedError`, `MetadataError`, `ExportError`,
+`WriteValidationError`, `OnlineConfigurationError`, `OnlineLookupAbortedError`,
+and `UnsupportedArchiveTypeError` — so consumers can `except ComicboxError`
+without swallowing unrelated programming errors.
 
 ## ⚙️ Configuration
 

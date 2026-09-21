@@ -14,6 +14,19 @@
 - Dependencies
     - Requires mokkari 4.8.0. Metron pacing now registers through mokkari's
       `rate_limiter` hook instead of overriding a private method.
+    - `comicbox.predict.predict_write_destination()` reports where a write would
+      land, and whether that path is taken, before anything is written.
+    - A destination collision raises `DestinationOccupiedError`, which names the
+      occupied path and says which kind of collision it was.
+
+- Fixes
+    - `bulk_write` checks every destination before doing any work, so a batch
+      fails fast instead of repacking an archive and refusing it at the end.
+      `preflight=False` restores the old behavior.
+    - Two archives in one batch that convert to the same name now lose
+      deterministically, by submission order, instead of by thread race.
+    - A kept-original CBR whose CBZ twin already exists is refused before its
+      metadata is read, on the command line as well as the API.
 
 ## v5.1.2
 
