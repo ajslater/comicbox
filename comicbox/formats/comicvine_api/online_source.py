@@ -126,6 +126,76 @@ def reset_shared_sessions() -> None:
         _session_cache.clear()
 
 
+def close_shared_sessions() -> None:
+    """
+    Release the connections and sqlite handles every shared client holds.
+
+    Optional, and not a cancel: a closed client stays usable, at the cost
+    of reopening what it needs on its next request. The response cache
+    reopens lazily and the hourly budget lives in the rate-limit bucket
+    *file* rather than in the bucket object, so nothing a run has spent
+    is forgotten by closing. Mirrors `metron_api`'s `close_shared_sessions`.
+    """
+    with _session_cache_lock:
+        entries = list(_session_cache.values())
+    for client, _signature in entries:
+        close_client(client)
+
+
+def close_client(client: Any) -> None:
+    """
+    Close one simyan client: the session first, then what that leaves open.
+
+    A `Comicvine` exposes no `close` of its own, so this goes through
+    `_session` -- private simyan surface, as in `_maintain_cache`.
+    Closing it releases the pooled sockets and the response cache's
+    sqlite connection and stops pyrate-limiter's leaker thread, but
+    leaves the rate-limit buckets holding theirs (`_close_limiter_buckets`).
+    """
+    # Tests seed fakes that are neither `Comicvine`s nor real sessions.
+    session = getattr(client, "_session", client)
+    close = getattr(session, "close", None)
+    if close is not None:
+        close()
+    _close_limiter_buckets(session)
+
+
+def _close_limiter_buckets(session: Any) -> None:
+    """
+    Close the rate-limit buckets the session's own close leaves open.
+
+    requests-ratelimiter's `close` does ask pyrate-limiter to close them,
+    but `BucketFactory.close()` drops its leaker before iterating
+    `get_buckets()`, which reads that leaker -- so the loop sees nothing
+    and every `SQLiteBucket` keeps its sqlite connection (pyrate-limiter
+    4.5.0). There is one bucket per endpoint pool, so closing only the
+    session trades a silent leak for a `ResourceWarning` apiece once the
+    buckets are finally collected: worse than not closing at all.
+
+    The factory would hand a closed bucket straight back out, and a
+    request holding one dies on its `None` connection, so the registry is
+    emptied first -- a racing lookup then builds a fresh bucket over the
+    same file instead of finding the one being closed. Each bucket's own
+    lock covers the rest: `close` waits behind an in-flight acquire.
+    """
+    factory = getattr(getattr(session, "limiter", None), "bucket_factory", None)
+    registry = getattr(factory, "buckets", None)
+    if not isinstance(registry, dict):
+        # The limiter stack is upstream's to rearrange; a run that cannot
+        # find the buckets has still closed the session above.
+        logger.debug("online comicvine: no rate-limit buckets to close")
+        return
+    buckets = list(registry.values())
+    registry.clear()
+    for bucket in buckets:
+        try:
+            bucket.close()
+        # Broad on purpose: one bucket backend that will not close must
+        # not cost the others their close, nor fail the caller's teardown.
+        except Exception as exc:
+            logger.debug(f"online comicvine: rate-limit bucket close skipped: {exc}")
+
+
 def _bucket_window(conn: sqlite3.Connection, table: str, now_ms: int) -> dict[str, Any]:
     """Summarize one bucket table as a `limit`/`remaining`/`reset_epoch` window."""
     window_start = now_ms - _RATE_LIMIT_WINDOW_MS
