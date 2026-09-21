@@ -422,18 +422,30 @@ class OnlineSession:
 
     def close(self) -> None:
         """
-        Release the pooled Metron HTTP connections.
+        Release the pooled connections and cache handles both sources hold.
 
         Optional, and not a cancel: the session stays usable afterwards,
-        at the cost of a reconnect on its next request. The mokkari
-        session is process-wide per credential set, so closing while
-        another `OnlineSession` in the same process is mid-run costs that
-        run a reconnect too. Acceptable, and the alternative -- leaving
-        the sockets to be finalized -- is what emits `ResourceWarning`.
-        """
-        from comicbox.formats.metron_api.online_source import close_shared_sessions
+        at the cost of reopening what it needs on its next request. The
+        upstream clients are process-wide per credential set, so closing
+        while another `OnlineSession` in the same process is mid-run
+        costs that run the same reopen. Acceptable, and the alternative
+        -- leaving the sockets and sqlite handles to be finalized -- is
+        what emits `ResourceWarning`.
 
-        close_shared_sessions()
+        Comic Vine is the one sharp edge: its rate-limit buckets are
+        closed with the session, so a lookup already holding one can fail
+        outright rather than merely reconnect. Close between files, not
+        under one.
+        """
+        from comicbox.formats.comicvine_api.online_source import (
+            close_shared_sessions as close_comicvine,
+        )
+        from comicbox.formats.metron_api.online_source import (
+            close_shared_sessions as close_metron,
+        )
+
+        close_metron()
+        close_comicvine()
 
     def __enter__(self) -> Self:
         """Enter the context manager, returning this session."""
