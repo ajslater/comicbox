@@ -74,6 +74,10 @@ class FakeAdapter(BaseAdapter):
         proxies: Mapping[str, str] | None = None,
     ) -> requests.Response:
         """Return a real Response, or raise the reply's error."""
+        # requests calls adapter.send(request, **kwargs) with these exact
+        # keyword names, so the signature has to carry them; a fake
+        # transport has no use for any of them.
+        del stream, timeout, verify, cert, proxies
         url = request.url or ""
         self.urls.append(url)
         reply = (

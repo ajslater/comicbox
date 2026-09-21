@@ -85,6 +85,8 @@ class _ThrottlingTransport(BaseAdapter):
         proxies: Mapping[str, str] | None = None,
     ) -> requests.Response:
         """Accept or refuse one send, exactly as DRF's throttle would."""
+        # Interface-mandated keywords; see tests.util.metron_transport.
+        del stream, timeout, verify, cert, proxies
         with self._lock:
             now = time.monotonic()
             self._history = [t for t in self._history if t > now - _SERVER_WINDOW_S]
