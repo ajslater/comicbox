@@ -4,7 +4,7 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3"
 ]
 dependencies = [
   "bidict~=0.23",
@@ -37,7 +37,7 @@ dependencies = [
   "typing-extensions~=4.13",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
-  "zipremove~=0.1",
+  "zipremove~=0.1"
 ]
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [
@@ -50,13 +50,14 @@ keywords = [
   "comicbookinfo",
   "comicinfo",
   "metroninfo",
-  "pdf",
+  "pdf"
 ]
 readme = "README.md"
 requires-python = ">=3.10"
 license = "LGPL-3.0-only"
 name = "comicbox"
 version = "5.2.1"
+
 [[project.authors]]
 name = "AJ Slater"
 email = "aj@slater.net"
@@ -83,7 +84,7 @@ dev = [
   "pypi-cleanup~=0.1.10",
   "semver~=3.1.0",
   "toml-cli~=0.7",
-  "tomlkit~=0.14",
+  "tomlkit~=0.14"
 ]
 build = []
 lint = [
@@ -100,14 +101,14 @@ lint = [
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
   "ty~=0.0.17",
-  "vulture~=2.3",
+  "vulture~=2.3"
 ]
 test = [
   "coverage[toml]~=7.0",
   "deepdiff~=9.0",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
-  "pytest~=9.0",
+  "pytest~=9.0"
 ]
 docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
 ci = ["requests~=2.32"]
@@ -152,7 +153,7 @@ source-include = [
   "tests/**",
   "uv.lock",
   "validate-schema.sh",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
@@ -167,7 +168,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 pythonVersion = "3.10"
 failOnWarnings = false
@@ -210,7 +211,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 
 [tool.coverage.html]
@@ -229,7 +230,7 @@ omit = [
   "site/*",
   "test-results/*",
   "typings/*",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 
 [tool.pytest]
@@ -242,7 +243,7 @@ addopts = [
   "--junit-xml=test-results/pytest/results.xml",
   "--strict-config",
   "--strict-markers",
-  "-ra",
+  "-ra"
 ]
 junit_family = "xunit2"
 strict = true
@@ -263,7 +264,7 @@ extend-exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 show-fixes = true
 target-version = "py310"
@@ -284,7 +285,7 @@ extend-ignore = [
   "PERF203",
   "PLC0415",
   "S101",
-  "W191",
+  "W191"
 ]
 extend-select = [
   "A",
@@ -343,7 +344,7 @@ extend-select = [
   "TRY",
   "UP",
   "W",
-  "YTT",
+  "YTT"
 ]
 external = ["V101"]
 task-tags = ["FIXME", "HACK", "TODO", "XXX", "http"]
@@ -370,8 +371,11 @@ ignore-overlong-task-comments = true
   "S106",
   "S108",
   "SLF001",
-  "T203",
+  "T203"
 ]
+"bin/hub_prune_stale.py" = ["T201"]
+"bin/release_info.py" = ["T201"]
+"bin/roman.py" = ["T201"]
 "comicbox/run.py" = ["T201", "T203"]
 "tests/files/create_cs_archives.py" = ["S603", "S607", "T201"]
 "tests/files/create_macos_resource_fork.py" = ["T201"]
@@ -393,7 +397,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py",
+  "vulture_ignorelist.py"
 ]
 
 [tool.ty.rules]
@@ -417,7 +421,7 @@ exclude = [
   "site",
   "test-results/",
   "test_results/",
-  "typings/",
+  "typings/"
 ]
 min_confidence = 61
 sort_by_size = true
