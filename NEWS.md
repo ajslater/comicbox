@@ -1,5 +1,13 @@
 # 📰 News
 
+## v5.2.2
+
+- Fixes
+    - `get_page_by_index()` returns `None` for an index past the last page
+      instead of raising `StopIteration`.
+    - Extracting covers writes each cover once. A cover found by more than one
+      heuristic was written, and counted, once per heuristic.
+
 ## v5.2.1
 
 - Fixes

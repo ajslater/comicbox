@@ -22,8 +22,6 @@ class ComicboxArchivePages(ComicboxArchiveFilenames):
 
     def get_page_by_index(self, index: int, pdf_format: str = "") -> bytes | None:
         """Get the page data by index."""
-        if pages_generator := self.get_pages(
-            page_from=index, page_to=index, pdf_format=pdf_format
-        ):
-            return next(pages_generator)
+        if pagename := self.get_pagename(index):
+            return self.get_page_by_filename(pagename, pdf_format=pdf_format)
         return None

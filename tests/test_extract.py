@@ -2,6 +2,7 @@
 
 from argparse import Namespace
 from filecmp import cmp
+from unittest.mock import patch
 
 import pytest
 from pdffile import PDFFile
@@ -79,6 +80,19 @@ def test_extract_covers() -> None:
         car.extract_covers(TMP_DIR)
 
     assert cmp(COVER_PATH_SOURCE, COVER_PATH_DEST)
+
+
+def test_extract_covers_writes_each_cover_once() -> None:
+    """A cover found by more than one heuristic is extracted once."""
+    TMP_DIR.mkdir(exist_ok=True)
+    with (
+        Comicbox(CIX_CBZ_SOURCE_PATH) as car,
+        patch.object(car, "_extract_page", wraps=car._extract_page) as spy,
+    ):
+        car.extract_covers(TMP_DIR)
+
+    assert spy.call_count == 1
+    my_cleanup(TMP_DIR)
 
 
 def test_extract_cover_pdf() -> None:

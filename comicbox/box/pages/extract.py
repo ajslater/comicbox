@@ -1,6 +1,6 @@
 """Methods for extracting files from the archive."""
 
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -54,16 +54,13 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             logger.warning(f"No pages extracted: {exc}")
 
     def _extract_pagenames_get_path(
-        self, pagenames: Sequence[str] | Generator[str], path: Path | str | None
+        self, pagenames: Sequence[str], path: Path | str | None
     ) -> Path | None:
         if not pagenames:
             logger.warning("No pages to extract.")
             return None
         if self._config.general.dry_run:
-            if isinstance(pagenames, Sequence):
-                logger.info(f"Not extracting {len(pagenames)} pages")
-            else:
-                logger.info("Not extracting pages")
+            logger.info(f"Not extracting {len(pagenames)} pages")
             return None
 
         resolved_path = path or self._config.general.dest_path
@@ -88,7 +85,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             self._extract_all_pagenames(pagenames, resolved_path)
 
     def _extract_pagenames(
-        self, pagenames: Generator[str], path: Path | None = None
+        self, pagenames: Sequence[str], path: Path | None = None
     ) -> None:
         if path := self._extract_pagenames_get_path(pagenames, path):
             self._extract_all_pagenames(pagenames, path)
@@ -148,5 +145,4 @@ class ComicboxExtractPages(ComicboxPagesCovers):
 
     def extract_covers(self, path: Path | None = None) -> None:
         """Extract the cover image to a destination file."""
-        cover_paths_generator = self.generate_cover_paths()
-        self._extract_pagenames(cover_paths_generator, path=path)
+        self._extract_pagenames(self.get_cover_paths(), path=path)

@@ -56,6 +56,12 @@ def test_get_random_page() -> None:
     assert image == page
 
 
+def test_get_page_by_index_out_of_range() -> None:
+    """An index past the last page returns None instead of raising."""
+    with Comicbox(ARCHIVE_PATH) as car:
+        assert car.get_page_by_index(car.get_page_count()) is None
+
+
 def test_get_pages_after() -> None:
     """Test getting many pages."""
     page_num = 3

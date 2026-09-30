@@ -153,10 +153,7 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
     @staticmethod
     def _get_computed_notes_extra_identifiers(notes: str) -> dict:
         identifiers = {}
-        matches = _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes)
-        if not matches:
-            return identifiers
-        for match in matches:
+        for match in _NOTES_IDENTIFIER_EXTRA_RE.finditer(notes):
             if (
                 (id_source_str := match_id_source_str(match))
                 and (id_source := get_id_source_by_alias(id_source_str))
