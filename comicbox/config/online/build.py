@@ -80,7 +80,7 @@ def _parse_ttl(raw: str | None) -> timedelta:
         return timedelta(seconds=int(raw))
     except ValueError:
         logger.warning(
-            f"unparseable cache.ttl {raw!r}, defaulting to 7d "
+            f"unparsable cache.ttl {raw!r}, defaulting to 7d "
             "(use forms like 7d, 24h, 60m, or 0)"
         )
         return timedelta(days=7)

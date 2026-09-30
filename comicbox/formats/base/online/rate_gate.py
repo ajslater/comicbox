@@ -96,7 +96,7 @@ class GateStats:
     sends: int
     """Requests admitted through the gate (one per real HTTP send)."""
     rejections: int
-    """Server rate-limit rejections observed (429s, and local pre-empts)."""
+    """Server rate-limit rejections observed (429s, and local preempts)."""
     blocked_seconds: float
     """Total wall-clock seconds workers spent waiting at the gate."""
     burst_remaining: int | None

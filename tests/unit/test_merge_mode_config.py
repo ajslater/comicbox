@@ -89,7 +89,7 @@ def test_replace_flag_is_gone() -> None:
 
 def test_bad_config_merge_mode_raises_naming_the_valid_values() -> None:
     """
-    An unparseable config value fails loudly instead of defaulting.
+    An unparsable config value fails loudly instead of defaulting.
 
     Silently ignoring a bad config value is the defect class the config
     audit removed elsewhere; the message names the key and the choices.

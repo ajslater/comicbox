@@ -167,7 +167,7 @@ def test_choose_falls_through_when_volume_id_not_in_new_candidates() -> None:
 
 
 def test_cache_emits_prompt_resolved_from_cache_event() -> None:
-    """The cache hit must emit a PromptResolvedFromCache event for Codex UIs."""
+    """The cache hit must emit a PromptResolvedFromCache event for the Codex UI."""
     events: list[object] = []
     recorder = _Recorder(response=PromptResponse(action="skip"), seen=[])
     session = OnlineSession(

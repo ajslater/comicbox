@@ -398,7 +398,7 @@ def test_parse_identifier_other_str_comicvine_long_code() -> None:
 
 
 def test_parse_identifier_other_str_garbage_falls_back_to_key() -> None:
-    """Unparseable input becomes the key itself with no source or type."""
+    """Unparsable input becomes the key itself with no source or type."""
     assert parse_identifier_other_str("garbage with spaces") == (
         None,
         "",
