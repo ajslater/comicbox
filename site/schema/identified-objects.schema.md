@@ -1,6 +1,6 @@
 # Comicbox Identified Object Collection
 
-## Properties
+## Additional properties
 
-- <a id="properties/.%2B"></a>**`.+`**: Refer to
+- <a id="additionalProperties"></a>**Additional properties**: Refer to
   _[identified-object.schema.json](identified-object.schema.md)_.
