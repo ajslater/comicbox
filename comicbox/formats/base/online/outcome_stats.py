@@ -45,10 +45,10 @@ class _ApiCounts:
     # Responses that carried no `X-RateLimit-*` header at all, by HTTP
     # status. A genuine Metron `/api/` response of ANY status carries
     # them: DRF runs its throttles in `initial()`, before any view code,
-    # before the conditional GET's 304 and before `X-Cache`. So their
-    # absence proves the answer came from something in front of Django
-    # rather than from the API, and bucketing by status catches an Anubis
-    # challenge page (served as HTTP 200 HTML) as readily as a 429.
+    # before the 304 answering a conditional GET and before `X-Cache`.
+    # So their absence proves the answer came from something in front of
+    # Django rather than from the API, and bucketing by status catches an
+    # Anubis challenge page (served as HTTP 200 HTML) as readily as a 429.
     unthrottled: dict[int, int] = field(default_factory=dict)
     # Sends that never produced a response: mokkari wraps `requests`
     # ConnectionError and ReadTimeout in `ApiError`. This is the shape a

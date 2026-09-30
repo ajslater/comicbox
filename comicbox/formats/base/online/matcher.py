@@ -202,7 +202,7 @@ def final_score(candidate: Candidate, *, hash_used: bool) -> float:
     share of the blended budget, regardless of which signals
     contributed to producing the md value.
 
-    Known asymmetry (audited 2026-08-31, deliberately not retuned here
+    Known asymmetry (audited 2026-08-31, deliberately not re-tuned here
     — see the matcher scoring audit under
     ``tasks/online-tagging/calibration-notes/``): an un-hashed
     candidate is scored on raw metadata while a hashed one is scored on

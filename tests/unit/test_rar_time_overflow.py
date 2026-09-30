@@ -80,7 +80,7 @@ def _write_overflow_cbr(path: Path, remainder: int = _OVERFLOW_REMAINDER) -> Pat
         _S_FILE_HEADER.pack(
             0,  # pack size
             0,  # unpacked size
-            0,  # host os: msdos
+            0,  # host os: MS-DOS
             0,  # file crc of no data
             _FIXTURE_DOSTIME,
             20,  # version needed

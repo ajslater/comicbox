@@ -365,7 +365,7 @@ _CV_BODY_ERRORS: Final[tuple[tuple[str, RetryCategory], ...]] = (
 # What each HTTP status means once recovered from a plain ServiceError.
 # simyan raises dedicated classes for 401 and 429/420 when it can parse
 # the error body; these are the same statuses arriving down the
-# unparseable-body path, where everything collapses into ServiceError.
+# unparsable-body path, where everything collapses into ServiceError.
 _STATUS_CATEGORIES: Final = MappingProxyType(
     {
         401: RetryCategory.AUTH,
