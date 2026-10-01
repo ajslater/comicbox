@@ -21,7 +21,7 @@ The ``online`` subtree is big enough to live in its own package —
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
@@ -78,7 +78,7 @@ class ReadSettings:
     merge_order: "tuple[MetadataSources, ...] | None" = None
 
 
-class MergeMode(str, Enum):
+class MergeMode(StrEnum):
     """
     How caller-supplied metadata merges into a comic's existing tags.
 

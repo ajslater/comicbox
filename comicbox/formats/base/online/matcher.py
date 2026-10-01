@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Final
 
 from loguru import logger
@@ -78,7 +78,7 @@ W_COVER = 0.20
 _DEFAULT_CONFIDENCE_THRESHOLD = DEFAULT_AUTO_THRESHOLD
 
 
-class ResolutionKind(str, Enum):
+class ResolutionKind(StrEnum):
     """Outcome of applying the Match Resolution Policy."""
 
     AUTO_WRITE = "AUTO_WRITE"

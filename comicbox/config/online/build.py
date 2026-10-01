@@ -282,11 +282,7 @@ def _build_cache(
 ) -> OnlineCacheSettings:
     """Build `OnlineCacheSettings` from CLI > config."""
     cache_mode_raw = _coalesce(runtime.cache_mode_cli, online_block.cache.mode)
-    cache_mode = (
-        cache_mode_raw
-        if isinstance(cache_mode_raw, CacheMode)
-        else parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
-    )
+    cache_mode = parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
     cache_dir_raw = _coalesce(cli("cache_dir"), online_block.cache.dir)
     cache_dir = Path(cache_dir_raw).expanduser() if cache_dir_raw else None
     cache_ttl_raw = _coalesce(cli("cache_ttl"), online_block.cache.ttl)
