@@ -5,8 +5,13 @@
 - Breaking Changes
     - Requires Python 3.11 or later.
 - Fixes
+    - Short-form PDF dates, like those without a timezone, are no longer
+      dropped.
+    - Filenames with long digit runs no longer stall parsing.
     - Config mappings accept enum members like `MatchMode.EAGER` as well as
       their string values.
+- Dependencies
+    - Requires comicfn2dict 1.0 and comicbox-pdffile 1.0.
 
 ## v5.2.2
 
