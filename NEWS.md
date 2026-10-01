@@ -1,5 +1,13 @@
 # 📰 News
 
+## v5.3.0
+
+- Breaking Changes
+    - Requires Python 3.11 or later.
+- Fixes
+    - Config mappings accept enum members like `MatchMode.EAGER` as well as
+      their string values.
+
 ## v5.2.2
 
 - Fixes
