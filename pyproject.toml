@@ -4,13 +4,13 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3"
+  "Programming Language :: Python :: 3",
 ]
 dependencies = [
   "bidict~=0.23",
   "case-converter~=1.2",
-  "comicfn2dict>=0.3.2,<1.0.0",
-  "confuse~=2.3.0",
+  "comicfn2dict~=1.0",
+  "confuse~=2.3",
   "glom~=25.12",
   "httpx~=0.28",
   "imagehash>=4.3.2",
@@ -19,7 +19,7 @@ dependencies = [
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari>=4.8.0,<5",
+  "mokkari~=4.8.0",
   "nh3>=0.3.5",
   "pillow>=12.2.0",
   "platformdirs>=4.9.6",
@@ -33,11 +33,11 @@ dependencies = [
   "rich~=15.0",
   "ruamel-yaml~=0.18",
   "simplejson~=4.0",
-  "simyan>=4.1.0,<5",
+  "simyan~=4.2",
   "typing-extensions~=4.13",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
-  "zipremove~=0.1"
+  "zipremove~=0.1",
 ]
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [
@@ -50,7 +50,7 @@ keywords = [
   "comicbookinfo",
   "comicinfo",
   "metroninfo",
-  "pdf"
+  "pdf",
 ]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -68,7 +68,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile>=0.6.3,<0.7"]
+pdf = ["comicbox-pdffile~=1.0"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
@@ -84,7 +84,7 @@ dev = [
   "pypi-cleanup~=0.1.10",
   "semver~=3.1.0",
   "toml-cli~=0.7",
-  "tomlkit~=0.14"
+  "tomlkit~=0.14",
 ]
 build = []
 lint = [
@@ -101,14 +101,14 @@ lint = [
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
   "ty~=0.0.17",
-  "vulture~=2.3"
+  "vulture~=2.3",
 ]
 test = [
   "coverage~=7.0",
   "deepdiff~=9.0",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
-  "pytest~=9.0"
+  "pytest~=9.0",
 ]
 docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
 ci = ["requests~=2.32"]
@@ -152,7 +152,7 @@ source-include = [
   "tests/**",
   "uv.lock",
   "validate-schema.sh",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
@@ -167,7 +167,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 pythonVersion = "3.11"
 failOnWarnings = false
@@ -215,7 +215,7 @@ omit = [
   "site/*",
   "test-results/*",
   "typings/*",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 
 [tool.pytest]
@@ -228,7 +228,7 @@ addopts = [
   "--junit-xml=test-results/pytest/results.xml",
   "--strict-config",
   "--strict-markers",
-  "-ra"
+  "-ra",
 ]
 junit_family = "xunit2"
 strict = true
@@ -249,7 +249,7 @@ extend-exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 show-fixes = true
 target-version = "py311"
@@ -270,7 +270,7 @@ extend-ignore = [
   "PERF203",
   "PLC0415",
   "S101",
-  "W191"
+  "W191",
 ]
 extend-select = [
   "A",
@@ -329,7 +329,7 @@ extend-select = [
   "TRY",
   "UP",
   "W",
-  "YTT"
+  "YTT",
 ]
 external = ["V101"]
 task-tags = ["FIXME", "HACK", "TODO", "XXX", "http"]
@@ -356,7 +356,7 @@ ignore-overlong-task-comments = true
   "S106",
   "S108",
   "SLF001",
-  "T203"
+  "T203",
 ]
 "bin/hub_prune_stale.py" = ["T201", "UP017"]
 "bin/release_info.py" = ["T201"]
@@ -382,7 +382,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 
 [tool.ty.rules]
@@ -402,7 +402,7 @@ exclude = [
   "*/node_modules/*",
   "*/site/*",
   "*/test-results/*",
-  "*/typings/*"
+  "*/typings/*",
 ]
 min_confidence = 61
 sort_by_size = true
