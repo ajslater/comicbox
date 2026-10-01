@@ -13,9 +13,7 @@ from tests.const import TEST_FILES_DIR
 
 
 def _get_stat_mtime(fn: str) -> datetime:
-    return datetime.fromtimestamp(
-        (TEST_FILES_DIR / fn).stat().st_mtime, tz=UTC
-    )
+    return datetime.fromtimestamp((TEST_FILES_DIR / fn).stat().st_mtime, tz=UTC)
 
 
 FIXTURES = MappingProxyType(
@@ -24,9 +22,7 @@ FIXTURES = MappingProxyType(
         "Captain Science #001-cix-cbi.cbr": _get_stat_mtime(
             "Captain Science #001-cix-cbi.cbr"
         ),
-        "Captain Science #001.cbz": datetime(
-            2026, 5, 17, 21, 43, 38, tzinfo=UTC
-        ),
+        "Captain Science #001.cbz": datetime(2026, 5, 17, 21, 43, 38, tzinfo=UTC),
         # Carries a ComicBookInfo json comment, like the cbr above, so the
         # file's own mtime dates it. It read as the members' date_time
         # while the json check couldn't see a bytes (zip) comment.

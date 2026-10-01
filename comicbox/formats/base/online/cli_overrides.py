@@ -29,6 +29,7 @@ from comicbox.formats.base.online import SOURCE_NAMES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from typing import Self
 
 _VALID_AUTH_FIELDS = frozenset({"user", "pass", "key", "url"})
 
@@ -83,7 +84,7 @@ class CliOverrides:
     per_source: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     @classmethod
-    def from_auth_list(cls, entries: Iterable[str]) -> CliOverrides:
+    def from_auth_list(cls, entries: Iterable[str]) -> Self:
         """Build from a list of parsed ``--auth`` strings."""
         per_source: dict[str, dict[str, str]] = {}
         for raw in entries or ():

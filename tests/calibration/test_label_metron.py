@@ -24,6 +24,7 @@ from tests.calibration.label_metron import (
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
+    from typing import Self
 
     import pytest
 
@@ -108,7 +109,7 @@ class _FakeSourceBase:
     retry_sleep = None
     classify_retry_exception = staticmethod(MetronOnlineSource.classify_retry_exception)
 
-    def _get_session(self) -> _FakeSourceBase:
+    def _get_session(self) -> Self:
         return self
 
 

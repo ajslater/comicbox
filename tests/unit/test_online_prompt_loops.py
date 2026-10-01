@@ -11,6 +11,7 @@ grammar are in ``test_online_prompt``.
 from __future__ import annotations
 
 import sys
+from typing import Self
 
 import pytest
 
@@ -34,7 +35,7 @@ class _FakeQuestionary:
         self.exc = exc
         self.messages: list[str] = []
 
-    def text(self, message: str) -> _FakeQuestionary:
+    def text(self, message: str) -> Self:
         self.messages.append(message)
         return self
 
