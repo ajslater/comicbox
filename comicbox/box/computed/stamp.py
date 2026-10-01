@@ -97,8 +97,6 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             stamp_md[TAGGER_KEY] = self._config.general.tagger
 
         if UPDATED_AT_KEY not in delete_keys:
-            # Deprecated method needed for python 3.10
-            # Update after 2026-11
             stamp_md[UPDATED_AT_KEY] = datetime.now(tz=UTC)
 
         if notes := self._get_computed_notes_stamp(sub_data, stamp_md):

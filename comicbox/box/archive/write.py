@@ -107,7 +107,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             if fn in _ALL_ARCHIVE_METADATA_FILENAMES:
                 # zipremove patches remove()/repack() onto the stdlib
                 # ZipFile on Python < 3.14 (3.14 has them natively), so
-                # the 3.10 typeshed stubs can't see either method.
+                # the pre-3.14 typeshed stubs can't see either method.
                 zf.remove(path)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
         zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
 
