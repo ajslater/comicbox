@@ -11,7 +11,7 @@
     - Config mappings accept enum members like `MatchMode.EAGER` as well as
       their string values.
 - Dependencies
-    - Requires comicfn2dict 1.0 and comicbox-pdffile 1.0.
+    - Requires comicfn2dict 1.0, comicbox-pdffile 1.0 and simyan 4.2.
 
 ## v5.2.2
 
