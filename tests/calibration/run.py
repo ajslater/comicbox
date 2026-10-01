@@ -41,9 +41,7 @@ import traceback
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, Self
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config

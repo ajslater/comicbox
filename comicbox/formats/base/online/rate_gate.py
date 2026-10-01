@@ -430,5 +430,5 @@ def _reset_suffix(reset: float | None) -> str:
     """Render a reset epoch for humans, or nothing when unknown."""
     if reset is None:
         return ""
-    when = datetime.datetime.fromtimestamp(reset, tz=datetime.timezone.utc)
+    when = datetime.datetime.fromtimestamp(reset, tz=datetime.UTC)
     return f" (one slot frees at {when.isoformat(timespec='seconds')})"

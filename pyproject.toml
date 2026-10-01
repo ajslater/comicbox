@@ -53,7 +53,7 @@ keywords = [
   "pdf"
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
 version = "5.2.2"
@@ -96,7 +96,7 @@ lint = [
   "icecream~=2.1",
   "mbake~=1.4.5",
   "pathspec~=1.1.0",
-  "radon[toml]~=6.0",
+  "radon~=6.0",
   "ruff~=0.16",
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
@@ -104,7 +104,7 @@ lint = [
   "vulture~=2.3"
 ]
 test = [
-  "coverage[toml]~=7.0",
+  "coverage~=7.0",
   "deepdiff~=9.0",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
@@ -169,7 +169,7 @@ exclude = [
   "typings",
   "vulture_ignorelist.py"
 ]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 failOnWarnings = false
 reportAny = false
 reportExplicitAny = false
@@ -252,7 +252,7 @@ extend-exclude = [
   "vulture_ignorelist.py"
 ]
 show-fixes = true
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 extend-ignore = [
@@ -370,7 +370,7 @@ max-args = 8
 
 [tool.ty.environment]
 python = "./.venv"
-python-version = "3.10"
+python-version = "3.11"
 
 [tool.ty.src]
 exclude = [

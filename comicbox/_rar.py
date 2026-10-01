@@ -20,7 +20,7 @@ test_cbz_read_does_not_load_py7zr_or_rarfile).
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import cache, wraps
 from typing import TYPE_CHECKING
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 __all__ = ("import_rarfile",)
 
 _NS_PER_SECOND = 1_000_000_000
-_PROBE_DATETIME = datetime(2020, 1, 1, tzinfo=timezone.utc)
+_PROBE_DATETIME = datetime(2020, 1, 1, tzinfo=UTC)
 # Any remainder of a second or more trips the bug. The value is arbitrary.
 _PROBE_NSEC = 1_500_000_000
 # Guards against stacking wrappers when threads detect archives concurrently.

@@ -2,7 +2,7 @@
 
 from argparse import Namespace
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType
@@ -186,7 +186,7 @@ PDF_MD = MappingProxyType(
             "tags": {"d": {}, "e": {}, "f": {}},
             "title": "the tangle of their lives",
             "tagger": "comicbox dev",
-            "updated_at": datetime(2025, 11, 21, 3, 11, 14, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 11, 21, 3, 11, 14, tzinfo=UTC),
         }
     }
 )

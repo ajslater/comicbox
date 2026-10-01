@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from argparse import Namespace
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -273,7 +273,7 @@ def test_online_session_rate_limit_status_headerless_reads_as_empty() -> None:
 
 def test_online_session_rate_limit_status_converts_windows() -> None:
     """Live mokkari windows come through JSON-safe: datetimes -> epoch floats."""
-    reset = datetime(2026, 7, 19, 12, 0, 0, tzinfo=timezone.utc)
+    reset = datetime(2026, 7, 19, 12, 0, 0, tzinfo=UTC)
     _seed_shared_session(
         RateLimitStatus(
             burst=RateLimitWindow(limit=20, remaining=19, reset=reset),

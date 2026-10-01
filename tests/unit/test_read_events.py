@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from comicbox.config import get_config
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=True)))
-FUTURE = datetime(2999, 1, 1, tzinfo=timezone.utc)
+FUTURE = datetime(2999, 1, 1, tzinfo=UTC)
 
 
 def _drain(gen) -> None:

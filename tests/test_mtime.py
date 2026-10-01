@@ -2,7 +2,7 @@
 
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
 
@@ -14,7 +14,7 @@ from tests.const import TEST_FILES_DIR
 
 def _get_stat_mtime(fn: str) -> datetime:
     return datetime.fromtimestamp(
-        (TEST_FILES_DIR / fn).stat().st_mtime, tz=timezone.utc
+        (TEST_FILES_DIR / fn).stat().st_mtime, tz=UTC
     )
 
 
@@ -25,7 +25,7 @@ FIXTURES = MappingProxyType(
             "Captain Science #001-cix-cbi.cbr"
         ),
         "Captain Science #001.cbz": datetime(
-            2026, 5, 17, 21, 43, 38, tzinfo=timezone.utc
+            2026, 5, 17, 21, 43, 38, tzinfo=UTC
         ),
         # Carries a ComicBookInfo json comment, like the cbr above, so the
         # file's own mtime dates it. It read as the members' date_time

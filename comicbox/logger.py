@@ -3,9 +3,9 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
-from typing_extensions import Any
 
 DEBUG = os.environ.get("DEBUG", "")
 

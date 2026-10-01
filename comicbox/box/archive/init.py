@@ -1,9 +1,9 @@
 """Comicbox methods on the archive itself."""
 
 import re
+from typing import Self
 
 from loguru import logger
-from typing_extensions import Self
 
 from comicbox.box.init import ComicboxInit
 from comicbox.box.types import ArchiveType

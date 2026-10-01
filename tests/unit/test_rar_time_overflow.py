@@ -15,7 +15,7 @@ import struct
 import subprocess
 import sys
 from binascii import crc32
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -126,11 +126,11 @@ def test_to_nsdatetime_boundaries(
 
 def test_to_nsdatetime_carry_rolls_over_the_year() -> None:
     """Carrying a second out of the last second of the year rolls the date."""
-    new_years_eve = datetime(2020, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    new_years_eve = datetime(2020, 12, 31, 23, 59, 59, tzinfo=UTC)
 
     result = rarfile.to_nsdatetime(new_years_eve, 1_500_000_000)
 
-    assert result == datetime(2021, 1, 1, 0, 0, 0, 500000, tzinfo=timezone.utc)
+    assert result == datetime(2021, 1, 1, 0, 0, 0, 500000, tzinfo=UTC)
 
 
 def test_import_rarfile_does_not_stack_patches() -> None:
@@ -188,4 +188,4 @@ def test_comicbox_opens_a_cbr_with_an_overflowing_timestamp(tmp_path: Path) -> N
 
     # A plain datetime, not rarfile's unpicklable nsdatetime subclass.
     assert type(mtime) is datetime
-    assert mtime == _FIXTURE_MTIME.replace(tzinfo=timezone.utc)
+    assert mtime == _FIXTURE_MTIME.replace(tzinfo=UTC)

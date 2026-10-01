@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from tarfile import TarInfo
 from typing import TYPE_CHECKING, Any, cast
 from zipfile import ZipInfo
@@ -31,14 +31,14 @@ class ArchiveInfo:
             if date_time := info.date_time:
                 dttm = datetime(*date_time)  # noqa: DTZ001
         elif isinstance(info, TarInfo):
-            dttm = datetime.fromtimestamp(info.mtime, tz=timezone.utc)
+            dttm = datetime.fromtimestamp(info.mtime, tz=UTC)
         elif hasattr(info, "creationtime"):  # SevenZipInfo
             dttm = cast("SevenZipInfo", info).creationtime
         elif mtime := cast("RarInfo", info).mtime:
             dttm = mtime
         if dttm:
             if not dttm.tzinfo:
-                dttm = dttm.replace(tzinfo=timezone.utc)
+                dttm = dttm.replace(tzinfo=UTC)
             if type(dttm) is not datetime:
                 # rarfile returns an nsdatetime (a datetime subclass) that has
                 # no __reduce__, so pickling it across a ProcessPoolExecutor
