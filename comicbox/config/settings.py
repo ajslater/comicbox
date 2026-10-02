@@ -25,6 +25,8 @@ from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
+from comicbox.exceptions import ConfigurationError
+
 if TYPE_CHECKING:
     # comicbox.config.online.settings imports parse_enum from here at
     # runtime, so the reference back stays type-only.
@@ -45,7 +47,7 @@ def parse_enum(
     except ValueError as exc:
         valid = ", ".join(member.value for member in enum_cls)
         reason = f"{flag}: unknown {noun} {raw!r}; valid: {valid}"
-        raise ValueError(reason) from exc
+        raise ConfigurationError(reason) from exc
 
 
 @dataclass(frozen=True, slots=True)

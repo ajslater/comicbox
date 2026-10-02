@@ -4,14 +4,24 @@ import sys
 from argparse import Namespace
 from collections.abc import Sequence
 
+from confuse import ConfigError
 from rich import print as rich_print
+from rich.markup import escape
 
 from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.cli.parser import build_parser
-from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.exceptions import ConfigurationError, UnsupportedArchiveTypeError
 from comicbox.run import Runner
 
-_HANDLED_EXCEPTIONS = (UnsupportedArchiveTypeError, OnlineLookupAbortedError)
+# Each is a complete message for the user; a traceback adds nothing.
+# ConfigError is confuse's: an unreadable -c file, or a value of the wrong
+# type in a config file or env var.
+_HANDLED_EXCEPTIONS = (
+    UnsupportedArchiveTypeError,
+    OnlineLookupAbortedError,
+    ConfigurationError,
+    ConfigError,
+)
 
 
 def get_args(params: Sequence[str] | None = None) -> Namespace:
@@ -40,11 +50,14 @@ def main(params: Sequence[str] | None = None) -> None:
     cns = get_args(params)
     args = Namespace(comicbox=cns)
 
-    runner = Runner(args)
     try:
+        # Building the runner resolves the config, so it's guarded too.
+        runner = Runner(args)
         runner.run()
     except _HANDLED_EXCEPTIONS as exc:
-        rich_print(f"[yellow]{exc}[/yellow]")
+        # Escaped: comic paths carry brackets ("[digital]") that rich
+        # would otherwise swallow as markup, or reject outright.
+        rich_print(f"[yellow]{escape(str(exc))}[/yellow]")
         sys.exit(1)
     if runner.failure_count:
         # Batch dispatch logs each failure and keeps going, so without

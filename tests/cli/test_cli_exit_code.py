@@ -107,5 +107,35 @@ def test_every_file_failing_exits_one(tmp_path: Path) -> None:
     assert "3 file(s) failed." in out
 
 
+def _one_line(out: str) -> str:
+    """Undo rich's wrapping of a long message at the terminal width."""
+    return " ".join(out.split())
+
+
+def test_bad_config_value_exits_one_without_traceback(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text("comicbox:\n  general:\n    jobs: lots\n")
+    code, out = _run_cli("-c", str(config), "-v")
+    assert code == 1
+    assert "comicbox.general.jobs: must be a number" in _one_line(out)
+
+
+def test_bad_config_enum_exits_one_without_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE__LOOKUP__MATCH", "bogus")
+    code, out = _run_cli("-v")
+    assert code == 1
+    assert "--match: unknown name 'bogus'" in _one_line(out)
+
+
+def test_config_error_brackets_survive_rich(tmp_path: Path) -> None:
+    """Paths like "[digital]" are text, not rich markup to swallow."""
+    missing = tmp_path / "Foo [digital].yaml"
+    code, out = _run_cli("-c", str(missing), "-v")
+    assert code == 1
+    assert "Foo [digital].yaml could not be read" in _one_line(out)
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-v"])

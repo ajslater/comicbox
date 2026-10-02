@@ -40,6 +40,7 @@ from comicbox.config.online.settings import (
     Prompts,
 )
 from comicbox.config.settings import parse_enum
+from comicbox.exceptions import ConfigurationError
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
 from comicbox.formats.base.online.credentials import resolve_credentials
@@ -103,13 +104,13 @@ def _parse_explicit_db_id(
                 f"{flag} comicvine:{raw}: resource type {id_type} is not "
                 f"supported (expected {cv_resource_type} = {cv_resource_name})"
             )
-            raise ValueError(reason)
+            raise ConfigurationError(reason)
         return int(m.group("id_key"))
     try:
         return int(raw)
     except ValueError as exc:
         reason = f"{flag}: non-numeric id {raw!r} for {source}"
-        raise ValueError(reason) from exc
+        raise ConfigurationError(reason) from exc
 
 
 _parse_explicit_id = partial(
@@ -136,7 +137,7 @@ def _parse_db_id_list(
     for raw in raw_list or ():
         if ":" not in raw:
             reason = f"{flag_name} expects DB:ID, got {raw!r}"
-            raise ValueError(reason)
+            raise ConfigurationError(reason)
         source, _, value = raw.partition(":")
         source = source.strip().lower()
         if source not in SOURCE_NAMES:
@@ -144,7 +145,7 @@ def _parse_db_id_list(
                 f"{flag_name}: unknown source {source!r}; "
                 f"known: {', '.join(SOURCE_NAMES)}"
             )
-            raise ValueError(reason)
+            raise ConfigurationError(reason)
         out[source] = parse_value(source, value)
     return out
 
@@ -178,6 +179,15 @@ def _build_per_source_tuning(
     for name, raw_block in dict(raw).items():
         if not isinstance(raw_block, Mapping):
             continue
+        source = str(name).lower()
+        if source not in SOURCE_NAMES:
+            # Same treatment as an unknown read.merge_order source: no
+            # source would ever read this block, so say it's ignored.
+            logger.warning(
+                f"online.tuning.per_source: unknown source {name!r}, skipping; "
+                f"known: {', '.join(SOURCE_NAMES)}"
+            )
+            continue
         block: Mapping[str, Any] = raw_block
         rl_raw: Mapping[str, Any] = block.get("rate_limit") or {}
         limits = OnlineSourceLimits(
@@ -187,7 +197,7 @@ def _build_per_source_tuning(
             per_hour=rl_raw.get("per_hour"),
         )
         effort_raw = block.get("effort")
-        out[str(name).lower()] = OnlineSourceTuning(
+        out[source] = OnlineSourceTuning(
             auto_threshold=block.get("auto_threshold"),
             effort=parse_enum(Effort, "--effort", str(effort_raw))
             if effort_raw
@@ -375,7 +385,7 @@ def _normalize_sources(value: Any, *, origin: str) -> tuple[str, ...] | None:
             f"{origin}: unknown source(s) {', '.join(unknown)}; "
             f"known: {', '.join(SOURCE_NAMES)}"
         )
-        raise ValueError(reason)
+        raise ConfigurationError(reason)
     return names
 
 

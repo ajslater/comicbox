@@ -5,11 +5,20 @@
 - Breaking Changes
     - Requires Python 3.11 or later.
 - Fixes
+    - CBR support is detected by test-extracting a file; a missing or broken RAR
+      tool is reported instead of crashing reads.
+    - A broken PDF install disables PDFs with a warning instead of breaking
+      comicbox, and `is_pdf_supported()` agrees.
+    - A malformed user config is skipped with a warning, and config errors print
+      one line instead of a traceback.
+    - Per-source online tuning values are validated; unknown sources warn.
+    - A broken 7z or RAR library no longer aborts batch reads.
     - Short-form PDF dates, like those without a timezone, are no longer
       dropped.
     - Filenames with long digit runs no longer stall parsing.
     - Config mappings accept enum members like `MatchMode.EAGER` as well as
       their string values.
+    - Error messages keep bracketed text like `[digital]`.
 - Dependencies
     - Requires comicfn2dict 1.0, comicbox-pdffile 1.0 and simyan 4.2.
 

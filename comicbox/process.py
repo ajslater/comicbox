@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor, as_completed
+from contextlib import suppress
 from functools import cache
 from pathlib import Path
 from tarfile import TarError
@@ -32,19 +33,30 @@ if TYPE_CHECKING:
 
 @cache
 def _archive_errors() -> tuple[type[BaseException], ...]:
-    """Return the tuple of archive errors, deferring py7zr / rarfile imports."""
-    from py7zr.exceptions import ArchiveError as Py7zError
-    from rarfile import Error as RarError
+    """
+    Return the tuple of archive errors, deferring py7zr / rarfile imports.
 
-    return (
+    This is evaluated inside an ``except`` clause, so it must not raise: a
+    backend that fails to import would replace the error being handled --
+    a corrupt CBZ, say -- with an ImportError and abort the whole batch. A
+    backend that can't be imported can't raise its own errors, either.
+    """
+    errors: list[type[BaseException]] = [
         UnsupportedArchiveTypeError,
         BadZipFile,
         LargeZipFile,
-        RarError,
-        Py7zError,
         TarError,
         OSError,
-    )
+    ]
+    with suppress(ImportError):
+        from rarfile import Error as RarError
+
+        errors.append(RarError)
+    with suppress(ImportError):
+        from py7zr.exceptions import ArchiveError as Py7zError
+
+        errors.append(Py7zError)
+    return tuple(errors)
 
 
 class ReadResult(TypedDict):
