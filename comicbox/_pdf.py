@@ -2,7 +2,7 @@
 Optional comicbox-pdffile integration.
 
 Single source of truth for whether the optional ``pdffile`` package is
-installed. When it is absent, ``PDFFile`` is ``None`` at runtime; call
+installed and importable. When it is not, ``PDFFile`` is ``None`` at runtime; call
 sites must guard with ``if PDF_ENABLED`` before touching it. For the type
 checker, import ``PDFFile`` from ``pdffile`` directly under ``TYPE_CHECKING``.
 """
@@ -35,10 +35,19 @@ if TYPE_CHECKING:
 else:
     try:
         from pdffile import PageFormat, PDFFile
+    except Exception as exc:
+        # An optional extra must never take the rest of comicbox down with
+        # it, and importing it can fail with more than ImportError: pymupdf
+        # asserts at import that its libmupdf is the version it was built
+        # against. Absent is the expected case and stays quiet; installed
+        # but broken is said out loud, or PDFs silently stop being comics.
+        if not (isinstance(exc, ModuleNotFoundError) and exc.name == "pdffile"):
+            from loguru import logger
 
-        PDF_ENABLED = True
-        PAGE_FORMAT_VALUES = tuple(e.value for e in PageFormat)
-    except ImportError:
+            logger.warning(f"PDF support disabled: pdffile failed to import: {exc!r}")
         PDFFile = None
         PDF_ENABLED = False
         PAGE_FORMAT_VALUES = ()
+    else:
+        PDF_ENABLED = True
+        PAGE_FORMAT_VALUES = tuple(e.value for e in PageFormat)

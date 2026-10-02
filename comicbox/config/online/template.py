@@ -5,6 +5,7 @@ from pathlib import Path
 from confuse.templates import (
     Integer,
     MappingTemplate,
+    MappingValues,
     Number,
     OneOf,
     Optional,
@@ -81,7 +82,12 @@ ONLINE_TEMPLATE = MappingTemplate(
                 "auto_threshold": Number(),
                 "effort": Optional(String()),
                 "retry_budget": Integer(),
-                "per_source": Optional(dict),
+                # Keyed by source name, each block type-checked. A null
+                # block (every key commented out) is allowed; the builder
+                # skips it and warns about unknown source names.
+                "per_source": Optional(
+                    MappingValues(Optional(_PER_SOURCE_TUNING_TEMPLATE))
+                ),
             }
         ),
     }

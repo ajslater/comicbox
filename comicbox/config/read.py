@@ -103,11 +103,15 @@ def read_config_sources(
     config: Configuration, args: Namespace | Mapping | None
 ) -> None:
     """Read config sources in order."""
-    # Default System and User configs
+    # User config, then the package defaults beneath it. Read separately:
+    # confuse's read() adds them in that order, so a malformed user file
+    # raised before the defaults were ever added and validation then died
+    # on "comicbox.paths not found" instead of the user file being skipped.
     try:
-        config.read()
+        config.read(user=True, defaults=False)
     except Exception as exc:
-        logger.warning(exc)
+        logger.warning(f"Ignoring user config: {exc}")
+    config.read(user=False, defaults=True)
 
     # Args Specified Config File
     if args:
