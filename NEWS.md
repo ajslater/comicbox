@@ -20,7 +20,8 @@
       their string values.
     - Error messages keep bracketed text like `[digital]`.
 - Dependencies
-    - Requires comicfn2dict 1.0, comicbox-pdffile 1.0 and simyan 4.2.
+    - Requires comicfn2dict 1.0, comicbox-pdffile 1.0, simyan 4.2 and mokkari
+      4.9.
 
 ## v5.2.2
 

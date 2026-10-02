@@ -834,7 +834,7 @@ requires-dist = [
     { name = "loguru", specifier = "~=0.7" },
     { name = "marshmallow", specifier = "~=4.3" },
     { name = "marshmallow-union", specifier = ">=0.1.15.post1" },
-    { name = "mokkari", specifier = "~=4.8.0" },
+    { name = "mokkari", specifier = "~=4.9.0" },
     { name = "nh3", specifier = ">=0.3.5" },
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "platformdirs", specifier = ">=4.9.6" },
@@ -2103,15 +2103,15 @@ wheels = [
 
 [[package]]
 name = "mokkari"
-version = "4.8.0"
+version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/f7/c260a12f8b700a0e6d046401b19298d21178ded043ab8d9c26eace5cc21c/mokkari-4.8.0.tar.gz", hash = "sha256:686a682c72ca805089941d5d3ac8254373bc98543a921b47ca137ab1704af9b6", size = 98165, upload-time = "2026-09-21T00:28:11.944Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/bb/1ab6da55b62b36278a0d15b5bc9089dc179043e524a8ddd46454c14abb1b/mokkari-4.9.0.tar.gz", hash = "sha256:e601109e9810784546f81725922750a48f332b4a7513967d17cc3206e47f7431", size = 105847, upload-time = "2026-10-02T16:59:47.042Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/63/839948955f67650bddb2ccf9da60b1dd1bb35c05e7ef27161155f7adec38/mokkari-4.8.0-py3-none-any.whl", hash = "sha256:e0e8ea41c472fdad53a5cf939b5eb767d4cbcf740676b1b64a0f1ef7c8afe753", size = 70087, upload-time = "2026-09-21T00:28:10.682Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/53/91c0cc80b493e09ed8b2731890baf2f8cf1f8a00479b6c267e158198f626/mokkari-4.9.0-py3-none-any.whl", hash = "sha256:5ad3f1b5c8214276b765e359b616a02feb638aae7da6377659abed17daba5777", size = 76214, upload-time = "2026-10-02T16:59:45.987Z" },
 ]
 
 [[package]]
