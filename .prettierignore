@@ -1,15 +1,12 @@
 __pycache__
 .*cache
-.*cache/
 .claude
 .git
-.venv
 *.sh
 *Dockerfile
 bun.lock
 comicbox/schemas/*Info*.xsd
 dist
-Dockerfile
 node_modules
 schemas/*Info*.xsd
 tasks
