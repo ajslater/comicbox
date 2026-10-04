@@ -33,6 +33,10 @@ def _source(monkeypatch: pytest.MonkeyPatch, gate: RateGate | None) -> Any:
     creds = OnlineSourceCredentials(user="u", password="p")
     src = MetronOnlineSource(creds, OnlineSettings())
     monkeypatch.setattr(src, "_gate", lambda: gate)
+    # The gate decides before any request, so no session is needed. A real
+    # one would open mokkari's response cache, which has no close, in the
+    # platformdirs cache: these default settings carry no cache dir.
+    monkeypatch.setattr(src, "_get_session", lambda: None)
     return src
 
 
@@ -68,9 +72,8 @@ def test_a_healthy_budget_records_no_reason(monkeypatch: pytest.MonkeyPatch) -> 
         sustained_remaining=_SUSTAINED_LIMIT,
     )
     src = _source(monkeypatch, gate)
-    # No series and no explicit id: returns [] without spending a request.
-    monkeypatch.setattr(src, "_get_session", lambda: None)
 
+    # No series and no explicit id: returns [] without spending a request.
     assert src.search(ComicProfile()) == []
     assert src.search_skip_reason is None
 
