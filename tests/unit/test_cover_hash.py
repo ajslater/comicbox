@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from contextlib import closing
 from io import BytesIO
 from typing import TYPE_CHECKING
 
@@ -88,6 +89,7 @@ def test_cover_hash_url_cache_round_trip(tmp_path: Path) -> None:
     assert cache.get("http://example.com/x.jpg") is None
     cache.set("http://example.com/x.jpg", "abcdef0123456789")
     assert cache.get("http://example.com/x.jpg") == "abcdef0123456789"
+    cache.close()
 
 
 def test_cover_hash_url_cache_overwrites(tmp_path: Path) -> None:
@@ -95,12 +97,13 @@ def test_cover_hash_url_cache_overwrites(tmp_path: Path) -> None:
     cache.set("u", "h1")
     cache.set("u", "h2")
     assert cache.get("u") == "h2"
+    cache.close()
 
 
 def test_cover_hash_url_cache_creates_table(tmp_path: Path) -> None:
     db_path = tmp_path / "cover_hashes.sqlite"
-    CoverHashUrlCache(db_path)
-    with sqlite3.connect(str(db_path)) as conn:
+    CoverHashUrlCache(db_path).close()
+    with closing(sqlite3.connect(str(db_path))) as conn:
         rows = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()

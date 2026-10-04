@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from typing import TYPE_CHECKING
 
 from comicbox.formats.base.online.vacuum import vacuum_if_bloated
@@ -12,13 +13,13 @@ if TYPE_CHECKING:
 
 
 def _freelist(db_path: Path) -> int:
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn:
         return conn.execute("PRAGMA freelist_count").fetchone()[0]
 
 
 def _make_bloated_db(db_path: Path, rows: int = 12000) -> None:
     """Create a db big enough to clear the page floor, then free ~all of it."""
-    with sqlite3.connect(db_path, isolation_level=None) as conn:
+    with closing(sqlite3.connect(db_path, isolation_level=None)) as conn:
         conn.execute("CREATE TABLE t (k INTEGER PRIMARY KEY, v TEXT)")
         conn.executemany(
             "INSERT INTO t(k, v) VALUES (?, ?)",
@@ -35,7 +36,7 @@ def test_missing_file_is_noop(tmp_path: Path) -> None:
 
 def test_small_file_skipped(tmp_path: Path) -> None:
     db_path = tmp_path / "small.sqlite"
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path, isolation_level=None)) as conn:
         conn.execute("CREATE TABLE t (k INTEGER PRIMARY KEY)")
         conn.execute("INSERT INTO t(k) VALUES (1)")
         conn.execute("DELETE FROM t")
