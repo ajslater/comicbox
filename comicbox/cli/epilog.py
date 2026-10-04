@@ -226,11 +226,13 @@ _DOCTOR_MODE = Styled(
     """
 [bold]Doctor mode[/bold]
 
-  [cyan]comicbox doctor[/cyan] [-q] [--config PATH]
+  [cyan]comicbox doctor[/cyan] [-q] [--config PATH] [--online all|SOURCES]
 
 Checks the archive tools, libraries and config comicbox depends on, and how
 each is set up. Exits non-zero when something comicbox needs is broken, so it
 also works as a health check. [cyan]-q[/cyan] shows only the problems.
+[cyan]--online all[/cyan] also verifies each configured source's credentials with
+one API request.
 
 A comic file named [green]doctor[/green] has to be given as [green]./doctor[/green].
 """,

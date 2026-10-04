@@ -36,6 +36,8 @@ if TYPE_CHECKING:
 _METRON_TOKEN = "metron-token-0123456789"
 _CV_KEY = "comicvine-key-abcdef"
 _PASSWORD = "hunter2-password"
+# Every configured source's row ends with this until --online verifies it.
+_UNVERIFIED = " · unverified: add --online all (1 API request)"
 
 
 def _ctx(*argv: str) -> DoctorContext:
@@ -79,10 +81,12 @@ def test_provenance_flag_and_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (metron.status, metron.found, metron.detail) == (
         Status.OK,
         "key",
-        "key from --auth",
+        "key from --auth" + _UNVERIFIED,
     )
     (comicvine,) = _source(rows, "comicvine")
-    assert comicvine.detail == "key from env COMICBOX_ONLINE__AUTH__COMICVINE__KEY"
+    assert comicvine.detail == (
+        "key from env COMICBOX_ONLINE__AUTH__COMICVINE__KEY" + _UNVERIFIED
+    )
 
 
 def test_provenance_config_files(tmp_path: Path) -> None:
@@ -98,8 +102,10 @@ def test_provenance_config_files(tmp_path: Path) -> None:
         f"comicbox:\n  online:\n    auth:\n      comicvine: {{key: other-{_CV_KEY}}}\n"
     )
     rows = _rows("-c", str(cli_config))
-    assert _source(rows, "metron")[0].detail == f"key from {user}"
-    assert _source(rows, "comicvine")[0].detail == f"key from {cli_config}"
+    assert _source(rows, "metron")[0].detail == f"key from {user}" + _UNVERIFIED
+    assert _source(rows, "comicvine")[0].detail == (
+        f"key from {cli_config}" + _UNVERIFIED
+    )
 
 
 def test_provenance_keyring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,8 +124,8 @@ def test_provenance_keyring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     metron = _source(rows, "metron")
     assert metron[0].status is Status.OK
     assert metron[0].found == "user, pass"
-    assert (
-        metron[0].detail == f"user from {tmp_path / 'config.yaml'} · pass from keyring"
+    assert metron[0].detail == (
+        f"user from {tmp_path / 'config.yaml'} · pass from keyring" + _UNVERIFIED
     )
     # Basic auth still works, but is deprecated.
     assert metron[1].status is Status.WARN
@@ -157,11 +163,13 @@ def test_comicvine_budget_comes_from_the_bucket_file(
         comicvine, "shared_client_rate_limit_status", lambda _s: windows
     )
     (row,) = _source(_rows("--auth", f"comicvine:{_CV_KEY}"), "comicvine")
-    assert row.detail == "key from --auth · issues 180/200 left this hour"
+    assert row.detail == "key from --auth · issues 180/200 left this hour" + _UNVERIFIED
     full = {"search": {"limit": 200, "remaining": 200, "reset_epoch": None}}
     monkeypatch.setattr(comicvine, "shared_client_rate_limit_status", lambda _s: full)
     (row,) = _source(_rows("--auth", f"comicvine:{_CV_KEY}"), "comicvine")
-    assert row.detail == "key from --auth · 200/200 left this hour in every pool"
+    assert row.detail == (
+        "key from --auth · 200/200 left this hour in every pool" + _UNVERIFIED
+    )
 
 
 def test_metron_url_and_comicvine_trailing_slash_warn() -> None:

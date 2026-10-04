@@ -40,6 +40,9 @@ from comicbox.identifiers.identifiers import get_identifier_url
 from comicbox.version import user_agent
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from mokkari.rate_limit import RateLimitWindow
     from mokkari.session import RateLimitStatus, Session
 
     from comicbox.formats.base.online.profile import ComicProfile
@@ -213,6 +216,15 @@ def shared_session_rate_limit_status(
         return None
     session, _ = entry
     return session.rate_limit_status
+
+
+def _window(window: RateLimitWindow) -> dict[str, Any]:
+    """Shape one mokkari window like Comic Vine's bucket windows."""
+    return {
+        "limit": window.limit,
+        "remaining": window.remaining,
+        "reset_epoch": window.reset.timestamp() if window.reset else None,
+    }
 
 
 def _bi_series_name(bi_series: Any) -> str | None:
@@ -557,6 +569,32 @@ class MetronOnlineSource(OnlineSource):
                 "rate_limit.per_minute to take a smaller share of the "
                 "burst window.",
             )
+
+    @override
+    def probe(self) -> Mapping[str, Mapping[str, Any]] | None:
+        """
+        Verify the credentials with one ``series_type_list`` request.
+
+        The smallest listing Metron serves. It still counts against the
+        burst and daily windows, which is what the returned status shows.
+        """
+        from comicbox.formats.metron_api.paced_session import build_paced_session
+
+        session = build_paced_session(
+            self._build_gate(),
+            username=self._credentials.user,
+            passwd=self._credentials.password,
+            cache=None,
+            user_agent=user_agent(),
+            api_token=self._credentials.key,
+        )
+        try:
+            self._record_api_call("series_type_list")
+            session.series_type_list()
+            status = session.rate_limit_status
+        finally:
+            session.close()
+        return {"burst": _window(status.burst), "daily": _window(status.sustained)}
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:

@@ -20,7 +20,7 @@ from comicbox.formats.base.online.series_filter import max_results_for, threshol
 
 if TYPE_CHECKING:
     import datetime
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.formats import MetadataFormats
@@ -186,6 +186,21 @@ class OnlineSource(ABC):
         Each candidate carries display fields, the upstream id, and any
         precomputed cover hash. The matcher scores them; the lookup mixin
         decides AUTO_WRITE / PROMPT / SKIP / NO_MATCH.
+        """
+
+    @abstractmethod
+    def probe(self) -> Mapping[str, Mapping[str, Any]] | None:
+        """
+        Verify the credentials with this source's cheapest request.
+
+        One request, on a private client with no response cache, so neither
+        a shared session nor a cached answer can stand in for the server's,
+        and never retried: ``comicbox doctor`` reports the first answer.
+        Exceptions propagate for `classify_retry_exception` to name.
+
+        Returns the rate-limit windows the request left, as
+        ``{window: {"limit", "remaining", "reset_epoch"}}``, or None when
+        the source keeps none.
         """
 
     @staticmethod
