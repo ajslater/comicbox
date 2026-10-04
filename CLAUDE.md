@@ -12,7 +12,7 @@ ComicBookInfo, CoMet, PDF metadata, and native Comicbox YAML/JSON.
 
 ## Commands
 
-Refer to @\~/.claude/rules/python-devenv.md
+Refer to @\~/.claude/rules/devenv.md
 
 ## Architecture
 
@@ -69,4 +69,4 @@ ComicboxInit → ComicboxArchive* (read/write/pages) → ComicboxSources
 
 ## Testing, Linting & Type Checking
 
-Refer to @\~/.claude/rules/python-devenv.md
+Refer to @\~/.claude/rules/devenv.md and @\~/.claude/rules/python-workflow.md
