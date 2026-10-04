@@ -334,6 +334,10 @@ comicbox doctor -c tagging.yaml
 # Problems only. Exits non-zero if something comicbox needs is broken, so it
 # works as a Docker or CI health check.
 comicbox doctor -q
+
+# Also verify each configured online source's credentials, with one API
+# request per source.
+comicbox doctor --online all
 ```
 
 Credentials are reported by where they came from (`--auth`, an env var, a config

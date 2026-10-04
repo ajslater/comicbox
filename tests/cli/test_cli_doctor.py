@@ -190,3 +190,16 @@ def test_doctor_help_names_doctor_mode(capsys: pytest.CaptureFixture[str]) -> No
     assert code == 0
     assert out.startswith("Usage: comicbox doctor")
     assert "--problems" in out
+
+
+def test_bare_online_is_an_argparse_error(capsys: pytest.CaptureFixture[str]) -> None:
+    """--online takes a required argument, as in a run; hence `--online all`."""
+    code, _, err = _run(capsys, "doctor", "--online")
+    assert code == 2
+    assert "expected one argument" in err
+
+
+def test_every_online_hint_says_all(capsys: pytest.CaptureFixture[str]) -> None:
+    _, out, _ = _run(capsys, "doctor", "--auth", "metron:tok3n-value")
+    assert "unverified: add --online all (1 API request)" in out
+    assert out.count("--online") == out.count("--online all")

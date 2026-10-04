@@ -9,8 +9,11 @@ that isn't OK. Any failure makes the exit code 1, so ``comicbox doctor
 `run_checks` is the library API: it returns the rows as data and prints
 nothing. `main` is ``comicbox doctor``.
 
-Offline and read-only, apart from confuse creating the config directory,
-which every run does too.
+Offline and read-only by default, apart from confuse creating the config
+directory, which every run does too. ``--online all`` (or a list of
+sources) adds exactly one request per configured source named, which
+counts against that source's rate limit, and Comic Vine's creates the
+online cache directory for its rate-limit bucket.
 """
 
 from __future__ import annotations
@@ -107,15 +110,21 @@ def _run(ctx: DoctorContext) -> DoctorReport:
     return DoctorReport(header=host_header(), results=_redact(rows, _secrets(ctx)))
 
 
-def run_checks(args: Namespace | None = None) -> DoctorReport:
+def run_checks(
+    args: Namespace | None = None, *, online_sources: Iterable[str] = ()
+) -> DoctorReport:
     """
     Check comicbox's external dependencies and config.
 
     ``args`` is what a run would get, ``Namespace(comicbox=...)``, so the
     report describes the config that run would see. None checks the
-    environment and config files alone.
+    environment and config files alone. ``online_sources`` names the
+    sources to verify with one live request each, ``"all"`` for every
+    configured one.
     """
-    return _run(DoctorContext(args) if args is not None else DoctorContext())
+    ctx = DoctorContext(args) if args is not None else DoctorContext()
+    ctx.online_sources = tuple(online_sources)
+    return _run(ctx)
 
 
 def _build_parser() -> ArgumentParser:
@@ -160,7 +169,13 @@ def main(params: Sequence[str]) -> int:
         )
         cns.paths = []
     _hold_logging(cns)
-    ctx = DoctorContext(Namespace(comicbox=cns))
+    online_sources = tuple(cns.online_sources or ())
+    if online_sources:
+        from comicbox.version import set_user_agent_context
+
+        # So Metron's operators can tell probe traffic from tagging.
+        set_user_agent_context("cli", client="doctor")
+    ctx = DoctorContext(Namespace(comicbox=cns), online_sources=online_sources)
     report = _run(ctx)
     theme = ctx.settings.general.theme if ctx.settings else None
     render_report(report, theme=theme, problems_only=problems_only)

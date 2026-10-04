@@ -190,6 +190,10 @@ class _WrapperMetron(OnlineSource):
         return [_make_candidate()]
 
     @override
+    def probe(self) -> None:
+        return None
+
+    @override
     def _lookup_issue_in_volume(
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:

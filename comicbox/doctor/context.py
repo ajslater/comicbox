@@ -25,6 +25,9 @@ class DoctorContext:
     """
 
     args: Namespace = field(default_factory=lambda: Namespace(comicbox=Namespace()))
+    #: Sources to verify with one live request each; "all" means every
+    #: configured one. Empty keeps the doctor offline.
+    online_sources: tuple[str, ...] = ()
     settings: ComicboxSettings | None = None
 
     @property

@@ -7,6 +7,7 @@
 - Features
     - `comicbox doctor` checks archive tools, the PDF extra, image codecs,
       config, credentials and package versions, with a fix for each problem.
+      `--online all` also tests each credential with one API request.
 - Fixes
     - CBR support is detected by test-extracting a file; a missing or broken RAR
       tool is reported instead of crashing reads.

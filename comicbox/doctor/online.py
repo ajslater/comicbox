@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
     from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
     from comicbox.doctor.context import Check, DoctorContext
+    from comicbox.formats.base.online.sources.base import OnlineSource
 
 SECTION = "Online"
 
@@ -172,33 +173,125 @@ _SOURCE_NOTES: Mapping[str, Callable[[OnlineSettings], list[str]]] = MappingProx
 )
 
 
-def _source_rows(
-    name: str,
+_UNVERIFIED = "unverified: add --online all (1 API request)"
+_VERIFY_FIX = MappingProxyType(
+    {
+        Status.MISCONFIGURED: "check the credentials: --auth {name}:KEY",
+        Status.WARN: "try again once the rate limit resets",
+        Status.ERROR: "check the network, then try again",
+    }
+)
+_UNTHROTTLED = (
+    "an answer came without rate-limit headers: "
+    "something in front of {name} replied, like a proxy or a bot check"
+)
+_MAX_WINDOWS = 2
+
+
+def _verify_status(source: OnlineSource, exc: Exception) -> Status:
+    """Name a failed probe: bad credentials, rate limited, or anything else."""
+    from comicbox.formats.base.online.retry import RetryCategory
+
+    category = source.classify_retry_exception(exc)
+    if category is RetryCategory.AUTH:
+        return Status.MISCONFIGURED
+    if category is RetryCategory.RATE_LIMIT:
+        return Status.WARN
+    return Status.ERROR
+
+
+def _windows_note(windows: Mapping[str, Mapping[str, Any]] | None) -> str:
+    """Name the scarcest rate-limit windows the probe left, e.g. ``burst 59/60``."""
+    known = [
+        (name, window)
+        for name, window in (windows or {}).items()
+        if window.get("remaining") is not None and window.get("limit")
+    ]
+    known.sort(key=lambda item: item[1]["remaining"] / item[1]["limit"])
+    if not known:
+        return ""
+    budget = ", ".join(
+        f"{name} {window['remaining']}/{window['limit']}"
+        for name, window in known[:_MAX_WINDOWS]
+    )
+    return f"{budget} left"
+
+
+def _unthrottled_count(name: str) -> int:
+    from comicbox.formats.base.online import outcome_stats
+
+    counts = outcome_stats.api_snapshot().get(name)
+    return sum(counts.unthrottled.values()) if counts else 0
+
+
+def _first_line(exc: Exception) -> str:
+    """Return an exception's first line: some carry a whole HTML error page."""
+    lines = str(exc).splitlines()
+    return lines[0] if lines else type(exc).__name__
+
+
+def _verify(source: OnlineSource) -> tuple[Status, str, str]:
+    """
+    Send the source's one probe request; return (status, note, fix).
+
+    Never through `with_retry`, which can sleep for minutes on a rate
+    limit: the doctor reports the first answer.
+    """
+    name = source.name
+    unthrottled = _unthrottled_count(name)
+    try:
+        windows = source.probe()
+    except Exception as exc:  # classified below
+        status = _verify_status(source, exc)
+        note = f"verify failed: {_first_line(exc)}"
+    else:
+        status, note = (
+            Status.OK,
+            " · ".join(filter(None, ("verified", _windows_note(windows)))),
+        )
+    if _unthrottled_count(name) > unthrottled:
+        status, note = Status.WARN, _UNTHROTTLED.format(name=name)
+    return status, note, _VERIFY_FIX.get(status, "").format(name=name)
+
+
+def _configured_row(
+    source: OnlineSource,
     creds: OnlineSourceCredentials,
     layers: Mapping[str, str],
     online: OnlineSettings,
     *,
-    configured: bool,
-) -> Iterator[CheckResult]:
-    if not configured:
-        yield _row(
-            name,
-            Status.OFF,
-            detail="no credentials",
-            fix=f"--auth {name}:KEY or {_env_var(name, 'key')}",
-        )
-        return
+    verify: bool,
+) -> CheckResult:
+    """Build a configured source's row: where each field came from, and if it works."""
+    name = source.name
     present = [field for field in _FIELDS if _field_value(creds, field)]
     notes = [f"{field} from {layers[field]}" for field in present if field in layers]
-    if source_notes := _SOURCE_NOTES.get(name):
-        notes.extend(source_notes(online))
-    yield _row(name, Status.OK, found=", ".join(present), detail=" · ".join(notes))
-    if warnings := _SOURCE_WARNINGS.get(name):
-        yield from warnings(creds)
+    status, fix = Status.OK, ""
+    if verify:
+        status, note, fix = _verify(source)
+        notes.append(note)
+    else:
+        if source_notes := _SOURCE_NOTES.get(name):
+            notes.extend(source_notes(online))
+        notes.append(_UNVERIFIED)
+    return _row(
+        name, status, found=", ".join(present), detail=" · ".join(notes), fix=fix
+    )
+
+
+def _requested(ctx: DoctorContext, name: str) -> bool:
+    """Whether ``--online`` (or the library's ``online_sources``) names this source."""
+    requested = {source.strip().lower() for source in ctx.online_sources}
+    return "all" in requested or name in requested
 
 
 def check_sources(ctx: DoctorContext) -> Iterator[CheckResult]:
-    """Whether each source has the credentials it needs, and where they came from."""
+    """
+    Whether each source has the credentials it needs, and where they came from.
+
+    With ``--online``, each named source that has credentials also sends
+    one request to prove they work. A source without any is never sent one.
+    """
     if ctx.settings is None:
         yield _row(
             "sources",
@@ -216,9 +309,19 @@ def check_sources(ctx: DoctorContext) -> Iterator[CheckResult]:
     for name in SOURCE_NAMES:
         creds = online.auth.sources.get(name) or OnlineSourceCredentials()
         source = _DEFAULT_SOURCE_FACTORIES[name](creds, online)
-        yield from _source_rows(
-            name, creds, provenance[name], online, configured=source.is_configured()
+        if not source.is_configured():
+            yield _row(
+                name,
+                Status.OFF,
+                detail="no credentials",
+                fix=f"--auth {name}:KEY or {_env_var(name, 'key')}",
+            )
+            continue
+        yield _configured_row(
+            source, creds, provenance[name], online, verify=_requested(ctx, name)
         )
+        if warnings := _SOURCE_WARNINGS.get(name):
+            yield from warnings(creds)
 
 
 def check_keyring(ctx: DoctorContext) -> Iterator[CheckResult]:
