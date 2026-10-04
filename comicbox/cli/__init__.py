@@ -47,6 +47,14 @@ def get_args(params: Sequence[str] | None = None) -> Namespace:
 
 def main(params: Sequence[str] | None = None) -> None:
     """Get CLI arguments and perform the operation on the archive."""
+    argv = sys.argv if params is None else params
+    if len(argv) > 1 and argv[1] == "doctor":
+        # Before the Runner: building it resolves the config, which raises
+        # on a bad one, and the doctor has to survive that to report it.
+        # Imported here so a normal run never loads the doctor.
+        from comicbox import doctor
+
+        sys.exit(doctor.main(argv[2:]))
     cns = get_args(params)
     args = Namespace(comicbox=cns)
 
