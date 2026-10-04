@@ -60,6 +60,11 @@ ONLINE_RUNTIME_DESTS = frozenset(
     }
 )
 
+# Dests folded into another key by ``compute_config`` rather than landing
+# on one of their own. Each is a CLI shorthand (-Q -> general.loglevel,
+# -p/-v -> print.phases) that a config file may also set.
+FOLDED_DESTS = frozenset({"general.quiet", "print.metadata", "print.version"})
+
 
 class LazyEpilog:
     """
@@ -669,13 +674,19 @@ def _add_target_group(parser: ArgumentParser) -> None:
     )
 
 
-def build_parser() -> ArgumentParser:
-    """Assemble the full comicbox argument parser from the group builders."""
+def build_parser(*, prog: str | None = None) -> ArgumentParser:
+    """
+    Assemble the full comicbox argument parser from the group builders.
+
+    ``prog`` overrides the program name in usage lines; ``comicbox doctor``
+    passes its own so its ``--help`` doesn't claim to be a normal run.
+    """
     description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
     if not PDF_ENABLED:
         description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
 
     parser = ArgumentParser(
+        prog=prog,
         description=description,
         epilog=LazyEpilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
         formatter_class=RichHelpFormatter,

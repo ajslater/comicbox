@@ -13,15 +13,13 @@ import os
 import subprocess
 import sys
 from argparse import Namespace
-from typing import TYPE_CHECKING
+
+import pytest
 
 from comicbox.config import get_config
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.validate.base import BaseValidator
 from comicbox.validate.spec import build_validator
-
-if TYPE_CHECKING:
-    import pytest
 
 # Importing any of these compiles schemas or drags in a dependency tree
 # that only the opt-in --validate path needs.
@@ -61,6 +59,22 @@ def test_building_the_cli_parser_does_not_build_the_epilog() -> None:
         "from comicbox.cli.parser import build_parser\nbuild_parser()"
     )
     assert "comicbox.cli.epilog" not in modules
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "from comicbox.cli.parser import build_parser\nbuild_parser()",
+        "import comicbox.box",
+        "from comicbox.cli import main\nmain(('comicbox', '-v'))",
+    ],
+    ids=["parser", "box", "run"],
+)
+def test_a_normal_run_does_not_load_the_doctor(code: str) -> None:
+    """Only ``comicbox doctor`` pays for the doctor's imports."""
+    assert not any(
+        name.startswith("comicbox.doctor") for name in _modules_loaded_by(code)
+    )
 
 
 def test_help_still_renders_the_epilog() -> None:

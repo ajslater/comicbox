@@ -11,11 +11,15 @@ from comicbox.box.types import ArchiveType
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import ArchiveError, UnsupportedArchiveTypeError
 
+#: Page image extensions, without the dot. `comicbox doctor` checks each
+#: against the installed Pillow's codecs.
+IMAGE_EXTS = ("jxl", "jpg", "jpeg", "webp", "png", "gif")
+
 
 class ComicboxArchiveInit(ComicboxInit):
     """Methods on the archive itself."""
 
-    IMAGE_EXT_RE = re.compile(r"\.(jxl|jpe?g|webp|png|gif)$", re.IGNORECASE)
+    IMAGE_EXT_RE = re.compile(rf"\.({'|'.join(IMAGE_EXTS)})$", re.IGNORECASE)
 
     def __enter__(self) -> Self:
         """Context enter."""

@@ -69,29 +69,34 @@ class ComicboxStyle:
             self.section = _make_style(theme, Comment)
 
 
+def resolve_style_name(theme: str | None) -> str:
+    """
+    Turn the ``general.theme`` setting into a pygments style name.
+
+    Unset means the default style, ``none`` means "" (plain text), and an
+    unknown name warns and falls back to the default.
+    """
+    if not theme:
+        return DEFAULT_STYLE_NAME
+    if theme.lower() == "none":
+        return ""
+    try:
+        get_style_by_name(theme)
+    except ClassNotFound as exc:
+        logger.warning(exc)
+        return DEFAULT_STYLE_NAME
+    return theme
+
+
 class ComicboxPrint(ComicboxValidate):
     """Print Methods."""
 
     _CONSOLE = Console()
 
-    def _set_pygments_style(self) -> None:
-        style_name = self._config.general.theme
-        if not style_name:
-            style_name = DEFAULT_STYLE_NAME
-        elif style_name.lower() == "none":
-            self._pygments_style_name = ""
-            return
-        try:
-            get_style_by_name(style_name)
-        except ClassNotFound as exc:
-            logger.warning(exc)
-            style_name = DEFAULT_STYLE_NAME
-        self._pygments_style_name = style_name
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Set print variables."""
         super().__init__(*args, **kwargs)
-        self._set_pygments_style()
+        self._pygments_style_name = resolve_style_name(self._config.general.theme)
         self._style = ComicboxStyle(self._pygments_style_name)
 
     def _syntax(self, code: str, lexer: str) -> Syntax | str:

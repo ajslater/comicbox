@@ -4,6 +4,9 @@
 
 - Breaking Changes
     - Requires Python 3.11 or later.
+- Features
+    - `comicbox doctor` checks archive tools, the PDF extra, image codecs,
+      config, credentials and package versions, with a fix for each problem.
 - Fixes
     - CBR support is detected by test-extracting a file; a missing or broken RAR
       tool is reported instead of crashing reads.
@@ -20,8 +23,8 @@
       their string values.
     - Error messages keep bracketed text like `[digital]`.
 - Dependencies
-    - Requires comicfn2dict 1.0, comicbox-pdffile 1.0, simyan 4.2 and mokkari
-      4.9.
+    - Requires comicfn2dict 1.0, comicbox-pdffile 1.0, simyan 4.2, mokkari 4.9
+      and packaging.
 
 ## v5.2.2
 
