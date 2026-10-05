@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sys
+from io import BytesIO
 from typing import TYPE_CHECKING
 
 from PIL import Image
@@ -40,25 +40,36 @@ def test_pillow_missing_core_codec_warns(monkeypatch: pytest.MonkeyPatch) -> Non
     assert row.detail.startswith("no webp codec")
 
 
-def test_phash_smoke_test_passes() -> None:
-    (row,) = images.check_imagehash(DoctorContext())
+def test_cover_hash_self_test_passes() -> None:
+    (row,) = images.check_cover_hash(DoctorContext())
+    assert row.name == "cover hash"
     assert row.status is Status.OK
-    assert row.detail == "phash smoke test OK"
+    assert row.detail == "pHash self-test OK"
 
 
-def test_phash_failure_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cover_hash_crash_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
     def broken(_image_bytes: bytes) -> str:
-        reason = "scipy.fft is broken"
+        reason = "PNG decoder is broken"
         raise ValueError(reason)
 
     monkeypatch.setattr(cover_hash, "compute_phash", broken)
-    (row,) = images.check_imagehash(DoctorContext())
+    (row,) = images.check_cover_hash(DoctorContext())
     assert row.status is Status.ERROR
-    assert "scipy.fft is broken" in row.detail
+    assert "PNG decoder is broken" in row.detail
+    assert "--force-reinstall comicbox" in row.fix
 
 
-def test_imagehash_import_error_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "imagehash", None)
-    (row,) = images.check_imagehash(DoctorContext())
-    assert row.status is Status.MISSING
-    assert row.detail.startswith("can't import imagehash")
+def test_cover_hash_wrong_answer_is_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A hash that runs but disagrees with imagehash would never match Metron."""
+    monkeypatch.setattr(cover_hash, "compute_phash", lambda _image_bytes: "0" * 16)
+    (row,) = images.check_cover_hash(DoctorContext())
+    assert row.status is Status.ERROR
+    assert images._CARD_PHASH in row.detail
+    assert "--force-reinstall comicbox" in row.fix
+
+
+def test_cover_hash_card_is_not_transposition_symmetric() -> None:
+    """Shrunk to pHash's 32x32, a symmetric card could tie and flip a bit."""
+    with Image.open(BytesIO(images._test_card_png())) as card:
+        small = card.resize((32, 32), Image.Resampling.LANCZOS)
+    assert small.transpose(Image.Transpose.TRANSPOSE).tobytes() != small.tobytes()
