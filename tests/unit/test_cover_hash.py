@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from contextlib import closing
 from io import BytesIO
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,11 +21,19 @@ from comicbox.formats.base.online.cover_hash import (
     compute_phash,
     cover_score,
     hamming_distance,
+    parse_hash,
 )
+from tests.util.cover_images import read_image
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
+
+# imagehash's pHash of each real test image, recorded when comicbox
+# replaced it. Pins today's output with or without imagehash installed;
+# `test_cover_hash_parity` checks it against imagehash live. Regenerate
+# with `str(imagehash.phash(img))` over `tests.util.cover_images.real_images()`.
+_GOLDEN_PATH = Path(__file__).with_name("cover_hash_golden.json")
+_GOLDEN: dict[str, str] = json.loads(_GOLDEN_PATH.read_text())
 
 
 def _solid_color_png(color: tuple[int, int, int], size: int = 64) -> bytes:
@@ -79,6 +89,38 @@ def test_cover_score_clamped_to_unit_interval() -> None:
     h2 = compute_phash(_gradient_png())
     s = cover_score(h1, h2)
     assert 0.0 <= s <= 1.0
+
+
+@pytest.mark.parametrize(("name", "expected"), sorted(_GOLDEN.items()))
+def test_compute_phash_golden(name: str, expected: str) -> None:
+    assert compute_phash(read_image(name)) == expected
+
+
+def test_parse_hash_round_trips() -> None:
+    assert parse_hash("00000000ffffffff") == 0xFFFFFFFF
+    assert parse_hash("ABCDEF0123456789") == parse_hash("abcdef0123456789")
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["", "abc", "0" * 15, "0" * 17, "0x" + "0" * 14, "g" * 16, " " + "0" * 15],
+    ids=["empty", "short", "15-digits", "17-digits", "0x-prefix", "not-hex", "space"],
+)
+def test_parse_hash_rejects_malformed(bad: str) -> None:
+    """The matcher's `except` around `cover_score` relies on this raising."""
+    with pytest.raises(ValueError, match="not a 64-bit hex pHash"):
+        parse_hash(bad)
+
+
+def test_hamming_distance_counts_differing_bits() -> None:
+    assert hamming_distance("0000000000000000", "00000000ffffffff") == 32
+    assert hamming_distance("8000000000000001", "0000000000000000") == 2
+    assert hamming_distance("ffffffffffffffff", "0000000000000000") == HASH_BITS
+
+
+def test_cover_score_rejects_malformed_hash() -> None:
+    with pytest.raises(ValueError, match="not a 64-bit hex pHash"):
+        cover_score("0" * 16, "0" * 15)
 
 
 # ----------------------------------------------- CoverHashUrlCache

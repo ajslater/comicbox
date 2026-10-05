@@ -25,7 +25,7 @@
     - Error messages keep bracketed text like `[digital]`.
 - Dependencies
     - Requires comicfn2dict 1.0, comicbox-pdffile 1.0, simyan 4.2, mokkari 4.9
-      and packaging.
+      and packaging. No longer requires imagehash, numpy, scipy or PyWavelets.
 
 ## v5.2.2
 

@@ -742,7 +742,6 @@ dependencies = [
     { name = "confuse" },
     { name = "glom" },
     { name = "httpx" },
-    { name = "imagehash" },
     { name = "jsonschema", extra = ["format"] },
     { name = "keyring" },
     { name = "loguru" },
@@ -814,6 +813,7 @@ lint = [
 test = [
     { name = "coverage" },
     { name = "deepdiff" },
+    { name = "imagehash" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -828,7 +828,6 @@ requires-dist = [
     { name = "confuse", specifier = "~=2.3" },
     { name = "glom", specifier = "~=25.12" },
     { name = "httpx", specifier = "~=0.28" },
-    { name = "imagehash", specifier = ">=4.3.2" },
     { name = "jsonschema", extras = ["format"], specifier = "~=4.20" },
     { name = "keyring", specifier = "~=25.6" },
     { name = "loguru", specifier = "~=0.7" },
@@ -895,6 +894,7 @@ lint = [
 test = [
     { name = "coverage", specifier = "~=7.0" },
     { name = "deepdiff", specifier = "~=9.0" },
+    { name = "imagehash", specifier = ">=4.3.2" },
     { name = "pytest", specifier = "~=9.0" },
     { name = "pytest-asyncio", specifier = "~=1.0" },
     { name = "pytest-cov", specifier = "~=7.0" },

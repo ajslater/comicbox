@@ -2,7 +2,7 @@
 Confidence-score matcher and policy resolution.
 
 For M3 the matcher is metadata-only — cover hashing lives behind a
-hook that returns `None` until M4 wires up `imagehash`.
+hook that returns `None` until M4 wires up pHash.
 
 Public surface:
 
