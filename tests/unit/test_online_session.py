@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.config import get_config
 from comicbox.config.online.settings import Effort, MatchMode, Prompts
+from comicbox.formats import MetadataFormats
+from comicbox.formats.sources import MetadataSources
 from comicbox.online_session import (
     OnlineConfigurationError,
     OnlineCredentials,
@@ -17,11 +22,26 @@ from comicbox.online_session import (
     OnlineSession,
     PromptResponse,
 )
+from tests.util.online_matcher import make_candidate
+
+if TYPE_CHECKING:
+    from comicbox.formats.base.online.profile import Candidate
 
 VALID_METRON = OnlineCredentials(metron_user="u", metron_password="p")
 VALID_METRON_TOKEN = OnlineCredentials(metron_key="t")
 VALID_COMICVINE = OnlineCredentials(comicvine_key="k")
 VALID_BOTH = OnlineCredentials(metron_user="u", metron_password="p", comicvine_key="k")
+
+
+class _SkipHandler:
+    """Answers every prompt with skip and keeps what it was asked."""
+
+    def __init__(self) -> None:
+        self.prompts: list[OnlinePrompt] = []
+
+    def request(self, prompt: OnlinePrompt) -> PromptResponse:
+        self.prompts.append(prompt)
+        return PromptResponse(action="skip")
 
 
 # --- validation ---------------------------------------------------------------
@@ -78,13 +98,37 @@ def test_rejects_non_enum_match() -> None:
         )
 
 
-def test_rejects_ask_match() -> None:
-    with pytest.raises(OnlineConfigurationError, match=r"MatchMode\.ASK"):
+def test_rejects_ask_match_without_a_prompt_resolver() -> None:
+    """ASK prompts for every match, so it needs somewhere to send them."""
+    with pytest.raises(
+        OnlineConfigurationError,
+        match="no prompt_handler is set and defer_prompts is off",
+    ):
         OnlineSession(
             sources={"metron"},
             credentials=VALID_METRON,
             match=MatchMode.ASK,
         )
+
+
+def test_accepts_ask_match_with_a_prompt_handler() -> None:
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        prompt_handler=_SkipHandler(),
+    )
+    assert session.match is MatchMode.ASK
+
+
+def test_accepts_ask_match_with_deferred_prompts() -> None:
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        defer_prompts=True,
+    )
+    assert session.match is MatchMode.ASK
 
 
 # --- pinned ids ---------------------------------------------------------------
@@ -148,6 +192,38 @@ def test_set_match_changes_subsequent_lookups() -> None:
     assert _live_lookup(session).match == MatchMode.AUTO
     session.set_match(MatchMode.EAGER)
     assert _live_lookup(session).match == MatchMode.EAGER
+
+
+def test_set_match_ask_needs_a_prompt_resolver() -> None:
+    """set_match applies the constructor's ASK rule to the live resolvers."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    with pytest.raises(OnlineConfigurationError, match="defer_prompts is off"):
+        session.set_match(MatchMode.ASK)
+    assert _live_lookup(session).match is MatchMode.AUTO
+    session.set_defer_prompts(defer=True)
+    session.set_match(MatchMode.ASK)
+    assert _live_lookup(session).match is MatchMode.ASK
+
+
+def test_set_match_ask_accepted_with_a_prompt_handler() -> None:
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, prompt_handler=_SkipHandler()
+    )
+    session.set_match(MatchMode.ASK)
+    assert _live_lookup(session).match is MatchMode.ASK
+
+
+def test_set_defer_prompts_off_leaves_an_ask_match_alone() -> None:
+    """The toggle is not a second gate; a missing resolver surfaces at prompt time."""
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        defer_prompts=True,
+    )
+    session.set_defer_prompts(defer=False)
+    assert session.defer_prompts is False
+    assert session.match is MatchMode.ASK
 
 
 def test_set_prompts_changes_subsequent_lookups() -> None:
@@ -343,7 +419,7 @@ def test_set_prompts_via_handler_is_reversible() -> None:
 
 
 def test_set_policy_ask_persists() -> None:
-    """ASK sticks when a handler asks for it, though set_match still refuses it."""
+    """ASK sticks when a selector asks for it, even where set_match would refuse."""
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     assert _apply_via_box(session, "set_policy", "ask") is True
     assert session.match is MatchMode.ASK
@@ -504,3 +580,123 @@ def test_rate_limit_status_stub_returns_known_sources() -> None:
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     status = session.rate_limit_status()
     assert set(status) == {"metron"}
+
+
+# --- ASK through the matcher ---------------------------------------------------
+#
+# A real box and matcher over a fake Metron whose one candidate is a sure
+# thing. AUTO writes it unasked; ASK makes it the handler's call.
+
+_PROFILE_METADATA = MappingProxyType(
+    {
+        "comicbox": {
+            "series": {"name": "Foo Comics"},
+            "issue": {"name": "5"},
+            "date": {"year": 2020},
+            "publisher": {"name": "Quality Comics"},
+            "page_count": 24,
+        }
+    }
+)
+
+
+class _ConfidentMetron:
+    """Fake source whose single candidate matches the profile exactly."""
+
+    name = "metron"
+    metadata_source = MetadataSources.METRON_API
+    metadata_format = MetadataFormats.METRON_API
+
+    def __init__(self, credentials, settings) -> None:
+        self.get_calls: list[int] = []
+
+    def is_configured(self) -> bool:
+        return True
+
+    def get(self, issue_id: int) -> dict:
+        self.get_calls.append(issue_id)
+        return {
+            "id": issue_id,
+            "number": "5",
+            "cover_date": "2020-04-01",
+            "modified": "2020-04-02T12:00:00Z",
+            "publisher": {"id": 1, "name": "Quality Comics"},
+            "series": {"id": 1, "name": "Foo Comics", "year_began": 2020, "volume": 1},
+        }
+
+    def search(self, profile) -> list[Candidate]:
+        return [make_candidate(issue_id=101)]
+
+
+@pytest.fixture
+def confident_metron(monkeypatch) -> list[_ConfidentMetron]:
+    instances: list[_ConfidentMetron] = []
+
+    def factory(creds, settings):
+        src = _ConfidentMetron(creds, settings)
+        instances.append(src)
+        return src
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"metron": factory}),
+    )
+
+    # The session opens a box on its file; hand the box the profile as
+    # supplied metadata instead, so no archive is needed.
+    def pathless_box(path, config):
+        general = replace(config.general, metadata=_PROFILE_METADATA)
+        return Comicbox(config=replace(config, general=general))
+
+    monkeypatch.setattr("comicbox.online_session.Comicbox", pathless_box)
+    return instances
+
+
+def test_auto_writes_a_confident_match_unasked(tmp_path, confident_metron) -> None:
+    handler = _SkipHandler()
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler
+    )
+    result = session.tag(tmp_path / "f.cbz")
+    assert result.error is None
+    assert result.matched is True
+    assert confident_metron[0].get_calls == [101]
+    assert handler.prompts == []
+
+
+def test_ask_prompts_a_confident_match_through_the_handler(
+    tmp_path, confident_metron
+) -> None:
+    """Under ASK the sure thing is the handler's call, not the matcher's."""
+    handler = _SkipHandler()
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        prompt_handler=handler,
+    )
+    result = session.tag(tmp_path / "f.cbz")
+    assert result.error is None
+    assert result.matched is False
+    assert confident_metron[0].get_calls == []
+    (prompt,) = handler.prompts
+    assert prompt.match is MatchMode.ASK
+    assert [c.issue_id for c in prompt.candidates] == [101]
+
+
+def test_ask_defers_a_confident_match(tmp_path, confident_metron) -> None:
+    """With deferred prompts, ASK queues the sure thing for review instead."""
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        defer_prompts=True,
+    )
+    result = session.tag(tmp_path / "f.cbz")
+    assert result.error is None
+    assert result.matched is False
+    assert confident_metron[0].get_calls == []
+    (deferred,) = session.deferred_prompts()
+    assert deferred.match is MatchMode.ASK
+    assert [c.issue_id for c in deferred.candidates] == [101]
