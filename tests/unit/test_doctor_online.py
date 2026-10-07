@@ -108,6 +108,18 @@ def test_provenance_config_files(tmp_path: Path) -> None:
     )
 
 
+class _UsableKeyring:
+    """
+    A backend outside keyring's null modules.
+
+    The host's real backend can't stand in: a headless Linux CI runner
+    has none, and the doctor rightly reports that instead.
+    """
+
+    name = "usable Keyring"
+    priority = 1
+
+
 def test_provenance_keyring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A user with no pass sends comicbox to the keyring, as a run does."""
     looked_up = []
@@ -117,6 +129,7 @@ def test_provenance_keyring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
         return _PASSWORD
 
     monkeypatch.setattr(credentials, "_try_keyring", fake_keyring)
+    monkeypatch.setattr(keyring, "get_keyring", _UsableKeyring)
     _user_config(
         tmp_path, "comicbox:\n  online:\n    auth:\n      metron: {user: aj}\n"
     )
