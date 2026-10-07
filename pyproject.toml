@@ -9,18 +9,18 @@ classifiers = [
 dependencies = [
   "bidict~=0.23",
   "case-converter~=1.2",
-  "comicfn2dict>=0.3.2,<1.0.0",
-  "confuse~=2.3.0",
+  "comicfn2dict~=1.0",
+  "confuse~=2.3",
   "glom~=25.12",
   "httpx~=0.28",
-  "imagehash>=4.3.2",
   "jsonschema[format]~=4.20",
   "keyring~=25.6",
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari>=4.8.0,<5",
+  "mokkari~=4.9.0",
   "nh3>=0.3.5",
+  "packaging>=24.0",
   "pillow>=12.2.0",
   "platformdirs>=4.9.6",
   "py7zr~=1.1.0",
@@ -33,7 +33,7 @@ dependencies = [
   "rich~=15.0",
   "ruamel-yaml~=0.18",
   "simplejson~=4.0",
-  "simyan>=4.1.0,<5",
+  "simyan~=4.2",
   "typing-extensions~=4.13",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
@@ -53,10 +53,10 @@ keywords = [
   "pdf"
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "5.2.2"
+version = "5.3.0"
 
 [[project.authors]]
 name = "AJ Slater"
@@ -68,7 +68,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile>=0.6.3,<0.7"]
+pdf = ["comicbox-pdffile~=1.0"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
@@ -79,7 +79,6 @@ dev = [
   "infer-types~=1.0.0",
   "marshmallow-jsonschema>=0.15.0",
   "neovim~=0.3",
-  "packaging>=26.1",
   "pyclean~=3.1",
   "pypi-cleanup~=0.1.10",
   "semver~=3.1.0",
@@ -96,7 +95,7 @@ lint = [
   "icecream~=2.1",
   "mbake~=1.4.5",
   "pathspec~=1.1.0",
-  "radon[toml]~=6.0",
+  "radon~=6.0",
   "ruff~=0.16",
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
@@ -104,8 +103,9 @@ lint = [
   "vulture~=2.3"
 ]
 test = [
-  "coverage[toml]~=7.0",
+  "coverage~=7.0",
   "deepdiff~=9.0",
+  "imagehash>=4.3.2",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
   "pytest~=9.0"
@@ -159,9 +159,6 @@ wheel-exclude = ["**/*\\~", "**/.DS_Store"]
 
 [tool.basedpyright]
 exclude = [
-  "**/.*",
-  "**/__pycache__",
-  "**/node_modules",
   "dist",
   "frontend",
   "site",
@@ -169,7 +166,7 @@ exclude = [
   "typings",
   "vulture_ignorelist.py"
 ]
-pythonVersion = "3.10"
+pythonVersion = "3.11"
 failOnWarnings = false
 reportAny = false
 reportExplicitAny = false
@@ -193,7 +190,7 @@ reportUntypedBaseClass = false
 [tool.codespell]
 builtin = "clear,code,rare"
 ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,ro,searchd,thead,versio,wan,warmup,ws"
-skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./bun.lock,./dist,./node_modules,./node_modules/*,./package-lock.json,./package.json,./test-results,./tests/test_files/*,./uv.lock,/uv.lock,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,test-results,typings,uv.lock"
+skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./package-lock.json,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
 
 [tool.complexipy]
 failed = true
@@ -207,8 +204,6 @@ source = ["comicbox"]
 branch = true
 concurrency = ["multiprocessing"]
 omit = [
-  "*/.*",
-  "*__pycache__*",
   "dist/*",
   "frontend/*",
   "node_modules/*",
@@ -237,14 +232,12 @@ pythonpath = ["."]
 asyncio_mode = "strict"
 
 [tool.radon]
-exclude = "*~,.*,.*/*,__pycache__/*,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py"
+exclude = "*~,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py"
 
 [tool.ruff]
 builtins = ["ic"]
 extend-exclude = [
   "**/.*",
-  "**/__pycache__",
-  "dist",
   "frontend",
   "site",
   "test-results",
@@ -252,7 +245,7 @@ extend-exclude = [
   "vulture_ignorelist.py"
 ]
 show-fixes = true
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 extend-ignore = [
@@ -370,14 +363,11 @@ max-args = 8
 
 [tool.ty.environment]
 python = "./.venv"
-python-version = "3.10"
+python-version = "3.11"
 
 [tool.ty.src]
 exclude = [
   "**/.*",
-  "**/__pycache__",
-  "**/node_modules",
-  "dist",
   "frontend",
   "site",
   "test-results",
@@ -396,7 +386,6 @@ unsupported-base = "ignore"
 [tool.vulture]
 exclude = [
   "*/.venv/*",
-  "*/__pycache__/*",
   "*/dist/*",
   "*/frontend/*",
   "*/node_modules/*",

@@ -82,6 +82,15 @@ class DestinationOccupiedError(ArchiveWriteError):
         return (type(self), (self.source, self.destination, self.kind, self.occupant))
 
 
+class ConfigurationError(ComicboxError, ValueError):
+    """
+    A config file, env var, or argument holds a value comicbox rejects.
+
+    Also a ValueError, which is what these sites raised before this class
+    existed, so callers catching that keep working.
+    """
+
+
 class MetadataError(ComicboxError):
     """Metadata could not be loaded or routed through the source pipeline."""
 

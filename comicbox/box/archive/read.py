@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
 from sys import maxsize
 from typing import TYPE_CHECKING, cast
 
+from comicbox._rar import rar_unsupported_reason
 from comicbox.box.archive.archive import Archive
 from comicbox.box.archive.archiveinfo import ArchiveInfo
 from comicbox.box.archive.init import ComicboxArchiveInit
@@ -88,14 +87,8 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
 
     @classmethod
     def check_unrar_executable(cls) -> bool:
-        """Check for the unrar executable."""
-        unrar_path = shutil.which("unrar")
-        if not unrar_path:
-            reason = "'unrar' not on path"
-            raise UnsupportedArchiveTypeError(reason)
-        mode = Path(unrar_path).stat().st_mode
-        if not bool(mode & cls._MODE_EXECUTABLE):
-            reason = f"'{unrar_path}' not executable"
+        """Raise UnsupportedArchiveTypeError unless RAR members can be extracted."""
+        if reason := rar_unsupported_reason():
             raise UnsupportedArchiveTypeError(reason)
         return True
 
@@ -200,13 +193,7 @@ class ComicboxArchiveRead(ComicboxArchiveInit):
                 archive, filename, factory, pdf_format=pdf_format, props=props
             )
         except Exception as exc:
-            # BadRarFile only originates from CBR reads; the lazy import
-            # keeps rarfile off the CBZ-only critical path.
-            if self._file_type == FileTypeEnum.CBR:
-                from rarfile import BadRarFile
-
-                if isinstance(exc, BadRarFile):
-                    self.check_unrar_executable()
+            self._raise_if_rar_tool_failure(exc)
             raise
         return data
 

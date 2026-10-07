@@ -47,6 +47,7 @@ from comicbox.config.settings import (
     WriteSettings,
     parse_enum,
 )
+from comicbox.exceptions import ConfigurationError
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import PACKAGE_NAME
 
@@ -163,7 +164,7 @@ def _resolve_merge_order(
             continue
         if member in seen:
             reason = f"read.merge_order: duplicate source {name!r}"
-            raise ValueError(reason)
+            raise ConfigurationError(reason)
         seen.add(member)
         out.append(member)
     out.extend(member for member in MetadataSources if member not in seen)

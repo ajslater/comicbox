@@ -1,6 +1,6 @@
 """Date & Time fields."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from dateutil import parser
@@ -75,7 +75,7 @@ class DateTimeField(fields.DateTime):
     @staticmethod
     def _ensure_aware(dttm: datetime) -> datetime:
         if not dttm.tzinfo:
-            dttm = dttm.replace(tzinfo=timezone.utc)
+            dttm = dttm.replace(tzinfo=UTC)
         return dttm
 
     @override

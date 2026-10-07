@@ -1,7 +1,7 @@
 """Tests for writing."""
 
 from argparse import Namespace
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -88,7 +88,7 @@ FNS = MappingProxyType(
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "title": "The Beginning",
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comic-book-info-example.json": {
@@ -118,7 +118,7 @@ FNS = MappingProxyType(
             "tags": {"Rorschach": {}, "Ozymandias": {}, "Nite Owl": {}},
             "tagger": "ComicBookLover/888",
             "title": "At Midnight, All the Agents",
-            "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=timezone.utc),
+            "updated_at": datetime(2009, 10, 25, 14, 51, 31, tzinfo=UTC),
             "volume": {"issue_count": 12, "number": 1},
         },
         "comicbox-filename.txt": {
@@ -176,7 +176,7 @@ FNS = MappingProxyType(
             "stories": {"The Beginning": {}},
             "tagger": "comicbox dev",
             "title": "The Beginning",
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicbox.yaml": {
@@ -205,7 +205,7 @@ FNS = MappingProxyType(
             "series": {"name": "empty"},
             "tagger": "comicbox dev",
             "tags": {"a": {}, "b": {}, "c": {}},
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
         },
         "comicinfo.xml": {
             "age_rating": "Teen",
@@ -255,7 +255,7 @@ FNS = MappingProxyType(
             "stories": {"The Beginning": {}, "The End": {}},
             "tagger": "comicbox dev",
             "title": "The Beginning; The End",
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "comicinfo-metron-origin.xml": {
@@ -311,7 +311,7 @@ FNS = MappingProxyType(
             "stories": {"The Beginning": {}},
             "tagger": "Comictagger",
             "title": "The Beginning",
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
             "volume": {"issue_count": 7, "number": 1950},
         },
         "metroninfo.xml": {
@@ -426,7 +426,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "title": "Captain Lost; Science is Good; metron",
             "universes": {"Mirror": {"designation": "4242"}},
-            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, tzinfo=UTC),
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
@@ -662,7 +662,7 @@ FNS = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"d": {}, "e": {}, "f": {}},
             "title": "the tangle of their lives",
-            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC),
         },
     }
 )

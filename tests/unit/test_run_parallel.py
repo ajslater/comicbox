@@ -9,11 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import patch
 
 from loguru import logger as loguru_logger
-from typing_extensions import Self
 
 from comicbox.config import get_config
 from comicbox.config.online.settings import OnlineAuthSettings, OnlineSourceCredentials

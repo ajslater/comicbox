@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from argparse import Namespace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -28,8 +28,8 @@ from tests.const import (
 )
 
 CONFIG = get_config(Namespace(comicbox=Namespace(compute_page_count=True)))
-EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-FUTURE = datetime(2999, 1, 1, tzinfo=timezone.utc)
+EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+FUTURE = datetime(2999, 1, 1, tzinfo=UTC)
 _CIX_CBZ_PAGES = 5
 
 FIXTURES = (

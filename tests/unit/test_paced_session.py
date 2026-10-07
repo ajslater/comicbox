@@ -11,7 +11,7 @@ fail rather than the behavior quietly disappearing.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import pytest
@@ -35,7 +35,7 @@ from tests.util.metron_transport import (
     issue_row,
 )
 
-_IF_MODIFIED = datetime(2020, 1, 1, tzinfo=timezone.utc)
+_IF_MODIFIED = datetime(2020, 1, 1, tzinfo=UTC)
 
 
 class _RecordingGate(RateGate):

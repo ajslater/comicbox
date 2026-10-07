@@ -36,6 +36,13 @@ gone; `GateRateLimiter` below is the registration that replaced it.
 | Stats for the end-of-run summary | `stats()` | none |
 | Clock | monotonic only; never converts a `-Reset` | mixes monotonic (burst) and wall clock (sustained) |
 
+4.9.0 adds `RedisRateLimiter`, which paces the same way but keeps its
+state in Redis so several processes on one account share a window. The
+table applies to it too (it reads the Redis server's clock instead of
+the local one), and it needs a Redis server, which a CLI tool and
+library has no business requiring. comicbox shares one gate across
+threads, not processes.
+
 ### The one remaining private reach
 
 The `rate_limiter` hook carries no URL, no status code and no raw
@@ -134,6 +141,10 @@ class GateRateLimiter:
     `release` after it returns, from the one frame every public method
     funnels through. The protocol is not `runtime_checkable`; mokkari
     duck-types it and turns a missing method into `RateLimiterError`.
+
+    Only `acquire` can stop a run. Since mokkari 4.9.0 an exception from
+    `on_rate_limited` or `release` is logged and ignored, so neither may
+    raise to abort; both must do their bookkeeping and return.
     """
 
     def __init__(self, gate: RateGate) -> None:
@@ -153,7 +164,7 @@ class GateRateLimiter:
         response.
 
         Raises `OnlineLookupAbortedError` when the daily quota is spent.
-        mokkari only wraps `AttributeError` here, so the abort propagates
+        mokkari wraps only a missing method here, so the abort propagates
         out of the list or detail call, and `with_retry` never replays
         it. mokkari calls `_acquire_rate_limit_slot` BEFORE its
         try/finally, so a raise here is never paired with a `release`.

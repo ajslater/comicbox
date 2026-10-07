@@ -1,9 +1,10 @@
 """
 Cover-hash primitives and the matcher's hashing-invocation policy.
 
-pHash via the `imagehash` library (8x8 = 64 bits). Mokkari already
-returns a precomputed pHash in `Issue.cover_hash`, so for Metron
-candidates we string-compare. ComicVine and GCD candidates require
+pHash (8x8 = 64 bits), computed in pure Python bit for bit the way
+`imagehash.phash` computes it, because Metron's precomputed hashes
+(`Issue.cover_hash`, returned by Mokkari) come from imagehash and are
+string-compared against ours. ComicVine and GCD candidates require
 downloading the cover image — that's M6's concern.
 
 The matcher invocation policy decides *when* hashing runs:
@@ -16,6 +17,9 @@ The matcher invocation policy decides *when* hashing runs:
 
 from __future__ import annotations
 
+import cmath
+import math
+import re
 import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -27,32 +31,108 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-    from imagehash import ImageHash
+    from PIL.Image import Image as PILImage
 
+# imagehash's phash defaults: hash_size=8, highfreq_factor=4. Shrink the
+# cover to 32x32 grayscale, DCT both axes, keep the low-frequency 8x8.
+_HASH_SIDE = 8
+_DCT_SIDE = _HASH_SIDE * 4
 # pHash is an 8x8 = 64 bit hash. Keep this constant for clarity in the
 # distance calculation.
-HASH_BITS = 64
+HASH_BITS = _HASH_SIDE * _HASH_SIDE
+_HEX_DIGITS = HASH_BITS // 4
+_HEX_HASH_RE = re.compile(rf"[0-9a-fA-F]{{{_HEX_DIGITS}}}")
+
+# FFT twiddle factors for every power-of-two length up to _DCT_SIDE, and
+# the DCT post-twiddle. Built once; the expressions are written exactly as
+# below on purpose — a different but equivalent formula can round
+# differently and flip a bit near the median.
+_FFT_TWIDDLES = {
+    n: tuple(cmath.exp(-2j * math.pi * k / n) for k in range(n // 2))
+    for n in (1 << p for p in range(1, _DCT_SIDE.bit_length()))
+}
+_DCT_TWIDDLES = tuple(
+    cmath.exp(-1j * math.pi * k / (2 * _DCT_SIDE)) for k in range(_DCT_SIDE)
+)
+
+
+def _fft(values: list[complex]) -> list[complex]:
+    """Radix-2 FFT. `len(values)` must be a power of two."""
+    n = len(values)
+    if n == 1:
+        return values
+    even = _fft(values[0::2])
+    odd = _fft(values[1::2])
+    twiddles = _FFT_TWIDDLES[n]
+    half = n // 2
+    out = [0j] * n
+    for k in range(half):
+        t = twiddles[k] * odd[k]
+        out[k] = even[k] + t
+        out[k + half] = even[k] - t
+    return out
+
+
+def _dct2(values: Sequence[float]) -> list[float]:
+    """
+    Unnormalized DCT-II, equal to `scipy.fftpack.dct(values)`.
+
+    Makhoul's reordering turns it into one same-length FFT. Do not
+    replace this with the direct cosine sum: the butterflies cancel equal
+    inputs exactly, as scipy's FFT does, so blank, flat and mirrored
+    covers hash the same as imagehash. A direct sum leaves rounding noise
+    around the median and flips bits on exactly those images.
+    """
+    n = _DCT_SIDE
+    reordered = [0j] * n
+    for i in range(n // 2):
+        reordered[i] = complex(values[2 * i])
+        reordered[n - 1 - i] = complex(values[2 * i + 1])
+    spectrum = _fft(reordered)
+    return [2.0 * (_DCT_TWIDDLES[k] * spectrum[k]).real for k in range(n)]
+
+
+def phash_int(image: PILImage) -> int:
+    """Return the 64-bit pHash of an image, as `imagehash.phash` computes it."""
+    from PIL import Image
+
+    side = _DCT_SIDE
+    gray = image.convert("L").resize((side, side), Image.Resampling.LANCZOS)
+    pixels = gray.tobytes()  # row-major: pixels[y * side + x]
+    # DCT down each column (numpy axis 0)...
+    columns = [_dct2([pixels[y * side + x] for y in range(side)]) for x in range(side)]
+    # ...then along the low-frequency rows (axis 1), keeping the 8x8 corner.
+    low: list[float] = []
+    for k in range(_HASH_SIDE):
+        low.extend(_dct2([column[k] for column in columns])[:_HASH_SIDE])
+    ordered = sorted(low)
+    mid = len(ordered) // 2
+    median = (ordered[mid - 1] + ordered[mid]) / 2.0  # numpy.median, even count
+    bits = 0
+    for value in low:  # row-major, so the DC term is the top bit
+        bits = (bits << 1) | int(value > median)
+    return bits
 
 
 def compute_phash(image_bytes: bytes) -> str:
-    """Return the pHash of an image as a hex string."""
-    from imagehash import phash
+    """Return the pHash of an image as a 16-digit lowercase hex string."""
     from PIL import Image
 
     with Image.open(BytesIO(image_bytes)) as img:
-        return str(phash(img))
+        return f"{phash_int(img):0{_HEX_DIGITS}x}"
 
 
-def parse_hash(hex_str: str) -> ImageHash:
-    """Parse a hex-encoded pHash string back into an ImageHash."""
-    from imagehash import hex_to_hash
-
-    return hex_to_hash(hex_str)
+def parse_hash(hex_str: str) -> int:
+    """Parse a hex-encoded pHash string into its 64-bit integer."""
+    if not _HEX_HASH_RE.fullmatch(hex_str):
+        reason = f"not a {HASH_BITS}-bit hex pHash: {hex_str!r}"
+        raise ValueError(reason)
+    return int(hex_str, 16)
 
 
 def hamming_distance(a: str, b: str) -> int:
     """Hamming distance between two hex-encoded pHash strings."""
-    return parse_hash(a) - parse_hash(b)
+    return (parse_hash(a) ^ parse_hash(b)).bit_count()
 
 
 def cover_score(local_hash: str, candidate_hash: str) -> float:

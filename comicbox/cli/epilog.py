@@ -222,6 +222,23 @@ def _get_online_sources_table() -> Table:
     return table
 
 
+_DOCTOR_MODE = Styled(
+    """
+[bold]Doctor mode[/bold]
+
+  [cyan]comicbox doctor[/cyan] [-q] [--config PATH] [--online all|SOURCES]
+
+Checks the archive tools, libraries and config comicbox depends on, and how
+each is set up. Exits non-zero when something comicbox needs is broken, so it
+also works as a health check. [cyan]-q[/cyan] shows only the problems.
+[cyan]--online all[/cyan] also verifies each configured source's credentials with
+one API request.
+
+A comic file named [green]doctor[/green] has to be given as [green]./doctor[/green].
+""",
+    style="argparse.text",
+)
+
 _FORMAT_TABLE_TITLE = """Format keys for [cyan]--read[/cyan], [cyan]--read-except[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not intended for distribution and are provided as convenience to developers."""
 
@@ -255,6 +272,7 @@ def build_epilog() -> Group:
         _MATCH_MODE_INTRO,
         _get_match_mode_table(),
         _get_help_format_table(),
+        _DOCTOR_MODE,
     ]
     # Without pdffile installed there is no --pdf-pages option to document.
     if PAGE_FORMAT_VALUES:

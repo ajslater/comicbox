@@ -41,8 +41,8 @@ as a standalone command line tool for organizing a comic library.
 | CB7 (7z)  |  ✅  | converts to CBZ      |
 | PDF       |  ✅  | ✅ embedded metadata |
 
-CBR extraction and conversion require the `unrar` binary on your `PATH`. PDF
-support is an [optional extra](#-installation).
+CBR extraction and conversion require RARLAB's `unrar` binary on your `PATH`.
+PDF support is an [optional extra](#-installation).
 
 ### 🏷️ Metadata Formats
 
@@ -149,7 +149,11 @@ pip install comicbox[pdf]
 ### Dependencies
 
 Comicbox needs no binary dependencies for CBZ, CBT, and CB7. Reading or
-converting **CBR** archives requires the `unrar` binary on your `PATH`.
+converting **CBR** archives requires RARLAB's `unrar` binary on your `PATH`
+(`brew install rar` on macOS, `unrar` from Debian's non-free). rarfile falls
+back to bsdtar and 7-Zip, but through rarfile 4.5 bsdtar can't extract RAR at
+all, and 7-Zip builds without the RAR codec can't either. `comicbox doctor` says
+whether this host can read CBRs.
 
 The optional PDF extra pulls in
 [pymupdf](https://pymupdf.readthedocs.io/en/latest/installation.html), which
@@ -311,6 +315,34 @@ optional config file, in that order of precedence.
 ```sh
 LOGLEVEL=ERROR comicbox -p "comic.cbz"
 ```
+
+## 🩺 Troubleshooting
+
+`comicbox doctor` checks everything comicbox depends on outside its own code:
+the RAR tool, the PDF extra, the image codecs online cover matching needs, your
+config files and environment variables, your online credentials, and the Python
+packages comicbox pins. Each row says OK, WARN, OFF (optional and not set up),
+MISSING, WRONG VERSION, MISCONFIGURED or ERROR, with a one-line fix for anything
+that isn't OK.
+
+```sh
+comicbox doctor
+
+# The config a run with -c would load.
+comicbox doctor -c tagging.yaml
+
+# Problems only. Exits non-zero if something comicbox needs is broken, so it
+# works as a Docker or CI health check.
+comicbox doctor -q
+
+# Also verify each configured online source's credentials, with one API
+# request per source.
+comicbox doctor --online all
+```
+
+Credentials are reported by where they came from (`--auth`, an env var, a config
+file, or the keyring), never by value, so the report is safe to paste into a bug
+report.
 
 ## 📦 Related Packages
 

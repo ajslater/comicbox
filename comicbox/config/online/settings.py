@@ -13,13 +13,13 @@ settings, so a runtime import back would close a cycle;
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from typing_extensions import override
 
 
-class MatchMode(str, Enum):
+class MatchMode(StrEnum):
     """
     Match-resolution aggressiveness.
 
@@ -28,8 +28,8 @@ class MatchMode(str, Enum):
     eager). See ``match-resolution-user-doc.md`` for the full
     decision algorithm.
 
-    Inherits from str so dataclass equality, dict keys, and JSON
-    serialization all "just work".
+    A StrEnum so dataclass equality, dict keys, JSON serialization, and
+    ``str()`` all "just work".
     """
 
     ASK = "ask"
@@ -38,14 +38,14 @@ class MatchMode(str, Enum):
     EAGER = "eager"
 
 
-class Prompts(str, Enum):
+class Prompts(StrEnum):
     """Whether comicbox is allowed to prompt the user mid-run."""
 
     ASK = "ask"
     NEVER = "never"
 
 
-class Effort(str, Enum):
+class Effort(StrEnum):
     """
     API-call effort per comic, for fan-out sources.
 
@@ -65,7 +65,7 @@ class Effort(str, Enum):
     THOROUGH = "thorough"
 
 
-class CacheMode(str, Enum):
+class CacheMode(StrEnum):
     """Cache tri-state: on / off / refresh."""
 
     ON = "on"

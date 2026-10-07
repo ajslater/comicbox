@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pickle
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from rarfile import RarInfo, nsdatetime
 
@@ -27,13 +27,13 @@ def test_rar_nsdatetime_is_coerced_to_picklable_datetime() -> None:
     parent raises TypeError and poisons the worker pool. ArchiveInfo.mtime
     must hand back a plain, picklable datetime.
     """
-    ns = nsdatetime(2007, 5, 1, 12, 30, 15, nanosecond=123456789, tzinfo=timezone.utc)
+    ns = nsdatetime(2007, 5, 1, 12, 30, 15, nanosecond=123456789, tzinfo=UTC)
     assert type(ns) is nsdatetime  # real subclass instance
 
     out = ArchiveInfo.mtime(_rar_info(ns))
 
     assert type(out) is datetime
-    assert out == datetime(2007, 5, 1, 12, 30, 15, 123456, tzinfo=timezone.utc)
+    assert out == datetime(2007, 5, 1, 12, 30, 15, 123456, tzinfo=UTC)
     # Must survive the pickle round-trip that crosses the pool boundary.
     assert pickle.loads(pickle.dumps(out)) == out  # noqa: S301
 
@@ -45,7 +45,7 @@ def test_naive_rar_nsdatetime_gets_utc_and_is_picklable() -> None:
     out = ArchiveInfo.mtime(_rar_info(ns))
 
     assert type(out) is datetime
-    assert out.tzinfo == timezone.utc
+    assert out.tzinfo == UTC
     assert pickle.loads(pickle.dumps(out)) == out  # noqa: S301
 
 

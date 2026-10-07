@@ -1,6 +1,6 @@
 """Calculate page filenames."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from comicbox.box.archive.archiveinfo import ArchiveInfo
@@ -27,7 +27,7 @@ class ComicboxArchiveMtime(ComicboxArchiveWrite):
         """Get the path mtime as datetime."""
         if not self._path_mtime_dttm and self._path:
             self._path_mtime_dttm: datetime | None = datetime.fromtimestamp(
-                self._path.stat().st_mtime, tz=timezone.utc
+                self._path.stat().st_mtime, tz=UTC
             )
         return self._path_mtime_dttm
 

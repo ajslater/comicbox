@@ -21,9 +21,11 @@ The ``online`` subtree is big enough to live in its own package —
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
+
+from comicbox.exceptions import ConfigurationError
 
 if TYPE_CHECKING:
     # comicbox.config.online.settings imports parse_enum from here at
@@ -45,7 +47,7 @@ def parse_enum(
     except ValueError as exc:
         valid = ", ".join(member.value for member in enum_cls)
         reason = f"{flag}: unknown {noun} {raw!r}; valid: {valid}"
-        raise ValueError(reason) from exc
+        raise ConfigurationError(reason) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +80,7 @@ class ReadSettings:
     merge_order: "tuple[MetadataSources, ...] | None" = None
 
 
-class MergeMode(str, Enum):
+class MergeMode(StrEnum):
     """
     How caller-supplied metadata merges into a comic's existing tags.
 

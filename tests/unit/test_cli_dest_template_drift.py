@@ -14,14 +14,9 @@ from typing import Any
 import pytest
 from confuse import MappingTemplate, Template
 
-from comicbox.cli.parser import ONLINE_RUNTIME_DESTS, build_parser
+from comicbox.cli.parser import FOLDED_DESTS, ONLINE_RUNTIME_DESTS, build_parser
 from comicbox.config import _TEMPLATE
 from comicbox.version import PACKAGE_NAME
-
-# Dests folded into another key by ``compute_config`` rather than
-# landing on one of their own. Each is a CLI shorthand:
-# -Q -> general.loglevel, -p/-v -> print.phases.
-_FOLDED = frozenset({"general.quiet", "print.metadata", "print.version"})
 
 
 def _config_tree_actions() -> list[Any]:
@@ -50,7 +45,7 @@ def _resolve(dotted: str) -> None:
 @pytest.mark.parametrize("action", _config_tree_actions(), ids=lambda a: a.dest)
 def test_dest_resolves_in_the_config_template(action: Any) -> None:
     """A config-tree dest is the template path it sets, dots and all."""
-    if action.dest in _FOLDED:
+    if action.dest in FOLDED_DESTS:
         # Folded dests are deliberately absent from the template;
         # compute_config consumes them before validation.
         return
@@ -78,6 +73,6 @@ def test_folded_dests_are_absent_from_the_template() -> None:
     If one of these ever gains a template key, the fold in
     compute_config is redundant and this test says so.
     """
-    for dotted in _FOLDED:
+    for dotted in FOLDED_DESTS:
         with pytest.raises((KeyError, TypeError)):
             _resolve(dotted)

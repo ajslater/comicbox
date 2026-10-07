@@ -25,6 +25,8 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from comicbox.config.online.settings import (
         MatchMode,
         OnlineLookupSettings,
@@ -51,7 +53,7 @@ class OnlineSessionState:
         self._prompts = prompts
 
     @classmethod
-    def from_lookup(cls, lookup: OnlineLookupSettings) -> OnlineSessionState:
+    def from_lookup(cls, lookup: OnlineLookupSettings) -> Self:
         """Seed from a resolved lookup settings block."""
         return cls(match=lookup.match, prompts=lookup.prompts)
 

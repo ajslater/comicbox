@@ -64,6 +64,7 @@ from comicbox.formats.sources import MetadataSources
 from comicbox.version import user_agent
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from datetime import timedelta
     from pathlib import Path
 
@@ -86,6 +87,10 @@ _maintenance_lock = threading.Lock()
 # batch behind one pathological comic. The volume discovery calls
 # themselves are outside it: they are the search, not the fan-out.
 _SEARCH_DEADLINE_S = 45.0
+
+# The endpoint pool `probe` spends from. simyan names a pool after the
+# resource, and nothing else comicbox does lists origins.
+_PROBE_POOL: Final = "origins"
 
 # Comic Vine's cap is per hour, so its sliding window is an hour wide.
 # In milliseconds to match pyrate-limiter's `item_timestamp` stamps.
@@ -516,26 +521,53 @@ class ComicVineOnlineSource(OnlineSource):
             )
         return client
 
-    def _build_session(self) -> Comicvine:
+    def _new_client(self, cache_expiry: Any) -> Comicvine:
         from simyan.comicvine import Comicvine
 
         # Both paths are always passed explicitly — simyan's defaults land
         # in ~/.cache/simyan, outside comicbox's cache dir.
-        cache_path = self.cache_db_path()
-        resolved = self._resolve_response_cache()  # REFRESH unlinks in here
         kwargs: dict[str, Any] = {
             "api_key": self._credentials.key,
             "user_agent": user_agent(),
-            "cache_path": cache_path,
-            "cache_expiry": self._cache_expiry(resolved),
+            "cache_path": self.cache_db_path(),
+            "cache_expiry": cache_expiry,
             "ratelimit_path": self.cache_db_path("rate_limit"),
         }
         if self._credentials.url:
             kwargs["base_url"] = self._credentials.url
-        client = Comicvine(**kwargs)
+        return Comicvine(**kwargs)
+
+    def _build_session(self) -> Comicvine:
+        resolved = self._resolve_response_cache()  # REFRESH unlinks in here
+        client = self._new_client(self._cache_expiry(resolved))
         if resolved is not None:
-            self._maintain_cache(client, cache_path)
+            self._maintain_cache(client, self.cache_db_path())
         return client
+
+    @override
+    def probe(self) -> Mapping[str, Mapping[str, Any]] | None:
+        """
+        Verify the key with one one-row ``list_origins`` request.
+
+        Origins have their own hourly bucket, which tagging never touches,
+        so the probe costs no tagging budget. The request still goes through
+        that shared bucket file, so it counts.
+        """
+        from requests_cache import DO_NOT_CACHE
+        from simyan.errors import RateLimitError
+
+        before = shared_client_rate_limit_status(self._settings).get(_PROBE_POOL, {})
+        if before.get("remaining") == 0:
+            # simyan would block for up to twice its timeout waiting for a slot.
+            reason = f"the hourly {_PROBE_POOL} budget is spent"
+            raise RateLimitError(reason)
+        client = self._new_client(DO_NOT_CACHE)
+        try:
+            self._record_api_call("list_origins")
+            client.list_origins(params={"limit": "1"}, max_results=1)
+        finally:
+            close_client(client)
+        return shared_client_rate_limit_status(self._settings)
 
     @staticmethod
     def _cache_expiry(resolved: tuple[Path, timedelta] | None) -> Any:

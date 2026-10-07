@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import stat
-import sys
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,8 +55,6 @@ class LoadedMetadata:
 
 class ComicboxInit:
     """Initialization mixin."""
-
-    _MODE_EXECUTABLE = stat.S_IXUSR ^ stat.S_IXGRP ^ stat.S_IXOTH
 
     def _validate_path(self, path: Path | str | None) -> Path | None:
         path = Path(path) if path else None
@@ -165,7 +161,10 @@ class ComicboxInit:
     @staticmethod
     def is_pdf_supported() -> bool:
         """Are PDFs supported."""
-        return "pdffile" in sys.modules
+        # Not `"pdffile" in sys.modules`: that is also true when pdffile
+        # imported but comicbox's guard rejected it (an old pdffile without
+        # PageFormat), or when the embedding app imported pdffile itself.
+        return PDF_ENABLED
 
     def _set_archive_cls_pdf(self) -> bool:
         """PDFFile is only optionally installed."""

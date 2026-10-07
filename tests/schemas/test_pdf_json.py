@@ -1,7 +1,7 @@
 """Test CBI module."""
 
 from argparse import Namespace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import MappingProxyType
 
 import simplejson as json
@@ -38,7 +38,7 @@ PDF_METADATA = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"d": {}, "e": {}, "f": {}},
             "title": "the tangle of their lives",
-            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC),
         }
     }
 )
@@ -55,7 +55,7 @@ CIX_METADATA = MappingProxyType(
             "tagger": "comicbox dev",
             "tags": {"d": {}, "e": {}, "f": {}},
             "title": "the tangle of their lives",
-            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            "updated_at": datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC),
         }
     }
 )

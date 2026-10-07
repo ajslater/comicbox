@@ -56,8 +56,7 @@ from comicbox.version import set_user_agent_context
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
     from pathlib import Path
-
-    from typing_extensions import Self
+    from typing import Self
 
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import EventHandler

@@ -11,7 +11,7 @@ them without a trace.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -66,12 +66,12 @@ _CASES: dict[type, tuple[Field, str, Any]] = {
     XmlDateTimeField: (
         XmlDateTimeField(),
         "2020-01-02T03:04:05",
-        datetime(2020, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        datetime(2020, 1, 2, 3, 4, 5, tzinfo=UTC),
     ),
     XmlPdfDateTimeField: (
         XmlPdfDateTimeField(),
         "2020-01-02T03:04:05",
-        datetime(2020, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        datetime(2020, 1, 2, 3, 4, 5, tzinfo=UTC),
     ),
     XmlEnumField: (_XmlColorField(), "red", _ColorEnum.RED),
     XmlReadingDirectionField: (
