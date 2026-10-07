@@ -22,17 +22,17 @@ from comicbox.doctor.packages import PDF_DIST, dist_version, pinned, reinstall_h
 from comicbox.doctor.result import CheckResult, Status
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
     from types import ModuleType
 
     from comicbox.doctor.context import Check, DoctorContext
 
 SECTION = "Archives"
 
-# Codec → the stdlib module that provides it. A Python built without one
-# of these libraries can still open archives, just not members compressed
-# with that codec.
-_ZIP_CODECS = MappingProxyType({"bz2": "bz2", "lzma": "lzma"})
+# Codec → the modules that provide it, any one of which will do. A Python
+# built without one of these libraries can still open archives, just not
+# members compressed with that codec.
+_ZIP_CODECS = MappingProxyType({"bz2": ("bz2",), "lzma": ("lzma",)})
 _TAR_CODEC_MODULES = MappingProxyType(
     {"gz": "zlib", "bz2": "bz2", "xz": "lzma", "zst": "compression.zstd"}
 )
@@ -97,6 +97,20 @@ def _importable(*modules: str) -> bool:
     return False
 
 
+def _split_codecs(
+    codecs: Mapping[str, tuple[str, ...]],
+) -> tuple[list[str], list[str]]:
+    """Partition ``codecs`` into those this Python can use and those it can't."""
+    present: list[str] = []
+    missing: list[str] = []
+    for codec, modules in codecs.items():
+        if _importable(*modules):
+            present.append(codec)
+        else:
+            missing.append(codec)
+    return present, missing
+
+
 _row = partial(CheckResult, SECTION)
 
 
@@ -134,11 +148,10 @@ def check_cbz(_ctx: DoctorContext) -> Iterator[CheckResult]:
         return
     codecs = dict(_ZIP_CODECS)
     if hasattr(zipfile, "ZIP_ZSTANDARD"):  # Python 3.14+
-        codecs["zstd"] = "compression.zstd"
-    missing = [codec for codec, module in codecs.items() if not _importable(module)]
+        codecs["zstd"] = ("compression.zstd",)
+    present, missing = _split_codecs(codecs)
     if missing:
         yield _missing_codecs_row("CBZ", missing, "members")
-    present = [codec for codec in codecs if codec not in missing]
     yield _row("CBZ", Status.OK, found=found, detail=" ".join(["deflate", *present]))
 
 
@@ -217,11 +230,9 @@ def check_cb7(_ctx: DoctorContext) -> Iterator[CheckResult]:
             fix=reinstall_hint("py7zr"),
         )
         return
-    codecs = {"brotli": _BROTLI_MODULES, "zstd": _ZSTD_MODULES}
-    missing = [codec for codec, modules in codecs.items() if not _importable(*modules)]
+    present, missing = _split_codecs({"brotli": _BROTLI_MODULES, "zstd": _ZSTD_MODULES})
     if missing:
         yield _missing_codecs_row("CB7", missing, "archives")
-    present = [codec for codec in codecs if codec not in missing]
     yield _row(
         "CB7",
         Status.OK,
@@ -232,15 +243,15 @@ def check_cb7(_ctx: DoctorContext) -> Iterator[CheckResult]:
 
 def check_cbt(_ctx: DoctorContext) -> Iterator[CheckResult]:
     """Every compressed tar flavor this Python's tarfile can open."""
-    codecs = [codec for codec in tarfile.TarFile.OPEN_METH if codec != "tar"]
-    missing = [
-        codec
-        for codec in codecs
-        if not _importable(_TAR_CODEC_MODULES.get(codec, codec))
-    ]
+    present, missing = _split_codecs(
+        {
+            codec: (_TAR_CODEC_MODULES.get(codec, codec),)
+            for codec in tarfile.TarFile.OPEN_METH
+            if codec != "tar"
+        }
+    )
     if missing:
         yield _missing_codecs_row("CBT", missing, "tarballs")
-    present = [codec for codec in codecs if codec not in missing]
     yield _row("CBT", Status.OK, detail=" ".join(present))
 
 
