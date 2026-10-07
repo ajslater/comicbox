@@ -5,8 +5,9 @@ Wraps the existing Comicbox.run_online_lookup() per-file flow with a
 Codex-friendly surface:
 
 - Per-source credential validation up front (fail-fast).
-- Direct :class:`MatchMode` API (no string alias layer; ``ASK`` is
-  rejected since the session has no built-in prompt resolver for it).
+- Direct :class:`MatchMode` API (no string alias layer; ``ASK`` needs a
+  PromptHandler or ``defer_prompts=True``, since the session has no
+  built-in prompt resolver of its own).
 - One programmatic PromptHandler per session that the matcher calls
   whenever it would otherwise hit the CLI questionary prompt.
 - Event stream via on_event= for UI feedback.
@@ -328,15 +329,17 @@ class OnlineSession:
         self._validate_ids(self._sources, self._ids)
         self._credentials = credentials or OnlineCredentials()
         self._validate_credentials(self._sources, self._credentials)
+        # The prompt resolvers come before the match mode: whether ASK
+        # is acceptable depends on having one.
+        self._prompt_handler = prompt_handler
+        self._defer_prompts = defer_prompts
         self._state = OnlineSessionState(
             match=self._validate_match(match),
             prompts=prompts,
         )
-        self._prompt_handler = prompt_handler
         self._on_event = on_event
         self._rematch = rematch
         self._first_wins = first_wins
-        self._defer_prompts = defer_prompts
         self._series_batching = series_batching
         # Read config files / env exactly once per session. _build_config
         # used to call get_config() per file — wasted disk I/O on big
@@ -396,9 +399,10 @@ class OnlineSession:
         """
         Current session match mode (read-only; mutate via set_match()).
 
-        May report ``MatchMode.ASK`` even though ``set_match`` rejects
-        it: a prompt handler answering ``set_policy: "ask"`` can put the
-        session there, since that path has a handler to do the asking.
+        ``set_match`` accepts ``MatchMode.ASK`` only while a prompt
+        handler or deferred prompts can resolve the prompts it raises.
+        A selector answering ``set_policy: "ask"`` sets it without that
+        check, so this may report ASK where ``set_match`` would refuse.
         """
         return self._state.snapshot().match
 
@@ -408,7 +412,12 @@ class OnlineSession:
         return self._state.snapshot().prompts
 
     def set_match(self, match: MatchMode) -> None:
-        """Change the session match mode for subsequent file lookups."""
+        """
+        Change the session match mode for subsequent file lookups.
+
+        ``MatchMode.ASK`` prompts for every match, so it is accepted only
+        while the session has a prompt handler or defers its prompts.
+        """
         self._state.set_match(self._validate_match(match))
 
     def set_prompts(self, prompts: Prompts) -> None:
@@ -479,7 +488,16 @@ class OnlineSession:
         return self._defer_prompts
 
     def set_defer_prompts(self, *, defer: bool) -> None:
-        """Toggle defer-prompts mode for subsequent file lookups."""
+        """
+        Toggle defer-prompts mode for subsequent file lookups.
+
+        Turning deferral off leaves the match mode alone, even when it
+        is ``MatchMode.ASK`` and no prompt handler is set. The ASK guard
+        in the constructor and ``set_match`` is an entry check, not an
+        invariant this toggle re-enforces: a session left in ASK without
+        a resolver prompts for every match, and each lookup reports the
+        missing resolver at prompt time, as for any session without one.
+        """
         self._defer_prompts = defer
 
     def deferred_prompts(self) -> tuple[DeferredPrompt, ...]:
@@ -938,16 +956,22 @@ class OnlineSession:
             )
             raise OnlineConfigurationError(msg)
 
-    @staticmethod
-    def _validate_match(match: MatchMode) -> MatchMode:
+    def _validate_match(self, match: MatchMode) -> MatchMode:
         if not isinstance(match, MatchMode):  # pyright: ignore[reportUnnecessaryIsInstance]
             msg = f"OnlineSession.match must be a MatchMode enum value; got {match!r}."  # pyright: ignore[reportUnreachable]
             raise OnlineConfigurationError(msg)
-        if match is MatchMode.ASK:
+        # ASK auto-writes nothing and prompts for every match, so a
+        # session with nowhere to send a prompt would write nothing.
+        if (
+            match is MatchMode.ASK
+            and self._prompt_handler is None
+            and not self._defer_prompts
+        ):
             msg = (
-                "OnlineSession.match does not accept MatchMode.ASK; "
-                "the session has no built-in prompt resolver. Use a "
-                "PromptHandler or defer_prompts=True instead."
+                "OnlineSession.match does not accept MatchMode.ASK without "
+                "a way to resolve its prompts: no prompt_handler is set and "
+                "defer_prompts is off. Pass a PromptHandler or "
+                "defer_prompts=True."
             )
             raise OnlineConfigurationError(msg)
         return match
