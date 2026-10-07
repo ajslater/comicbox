@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.3.1
+
+- Fixes
+    - `OnlineSession` accepts `MatchMode.ASK` when a prompt handler or deferred
+      prompts can resolve its prompts, so an embedding app can review every
+      match.
+
 ## v5.3.0
 
 - Breaking Changes
