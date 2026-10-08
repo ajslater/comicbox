@@ -1,9 +1,9 @@
-__pycache__
+*.sh
+*Dockerfile
 .*cache
 .claude
 .git
-*.sh
-*Dockerfile
+__pycache__
 bun.lock
 comicbox/schemas/*Info*.xsd
 dist
