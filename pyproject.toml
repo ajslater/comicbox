@@ -93,7 +93,7 @@ lint = [
   "icecream~=2.1",
   "pathspec~=1.1.0",
   "radon~=6.0",
-  "ruff~=0.16",
+  "ruff~=0.17",
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
   "ty~=0.0.17",
@@ -149,7 +149,8 @@ source-include = [
   "tests/**",
   "uv.lock",
   "validate-schema.sh",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
+  "docs/**"
 ]
 source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
@@ -187,7 +188,7 @@ reportUntypedBaseClass = false
 [tool.codespell]
 builtin = "clear,code,rare"
 ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,ro,searchd,thead,versio,wan,warmup,ws"
-skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./package-lock.json,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
+skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
 
 [tool.complexipy]
 failed = true
