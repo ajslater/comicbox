@@ -1,6 +1,6 @@
 # hadolint ignore=DL3007
 FROM oven/bun:latest AS bun-source
-FROM nikolaik/python-nodejs:python3.14-nodejs24
+FROM nikolaik/python-nodejs:python3.15-nodejs26
 LABEL maintainer="AJ Slater <aj@slater.net>"
 
 COPY debian.sources /etc/apt/sources.list.d/
