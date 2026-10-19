@@ -134,7 +134,7 @@ def test_build_session_registers_the_gate_as_the_rate_limiter(
     """The gate reaches mokkari through the public hook, not a subclass."""
     settings = OnlineSettings(cache=OnlineCacheSettings(mode=CacheMode.OFF))
     src = MetronOnlineSource(
-        OnlineSourceCredentials(user="u", password="p"),
+        OnlineSourceCredentials(key="t"),
         settings,
     )
 

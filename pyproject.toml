@@ -4,7 +4,7 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3"
+  "Programming Language :: Python :: 3",
 ]
 dependencies = [
   "bidict~=0.23",
@@ -18,7 +18,7 @@ dependencies = [
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari~=4.9.0",
+  "mokkari~=4.10.0",
   "nh3>=0.3.5",
   "packaging>=24.0",
   "pillow>=12.2.0",
@@ -37,7 +37,7 @@ dependencies = [
   "typing-extensions~=4.13",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
-  "zipremove~=0.1"
+  "zipremove~=0.1",
 ]
 description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
 keywords = [
@@ -50,13 +50,13 @@ keywords = [
   "comicbookinfo",
   "comicinfo",
   "metroninfo",
-  "pdf"
+  "pdf",
 ]
 readme = "README.md"
 requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "5.3.1"
+version = "5.3.2"
 
 [[project.authors]]
 name = "AJ Slater"
@@ -81,9 +81,7 @@ dev = [
   "neovim~=0.3",
   "pyclean~=3.1",
   "pypi-cleanup~=0.1.10",
-  "semver~=3.1.0",
   "toml-cli~=0.7",
-  "tomlkit~=0.14"
 ]
 build = []
 lint = [
@@ -93,14 +91,13 @@ lint = [
   "complexipy~=8.0.1",
   "djlint~=1.3.dev0",
   "icecream~=2.1",
-  "mbake~=1.4.5",
   "pathspec~=1.1.0",
   "radon~=6.0",
-  "ruff~=0.16",
+  "ruff~=0.17",
   "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
   "ty~=0.0.17",
-  "vulture~=2.3"
+  "vulture~=2.3",
 ]
 test = [
   "coverage~=7.0",
@@ -108,14 +105,19 @@ test = [
   "imagehash>=4.3.2",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
-  "pytest~=9.0"
+  "pytest~=9.0",
 ]
 docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
 ci = ["requests~=2.32"]
 
 [build-system]
-requires = ["uv_build~=0.12.0"]
+requires = ["uv_build~=0.13"]
 build-backend = "uv_build"
+
+[tool.uv]
+# TODO: Remove once deepdiff releases with cachebox>=6 (its <6 pin has no
+# cp315 wheels).
+override-dependencies = ["cachebox~=6.0"]
 
 [tool.uv.build-backend]
 module-root = ""
@@ -152,7 +154,8 @@ source-include = [
   "tests/**",
   "uv.lock",
   "validate-schema.sh",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
+  "docs/**",
 ]
 source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
@@ -164,7 +167,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 pythonVersion = "3.11"
 failOnWarnings = false
@@ -190,7 +193,7 @@ reportUntypedBaseClass = false
 [tool.codespell]
 builtin = "clear,code,rare"
 ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,ro,searchd,thead,versio,wan,warmup,ws"
-skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./package-lock.json,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
+skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
 
 [tool.complexipy]
 failed = true
@@ -210,7 +213,7 @@ omit = [
   "site/*",
   "test-results/*",
   "typings/*",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 
 [tool.pytest]
@@ -223,8 +226,10 @@ addopts = [
   "--junit-xml=test-results/pytest/results.xml",
   "--strict-config",
   "--strict-markers",
-  "-ra"
+  "-ra",
 ]
+# mokkari names 5.0 in every deprecation it plans to remove; a new use fails.
+filterwarnings = ["error:.*mokkari 5\\.0:DeprecationWarning"]
 junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]
@@ -242,7 +247,7 @@ extend-exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 show-fixes = true
 target-version = "py311"
@@ -263,7 +268,7 @@ extend-ignore = [
   "PERF203",
   "PLC0415",
   "S101",
-  "W191"
+  "W191",
 ]
 extend-select = [
   "A",
@@ -322,7 +327,7 @@ extend-select = [
   "TRY",
   "UP",
   "W",
-  "YTT"
+  "YTT",
 ]
 external = ["V101"]
 task-tags = ["FIXME", "HACK", "TODO", "XXX", "http"]
@@ -349,7 +354,7 @@ ignore-overlong-task-comments = true
   "S106",
   "S108",
   "SLF001",
-  "T203"
+  "T203",
 ]
 "bin/hub_prune_stale.py" = ["T201", "UP017"]
 "bin/release_info.py" = ["T201"]
@@ -372,7 +377,7 @@ exclude = [
   "site",
   "test-results",
   "typings",
-  "vulture_ignorelist.py"
+  "vulture_ignorelist.py",
 ]
 
 [tool.ty.rules]
@@ -383,6 +388,20 @@ exclude = [
 # false positive.
 unsupported-base = "ignore"
 
+# ty >= 0.0.86 rejects the same `class Meta(<Schema>.Meta)` idiom as an invalid
+# override, though the nested class subclasses the one it replaces
+# (https://github.com/astral-sh/ty/issues/4711). Scoped to the schemas so the
+# check still guards every other attribute; drop this once that issue is fixed.
+[[tool.ty.overrides]]
+include = [
+  "comicbox/formats/**/schema.py",
+  "comicbox/formats/**/schema/**",
+  "comicbox/formats/base/schemas/**",
+]
+
+[tool.ty.overrides.rules]
+invalid-attribute-override = "ignore"
+
 [tool.vulture]
 exclude = [
   "*/.venv/*",
@@ -391,7 +410,7 @@ exclude = [
   "*/node_modules/*",
   "*/site/*",
   "*/test-results/*",
-  "*/typings/*"
+  "*/typings/*",
 ]
 min_confidence = 61
 sort_by_size = true

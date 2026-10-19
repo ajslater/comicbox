@@ -1,9 +1,10 @@
-__pycache__
-.*cache
-.claude
-.git
 *.sh
 *Dockerfile
+.*cache
+.claude/settings.local.json
+.claude/worktrees/
+.git
+__pycache__
 bun.lock
 comicbox/schemas/*Info*.xsd
 dist

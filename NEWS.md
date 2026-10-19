@@ -1,5 +1,15 @@
 # 📰 News
 
+## v5.3.2
+
+- Fixes
+    - Renamed files no longer contain colons or other characters Windows and SMB
+      shares can't store.
+    - Metron API tokens are used alone: leftover username/password settings no
+      longer warn, and `~/.netrc` no longer overrides them.
+- Dependencies
+    - Requires mokkari 4.10.
+
 ## v5.3.1
 
 - Fixes
