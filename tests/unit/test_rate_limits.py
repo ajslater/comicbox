@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
-from mokkari.session import RateLimitStatus, RateLimitWindow
+from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
 
 from comicbox.config import get_config
 from comicbox.config.online.settings import (
@@ -155,8 +155,24 @@ def test_build_session_passes_api_token(monkeypatch: pytest.MonkeyPatch) -> None
     session = src._get_session()
     assert isinstance(session, _FakeMokkariSession)
     assert session.kwargs["api_token"] == "tok"
-    assert session.kwargs["username"] is None
-    assert session.kwargs["passwd"] is None
+    assert "username" not in session.kwargs
+    assert "passwd" not in session.kwargs
+
+
+def test_build_session_drops_basic_auth_when_a_token_wins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    A leftover username/password never reaches mokkari beside a token.
+
+    mokkari 4.10 warns about any `username`/`passwd` it is handed, even
+    when the token wins, and 5.0 removes both keywords.
+    """
+    session = _make_metron_source(monkeypatch, key="tok")._get_session()
+    assert isinstance(session, _FakeMokkariSession)
+    assert session.kwargs["api_token"] == "tok"
+    assert "username" not in session.kwargs
+    assert "passwd" not in session.kwargs
 
 
 def test_build_session_passes_no_api_token_for_basic_auth(
@@ -165,8 +181,9 @@ def test_build_session_passes_no_api_token_for_basic_auth(
     """Without a token mokkari falls back to username/passwd, not an empty token."""
     session = _make_metron_source(monkeypatch)._get_session()
     assert isinstance(session, _FakeMokkariSession)
-    assert session.kwargs["api_token"] is None
+    assert "api_token" not in session.kwargs
     assert session.kwargs["username"] == "u"
+    assert session.kwargs["passwd"] == "p"
 
 
 def test_get_session_shares_one_client_for_same_token(
@@ -358,8 +375,9 @@ def test_metron_per_minute_override_tightens_the_gate(
     assert gate is not None
     assert gate._limit() == 5
     # The override paces comicbox; it is not a mokkari kwarg. The Session
-    # takes api()'s five; the gate goes in positionally, registered
-    # through mokkari's own `rate_limiter` hook.
+    # takes api()'s cache, user agent and this source's basic-auth pair;
+    # the gate goes in positionally, registered through mokkari's own
+    # `rate_limiter` hook.
     assert isinstance(session, _FakeMokkariSession)
     assert session.gate is gate
     assert set(session.kwargs) == {
@@ -367,7 +385,6 @@ def test_metron_per_minute_override_tightens_the_gate(
         "passwd",
         "cache",
         "user_agent",
-        "api_token",
     }
 
 
