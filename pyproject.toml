@@ -388,6 +388,20 @@ exclude = [
 # false positive.
 unsupported-base = "ignore"
 
+# ty >= 0.0.86 rejects the same `class Meta(<Schema>.Meta)` idiom as an invalid
+# override, though the nested class subclasses the one it replaces
+# (https://github.com/astral-sh/ty/issues/4711). Scoped to the schemas so the
+# check still guards every other attribute; drop this once that issue is fixed.
+[[tool.ty.overrides]]
+include = [
+  "comicbox/formats/**/schema.py",
+  "comicbox/formats/**/schema/**",
+  "comicbox/formats/base/schemas/**",
+]
+
+[tool.ty.overrides.rules]
+invalid-attribute-override = "ignore"
+
 [tool.vulture]
 exclude = [
   "*/.venv/*",
