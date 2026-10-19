@@ -42,8 +42,8 @@ from comicbox.version import user_agent
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from mokkari.rate_limit import RateLimitWindow
-    from mokkari.session import RateLimitStatus, Session
+    from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
+    from mokkari.session import Session
 
     from comicbox.formats.base.online.profile import ComicProfile
 
@@ -402,6 +402,11 @@ class MetronOnlineSource(OnlineSource):
         # (timedelta(days=expire)), not seconds. Round up so a sub-day TTL
         # still expires after at least one day rather than collapsing toward
         # 0 (which mokkari reads as "no expiry").
+        #
+        # mokkari 4.10 deprecates `expire`, but its replacement,
+        # `default_ttl=timedelta`, only exists in 5.0, so 4.x has nothing to
+        # move to. 5.0 drops the keyword outright, so the bump fails loudly
+        # here, and `default_ttl=ttl` then replaces this day rounding.
         expire = (
             math.ceil(ttl.total_seconds() / 86400) if ttl.total_seconds() > 0 else None
         )
@@ -508,14 +513,25 @@ class MetronOnlineSource(OnlineSource):
 
         return build_paced_session(
             gate,
-            username=self._credentials.user,  # mokkari keyword
-            passwd=self._credentials.password,
             cache=self._get_cache(),
             user_agent=user_agent(),
-            # mokkari prefers the token over username/passwd when both are
-            # set; None falls back to basic auth.
-            api_token=self._credentials.key,
+            **self._auth_kwargs(),
         )
+
+    def _auth_kwargs(self) -> dict[str, str | None]:
+        """
+        Return mokkari's keywords for the one credential it will use.
+
+        A token wins over username/password, so a token holder's leftover
+        user and password are not passed at all: mokkari 4.10 warns about
+        any `username`/`passwd` it is handed, used or not, and 5.0 removes
+        both keywords.
+        """
+        credentials = self._credentials
+        if credentials.key:
+            return {"api_token": credentials.key}
+        # `passwd`, not `password`: mokkari's keyword.
+        return {"username": credentials.user, "passwd": credentials.password}
 
     def _gate(self) -> RateGate | None:
         """Return the shared rate gate, once a session has been built."""
@@ -541,7 +557,7 @@ class MetronOnlineSource(OnlineSource):
             warn_once(
                 f"{self.name}:basic-auth-deprecated",
                 f"online {self.name}: username/password authentication is "
-                "deprecated and will be removed in a future release. "
+                "deprecated and stops working with mokkari 5.0. "
                 "Generate an API token on your metron.cloud account page and "
                 "set it with --auth metron:key=TOKEN or the "
                 "COMICBOX_ONLINE__AUTH__METRON__KEY environment variable.",
@@ -582,11 +598,9 @@ class MetronOnlineSource(OnlineSource):
 
         session = build_paced_session(
             self._build_gate(),
-            username=self._credentials.user,
-            passwd=self._credentials.password,
             cache=None,
             user_agent=user_agent(),
-            api_token=self._credentials.key,
+            **self._auth_kwargs(),
         )
         try:
             self._record_api_call("series_type_list")

@@ -64,3 +64,26 @@ def test_cli_action_rename_path_separator() -> None:
     assert name.startswith("Foo _ Bar ")
     assert name.endswith(".cbz")
     _cleanup()
+
+
+def test_cli_action_rename_colon() -> None:
+    """A colon in metadata must not reach the filename."""
+    _setup()
+
+    cli.main(
+        (
+            "comicbox",
+            "-m",
+            "series: 'Batman: Year One'",
+            "--rename",
+            str(TMP_PATH),
+        )
+    )
+
+    list_dir = sorted(TMP_DIR.iterdir())
+    assert len(list_dir) == 1
+    name = list_dir[0].name
+    assert ":" not in name
+    assert name.startswith("Batman Year One ")
+    assert name.endswith(".cbz")
+    _cleanup()

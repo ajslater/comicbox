@@ -8,6 +8,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+import pytest
 from glom import glom
 
 from comicbox.config import get_config
@@ -132,3 +133,44 @@ def test_filename_dumps_sanitizes_path_separators() -> None:
     assert fn.endswith(".cbz")
     # The result is a single path component, not a nested path.
     assert Path(fn).name == fn
+
+
+@pytest.mark.parametrize(
+    ("series", "expected"),
+    [
+        ("Batman: Year One", "Batman Year One #001 (1950).cbz"),
+        ("Re:Zero", "Re-Zero #001 (1950).cbz"),
+        ("Foo\\Bar", "Foo_Bar #001 (1950).cbz"),
+        ('What If? "*<Foo>|"', "What If Foo #001 (1950).cbz"),
+    ],
+)
+def test_filename_dumps_sanitizes_reserved_chars(series: str, expected: str) -> None:
+    """Characters SMB and Windows can't store are replaced on every platform."""
+    obj = {
+        FilenameSchema.ROOT_TAG: {
+            "ext": "cbz",
+            "issue": "001",
+            "series": series,
+            "year": 1950,
+        }
+    }
+
+    assert FilenameSchema().dumps(obj) == expected
+
+
+def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
+    """A colon dropped from the series must not split it on the way back in."""
+    obj = {
+        FilenameSchema.ROOT_TAG: {
+            "ext": "cbz",
+            "issue": "005",
+            "series": "Star Wars: Doctor Aphra",
+            "year": 2017,
+        }
+    }
+    schema = FilenameSchema()
+    fn = schema.dumps(obj)
+
+    assert glom(schema.loads(fn), f"{FilenameSchema.ROOT_TAG}.series") == (
+        "Star Wars Doctor Aphra"
+    )

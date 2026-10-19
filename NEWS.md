@@ -3,6 +3,8 @@
 ## v5.3.1
 
 - Fixes
+    - Renamed files no longer contain colons or other characters Windows and SMB
+      shares can't store.
     - `OnlineSession` accepts `MatchMode.ASK` when a prompt handler or deferred
       prompts can resolve its prompts, so an embedding app can review every
       match.
