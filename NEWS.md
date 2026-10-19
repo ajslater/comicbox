@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.4.0
+
+- Features
+    - Match prompts show each candidate's series start year, publisher, issue
+      count, issue title and description, and Metron's publication format when
+      titles would otherwise read the same.
+
 ## v5.3.2
 
 - Fixes

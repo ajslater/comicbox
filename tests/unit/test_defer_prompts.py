@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import TYPE_CHECKING
+
 from comicbox.events import PromptDeferred, PromptResolvedFromCache
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -15,16 +18,40 @@ from comicbox.online_session import (
     PromptResponse,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
 VALID = OnlineCredentials(metron_user="u", metron_password="p")
 
 
-def _ctx(source: str = "metron"):
+def _ctx(
+    source: str = "metron",
+    enrich: Callable[[Sequence[Candidate]], tuple[Candidate, ...]] = tuple,
+):
     from comicbox.config import get_config
     from comicbox.formats.base.online.selector import SelectorContext
 
     return SelectorContext(
-        file_path=None, source=source, settings=get_config(), triggered_hashing=False
+        file_path=None,
+        source=source,
+        settings=get_config(),
+        triggered_hashing=False,
+        enrich_candidates=enrich,
     )
+
+
+class _Enricher:
+    """Stand-in for a source's hook: tags every summary, counts its calls."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, candidates) -> tuple[Candidate, ...]:
+        self.calls += 1
+        return tuple(
+            replace(c, summary=replace(c.summary, series_type="Trade Paperback"))
+            for c in candidates
+        )
 
 
 def _cand(issue_id: int, volume_id: int | None) -> Candidate:
@@ -205,3 +232,58 @@ def test_dedup_still_short_circuits_in_defer_mode() -> None:
     assert len(cache_events) == 1
     # Queue size unchanged — only one entry total.
     assert len(session.deferred_prompts()) == 1
+
+
+def test_a_deferred_prompt_holds_enriched_candidates() -> None:
+    """What the embedder shows is what the source's hook added."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
+    selector = session._bridged_selector()
+    enrich = _Enricher()
+    cands = (_cand(1, 100), _cand(2, 200))
+
+    selector(ComicProfile(series="S", year=2020), cands, _ctx(enrich=enrich))
+
+    [deferred] = session.deferred_prompts()
+    assert enrich.calls == 1
+    assert [c.summary.series_type for c in deferred.candidates] == [
+        "Trade Paperback",
+        "Trade Paperback",
+    ]
+    # Enrichment touches display fields only; the fingerprint keys on ids.
+    assert [c.volume_id for c in deferred.candidates] == [100, 200]
+
+
+def test_a_shown_prompt_holds_enriched_candidates() -> None:
+    seen: list[OnlinePrompt] = []
+
+    class _H:
+        def request(self, prompt: OnlinePrompt) -> PromptResponse:
+            seen.append(prompt)
+            return PromptResponse(action="skip")
+
+    session = OnlineSession(sources={"metron"}, credentials=VALID, prompt_handler=_H())
+    selector = session._bridged_selector()
+
+    selector(ComicProfile(series="S"), (_cand(1, 100),), _ctx(enrich=_Enricher()))
+
+    [prompt] = seen
+    assert prompt.candidates[0].summary.series_type == "Trade Paperback"
+
+
+def test_a_prompt_answered_from_cache_spends_nothing_on_enrichment() -> None:
+    """Codex's re-run after a pick must not repeat the series lookups."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
+    selector = session._bridged_selector()
+    profile = ComicProfile(series="S", year=2020, publisher="P")
+    cands = (_cand(1, 100), _cand(2, 200))
+    selector(profile, cands, _ctx())
+    fingerprint = session.deferred_prompts()[0].fingerprint
+    session.preload_resolution(
+        fingerprint, action="choose", payload=0, chosen_volume_id=100
+    )
+    enrich = _Enricher()
+
+    result = selector(profile, cands, _ctx(enrich=enrich))
+
+    assert result == ("choose", 0)
+    assert enrich.calls == 0

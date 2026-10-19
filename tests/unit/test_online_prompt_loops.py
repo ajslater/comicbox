@@ -11,6 +11,7 @@ grammar are in ``test_online_prompt``.
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from typing import Self
 
 import pytest
@@ -284,6 +285,35 @@ def test_cli_selector_choose(monkeypatch: pytest.MonkeyPatch) -> None:
     candidates = [make_candidate(101), make_candidate(102)]
     result = prompt.cli_selector(ComicProfile(series="Foo"), candidates, make_context())
     assert result == ("choose", 1)
+
+
+@pytest.mark.parametrize(("loglevel", "calls"), [("INFO", 1), ("SUCCESS", 0)])
+def test_cli_selector_enriches_only_what_it_will_show(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    loglevel: str,
+    calls: int,
+) -> None:
+    """Terse output hides the detail lines, so it spends nothing on them."""
+    seen: list[int] = []
+
+    def enrich(candidates):
+        seen.append(len(candidates))
+        return tuple(
+            replace(c, summary=replace(c.summary, series_type="One-Shot"))
+            for c in candidates
+        )
+
+    monkeypatch.setattr(prompt, "_prompt_line", ScriptedPrompt("2"))
+    ctx = make_context(settings=make_settings(loglevel), enrich=enrich)
+    candidates = [make_candidate(101), make_candidate(102)]
+
+    result = prompt.cli_selector(ComicProfile(series="Foo"), candidates, ctx)
+
+    # The pick still indexes the caller's list, enriched or not.
+    assert result == ("choose", 1)
+    assert len(seen) == calls
+    assert ("format='One-Shot'" in capsys.readouterr().out) is bool(calls)
 
 
 @pytest.mark.parametrize(

@@ -11,7 +11,8 @@ Layout matches the Phase 4 spec:
     Existing: series=<...> issue=#<...> year=<...> publisher=<...>
 
     1. <series> #<issue> (<year>)         score=<X> [<source>:<id>]
-       publisher=<...>, pages=<...>, cover_date=<...>
+       publisher=<...>, format=<...>, started=<...>, issues=<...>, pages=<...>, year=<...>
+       "<issue title>" — <deck>
        <url>
     ...
 
@@ -47,7 +48,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from comicbox.config.settings import ComicboxSettings
-    from comicbox.formats.base.online.profile import Candidate, ComicProfile
+    from comicbox.formats.base.online.profile import (
+        Candidate,
+        CandidateSummary,
+        ComicProfile,
+    )
     from comicbox.formats.base.online.selector import SelectorContext, SelectorResult
 
 
@@ -76,17 +81,34 @@ def _format_candidate_line(idx: int, c: Candidate) -> str:
     return " ".join(parts)
 
 
+def _format_detail_parts(s: CandidateSummary) -> list[str]:
+    # The series fields tell apart candidates whose titles read the same:
+    # a reprint volume, a foreign edition, a collected edition.
+    values = (
+        ("publisher", s.publisher or s.series_publisher),
+        ("format", s.series_type),
+        ("started", s.series_start_year),
+        ("issues", s.series_issue_count),
+        ("pages", s.page_count),
+        ("year", s.year),
+    )
+    return [f"{label}={value!r}" for label, value in values if value not in (None, "")]
+
+
+def _format_title_line(s: CandidateSummary) -> str:
+    title = (
+        f"\N{LEFT DOUBLE QUOTATION MARK}{s.issue_title}\N{RIGHT DOUBLE QUOTATION MARK}"
+    )
+    parts = (title if s.issue_title else "", s.issue_summary or "")
+    return " \N{EM DASH} ".join(part for part in parts if part)
+
+
 def _format_aux_lines(c: Candidate) -> list[str]:
     aux: list[str] = []
-    detail_parts: list[str] = []
-    if c.summary.publisher:
-        detail_parts.append(f"publisher={c.summary.publisher!r}")
-    if c.summary.page_count is not None:
-        detail_parts.append(f"pages={c.summary.page_count}")
-    if c.summary.year is not None:
-        detail_parts.append(f"year={c.summary.year}")
-    if detail_parts:
+    if detail_parts := _format_detail_parts(c.summary):
         aux.append("   " + ", ".join(detail_parts))
+    if title_line := _format_title_line(c.summary):
+        aux.append(f"   {title_line}")
     if c.url:
         aux.append(f"   {c.url}")
     return aux
@@ -321,6 +343,9 @@ def cli_selector(
     aborts.
     """
     terse = _resolve_terse(ctx.settings)
+    if not terse:
+        # Only the aux lines show what enrichment adds; terse hides them.
+        candidates = ctx.enrich_candidates(candidates)
 
     while True:
         for line in _build_lines(profile, candidates, ctx.file_path, terse=terse):

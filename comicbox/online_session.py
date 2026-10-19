@@ -761,8 +761,13 @@ class OnlineSession:
                         )
                     )
                 return cached
+            # Past the cache, the prompt will reach a person, so this is
+            # where a source may spend a request on display detail. The
+            # fingerprint above and the stored resolution below key on
+            # volume ids, which enrichment leaves alone.
             if self._defer_prompts:
-                self._defer_prompt(fingerprint, profile, cand_tuple, ctx)
+                enriched = ctx.enrich_candidates(cand_tuple)
+                self._defer_prompt(fingerprint, profile, enriched, ctx)
                 return ("skip", None)
             if handler is None:
                 msg = (
@@ -770,6 +775,7 @@ class OnlineSession:
                     "is disabled; cannot resolve an ambiguous match"
                 )
                 raise RuntimeError(msg)
+            cand_tuple = ctx.enrich_candidates(cand_tuple)
             policy = self._state.snapshot()
             prompt = OnlinePrompt(
                 path=ctx.file_path,

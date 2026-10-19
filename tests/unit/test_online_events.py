@@ -61,6 +61,9 @@ class _MockMetron:
     def search(self, profile) -> list[Candidate]:
         return list(self._candidates)
 
+    def enrich_prompt_candidates(self, candidates) -> tuple[Candidate, ...]:
+        return tuple(candidates)
+
 
 def _make_candidate(issue_id: int, year: int) -> Candidate:
     return Candidate(
