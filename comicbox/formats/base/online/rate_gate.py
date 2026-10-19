@@ -37,7 +37,7 @@ One gate per credential set, owned by the source that builds the client
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import threading
 import time
 from collections import deque
@@ -430,5 +430,5 @@ def _reset_suffix(reset: float | None) -> str:
     """Render a reset epoch for humans, or nothing when unknown."""
     if reset is None:
         return ""
-    when = datetime.datetime.fromtimestamp(reset, tz=datetime.UTC)
+    when = dt.datetime.fromtimestamp(reset, tz=dt.UTC)
     return f" (one slot frees at {when.isoformat(timespec='seconds')})"
