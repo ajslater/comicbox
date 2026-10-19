@@ -24,7 +24,7 @@ from comicbox.exceptions import UnsupportedArchiveTypeError
 from comicbox.formats import MetadataFormats
 
 if TYPE_CHECKING:
-    import datetime
+    import datetime as dt
     from collections.abc import Generator, Iterable, Mapping
 
     from comicbox.config.settings import ComicboxSettings
@@ -76,7 +76,7 @@ class ReadResult(TypedDict):
     found", which would force the caller to clear those links.
     """
 
-    metadata_mtime: datetime.datetime | None
+    metadata_mtime: dt.datetime | None
     page_count: int | None
     file_type: str | None
     tags: dict[str, Any] | None
@@ -96,13 +96,13 @@ def _read_one(
     path: Path | str,
     config: ComicboxSettings | Mapping | None = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
-    old_mtime: datetime.datetime | None = None,
+    old_mtime: dt.datetime | None = None,
     *,
     full_metadata: bool = True,
 ) -> ReadResult:
     """Read metadata from a single comic file (runs in a worker process)."""
     tags: dict[str, Any] | None = None
-    metadata_mtime: datetime.datetime | None = None
+    metadata_mtime: dt.datetime | None = None
     with Comicbox(path, config=config, fmt=fmt) as cb:
         if full_metadata:
             metadata_mtime = cb.get_metadata_mtime()
@@ -260,7 +260,7 @@ def iter_process_files(  # noqa: PLR0913
     logger: Any = None,
     fmt: MetadataFormats = MetadataFormats.COMICBOX_YAML,
     max_workers: int | None = None,
-    old_mtime_map: Mapping[str, datetime.datetime] | None = None,
+    old_mtime_map: Mapping[str, dt.datetime] | None = None,
     worker_log_config: Mapping | None = None,
     *,
     full_metadata: bool = True,

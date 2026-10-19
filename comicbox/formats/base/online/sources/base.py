@@ -19,7 +19,7 @@ from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online.series_filter import max_results_for, threshold_for
 
 if TYPE_CHECKING:
-    import datetime
+    import datetime as dt
     from collections.abc import Callable, Mapping, Sequence
 
     from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
@@ -284,7 +284,7 @@ class OnlineSource(ABC):
 
     # -- shared scaffolding ---------------------------------------------------
 
-    def _resolve_response_cache(self) -> tuple[Path, datetime.timedelta] | None:
+    def _resolve_response_cache(self) -> tuple[Path, dt.timedelta] | None:
         """
         Apply the response-cache mode policy shared by every source.
 
