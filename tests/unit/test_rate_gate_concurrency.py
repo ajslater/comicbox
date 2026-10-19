@@ -162,7 +162,7 @@ def test_a_paced_pool_earns_no_rejections() -> None:
     way to stop paying it is not to send the request.
     """
     gate = RateGate(default_limit=_SERVER_LIMIT)
-    session = build_paced_session(gate, username="u", passwd="p", cache=None)
+    session = build_paced_session(gate, api_token="t", cache=None)
     transport = mount(session, _ThrottlingTransport())
 
     _drive(session)
@@ -182,7 +182,7 @@ def test_the_same_load_unpaced_does_earn_rejections() -> None:
     own `_check_rate_limit` cannot prevent it — it reads the last
     response's headers and is not serialized with the send.
     """
-    session = mokkari.session.Session(username="u", passwd="p", cache=None)
+    session = mokkari.session.Session(api_token="t", cache=None)
     transport = mount(session, _ThrottlingTransport())
 
     with pytest.raises(Exception, match="Rate Limit"):
@@ -201,7 +201,7 @@ def test_pacing_holds_the_pool_to_the_server_rate() -> None:
     useless.
     """
     gate = RateGate(default_limit=_SERVER_LIMIT)
-    session = build_paced_session(gate, username="u", passwd="p", cache=None)
+    session = build_paced_session(gate, api_token="t", cache=None)
     transport = mount(session, _ThrottlingTransport())
 
     started = time.monotonic()
@@ -235,7 +235,7 @@ def test_a_rejection_from_elsewhere_does_not_cascade(
     from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
     gate = RateGate(default_limit=_SERVER_LIMIT)
-    session = build_paced_session(gate, username="u", passwd="p", cache=None)
+    session = build_paced_session(gate, api_token="t", cache=None)
     transport = mount(session, _ThrottlingTransport())
     # Somebody else already filled the window.
     with transport._lock:

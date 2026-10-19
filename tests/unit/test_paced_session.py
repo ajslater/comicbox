@@ -126,7 +126,7 @@ def gate() -> _RecordingGate:
 
 
 def _session(gate: RateGate) -> Any:
-    return build_paced_session(gate, username="u", passwd="p", cache=None)
+    return build_paced_session(gate, api_token="t", cache=None)
 
 
 def _paged(gate: RateGate, replies: list[Reply]) -> tuple[Any, Any]:

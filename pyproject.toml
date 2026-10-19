@@ -228,6 +228,8 @@ addopts = [
   "--strict-markers",
   "-ra",
 ]
+# mokkari names 5.0 in every deprecation it plans to remove; a new use fails.
+filterwarnings = ["error:.*mokkari 5\\.0:DeprecationWarning"]
 junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]
