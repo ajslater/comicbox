@@ -521,11 +521,21 @@ class _FakeFullVolume:
         name: str,
         publisher: _FakeGenericEntry | None,
         aliases: str | None = None,
+        *,
+        start_year: int | None = None,
+        issue_count: int | None = None,
+        description: str | None = None,
+        summary: str | None = None,
     ) -> None:
         self.id = vid
         self.name = name
         self.publisher = publisher
         self.aliases = aliases
+        self.start_year = start_year
+        self.issue_count = issue_count
+        self.description = description
+        # simyan's name for CV's short `deck`.
+        self.summary = summary
 
 
 class _FakeCVForGet:
@@ -604,6 +614,40 @@ def test_get_injects_volume_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["volume"]["aliases"] == "Uncanny X-Men\nThe X-Men"
 
 
+def test_get_injects_volume_series_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start year, issue count and description ride the same volume fetch."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(
+        vid=999,
+        name="X-Men",
+        publisher=None,
+        start_year=1963,
+        issue_count=544,
+        description="<p>Marvel's mutants.</p>",
+        summary="Mutants.",
+    )
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+
+    assert fake_cv.get_volume_calls == [999]
+    vol = payload["volume"]
+    assert vol["start_year"] == 1963
+    assert vol["issue_count"] == 544
+    assert vol["description"] == "<p>Marvel's mutants.</p>"
+
+
+def test_get_falls_back_to_volume_deck(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A volume with no description offers its short deck instead."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=None, summary="Mutants.")
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    assert src.get(42)["volume"]["description"] == "Mutants."
+
+
 def test_get_omits_publisher_when_volume_has_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -615,8 +659,10 @@ def test_get_omits_publisher_when_volume_has_none(
 
     payload = src.get(42)
     assert "publisher" not in payload
-    # No aliases on the volume → nothing injected.
-    assert "aliases" not in payload["volume"]
+    # No aliases or series detail on the volume → nothing injected.
+    assert not {"aliases", "start_year", "issue_count", "description"} & set(
+        payload["volume"]
+    )
 
 
 def test_get_handles_get_volume_failure_gracefully(

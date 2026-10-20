@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import override
 
+from comicbox.enums.metroninfo import MetronFormatEnum
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
     alt_names_to_cb,
@@ -37,6 +38,30 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 _METRON = "metron"
+
+# Series-level scalars copied onto comicbox's series block as is. year_end,
+# status and desc arrive only when `MetronOnlineSource.get()` could fetch
+# the full series.
+_SERIES_SCALAR_KEYS: MappingProxyType[str, str] = MappingProxyType(
+    {
+        "sort_name": "sort_name",
+        "year_began": "start_year",
+        "year_end": "end_year",
+        "status": "status",
+    }
+)
+
+# Metron's series type names, mapped to the MetronInfo Series/Format value
+# MetronFormatField writes. Two names differ; the rest are identical.
+# Unknown names are dropped rather than written raw, because MetronInfo
+# would reject them.
+_SERIES_TYPE_TO_FORMAT: MappingProxyType[str, str] = MappingProxyType(
+    {
+        **{enum.value: enum.value for enum in MetronFormatEnum},
+        "Annual Series": MetronFormatEnum.ANNUAL.value,
+        "Digital Chapters": MetronFormatEnum.DIGITAL_CHAPTER.value,
+    }
+)
 
 
 def _build_identifiers(issue: Mapping[str, Any]) -> dict[str, dict]:
@@ -69,10 +94,11 @@ def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if name := s.get("name"):
         out["name"] = name
-    if sort_name := s.get("sort_name"):
-        out["sort_name"] = sort_name
-    if (year := s.get("year_began")) is not None:
-        out["start_year"] = year
+    for src_key, dst_key in _SERIES_SCALAR_KEYS.items():
+        if (value := s.get(src_key)) is not None and value != "":
+            out[dst_key] = value
+    if summary := strip_html(s.get("desc")):
+        out["summary"] = summary
     if (sid := s.get("id")) is not None:
         out["identifiers"] = {_METRON: build_identifier(_METRON, "series", sid)}
     if alt_names := alt_names_to_cb(s.get("alt_names"), s.get("name")):
@@ -86,11 +112,20 @@ def _build_reprints(issue: Mapping[str, Any]) -> list[dict]:
 
 
 def _build_volume(issue: Mapping[str, Any]) -> dict[str, Any]:
-    """`volume.number` from the IssueSeries.volume integer."""
+    """`volume.number` from IssueSeries.volume; `issue_count` from the series."""
     s = issue.get("series") or {}
+    out: dict[str, Any] = {}
     if (vol := s.get("volume")) is not None:
-        return {"number": int(vol)}
-    return {}
+        out["number"] = int(vol)
+    if (count := s.get("issue_count")) is not None:
+        out["issue_count"] = count
+    return out
+
+
+def _build_original_format(issue: Mapping[str, Any]) -> str | None:
+    """Map the series type name to a MetronInfo Series/Format value."""
+    series_type = (issue.get("series") or {}).get("series_type") or {}
+    return _SERIES_TYPE_TO_FORMAT.get(series_type.get("name") or "")
 
 
 def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
@@ -212,6 +247,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("community_rating", _build_community_rating_block(issue)),
         # mokkari >= 4.5 carries the series' ISO 639-1 language on IssueSeries.
         ("language", series.get("language")),
+        ("original_format", _build_original_format(issue)),
         # Publishing
         ("series", _build_series(issue)),
         ("volume", _build_volume(issue)),

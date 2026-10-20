@@ -82,6 +82,15 @@ _session_cache_lock = threading.Lock()
 # mokkari's *observation* of the limit, not to enforce it.
 _gate_cache: dict[tuple[str, str, str], RateGate] = {}
 
+# Series-level facts the issue endpoint's nested IssueSeries lacks. `get()`
+# copies them off a `series(id)` fetch into the issue dump's series block.
+_SERIES_DETAIL_KEYS: Final[tuple[str, ...]] = (
+    "year_end",
+    "status",
+    "desc",
+    "issue_count",
+)
+
 
 # Prefetched issue lists, keyed by Metron series id: {number: BaseIssue}.
 # Filled by `MetronOnlineSource.prefetch_volume` for a series a batch
@@ -682,14 +691,49 @@ class MetronOnlineSource(OnlineSource):
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:
-        """Fetch one Metron issue by id; return its model dump."""
+        """
+        Fetch one Metron issue by id; return its model dump.
+
+        The issue's nested series carries no end year, status, description
+        or issue count, so one ``series(id)`` request adds them to the
+        series block. mokkari's response cache is URL-keyed, which makes
+        that one extra request per distinct series rather than per issue.
+        """
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
         if issue is None:
             msg = f"metron: issue {issue_id} not found"
             raise LookupError(msg)
-        return issue.model_dump(mode="json")
+        dump: dict[str, Any] = issue.model_dump(mode="json")
+        if isinstance(series_dump := dump.get("series"), dict):
+            self._enrich_from_series(session, series_dump, issue.series.id)
+        return dump
+
+    def _enrich_from_series(
+        self, session: Session, series_dump: dict[str, Any], series_id: int
+    ) -> None:
+        """
+        Inject the full series' detail into an issue dump's series block.
+
+        Best-effort: a source-side failure leaves the issue without them
+        rather than failing the fetch. An abort is not such a failure -- it
+        ends the whole lookup, as in `OnlineSource.lookup_issue`.
+        """
+        try:
+            series = self._series_with_retry(session, series_id)
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: series({series_id}) failed; series end "
+                f"year, status and summary will be missing from this issue: {exc}"
+            )
+            return
+        detail = series.model_dump(mode="json")
+        series_dump.update(
+            {key: value for key in _SERIES_DETAIL_KEYS if (value := detail.get(key))}
+        )
 
     def _build_common_issue_filters(
         self,
@@ -970,11 +1014,12 @@ class MetronOnlineSource(OnlineSource):
         Per-call retry wrapper around `session.series`.
 
         Deliberately a tighter budget than the rest of the source. This
-        call only decides whether a prefetch is worth doing, or adds
-        display detail to a prompt, and both have a working fallback, so
-        burning the user's full retry budget (and its 31s of backoff) on
-        it would cost more than it can ever save. Rate-limit errors keep
-        their own budget, which the gate makes free to spend.
+        call only decides whether a prefetch is worth doing, adds display
+        detail to a prompt, or adds series detail to a fetched issue, and
+        all three have a working fallback, so burning the user's full
+        retry budget (and its 31s of backoff) on it would cost more than
+        it can ever save. Rate-limit errors keep their own budget, which
+        the gate makes free to spend.
         """
         self._record_api_call("series")
         return session.series(series_id)
