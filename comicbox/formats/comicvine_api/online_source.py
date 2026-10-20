@@ -50,6 +50,7 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
+from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.series_filter import (
     max_calls_for,
     should_keep_volume_name,
@@ -347,6 +348,46 @@ class _SearchBudget:
         if self.max_calls is not None and self.spent >= self.max_calls:
             return f"call budget ({self.max_calls}) exhausted"
         return f"search deadline ({_SEARCH_DEADLINE_S:.0f}s) reached"
+
+
+@dataclass(frozen=True, slots=True)
+class _VolumeFacts:
+    """
+    What a volume search row says about the issues listed under it.
+
+    The two-step search has already paid for the row, so carrying it
+    down to the candidates is free. ``name`` overrides the issue row's
+    sparse ``volume.name`` and ``alt_series`` feeds the matcher's series
+    signal; the rest is display only, for telling apart candidates whose
+    titles read identically. The id-only paths have no row and pass
+    `_NO_VOLUME_FACTS`.
+    """
+
+    name: str | None = None
+    alt_series: tuple[str, ...] = ()
+    start_year: int | None = None
+    publisher: str | None = None
+    issue_count: int | None = None
+
+    @classmethod
+    def from_volume(cls, vol: Any, alt_series: tuple[str, ...]) -> _VolumeFacts:
+        """Read simyan's `BasicVolume`; tolerate a sparse row."""
+        publisher = getattr(vol, "publisher", None)
+        return cls(
+            name=vol.name,
+            alt_series=alt_series,
+            start_year=getattr(vol, "start_year", None),
+            publisher=getattr(publisher, "name", None) or None,
+            issue_count=getattr(vol, "issue_count", None),
+        )
+
+
+_NO_VOLUME_FACTS: Final = _VolumeFacts()
+
+
+def _display_text(text: str | None) -> str | None:
+    """Trim a free-text display field; blank reads as absent."""
+    return (text or "").strip() or None
 
 
 # Comic Vine reports application-level failures as an HTTP 200 whose body
@@ -732,21 +773,20 @@ class ComicVineOnlineSource(OnlineSource):
     def _to_candidate(
         self,
         basic_issue: Any,
-        volume_name: str | None = None,
-        alt_series: tuple[str, ...] = (),
+        volume: _VolumeFacts = _NO_VOLUME_FACTS,
     ) -> Candidate:
         """
         Map simyan's `BasicIssue` to a Candidate.
 
-        ``volume_name`` overrides the series field when supplied — the
+        ``volume.name`` overrides the series field when supplied — the
         two-step search has already resolved the volume so we use its
         canonical name even if `basic_issue.volume.name` is sparse.
 
-        ``alt_series`` carries the volume's aliases so the matcher can
-        score a localized or variant title against the profile.
+        ``volume.alt_series`` carries the volume's aliases so the matcher
+        can score a localized or variant title against the profile.
         """
         bi_volume = basic_issue.volume
-        series = volume_name or (bi_volume.name if bi_volume else "") or ""
+        series = volume.name or (bi_volume.name if bi_volume else "") or ""
         cover_year = basic_issue.cover_date.year if basic_issue.cover_date else None
         image = basic_issue.image
         cover_url = self._pick_cover_url(image, self._COVER_URL_PREFERENCE)
@@ -759,10 +799,19 @@ class ComicVineOnlineSource(OnlineSource):
             page_count=None,
             cover_url=cover_url,
             variant_label=None,
-            alt_series=alt_series,
+            alt_series=volume.alt_series,
             # Free: the six Images variants ride in the search response
             # comicbox already paid for.
             cover_url_full=self._pick_cover_url(image, self._COVER_URL_FULL_PREFERENCE),
+            series_start_year=volume.start_year,
+            series_publisher=volume.publisher,
+            series_issue_count=volume.issue_count,
+            # Also free: no `field_list` is sent, so every issue row
+            # carries its title and deck.
+            issue_title=_display_text(getattr(basic_issue, "name", None)),
+            issue_summary=_display_text(
+                strip_html(getattr(basic_issue, "summary", None))
+            ),
         )
         return Candidate(
             source=self.name,
@@ -950,18 +999,17 @@ class ComicVineOnlineSource(OnlineSource):
         session: Any,
         volume_id: int,
         issue_number: str | None,
-        volume_name: str | None = None,
+        volume: _VolumeFacts = _NO_VOLUME_FACTS,
         *,
         year: int | None = None,
-        alt_series: tuple[str, ...] = (),
     ) -> list[Candidate]:
         """
         Run a single ``list_issues`` call constrained by volume id.
 
         Used both by the fast path (`--series-id comicvine:<id>`) and by
-        each iteration of the discovery two-step. ``volume_name`` and
-        ``alt_series`` are set on the returned candidates' summary when
-        available.
+        each iteration of the discovery two-step. ``volume`` carries what
+        the discovery step's volume row knew onto the returned
+        candidates' summary; the fast path has no row.
 
         ``year``, when supplied, narrows results to a ±_COVER_DATE_WINDOW_YEARS
         window around it via CV's ``cover_date:Y0-01-01|Y1-12-31``
@@ -987,7 +1035,7 @@ class ComicVineOnlineSource(OnlineSource):
                 f"cover_date:{year - window}-01-01|{year + window}-12-31"
             )
         issues = session.list_issues(params={"filter": ",".join(issue_filter)})
-        return [self._to_candidate(i, volume_name, alt_series) for i in issues]
+        return [self._to_candidate(i, volume) for i in issues]
 
     def _volume_predates_comic(
         self, vol_start_year: int | None, comic_year: int | None
@@ -1051,7 +1099,7 @@ class ComicVineOnlineSource(OnlineSource):
         if explicit_sid is not None:
             try:
                 return self._list_with_year_retry(
-                    session, explicit_sid, issue_number, None, year=year
+                    session, explicit_sid, issue_number, year=year
                 )
             except Exception as exc:
                 logger.warning(
@@ -1152,7 +1200,8 @@ class ComicVineOnlineSource(OnlineSource):
 
         The volume's aliases are read off the already-fetched search
         result — no extra API call — and both widen the name gate and
-        ride onto the candidates for the matcher's series signal.
+        ride onto the candidates for the matcher's series signal. Its
+        start year, publisher and issue count ride along for display.
         """
         vol_start = getattr(vol, "start_year", None)
         if self._volume_predates_comic(vol_start, year):
@@ -1181,9 +1230,8 @@ class ComicVineOnlineSource(OnlineSource):
                 session,
                 vol.id,
                 issue_number,
-                vol.name,
+                _VolumeFacts.from_volume(vol, alt_series),
                 year=year,
-                alt_series=alt_series,
                 budget=budget,
             )
         except OnlineLookupAbortedError:
@@ -1202,10 +1250,9 @@ class ComicVineOnlineSource(OnlineSource):
         session: Any,
         volume_id: int,
         issue_number: str | None,
-        volume_name: str | None,
+        volume: _VolumeFacts = _NO_VOLUME_FACTS,
         *,
         year: int | None,
-        alt_series: tuple[str, ...] = (),
         budget: _SearchBudget | None = None,
     ) -> list[Candidate]:
         """
@@ -1223,22 +1270,12 @@ class ComicVineOnlineSource(OnlineSource):
         cost one or two.
         """
         candidates = self._list_issues_by_volume(
-            session,
-            volume_id,
-            issue_number,
-            volume_name,
-            year=year,
-            alt_series=alt_series,
+            session, volume_id, issue_number, volume, year=year
         )
         if candidates or year is None:
             return candidates
         if budget is not None and not budget.take():
             return candidates
         return self._list_issues_by_volume(
-            session,
-            volume_id,
-            issue_number,
-            volume_name,
-            year=None,
-            alt_series=alt_series,
+            session, volume_id, issue_number, volume, year=None
         )

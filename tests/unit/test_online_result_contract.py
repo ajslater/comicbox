@@ -114,6 +114,9 @@ class _FakeMetron:
                 return cand
         return None
 
+    def enrich_prompt_candidates(self, candidates) -> tuple[Candidate, ...]:
+        return tuple(candidates)
+
 
 class _FakeCV:
     """Comic Vine stand-in; records whether first-wins let it run."""

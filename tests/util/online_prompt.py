@@ -16,6 +16,8 @@ from comicbox.formats.base.online.profile import Candidate, CandidateSummary
 from comicbox.formats.base.online.selector import SelectorContext
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from comicbox.config.settings import ComicboxSettings
 
 
@@ -84,10 +86,12 @@ def make_context(
     file_path: object = None,
     source: str = "metron",
     settings: object = None,
+    enrich: Callable[[Sequence[Candidate]], tuple[Candidate, ...]] = tuple,
 ) -> SelectorContext:
     return SelectorContext(
         file_path=cast("None", file_path),
         source=source,
         settings=cast("ComicboxSettings", settings) if settings else make_settings(),
         triggered_hashing=False,
+        enrich_candidates=enrich,
     )

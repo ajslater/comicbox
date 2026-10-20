@@ -12,6 +12,7 @@ and `_read_input` with scripted reply sequences.
 from __future__ import annotations
 
 from argparse import Namespace
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -66,6 +67,48 @@ def test_format_aux_lines_details_and_url() -> None:
         "   publisher='Quality Comics', pages=24, year=2020",
         "   https://example.test/1",
     ]
+
+
+def test_format_aux_lines_show_what_tells_identical_titles_apart() -> None:
+    """Series facts join the detail line; the issue's title and deck follow it."""
+    base = make_candidate(publisher=None, page_count=None, url="u")
+    summary = replace(
+        base.summary,
+        series_publisher="DC Comics",
+        series_type="Trade Paperback",
+        series_start_year=2016,
+        series_issue_count=1,
+        issue_title="I Am Gotham",
+        issue_summary="A new hero arrives.",
+    )
+
+    aux = prompt._format_aux_lines(replace(base, summary=summary))
+
+    assert aux == [
+        (
+            "   publisher='DC Comics', format='Trade Paperback', started=2016, "
+            "issues=1, year=2020"
+        ),
+        (
+            "   \N{LEFT DOUBLE QUOTATION MARK}I Am Gotham\N{RIGHT DOUBLE QUOTATION MARK}"
+            " \N{EM DASH} A new hero arrives."
+        ),
+        "   u",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("title", "deck", "expected"),
+    [
+        ("T", None, "\N{LEFT DOUBLE QUOTATION MARK}T\N{RIGHT DOUBLE QUOTATION MARK}"),
+        (None, "D", "D"),
+    ],
+)
+def test_format_title_line_shows_either_half_alone(
+    title: str | None, deck: str | None, expected: str
+) -> None:
+    summary = replace(make_candidate().summary, issue_title=title, issue_summary=deck)
+    assert prompt._format_title_line(summary) == expected
 
 
 def test_format_aux_lines_empty_when_nothing_to_show() -> None:

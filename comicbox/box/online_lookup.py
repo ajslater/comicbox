@@ -732,6 +732,7 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             # config resolution started the run with.
             settings=replace(self._config, online=self._session_online()),
             triggered_hashing=any(c.cover_score is not None for c in candidates),
+            enrich_candidates=source.enrich_prompt_candidates,
         )
         with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
             return selector(self._build_profile(), candidates, ctx)
