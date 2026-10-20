@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
+from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.formats.metron_api.transform import MetronApiTransform
 
 
@@ -85,6 +88,10 @@ def test_to_comicbox_handles_missing_optional_fields() -> None:
     assert "community_rating" not in cb
     # Mokkari defaults language to "", which must not become a language key.
     assert "language" not in cb
+    # No full-series fetch and no series_type: no series detail, no format.
+    assert not {"end_year", "status", "summary"} & cb["series"].keys()
+    assert "issue_count" not in cb["volume"]
+    assert "original_format" not in cb
 
 
 def test_alt_names_become_series_alternative_names() -> None:
@@ -177,3 +184,65 @@ def test_empty_series_language_emits_no_language() -> None:
     payload["metron_api"]["series"]["language"] = ""
     result = dict(transform.to_comicbox(payload))
     assert "language" not in result["comicbox"]
+
+
+def test_series_detail_maps_to_series_and_volume() -> None:
+    """The full-series fields `get()` injects land on series and volume."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"].update(
+        {
+            "year_end": 2021,
+            "status": "Completed",
+            "desc": "<p>A <em>finite</em> run.</p>",
+            "issue_count": 24,
+        }
+    )
+    cb = dict(transform.to_comicbox(payload))["comicbox"]
+    series = cb["series"]
+    assert series["start_year"] == 2018
+    assert series["end_year"] == 2021
+    assert series["status"] == SeriesStatusEnum.COMPLETED
+    assert series["summary"] == "A finite run."
+    assert cb["volume"] == {"number": 1, "issue_count": 24}
+
+
+def test_ongoing_series_has_no_end_year() -> None:
+    """An ongoing series has a null year_end, which must not be written."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"].update(
+        {"year_end": None, "status": "Ongoing", "desc": ""}
+    )
+    series = dict(transform.to_comicbox(payload))["comicbox"]["series"]
+    assert series["status"] == SeriesStatusEnum.ONGOING
+    assert "end_year" not in series
+    assert "summary" not in series
+
+
+@pytest.mark.parametrize(
+    ("series_type", "expected"),
+    [
+        ("Annual Series", "Annual"),
+        ("Digital Chapters", "Digital Chapter"),
+        ("Single Issue", "Single Issue"),
+        ("Trade Paperback", "Trade Paperback"),
+        ("One-Shot", "One-Shot"),
+    ],
+)
+def test_series_type_maps_to_original_format(series_type: str, expected: str) -> None:
+    """Metron's series type names become MetronInfo Series/Format values."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["series_type"] = {"id": 1, "name": series_type}
+    cb = dict(transform.to_comicbox(payload))["comicbox"]
+    assert cb["original_format"] == expected
+
+
+def test_unknown_series_type_is_dropped() -> None:
+    """A type MetronInfo can't write isn't carried as a raw string."""
+    transform = MetronApiTransform()
+    payload = _sample_issue_dict()
+    payload["metron_api"]["series"]["series_type"] = {"id": 99, "name": "Cereal Box"}
+    cb = dict(transform.to_comicbox(payload))["comicbox"]
+    assert "original_format" not in cb

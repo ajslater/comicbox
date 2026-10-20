@@ -3,6 +3,7 @@
 from marshmallow.fields import Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField
+from comicbox.formats.base.fields.enum_fields import SeriesStatusField
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import DecimalField, IntegerField
 from comicbox.formats.base.fields.pycountry import LanguageField
@@ -31,8 +32,11 @@ class SeriesSchema(IdentifiedNameSchema):
     alternative_names = ListField(  # Metron ONLY
         Nested(AlternativeNameSchema), sort_keys=("language", "name")
     )
+    end_year = IntegerField()  # Metron API ONLY
     sort_name = StringField()  # Metron ONLY
-    start_year = IntegerField()  # Metron ONLY
+    start_year = IntegerField()  # Metron, ComicVine API
+    status = SeriesStatusField()  # Metron API ONLY
+    summary = StringField()  # Metron API, ComicVine API
     volume_count = IntegerField(minimum=0)  # CBI, CT, Metron
 
 

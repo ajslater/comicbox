@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
     alt_names_to_cb,
@@ -18,6 +19,7 @@ from comicbox.formats.base.online.transform_helpers import (
 )
 from comicbox.formats.comicvine_api.transform import ComicVineApiTransform
 from comicbox.formats.metron_api.transform import MetronApiTransform
+from comicbox.identifiers.identifiers import get_identifier_url
 
 # ----------------------------------------------------- sanitize
 
@@ -168,6 +170,12 @@ _METRON_FIXTURE = {
             "year_began": 2018,
             "genres": [{"id": 1, "name": "Superhero"}],
             "alt_names": ["Fu Comics"],
+            "series_type": {"id": 2, "name": "Limited Series"},
+            # Injected by `MetronOnlineSource.get()` from `series(id)`.
+            "year_end": 2019,
+            "status": "Completed",
+            "desc": "<p>The <b>whole</b> run.</p>",
+            "issue_count": 6,
         },
         "story_titles": ["Title One", "Title Two"],
         "isbn": "978-1234",
@@ -219,6 +227,19 @@ def test_metron_publishing_tags() -> None:
     assert _METRON_CB["volume"]["number"] == 1
     assert _METRON_CB["publisher"]["name"] == "Quality Comics"
     assert _METRON_CB["imprint"]["name"] == "Vertigo"
+
+
+def test_metron_series_detail() -> None:
+    """Full-series detail fills the series block and the volume's count."""
+    series = _METRON_CB["series"]
+    assert series["end_year"] == 2019
+    assert series["status"] == SeriesStatusEnum.COMPLETED
+    assert series["summary"] == "The whole run."
+    assert _METRON_CB["volume"]["issue_count"] == 6
+
+
+def test_metron_series_type_to_original_format() -> None:
+    assert _METRON_CB["original_format"] == "Limited Series"
 
 
 def test_metron_summary_sanitized() -> None:
@@ -308,9 +329,16 @@ _CV_FIXTURE = {
             "medium_url": "http://t.example.com/m.jpg",
             "original_url": "http://t.example.com/o.jpg",
         },
-        "volume": {"id": 12345, "name": "G.I. Joe"},
-        # Publisher is injected by `ComicVineOnlineSource.get()` after a
-        # secondary `get_volume(volume.id)` call.
+        # start_year, issue_count and description, like the publisher, are
+        # injected by `ComicVineOnlineSource.get()` after a secondary
+        # `get_volume(volume.id)` call.
+        "volume": {
+            "id": 12345,
+            "name": "G.I. Joe",
+            "start_year": 1950,
+            "issue_count": 51,
+            "description": "<p>Ziff-Davis's <i>war</i> comic.</p>",
+        },
         "publisher": {"id": 31, "name": "Ziff-Davis"},
         "characters": [{"id": 1, "name": "G.I. Joe"}],
         "story_arcs": [{"id": 9, "name": "Yarn Patrol"}],
@@ -318,6 +346,8 @@ _CV_FIXTURE = {
             {"id": 100, "name": "Bob Powell", "roles": "writer, penciler, inker"},
         ],
         "locations": [{"id": 200, "name": "Korea"}],
+        "concepts": [{"id": 300, "name": "Military"}],
+        "objects": [{"id": 400, "name": "Bazooka"}],
     }
 }
 
@@ -335,6 +365,25 @@ def test_comicvine_issue_and_title() -> None:
 def test_comicvine_volume_renamed_to_series() -> None:
     assert _CV_CB["series"]["name"] == "G.I. Joe"
     assert _CV_CB["series"]["identifiers"]["comicvine"]["key"] == "12345"
+
+
+def test_comicvine_series_detail_from_volume() -> None:
+    """The volume detail `get()` injects fills the series block and count."""
+    assert _CV_CB["series"]["start_year"] == 1950
+    assert _CV_CB["series"]["summary"] == "Ziff-Davis's war comic."
+    assert _CV_CB["volume"] == {"issue_count": 51}
+
+
+def test_comicvine_concepts_and_objects_become_tags() -> None:
+    """Concepts keep their CV id; objects have no comicbox id type."""
+    tags = _CV_CB["tags"]
+    assert set(tags) == {"Military", "Bazooka"}
+    assert tags["Military"]["identifiers"]["comicvine"] == {"key": "300"}
+    assert not tags["Bazooka"]
+    assert (
+        get_identifier_url("comicvine", "tag", "300")
+        == "https://comicvine.gamespot.com/c/4015-300/"
+    )
 
 
 def test_comicvine_publisher_mapped() -> None:
@@ -423,3 +472,7 @@ def test_comicvine_handles_minimal_input() -> None:
     cb = dict(ComicVineApiTransform().to_comicbox(minimal))["comicbox"]
     assert cb["issue"]["name"] == "1"
     assert cb["series"]["name"] == "S"
+    # No volume detail was injected: no start year, summary, count or tags.
+    assert not {"start_year", "summary"} & cb["series"].keys()
+    assert "volume" not in cb
+    assert "tags" not in cb

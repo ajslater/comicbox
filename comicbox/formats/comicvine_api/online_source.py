@@ -689,9 +689,9 @@ class ComicVineOnlineSource(OnlineSource):
         URL-keyed, so this is "+1 API call per unique volume" rather
         than per issue — successive issues from the same volume are free.
 
-        ``Volume.aliases`` rides along on that same fetch and is injected
-        onto the volume block for the transform to read as alternative
-        series names.
+        ``Volume.aliases``, start year, issue count and description ride
+        along on that same fetch and are injected onto the volume block for
+        the transform to read as series detail.
         """
         session = self._get_session()
         self._record_api_call("get_issue")
@@ -710,12 +710,11 @@ class ComicVineOnlineSource(OnlineSource):
         self, session: Any, dump: dict[str, Any], volume_id: int
     ) -> None:
         """
-        Inject the volume's publisher and aliases into an issue dump.
+        Inject the volume's publisher and series detail into an issue dump.
 
-        Best-effort: a source-side failure leaves the issue without a
-        publisher rather than failing the fetch. An abort is not such a
-        failure -- it ends the whole lookup, as in
-        `OnlineSource.lookup_issue`.
+        Best-effort: a source-side failure leaves the issue without them
+        rather than failing the fetch. An abort is not such a failure --
+        it ends the whole lookup, as in `OnlineSource.lookup_issue`.
         """
         try:
             volume = self._get_volume_with_retry(session, volume_id)
@@ -724,13 +723,21 @@ class ComicVineOnlineSource(OnlineSource):
         except Exception as exc:
             logger.warning(
                 f"online {self.name}: get_volume({volume_id}) failed; "
-                f"publisher will be missing from this issue: {exc}"
+                f"publisher and series detail will be missing from this issue: {exc}"
             )
             return
         if volume.publisher is not None:
             dump["publisher"] = volume.publisher.model_dump(mode="json")
-        if volume.aliases and isinstance(dump.get("volume"), dict):
-            dump["volume"]["aliases"] = volume.aliases
+        if not isinstance(volume_dump := dump.get("volume"), dict):
+            return
+        detail = {
+            "aliases": volume.aliases,
+            "start_year": volume.start_year,
+            "issue_count": volume.issue_count,
+            # `summary` is simyan's name for CV's short `deck`.
+            "description": volume.description or volume.summary,
+        }
+        volume_dump.update({key: value for key, value in detail.items() if value})
 
     # Limit how many candidate volumes to expand into issue queries; each
     # volume → one extra `list_issues` API call under CV's 1/sec rate limit.

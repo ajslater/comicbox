@@ -140,3 +140,52 @@ def issue_page(
         "previous": None,
         "results": rows,
     }
+
+
+def issue_detail(issue_id: int, series_id: int = 7) -> dict[str, Any]:
+    """Build an `issue(id)` payload with every field mokkari's Issue requires."""
+    return {
+        "id": issue_id,
+        "publisher": {"id": 1, "name": "Test Publisher"},
+        "series": {
+            "id": series_id,
+            "name": "Test Series",
+            "sort_name": "Test Series",
+            "volume": 1,
+            "year_began": 2020,
+            "series_type": {"id": 13, "name": "Single Issue"},
+        },
+        "number": str(issue_id),
+        "alt_number": "",
+        "title": "",
+        "name": [],
+        "cover_date": "2020-01-01",
+        "price_currency": "USD",
+        "rating": {"id": 1, "name": "Everyone"},
+        "sku": "",
+        "isbn": "",
+        "upc": "",
+        "desc": "",
+        "rating_count": 0,
+        "resource_url": f"https://metron.cloud/issue/test-{issue_id}/",
+        "modified": "2020-01-01T00:00:00-05:00",
+    }
+
+
+def series_detail(series_id: int = 7) -> dict[str, Any]:
+    """Build a `series(id)` payload with every field mokkari's Series requires."""
+    return {
+        "id": series_id,
+        "name": "Test Series",
+        "sort_name": "Test Series",
+        "volume": 1,
+        "series_type": {"id": 13, "name": "Single Issue"},
+        "status": "Completed",
+        "publisher": {"id": 1, "name": "Test Publisher"},
+        "year_began": 2020,
+        "year_end": 2021,
+        "desc": "<p>The whole run.</p>",
+        "issue_count": 12,
+        "resource_url": f"https://metron.cloud/series/test-{series_id}/",
+        "modified": "2020-01-01T00:00:00-05:00",
+    }
