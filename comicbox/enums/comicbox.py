@@ -28,6 +28,15 @@ class MangaEnum(Enum):
     UNKNOWN = "Unknown"
 
 
+class SeriesStatusEnum(Enum):
+    """Publication status of a series, as Metron's Series.Status names it."""
+
+    ONGOING = "Ongoing"
+    CANCELLED = "Cancelled"
+    COMPLETED = "Completed"
+    HIATUS = "Hiatus"
+
+
 class IdSources(Enum):
     """
     Comic Database Namespace Identifiers.

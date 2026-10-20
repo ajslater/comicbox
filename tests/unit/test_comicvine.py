@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from simyan.errors import RateLimitError
@@ -53,6 +54,8 @@ class _FakeBasicVolume:
         name: str,
         start_year: int | None = None,
         aliases: str | None = None,
+        publisher: str | None = None,
+        issue_count: int | None = None,
     ) -> None:
         self.id = vid
         self.name = name
@@ -61,6 +64,9 @@ class _FakeBasicVolume:
         self.start_year = start_year
         # Newline-separated alternative volume names.
         self.aliases = aliases
+        # simyan's `publisher` is a `GenericEntry | None`.
+        self.publisher = SimpleNamespace(name=publisher) if publisher else None
+        self.issue_count = issue_count
 
 
 class _FakeImage:
@@ -79,6 +85,8 @@ class _FakeBasicIssue:
         number: str,
         volume_name: str,
         cover_year: int = 1952,
+        name: str | None = None,
+        summary: str | None = None,
     ) -> None:
         from datetime import date
 
@@ -88,6 +96,9 @@ class _FakeBasicIssue:
         self.image = _FakeImage()
         self.site_url = f"http://example.com/issue/{iid}"
         self.volume = _FakeBasicVolume(vid=999, name=volume_name)
+        # The issue's own title, and simyan's `summary` (CV's `deck`).
+        self.name = name
+        self.summary = summary
 
 
 class _FakeCV:
@@ -379,6 +390,64 @@ def test_search_series_id_candidates_have_no_alt_series(
     assert [c.summary.alt_series for c in candidates] == [()]
 
 
+def test_search_candidates_carry_volume_facts_title_and_deck(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    The volume row and issue row already fetched ride onto the summary.
+
+    They tell apart candidates whose titles read identically, at no
+    extra request. The deck is HTML-stripped and trimmed.
+    """
+    vol = _FakeBasicVolume(
+        vid=100, name="Batman", start_year=2016, publisher="DC Comics", issue_count=85
+    )
+    issue = _FakeBasicIssue(
+        iid=5001,
+        number="1",
+        volume_name="Batman",
+        cover_year=2016,
+        name=" I Am Gotham, Part One ",
+        summary="<p>A new hero arrives.</p> ",
+    )
+    fake_cv = _FakeCV(volumes=[vol], issues_by_volume={100: [issue]})
+    src = _make_cv_source(monkeypatch, fake_cv)
+    profile = ComicProfile(series="Batman", issue="1", issue_int=1, year=2016)
+
+    [cand] = src.search(profile)
+
+    summary = cand.summary
+    assert summary.series_start_year == 2016
+    assert summary.series_publisher == "DC Comics"
+    assert summary.series_issue_count == 85
+    assert summary.issue_title == "I Am Gotham, Part One"
+    assert summary.issue_summary == "A new hero arrives."
+    # Display only: the scored field stays unset, so scores don't move.
+    assert summary.publisher is None
+
+
+def test_search_series_id_candidates_have_no_volume_facts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fast path has no volume row, but the issue row still has a title."""
+    issue = _FakeBasicIssue(
+        iid=9001, number="7", volume_name="Direct", name="Title", summary="  "
+    )
+    fake_cv = _FakeCV(volumes=[], issues_by_volume={500: [issue]})
+    src = _make_cv_source_with_series_id(monkeypatch, fake_cv, series_id=500)
+    profile = ComicProfile(series="GI Joe", issue="007", issue_int=7, year=1952)
+
+    [cand] = src.search(profile)
+
+    summary = cand.summary
+    assert summary.series_start_year is None
+    assert summary.series_publisher is None
+    assert summary.series_issue_count is None
+    assert summary.issue_title == "Title"
+    # A blank deck reads as absent, not as an empty line.
+    assert summary.issue_summary is None
+
+
 def test_search_alias_rescues_volume_from_prefilter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -452,11 +521,21 @@ class _FakeFullVolume:
         name: str,
         publisher: _FakeGenericEntry | None,
         aliases: str | None = None,
+        *,
+        start_year: int | None = None,
+        issue_count: int | None = None,
+        description: str | None = None,
+        summary: str | None = None,
     ) -> None:
         self.id = vid
         self.name = name
         self.publisher = publisher
         self.aliases = aliases
+        self.start_year = start_year
+        self.issue_count = issue_count
+        self.description = description
+        # simyan's name for CV's short `deck`.
+        self.summary = summary
 
 
 class _FakeCVForGet:
@@ -535,6 +614,40 @@ def test_get_injects_volume_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["volume"]["aliases"] == "Uncanny X-Men\nThe X-Men"
 
 
+def test_get_injects_volume_series_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start year, issue count and description ride the same volume fetch."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(
+        vid=999,
+        name="X-Men",
+        publisher=None,
+        start_year=1963,
+        issue_count=544,
+        description="<p>Marvel's mutants.</p>",
+        summary="Mutants.",
+    )
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    payload = src.get(42)
+
+    assert fake_cv.get_volume_calls == [999]
+    vol = payload["volume"]
+    assert vol["start_year"] == 1963
+    assert vol["issue_count"] == 544
+    assert vol["description"] == "<p>Marvel's mutants.</p>"
+
+
+def test_get_falls_back_to_volume_deck(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A volume with no description offers its short deck instead."""
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=None, summary="Mutants.")
+    fake_cv = _FakeCVForGet(issue=issue, volume=volume)
+    src = _make_cv_source_for_get(monkeypatch, fake_cv)
+
+    assert src.get(42)["volume"]["description"] == "Mutants."
+
+
 def test_get_omits_publisher_when_volume_has_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -546,8 +659,10 @@ def test_get_omits_publisher_when_volume_has_none(
 
     payload = src.get(42)
     assert "publisher" not in payload
-    # No aliases on the volume → nothing injected.
-    assert "aliases" not in payload["volume"]
+    # No aliases or series detail on the volume → nothing injected.
+    assert not {"aliases", "start_year", "issue_count", "description"} & set(
+        payload["volume"]
+    )
 
 
 def test_get_handles_get_volume_failure_gracefully(

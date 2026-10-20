@@ -282,6 +282,24 @@ class OnlineSource(ABC):
         per-comic path, never fail the comic. Implementations own that.
         """
 
+    def enrich_prompt_candidates(
+        self, candidates: Sequence[Candidate]
+    ) -> tuple[Candidate, ...]:
+        """
+        Optionally add display detail to the candidates of a prompt.
+
+        Called only for a prompt that will really be shown or deferred,
+        never for one answered from the prompt cache, so a source may
+        spend a request here that it would not spend on every search.
+        It runs after ranking, so nothing it adds can move a score.
+
+        Must return the same candidates in the same order: a selector's
+        ``choose`` answer indexes into the tuple the box holds. Best-effort
+        like `prefetch_volume`: a failure degrades to the candidates as
+        given. The default returns them unchanged.
+        """
+        return tuple(candidates)
+
     # -- shared scaffolding ---------------------------------------------------
 
     def _resolve_response_cache(self) -> tuple[Path, dt.timedelta] | None:

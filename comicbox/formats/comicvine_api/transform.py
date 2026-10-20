@@ -21,6 +21,7 @@ from comicbox.formats.base.online.transform_helpers import (
     build_identifier,
     credits_to_cb,
     named_block,
+    named_dict,
     named_dict_with_id,
     split_aliases,
 )
@@ -72,12 +73,37 @@ def _build_series(issue: Mapping[str, Any]) -> dict[str, Any]:
         out["name"] = name
     if (vid := vol.get("id")) is not None:
         out["identifiers"] = {_CV: build_identifier(_CV, "series", vid)}
-    # volume.aliases is injected by ComicVineOnlineSource.get() from the
-    # volume it already fetches. They are other names for this series, not
-    # reprints of this issue.
+    # volume.aliases, start_year and description are injected by
+    # ComicVineOnlineSource.get() from the volume it already fetches. The
+    # aliases are other names for this series, not reprints of this issue.
     if alt_names := alt_names_to_cb(split_aliases(vol.get("aliases")), vol.get("name")):
         out["alternative_names"] = alt_names
+    if (start_year := vol.get("start_year")) is not None:
+        out["start_year"] = start_year
+    if summary := strip_html(vol.get("description")):
+        out["summary"] = summary
     return out
+
+
+def _build_volume(issue: Mapping[str, Any]) -> dict[str, Any]:
+    """CV's volume issue count, injected by `ComicVineOnlineSource.get()`."""
+    vol = issue.get("volume") or {}
+    if (count := vol.get("issue_count")) is not None:
+        return {"issue_count": count}
+    return {}
+
+
+def _build_tags(issue: Mapping[str, Any]) -> dict[str, dict]:
+    """
+    Concepts and objects → tags.
+
+    Concepts keep their CV id. Objects carry none: CV's object type has no
+    comicbox identifier type. A name in both keeps the concept's id.
+    """
+    return {
+        **named_dict(issue.get("objects")),
+        **named_dict_with_id(issue.get("concepts"), _CV, "tag"),
+    }
 
 
 def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
@@ -112,6 +138,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("summary", strip_html(issue.get("description"))),
         # Publishing — CV's `volume` is comicbox's `series`.
         ("series", _build_series(issue)),
+        ("volume", _build_volume(issue)),
         # `publisher` is injected by `ComicVineOnlineSource.get()` after a
         # secondary `get_volume(volume.id)` call — CV's issue endpoint
         # doesn't include publisher inline.
@@ -121,6 +148,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("teams", named_dict_with_id(issue.get("teams"), _CV, "team")),
         ("arcs", named_dict_with_id(issue.get("story_arcs"), _CV, "arc")),
         ("locations", named_dict_with_id(issue.get("locations"), _CV, "location")),
+        ("tags", _build_tags(issue)),
         # Credits — CV stores roles as a comma-separated string per creator.
         (
             "credits",

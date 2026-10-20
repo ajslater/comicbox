@@ -1,5 +1,16 @@
 # 📰 News
 
+## v5.4.0
+
+- Features
+    - Series end year, status and summary in comicbox.json and comicbox.yaml.
+    - Online tagging fills series years, status, summary and issue count, the
+      publication format from Metron, and tags from Comic Vine concepts and
+      objects.
+    - Match prompts show each candidate's series start year, publisher, issue
+      count, issue title and description, and Metron's publication format when
+      titles would otherwise read the same.
+
 ## v5.3.2
 
 - Fixes

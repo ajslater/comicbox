@@ -8,7 +8,7 @@ from caseconverter import snakecase, titlecase
 from marshmallow import fields
 from typing_extensions import override
 
-from comicbox.enums.comicbox import MangaEnum, ReadingDirectionEnum
+from comicbox.enums.comicbox import MangaEnum, ReadingDirectionEnum, SeriesStatusEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
 from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
@@ -127,6 +127,12 @@ class ReadingDirectionField(EnumField):
 
     ENUM = ReadingDirectionEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = READING_DIRECTION_ENUM_MAP
+
+
+class SeriesStatusField(EnumField):
+    """Series publication status enum."""
+
+    ENUM = SeriesStatusEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
 class EnumBooleanField(EnumField):

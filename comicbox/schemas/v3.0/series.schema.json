@@ -10,6 +10,9 @@
         "$ref": "alternative-name.schema.json"
       }
     },
+    "end_year": {
+      "type": "integer"
+    },
     "identifiers": {
       "$ref": "identifiers.schema.json"
     },
@@ -21,6 +24,13 @@
     },
     "start_year": {
       "type": "integer"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Ongoing", "Cancelled", "Completed", "Hiatus"]
+    },
+    "summary": {
+      "type": "string"
     },
     "volume_count": {
       "type": "integer",

@@ -151,6 +151,15 @@ Comicbox 2.0 is superseded and is not read. Its
 is kept for reference only; a 2.0 document loads with its renamed and removed
 fields ignored.
 
+#### Series Years, Status and Summary
+
+`series.start_year` and `series.end_year` bound the run, `series.status` is one
+of `Ongoing`, `Cancelled`, `Completed` or `Hiatus`, and `series.summary`
+describes the whole series rather than the issue. Online tagging fills them:
+Metron supplies all four, Comic Vine the start year and summary. MetronInfo
+keeps the start year as Series/StartYear; only comicbox.json and comicbox.yaml
+keep the end year, status and summary.
+
 #### Comicbox JSON Format
 
 | Location      | Name          |

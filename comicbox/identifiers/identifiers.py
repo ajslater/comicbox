@@ -163,6 +163,7 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
                 location="4020",
                 publisher="4010",
                 series="4050",
+                tag="4015",
                 team="4060",
             ),
             url_path_regex=r"(?P<slug>\S+)/" + COMICVINE_LONG_ID_KEY_EXP,

@@ -37,12 +37,16 @@ from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 
 class _FakeBaseSeries:
-    def __init__(self, sid: int, name: str, volume: int = 1) -> None:
+    def __init__(
+        self, sid: int, name: str, volume: int = 1, year_began: int = 1950
+    ) -> None:
         self.id = sid
         self.name = name
         # mokkari's `BasicSeries.volume` is a required int, not optional.
         # The wide fallback ranks rows by it, so the fake has to have one.
         self.volume = volume
+        # Also required on every row; display only.
+        self.year_began = year_began
 
 
 class _FakeBaseIssue:
@@ -353,6 +357,24 @@ def test_to_candidate_propagates_series_id_from_search_result(
     profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.volume_id == 10455
+
+
+def test_to_candidate_carries_the_series_start_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every issue row names the year its series began; no extra request."""
+    issue = _FakeBaseIssue(iid=27650, number="5", series_name="Watchmen")
+    issue.series.year_began = 1986
+    fake = _FakeMokkari(issues_by_key={"Watchmen": [issue]})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+
+    [cand] = src.search(profile)
+
+    assert cand.summary.series_start_year == 1986
+    # The rest needs a series lookup, which a search never makes.
+    assert cand.summary.series_type is None
+    assert cand.summary.series_publisher is None
 
 
 def test_to_candidate_url_is_metron_issue_page(

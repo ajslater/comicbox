@@ -41,6 +41,7 @@ class _AmbiguousMetron:
     def __init__(self, credentials, settings) -> None:
         self._credentials = credentials
         self.get_calls: list[int] = []
+        self.enrich_calls = 0
 
     def is_configured(self) -> bool:
         return bool(self._credentials.user and self._credentials.password)
@@ -69,6 +70,10 @@ class _AmbiguousMetron:
 
         # Year off-by-one differentiates them slightly but both clear min_confidence.
         return [_make(101, 2020), _make(102, 2021)]
+
+    def enrich_prompt_candidates(self, candidates) -> tuple[Candidate, ...]:
+        self.enrich_calls += 1
+        return tuple(candidates)
 
 
 @pytest.fixture
@@ -309,3 +314,25 @@ def test_selector_receives_candidates(patched_metron) -> None:
     assert captured["profile"].series == "Foo Comics"
     assert len(captured["candidates"]) == 2
     assert captured["candidates"][0].issue_id in {101, 102}
+
+
+@pytest.mark.parametrize("selector_enriches", [True, False])
+def test_the_source_hook_is_the_selectors_to_call(
+    patched_metron, *, selector_enriches: bool
+) -> None:
+    """
+    The box hands the source's hook to the selector and never calls it.
+
+    Only the selector knows whether a prompt will reach a person or be
+    answered from cache, so only it may spend a request on display detail.
+    """
+
+    def selector(profile, candidates, ctx):
+        if selector_enriches:
+            ctx.enrich_candidates(candidates)
+        return ("skip", None)
+
+    cb = _build_cb()
+    cb.set_online_selector(selector)
+    cb.run_online_lookup()
+    assert patched_metron[0].enrich_calls == int(selector_enriches)

@@ -62,6 +62,10 @@ class SelectorContext:
     source: str
     settings: ComicboxSettings
     triggered_hashing: bool
+    # The source's `enrich_prompt_candidates`. A selector calls it only
+    # once it knows the prompt will really be shown or deferred, so a
+    # prompt answered from cache spends nothing. Identity by default.
+    enrich_candidates: Callable[[Sequence[Candidate]], tuple[Candidate, ...]] = tuple
 
 
 SelectorCallback: TypeAlias = (

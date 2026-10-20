@@ -73,6 +73,29 @@ class CandidateSummary:
     # larger tier than `cover_url` already is, which is what a frontend
     # keys "no hover" on.
     cover_url_full: str | None = None
+    # The fields below are display only, for telling apart candidates
+    # whose covers and titles read identically: the same issue in a
+    # reprint volume, a foreign edition, or a collected edition. No
+    # signal reads them. `series_publisher` is deliberately not
+    # `publisher`: `s_publisher` scores that one, and filling it would
+    # move every score.
+    #
+    # The year the series began ("Batman (2016)"). Metron's issue rows
+    # carry it; ComicVine's come from the volume row the two-step search
+    # already fetched, so its id-only paths leave it None.
+    series_start_year: int | None = None
+    # The series' publisher, its issue count and its publication format
+    # ("Trade Paperback", "One-Shot"). ComicVine fills the first two from
+    # the volume row and has no format. Metron fills all three only from
+    # `enrich_prompt_candidates`, which pays for a series lookup only
+    # when titles would otherwise collide.
+    series_publisher: str | None = None
+    series_issue_count: int | None = None
+    series_type: str | None = None
+    # The issue's own title and one-line description (ComicVine's
+    # `name` and `deck`). Metron's search rows carry neither.
+    issue_title: str | None = None
+    issue_summary: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

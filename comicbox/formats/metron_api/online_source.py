@@ -13,6 +13,7 @@ import math
 import os
 import threading
 from collections import OrderedDict
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -40,7 +41,7 @@ from comicbox.identifiers.identifiers import get_identifier_url
 from comicbox.version import user_agent
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
     from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
     from mokkari.session import Session
@@ -81,6 +82,15 @@ _session_cache_lock = threading.Lock()
 # mokkari's *observation* of the limit, not to enforce it.
 _gate_cache: dict[tuple[str, str, str], RateGate] = {}
 
+# Series-level facts the issue endpoint's nested IssueSeries lacks. `get()`
+# copies them off a `series(id)` fetch into the issue dump's series block.
+_SERIES_DETAIL_KEYS: Final[tuple[str, ...]] = (
+    "year_end",
+    "status",
+    "desc",
+    "issue_count",
+)
+
 
 # Prefetched issue lists, keyed by Metron series id: {number: BaseIssue}.
 # Filled by `MetronOnlineSource.prefetch_volume` for a series a batch
@@ -99,6 +109,10 @@ _METRON_PAGE_SIZE: Final[int] = 100
 # at least one list page is already 2 requests, so a 2-comic cluster
 # breaks even at best.
 _PREFETCH_MIN_CLUSTER: Final[int] = 3
+# The most `series(id)` requests one prompt may spend on telling apart
+# candidates whose titles read identically. A real collision spans two
+# or three series; this only bounds a pathological one.
+_MAX_PROMPT_SERIES_LOOKUPS: Final[int] = 6
 
 _prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
 _prefetch_lock = threading.Lock()
@@ -246,6 +260,71 @@ def _bi_series_volume(bi_series: Any) -> int | None:
     fallback ranks on it, which is the whole reason it is carried.
     """
     return getattr(bi_series, "volume", None) if bi_series is not None else None
+
+
+def _bi_series_year_began(bi_series: Any) -> int | None:
+    """
+    Pull the year the series began off `BaseIssue.series`.
+
+    Display only. Two series sharing a name and an issue number read
+    identically in a prompt until their start years are shown.
+    """
+    return getattr(bi_series, "year_began", None) if bi_series is not None else None
+
+
+def _display_key(candidate: Candidate) -> tuple[Any, ...]:
+    """Everything a prompt shows about a candidate, cover aside."""
+    s = candidate.summary
+    return (
+        s.series.casefold(),
+        s.volume,
+        s.issue,
+        s.year,
+        s.series_start_year,
+        s.series_publisher,
+        s.series_issue_count,
+        s.issue_title,
+    )
+
+
+def _colliding_series_ids(candidates: Sequence[Candidate]) -> tuple[int, ...]:
+    """
+    Series ids of candidates that would read identically in a prompt.
+
+    A group of identical-looking candidates earns lookups only when it
+    spans more than one series: two issues of one series share its
+    format, so fetching it could not tell them apart. First-seen order,
+    capped at `_MAX_PROMPT_SERIES_LOOKUPS`.
+    """
+    groups: dict[tuple[Any, ...], dict[int, None]] = {}
+    for c in candidates:
+        if c.volume_id is not None:
+            groups.setdefault(_display_key(c), {})[c.volume_id] = None
+    colliding: dict[int, None] = {}
+    for series_ids in groups.values():
+        if len(series_ids) > 1:
+            colliding.update(series_ids)
+    return tuple(colliding)[:_MAX_PROMPT_SERIES_LOOKUPS]
+
+
+def _item_name(item: Any) -> str | None:
+    """Return a mokkari `GenericItem`'s name, or None when absent."""
+    return getattr(item, "name", None) or None
+
+
+def _with_series_detail(candidate: Candidate, details: Mapping[int, Any]) -> Candidate:
+    """Copy a candidate with its series' display detail, when fetched."""
+    vid = candidate.volume_id
+    series = details.get(vid) if vid is not None else None
+    if series is None:
+        return candidate
+    summary = replace(
+        candidate.summary,
+        series_type=_item_name(getattr(series, "series_type", None)),
+        series_publisher=_item_name(getattr(series, "publisher", None)),
+        series_issue_count=getattr(series, "issue_count", None),
+    )
+    return replace(candidate, summary=summary)
 
 
 def _select_precedence_tier(
@@ -612,14 +691,49 @@ class MetronOnlineSource(OnlineSource):
 
     @with_retry()
     def get(self, issue_id: int) -> dict[str, Any]:
-        """Fetch one Metron issue by id; return its model dump."""
+        """
+        Fetch one Metron issue by id; return its model dump.
+
+        The issue's nested series carries no end year, status, description
+        or issue count, so one ``series(id)`` request adds them to the
+        series block. mokkari's response cache is URL-keyed, which makes
+        that one extra request per distinct series rather than per issue.
+        """
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
         if issue is None:
             msg = f"metron: issue {issue_id} not found"
             raise LookupError(msg)
-        return issue.model_dump(mode="json")
+        dump: dict[str, Any] = issue.model_dump(mode="json")
+        if isinstance(series_dump := dump.get("series"), dict):
+            self._enrich_from_series(session, series_dump, issue.series.id)
+        return dump
+
+    def _enrich_from_series(
+        self, session: Session, series_dump: dict[str, Any], series_id: int
+    ) -> None:
+        """
+        Inject the full series' detail into an issue dump's series block.
+
+        Best-effort: a source-side failure leaves the issue without them
+        rather than failing the fetch. An abort is not such a failure -- it
+        ends the whole lookup, as in `OnlineSource.lookup_issue`.
+        """
+        try:
+            series = self._series_with_retry(session, series_id)
+        except OnlineLookupAbortedError:
+            raise
+        except Exception as exc:
+            logger.warning(
+                f"online {self.name}: series({series_id}) failed; series end "
+                f"year, status and summary will be missing from this issue: {exc}"
+            )
+            return
+        detail = series.model_dump(mode="json")
+        series_dump.update(
+            {key: value for key in _SERIES_DETAIL_KEYS if (value := detail.get(key))}
+        )
 
     def _build_common_issue_filters(
         self,
@@ -747,6 +861,7 @@ class MetronOnlineSource(OnlineSource):
             # thumbnail and the full-size url are the same url -- and both
             # are None when the record has no image at all.
             cover_url_full=cover_url,
+            series_start_year=_bi_series_year_began(bi_series),
         )
         return Candidate(
             source=self.name,
@@ -851,17 +966,60 @@ class MetronOnlineSource(OnlineSource):
             f"{volume_id} in {1 + pages} requests, for {cluster_size} comics"
         )
 
+    @override
+    def enrich_prompt_candidates(
+        self, candidates: Sequence[Candidate]
+    ) -> tuple[Candidate, ...]:
+        """
+        Fetch series detail for candidates that would read identically.
+
+        Metron's issue rows carry no publication format ("Trade
+        Paperback", "One-Shot"), publisher or series issue count; only
+        `series(id)` does, at a request per series. So it is paid only
+        for candidates the prompt could not otherwise tell apart (same
+        title, different series), and only while the daily quota is
+        above the reserve `_may_start_cold_search` keeps. Every comic of
+        a series defers its own prompt; mokkari's response cache answers
+        the repeats.
+        """
+        cands = tuple(candidates)
+        series_ids = _colliding_series_ids(cands)
+        if not series_ids:
+            return cands
+        gate = self._gate()
+        if gate is not None and not gate.allow_cold_search():
+            return cands
+        details = self._fetch_series_details(series_ids)
+        return tuple(_with_series_detail(c, details) for c in cands)
+
+    def _fetch_series_details(self, series_ids: Sequence[int]) -> dict[int, Any]:
+        """`series(id)` per id; a failure loses only that series' detail."""
+        session = self._get_session()
+        details: dict[int, Any] = {}
+        for series_id in series_ids:
+            try:
+                details[series_id] = self._series_with_retry(session, series_id)
+            except OnlineLookupAbortedError:
+                raise
+            except Exception as exc:
+                logger.debug(
+                    f"online {self.name}: series {series_id} detail for a "
+                    f"prompt failed: {exc}"
+                )
+        return details
+
     @with_retry(max_retries=1)
     def _series_with_retry(self, session: Session, series_id: int) -> Any:
         """
         Per-call retry wrapper around `session.series`.
 
         Deliberately a tighter budget than the rest of the source. This
-        call only decides whether a prefetch is worth doing, and there is
-        a working fallback one line away, so burning the user's full
+        call only decides whether a prefetch is worth doing, adds display
+        detail to a prompt, or adds series detail to a fetched issue, and
+        all three have a working fallback, so burning the user's full
         retry budget (and its 31s of backoff) on it would cost more than
-        the optimization can ever save. Rate-limit errors keep their own
-        budget, which the gate makes free to spend.
+        it can ever save. Rate-limit errors keep their own budget, which
+        the gate makes free to spend.
         """
         self._record_api_call("series")
         return session.series(series_id)

@@ -627,6 +627,9 @@ class _ConfidentMetron:
     def search(self, profile) -> list[Candidate]:
         return [make_candidate(issue_id=101)]
 
+    def enrich_prompt_candidates(self, candidates) -> tuple[Candidate, ...]:
+        return tuple(candidates)
+
 
 @pytest.fixture
 def confident_metron(monkeypatch) -> list[_ConfidentMetron]:
