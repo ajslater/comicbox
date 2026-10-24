@@ -1,9 +1,10 @@
 """
-Lifecycle of the shared mokkari session, new in mokkari 4.8.0.
+Lifecycle of the shared mokkari session.
 
-A mokkari `Session` now holds a pooled `requests.Session`. That makes two
-things comicbox's business that were nobody's before: releasing the
-sockets at the end of a run, and not letting a forked child inherit them.
+A mokkari `Session` holds a pooled `requests.Session`, and its
+`SqliteCache` a sqlite connection that `Session.close()` leaves open.
+That makes two things comicbox's business: releasing both at the end of
+a run, and not letting a forked child inherit them.
 """
 
 from __future__ import annotations
@@ -28,14 +29,22 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class _ClosableSession:
-    """A session double that records having been closed."""
+class _Closable:
+    """A session or cache double that records having been closed."""
 
     def __init__(self) -> None:
         self.closed = 0
 
     def close(self) -> None:
         self.closed += 1
+
+
+class _ClosableSession(_Closable):
+    """A session double with a closable cache, as a real Session has."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.cache = _Closable()
 
 
 class _UncloseableSession:
@@ -49,22 +58,24 @@ def _clear_caches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(metron, "_gate_cache", {})
 
 
-def _seed(session: Any, key: tuple[str, str, str] = ("u", "p", "")) -> None:
+def _seed(session: Any, key: str = "k") -> None:
     metron._session_cache[key] = (session, ())
     metron._gate_cache[key] = RateGate(default_limit=20)
 
 
 def test_close_closes_every_shared_session() -> None:
-    """One run, one close per credential set."""
+    """One run, one close per token, of the session and of its cache."""
     first = _ClosableSession()
     second = _ClosableSession()
-    _seed(first, ("u", "p", ""))
-    _seed(second, ("", "", "token"))
+    _seed(first, "k1")
+    _seed(second, "k2")
 
     metron.close_shared_sessions()
 
     assert first.closed == 1
     assert second.closed == 1
+    assert first.cache.closed == 1
+    assert second.cache.closed == 1
 
 
 def test_close_keeps_the_cache_entries() -> None:
@@ -72,7 +83,7 @@ def test_close_keeps_the_cache_entries() -> None:
     A closed mokkari Session is still the right one to reuse.
 
     It reopens connections on demand, and the gate and
-    `rate_limit_status` it carries are still this credential set's.
+    `rate_limit_status` it carries are still this token's.
     """
     session = _ClosableSession()
     _seed(session)
@@ -173,7 +184,7 @@ def test_online_session_close_releases_the_pool(
 
     calls: list[int] = []
     monkeypatch.setattr(metron, "close_shared_sessions", lambda: calls.append(1))
-    credentials = OnlineCredentials(metron_user="u", metron_password="p")
+    credentials = OnlineCredentials(metron_key="k")
 
     OnlineSession(sources={"metron"}, credentials=credentials).close()
     assert calls == [1]

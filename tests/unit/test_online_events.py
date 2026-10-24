@@ -52,7 +52,7 @@ class _MockMetron:
         self.get_calls: list[int] = []
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.user and self._credentials.password)
+        return bool(self._credentials.key)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -111,7 +111,7 @@ def _build_cb() -> Comicbox:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     return Comicbox(config=args)
@@ -180,7 +180,7 @@ def test_no_search_criteria_skips_silently(monkeypatch) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata={"comicbox": {}}),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     with Comicbox(config=args) as cb:
@@ -207,7 +207,7 @@ def test_stored_id_refresh_emits_auto_written(monkeypatch) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     events: list[Event] = []
@@ -257,7 +257,7 @@ def test_stored_id_refresh_emits_source_started_without_a_search(monkeypatch) ->
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     events: list[Event] = []
@@ -308,7 +308,7 @@ def test_first_wins_skip_emits_no_source_started(monkeypatch) -> None:
         comicbox=Namespace(
             online_sources=["metron", "comicvine"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     events: list[Event] = []

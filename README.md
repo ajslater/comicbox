@@ -108,12 +108,11 @@ comicbox --online all --recurse --prompts never -j 4 ./comics/
 `thorough`) trades matching accuracy for fewer API calls on fan-out sources like
 ComicVine — Metron doesn't fan out, so it ignores effort and always searches at
 full strength. Credentials come from `--auth`, `COMICBOX_*` environment
-variables, the config file, or your system keyring. Metron authenticates with an
-API token generated on your metron.cloud account page — pass it as
-`--auth metron:TOKEN` or `COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes
-its key the same way, as `--auth comicvine:KEY`. A Metron username and password
-still work but are deprecated and will be removed in a future release. See
-`comicbox -h` for the full set of online, caching, and tuning options.
+variables, or the config file. Metron authenticates with an API token generated
+on your metron.cloud account page — pass it as `--auth metron:TOKEN` or
+`COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes its key the same way, as
+`--auth comicvine:KEY`. See `comicbox -h` for the full set of online, caching,
+and tuning options.
 
 ### 🖼️ Pages, Covers & Conversion
 
@@ -340,9 +339,8 @@ comicbox doctor -q
 comicbox doctor --online all
 ```
 
-Credentials are reported by where they came from (`--auth`, an env var, a config
-file, or the keyring), never by value, so the report is safe to paste into a bug
-report.
+Credentials are reported by where they came from (`--auth`, an env var, or a
+config file), never by value, so the report is safe to paste into a bug report.
 
 ## 📦 Related Packages
 

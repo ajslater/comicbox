@@ -14,8 +14,6 @@ from argparse import Namespace
 from io import StringIO
 from typing import TYPE_CHECKING
 
-import keyring
-from keyring.backends import fail
 from rich.console import Console
 
 from comicbox.cli.parser import build_parser
@@ -23,7 +21,6 @@ from comicbox.doctor import _run, online, settings
 from comicbox.doctor.context import DoctorContext
 from comicbox.doctor.render import render_report
 from comicbox.doctor.result import Status
-from comicbox.formats.base.online import credentials
 from comicbox.formats.comicvine_api import online_source as comicvine
 
 if TYPE_CHECKING:
@@ -35,7 +32,6 @@ if TYPE_CHECKING:
 
 _METRON_TOKEN = "metron-token-0123456789"
 _CV_KEY = "comicvine-key-abcdef"
-_PASSWORD = "hunter2-password"
 # Every configured source's row ends with this until --online verifies it.
 _UNVERIFIED = " · unverified: add --online all (1 API request)"
 
@@ -106,62 +102,6 @@ def test_provenance_config_files(tmp_path: Path) -> None:
     assert _source(rows, "comicvine")[0].detail == (
         f"key from {cli_config}" + _UNVERIFIED
     )
-
-
-class _UsableKeyring:
-    """
-    A backend outside keyring's null modules.
-
-    The host's real backend can't stand in: a headless Linux CI runner
-    has none, and the doctor rightly reports that instead.
-    """
-
-    name = "usable Keyring"
-    priority = 1
-
-
-def test_provenance_keyring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A user with no pass sends comicbox to the keyring, as a run does."""
-    looked_up = []
-
-    def fake_keyring(source: str, username: str | None) -> str:
-        looked_up.append((source, username))
-        return _PASSWORD
-
-    monkeypatch.setattr(credentials, "_try_keyring", fake_keyring)
-    monkeypatch.setattr(keyring, "get_keyring", _UsableKeyring)
-    _user_config(
-        tmp_path, "comicbox:\n  online:\n    auth:\n      metron: {user: aj}\n"
-    )
-    rows = _rows()
-    metron = _source(rows, "metron")
-    assert metron[0].status is Status.OK
-    assert metron[0].found == "user, pass"
-    assert metron[0].detail == (
-        f"user from {tmp_path / 'config.yaml'} · pass from keyring" + _UNVERIFIED
-    )
-    # Basic auth still works, but is deprecated.
-    assert metron[1].status is Status.WARN
-    assert metron[1].detail == "user/pass auth is deprecated"
-    (keyring_row,) = _source(rows, "keyring")
-    assert "consulted for metron" in keyring_row.detail
-    # Loading the config asked once; the doctor never asks again itself.
-    assert looked_up == [("metron", "aj")]
-
-
-def test_null_keyring_warns_only_when_needed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(keyring, "get_keyring", fail.Keyring)
-    (row,) = _source(_rows(), "keyring")
-    assert row.status is Status.OK
-    monkeypatch.setattr(credentials, "_try_keyring", lambda *_args: None)
-    _user_config(
-        tmp_path, "comicbox:\n  online:\n    auth:\n      metron: {user: aj}\n"
-    )
-    (row,) = _source(_rows(), "keyring")
-    assert row.status is Status.WARN
-    assert row.detail == "no usable backend, but metron has a user and no pass"
 
 
 def test_comicvine_budget_comes_from_the_bucket_file(
@@ -238,19 +178,13 @@ def test_proxy_vars_are_named_not_shown(monkeypatch: pytest.MonkeyPatch) -> None
     assert "proxy-secret" not in str(row)
 
 
-def _all_secret_layers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Namespace:
+def _all_secret_layers(monkeypatch: pytest.MonkeyPatch) -> Namespace:
     monkeypatch.setenv("COMICBOX_ONLINE__AUTH__COMICVINE__KEY", _CV_KEY)
-    monkeypatch.setattr(credentials, "_try_keyring", lambda *_args: _PASSWORD)
-    _user_config(
-        tmp_path, "comicbox:\n  online:\n    auth:\n      metron: {user: aj}\n"
-    )
     argv = ("--auth", f"metron:{_METRON_TOKEN}")
     return Namespace(comicbox=build_parser().parse_args(argv))
 
 
-def test_no_socket_opens_offline(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_no_socket_opens_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     """Configured sources and all, the offline doctor never touches the network."""
 
     def no_network(*_args: object, **_kwargs: object) -> None:
@@ -259,25 +193,23 @@ def test_no_socket_opens_offline(
 
     monkeypatch.setattr(socket, "create_connection", no_network)
     monkeypatch.setattr(socket.socket, "connect", no_network)
-    report = _run(DoctorContext(_all_secret_layers(tmp_path, monkeypatch)))
+    report = _run(DoctorContext(_all_secret_layers(monkeypatch)))
     assert [row for row in report.results if row.status is Status.ERROR] == []
     assert {row.name: row.status for row in report.results}["metron"] is Status.OK
 
 
-def test_no_secret_value_is_rendered(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    report = _run(DoctorContext(_all_secret_layers(tmp_path, monkeypatch)))
+def test_no_secret_value_is_rendered(monkeypatch: pytest.MonkeyPatch) -> None:
+    report = _run(DoctorContext(_all_secret_layers(monkeypatch)))
     console = Console(file=StringIO(), record=True, width=200)
     render_report(report, console=console)
     out = console.export_text()
     assert "metron" in out
-    for secret in (_METRON_TOKEN, _CV_KEY, _PASSWORD):
+    for secret in (_METRON_TOKEN, _CV_KEY):
         assert secret not in out
 
 
 def test_secrets_in_a_crash_message_are_redacted(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An exception message is free text; the runner scrubs it as a backstop."""
 
@@ -288,7 +220,7 @@ def test_secrets_in_a_crash_message_are_redacted(
     monkeypatch.setattr(
         online, "CHECKS", (*online.CHECKS, (online.SECTION, "leaky", leaky))
     )
-    report = _run(DoctorContext(_all_secret_layers(tmp_path, monkeypatch)))
+    report = _run(DoctorContext(_all_secret_layers(monkeypatch)))
     (row,) = [row for row in report.results if row.name == "leaky"]
     assert row.status is Status.ERROR
     assert row.detail == "RuntimeError: GET /api/?api_key=*** failed"

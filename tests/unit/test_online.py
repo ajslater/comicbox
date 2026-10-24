@@ -16,15 +16,11 @@ def test_cli_overrides_from_auth_list_parses_field_value_pairs() -> None:
     overrides = CliOverrides.from_auth_list(
         [
             "comicvine:key=abc",
-            "metron:user=bob",
-            "metron:pass=secret",
             "metron:key=token123",
             "metron:url=https://metron.local",
         ]
     )
     assert overrides.per_source["comicvine"]["key"] == "abc"
-    assert overrides.per_source["metron"]["user"] == "bob"
-    assert overrides.per_source["metron"]["pass"] == "secret"
     assert overrides.per_source["metron"]["key"] == "token123"
     assert overrides.per_source["metron"]["url"] == "https://metron.local"
 
@@ -37,6 +33,13 @@ def test_cli_overrides_unknown_source_errors() -> None:
 def test_cli_overrides_unknown_field_errors() -> None:
     with pytest.raises(ValueError, match="unknown field"):
         CliOverrides.from_auth_list(["metron:badfield=xyz"])
+
+
+@pytest.mark.parametrize("entry", ["metron:user=bob", "metron:pass=secret"])
+def test_cli_overrides_reject_basic_auth_fields(entry: str) -> None:
+    """Username and password went with mokkari 5.0's basic auth."""
+    with pytest.raises(ValueError, match="unknown field"):
+        CliOverrides.from_auth_list([entry])
 
 
 def test_cli_overrides_bad_syntax_errors() -> None:
@@ -85,19 +88,11 @@ def test_resolve_credentials_cli_beats_config() -> None:
     ``test_config_env_tree`` covers that route end to end.
     """
     creds = resolve_credentials(
-        config_creds={
-            "metron": {
-                "user": "config_user",
-                "pass": "config_pw",
-                "url": "config_url",
-            }
-        },
-        cli_overrides=CliOverrides.from_auth_list(["metron:user=cli_user"]),
-        use_keyring=False,
+        config_creds={"metron": {"key": "config_token", "url": "config_url"}},
+        cli_overrides=CliOverrides.from_auth_list(["metron:key=cli_token"]),
     )
-    assert creds["metron"].user == "cli_user"  # CLI wins
-    assert creds["metron"].password == "config_pw"  # config where CLI is silent
-    assert creds["metron"].url == "config_url"
+    assert creds["metron"].key == "cli_token"  # CLI wins
+    assert creds["metron"].url == "config_url"  # config where CLI is silent
 
 
 def test_resolve_credentials_metron_token_follows_the_chain() -> None:
@@ -106,36 +101,30 @@ def test_resolve_credentials_metron_token_follows_the_chain() -> None:
     creds = resolve_credentials(
         config_creds=config_creds,
         cli_overrides=CliOverrides.from_auth_list(["metron:key=cli_token"]),
-        use_keyring=False,
     )
     assert creds["metron"].key == "cli_token"  # CLI wins
-    creds = resolve_credentials(config_creds=config_creds, use_keyring=False)
+    creds = resolve_credentials(config_creds=config_creds)
     assert creds["metron"].key == "config_token"
 
 
 def test_resolve_credentials_returns_all_sources() -> None:
-    creds = resolve_credentials(config_creds={}, use_keyring=False)
+    creds = resolve_credentials(config_creds={})
     assert set(creds.keys()) == {"metron", "comicvine"}
-    assert creds["metron"].user is None
+    assert creds["metron"].key is None
     assert creds["comicvine"].key is None
 
 
 def test_credentials_repr_redacts_secrets() -> None:
-    """repr() must never expose password or api key — log-safety invariant."""
+    """repr() must never expose the api key — log-safety invariant."""
     from comicbox.config.online.settings import OnlineSourceCredentials
 
     creds = OnlineSourceCredentials(
-        user="ajslater",
-        password="hunter2",
-        key="sk_live_abc123def456",
-        url="https://example.com",
+        key="sk_live_abc123def456", url="https://example.com"
     )
     rendered = repr(creds)
-    assert "hunter2" not in rendered
     assert "sk_live_abc123def456" not in rendered
     assert "***" in rendered
     # Non-secret fields stay visible for debugging.
-    assert "ajslater" in rendered
     assert "https://example.com" in rendered
 
 
@@ -143,9 +132,8 @@ def test_credentials_repr_shows_none_for_unset_secrets() -> None:
     """An unset secret renders as None, distinct from a redacted '***'."""
     from comicbox.config.online.settings import OnlineSourceCredentials
 
-    creds = OnlineSourceCredentials(user="ajslater")
+    creds = OnlineSourceCredentials(url="https://example.com")
     rendered = repr(creds)
-    assert "password=None" in rendered
     assert "key=None" in rendered
     assert "***" not in rendered
 

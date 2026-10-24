@@ -30,7 +30,7 @@ _AT_THE_RESERVE = 5
 
 
 def _source(monkeypatch: pytest.MonkeyPatch, gate: RateGate | None) -> Any:
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     src = MetronOnlineSource(creds, OnlineSettings())
     monkeypatch.setattr(src, "_gate", lambda: gate)
     # The gate decides before any request, so no session is needed. A real

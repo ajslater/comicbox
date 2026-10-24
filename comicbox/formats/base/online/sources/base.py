@@ -33,22 +33,28 @@ _refreshed_cache_paths: set[str] = set()
 _refresh_lock = threading.Lock()
 
 
-def refresh_cache_unlink_once(cache_path: Path) -> None:
+def claim_cache_refresh(cache_path: Path) -> bool:
     """
-    Delete a response-cache file once per process for CacheMode.REFRESH.
+    Claim a response cache's one CacheMode.REFRESH wipe in this process.
 
     REFRESH means "discard stale state at run start", not "disable
     caching". Clients are rebuilt during a run (and sources per file), so
-    an unguarded unlink wiped the response cache between calls — e.g.
+    an unguarded wipe emptied the response cache between calls — e.g.
     between search() and get() of the same file — defeating the
     +1-API-call-per-unique-volume amortization get() relies on and
     re-spending API budget on every file of a `--cache refresh` batch.
+    True only for the first caller per path, which then does the wipe.
     """
     with _refresh_lock:
         if str(cache_path) in _refreshed_cache_paths:
-            return
+            return False
         _refreshed_cache_paths.add(str(cache_path))
-    if cache_path.exists():
+    return True
+
+
+def refresh_cache_unlink_once(cache_path: Path) -> None:
+    """Delete a response-cache file once per process for CacheMode.REFRESH."""
+    if claim_cache_refresh(cache_path) and cache_path.exists():
         cache_path.unlink()
         logger.debug(f"refresh-cache: removed {cache_path}")
 
@@ -302,13 +308,17 @@ class OnlineSource(ABC):
 
     # -- shared scaffolding ---------------------------------------------------
 
-    def _resolve_response_cache(self) -> tuple[Path, dt.timedelta] | None:
+    def _resolve_response_cache(
+        self, *, unlink_on_refresh: bool = True
+    ) -> tuple[Path, dt.timedelta] | None:
         """
         Apply the response-cache mode policy shared by every source.
 
         Returns None when caching is OFF; otherwise (cache_path, ttl).
         REFRESH unlinks the cache once per process (discard at run
-        start). The source wraps the result in its vendor cache class.
+        start), unless ``unlink_on_refresh`` is False for a source that
+        empties its opened cache instead (see `claim_cache_refresh`).
+        The source wraps the result in its vendor cache class.
         """
         from comicbox.config.online.settings import CacheMode
 
@@ -316,7 +326,7 @@ class OnlineSource(ABC):
         if cache_mode is CacheMode.OFF:
             return None
         cache_path = self.cache_db_path()
-        if cache_mode is CacheMode.REFRESH:
+        if cache_mode is CacheMode.REFRESH and unlink_on_refresh:
             refresh_cache_unlink_once(cache_path)
         return cache_path, self._settings.cache.ttl
 

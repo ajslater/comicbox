@@ -70,14 +70,13 @@ def _run_check(ctx: DoctorContext, check: Check) -> list[CheckResult]:
 
 
 def _secrets(ctx: DoctorContext) -> tuple[str, ...]:
-    """Every resolved password and key, longest first."""
+    """Every resolved key, longest first."""
     if ctx.settings is None:
         return ()
     values = {
-        value
+        creds.key
         for creds in ctx.settings.online.auth.sources.values()
-        for value in (creds.password, creds.key)
-        if value and len(value) >= _MIN_SECRET_LEN
+        if creds.key and len(creds.key) >= _MIN_SECRET_LEN
     }
     return tuple(sorted(values, key=len, reverse=True))
 

@@ -21,7 +21,7 @@ from comicbox.online_session import (
 if TYPE_CHECKING:
     from comicbox.formats.base.online.selector import SelectorContext
 
-VALID = OnlineCredentials(metron_user="u", metron_password="p")
+VALID = OnlineCredentials(metron_key="k")
 
 
 @dataclass

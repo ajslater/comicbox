@@ -14,18 +14,17 @@ dependencies = [
   "glom~=25.12",
   "httpx~=0.28",
   "jsonschema[format]~=4.20",
-  "keyring~=25.6",
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari~=4.10.0",
+  "mokkari~=5.0.0",
   "nh3>=0.3.5",
   "packaging>=24.0",
   "pillow>=12.2.0",
   "platformdirs>=4.9.6",
   "py7zr~=1.1.0",
   "pycountry~=26.2",
-  "python-dateutil~=2.8",
+  "python-dateutil~=3.0",
   "questionary>=2.1.1",
   "rapidfuzz>=3.14.5",
   "rarfile~=4.0",
@@ -56,7 +55,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "5.4.0"
+version = "5.5.0"
 
 [[project.authors]]
 name = "AJ Slater"
@@ -68,7 +67,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile~=1.0"]
+pdf = ["comicbox-pdffile~=1.0.1"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
@@ -94,7 +93,7 @@ lint = [
   "pathspec~=1.1.0",
   "radon~=6.0",
   "ruff~=0.17",
-  "types-python-dateutil~=2.9",
+  # "types-python-dateutil~=2.9",
   "types-xmltodict~=1.0",
   "ty~=0.0.17",
   "vulture~=2.3",
@@ -228,8 +227,6 @@ addopts = [
   "--strict-markers",
   "-ra",
 ]
-# mokkari names 5.0 in every deprecation it plans to remove; a new use fails.
-filterwarnings = ["error:.*mokkari 5\\.0:DeprecationWarning"]
 junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]

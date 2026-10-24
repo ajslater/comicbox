@@ -95,9 +95,7 @@ def _source(
     *,
     allow: bool = True,
 ) -> MetronOnlineSource:
-    src = MetronOnlineSource(
-        OnlineSourceCredentials(user="u", password="p"), OnlineSettings()
-    )
+    src = MetronOnlineSource(OnlineSourceCredentials(key="k"), OnlineSettings())
     monkeypatch.setattr(src, "_get_session", lambda: session)
     monkeypatch.setattr(src, "_gate", lambda: _FakeGate(allow=allow))
     src.retry_sleep = lambda _seconds: None

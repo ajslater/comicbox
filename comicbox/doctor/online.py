@@ -1,10 +1,10 @@
 """
-Online: each tagging source's credentials, the keyring, and the cache.
+Online: each tagging source's credentials, and the cache.
 
 Never prints a secret. A credential row names the field and the layer
-that supplied it (``--auth``, the env var, the config file, or the
-keyring), never the value. Proxy env vars are named, not shown, since a
-proxy URL can carry a password.
+that supplied it (``--auth``, the env var, or the config file), never
+the value. Proxy env vars are named, not shown, since a proxy URL can
+carry a password.
 """
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 from confuse import Configuration, NotFoundError
 from rich.filesize import decimal
 
-from comicbox.doctor.packages import reinstall_hint
 from comicbox.doctor.result import CheckResult, Status, short_path
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.version import PACKAGE_NAME
@@ -33,9 +32,7 @@ if TYPE_CHECKING:
 SECTION = "Online"
 
 # The credential fields, under their config and --auth names.
-_FIELDS = ("key", "user", "pass", "url")
-_KEYRING = "keyring"
-_NULL_KEYRING_MODULES = frozenset({"keyring.backends.fail", "keyring.backends.null"})
+_FIELDS = ("key", "url")
 _PROXY_VARS = frozenset(
     {
         "HTTP_PROXY",
@@ -53,10 +50,6 @@ _row = partial(CheckResult, SECTION)
 
 def _env_var(source: str, field: str) -> str:
     return f"{PACKAGE_NAME.upper()}_ONLINE__AUTH__{source.upper()}__{field.upper()}"
-
-
-def _field_value(creds: OnlineSourceCredentials, field: str) -> str | None:
-    return creds.password if field == "pass" else getattr(creds, field)
 
 
 def _config_layer(view: Any, source: str, field: str) -> str:
@@ -79,10 +72,10 @@ def _provenance(ctx: DoctorContext) -> dict[str, dict[str, str]]:
     Name the layer that supplied each credential field, per source.
 
     Mirrors `resolve_credentials`' precedence: ``--auth``, then the config
-    tree (env vars over the --config file over the user config), then the
-    keyring for a password. Worked out here rather than recorded by the
-    resolver, because by the time it runs the config tree has already
-    merged env vars and files into one value.
+    tree (env vars over the --config file over the user config). Worked
+    out here rather than recorded by the resolver, because by the time it
+    runs the config tree has already merged env vars and files into one
+    value.
     """
     from comicbox.config.read import read_config_sources
     from comicbox.formats.base.online.cli_overrides import CliOverrides
@@ -91,7 +84,6 @@ def _provenance(ctx: DoctorContext) -> dict[str, dict[str, str]]:
     read_config_sources(config, ctx.args)
     view = config[PACKAGE_NAME]["online"]["auth"]
     flags = CliOverrides.from_auth_list(getattr(ctx.cns, "auth", None) or ()).per_source
-    resolved = ctx.settings.online.auth.sources if ctx.settings else {}
     provenance: dict[str, dict[str, str]] = {}
     for source in SOURCE_NAMES:
         layers: dict[str, str] = {}
@@ -100,30 +92,11 @@ def _provenance(ctx: DoctorContext) -> dict[str, dict[str, str]]:
                 layers[field] = "--auth"
             elif layer := _config_layer(view, source, field):
                 layers[field] = layer
-        creds = resolved.get(source)
-        if "pass" not in layers and creds is not None and creds.password:
-            layers["pass"] = _KEYRING
         provenance[source] = layers
     return provenance
 
 
-def _consulted_keyring(provenance: Mapping[str, Mapping[str, str]]) -> list[str]:
-    """List the sources with a user and no configured password: the keyring was asked."""
-    return [
-        source
-        for source, layers in provenance.items()
-        if "user" in layers and layers.get("pass", _KEYRING) == _KEYRING
-    ]
-
-
 def _metron_warnings(creds: OnlineSourceCredentials) -> Iterator[CheckResult]:
-    if not creds.key and creds.user and creds.password:
-        yield _row(
-            "metron",
-            Status.WARN,
-            detail="user/pass auth is deprecated",
-            fix="use an API token: --auth metron:TOKEN",
-        )
     if creds.url:
         yield _row(
             "metron",
@@ -264,7 +237,7 @@ def _configured_row(
 ) -> CheckResult:
     """Build a configured source's row: where each field came from, and if it works."""
     name = source.name
-    present = [field for field in _FIELDS if _field_value(creds, field)]
+    present = [field for field in _FIELDS if getattr(creds, field)]
     notes = [f"{field} from {layers[field]}" for field in present if field in layers]
     status, fix = Status.OK, ""
     if verify:
@@ -322,49 +295,6 @@ def check_sources(ctx: DoctorContext) -> Iterator[CheckResult]:
         )
         if warnings := _SOURCE_WARNINGS.get(name):
             yield from warnings(creds)
-
-
-def check_keyring(ctx: DoctorContext) -> Iterator[CheckResult]:
-    """
-    Report the keyring backend, and warn if a source needs one that can't work.
-
-    comicbox reads the keyring only for a source with a user and no
-    password, and loading the config already did that lookup, as a run
-    does. The doctor never calls `get_password` itself: macOS can answer
-    with a Keychain prompt.
-    """
-    if ctx.settings is None:
-        return
-    consulted = _consulted_keyring(_provenance(ctx))
-    needed_by = f"{', '.join(consulted)} has a user and no pass"
-    try:
-        import keyring
-    except ImportError:
-        if consulted:
-            yield _row(
-                _KEYRING,
-                Status.WARN,
-                detail=f"not installed, but {needed_by}",
-                fix=reinstall_hint("keyring"),
-            )
-        else:
-            yield _row(_KEYRING, Status.OFF, detail="not installed; not needed")
-        return
-    backend = keyring.get_keyring()
-    found = str(getattr(backend, "name", type(backend).__name__))
-    if consulted and type(backend).__module__ in _NULL_KEYRING_MODULES:
-        yield _row(
-            _KEYRING,
-            Status.WARN,
-            found=found,
-            detail=f"no usable backend, but {needed_by}",
-            fix="install a keyring backend, or set the pass",
-        )
-        return
-    notes = [f"priority {getattr(backend, 'priority', '?')}"]
-    if consulted:
-        notes.append(f"consulted for {', '.join(consulted)}")
-    yield _row(_KEYRING, Status.OK, found=found, detail=" · ".join(notes))
 
 
 def _nearest_existing(path: Path) -> Path:
@@ -427,7 +357,6 @@ def check_proxy(_ctx: DoctorContext) -> Iterator[CheckResult]:
 
 CHECKS: tuple[Check, ...] = (
     (SECTION, "sources", check_sources),
-    (SECTION, _KEYRING, check_keyring),
     (SECTION, "cache", check_cache),
     (SECTION, "proxy", check_proxy),
 )

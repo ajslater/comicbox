@@ -240,9 +240,7 @@ def test_a_rejection_from_elsewhere_does_not_cascade(
     # Somebody else already filled the window.
     with transport._lock:
         transport._history = [time.monotonic()] * _SERVER_LIMIT
-    src = MetronOnlineSource(
-        OnlineSourceCredentials(user="u", password="p"), OnlineSettings()
-    )
+    src = MetronOnlineSource(OnlineSourceCredentials(key="k"), OnlineSettings())
     monkeypatch.setattr(src, "_get_session", lambda: session)
 
     def one() -> None:
