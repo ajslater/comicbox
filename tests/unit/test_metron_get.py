@@ -41,13 +41,13 @@ _SERIES_ID = 7
 @pytest.fixture
 def session(tmp_path: Path) -> Iterator[Any]:
     """Yield a paced mokkari Session with a response cache; close it after."""
-    cache = SqliteCache(db_name=str(tmp_path / "metron.db"))
+    cache = SqliteCache(tmp_path / "metron.db")
     session = build_paced_session(
         RateGate(default_limit=1000), api_token="t", cache=cache
     )
     yield session
     session.close()
-    cache.con.close()
+    cache.close()
 
 
 def _route(series_reply: Reply) -> Callable[[requests.PreparedRequest], Reply]:

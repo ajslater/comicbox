@@ -44,7 +44,7 @@ class _AmbiguousMetron:
         self.enrich_calls = 0
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.user and self._credentials.password)
+        return bool(self._credentials.key)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -108,7 +108,7 @@ def _build_cb(profile_metadata: dict | None = None) -> Comicbox:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     return Comicbox(config=args)

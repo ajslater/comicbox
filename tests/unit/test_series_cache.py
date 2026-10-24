@@ -127,7 +127,7 @@ class _CountingMetron:
         self.prefetch_calls.append((volume_id, cluster_size))
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.user and self._credentials.password)
+        return bool(self._credentials.key)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -194,7 +194,7 @@ def _build_cb(issue: str | None = "5", prompts: str | None = None) -> Comicbox:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
             prompts=prompts,
         )
     )
@@ -355,7 +355,7 @@ def test_rematch_bypasses_series_cache(monkeypatch) -> None:
             online_sources=["metron"],
             rematch=True,
             general=Namespace(metadata=cli_md),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)

@@ -194,8 +194,8 @@ def _metron_gate_limit() -> int | None:
         from comicbox.formats.metron_api.online_source import shared_gate
     except ImportError:  # pragma: no cover - mokkari not installed
         return None
-    for credentials in _metron_credential_sets():
-        gate = shared_gate(*credentials)
+    for key in _metron_gate_keys():
+        gate = shared_gate(key)
         if gate is None:
             continue
         stats = gate.stats()
@@ -204,8 +204,8 @@ def _metron_gate_limit() -> int | None:
     return None
 
 
-def _metron_credential_sets() -> tuple[tuple[str, str, str], ...]:
-    """Credential sets with a gate in this process."""
+def _metron_gate_keys() -> tuple[str, ...]:
+    """Return the API tokens with a gate in this process."""
     from comicbox.formats.metron_api.online_source import (
         _gate_cache,
         _session_cache_lock,

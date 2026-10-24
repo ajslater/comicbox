@@ -138,14 +138,12 @@ def _metron_settings(
     *,
     enabled: bool = True,
     sources: tuple[str, ...] | None = None,
-    user: str | None = "u",
-    password: str | None = "p",  # noqa: S107
-    key: str | None = None,
+    key: str | None = "k",
 ) -> ComicboxSettings:
     """Prebuilt settings for an online Metron run."""
     cfg = get_config(Namespace(comicbox=Namespace()))
     lookup = replace(cfg.online.lookup, enabled=enabled, sources=sources)
-    creds = {"metron": OnlineSourceCredentials(user=user, password=password, key=key)}
+    creds = {"metron": OnlineSourceCredentials(key=key)}
     online = replace(cfg.online, lookup=lookup, auth=OnlineAuthSettings(sources=creds))
     return replace(cfg, online=online)
 

@@ -101,8 +101,6 @@ _KNOWN_SOURCES: frozenset[str] = frozenset({"metron", "comicvine"})
 class OnlineCredentials:
     """Credentials for the online sources Codex may enable."""
 
-    metron_user: str | None = None
-    metron_password: str | None = None
     metron_key: str | None = None
     metron_url: str | None = None
     comicvine_key: str | None = None
@@ -607,11 +605,7 @@ class OnlineSession:
                 shared_session_rate_limit_status,
             )
 
-            status = shared_session_rate_limit_status(
-                self._credentials.metron_user,
-                self._credentials.metron_password,
-                self._credentials.metron_key,
-            )
+            status = shared_session_rate_limit_status(self._credentials.metron_key)
             if status is not None:
                 statuses["metron"] = _rate_limit_windows(status)
         if "comicvine" in statuses:
@@ -906,8 +900,6 @@ class OnlineSession:
         result: dict[str, OnlineSourceCredentials] = {}
         if "metron" in self._sources:
             result["metron"] = OnlineSourceCredentials(
-                user=creds.metron_user,
-                password=creds.metron_password,
                 key=creds.metron_key,
                 url=creds.metron_url,
             )
@@ -947,13 +939,8 @@ class OnlineSession:
         sources: tuple[str, ...], creds: OnlineCredentials
     ) -> None:
         missing: list[str] = []
-        if "metron" in sources and not (
-            creds.metron_key or (creds.metron_user and creds.metron_password)
-        ):
-            missing.append(
-                "metron requires metron_key (API token) or both "
-                "metron_user and metron_password"
-            )
+        if "metron" in sources and not creds.metron_key:
+            missing.append("metron requires metron_key (API token)")
         if "comicvine" in sources and not creds.comicvine_key:
             missing.append("comicvine requires comicvine_key")
         if missing:

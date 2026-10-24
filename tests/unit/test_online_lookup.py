@@ -52,7 +52,7 @@ class _FakeMetronSource:
         self._payload = payload or _SAMPLE_ISSUE
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.user and self._credentials.password)
+        return bool(self._credentials.key)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -94,7 +94,7 @@ def test_explicit_id_triggers_get(patched_metron) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -110,7 +110,7 @@ def test_explicit_id_payload_appears_as_metron_api_source(
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -148,7 +148,7 @@ def test_lookup_idempotent(patched_metron) -> None:
         comicbox=Namespace(
             online_sources=["metron"],
             explicit_ids=["metron:42"],
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -161,7 +161,7 @@ def test_filter_excludes_unselected_source(patched_metron) -> None:
     args = Namespace(
         comicbox=Namespace(
             online_sources=["comicvine"],  # filter excludes metron
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -384,7 +384,7 @@ def test_cross_source_warning_fires_on_cv_id_mismatch(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -417,7 +417,7 @@ def test_cross_source_no_warning_when_cv_ids_match(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -572,7 +572,7 @@ def test_first_wins_skips_second_source_on_metron_explicit_id(
             # Both sources active; only metron has --id.
             online_sources=["metron", "comicvine"],
             explicit_ids=["metron:42"],
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -610,7 +610,7 @@ def test_sources_order_is_run_priority(monkeypatch: pytest.MonkeyPatch) -> None:
                     "comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}
                 }
             ),
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -632,7 +632,7 @@ def test_tag_all_sources_runs_both(monkeypatch: pytest.MonkeyPatch) -> None:
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
             all_sources=True,
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -662,7 +662,7 @@ def test_first_wins_continues_when_first_no_match(
                     "comicbox": {"series": {"name": "Foo"}, "issue": {"name": "5"}}
                 }
             ),
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -685,7 +685,7 @@ def test_explicit_id_on_second_source_overrides_first_wins(
     args = Namespace(
         comicbox=Namespace(
             explicit_ids=["metron:42", "comicvine:1234"],
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -712,7 +712,7 @@ def test_stored_id_triggers_refresh_instead_of_search(
                     "comicbox": {"identifiers": {"metron": {"key": "42"}}},
                 }
             ),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -744,7 +744,7 @@ def test_force_search_overrides_stored_id(
                     },
                 }
             ),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -768,7 +768,7 @@ def test_explicit_id_beats_force_search(monkeypatch: pytest.MonkeyPatch) -> None
             general=Namespace(
                 metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
             ),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -799,7 +799,7 @@ def test_ignore_existing_with_first_wins_short_circuits_second_source(
             general=Namespace(
                 metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
             ),
-            auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+            auth=["metron:key=k", "comicvine:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -816,7 +816,7 @@ def test_stored_identifier_helper_returns_none_when_unset(
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata={"comicbox": {"series": {"name": "Foo"}}}),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)
@@ -832,7 +832,7 @@ def test_stored_identifier_helper_returns_parsed_int(patched_metron) -> None:
             general=Namespace(
                 metadata={"comicbox": {"identifiers": {"metron": {"key": "42"}}}}
             ),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     cb = Comicbox(config=args)

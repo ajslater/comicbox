@@ -127,29 +127,17 @@ class _FakeMokkari:
 def _make_metron_source(
     monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari
 ) -> MetronOnlineSource:
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)
     monkeypatch.setattr(src, "_get_session", lambda: fake)
     return src
 
 
-@pytest.mark.parametrize(
-    ("user", "password", "key", "expected"),
-    [
-        (None, None, "t", True),  # API token alone
-        ("u", "p", None, True),  # basic auth alone
-        ("u", "p", "t", True),  # both; mokkari prefers the token
-        (None, None, None, False),
-        ("u", None, None, False),  # half a basic-auth pair
-        (None, "p", None, False),
-    ],
-)
-def test_is_configured(
-    user: str | None, password: str | None, key: str | None, *, expected: bool
-) -> None:
-    creds = OnlineSourceCredentials(user=user, password=password, key=key)
-    src = MetronOnlineSource(creds, OnlineSettings())
+@pytest.mark.parametrize(("key", "expected"), [("t", True), (None, False), ("", False)])
+def test_is_configured(key: str | None, *, expected: bool) -> None:
+    """Metron runs on an API token and nothing else."""
+    src = MetronOnlineSource(OnlineSourceCredentials(key=key), OnlineSettings())
     assert src.is_configured() is expected
 
 
@@ -296,7 +284,7 @@ def _make_metron_source_with_series_id(
 ) -> MetronOnlineSource:
     from comicbox.config.online.settings import OnlineLookupSettings
 
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     settings = OnlineSettings(
         lookup=OnlineLookupSettings(series_ids={"metron": series_id})
     )
@@ -1025,7 +1013,7 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
     # neither sees nor leaves behind entries for ("u", "p").
     monkeypatch.setattr(metron_online_source, "_session_cache", {})
     monkeypatch.setattr(metron_online_source, "_gate_cache", {})
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)
     builds = {"n": 0}
@@ -1260,7 +1248,7 @@ def test_with_retry_replays_api_error_throttle_body() -> None:
 def _summary_for(image: str | None):
     """Build a candidate summary from a BaseIssue carrying ``image``."""
     src = MetronOnlineSource(
-        OnlineSourceCredentials(user="u", password="p"),
+        OnlineSourceCredentials(key="k"),
         OnlineSettings(),
     )
     base_issue = _FakeBaseIssue(1, "1", "Captain Science", image=image or "")

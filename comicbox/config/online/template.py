@@ -43,8 +43,6 @@ _PER_SOURCE_TUNING_TEMPLATE = MappingTemplate(
 
 _AUTH_SOURCE_TEMPLATE = MappingTemplate(
     {
-        "user": Optional(str),
-        "pass": Optional(str),
         "key": Optional(str),
         "url": Optional(str),
     }

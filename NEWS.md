@@ -1,5 +1,23 @@
 # 📰 News
 
+## v5.5.0
+
+- Breaking Changes
+    - Metron authenticates only with an API token; username, password and
+      keyring support are gone.
+    - `OnlineCredentials` drops `metron_user` and `metron_password`.
+- Fixes
+    - `--cache refresh` no longer breaks another program sharing the Metron
+      cache.
+    - Corrupt Metron cache files are rebuilt; ones from a newer mokkari are left
+      alone.
+    - Metron honors a `--cache-ttl` under a day, and empty search results expire
+      within a day.
+    - mokkari log messages follow comicbox's log level and format.
+- Dependencies
+    - Requires mokkari 5.0. The Metron cache starts empty on the first run.
+    - No longer requires keyring.
+
 ## v5.4.0
 
 - Features

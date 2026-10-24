@@ -113,14 +113,14 @@ Same as the calibration harness:
 # ~/.config/comicbox/config.yaml
 comicbox:
     online:
-        metron:
-            username: your_metron_user
-            password: your_metron_password
-        comicvine:
-            api_key: your_cv_api_key
+        auth:
+            metron:
+                key: your_metron_api_token
+            comicvine:
+                key: your_cv_api_key
 ```
 
-Or env vars (`COMICBOX_ONLINE__AUTH__METRON__USER`, etc.).
+Or env vars (`COMICBOX_ONLINE__AUTH__METRON__KEY`, etc.).
 
 ## Running
 

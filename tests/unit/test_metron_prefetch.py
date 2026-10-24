@@ -74,7 +74,7 @@ def _clear_prefetch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _source(monkeypatch: pytest.MonkeyPatch, fake: _FakeMokkari) -> MetronOnlineSource:
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     src = MetronOnlineSource(creds, OnlineSettings())
     monkeypatch.setattr(src, "_get_session", lambda: fake)
     return src

@@ -255,9 +255,7 @@ def test_comicvine_per_volume_loop_still_degrades_on_api_error(monkeypatch) -> N
 
 
 def _metron_source() -> MetronOnlineSource:
-    return MetronOnlineSource(
-        OnlineSourceCredentials(user="u", password="p"), OnlineSettings()
-    )
+    return MetronOnlineSource(OnlineSourceCredentials(key="k"), OnlineSettings())
 
 
 def _metron_profile() -> ComicProfile:
