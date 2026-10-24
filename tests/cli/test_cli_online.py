@@ -42,20 +42,10 @@ def test_dry_run_long_flag() -> None:
     assert getattr(args, "general.dry_run") is True
 
 
-def test_auth_warns_on_pass_field(capsys: pytest.CaptureFixture[str]) -> None:
-    """`--auth metron:pass=secret` warns that passwords leak into shell history."""
-    args = _parse("--auth", "metron:pass=secret")
-    assert args.auth == ["metron:pass=secret"]
-    captured = capsys.readouterr()
-    assert "shell history" in captured.err
-
-
-def test_auth_no_warning_on_user_field(capsys: pytest.CaptureFixture[str]) -> None:
-    """`--auth metron:user=alice` does not warn."""
-    args = _parse("--auth", "metron:user=alice")
-    assert args.auth == ["metron:user=alice"]
-    captured = capsys.readouterr()
-    assert "shell history" not in captured.err
+def test_auth_is_repeatable() -> None:
+    """Each `--auth` is collected raw; `CliOverrides` validates them."""
+    args = _parse("--auth", "metron:TOKEN", "--auth", "comicvine:url=https://cv")
+    assert args.auth == ["metron:TOKEN", "comicvine:url=https://cv"]
 
 
 def test_id_with_multiple_paths_errors(

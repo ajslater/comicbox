@@ -133,8 +133,6 @@ def _debug_metron(profile: object, online: object) -> None:
         print("  metron not configured; skipping")  # noqa: T201
         return
     src = MetronOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
-    # `is_configured()` accepts an API token as well as username + password,
-    # which a hand-rolled credential check here would reject.
     if not src.is_configured():
         print("  metron not configured; skipping")  # noqa: T201
         return

@@ -14,7 +14,6 @@ dependencies = [
   "glom~=25.12",
   "httpx~=0.28",
   "jsonschema[format]~=4.20",
-  "keyring~=25.6",
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
@@ -56,7 +55,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "5.4.0"
+version = "5.5.0"
 
 [[project.authors]]
 name = "AJ Slater"
@@ -228,8 +227,6 @@ addopts = [
   "--strict-markers",
   "-ra",
 ]
-# mokkari names 5.0 in every deprecation it plans to remove; a new use fails.
-filterwarnings = ["error:.*mokkari 5\\.0:DeprecationWarning"]
 junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]

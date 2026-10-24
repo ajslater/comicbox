@@ -264,7 +264,7 @@ def _build_auth_settings(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
 ) -> OnlineAuthSettings:
-    """Build per-source credentials from CLI + config + keyring."""
+    """Build per-source credentials from CLI + config."""
     config_creds: dict[str, dict[str, Any]] = {}
     auth_block: Any = getattr(online_block, "auth", None)
     for source in SOURCE_NAMES:
@@ -272,8 +272,6 @@ def _build_auth_settings(
         if block is None:
             continue
         config_creds[source] = {
-            "user": getattr(block, "user", None),
-            "pass": getattr(block, "pass", None),
             "key": getattr(block, "key", None),
             "url": getattr(block, "url", None),
         }

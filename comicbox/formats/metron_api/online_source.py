@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import math
 import os
+import sqlite3
 import threading
 from collections import OrderedDict
 from dataclasses import replace
+from datetime import timedelta
+from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -33,6 +36,7 @@ from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
+    claim_cache_refresh,
 )
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
@@ -42,15 +46,17 @@ from comicbox.version import user_agent
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from pathlib import Path
 
     from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
     from mokkari.session import Session
+    from mokkari.sqlite_cache import SqliteCache
 
     from comicbox.formats.base.online.profile import ComicProfile
 
-# Sessions are shared across the credential set that built them (see
-# `_get_session`), keyed by (user, password) — not `db_path` like the old
-# pyrate_limiter override cache, since there's no bucket to key by anymore.
+# Sessions are shared across the API token that built them (see
+# `_get_session`) — not `db_path` like the old pyrate_limiter override
+# cache, since there's no bucket to key by anymore.
 # A shared `Session` gives `Runner._run_parallel`'s thread pool
 # (comicbox/run.py) one response cache and one consistent
 # `rate_limit_status` instead of each file's source starting cold;
@@ -66,21 +72,26 @@ if TYPE_CHECKING:
 # `_get_or_build_shared_session`). Keying by cache config instead would
 # split `rate_limit_status` across sessions and defeat the sharing.
 # Entries are deliberately never evicted: the cache is bounded by the
-# distinct credential sets used in one process. They are closed, though.
-# Since mokkari 4.8.0 a Session holds a pooled `requests.Session`, and
-# `close_shared_sessions()` releases those connections at the end of a
-# run; the entry stays, because a closed mokkari Session reopens
-# connections on demand and the gate and `rate_limit_status` it carries
-# stay valid.
-_session_cache: dict[tuple[str, str, str], tuple[Any, tuple]] = {}
+# distinct tokens used in one process. They are closed, though. A Session
+# holds a pooled `requests.Session` and its `SqliteCache` a sqlite
+# connection, and `close_shared_sessions()` releases both at the end of a
+# run; the entry stays, because both reopen on demand and the gate and
+# `rate_limit_status` the Session carries stay valid.
+_session_cache: dict[str, tuple[Any, tuple]] = {}
 _session_cache_lock = threading.Lock()
 
-# One `RateGate` per credential set, built alongside that set's Session
-# and under the same lock. The gate is what actually keeps comicbox
-# inside Metron's 20/min window (see `comicbox/formats/base/online/
+# One `RateGate` per token, built alongside that token's Session and
+# under the same lock. The gate is what actually keeps comicbox inside
+# Metron's 20/min window (see `comicbox/formats/base/online/
 # rate_gate.py`); sharing the Session was only ever enough to share
 # mokkari's *observation* of the limit, not to enforce it.
-_gate_cache: dict[tuple[str, str, str], RateGate] = {}
+_gate_cache: dict[str, RateGate] = {}
+
+# The longest an empty search result is kept. mokkari would otherwise not
+# cache one at all, and comicbox keeps no memo of name searches, so a
+# batch of files from a series Metron lacks would send the same empty
+# search once per file. A day still notices a series Metron adds.
+_EMPTY_LIST_TTL: Final = timedelta(days=1)
 
 # Series-level facts the issue endpoint's nested IssueSeries lacks. `get()`
 # copies them off a `series(id)` fetch into the issue dump's series block.
@@ -142,21 +153,23 @@ def _prefetched_issue(volume_id: int, number: str) -> Any:
 
 def close_shared_sessions() -> None:
     """
-    Release the pooled HTTP connections every shared session holds.
+    Release the HTTP connections and cache handle every shared session holds.
 
     Optional: `requests.Session` has no finalizer, so without this the
     sockets are only freed when they are garbage collected, with a
-    `ResourceWarning` apiece under some interpreters. The cache entries
-    survive -- a closed mokkari Session reopens connections on demand,
-    and its gate and `rate_limit_status` are still the right ones.
+    `ResourceWarning` apiece under some interpreters; the same goes for
+    the `SqliteCache` connection, which `Session.close()` leaves open.
+    The cache entries survive -- a closed mokkari Session and SqliteCache
+    both reopen on demand, and the gate and `rate_limit_status` are still
+    the right ones.
     """
     with _session_cache_lock:
         entries = list(_session_cache.values())
     for session, _signature in entries:
         # Tests seed fakes that are not real Sessions.
-        close = getattr(session, "close", None)
-        if close is not None:
-            close()
+        for closeable in (session, getattr(session, "cache", None)):
+            if (close := getattr(closeable, "close", None)) is not None:
+                close()
 
 
 def reset_shared_sessions() -> None:
@@ -198,34 +211,28 @@ if hasattr(os, "register_at_fork"):  # POSIX only
     os.register_at_fork(after_in_child=_after_fork_in_child)
 
 
-def shared_gate(
-    user: str | None, password: str | None, key: str | None = None
-) -> RateGate | None:
+def shared_gate(key: str | None) -> RateGate | None:
     """
-    Return a credential set's rate gate, or None if nothing built one yet.
+    Return an API token's rate gate, or None if nothing built one yet.
 
     Read-only accessor for callers that want the pacing counters without
     holding a source instance (the end-of-run summary, tests).
     """
     with _session_cache_lock:
-        return _gate_cache.get((user or "", password or "", key or ""))
+        return _gate_cache.get(key or "")
 
 
-def shared_session_rate_limit_status(
-    user: str | None, password: str | None, key: str | None = None
-) -> RateLimitStatus | None:
+def shared_session_rate_limit_status(key: str | None) -> RateLimitStatus | None:
     """
-    Rate-limit state of the shared mokkari session for a credential set.
+    Rate-limit state of the shared mokkari session for an API token.
 
     Returns the live ``RateLimitStatus`` mokkari tracks from Metron's
     ``X-RateLimit-*`` response headers, or None when no session exists for
-    these credentials in this process yet (nothing has hit the network).
-    Window fields are None until Metron reports them. The empty-credential
-    normalization mirrors ``_get_or_build_shared_session``'s cache key.
+    this token in this process yet (nothing has hit the network).
+    Window fields are None until Metron reports them.
     """
-    cache_key = (user or "", password or "", key or "")
     with _session_cache_lock:
-        entry = _session_cache.get(cache_key)
+        entry = _session_cache.get(key or "")
     if entry is None:
         return None
     session, _ = entry
@@ -422,6 +429,45 @@ def _classify_api_error(exc: BaseException) -> RetryCategory:
     return RetryCategory.TRANSIENT
 
 
+def _open_cache(cache_path: Path, ttl: timedelta) -> SqliteCache | None:
+    """
+    Open the response cache, or return None to run without one.
+
+    A zero ``--cache-ttl`` means "keep forever", as it does for Comic
+    Vine, so it maps to mokkari's never-expire ``None``; mokkari rejects
+    a zero ``timedelta`` outright, and CacheMode.OFF already covers not
+    caching.
+
+    comicbox owns this file, so one that is corrupt or not SQLite at all
+    is deleted, sidecars too, and rebuilt. A file mokkari refuses for any
+    other reason -- a newer mokkari's schema, or tables that are not a
+    mokkari cache -- is left alone and the run goes uncached, rather
+    than wiping what another program wrote.
+    """
+    from mokkari.exceptions import CacheError
+    from mokkari.sqlite_cache import SqliteCache
+
+    open_cache = partial(
+        SqliteCache,
+        cache_path,
+        default_ttl=ttl if ttl > timedelta(0) else SqliteCache.NEVER,
+        empty_list_ttl=_EMPTY_LIST_TTL,
+    )
+    try:
+        return open_cache()
+    except CacheError as exc:
+        if not isinstance(exc.__cause__, sqlite3.DatabaseError):
+            warn_once(
+                "metron:cache-refused",
+                f"online metron: running without a response cache: {exc}",
+            )
+            return None
+        logger.warning(f"online metron: rebuilding unreadable cache {cache_path}")
+    for suffix in ("", "-wal", "-shm"):
+        cache_path.with_name(cache_path.name + suffix).unlink(missing_ok=True)
+    return open_cache()
+
+
 class MetronOnlineSource(OnlineSource):
     """Wraps mokkari for the Metron API."""
 
@@ -434,9 +480,8 @@ class MetronOnlineSource(OnlineSource):
 
     @override
     def is_configured(self) -> bool:
-        """Metron accepts an API token (key), or both username and password."""
-        credentials = self._credentials
-        return bool(credentials.key or (credentials.user and credentials.password))
+        """Metron needs an API token (key)."""
+        return bool(self._credentials.key)
 
     @override
     @staticmethod
@@ -453,11 +498,12 @@ class MetronOnlineSource(OnlineSource):
         if isinstance(exc, RateLimitError):
             return RetryCategory.RATE_LIMIT
         if isinstance(exc, AuthenticationError):
-            # Raised only by Session.__init__ for missing local credentials.
+            # Raised only by Session.__init__ for a missing or empty token.
             return RetryCategory.AUTH
         if isinstance(exc, CacheError):
-            # Raised on the first request, not in Session.__init__, when the
-            # cache object lacks get()/store(): a wiring bug, never transient.
+            # Raised by Session.__init__ when the cache's get()/store() don't
+            # take Session's arguments: a wiring bug, never transient. The
+            # SqliteCache open errors are handled in `_open_cache`.
             return RetryCategory.INVALID
         if isinstance(exc, RateLimiterError):
             # Same shape as CacheError: raised on the first request when the
@@ -468,44 +514,42 @@ class MetronOnlineSource(OnlineSource):
             return _classify_api_error(exc)
         return None
 
-    def _get_cache(self) -> Any:
-        resolved = self._resolve_response_cache()
+    def _get_cache(self) -> SqliteCache | None:
+        # REFRESH empties the open cache rather than unlinking the file:
+        # another process (codex's librarian) may hold this WAL database
+        # open, and deleting the main file under it strands the -wal and
+        # -shm files, leaving both processes with "disk I/O error".
+        resolved = self._resolve_response_cache(unlink_on_refresh=False)
         if resolved is None:
             return None
-        from mokkari.sqlite_cache import SqliteCache
-
+        from comicbox.config.online.settings import CacheMode
         from comicbox.formats.base.online.vacuum import vacuum_if_bloated
 
         cache_path, ttl = resolved
-        # mokkari's SqliteCache treats `expire` as a number of *days*
-        # (timedelta(days=expire)), not seconds. Round up so a sub-day TTL
-        # still expires after at least one day rather than collapsing toward
-        # 0 (which mokkari reads as "no expiry").
-        #
-        # mokkari 4.10 deprecates `expire`, but its replacement,
-        # `default_ttl=timedelta`, only exists in 5.0, so 4.x has nothing to
-        # move to. 5.0 drops the keyword outright, so the bump fails loudly
-        # here, and `default_ttl=ttl` then replaces this day rounding.
-        expire = (
-            math.ceil(ttl.total_seconds() / 86400) if ttl.total_seconds() > 0 else None
-        )
+        cache = _open_cache(cache_path, ttl)
+        if cache is None:
+            return None
+        if self._settings.cache.mode is CacheMode.REFRESH and claim_cache_refresh(
+            cache_path
+        ):
+            removed = cache.clear()
+            logger.debug(f"refresh-cache: cleared {removed} entries from {cache_path}")
         # mokkari's SqliteCache cleans up expired rows on open; reclaim the
         # freed pages if the file has gotten bloated.
-        cache = SqliteCache(db_name=str(cache_path), expire=expire)
         vacuum_if_bloated(cache_path)
         return cache
 
     def _get_session(self) -> Session:
         """
-        Return the process-wide mokkari client shared by this credential set.
+        Return the process-wide mokkari client shared by this API token.
 
         Sources are rebuilt per file (see `MetronOnlineSource.__init__` via
         `OnlineSource`), so without sharing at module scope every file's
         source would get its own `Session` with its own blank
         `rate_limit_status` — none of them would ever see another worker's
-        rate-limit state. Memoizing by (user, password, key) lets every thread in
+        rate-limit state. Memoizing by token lets every thread in
         `Runner._run_parallel`'s pool (comicbox/run.py) that logs in with the
-        same credentials observe one shared, continuously-updated
+        same token observe one shared, continuously-updated
         `rate_limit_status` — and, more importantly, queue behind one
         `RateGate`. Pacing is what makes sharing threads (not processes)
         worthwhile: a second process would get a second gate and the two
@@ -517,7 +561,6 @@ class MetronOnlineSource(OnlineSource):
             # warn_once keeps them at one line per process either way.
             self._warn_ignored_url()
             self._warn_ignored_rate_limit_overrides()
-            self._warn_deprecated_basic_auth()
             self._client = self._get_or_build_shared_session()
         return self._client
 
@@ -526,13 +569,9 @@ class MetronOnlineSource(OnlineSource):
         cache = self._settings.cache
         return (cache.mode, cache.dir, cache.ttl)
 
-    def _credential_key(self) -> tuple[str, str, str]:
-        """Identity of the credential set a Session and gate are shared by."""
-        return (
-            self._credentials.user or "",
-            self._credentials.password or "",
-            self._credentials.key or "",
-        )
+    def _credential_key(self) -> str:
+        """Return the API token a Session and gate are shared by."""
+        return self._credentials.key or ""
 
     def _get_or_build_shared_session(self) -> Session:
         key = self._credential_key()
@@ -592,25 +631,10 @@ class MetronOnlineSource(OnlineSource):
 
         return build_paced_session(
             gate,
+            api_token=self._credential_key(),
             cache=self._get_cache(),
             user_agent=user_agent(),
-            **self._auth_kwargs(),
         )
-
-    def _auth_kwargs(self) -> dict[str, str | None]:
-        """
-        Return mokkari's keywords for the one credential it will use.
-
-        A token wins over username/password, so a token holder's leftover
-        user and password are not passed at all: mokkari 4.10 warns about
-        any `username`/`passwd` it is handed, used or not, and 5.0 removes
-        both keywords.
-        """
-        credentials = self._credentials
-        if credentials.key:
-            return {"api_token": credentials.key}
-        # `passwd`, not `password`: mokkari's keyword.
-        return {"username": credentials.user, "passwd": credentials.password}
 
     def _gate(self) -> RateGate | None:
         """Return the shared rate gate, once a session has been built."""
@@ -627,19 +651,6 @@ class MetronOnlineSource(OnlineSource):
                 f"online {self.name}: --auth metron:url= is a no-op "
                 f"(mokkari has no base_url override); ignoring "
                 f"{self._credentials.url!r}",
-            )
-
-    def _warn_deprecated_basic_auth(self) -> None:
-        # Only fires when basic auth is what mokkari will actually use: a
-        # token, when present, wins over username/passwd.
-        if not self._credentials.key:
-            warn_once(
-                f"{self.name}:basic-auth-deprecated",
-                f"online {self.name}: username/password authentication is "
-                "deprecated and stops working with mokkari 5.0. "
-                "Generate an API token on your metron.cloud account page and "
-                "set it with --auth metron:key=TOKEN or the "
-                "COMICBOX_ONLINE__AUTH__METRON__KEY environment variable.",
             )
 
     def _warn_ignored_rate_limit_overrides(self) -> None:
@@ -677,9 +688,9 @@ class MetronOnlineSource(OnlineSource):
 
         session = build_paced_session(
             self._build_gate(),
+            api_token=self._credential_key(),
             cache=None,
             user_agent=user_agent(),
-            **self._auth_kwargs(),
         )
         try:
             self._record_api_call("series_type_list")

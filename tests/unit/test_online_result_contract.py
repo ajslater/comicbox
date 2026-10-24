@@ -94,7 +94,7 @@ class _FakeMetron:
         self.lookup_calls: list[tuple[int, str | None]] = []
 
     def is_configured(self) -> bool:
-        return bool(self._credentials.user and self._credentials.password)
+        return bool(self._credentials.key)
 
     def get(self, issue_id: int) -> dict:
         self.get_calls.append(issue_id)
@@ -195,7 +195,7 @@ def _build_cb(**overrides: Any) -> Comicbox:
     kwargs: dict[str, Any] = {
         "online_sources": ["metron"],
         "general": Namespace(metadata=_PROFILE_MD),
-        "auth": ["metron:user=u", "metron:pass=p"],
+        "auth": ["metron:key=k"],
     }
     kwargs.update(overrides)
     return Comicbox(config=Namespace(comicbox=Namespace(**kwargs)))
@@ -258,7 +258,7 @@ def test_failed_explicit_id_fetch_still_claims_the_comic(monkeypatch) -> None:
     cb = _build_cb(
         online_sources=["metron", "comicvine"],
         explicit_ids=["metron:42"],
-        auth=["metron:user=u", "metron:pass=p", "comicvine:key=k"],
+        auth=["metron:key=k", "comicvine:key=k"],
     )
 
     applied, events = _run(cb)

@@ -237,7 +237,7 @@ def _build_cb() -> Comicbox:
         comicbox=Namespace(
             online_sources=["metron"],
             general=Namespace(metadata=_cli_metadata()),
-            auth=["metron:user=u", "metron:pass=p"],
+            auth=["metron:key=k"],
         )
     )
     return Comicbox(config=args)
@@ -427,7 +427,7 @@ def test_series_cache_lookup_not_implemented_falls_back_quietly(
 
 def _wrapper_source(**kwargs) -> _WrapperMetron:
     cfg = get_config(Namespace(comicbox=Namespace()))
-    creds = OnlineSourceCredentials(user="u", password="p")
+    creds = OnlineSourceCredentials(key="k")
     return _WrapperMetron(creds, cfg.online, **kwargs)
 
 

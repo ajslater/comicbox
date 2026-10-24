@@ -6,13 +6,10 @@ source's API token; ``<source>:<field>=<value>`` sets a named field.
 Each occurrence is collected and turned into a per-source field dict
 the credential resolver consumes.
 
-Metron's ``user``/``pass`` are deprecated in favor of its API token.
-
 Examples:
     --auth metron:abcdef0123456789
     --auth comicvine:ABCD1234
-    --auth metron:user=AJSlater
-    --auth metron:pass='hunter2'
+    --auth comicvine:key=ABCD1234
     --auth comicvine:url=https://comicvine.gamespot.com/api
 
 ``url`` overrides a source's API endpoint. Only ComicVine honors it;
@@ -32,7 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Self
 
-_VALID_AUTH_FIELDS = frozenset({"user", "pass", "key", "url"})
+_VALID_AUTH_FIELDS = frozenset({"key", "url"})
 
 
 def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
@@ -79,7 +76,7 @@ class CliOverrides:
 
     ``per_source`` maps source name → {field_name: value}. Only fields
     explicitly provided on the CLI appear; missing fields fall through
-    to env/config/keyring.
+    to env/config.
     """
 
     per_source: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
