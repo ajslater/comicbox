@@ -347,9 +347,10 @@
         </xs:restriction>
     </xs:simpleType>
 
+    <!-- BCP 47 language tag (e.g. en, fil, pt-BR, zh-Hant). Case-insensitive. -->
     <xs:simpleType name="languageCode">
         <xs:restriction base="xs:string">
-            <xs:pattern value="[a-z][a-z]" />
+            <xs:pattern value="[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*" />
         </xs:restriction>
     </xs:simpleType>
 </xs:schema>

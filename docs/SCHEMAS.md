@@ -34,7 +34,7 @@ values.
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-## MetronInfo Schema v1.1
+## MetronInfo Schema v1.2 Draft
 
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
@@ -77,6 +77,29 @@ read out of that name are a convenience.
 A Reprint's `id` attribute is the reprinted issue's id. An AlternativeName's
 `id` is a series id, and comicbox records `id_type: series` on it, because an
 alternative name is a name rather than a series and implies no type of its own.
+
+### Metron Language Tags
+
+The v1.2 draft widens `Series@lang` and `AlternativeName@lang` from two-letter
+codes to BCP 47 language tags like `pt-BR`, `zh-Hant` or `fil`. Comicbox keeps
+the whole tag in `language`, `series.alternative_names[].language` and
+`reprints[].language`, whichever format it came from:
+
+- The primary language is resolved with pycountry and stored as its shortest ISO
+  639 code: `eng-US` becomes `en-US`, and `fil`, which has no two-letter code,
+  stays `fil`. A language name like `English` reads as `en`.
+- The other subtags are kept and recased per RFC 5646: scripts in title case
+  (`zh-hant` becomes `zh-Hant`), regions in upper case (`pt-br` becomes
+  `pt-BR`), everything else in lower case (`es-419`).
+- A tag whose primary language pycountry doesn't know, or a value that is
+  neither a tag nor a language name (`en_US`), is dropped with a warning.
+
+MetronInfo, ComicInfo LanguageISO and CoMet language are written with the full
+tag. ComicBookInfo stores a language name, so it gets the primary language's
+name: `pt-BR` is written as `Portuguese`.
+
+MetronInfo.xml written by comicbox declares the v1.2 draft schema. A file with a
+region or script subtag in a language is not valid v1.1.
 
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 

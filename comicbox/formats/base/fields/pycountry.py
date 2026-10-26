@@ -1,5 +1,6 @@
 """Marshmallow pycountry fields."""
 
+import re
 from abc import ABC
 from typing import Any
 
@@ -11,6 +12,10 @@ from typing_extensions import override
 from comicbox.formats.base.fields.fields import StringField
 
 _ALPHA_CODES = ("alpha_2", "alpha_3", "alpha_4", "name")
+# MetronInfo v1.2 languageCode pattern. XSD patterns are implicitly anchored.
+_BCP47_RE = re.compile(r"[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*")
+_REGION_LEN = 2
+_SCRIPT_LEN = 4
 
 
 class PyCountryField(StringField, ABC):
@@ -70,6 +75,22 @@ class PyCountryField(StringField, ABC):
                 break
         return code
 
+    @classmethod
+    def _split(cls, value: str) -> tuple[str, tuple[str, ...]]:
+        """Split a value into the part pycountry resolves and a suffix to keep."""
+        return value, ()
+
+    @classmethod
+    def _resolve(cls, attr: str, value: str, *, name: bool = False) -> str:
+        """Resolve the pycountry part to a code or name and re-attach the suffix."""
+        primary, suffix = cls._split(value)
+        pc_obj = cls._get_pycountry(attr, primary)
+        if not pc_obj:
+            return cls.EMPTY_CODE
+        if name:
+            return pc_obj.name
+        return "-".join((cls._to_alpha_code(pc_obj), *suffix))
+
     @override
     def _deserialize(
         self,
@@ -80,10 +101,7 @@ class PyCountryField(StringField, ABC):
     ) -> str:
         """Return the alpha 2 encoding."""
         value = super()._deserialize(value, attr, *args, **kwargs)
-        code = self.EMPTY_CODE
-        if pc_obj := self._get_pycountry(attr, value):
-            code = self._to_alpha_code(pc_obj)
-        return code
+        return self._resolve(attr, value)
 
     @override
     def _serialize(
@@ -97,16 +115,45 @@ class PyCountryField(StringField, ABC):
         serialized = super()._serialize(value, attr, *args, **kwargs)
         if not serialized:
             return self.EMPTY_CODE
-        code = self.EMPTY_CODE
-        if pc_obj := self._get_pycountry(attr, serialized):
-            code = pc_obj.name if self._serialize_name else self._to_alpha_code(pc_obj)
-        return code
+        return self._resolve(attr, serialized, name=self._serialize_name)
+
+
+def _case_subtag(subtag: str) -> str:
+    """Case a BCP 47 subtag after the primary language per RFC 5646 §2.1.1."""
+    if subtag.isalpha():
+        if len(subtag) == _REGION_LEN:
+            return subtag.upper()
+        if len(subtag) == _SCRIPT_LEN:
+            return subtag.title()
+    return subtag.lower()
 
 
 class LanguageField(PyCountryField):
-    """PyCountry Language Field."""
+    """
+    PyCountry Language Field.
+
+    Holds a BCP 47 tag. Only the primary language subtag is resolved with
+    pycountry; script, region and variant subtags are kept as given, recased.
+    """
 
     DB: Database = pycountry.languages
+
+    @override
+    @classmethod
+    def _split(cls, value: str) -> tuple[str, tuple[str, ...]]:
+        """Split a BCP 47 tag into its primary language and recased subtags."""
+        value = value.strip()
+        if not _BCP47_RE.fullmatch(value):
+            # Not a tag: a language name like "English", or garbage pycountry rejects.
+            return value, ()
+        primary, *subtags = value.split("-")
+        suffix: list[str] = []
+        singleton = False
+        for subtag in subtags:
+            # Extension and private use subtags follow a singleton, all lowercase.
+            singleton = singleton or len(subtag) == 1
+            suffix.append(subtag.lower() if singleton else _case_subtag(subtag))
+        return primary, tuple(suffix)
 
 
 class CountryField(PyCountryField):
