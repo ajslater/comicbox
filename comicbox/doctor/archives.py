@@ -51,6 +51,10 @@ _RAR_TOOLS = MappingProxyType(
 )
 _RAR_CRYPTO = MappingProxyType({1: "cryptography", 2: "pycryptodome"})
 
+# Distributions that provide the pymupdf module. pdffile depends on
+# pymupdf-lite; installing both leaves whichever was installed last.
+_PYMUPDF_DISTS = ("pymupdf", "pymupdf-lite")
+
 _BREW = "brew"
 _APT = "apt"
 _DNF = "dnf"
@@ -308,11 +312,21 @@ def check_pdf(_ctx: DoctorContext) -> Iterator[CheckResult]:
             return
     import pymupdf
 
+    if all(dist_version(name) for name in _PYMUPDF_DISTS):
+        # pip leaves the old pymupdf behind when an upgrade swaps in
+        # pymupdf-lite, and the two install the same files.
+        yield _row(
+            "PDF",
+            Status.WARN,
+            detail="pymupdf and pymupdf-lite overwrite each other's files",
+            fix="pip uninstall -y pymupdf && pip install --force-reinstall pymupdf-lite",
+        )
+    # VersionBind, not a distribution's version: either one provides pymupdf.
     yield _row(
         "PDF",
         Status.OK,
         found=found,
-        detail=f"pymupdf {dist_version('pymupdf')} · MuPDF {pymupdf.VersionFitz}",
+        detail=f"PyMuPDF {pymupdf.VersionBind} · MuPDF {pymupdf.VersionFitz}",
     )
 
 

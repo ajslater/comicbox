@@ -21,9 +21,13 @@
     - Metron honors a `--cache-ttl` under a day, and empty search results expire
       within a day.
     - mokkari log messages follow comicbox's log level and format.
+    - Reading pages from some PDFs no longer hangs or errors.
 - Dependencies
     - Requires mokkari 5.0. The Metron cache starts empty on the first run.
     - No longer requires keyring.
+    - PDF support requires comicbox-pdffile 1.1, which uses pymupdf-lite. pip
+      users: uninstall pymupdf, then reinstall pymupdf-lite. `comicbox doctor`
+      warns if both are installed.
 
 ## v5.4.0
 

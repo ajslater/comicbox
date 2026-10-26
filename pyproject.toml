@@ -191,7 +191,7 @@ reportUntypedBaseClass = false
 
 [tool.codespell]
 builtin = "clear,code,rare"
-ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,ro,searchd,thead,versio,wan,warmup,ws"
+ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,musl,ro,searchd,thead,versio,wan,warmup,ws"
 skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
 
 [tool.complexipy]

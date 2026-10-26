@@ -155,21 +155,23 @@ all, and 7-Zip builds without the RAR codec can't either. `comicbox doctor` says
 whether this host can read CBRs.
 
 The optional PDF extra pulls in
-[pymupdf](https://pymupdf.readthedocs.io/en/latest/installation.html), which
-ships wheels with a bundled libmupdf for most platforms. Some platforms (e.g.
-Linux on ARM) may need `libstdc++` plus C/C++ build tools to compile it.
+[pymupdf-lite](https://pypi.org/project/pymupdf-lite/), PyMuPDF without its
+layout-analysis engine. It ships wheels with a bundled libmupdf for glibc Linux
+on x86_64 and aarch64, musl Linux on x86_64, macOS, and Windows. Anywhere else
+pip compiles it, which needs a C/C++ toolchain; see the
+[PyMuPDF installation docs](https://pymupdf.readthedocs.io/en/latest/installation.html).
 
-#### Installing on ARM (AARCH64)
-
-pymupdf has no pre-built AARCH64 wheels, so pip must build it. On some Python
-versions the build fails unless this environment variable is set:
+`pymupdf` and `pymupdf-lite` install the same files, so never install both. A
+pip upgrade from a comicbox that used `pymupdf` leaves it behind. Remove it and
+reinstall `pymupdf-lite`:
 
 ```sh
-PYMUPDF_SETUP_PY_LIMITED_API=0 pip install comicbox[pdf]
+pip uninstall -y pymupdf
+pip install --force-reinstall pymupdf-lite
 ```
 
-You will also need the `build-essential` and `python3-dev` (or equivalent)
-packages.
+To use the full `pymupdf` instead, see
+[PDFFile's README](https://github.com/ajslater/pdffile#full-pymupdf).
 
 ## ⌨️ Command Line
 
