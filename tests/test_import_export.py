@@ -430,7 +430,7 @@ FNS = MappingProxyType(
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
-        "metroninfo-v1.1-valid.xml": {
+        "metroninfo-v1.2-valid.xml": {
             "age_rating": "Everyone",
             "arcs": {
                 "Origin": {

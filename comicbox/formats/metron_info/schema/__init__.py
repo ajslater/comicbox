@@ -1,6 +1,6 @@
 """A class to encapsulate Metron's MetronInfo.xml data."""
 
-# https://metron-project.github.io/docs/metroninfo/schemas/v1.1
+# https://metron-project.github.io/docs/metroninfo/schemas/v1.2
 from decimal import Decimal
 from types import MappingProxyType
 
@@ -135,8 +135,8 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
         """Schema Options."""
 
         NS = "metroninfo"
-        NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.1"
-        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd"
+        NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.2"
+        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.2/MetronInfo.xsd"
 
         include = create_xml_headers(NS, NS_URI, XSD_URI)
 
