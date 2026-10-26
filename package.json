@@ -79,7 +79,7 @@
     "eslint-plugin-yml": "^3.9.0",
     "prettier": "^3.9.10",
     "prettier-plugin-nginx": "^2.0.0",
-    "prettier-plugin-packagejson": "^3.0.2",
+    "prettier-plugin-packagejson": "^3.0.3",
     "prettier-plugin-toml": "^4.1.0"
   }
 }
