@@ -27,7 +27,8 @@
     - No longer requires keyring.
     - PDF support requires comicbox-pdffile 1.1, which uses pymupdf-lite. pip
       users: uninstall pymupdf, then reinstall pymupdf-lite. `comicbox doctor`
-      warns if both are installed.
+      warns if both are installed. If you override the dependency for full
+      pypmupdf, comicbox will work.
 
 ## v5.4.0
 
