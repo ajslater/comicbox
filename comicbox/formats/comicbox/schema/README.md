@@ -37,3 +37,10 @@ are unique to one format.
 
 - ext
 - remainders
+
+## Language tags
+
+`language`, `series.alternative_names[].language` and `reprints[].language` are
+BCP 47 language tags like `en`, `fil`, `pt-BR` or `zh-Hant`. The primary
+language is the shortest ISO 639 code pycountry knows; the other subtags are
+kept and recased per RFC 5646.

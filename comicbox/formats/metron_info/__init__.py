@@ -23,5 +23,5 @@ REGISTRATION = FormatRegistration(
             "API": 3,
         }
     ),
-    validator_spec=ValidatorSpec(ValidatorType.XML, "MetronInfo-v1.1.xsd"),
+    validator_spec=ValidatorSpec(ValidatorType.XML, "MetronInfo-v1.2.xsd"),
 )

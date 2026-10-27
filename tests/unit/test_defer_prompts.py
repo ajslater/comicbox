@@ -21,7 +21,7 @@ from comicbox.online_session import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-VALID = OnlineCredentials(metron_user="u", metron_password="p")
+VALID = OnlineCredentials(metron_key="k")
 
 
 def _ctx(

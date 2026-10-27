@@ -118,23 +118,18 @@ class OnlineSourceCredentials:
     """
     Resolved credentials for one online source.
 
-    Field membership is per-source: Metron uses ``key`` (API token) or
-    ``user``/``password``, plus ``url``; ComicVine uses ``key``/``url``.
-    The source's ``is_configured()`` decides which fields are required.
+    Both sources take an API ``key`` and an optional ``url``. The
+    source's ``is_configured()`` decides which fields are required.
     """
 
-    user: str | None = None
-    password: str | None = None
     key: str | None = None
     url: str | None = None
 
     @override
     def __repr__(self) -> str:
-        """Redact secret-bearing fields so this object is log-safe."""
+        """Redact the key so this object is log-safe."""
         return (
             "OnlineSourceCredentials("
-            f"user={self.user!r}, "
-            f"password={'***' if self.password else None}, "
             f"key={'***' if self.key else None}, "
             f"url={self.url!r})"
         )

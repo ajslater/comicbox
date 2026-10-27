@@ -10,7 +10,7 @@ from dateutil.tz.tz import tzoffset
 
 from comicbox.box import Comicbox
 from comicbox.box.validate.guess_format import guess_format
-from comicbox.enums.comicbox import ReadingDirectionEnum
+from comicbox.enums.comicbox import ReadingDirectionEnum, SeriesStatusEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from tests.const import TEST_METADATA_DIR
 from tests.util import assert_diff, compare_export, get_tmp_dir
@@ -402,6 +402,7 @@ FNS = MappingProxyType(
                     {"name": "Captain Science Alternate"},
                     {"language": "es", "name": "Capitán Ciencia"},
                 ],
+                "end_year": 1952,
                 "identifiers": {
                     "metron": {
                         "key": "2222",
@@ -410,6 +411,8 @@ FNS = MappingProxyType(
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
                 "start_year": 1950,
+                "status": SeriesStatusEnum.COMPLETED,
+                "summary": "Captain Science and his young allies defend the Earth from alien invaders.",
                 "volume_count": 1,
             },
             "stories": {
@@ -430,7 +433,7 @@ FNS = MappingProxyType(
             "volume": {"issue_count": 10, "number": 1950, "number_to": 1952},
         },
         # https://github.com/Metron-Project/metroninfo/blob/master/tests/test_files/v1.0/valid.xml
-        "metroninfo-v1.1-valid.xml": {
+        "metroninfo-v1.2-valid.xml": {
             "age_rating": "Everyone",
             "arcs": {
                 "Origin": {
@@ -596,6 +599,7 @@ FNS = MappingProxyType(
                     {"name": "Foo"},
                     {"language": "de", "name": "Hüsker Dü"},
                 ],
+                "end_year": 1975,
                 "identifiers": {
                     "metron": {
                         "key": "65478",
@@ -604,6 +608,8 @@ FNS = MappingProxyType(
                 "name": "Justice League",
                 "sort_name": "Justice League",
                 "start_year": 1970,
+                "status": SeriesStatusEnum.COMPLETED,
+                "summary": "A team of heroes defends the Earth.",
                 "volume_count": 3,
             },
             "stories": {

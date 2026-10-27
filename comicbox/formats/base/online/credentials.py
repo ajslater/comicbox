@@ -6,8 +6,6 @@ Resolution order, per (source, field):
 1. CLI override via ``--auth <source>:<field>=<value>``.
 2. The confuse ``online.auth.<source>.*`` block, which already layers
    env vars (``COMICBOX_ONLINE__AUTH__METRON__KEY``) over config files.
-3. Keyring lookup (passwords only, optional dependency, never written by
-   comicbox).
 
 Outputs an `OnlineSourceCredentials` instance per source. A source is
 "configured" iff its required fields resolve to non-null values; that
@@ -18,8 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from loguru import logger
-
 from comicbox.config.online.settings import OnlineSourceCredentials
 from comicbox.formats.base.online import SOURCE_NAMES
 
@@ -28,29 +24,7 @@ if TYPE_CHECKING:
 
     from comicbox.formats.base.online.cli_overrides import CliOverrides
 
-_FIELDS = ("user", "pass", "key", "url")
-_PW = "pass"
-
-
-def _try_keyring(source: str, username: str | None) -> str | None:
-    """
-    Look up a password in the system keyring.
-
-    Returns None if `keyring` isn't installed or the entry isn't set.
-    Never writes to the keyring; users manage entries out-of-band.
-    """
-    if not username:
-        return None
-    try:
-        import keyring
-    except ImportError:
-        return None
-    service = f"comicbox-{source}"
-    try:
-        return keyring.get_password(service, username)
-    except Exception as exc:
-        logger.debug(f"keyring lookup failed for {service}/{username}: {exc}")
-        return None
+_FIELDS = ("key", "url")
 
 
 def _coalesce(*values: str | None) -> str | None:
@@ -64,8 +38,6 @@ def _coalesce(*values: str | None) -> str | None:
 def resolve_credentials(
     config_creds: Mapping[str, Mapping[str, Any]],
     cli_overrides: CliOverrides | None = None,
-    *,
-    use_keyring: bool = True,
 ) -> dict[str, OnlineSourceCredentials]:
     """
     Build the resolved per-source credentials map.
@@ -83,20 +55,10 @@ def resolve_credentials(
         config_block = dict(config_creds.get(source) or {})
         cli_block = dict(cli_creds.get(source) or {})
 
-        values: dict[str, str | None] = {
-            field: _coalesce(cli_block.get(field), config_block.get(field))
-            for field in _FIELDS
-        }
-
-        if use_keyring and not values[_PW] and (username := values["user"]):
-            values[_PW] = _try_keyring(source, username)
-
-        # OnlineSourceCredentials uses ``password`` for the keyword name;
-        # the YAML/env field name is ``pass`` to match the user-facing surface.
         resolved[source] = OnlineSourceCredentials(
-            user=values["user"],
-            password=values["pass"],
-            key=values["key"],
-            url=values["url"],
+            **{
+                field: _coalesce(cli_block.get(field), config_block.get(field))
+                for field in _FIELDS
+            }
         )
     return resolved

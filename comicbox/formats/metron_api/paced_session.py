@@ -237,10 +237,9 @@ def build_paced_session(gate: RateGate, **session_kwargs: Any) -> Session:
     Build a mokkari Session paced by ``gate`` and observed for telemetry.
 
     `mokkari.api()` is usable again now that no subclass is needed. Its
-    keyword set is ``username``, ``passwd``, ``cache``, ``user_agent``,
-    ``dev_mode``, ``api_token``, ``rate_limiter``. Since 4.10 it warns
-    whenever ``username`` or ``passwd`` is passed, and 5.0 removes both,
-    so callers pass either ``api_token`` or the pair, never all three.
+    keyword set is ``api_token``, ``cache``, ``user_agent``, ``dev_mode``
+    and ``rate_limiter``; the token is the only credential mokkari 5.0
+    takes.
     """
     session = mokkari.api(rate_limiter=GateRateLimiter(gate), **session_kwargs)
     install_response_observer(session, gate)

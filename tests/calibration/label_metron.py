@@ -101,7 +101,7 @@ def _build_metron_source() -> MetronOnlineSource:
         raise RuntimeError(msg)
     source = MetronOnlineSource(creds, online)
     if not source.is_configured():
-        msg = "Metron credentials incomplete (need an API token or username + password)"
+        msg = "Metron credentials incomplete (need an API token)"
         raise RuntimeError(msg)
     return source
 

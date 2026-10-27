@@ -1,5 +1,33 @@
 # 📰 News
 
+## v5.5.0
+
+- Breaking Changes
+    - Metron authenticates only with an API token; username, password and
+      keyring support are gone.
+    - `OnlineCredentials` drops `metron_user` and `metron_password`.
+    - MetronInfo.xml is written as v1.2 instead of v1.1.
+- Features
+    - MetronInfo v1.2: series end year, status and summary.
+- Fixes
+    - Languages with a region or script, like `pt-BR` or `zh-Hant`, are no
+      longer dropped.
+    - `--cache refresh` no longer breaks another program sharing the Metron
+      cache.
+    - Corrupt Metron cache files are rebuilt; ones from a newer mokkari are left
+      alone.
+    - Metron honors a `--cache-ttl` under a day, and empty search results expire
+      within a day.
+    - mokkari log messages follow comicbox's log level and format.
+    - Reading pages from some PDFs no longer hangs or errors.
+- Dependencies
+    - Requires mokkari 5.0. The Metron cache starts empty on the first run.
+    - No longer requires keyring.
+    - PDF support requires comicbox-pdffile 1.1, which uses pymupdf-lite. pip
+      users: uninstall pymupdf, then reinstall pymupdf-lite. `comicbox doctor`
+      warns if both are installed. If you override the dependency for full
+      pymupdf, comicbox will work.
+
 ## v5.4.0
 
 - Features

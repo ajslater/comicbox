@@ -1,5 +1,6 @@
 """MetronInfo Fields."""
 
+from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.enums.maps.age_rating import METRON_AGE_RATING_MAP
 from comicbox.enums.maps.formats import METRON_FORMAT_MAP
 from comicbox.enums.metroninfo import (
@@ -40,3 +41,9 @@ class MetronFormatField(XmlEnumField):
 
     ENUM = MetronFormatEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
     ENUM_ALIAS_MAP = METRON_FORMAT_MAP
+
+
+class MetronSeriesStatusField(XmlEnumField):
+    """Metron Series Status Field."""
+
+    ENUM = SeriesStatusEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]

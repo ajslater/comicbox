@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.1" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.1 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.1/MetronInfo.xsd">
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.2" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd">
 	<AgeRating>Everyone</AgeRating>
 	<Arcs>
 		<Arc id="78945">
@@ -132,11 +132,14 @@
 			<AlternativeName>Foo</AlternativeName>
 			<AlternativeName lang="de">Hüsker Dü</AlternativeName>
 		</AlternativeNames>
+		<EndYear>1975</EndYear>
 		<Format>Single Issue</Format>
 		<IssueCount>60</IssueCount>
 		<Name>Justice League</Name>
 		<SortName>Justice League</SortName>
 		<StartYear>1970</StartYear>
+		<Status>Completed</Status>
+		<Summary>A team of heroes defends the Earth.</Summary>
 		<Volume>2</Volume>
 		<VolumeCount>3</VolumeCount>
 	</Series>

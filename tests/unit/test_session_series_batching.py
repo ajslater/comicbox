@@ -7,7 +7,7 @@ from pathlib import Path
 from comicbox.formats.base.online.series_cache import filename_series_fingerprint
 from comicbox.online_session import OnlineCredentials, OnlineSession
 
-VALID = OnlineCredentials(metron_user="u", metron_password="p")
+VALID = OnlineCredentials(metron_key="k")
 
 
 # --- filename fingerprint ---------------------------------------------------

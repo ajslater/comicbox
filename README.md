@@ -52,7 +52,7 @@ schema:
 | Format                                                                                     | Read | Write | Notes                                    |
 | ------------------------------------------------------------------------------------------ | :--: | :---: | ---------------------------------------- |
 | [ComicInfo.xml](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1) (ComicRack)  |  ✅  |  ✅   | v2.1 (draft) schema                      |
-| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.1 schema                              |
+| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.2 schema                              |
 | [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/) (Comic Book Lover)       |  ✅  |  ✅   | archive comment JSON                     |
 | [CoMet](https://github.com/wdhongtw/comet-utils)                                           |  ✅  |  ✅   |                                          |
 | [PDF metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data) |  ✅  |  ✅   | can embed ComicInfo.xml / MetronInfo.xml |
@@ -108,12 +108,11 @@ comicbox --online all --recurse --prompts never -j 4 ./comics/
 `thorough`) trades matching accuracy for fewer API calls on fan-out sources like
 ComicVine — Metron doesn't fan out, so it ignores effort and always searches at
 full strength. Credentials come from `--auth`, `COMICBOX_*` environment
-variables, the config file, or your system keyring. Metron authenticates with an
-API token generated on your metron.cloud account page — pass it as
-`--auth metron:TOKEN` or `COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes
-its key the same way, as `--auth comicvine:KEY`. A Metron username and password
-still work but are deprecated and will be removed in a future release. See
-`comicbox -h` for the full set of online, caching, and tuning options.
+variables, or the config file. Metron authenticates with an API token generated
+on your metron.cloud account page — pass it as `--auth metron:TOKEN` or
+`COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes its key the same way, as
+`--auth comicvine:KEY`. See `comicbox -h` for the full set of online, caching,
+and tuning options.
 
 ### 🖼️ Pages, Covers & Conversion
 
@@ -156,21 +155,23 @@ all, and 7-Zip builds without the RAR codec can't either. `comicbox doctor` says
 whether this host can read CBRs.
 
 The optional PDF extra pulls in
-[pymupdf](https://pymupdf.readthedocs.io/en/latest/installation.html), which
-ships wheels with a bundled libmupdf for most platforms. Some platforms (e.g.
-Linux on ARM) may need `libstdc++` plus C/C++ build tools to compile it.
+[pymupdf-lite](https://pypi.org/project/pymupdf-lite/), PyMuPDF without its
+layout-analysis engine. It ships wheels with a bundled libmupdf for glibc Linux
+on x86_64 and aarch64, musl Linux on x86_64, macOS, and Windows. Anywhere else
+pip compiles it, which needs a C/C++ toolchain; see the
+[PyMuPDF installation docs](https://pymupdf.readthedocs.io/en/latest/installation.html).
 
-#### Installing on ARM (AARCH64)
-
-pymupdf has no pre-built AARCH64 wheels, so pip must build it. On some Python
-versions the build fails unless this environment variable is set:
+`pymupdf` and `pymupdf-lite` install the same files, so never install both. A
+pip upgrade from a comicbox that used `pymupdf` leaves it behind. Remove it and
+reinstall `pymupdf-lite`:
 
 ```sh
-PYMUPDF_SETUP_PY_LIMITED_API=0 pip install comicbox[pdf]
+pip uninstall -y pymupdf
+pip install --force-reinstall pymupdf-lite
 ```
 
-You will also need the `build-essential` and `python3-dev` (or equivalent)
-packages.
+To use the full `pymupdf` instead, see
+[PDFFile's README](https://github.com/ajslater/pdffile#full-pymupdf).
 
 ## ⌨️ Command Line
 
@@ -340,9 +341,8 @@ comicbox doctor -q
 comicbox doctor --online all
 ```
 
-Credentials are reported by where they came from (`--auth`, an env var, a config
-file, or the keyring), never by value, so the report is safe to paste into a bug
-report.
+Credentials are reported by where they came from (`--auth`, an env var, or a
+config file), never by value, so the report is safe to paste into a bug report.
 
 ## 📦 Related Packages
 

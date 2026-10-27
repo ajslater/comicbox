@@ -12,20 +12,20 @@ comic library.
 
 ## Setup
 
-1. **Credentials.** Configure Metron (username + password) and/or ComicVine
-   (api_key). Easiest is `~/.config/comicbox/config.yaml`:
+1. **Credentials.** Configure a Metron API token and/or a ComicVine API key.
+   Easiest is `~/.config/comicbox/config.yaml`:
 
     ```yaml
     comicbox:
         online:
-            metron:
-                username: your_metron_user
-                password: your_metron_password
-            comicvine:
-                api_key: your_cv_api_key
+            auth:
+                metron:
+                    key: your_metron_api_token
+                comicvine:
+                    key: your_cv_api_key
     ```
 
-    Or set env vars (`COMICBOX_ONLINE__AUTH__METRON__USER`, etc.).
+    Or set env vars (`COMICBOX_ONLINE__AUTH__METRON__KEY`, etc.).
 
 2. Build a fixtures.json.
 

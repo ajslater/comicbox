@@ -12,7 +12,6 @@ exception: they stay flat and are consumed by ``runtime_online_inputs`` /
 dynamically keyed maps that a fixed template can't express.
 """
 
-import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
@@ -32,9 +31,6 @@ from comicbox.config.settings import MergeMode
 
 if TYPE_CHECKING:
     from rich.console import Group
-
-# Tracks one-shot stderr warnings so we don't spam users on repeated flag use.
-_WARNED_FLAGS: set[str] = set()
 
 # Dests that deliberately do not name a config template path. Everything
 # else must, and the dest drift test enforces it.
@@ -138,51 +134,6 @@ class PageRangeAction(Action):
             setattr(namespace, "convert.extract_pages_from", index_from)
         if index_to is not None:
             setattr(namespace, "convert.extract_pages_to", index_to)
-
-
-def _warn_once(key: str, message: str) -> None:
-    if key in _WARNED_FLAGS:
-        return
-    _WARNED_FLAGS.add(key)
-    sys.stderr.write(message + "\n")
-
-
-class AuthAction(Action):
-    """
-    Append ``--auth`` values; warn when a ``pass`` field leaks into shell history.
-
-    Collects raw entries only; all syntax validation (known source, known
-    field, empty value) happens in ``CliOverrides.from_auth_list`` so
-    callers using the API see the same error surface.
-    """
-
-    @override
-    def __call__(
-        self,
-        parser: ArgumentParser,
-        namespace: Namespace,
-        values: str | Sequence[Any] | None,
-        option_string: str | None = None,
-    ) -> None:
-        items = list(getattr(namespace, self.dest, None) or [])
-        raw_entries: list[str] = []
-        if isinstance(values, str):
-            raw_entries.append(values)
-        elif isinstance(values, Sequence):
-            raw_entries.extend(values)
-        for raw in raw_entries:
-            head, _, _ = raw.partition("=")
-            _, _, cred_field = head.partition(":")
-            if cred_field.strip().lower() == "pass":
-                _warn_once(
-                    "auth_pass",
-                    (
-                        "warning: --auth <source>:pass=... leaks into shell history; "
-                        "prefer COMICBOX_ONLINE__AUTH__<SOURCE>__PASS or keyring"
-                    ),
-                )
-            items.append(raw)
-        setattr(namespace, self.dest, items)
 
 
 def _add_general_group(parser: ArgumentParser) -> None:
@@ -583,7 +534,7 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
     group.add_argument(
         "-a",
         "--auth",
-        action=AuthAction,
+        action="append",
         default=None,
         metavar="SRC:TOKEN",
         dest="auth",
@@ -591,11 +542,9 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
             "Per-source API token. Repeatable. Examples: "
             "[green]--auth metron:TOKEN[/green], "
             "[green]--auth comicvine:TOKEN[/green]. "
-            "Other fields take a name: [green]comicvine:url=URL[/green] overrides "
-            "the ComicVine API endpoint; Metron's deprecated "
-            "[green]metron:user=NAME[/green] and [green]metron:pass=PASS[/green] "
-            "(warns: leaks into shell history) still work, but prefer a token. "
-            "Use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__<FIELD>[/cyan] "
+            "[green]comicvine:url=URL[/green] overrides the ComicVine API "
+            "endpoint. A token on the command line lands in shell history; "
+            "use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__KEY[/cyan] "
             "env vars where possible."
         ),
     )

@@ -14,12 +14,14 @@ from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pymupdf
 import pytest
 import rarfile
 
 from comicbox import _pdf, _rar
 from comicbox.doctor import archives
 from comicbox.doctor.context import DoctorContext
+from comicbox.doctor.packages import dist_version
 from comicbox.doctor.result import Status
 
 if TYPE_CHECKING:
@@ -222,10 +224,21 @@ def test_pdf_absent_is_off(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_pdf_installed_is_ok() -> None:
+    """The PyMuPDF version comes from the module: pymupdf-lite provides it."""
     row = _one(archives.check_pdf)
     assert row.status is Status.OK
     assert str(row.found).startswith("comicbox-pdffile ")
-    assert "MuPDF" in row.detail
+    assert row.detail.startswith(f"PyMuPDF {pymupdf.VersionBind} · MuPDF ")
+
+
+def test_pdf_both_pymupdf_dists_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A pip upgrade leaves pymupdf behind alongside pymupdf-lite."""
+    monkeypatch.setattr(
+        archives, "dist_version", lambda name: dist_version(name) or "1.28.2"
+    )
+    rows = _rows(archives.check_pdf)
+    assert [row.status for row in rows] == [Status.WARN, Status.OK]
+    assert rows[0].fix.startswith("pip uninstall -y pymupdf && ")
 
 
 def test_pdf_wrong_version(monkeypatch: pytest.MonkeyPatch) -> None:
