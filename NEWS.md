@@ -6,17 +6,12 @@
     - Metron authenticates only with an API token; username, password and
       keyring support are gone.
     - `OnlineCredentials` drops `metron_user` and `metron_password`.
-    - MetronInfo.xml is written with the v1.2 schema. A language with a region
-      or script subtag, like `pt-BR`, is not valid v1.1.
+    - MetronInfo.xml is written as v1.2 instead of v1.1.
 - Features
-    - MetronInfo v1.2 schema support.
-    - Languages are BCP 47 tags, like `pt-BR`, `zh-Hant` or `fil`, and are kept
-      whole in every format. They used to be dropped if they weren't a plain
-      language code or name. ComicBookInfo gets the language's name.
-    - MetronInfo.xml carries the series end year, status and summary (v1.2). An
-      end year that contradicts the status or start year is left out of the file
-      with a warning.
+    - MetronInfo v1.2: series end year, status and summary.
 - Fixes
+    - Languages with a region or script, like `pt-BR` or `zh-Hant`, are no
+      longer dropped.
     - `--cache refresh` no longer breaks another program sharing the Metron
       cache.
     - Corrupt Metron cache files are rebuilt; ones from a newer mokkari are left
