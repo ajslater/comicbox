@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.2" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.2/MetronInfo.xsd">
+<MetronInfo xmlns:metroninfo="https://metron-project.github.io/docs/metroninfo/schemas/v1.2" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd">
 	<AgeRating>Teen Plus</AgeRating>
 	<AlternativeNumber>2</AlternativeNumber>
 	<Arcs>
@@ -70,11 +70,14 @@
 			<AlternativeName lang="es">Capitán Ciencia</AlternativeName>
 			<AlternativeName>Captain Science Alternate</AlternativeName>
 		</AlternativeNames>
+		<EndYear>1952</EndYear>
 		<Format>Single Issue</Format>
 		<IssueCount>10</IssueCount>
 		<Name>Captain Science</Name>
 		<SortName>Captain Science</SortName>
 		<StartYear>1950</StartYear>
+		<Status>Completed</Status>
+		<Summary>Captain Science and his young allies defend the Earth from alien invaders.</Summary>
 		<Volume>1950</Volume>
 		<VolumeCount>1</VolumeCount>
 	</Series>

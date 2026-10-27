@@ -34,7 +34,7 @@ values.
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-## MetronInfo Schema v1.2 Draft
+## MetronInfo Schema v1.2
 
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
@@ -80,7 +80,7 @@ alternative name is a name rather than a series and implies no type of its own.
 
 ### Metron Language Tags
 
-The v1.2 draft widens `Series@lang` and `AlternativeName@lang` from two-letter
+Version 1.2 widens `Series@lang` and `AlternativeName@lang` from two-letter
 codes to BCP 47 language tags like `pt-BR`, `zh-Hant` or `fil`. Comicbox keeps
 the whole tag in `language`, `series.alternative_names[].language` and
 `reprints[].language`, whichever format it came from:
@@ -98,8 +98,21 @@ MetronInfo, ComicInfo LanguageISO and CoMet language are written with the full
 tag. ComicBookInfo stores a language name, so it gets the primary language's
 name: `pt-BR` is written as `Portuguese`.
 
-MetronInfo.xml written by comicbox declares the v1.2 draft schema. A file with a
+MetronInfo.xml written by comicbox declares the v1.2 schema. A file with a
 region or script subtag in a language is not valid v1.1.
+
+### Metron Series EndYear, Status and Summary
+
+Version 1.2 adds Series/EndYear, Series/Status and Series/Summary, which map to
+`series.end_year`, `series.status` and `series.summary`. Status is one of
+`Ongoing`, `Cancelled`, `Completed` or `Hiatus`. Comicbox reads it in any case
+and writes the label as listed; any other value is dropped with a warning. A
+year with a timezone, like `1975+05:00`, reads as its year.
+
+It also adds two rules: EndYear can't precede StartYear, and an Ongoing series
+has no EndYear. Metadata merged from several sources can break either, so
+comicbox leaves EndYear out of the MetronInfo.xml it writes, with a warning that
+says why, and keeps the end year in comicbox.json and comicbox.yaml.
 
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 
@@ -180,8 +193,8 @@ fields ignored.
 of `Ongoing`, `Cancelled`, `Completed` or `Hiatus`, and `series.summary`
 describes the whole series rather than the issue. Online tagging fills them:
 Metron supplies all four, Comic Vine the start year and summary. MetronInfo
-keeps the start year as Series/StartYear; only comicbox.json and comicbox.yaml
-keep the end year, status and summary.
+keeps all four in Series; no other file format keeps the end year, status or
+summary.
 
 #### Comicbox JSON Format
 

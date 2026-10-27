@@ -12,6 +12,7 @@ from glom import Assign, glom
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.xml_schemas import XML_UNPARSE_ARGS
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
@@ -128,6 +129,7 @@ READ_METADATA = MappingProxyType(
                     {"name": "Captain Science Alternate"},
                     {"language": "es", "name": "Capitán Ciencia"},
                 ],
+                "end_year": 1952,
                 "identifiers": {
                     "metron": {
                         "key": "2222",
@@ -136,6 +138,8 @@ READ_METADATA = MappingProxyType(
                 "name": "Captain Science",
                 "sort_name": "Captain Science",
                 "start_year": 1950,
+                "status": SeriesStatusEnum.COMPLETED,
+                "summary": "Captain Science and his young allies defend the Earth from alien invaders.",
                 "volume_count": 1,
             },
             "stories": {
@@ -180,7 +184,7 @@ READ_METRON_DICT = MappingProxyType(
             "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.2/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd",
             "AgeRating": "Teen Plus",
             "AlternativeNumber": "2",
             "Arcs": {
@@ -252,11 +256,14 @@ READ_METRON_DICT = MappingProxyType(
                         {"#text": "Captain Science Alternate"},
                     ]
                 },
+                "EndYear": 1952,
                 "Format": "Single Issue",
                 "IssueCount": 10,
                 "Name": "Captain Science",
                 "SortName": "Captain Science",
                 "StartYear": 1950,
+                "Status": "Completed",
+                "Summary": "Captain Science and his young allies defend the Earth from alien invaders.",
                 "Volume": 1950,
                 "VolumeCount": 1,
             },
@@ -359,11 +366,14 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
                         {"#text": "Captain Science Alternate"},
                     ]
                 },
+                "EndYear": 1952,
                 "Format": "Single Issue",
                 "IssueCount": 10,
                 "Name": "Captain Science",
                 "SortName": "Captain Science",
                 "StartYear": 1950,
+                "Status": "Completed",
+                "Summary": "Captain Science and his young allies defend the Earth from alien invaders.",
                 "Volume": 1950,
                 "VolumeCount": 1,
             },
@@ -478,7 +488,7 @@ URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
             "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.2/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd",
             "URLs": {
                 "URL": [
                     {"#text": "https://barcodelookup.com/12345"},

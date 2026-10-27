@@ -32,11 +32,11 @@ class SeriesSchema(IdentifiedNameSchema):
     alternative_names = ListField(  # Metron ONLY
         Nested(AlternativeNameSchema), sort_keys=("language", "name")
     )
-    end_year = IntegerField()  # Metron API ONLY
+    end_year = IntegerField()  # Metron, Metron API
     sort_name = StringField()  # Metron ONLY
     start_year = IntegerField()  # Metron, ComicVine API
-    status = SeriesStatusField()  # Metron API ONLY
-    summary = StringField()  # Metron API, ComicVine API
+    status = SeriesStatusField()  # Metron, Metron API
+    summary = StringField()  # Metron, Metron API, ComicVine API
     volume_count = IntegerField(minimum=0)  # CBI, CT, Metron
 
 

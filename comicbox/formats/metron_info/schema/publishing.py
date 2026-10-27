@@ -9,6 +9,7 @@ from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.metroninfo import (
     MetronFormatField,
     MetronIDAttrField,
+    MetronSeriesStatusField,
 )
 from comicbox.formats.base.fields.number_fields import IntegerField
 from comicbox.formats.base.fields.pycountry import LanguageField
@@ -68,6 +69,9 @@ class MetronSeriesSchema(MetronIdentifiedNameSchema):
     VolumeCount = IntegerField(minimum=0)
     Format = MetronFormatField()
     StartYear = IntegerField(minimum=1000, maximum=9999)
+    EndYear = IntegerField(minimum=1000, maximum=9999)
+    Status = MetronSeriesStatusField()
+    Summary = XmlStringField()
     AlternativeNames = create_sub_tag_field(
         "AlternativeName",
         # lang defaults to en in the schema, so a name with no attributes is
