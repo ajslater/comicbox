@@ -4,7 +4,9 @@ from types import MappingProxyType
 from typing import Any
 
 from bidict import frozenbidict
+from loguru import logger
 
+from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.base.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
 from comicbox.formats.base.transforms.spec import MetaSpec
@@ -17,9 +19,12 @@ from comicbox.formats.comicbox.schema import (
     NUMBER_KEY,
     ORIGINAL_FORMAT_KEY,
     PUBLISHER_KEY,
+    SERIES_END_YEAR_KEY,
     SERIES_KEY,
     SERIES_SORT_NAME_KEY,
     SERIES_START_YEAR_KEY,
+    SERIES_STATUS_KEY,
+    SERIES_SUMMARY_KEY,
     VOLUME_COUNT_KEY,
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
@@ -47,13 +52,19 @@ FORMAT_TAGPATH = f"{SERIES_TAG}.Format"
 IMPRINT_TAGPATH = f"{PUBLISHER_TAG}.{IMPRINT_TAG}"
 SERIES_ID_TAGPATH = f"{SERIES_TAG}.{ID_ATTRIBUTE}"
 SERIES_IDENTIFIER_KEYPATH = f"{SERIES_KEY}.{IDENTIFIERS_KEY}"
+END_YEAR_TAGPATH = f"{SERIES_TAG}.EndYear"
+SERIES_END_YEAR_KEYPATH = f"{SERIES_KEY}.{SERIES_END_YEAR_KEY}"
+SERIES_START_YEAR_KEYPATH = f"{SERIES_KEY}.{SERIES_START_YEAR_KEY}"
+SERIES_STATUS_KEYPATH = f"{SERIES_KEY}.{SERIES_STATUS_KEY}"
 SERIES_KEY_MAP_TO = frozenbidict(
     {
         LANGUAGE_KEY: LANGUAGE_TAGPATH,
         ORIGINAL_FORMAT_KEY: FORMAT_TAGPATH,
         f"{SERIES_KEY}.{NAME_KEY}": f"{SERIES_TAG}.Name",
         f"{SERIES_KEY}.{SERIES_SORT_NAME_KEY}": f"{SERIES_TAG}.SortName",
-        f"{SERIES_KEY}.{SERIES_START_YEAR_KEY}": f"{SERIES_TAG}.StartYear",
+        SERIES_START_YEAR_KEYPATH: f"{SERIES_TAG}.StartYear",
+        SERIES_STATUS_KEYPATH: f"{SERIES_TAG}.Status",
+        f"{SERIES_KEY}.{SERIES_SUMMARY_KEY}": f"{SERIES_TAG}.Summary",
         f"{SERIES_KEY}.{VOLUME_COUNT_KEY}": f"{SERIES_TAG}.VolumeCount",
     }
 )
@@ -139,8 +150,50 @@ METRON_IMPRINT_TRANSFORM_TO_CB = MetaSpec(
     spec=_imprint_to_cb,
 )
 
-METRON_SERIES_TRANSFORM_TO_CB = MetaSpec(key_map=SERIES_KEY_MAP_TO)
+# EndYear is read here but written by METRON_SERIES_END_YEAR_TRANSFORM_FROM_CB.
+# Keep it out of SERIES_KEY_MAP_TO, whose inverse would write it unguarded.
+METRON_SERIES_TRANSFORM_TO_CB = MetaSpec(
+    key_map=MappingProxyType(
+        {**SERIES_KEY_MAP_TO, SERIES_END_YEAR_KEYPATH: END_YEAR_TAGPATH}
+    )
+)
 METRON_SERIES_TRANSFORM_FROM_CB = MetaSpec(key_map=SERIES_KEY_MAP_FROM)
+
+
+def _end_year_from_cb(values: dict[str, Any]) -> int | None:
+    """
+    Write EndYear only where the v1.2 schema's assertions allow it.
+
+    Merged sources can pair an end year with an Ongoing status or a later
+    start year. Those are MetronInfo rules, so the end year is left out of
+    this file and kept in the native metadata.
+    """
+    end_year = values.get(SERIES_END_YEAR_KEYPATH)
+    if end_year is None:
+        return None
+    reason = ""
+    if values.get(SERIES_STATUS_KEYPATH) == SeriesStatusEnum.ONGOING:
+        reason = "the series is Ongoing"
+    elif (
+        start_year := values.get(SERIES_START_YEAR_KEYPATH)
+    ) and end_year < start_year:
+        reason = f"it precedes StartYear {start_year}"
+    if reason:
+        logger.warning(f"MetronInfo: not writing Series EndYear {end_year}: {reason}.")
+        return None
+    return end_year
+
+
+METRON_SERIES_END_YEAR_TRANSFORM_FROM_CB = MetaSpec(
+    key_map={
+        END_YEAR_TAGPATH: (
+            SERIES_END_YEAR_KEYPATH,
+            SERIES_START_YEAR_KEYPATH,
+            SERIES_STATUS_KEYPATH,
+        )
+    },
+    spec=_end_year_from_cb,
+)
 
 
 def _series_id_to_cb(values: dict[str, Any]) -> None:

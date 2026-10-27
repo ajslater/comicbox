@@ -45,9 +45,9 @@ comic book metadata formats.
 | series                   | Series                                                                                   | Series                     | series, numberOfVolumes                                                   | series            |
 | series.alternative_names |                                                                                          | Series.AlternativeNames    |
 | series.start_year        |                                                                                          | Series.StartYear           |
-| series.end_year          |
-| series.status            |
-| series.summary           |
+| series.end_year          |                                                                                          | Series.EndYear             |
+| series.status            |                                                                                          | Series.Status              |
+| series.summary           |                                                                                          | Series.Summary             |
 | title                    | Title                                                                                    | Stories                    | title                                                                     | title             |
 | series_groups            |
 | stories                  | Title                                                                                    | Stories                    | title                                                                     | title             |

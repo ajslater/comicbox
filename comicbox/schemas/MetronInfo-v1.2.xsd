@@ -97,12 +97,21 @@
             <xs:element name="Volume" type="xs:nonNegativeInteger" minOccurs="0" />
             <xs:element name="Format" type="formatType" minOccurs="0" />
             <xs:element name="StartYear" type="xs:gYear" minOccurs="0" />
+            <xs:element name="EndYear" type="xs:gYear" minOccurs="0" />
+            <xs:element name="Status" type="seriesStatusType" minOccurs="0" />
             <xs:element name="IssueCount" type="xs:positiveInteger" minOccurs="0" />
             <xs:element name="VolumeCount" type="xs:positiveInteger" minOccurs="0" />
             <xs:element name="AlternativeNames" type="alternativeNameType" minOccurs="0" />
+            <xs:element name="Summary" type="xs:string" minOccurs="0" />
         </xs:all>
         <xs:attribute name="lang" type="languageCode" default="en" />
         <xs:attribute name="id" type="xs:string" />
+        <!-- EndYear can't precede StartYear. replace() strips the optional gYear timezone so the years cast to integers. -->
+        <xs:assert test="not(StartYear and EndYear) or
+            xs:integer(replace(string(EndYear), '(Z|[+\-]\d{2}:\d{2})$', '')) ge
+            xs:integer(replace(string(StartYear), '(Z|[+\-]\d{2}:\d{2})$', ''))" />
+        <!-- An ongoing series has no EndYear. -->
+        <xs:assert test="not(Status = 'Ongoing' and EndYear)" />
     </xs:complexType>
 
     <xs:complexType name="alternativeNameType">
@@ -252,6 +261,15 @@
             <xs:enumeration value="One-Shot" />
             <xs:enumeration value="Single Issue" /> <!-- Used for Ongoing/Cancelled series -->
             <xs:enumeration value="Trade Paperback" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="seriesStatusType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Cancelled" />
+            <xs:enumeration value="Completed" />
+            <xs:enumeration value="Hiatus" />
+            <xs:enumeration value="Ongoing" />
         </xs:restriction>
     </xs:simpleType>
 

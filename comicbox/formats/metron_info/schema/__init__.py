@@ -136,7 +136,7 @@ class MetronInfoSubSchema(XmlSubHeadSchema):
 
         NS = "metroninfo"
         NS_URI = "https://metron-project.github.io/docs/metroninfo/schemas/v1.2"
-        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.2/MetronInfo.xsd"
+        XSD_URI = "https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd"
 
         include = create_xml_headers(NS, NS_URI, XSD_URI)
 

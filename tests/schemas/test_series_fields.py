@@ -83,7 +83,7 @@ _SERIES_YAML = f"""
 
 
 def test_series_fields_survive_the_metadata_pipeline() -> None:
-    """The merged metadata keeps them; MetronInfo can carry only the start."""
+    """The merged metadata keeps them, and MetronInfo v1.2 carries them all."""
     with Comicbox() as car:
         car.add_metadata(_SERIES_YAML, MetadataFormats.COMICBOX_YAML)
         series = car.get_internal_metadata()[_ROOT]["series"]
@@ -93,5 +93,6 @@ def test_series_fields_survive_the_metadata_pipeline() -> None:
     assert series["status"] == SeriesStatusEnum.CANCELLED
     assert series["summary"] == "A short run."
     assert "<StartYear>1950</StartYear>" in metron_info
-    assert "1951" not in metron_info
-    assert "Cancelled" not in metron_info
+    assert "<EndYear>1951</EndYear>" in metron_info
+    assert "<Status>Cancelled</Status>" in metron_info
+    assert "<Summary>A short run.</Summary>" in metron_info
