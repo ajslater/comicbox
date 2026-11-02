@@ -5,6 +5,7 @@
 ### 🧑‍💻 Developer
 
 - Requires typing-extensions only on Python 3.11.
+- Requires python-dateutil v4.0
 
 ## v5.5.0
 
