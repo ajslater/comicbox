@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from argparse import Namespace
 from types import MappingProxyType
 
 import pytest
-from typing_extensions import override
 
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup, _series_fingerprint
@@ -18,6 +18,11 @@ from comicbox.formats.base.online.profile import (
     ComicProfile,
 )
 from comicbox.formats.sources import MetadataSources
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 # --- fingerprint ------------------------------------------------------------
 

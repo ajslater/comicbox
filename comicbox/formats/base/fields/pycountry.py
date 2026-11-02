@@ -1,15 +1,20 @@
 """Marshmallow pycountry fields."""
 
 import re
+import sys
 from abc import ABC
 from typing import Any
 
 import pycountry
 from loguru import logger
 from pycountry.db import Data, Database
-from typing_extensions import override
 
 from comicbox.formats.base.fields.fields import StringField
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 _ALPHA_CODES = ("alpha_2", "alpha_3", "alpha_4", "name")
 # MetronInfo v1.2 languageCode pattern. XSD patterns are implicitly anchored.

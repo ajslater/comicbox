@@ -1,11 +1,11 @@
 """Validate yaml with jsonchema."""
 
+import sys
 from pathlib import Path
 from typing import Any
 
 from glom import glom
 from ruamel.yaml import YAML
-from typing_extensions import override
 
 from comicbox.constants import (
     COVER_DATE_KEY,
@@ -20,6 +20,11 @@ from comicbox.constants import (
 )
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.validate.json_validator import JsonValidator
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 _KEYPATH_PREFIX = ROOT_KEYPATH + "."
 _FULL_UPDATED_AT_KEYPATH = _KEYPATH_PREFIX + UPDATED_AT_KEY

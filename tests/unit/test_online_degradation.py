@@ -20,13 +20,13 @@ Three failure surfaces are covered here:
 
 from __future__ import annotations
 
+import sys
 from argparse import Namespace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from loguru import logger
-from typing_extensions import override
 
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup, _series_fingerprint
@@ -42,6 +42,11 @@ from comicbox.formats.base.online.profile import (
 )
 from comicbox.formats.base.online.sources.base import OnlineSource
 from comicbox.formats.sources import MetadataSources
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

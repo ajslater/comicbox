@@ -7,11 +7,11 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
+import sys
 from typing import Any, Final
 
 from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
-from typing_extensions import override
 
 from comicbox.formats.base.fields.collection_fields import StringListField
 from comicbox.formats.base.fields.fields import StringField
@@ -27,6 +27,11 @@ from comicbox.formats.comicbox.schema import (
     VOLUME_ISSUE_COUNT_KEY,
     VOLUME_KEY,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 SERIES_TAG = SERIES_KEY
 VOLUME_TAG = VOLUME_KEY

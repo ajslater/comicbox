@@ -12,10 +12,15 @@ without load-order concerns. The write/online modules re-export their
 exceptions from here under their historical import paths.
 """
 
+import sys
 from pathlib import Path
 from typing import Literal
 
-from typing_extensions import override
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 DestinationKind = Literal["convert", "rename", "inflight"]
 

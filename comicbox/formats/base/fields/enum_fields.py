@@ -1,12 +1,12 @@
 """Marshmallow Enum Fields."""
 
+import sys
 from enum import Enum
 from types import MappingProxyType
 from typing import Any
 
 from caseconverter import snakecase, titlecase
 from marshmallow import fields
-from typing_extensions import override
 
 from comicbox.enums.comicbox import MangaEnum, ReadingDirectionEnum, SeriesStatusEnum
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
@@ -14,6 +14,11 @@ from comicbox.enums.maps.age_rating import AGE_RATING_ENUM_MAP
 from comicbox.enums.maps.formats import GENERIC_FORMAT_MAP
 from comicbox.enums.maps.reading_direction import READING_DIRECTION_ENUM_MAP
 from comicbox.formats.base.fields.fields import StringField
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class FuzzyEnumMixin:

@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 import os
 import sqlite3
+import sys
 import threading
 from collections import OrderedDict
 from dataclasses import replace
@@ -20,7 +21,6 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
-from typing_extensions import override
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.events import SKIP_QUOTA_RESERVED
@@ -43,6 +43,11 @@ from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
 from comicbox.version import user_agent
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

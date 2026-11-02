@@ -10,13 +10,17 @@ settings, so a runtime import back would close a cycle;
 ``test_config_online_leaf`` pins it.
 """
 
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 
-from typing_extensions import override
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class MatchMode(StrEnum):

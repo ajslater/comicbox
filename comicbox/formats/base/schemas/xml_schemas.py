@@ -1,18 +1,23 @@
 """XML Metadata parser superclass."""
 
+import sys
 from abc import ABC
 from types import MappingProxyType
 from typing import Any
 
 import xmltodict
 from marshmallow.fields import Constant
-from typing_extensions import override
 
 from comicbox.formats.base.schemas.base import (
     BaseRenderModule,
     BaseSchema,
     BaseSubSchema,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 XML_UNPARSE_ARGS = MappingProxyType(
     # used by tests

@@ -6,6 +6,7 @@ from importlib.metadata import PackageNotFoundError, requires
 from typing import TYPE_CHECKING
 
 import pytest
+from packaging.requirements import Requirement
 
 from comicbox.doctor import packages
 from comicbox.doctor.context import DoctorContext
@@ -51,8 +52,11 @@ def test_real_requirements_come_from_metadata() -> None:
     """The dev venv's editable install carries the metadata too."""
     rows = list(packages.check_requirements(DoctorContext()))
     assert [row.status for row in rows] == [Status.OK]
-    # Every base requirement, and not the pdf extra.
-    base = [raw for raw in requires("comicbox") or () if "extra ==" not in raw]
+    # Every base requirement this Python needs, and not the pdf extra.
+    reqs = (Requirement(raw) for raw in requires("comicbox") or ())
+    base = [
+        req for req in reqs if req.marker is None or req.marker.evaluate({"extra": ""})
+    ]
     assert rows[0].detail == f"{len(base)} satisfied"
 
 

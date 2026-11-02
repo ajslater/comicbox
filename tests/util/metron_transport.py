@@ -12,12 +12,18 @@ and the connection pool behaves as it does in production.
 from __future__ import annotations
 
 import json
+import sys
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import requests
 from requests.adapters import BaseAdapter
 from requests.structures import CaseInsensitiveDict
-from typing_extensions import override
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping

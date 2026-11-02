@@ -1,14 +1,19 @@
 """Custom jsonschema validator."""
 
+import sys
 from pathlib import Path
 from typing import Any
 
 import simplejson
 from jsonschema.validators import Draft202012Validator
 from referencing import Registry, Resource
-from typing_extensions import override
 
 from comicbox.validate.base import SCHEMA_PATH, BaseValidator
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 _SCHEMA_ID_ROOT = "https://github.com/ajslater/comicbox/blob/main/schemas/"
 
