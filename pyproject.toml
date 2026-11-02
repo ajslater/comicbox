@@ -9,7 +9,7 @@ classifiers = [
 dependencies = [
   "bidict~=0.23",
   "case-converter~=1.2",
-  "comicfn2dict~=1.0.1",
+  "comicfn2dict~=1.0.2",
   "confuse~=2.3",
   "glom~=25.12",
   "httpx~=0.28",
@@ -67,7 +67,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile~=1.1"]
+pdf = ["comicbox-pdffile~=1.1.1"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
