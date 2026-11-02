@@ -21,6 +21,7 @@ the server's are both the real ones, scaled.
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -31,12 +32,16 @@ import pytest
 import requests
 from requests.adapters import BaseAdapter
 from requests.structures import CaseInsensitiveDict
-from typing_extensions import override
 
 from comicbox.formats.base.online import rate_gate
 from comicbox.formats.base.online.rate_gate import RateGate
 from comicbox.formats.metron_api.paced_session import build_paced_session
 from tests.util.metron_transport import mount
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

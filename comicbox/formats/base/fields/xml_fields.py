@@ -1,12 +1,12 @@
 """Xml versions of fields."""
 
+import sys
 from collections.abc import Mapping
 from typing import Any
 
 from marshmallow.exceptions import ValidationError
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
-from typing_extensions import override
 
 from comicbox.formats.base.fields.collection_fields import (
     IntegerListField,
@@ -32,6 +32,11 @@ from comicbox.formats.base.fields.pycountry import LanguageField
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.base.fields.union import UNION_SCHEMA_IGNORE_ERRORS
 from comicbox.formats.base.schemas.base import BaseSubSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 CDATA_KEY = "#text"
 

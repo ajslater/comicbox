@@ -1,10 +1,10 @@
 """Json Schema."""
 
+import sys
 from math import ceil, log10
 from typing import Any
 
 from marshmallow.fields import Constant, Nested
-from typing_extensions import override
 
 from comicbox.formats.base.fields.comicbox import PagesField
 from comicbox.formats.base.fields.fields import StringField
@@ -16,6 +16,11 @@ from comicbox.formats.comicbox.schema import (
     ComicboxSubSchemaMixin,
     DateSchema,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class ComicboxJsonDateSchema(DateSchema):

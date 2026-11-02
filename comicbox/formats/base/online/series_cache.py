@@ -22,12 +22,18 @@ a dict — and the tests that pass one — keep working unchanged.
 
 from __future__ import annotations
 
+import sys
 import threading
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Final
 
 from loguru import logger
-from typing_extensions import override
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

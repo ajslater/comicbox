@@ -10,12 +10,16 @@ two different things depending on which call site used it — and handing
 it the sub-metadata the other mergers take silently dropped the merge.
 """
 
+import sys
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, MutableMapping
 
-from typing_extensions import override
-
 from comicbox.merge.mergedeep import Strategy, merge
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class Merger(ABC):

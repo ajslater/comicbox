@@ -1,12 +1,17 @@
 """Xml Validator."""
 
+import sys
 from pathlib import Path
 from typing import Any
 
-from typing_extensions import override
 from xmlschema import XMLSchema11
 
 from comicbox.validate.base import BaseValidator
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class XmlValidator(BaseValidator):

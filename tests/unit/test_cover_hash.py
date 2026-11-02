@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import sys
 import threading
 from contextlib import closing
 from io import BytesIO
@@ -12,7 +13,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from PIL import Image
-from typing_extensions import override
 
 from comicbox.formats.base.online.cover_hash import (
     HASH_BITS,
@@ -24,6 +24,11 @@ from comicbox.formats.base.online.cover_hash import (
     parse_hash,
 )
 from tests.util.cover_images import read_image
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Callable

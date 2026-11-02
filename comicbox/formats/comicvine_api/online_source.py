@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import sys
 import threading
 import time
 from contextlib import closing, suppress
@@ -39,7 +40,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
-from typing_extensions import override
 
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
@@ -63,6 +63,11 @@ from comicbox.formats.base.online.transform_helpers import split_aliases
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.version import user_agent
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

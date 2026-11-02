@@ -1,6 +1,7 @@
 """Marshmallow collection fields."""
 
 import re
+import sys
 from collections.abc import Iterable, Mapping
 from decimal import Decimal
 from typing import Any
@@ -8,11 +9,15 @@ from typing import Any
 from glom import glom
 from marshmallow import fields
 from marshmallow.utils import is_collection
-from typing_extensions import override
 
 from comicbox.empty import filter_list_empty, is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 # Sort keys are compared element by element, so every element in a slot must be
 # comparable with its siblings. Nothing guarantees they share a type: a reprint

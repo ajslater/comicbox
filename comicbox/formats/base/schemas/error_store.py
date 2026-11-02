@@ -1,5 +1,6 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
+import sys
 from collections.abc import Mapping
 from contextvars import ContextVar
 from pathlib import Path
@@ -8,7 +9,12 @@ from typing import Any
 from loguru import logger
 from marshmallow import Schema
 from marshmallow.error_store import ErrorStore, merge_errors
-from typing_extensions import override
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 # The archive path of the file currently being loaded/dumped, used to
 # prefix warning messages. A ContextVar rather than schema instance state:

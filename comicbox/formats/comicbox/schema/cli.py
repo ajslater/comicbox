@@ -1,11 +1,15 @@
 """Metadata cli format."""
 
+import sys
 from types import MappingProxyType
 from typing import Any
 
-from typing_extensions import override
-
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class ComicboxCLISchema(ComicboxYamlSchema):

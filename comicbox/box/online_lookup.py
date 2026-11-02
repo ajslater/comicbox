@@ -33,7 +33,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from glom import glom
 from loguru import logger
-from typing_extensions import override
 
 from comicbox.box.online_covers import ComicboxOnlineCovers
 from comicbox.config.online.settings import MatchMode, Prompts
@@ -83,6 +82,11 @@ from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping

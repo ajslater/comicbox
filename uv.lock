@@ -810,7 +810,7 @@ wheels = [
 
 [[package]]
 name = "comicbox"
-version = "5.5.0"
+version = "5.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "bidict" },
@@ -839,7 +839,7 @@ dependencies = [
     { name = "ruamel-yaml" },
     { name = "simplejson" },
     { name = "simyan" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
     { name = "xmlschema" },
     { name = "xmltodict" },
     { name = "zipremove" },
@@ -920,7 +920,7 @@ requires-dist = [
     { name = "ruamel-yaml", specifier = "~=0.18" },
     { name = "simplejson", specifier = "~=4.0" },
     { name = "simyan", specifier = "~=4.2" },
-    { name = "typing-extensions", specifier = "~=4.13" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12'", specifier = "~=4.13" },
     { name = "xmlschema", specifier = "~=4.0" },
     { name = "xmltodict", specifier = "~=1.0" },
     { name = "zipremove", specifier = "~=0.1" },

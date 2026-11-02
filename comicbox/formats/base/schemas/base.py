@@ -1,5 +1,6 @@
 """Skip keys instead of throwing errors."""
 
+import sys
 from abc import ABC
 from pathlib import Path
 from types import MappingProxyType
@@ -14,12 +15,16 @@ from marshmallow.decorators import (
     pre_load,
 )
 from marshmallow.types import RenderModule, StrSequenceOrSet
-from typing_extensions import override
 
 from comicbox.empty import is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.schemas.decorators import trap_error
 from comicbox.formats.base.schemas.error_store import ClearingErrorStoreSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class BaseRenderModule(RenderModule, ABC):

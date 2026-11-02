@@ -1,5 +1,11 @@
 # 📰 News
 
+## v5.5.1
+
+### 🧑‍💻 Developer
+
+- Requires typing-extensions only on Python 3.11.
+
 ## v5.5.0
 
 ### 💥 Breaking Changes

@@ -1,9 +1,8 @@
 """Metron Publishing Schemas."""
 
+import sys
 from types import MappingProxyType
 from typing import Any
-
-from typing_extensions import override
 
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.metroninfo import (
@@ -21,6 +20,11 @@ from comicbox.formats.base.fields.xml_fields import (
 from comicbox.formats.base.schemas.xml_schemas import XmlSubSchema
 from comicbox.formats.metron_info.schema.identifiers import MetronIdentifiedNameSchema
 from comicbox.formats.metron_info.schema.resource import metron_resource_field
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class MetronPublisherSchema(MetronIdentifiedNameSchema):

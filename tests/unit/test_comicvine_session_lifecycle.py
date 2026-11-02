@@ -12,17 +12,22 @@ references that had kept them alive, turns a silent leak into a
 from __future__ import annotations
 
 import gc
+import sys
 import warnings
 from argparse import Namespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from typing_extensions import override
 
 from comicbox.config.online.settings import OnlineCacheSettings, OnlineSettings
 from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
 from comicbox.formats.comicvine_api import online_source as comicvine
 from tests.util.online_client import build_comicvine_client, spend
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from pathlib import Path
