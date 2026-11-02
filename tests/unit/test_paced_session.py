@@ -11,11 +11,11 @@ fail rather than the behavior quietly disappearing.
 
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 from typing import Any, cast
 
 import pytest
-from typing_extensions import override
 
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats, warn_once
@@ -34,6 +34,11 @@ from tests.util.metron_transport import (
     issue_page,
     issue_row,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 _IF_MODIFIED = datetime(2020, 1, 1, tzinfo=UTC)
 

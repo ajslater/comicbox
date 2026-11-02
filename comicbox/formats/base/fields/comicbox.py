@@ -1,11 +1,11 @@
 """Comicbox Fields."""
 
+import sys
 from inspect import isclass
 from typing import Any
 
 from marshmallow.fields import Field, Nested
 from marshmallow_union import Union
-from typing_extensions import override
 
 from comicbox.enums.maps.roles import COMICBOX_ROLE_ALIAS_MAP
 from comicbox.formats.base.fields.collection_fields import (
@@ -24,6 +24,11 @@ from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
 )
 from comicbox.formats.comicbox.schema.pages import PageInfoSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 NAME_KEY = "name"
 

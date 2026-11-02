@@ -1,13 +1,19 @@
 """Custom Marshmallow fields."""
 
 import re
+import sys
 from decimal import Decimal
 from enum import Enum
 from typing import Any
 
 from marshmallow import fields
 from marshmallow.exceptions import ValidationError
-from typing_extensions import override
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")

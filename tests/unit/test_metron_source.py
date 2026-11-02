@@ -12,6 +12,7 @@ six-call miss cascade. Since mokkari 3.28.0 / Metron server commit
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 import pytest
@@ -24,7 +25,6 @@ from mokkari.exceptions import (
 )
 from requests import Response
 from requests.exceptions import HTTPError
-from typing_extensions import override
 
 from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
 from comicbox.formats.base.online.profile import ComicProfile
@@ -34,6 +34,11 @@ from comicbox.formats.base.online.retry import (
     with_retry,
 )
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class _FakeBaseSeries:

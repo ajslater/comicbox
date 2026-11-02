@@ -12,12 +12,12 @@ exception: they stay flat and are consumed by ``runtime_online_inputs`` /
 dynamically keyed maps that a fixed template can't express.
 """
 
+import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 from rich_argparse import RichHelpFormatter
-from typing_extensions import override
 
 from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
 from comicbox.config.online.settings import (
@@ -28,6 +28,11 @@ from comicbox.config.online.settings import (
     Prompts,
 )
 from comicbox.config.settings import MergeMode
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from rich.console import Group

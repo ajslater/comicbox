@@ -1,5 +1,6 @@
 """Json Schema."""
 
+import sys
 from abc import ABC
 from collections.abc import Mapping
 from datetime import date, datetime
@@ -7,7 +8,6 @@ from types import MappingProxyType
 from typing import Any
 
 import simplejson as json
-from typing_extensions import override
 
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.formats.base.schemas.base import (
@@ -15,6 +15,11 @@ from comicbox.formats.base.schemas.base import (
     BaseSchema,
     BaseSubSchema,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 def datetime_handler(value):

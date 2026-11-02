@@ -1,13 +1,17 @@
 """PDF Fields."""
 
+import sys
 from contextlib import suppress
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import override
-
 from comicbox._pdf import PDF_ENABLED
 from comicbox.formats.base.fields.time_fields import DateTimeField
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from pdffile import PDFFile

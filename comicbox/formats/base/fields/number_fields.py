@@ -1,18 +1,23 @@
 """Marshmallow number fields."""
 
 import re
+import sys
 from decimal import Decimal
 from typing import Any
 
 from loguru import logger
 from marshmallow import fields
-from typing_extensions import override
 
 from comicbox.empty import is_empty
 from comicbox.formats.base.fields.fields import (
     StringField,
     half_replace,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 NumberType = int | float | Decimal
 PAGE_COUNT_KEY = "page_count"

@@ -1,5 +1,6 @@
 """Comic yaml superclass."""
 
+import sys
 from collections.abc import Mapping
 from decimal import Decimal
 from enum import Enum
@@ -8,7 +9,6 @@ from types import MappingProxyType
 from typing import Any
 
 from ruamel.yaml import YAML, MappingNode, RoundTripRepresenter, ScalarNode, StringIO
-from typing_extensions import override
 
 from comicbox.formats.base.schemas.base import (
     BaseRenderModule,
@@ -18,6 +18,11 @@ from comicbox.formats.base.schemas.base import (
 from comicbox.formats.base.schemas.xml_schemas import IMAGE_ATTRIBUTE
 from comicbox.formats.comicbox.schema import BOOKMARK_KEY, PAGE_KEYS
 from comicbox.identifiers import ID_KEY_KEY
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 _TAG_YAML = "tag:yaml.org,2002"
 _FLOAT_TAG = f"{_TAG_YAML}:float"

@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any, Final
 
 from loguru import logger
-from typing_extensions import override
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 
 DEBUG = os.environ.get("DEBUG", "")
 

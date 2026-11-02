@@ -1,5 +1,6 @@
 """Date & Time fields."""
 
+import sys
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -7,9 +8,13 @@ from dateutil import parser
 from loguru import logger
 from marshmallow import fields
 from ruamel.yaml.timestamp import TimeStamp
-from typing_extensions import override
 
 from comicbox.formats.base.fields.fields import StringField
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 
 class DateField(fields.Date):

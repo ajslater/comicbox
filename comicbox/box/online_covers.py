@@ -15,12 +15,17 @@ because `close()` belongs with the resources it releases.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from typing_extensions import override
 
 from comicbox.box.normalize import ComicboxNormalize
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

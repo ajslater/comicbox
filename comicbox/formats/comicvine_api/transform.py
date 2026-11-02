@@ -10,10 +10,9 @@ volume that means series, HTML in description).
 
 from __future__ import annotations
 
+import sys
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
-
-from typing_extensions import override
 
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
@@ -30,6 +29,11 @@ from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 from comicbox.formats.comicvine_api.schema import ComicVineApiSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

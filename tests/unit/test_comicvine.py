@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from simyan.errors import RateLimitError
-from typing_extensions import override
 
 from comicbox.config.online.settings import (
     Effort,
@@ -22,6 +22,11 @@ from comicbox.formats.comicvine_api.online_source import (
     ComicVineOnlineSource,
     _SearchBudget,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     import pytest
