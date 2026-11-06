@@ -42,7 +42,7 @@ as a standalone command line tool for organizing a comic library.
 | PDF       |  ✅  | ✅ embedded metadata |
 
 CBR extraction and conversion require RARLAB's `unrar` binary on your `PATH`.
-PDF support is an [optional extra](#-installation).
+PDF support is an optional extra: `pip install comicbox[pdf]`.
 
 ### 🏷️ Metadata Formats
 

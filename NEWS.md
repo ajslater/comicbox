@@ -849,7 +849,7 @@
 ### 💥 Breaking Changes
 
 - Schema, API, config and CLI changes. See
-  [the 2.0 CHANGES document](CHANGES-2.0.0.md).
+  [the 2.0 CHANGES document](https://github.com/ajslater/comicbox/blob/v3.0.3/docs/CHANGES-2.0.0.md).
 
 ### ✨ Added
 
@@ -1018,7 +1018,8 @@
 
 ### 💥 Breaking Changes
 
-- Some are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+- Some are detailed in
+  [The 1.0.0 CHANGES document](https://github.com/ajslater/comicbox/blob/v3.0.3/docs/CHANGES-1.0.0.md)
 
 ### ✨ Added
 
