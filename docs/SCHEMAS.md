@@ -183,7 +183,7 @@ schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
 
-The [Comicbox 3.0 schema reference](schema/comicbox-v3.0.schema.md) renders the
+The [Comicbox 3.0 schema reference](schema/comicbox-v3.0/index.md) renders the
 JSON Schema as a page per object, with every field's type and limits.
 
 !!! warning "Deprecated"

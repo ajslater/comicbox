@@ -8,27 +8,36 @@ nav = [
   "SCHEMAS.md",
   "TAGS.md",
   { "JSON Schemas" = [
-    "schema/comicbox-v3.0.schema.md",
-    "schema/comic-book-info-v1.0.schema.md",
-    "schema/credit.schema.md",
-    "schema/role.schema.md",
-    "schema/date.schema.md",
-    "schema/identified-object.schema.md",
-    "schema/identified-objects.schema.md",
-    "schema/identifiers.schema.md",
-    "schema/named-identified-object.schema.md",
-    "schema/page.schema.md",
-    "schema/reprint.schema.md",
-    "schema/series.schema.md",
-    "schema/alternative-name.schema.md",
-    "schema/volume.schema.md"
+    { "Comicbox 3.0" = [
+      "schema/comicbox-v3.0/index.md",
+      "schema/comicbox-v3.0/credit.schema.md",
+      "schema/comicbox-v3.0/role.schema.md",
+      "schema/comicbox-v3.0/date.schema.md",
+      "schema/comicbox-v3.0/identified-object.schema.md",
+      "schema/comicbox-v3.0/identified-objects.schema.md",
+      "schema/comicbox-v3.0/identifiers.schema.md",
+      "schema/comicbox-v3.0/named-identified-object.schema.md",
+      "schema/comicbox-v3.0/page.schema.md",
+      "schema/comicbox-v3.0/reprint.schema.md",
+      "schema/comicbox-v3.0/series.schema.md",
+      "schema/comicbox-v3.0/alternative-name.schema.md",
+      "schema/comicbox-v3.0/volume.schema.md"
+    ] },
+    "schema/comic-book-info-v1.0.schema.md"
   ] }
 ]
 docs_dir = "docs"
 
 [project.theme]
 variant = "modern"
-features = ["content.code.copy", "navigation.footer", "search.highlight"]
+# navigation.indexes makes the Comicbox 3.0 schema's root page the nav section
+# that holds its sub-schemas.
+features = [
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.indexes",
+  "search.highlight",
+]
 
 [project.theme.font]
 text = "Inter"
