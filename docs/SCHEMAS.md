@@ -124,7 +124,8 @@ survives because Comictagger supports writing it.
 I have interpreted the
 [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
 example json into a
-[ComicBookInfo JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json).
+[ComicBookInfo JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json)
+([field reference](schema/comic-book-info-v1.0.schema.md)).
 
 | Location      | Name                 |
 | ------------- | -------------------- |
@@ -181,6 +182,7 @@ The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
+([field reference](schema/comicbox-v3.0.schema.md))
 
 Comicbox 2.0 is superseded and is not read. Its
 [schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)

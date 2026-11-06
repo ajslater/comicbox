@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Generate markdown docs for the comicbox v3.0 JSON schemas into site/schema
+# Generate markdown docs for the comicbox v3.0 JSON schemas into docs/schema
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC=comicbox/schemas/v3.0
-DEST=site/schema
+DEST=docs/schema
 for path in "$SRC"/*.schema.json; do
   md="$DEST/$(basename "$path" .json).md"
   uvx jsonschema2md@1.7.0 --locale en_US "$path" "$md"
