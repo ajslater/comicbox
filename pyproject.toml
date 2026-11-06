@@ -106,7 +106,7 @@ test = [
   "pytest-cov~=7.0",
   "pytest~=9.0",
 ]
-docs = ["mkapi~=4.4", "mkdocs-minify-plugin~=0.8", "mkdocs~=1.6"]
+docs = ["mkapi~=4.4", "zensical~=0.1"]
 ci = ["requests~=2.32"]
 
 [build-system]
@@ -138,16 +138,10 @@ source-include = [
   "docs/NEWS.md",
   "docs/README.md",
   "docs/WINDOWS.md",
-  "docs/requirements.txt",
-  "docs/style.css",
-  "docs/style.material.css",
-  "docs/style.mkdocs.css",
-  "docs/style.readthedocs.css",
   "eslint.config.js",
   "frontend/**",
   "generate-schema/**",
   "img/**",
-  "mkdocs.yml",
   "mock_comics/**",
   "package.json",
   "tests/**",
@@ -155,6 +149,7 @@ source-include = [
   "validate-schema.sh",
   "vulture_ignorelist.py",
   "docs/**",
+  "zensical.toml",
 ]
 source-exclude = ["**/*\\~", "**/.DS_Store", "frontend/node_modules"]
 wheel-exclude = ["**/*\\~", "**/.DS_Store"]
@@ -192,7 +187,7 @@ reportUntypedBaseClass = false
 [tool.codespell]
 builtin = "clear,code,rare"
 ignore-words-list = "coverd,crate,deque,falsy,iff,jupyter,musl,ro,searchd,thead,versio,wan,warmup,ws"
-skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock"
+skip = "*.outcomes.json,*.outcomes.partial.json,*.pdf,*.svg,*~,./.venv/*,./node_modules/*,./tasks,./tests/test_files/*,__pycache__,bun.lock,dist,fixtures-*.json,htmlcov,node_modules,package.json,tasks,test-results,typings,uv.lock,site"
 
 [tool.complexipy]
 failed = true
