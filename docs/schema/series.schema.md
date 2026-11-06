@@ -1,4 +1,4 @@
-# Comicbox Series
+# Series
 
 ## Properties
 

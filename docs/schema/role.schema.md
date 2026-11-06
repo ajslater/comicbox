@@ -1,4 +1,4 @@
-# Comicbox Credit Role
+# Credit Role
 
 ## Properties
 

@@ -1,4 +1,4 @@
-# Comicbox Identified Object
+# Identified Object
 
 ## Properties
 

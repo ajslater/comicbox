@@ -1,4 +1,4 @@
-# Comicbox Credit
+# Credit
 
 ## Properties
 

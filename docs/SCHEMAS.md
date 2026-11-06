@@ -182,7 +182,9 @@ The comicbox internal data structure which acts as a superset of the above
 schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
-([field reference](schema/comicbox-v3.0.schema.md))
+
+The [Comicbox 3.0 schema reference](schema/comicbox-v3.0.schema.md) renders the
+JSON Schema as a page per object, with every field's type and limits.
 
 Comicbox 2.0 is superseded and is not read. Its
 [schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)

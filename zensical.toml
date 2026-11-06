@@ -3,7 +3,27 @@ site_name = "Comicbox"
 site_url = "https://comicbox.readthedocs.io/"
 site_author = "AJ"
 site_description = "Comicbox Comic Metadata Reader & Writer"
-nav = ["NEWS.md", "SCHEMAS.md", "TAGS.md"]
+nav = [
+  "NEWS.md",
+  "SCHEMAS.md",
+  "TAGS.md",
+  { "JSON Schemas" = [
+    "schema/comicbox-v3.0.schema.md",
+    "schema/comic-book-info-v1.0.schema.md",
+    "schema/credit.schema.md",
+    "schema/role.schema.md",
+    "schema/date.schema.md",
+    "schema/identified-object.schema.md",
+    "schema/identified-objects.schema.md",
+    "schema/identifiers.schema.md",
+    "schema/named-identified-object.schema.md",
+    "schema/page.schema.md",
+    "schema/reprint.schema.md",
+    "schema/series.schema.md",
+    "schema/alternative-name.schema.md",
+    "schema/volume.schema.md"
+  ] }
+]
 docs_dir = "docs"
 
 [project.theme]
