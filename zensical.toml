@@ -24,6 +24,11 @@ nav = [
       "schema/comicbox-v3.0/volume.schema.md"
     ] },
     "schema/comic-book-info-v1.0.schema.md"
+  ] },
+  { "XML Schemas" = [
+    "schema/CoMet-v1.1.xsd.md",
+    "schema/ComicInfo-v2.1-Draft.xsd.md",
+    "schema/MetronInfo-v1.2.xsd.md"
   ] }
 ]
 docs_dir = "docs"

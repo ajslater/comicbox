@@ -21,7 +21,8 @@ This schema used by the defunct Comic Rack reader is the de facto standard for
 comic book metadata on the internet. The
 [Anansi Project](https://anansi-project.github.io/) now maintains the
 [ComicInfo Schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
-and has compatibly and conservatively extended it.
+and has compatibly and conservatively extended it
+([field reference](schema/ComicInfo-v2.1-Draft.xsd.md)).
 
 ### ComicInfo StoryArcs
 
@@ -39,7 +40,8 @@ values.
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
 is a new XML schema for comic book metadata, which hopes to improve some of the
-deficiencies that exist with the ComicInfo.xml schema.
+deficiencies that exist with the ComicInfo.xml schema
+([field reference](schema/MetronInfo-v1.2.xsd.md)).
 
 | Location      | Name           |
 | ------------- | -------------- |
@@ -169,7 +171,8 @@ reader.
 
 I have interpreted the
 [CoMet Specification](http://www.denvog.com/comet/comet-specification/) into a
-[CoMet XSD](https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd).
+[CoMet XSD](https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd)
+([field reference](schema/CoMet-v1.1.xsd.md)).
 
 | Location      | Name      |
 | ------------- | --------- |

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate markdown docs for the comicbox JSON schemas into docs/schema
+# Generate markdown docs for the comicbox JSON and XML schemas into docs/schema
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SCHEMA_VERSION=3.0
@@ -29,4 +29,5 @@ for path in comicbox/schemas/v"$SCHEMA_VERSION"/*.schema.json; do
   fi
 done
 gen comicbox/schemas/comic-book-info-v1.0.schema.json "$DEST/comic-book-info-v1.0.schema.md"
+uv run generate-schema/xsd_docs.py
 npx prettier --write "$DEST"
