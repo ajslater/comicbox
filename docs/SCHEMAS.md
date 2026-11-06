@@ -21,7 +21,8 @@ This schema used by the defunct Comic Rack reader is the de facto standard for
 comic book metadata on the internet. The
 [Anansi Project](https://anansi-project.github.io/) now maintains the
 [ComicInfo Schema](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1)
-and has compatibly and conservatively extended it.
+and has compatibly and conservatively extended it
+([field reference](schema/ComicInfo-v2.1-Draft.xsd.md)).
 
 ### ComicInfo StoryArcs
 
@@ -39,7 +40,8 @@ values.
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
 is a new XML schema for comic book metadata, which hopes to improve some of the
-deficiencies that exist with the ComicInfo.xml schema.
+deficiencies that exist with the ComicInfo.xml schema
+([field reference](schema/MetronInfo-v1.2.xsd.md)).
 
 | Location      | Name           |
 | ------------- | -------------- |
@@ -124,7 +126,8 @@ survives because Comictagger supports writing it.
 I have interpreted the
 [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki)
 example json into a
-[ComicBookInfo JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json).
+[ComicBookInfo JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/comic-book-info-v1.0.schema.json)
+([field reference](schema/comic-book-info-v1.0.schema.md)).
 
 | Location      | Name                 |
 | ------------- | -------------------- |
@@ -168,7 +171,8 @@ reader.
 
 I have interpreted the
 [CoMet Specification](http://www.denvog.com/comet/comet-specification/) into a
-[CoMet XSD](https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd).
+[CoMet XSD](https://github.com/ajslater/comicbox/blob/main/schemas/CoMet-v1.1.xsd)
+([field reference](schema/CoMet-v1.1.xsd.md)).
 
 | Location      | Name      |
 | ------------- | --------- |
@@ -182,10 +186,15 @@ schemas to allow interpolating.
 
 [Comicbox 3.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/v3.0/comicbox-v3.0.schema.json)
 
-Comicbox 2.0 is superseded and is not read. Its
-[schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
-is kept for reference only; a 2.0 document loads with its renamed and removed
-fields ignored.
+The [Comicbox 3.0 schema reference](schema/comicbox-v3.0/index.md) renders the
+JSON Schema as a page per object, with every field's type and limits.
+
+!!! warning "Deprecated"
+
+    Comicbox 2.0 is superseded and is not read. Its
+    [schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
+    is kept for reference only; a 2.0 document loads with its renamed and
+    removed fields ignored.
 
 #### Series Years, Status and Summary
 

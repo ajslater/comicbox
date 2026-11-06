@@ -1,4 +1,4 @@
-# Comicbox Identifier
+# Identifier
 
 ## Additional properties
 
