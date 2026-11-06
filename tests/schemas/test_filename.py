@@ -158,6 +158,39 @@ def test_filename_dumps_sanitizes_reserved_chars(series: str, expected: str) -> 
     assert FilenameSchema().dumps(obj) == expected
 
 
+@pytest.mark.parametrize(
+    "sub_data",
+    [
+        {"ext": "cbz", "issue": "-001", "series": "Captain Science"},
+        {"ext": "cbz", "issue": "Omega", "series": "Captain Science"},
+        {
+            "ext": "cbz",
+            "issue": "001",
+            "remainders": ["(5 covers)"],
+            "series": "Captain Science",
+            "year": 1950,
+        },
+        {
+            "ext": "cbr",
+            "issue": "001",
+            "issue_count": 3,
+            "original_format": "Digital",
+            "scan_info": "Empire",
+            "series": "Captain Science",
+            "title": "The Beginning",
+            "volume": 1,
+            "year": 1950,
+        },
+    ],
+)
+def test_filename_dumps_reads_back(sub_data: dict[str, Any]) -> None:
+    """Every field comicbox writes into a filename reads back as itself."""
+    obj = {FilenameSchema.ROOT_TAG: sub_data}
+    schema = FilenameSchema()
+
+    assert schema.loads(schema.dumps(obj)) == obj
+
+
 def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
     """A colon dropped from the series must not split it on the way back in."""
     obj = {
