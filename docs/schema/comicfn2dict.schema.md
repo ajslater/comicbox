@@ -108,17 +108,22 @@ that is missing or empty._
 ## Keys comicbox keeps
 
 Comicbox reads these keys from a filename into its own fields, and writes them
-back. It drops `day`, `month`, `publisher` and `volume_count`.
+back.
 
-| comicfn2dict key  | comicbox field       |
-| ----------------- | -------------------- |
-| `ext`             | `ext`                |
-| `issue`           | `issue.name`         |
-| `issue_count`     | `volume.issue_count` |
-| `original_format` | `original_format`    |
-| `remainders`      | `remainders`         |
-| `scan_info`       | `scan_info`          |
-| `series`          | `series.name`        |
-| `title`           | `title`              |
-| `volume`          | `volume.number`      |
-| `year`            | `date.year`          |
+| comicfn2dict key  | comicbox field        |
+| ----------------- | --------------------- |
+| `day`             | `date.day`            |
+| `ext`             | `ext`                 |
+| `issue`           | `issue.name`          |
+| `issue_count`     | `volume.issue_count`  |
+| `month`           | `date.month`          |
+| `original_format` | `original_format`     |
+| `remainders`      | `remainders`          |
+| `scan_info`       | `scan_info`           |
+| `series`          | `series.name`         |
+| `title`           | `title`               |
+| `volume`          | `volume.number`       |
+| `volume_count`    | `series.volume_count` |
+| `year`            | `date.year`           |
+
+It reads `publisher` into `publisher.name` but never writes it into a filename.

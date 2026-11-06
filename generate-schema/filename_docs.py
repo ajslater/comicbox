@@ -16,7 +16,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Final
 
-from comicbox.formats.filename.transform import SIMPLE_KEY_MAP
+from comicbox.formats.filename.transform import READ_ONLY_KEY_MAP, SIMPLE_KEY_MAP
 
 PACKAGE: Final = "comicfn2dict"
 SCHEMA_PATH: Final = Path(str(files(PACKAGE) / "schemas" / f"{PACKAGE}.schema.json"))
@@ -34,26 +34,37 @@ def _source_line(schema: dict) -> str:
     )
 
 
+def _listed(keys: list[str]) -> str:
+    """Join keys as code spans the way a sentence lists them: a, b and c."""
+    spans = [f"`{key}`" for key in keys]
+    return " and ".join(filter(None, (", ".join(spans[:-1]), spans[-1])))
+
+
 def _keys_note(schema: dict) -> str:
-    """List the keys comicbox maps to its own fields, and the ones it drops."""
+    """Tabulate the keys comicbox maps to its own fields, and note the rest."""
     properties = schema["properties"]
     readable = {key for key, prop in properties.items() if not prop.get("writeOnly")}
-    dropped = sorted(readable - SIMPLE_KEY_MAP.keys())
-    dropped_list = (
-        ", ".join(f"`{key}`" for key in dropped[:-1]) + f" and `{dropped[-1]}`"
-    )
     lines = [
         NOTE_HEADING,
         "",
         "Comicbox reads these keys from a filename into its own fields, and writes",
-        f"them back. It drops {dropped_list}.",
+        "them back.",
         "",
         f"| {PACKAGE} key | comicbox field |",
         "| --- | --- |",
+        *(
+            f"| `{key}` | `{keypath}` |"
+            for key, keypath in sorted(SIMPLE_KEY_MAP.items())
+        ),
     ]
-    lines += [
-        f"| `{key}` | `{keypath}` |" for key, keypath in sorted(SIMPLE_KEY_MAP.items())
+    notes = [
+        f"It reads `{key}` into `{keypath}` but never writes it into a filename."
+        for key, keypath in sorted(READ_ONLY_KEY_MAP.items())
     ]
+    if dropped := sorted(readable - SIMPLE_KEY_MAP.keys() - READ_ONLY_KEY_MAP.keys()):
+        notes.append(f"It drops {_listed(dropped)}.")
+    if notes:
+        lines += ["", " ".join(notes)]
     return "\n".join(lines) + "\n"
 
 

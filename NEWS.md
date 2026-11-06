@@ -6,6 +6,11 @@
 
 - Filename schema page in the docs, with every schema page under Schemas.
 
+### ♻️ Changed
+
+- Filenames read and write the month, day and volume count, so renames get
+  `(1950-11-01)`; a publisher like `(DC)` is read, not written.
+
 ### 🐛 Fixed
 
 - Filenames comicbox writes read back: `#-001` and `#Omega` issues, and the
