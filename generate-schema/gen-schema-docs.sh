@@ -29,5 +29,10 @@ for path in comicbox/schemas/v"$SCHEMA_VERSION"/*.schema.json; do
   fi
 done
 gen comicbox/schemas/comic-book-info-v1.0.schema.json "$DEST/comic-book-info-v1.0.schema.md"
+# The filename schema ships inside comicfn2dict. Render it from the installed
+# package, then title it and add the keys comicbox keeps.
+FILENAME_MD=$DEST/comicfn2dict.schema.md
+gen "$(uv run generate-schema/filename_docs.py --schema-path)" "$FILENAME_MD"
+uv run generate-schema/filename_docs.py "$FILENAME_MD"
 uv run generate-schema/xsd_docs.py
 npx prettier --write "$DEST"

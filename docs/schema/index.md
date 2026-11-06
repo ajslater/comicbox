@@ -7,8 +7,11 @@ Comicbox supports reading and writing several comic book metadata schemas.
 Comicbox includes a pretty good comic archive filename parser. It can extract a
 number of common fields from comic archive filenames.
 
-The filename parser is available as a separate library:
+The filename parser is available as a separate library,
 [comicfn2dict](https://github.com/ajslater/comicfn2dict)
+([field reference](comicfn2dict.schema.md)). Its
+[Filename Format](https://comicfn2dict.readthedocs.io/FILENAMES/) page defines
+the names comicbox writes as a grammar and lists the conventions it reads.
 
 | Location      | Name                  |
 | ------------- | --------------------- |

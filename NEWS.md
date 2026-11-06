@@ -2,6 +2,10 @@
 
 ## v5.5.2
 
+### ✨ Added
+
+- Filename schema page in the docs, with every schema page under Schemas.
+
 ### 🐛 Fixed
 
 - Filenames comicbox writes read back: `#-001` and `#Omega` issues, and the
