@@ -186,10 +186,12 @@ schemas to allow interpolating.
 The [Comicbox 3.0 schema reference](schema/comicbox-v3.0.schema.md) renders the
 JSON Schema as a page per object, with every field's type and limits.
 
-Comicbox 2.0 is superseded and is not read. Its
-[schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
-is kept for reference only; a 2.0 document loads with its renamed and removed
-fields ignored.
+!!! warning "Deprecated"
+
+    Comicbox 2.0 is superseded and is not read. Its
+    [schema](https://github.com/ajslater/comicbox/blob/main/schemas/v2.0/comicbox-v2.0.schema.json)
+    is kept for reference only; a 2.0 document loads with its renamed and
+    removed fields ignored.
 
 #### Series Years, Status and Summary
 

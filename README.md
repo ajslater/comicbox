@@ -161,14 +161,16 @@ on x86_64 and aarch64, musl Linux on x86_64, macOS, and Windows. Anywhere else
 pip compiles it, which needs a C/C++ toolchain; see the
 [PyMuPDF installation docs](https://pymupdf.readthedocs.io/en/latest/installation.html).
 
-`pymupdf` and `pymupdf-lite` install the same files, so never install both. A
-pip upgrade from a comicbox that used `pymupdf` leaves it behind. Remove it and
-reinstall `pymupdf-lite`:
-
-```sh
-pip uninstall -y pymupdf
-pip install --force-reinstall pymupdf-lite
-```
+> [!WARNING]
+>
+> `pymupdf` and `pymupdf-lite` install the same files, so never install both. A
+> pip upgrade from a comicbox that used `pymupdf` leaves it behind. Remove it
+> and reinstall `pymupdf-lite`:
+>
+> ```sh
+> pip uninstall -y pymupdf
+> pip install --force-reinstall pymupdf-lite
+> ```
 
 To use the full `pymupdf` instead, see
 [PDFFile's README](https://github.com/ajslater/pdffile#full-pymupdf).
@@ -206,9 +208,10 @@ and quote values containing YAML special characters (`:[]{},`). See
 ["escaping YAML"](https://www.w3schools.io/file/yaml-escape-characters/) for the
 escaping details.
 
-> 💡 **Preview before writing.** Add `-p` to print exactly what _would_ be
-> written, or `-n`/`--dry-run` to perform an action without touching the
-> filesystem.
+> [!TIP]
+>
+> **Preview before writing.** Add `-p` to print exactly what _would_ be written,
+> or `-n`/`--dry-run` to perform an action without touching the filesystem.
 
 ### Editing or Deleting Metadata
 
