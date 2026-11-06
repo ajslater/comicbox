@@ -1,4 +1,9 @@
 [project]
+site_name = "Comicbox"
+site_url = "https://comicbox.readthedocs.io/"
+site_author = "AJ"
+site_description = "Comicbox Comic Metadata Reader & Writer"
+nav = ["NEWS.md", "SCHEMAS.md", "TAGS.md"]
 docs_dir = "docs"
 
 [project.theme]
@@ -16,3 +21,9 @@ toc.permalink = true
 minify_html = true
 minify_inline_js = true
 minify_inline_css = true
+
+[project.plugins.mkdocstrings]
+default_handler = "python"
+
+[project.plugins.api-autonav]
+modules = ["comicbox"]
