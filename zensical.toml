@@ -5,9 +5,16 @@ site_author = "AJ"
 site_description = "Comicbox Comic Metadata Reader & Writer"
 nav = [
   "NEWS.md",
-  "SCHEMAS.md",
-  "TAGS.md",
-  { "JSON Schemas" = [
+  # The schema pages are children of the summary page, in the order it
+  # describes them. The Filename Format grammar lives in comicfn2dict's docs.
+  { "📋 Schemas" = [
+    "schema/index.md",
+    "schema/comicfn2dict.schema.md",
+    { "Filename Format" = "https://comicfn2dict.readthedocs.io/FILENAMES/" },
+    "schema/ComicInfo-v2.1-Draft.xsd.md",
+    "schema/MetronInfo-v1.2.xsd.md",
+    "schema/comic-book-info-v1.0.schema.md",
+    "schema/CoMet-v1.1.xsd.md",
     { "Comicbox 3.0" = [
       "schema/comicbox-v3.0/index.md",
       "schema/comicbox-v3.0/credit.schema.md",
@@ -22,21 +29,16 @@ nav = [
       "schema/comicbox-v3.0/series.schema.md",
       "schema/comicbox-v3.0/alternative-name.schema.md",
       "schema/comicbox-v3.0/volume.schema.md"
-    ] },
-    "schema/comic-book-info-v1.0.schema.md"
+    ] }
   ] },
-  { "XML Schemas" = [
-    "schema/CoMet-v1.1.xsd.md",
-    "schema/ComicInfo-v2.1-Draft.xsd.md",
-    "schema/MetronInfo-v1.2.xsd.md"
-  ] }
+  "TAGS.md"
 ]
 docs_dir = "docs"
 
 [project.theme]
 variant = "modern"
-# navigation.indexes makes the Comicbox 3.0 schema's root page the nav section
-# that holds its sub-schemas.
+# navigation.indexes makes the Schemas and Comicbox 3.0 summary pages the nav
+# sections that hold their schema pages.
 features = [
   "content.code.copy",
   "navigation.footer",
@@ -71,3 +73,8 @@ default_handler = "python"
 
 [project.plugins.api-autonav]
 modules = ["comicbox"]
+
+[project.plugins.redirects]
+# The schema summary was the top-level /SCHEMAS/ page until it became the
+# section index for the schema pages.
+redirect_maps = { "SCHEMAS.md" = "schema/index.md" }
