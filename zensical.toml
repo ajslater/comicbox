@@ -6,11 +6,11 @@ site_description = "Comicbox Comic Metadata Reader & Writer"
 nav = [
   "NEWS.md",
   # The schema pages are children of the summary page, in the order it
-  # describes them. The Filename Format grammar lives in comicfn2dict's docs.
+  # describes them. The Filename page links comicfn2dict's own Filename
+  # Format grammar, so the nav doesn't.
   { "📋 Schemas" = [
     "schema/index.md",
     "schema/comicfn2dict.schema.md",
-    { "Filename Format" = "https://comicfn2dict.readthedocs.io/FILENAMES/" },
     "schema/ComicInfo-v2.1-Draft.xsd.md",
     "schema/MetronInfo-v1.2.xsd.md",
     "schema/comic-book-info-v1.0.schema.md",
