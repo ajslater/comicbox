@@ -67,7 +67,7 @@ Documentation = "https://comicbox.readthedocs.io"
 Source = "https://github.com/ajslater/comicbox"
 
 [project.optional-dependencies]
-pdf = ["comicbox-pdffile~=1.1.1"]
+pdf = ["comicbox-pdffile~=1.1.2"]
 
 [project.scripts]
 comicbox = "comicbox.cli:main"
