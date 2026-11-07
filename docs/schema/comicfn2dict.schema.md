@@ -2,7 +2,9 @@
 
 Generated from
 [comicfn2dict.schema.json](https://github.com/ajslater/comicfn2dict/blob/main/comicfn2dict/schemas/comicfn2dict.schema.json)
-in comicfn2dict 1.1.0.
+in comicfn2dict 1.1.0. See also
+[Filename Format ↗](https://comicfn2dict.readthedocs.io/FILENAMES/), the grammar
+of these names, on comicfn2dict's own docs site.
 
 _The metadata dict that `comicfn2dict()` parses from a comic filename and
 `dict2comicfn()` writes a filename from. Every key is optional: `comicfn2dict()`

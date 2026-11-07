@@ -24,13 +24,16 @@ SCHEMA_PATH: Final = Path(str(files(PACKAGE) / "schemas" / f"{PACKAGE}.schema.js
 GENERATED_TITLE: Final = f"# {PACKAGE}"
 TITLE: Final = "# Filename"
 NOTE_HEADING: Final = "## Keys comicbox keeps"
+# comicfn2dict's EBNF grammar for these names, on its own docs site.
+GRAMMAR_URL: Final = "https://comicfn2dict.readthedocs.io/FILENAMES/"
 
 
 def _source_line(schema: dict) -> str:
-    """Cite the schema file and the package version it came from."""
+    """Cite the schema file and version, and point at the grammar it pairs with."""
     return (
         f"Generated from [{SCHEMA_PATH.name}]({schema['$id']}) in {PACKAGE}"
-        f" {version(PACKAGE)}."
+        f" {version(PACKAGE)}. See also [Filename Format ↗]({GRAMMAR_URL}), the"
+        f" grammar of these names, on {PACKAGE}'s own docs site."
     )
 
 
