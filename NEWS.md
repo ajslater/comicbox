@@ -1,5 +1,16 @@
 # 📰 News
 
+## v5.6.1
+
+### 🐛 Fixed
+
+- Filenames no longer get a bare `(of 3)` count when there is no volume or
+  issue.
+
+### 🧑‍💻 Developer
+
+- Requires comicfn2dict 1.1.1.
+
 ## v5.6.0
 
 ### ✨ Added
