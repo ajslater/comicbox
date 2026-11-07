@@ -1,4 +1,4 @@
-# Comicbox Date Properties
+# Date Properties
 
 ## Properties
 

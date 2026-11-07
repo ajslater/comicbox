@@ -1,4 +1,4 @@
-# Comicbox Volume
+# Volume
 
 ## Properties
 

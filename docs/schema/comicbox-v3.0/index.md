@@ -1,4 +1,4 @@
-# Comicbox
+# Comicbox 3.0
 
 ## Properties
 

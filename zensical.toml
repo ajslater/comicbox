@@ -1,0 +1,80 @@
+[project]
+site_name = "Comicbox"
+site_url = "https://comicbox.readthedocs.io/"
+site_author = "AJ"
+site_description = "Comicbox Comic Metadata Reader & Writer"
+nav = [
+  "NEWS.md",
+  # The schema pages are children of the summary page, in the order it
+  # describes them. The Filename page links comicfn2dict's own Filename
+  # Format grammar, so the nav doesn't.
+  { "📋 Schemas" = [
+    "schema/index.md",
+    "schema/comicfn2dict.schema.md",
+    "schema/ComicInfo-v2.1-Draft.xsd.md",
+    "schema/MetronInfo-v1.2.xsd.md",
+    "schema/comic-book-info-v1.0.schema.md",
+    "schema/CoMet-v1.1.xsd.md",
+    { "Comicbox 3.0" = [
+      "schema/comicbox-v3.0/index.md",
+      "schema/comicbox-v3.0/credit.schema.md",
+      "schema/comicbox-v3.0/role.schema.md",
+      "schema/comicbox-v3.0/date.schema.md",
+      "schema/comicbox-v3.0/identified-object.schema.md",
+      "schema/comicbox-v3.0/identified-objects.schema.md",
+      "schema/comicbox-v3.0/identifiers.schema.md",
+      "schema/comicbox-v3.0/named-identified-object.schema.md",
+      "schema/comicbox-v3.0/page.schema.md",
+      "schema/comicbox-v3.0/reprint.schema.md",
+      "schema/comicbox-v3.0/series.schema.md",
+      "schema/comicbox-v3.0/alternative-name.schema.md",
+      "schema/comicbox-v3.0/volume.schema.md"
+    ] }
+  ] },
+  "TAGS.md"
+]
+docs_dir = "docs"
+
+[project.theme]
+variant = "modern"
+# navigation.indexes makes the Schemas and Comicbox 3.0 summary pages the nav
+# sections that hold their schema pages.
+features = [
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.indexes",
+  "search.highlight",
+]
+
+[project.theme.font]
+text = "Inter"
+code = "JetBrains Mono"
+
+[project.theme.palette]
+scheme = "slate"
+primary = "indigo"
+accent = "orange"
+
+[project.markdown_extensions]
+smarty = {}
+toc.permalink = true
+admonition = {}
+pymdownx.details = {}
+pymdownx.superfences = {}
+pymdownx.quotes.callouts = true
+
+[project.plugins.minify]
+minify_html = true
+minify_inline_js = true
+minify_inline_css = true
+
+[project.plugins.mkdocstrings]
+default_handler = "python"
+
+[project.plugins.api-autonav]
+modules = ["comicbox"]
+
+[project.plugins.redirects]
+# The schema summary was the top-level /SCHEMAS/ page until it became the
+# section index for the schema pages.
+redirect_maps = { "SCHEMAS.md" = "schema/index.md" }

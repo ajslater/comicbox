@@ -100,18 +100,32 @@ class FilenameRenderModule(BaseRenderModule):
         return None
 
 
+class DatePartField(IntegerField):
+    """A month or day, dumped as two digits so a date reads `(1950-11-01)`."""
+
+    ZERO_FILL = 2
+
+    def __init__(self, **kwargs: Any) -> None:
+        """Dump as a string, which is what the zero fill applies to."""
+        super().__init__(as_string=True, **kwargs)
+
+
 class FilenameSubSchema(BaseSubSchema):
     """File name sub schema."""
 
+    day = DatePartField(minimum=1, maximum=31)
     ext = StringField()
     issue = StringField()
     issue_count = IntegerField(minimum=0)
+    month = DatePartField(minimum=1, maximum=12)
     original_format = StringField()
+    publisher = StringField()
     remainders = StringListField()
     series = StringField()
     scan_info = StringField()
     title = StringField()
     volume = IntegerField()
+    volume_count = IntegerField(minimum=0)
     year = IntegerField()
 
 

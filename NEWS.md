@@ -1,5 +1,32 @@
 # 📰 News
 
+## v5.6.0
+
+### ✨ Added
+
+- Schema reference pages in the docs for Comicbox 3.0, ComicInfo, MetronInfo,
+  ComicBookInfo, CoMet and filenames, under Schemas.
+
+### ♻️ Changed
+
+- Filenames read and write the month, day and volume count, so renames get
+  `(1950-11-01)`; a publisher like `(DC)` is read, not written.
+- Change docs to use Zensical instead of MkDocs. The API reference moved to
+  [/reference/comicbox/](https://comicbox.readthedocs.io/reference/comicbox/).
+
+### 🐛 Fixed
+
+- Filenames comicbox writes read back: `#-001` and `#Omega` issues, and the
+  bracketed remainders group.
+- `(Digital)` and `(DC)` alone no longer read as the title; `(Digital: Empire)`
+  and `(c2c) (Group)` read as format and scan info, and `(2020-12)` as a year.
+- Leftover filename text is kept in `remainders`.
+
+### 🧑‍💻 Developer
+
+- Requires comicfn2dict 1.1.
+- The `pdf` extra requires comicbox-pdffile 1.1.2.
+
 ## v5.5.1
 
 ### 🧑‍💻 Developer
@@ -11,10 +38,12 @@
 
 ### 💥 Breaking Changes
 
-- Metron authenticates only with an API token; username, password and keyring
-  support are gone.
-- `OnlineCredentials` drops `metron_user` and `metron_password`.
-- MetronInfo.xml is written as v1.2 instead of v1.1.
+> [!WARNING]
+>
+> - Metron authenticates only with an API token; username, password and keyring
+>   support are gone.
+> - `OnlineCredentials` drops `metron_user` and `metron_password`.
+> - MetronInfo.xml is written as v1.2 instead of v1.1.
 
 ### ✨ Added
 
@@ -76,7 +105,9 @@
 
 ### 💥 Breaking Changes
 
-- Requires Python 3.11 or later.
+> [!WARNING]
+>
+> - Requires Python 3.11 or later.
 
 ### ✨ Added
 
@@ -254,31 +285,34 @@
 
 ### 💥 Breaking Changes
 
-- Comicbox schema v3.0. Version 2.0 documents no longer load.
-- Credit roles and age ratings use MetronInfo's names and scale, so finer
-  ComicInfo ratings like `Everyone 10+` become `Everyone`. The primary credit
-  flag is now per role, not per person.
-- `manga` no longer carries reading direction. See the new `reading_direction`
-  and `manga_volume` fields.
-- Web links moved out of `identifiers` into a new `urls` list, and
-  `identifier_primary_source` became `primary_id_source`.
-- ComicInfo's `GTIN` holds a barcode again instead of a comicbox urn, which is
-  what Kavita, Komga and Mylar expect. Files written the old way read.
-- A stated `title` is kept as written and stories are only read out of it when
-  the comic lists none. A series' other names live in
-  `series.alternative_names`.
-- Removed `critical_rating` and `alternate_images`, which mapped to no format.
-- Removed `--replace`; use `--merge-mode update`. The write API takes
-  `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
-- `OnlineSession` takes `match` and `prompts` instead of `mode` and
-  `unattended`, matching `--match` and `--prompts`. `set_mode` and
-  `set_unattended` are `set_match` and `set_prompts`, the prompt objects carry
-  `match` and `prompts`, and the `set_unattended` selector action is
-  `set_prompts`, which names the policy it sets and so can turn prompts back on.
-- Environment variables nest with `__`, and every config key can be set that
-  way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
-- `estimate_run()` and `requests_per_comic()` take an `effort` instead of a
-  match mode, which never changed what a search costs.
+> [!WARNING]
+>
+> - Comicbox schema v3.0. Version 2.0 documents no longer load.
+> - Credit roles and age ratings use MetronInfo's names and scale, so finer
+>   ComicInfo ratings like `Everyone 10+` become `Everyone`. The primary credit
+>   flag is now per role, not per person.
+> - `manga` no longer carries reading direction. See the new `reading_direction`
+>   and `manga_volume` fields.
+> - Web links moved out of `identifiers` into a new `urls` list, and
+>   `identifier_primary_source` became `primary_id_source`.
+> - ComicInfo's `GTIN` holds a barcode again instead of a comicbox urn, which is
+>   what Kavita, Komga and Mylar expect. Files written the old way read.
+> - A stated `title` is kept as written and stories are only read out of it when
+>   the comic lists none. A series' other names live in
+>   `series.alternative_names`.
+> - Removed `critical_rating` and `alternate_images`, which mapped to no format.
+> - Removed `--replace`; use `--merge-mode update`. The write API takes
+>   `merge_mode` instead of `mode`, and `WriteMode` is now `MergeMode`.
+> - `OnlineSession` takes `match` and `prompts` instead of `mode` and
+>   `unattended`, matching `--match` and `--prompts`. `set_mode` and
+>   `set_unattended` are `set_match` and `set_prompts`, the prompt objects carry
+>   `match` and `prompts`, and the `set_unattended` selector action is
+>   `set_prompts`, which names the policy it sets and so can turn prompts back
+>   on.
+> - Environment variables nest with `__`, and every config key can be set that
+>   way: `COMICBOX_ONLINE__AUTH__METRON__KEY`. Old flat names warn.
+> - `estimate_run()` and `requests_per_comic()` take an `effort` instead of a
+>   match mode, which never changed what a search costs.
 
 ### ✨ Added
 
@@ -630,20 +664,22 @@
 
 ### 💥 Breaking Changes
 
-- Removed the ComicTagger (`comictagger.json`) format.
-- Reorganized config files into nested groups (`general`, `read`, `write`,
-  `convert`, `online`, …). Flat v3 config files must be migrated.
-- Dry-run is now `-n` (was `-y`).
-- PDFs no longer decode comicbox metadata hidden in the PDF `keywords` field;
-  `keywords` now reads as plain tags. Metadata embedded as files inside a PDF
-  still reads normally.
-- Library API: `Comicbox(...)` no longer accepts a `logger=` argument and never
-  reconfigures the host application's logging. Host apps keep their own loguru
-  sinks; the CLI configures its own.
-- Library API: operational errors derive from
-  `comicbox.exceptions.ComicboxError` (`ArchiveError`, `MetadataError`,
-  `ExportError`, …) instead of raising bare `ValueError`. Consumers can
-  `except ComicboxError`.
+> [!WARNING]
+>
+> - Removed the ComicTagger (`comictagger.json`) format.
+> - Reorganized config files into nested groups (`general`, `read`, `write`,
+>   `convert`, `online`, …). Flat v3 config files must be migrated.
+> - Dry-run is now `-n` (was `-y`).
+> - PDFs no longer decode comicbox metadata hidden in the PDF `keywords` field;
+>   `keywords` now reads as plain tags. Metadata embedded as files inside a PDF
+>   still reads normally.
+> - Library API: `Comicbox(...)` no longer accepts a `logger=` argument and
+>   never reconfigures the host application's logging. Host apps keep their own
+>   loguru sinks; the CLI configures its own.
+> - Library API: operational errors derive from
+>   `comicbox.exceptions.ComicboxError` (`ArchiveError`, `MetadataError`,
+>   `ExportError`, …) instead of raising bare `ValueError`. Consumers can
+>   `except ComicboxError`.
 
 ### ✨ Added
 
@@ -704,9 +740,11 @@
 
 ### 💥 Breaking Changes
 
-- get\_config() now returns a ComicboxSettings dataclass, not a Confuse
-  AttrDict. Comicbox constructor now accepts this dataclass instead of an
-  AttrDict
+> [!WARNING]
+>
+> - get\_config() now returns a ComicboxSettings dataclass, not a Confuse
+>   AttrDict. Comicbox constructor now accepts this dataclass instead of an
+>   AttrDict
 
 ### ✨ Added
 
@@ -848,8 +886,10 @@
 
 ### 💥 Breaking Changes
 
-- Schema, API, config and CLI changes. See
-  [the 2.0 CHANGES document](CHANGES-2.0.0.md).
+> [!WARNING]
+>
+> - Schema, API, config and CLI changes. See
+>   [the 2.0 CHANGES document](https://github.com/ajslater/comicbox/blob/v3.0.3/docs/CHANGES-2.0.0.md).
 
 ### ✨ Added
 
@@ -1018,7 +1058,10 @@
 
 ### 💥 Breaking Changes
 
-- Some are detailed in [The 1.0.0 CHANGES document](CHANGES-1.0.0.md)
+> [!WARNING]
+>
+> - Some are detailed in
+>   [The 1.0.0 CHANGES document](https://github.com/ajslater/comicbox/blob/v3.0.3/docs/CHANGES-1.0.0.md)
 
 ### ✨ Added
 
@@ -1057,7 +1100,9 @@
 
 ### 💥 Breaking Changes
 
-- Breaking API, CLI & Config changes.
+> [!WARNING]
+>
+> - Breaking API, CLI & Config changes.
 
 ### ✨ Added
 
@@ -1238,6 +1283,10 @@
 - Handle more filename patterns.
 
 ## v0.4.1 - Yanked
+
+> [!CAUTION]
+>
+> Yanked. Use v0.5.0.
 
 ## v0.4.0
 

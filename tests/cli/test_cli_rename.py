@@ -7,7 +7,7 @@ from tests.util import get_tmp_dir, my_cleanup, my_setup
 TMP_DIR = get_tmp_dir(__file__)
 TMP_PATH = TMP_DIR / EXPORT_SOURCE_PATH.name
 
-RENAMED_NAME = "Captain Science v1950 #001 (of 007) (1950) The Beginning.cbz"
+RENAMED_NAME = "Captain Science v1950 #001 (of 007) (1950-11-01) The Beginning.cbz"
 
 
 def _setup() -> None:
