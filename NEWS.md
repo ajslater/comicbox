@@ -1,5 +1,28 @@
 # 📰 News
 
+## v5.5.2
+
+### ✨ Added
+
+- Filename schema page in the docs, with every schema page under Schemas.
+
+### ♻️ Changed
+
+- Filenames read and write the month, day and volume count, so renames get
+  `(1950-11-01)`; a publisher like `(DC)` is read, not written.
+
+### 🐛 Fixed
+
+- Filenames comicbox writes read back: `#-001` and `#Omega` issues, and the
+  bracketed remainders group.
+- `(Digital)` and `(DC)` alone no longer read as the title; `(Digital: Empire)`
+  and `(c2c) (Group)` read as format and scan info, and `(2020-12)` as a year.
+- Leftover filename text is kept in `remainders`.
+
+### 🧑‍💻 Developer
+
+- Requires comicfn2dict 1.1.
+
 ## v5.5.1
 
 ### 🧑‍💻 Developer

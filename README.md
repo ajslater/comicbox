@@ -29,7 +29,7 @@ as a standalone command line tool for organizing a comic library.
 - **Extracts images** — pulls cover art or arbitrary page ranges out of any
   supported archive.
 - **Is scriptable and embeddable** — a rich CLI, a Python API, and published
-  [JSON Schemas](https://comicbox.readthedocs.io/SCHEMAS/) for every format.
+  [schemas](https://comicbox.readthedocs.io/schema/) for every format.
 
 ### 📚 Archive Formats
 
@@ -361,7 +361,7 @@ its own:
 
 - [News / changelog](NEWS.md)
 - [HTML docs](https://comicbox.readthedocs.io)
-- [Metadata schemas](https://comicbox.readthedocs.io/SCHEMAS/)
+- [Metadata schemas](https://comicbox.readthedocs.io/schema/)
 - [Tag translation table](https://comicbox.readthedocs.io/TAGS/)
 
 ## 🛠 Development

@@ -1,6 +1,7 @@
 """Test CIX module."""
 
 import os
+import shutil
 from argparse import Namespace
 from collections.abc import Mapping
 from decimal import Decimal
@@ -11,10 +12,12 @@ from typing import Any
 import pytest
 from glom import glom
 
+from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
 from comicbox.formats.filename.schema import FilenameSchema
+from tests.const import EMPTY_CBZ_SOURCE_PATH
 from tests.util import TestParser
 
 FN = "Captain Science #001 (1950) The Beginning - nothing.cbz"
@@ -158,6 +161,49 @@ def test_filename_dumps_sanitizes_reserved_chars(series: str, expected: str) -> 
     assert FilenameSchema().dumps(obj) == expected
 
 
+@pytest.mark.parametrize(
+    "sub_data",
+    [
+        {"ext": "cbz", "issue": "-001", "series": "Captain Science"},
+        {"ext": "cbz", "issue": "Omega", "series": "Captain Science"},
+        {
+            "ext": "cbz",
+            "issue": "001",
+            "remainders": ["(5 covers)"],
+            "series": "Captain Science",
+            "year": 1950,
+        },
+        {
+            "ext": "cbr",
+            "issue": "001",
+            "issue_count": 3,
+            "original_format": "Digital",
+            "scan_info": "Empire",
+            "series": "Captain Science",
+            "title": "The Beginning",
+            "volume": 1,
+            "year": 1950,
+        },
+        {
+            "day": 1,
+            "ext": "cbz",
+            "issue": "001",
+            "month": 11,
+            "series": "Captain Science",
+            "volume": 1,
+            "volume_count": 3,
+            "year": 1950,
+        },
+    ],
+)
+def test_filename_dumps_reads_back(sub_data: dict[str, Any]) -> None:
+    """Every field comicbox writes into a filename reads back as itself."""
+    obj = {FilenameSchema.ROOT_TAG: sub_data}
+    schema = FilenameSchema()
+
+    assert schema.loads(schema.dumps(obj)) == obj
+
+
 def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
     """A colon dropped from the series must not split it on the way back in."""
     obj = {
@@ -174,3 +220,16 @@ def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
     assert glom(schema.loads(fn), f"{FilenameSchema.ROOT_TAG}.series") == (
         "Star Wars Doctor Aphra"
     )
+
+
+def test_filename_publisher_is_read_and_not_written(tmp_path: Path) -> None:
+    """A publisher comicfn2dict knows reads out of the name; none is written back."""
+    path = tmp_path / "Batman #001 (2020) (DC).cbz"
+    shutil.copy(EMPTY_CBZ_SOURCE_PATH, path)
+
+    with Comicbox(path, config=READ_CONFIG) as car:
+        md = car.get_internal_metadata()
+        predicted = car.predict_filename()
+
+    assert md[ComicboxSchemaMixin.ROOT_TAG]["publisher"] == {"name": "DC"}
+    assert predicted == "Batman #001 (2020).cbz"
