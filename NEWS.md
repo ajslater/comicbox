@@ -1,15 +1,18 @@
 # 📰 News
 
-## v5.5.2
+## v5.6.0
 
 ### ✨ Added
 
-- Filename schema page in the docs, with every schema page under Schemas.
+- Schema reference pages in the docs for Comicbox 3.0, ComicInfo, MetronInfo,
+  ComicBookInfo, CoMet and filenames, under Schemas.
 
 ### ♻️ Changed
 
 - Filenames read and write the month, day and volume count, so renames get
   `(1950-11-01)`; a publisher like `(DC)` is read, not written.
+- Change docs to use Zensical instead of MkDocs. The API reference moved to
+  [/reference/comicbox/](https://comicbox.readthedocs.io/reference/comicbox/).
 
 ### 🐛 Fixed
 
@@ -22,6 +25,7 @@
 ### 🧑‍💻 Developer
 
 - Requires comicfn2dict 1.1.
+- The `pdf` extra requires comicbox-pdffile 1.1.2.
 
 ## v5.5.1
 
