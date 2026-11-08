@@ -856,10 +856,12 @@
 
 ## v2.0.4
 
-### 🧑‍💻 Developer
+### 💥 Breaking Changes
 
-- The confuse library dependency doesn't support Python 3.14. So neither does
-  comicbox :(
+> [!WARNING]
+>
+> - The confuse library dependency doesn't support Python 3.14. So neither does
+>   comicbox :(
 
 ## v2.0.3
 
@@ -1114,16 +1116,13 @@
 > [!WARNING]
 >
 > - Breaking API, CLI & Config changes.
+> - Python version now >=3.9
 
 ### ✨ Added
 
 - Write metadata from the command line.
 - Optional PDF support. Install as `comicbox[pdf]`
 - Extract a range of pages from the cli.
-
-### 🧑‍💻 Developer
-
-- Python version now >=3.9
 
 ## v0.9.1
 
