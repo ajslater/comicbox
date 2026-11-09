@@ -108,8 +108,8 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 # zipremove patches remove()/repack() onto the stdlib
                 # ZipFile, which lacks both through at least Python 3.14,
                 # so the typeshed stubs can't see either method.
-                zf.remove(path)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
-        zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+                zf.remove(path)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
+        zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
 
     def _archive_write_metadata_files(
         self, zf: ZipFile, files: Mapping[str, bytes]

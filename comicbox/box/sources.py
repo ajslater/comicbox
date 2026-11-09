@@ -3,7 +3,7 @@
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from loguru import logger
 
@@ -13,6 +13,9 @@ from comicbox.exceptions import MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.formats.sources import MetadataSources
+
+if TYPE_CHECKING:
+    from pdffile import PDFFile
 
 FILENAME_FORMAT_MAP = MappingProxyType(
     {
@@ -125,7 +128,7 @@ class ComicboxSources(ComicboxArchive):
             archive = self._get_archive()
             if not archive or not self._archive_is_pdf:
                 return source_data_list
-            if md := archive.get_metadata():  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+            if md := cast("PDFFile", archive).get_metadata():
                 md = MappingProxyType({MuPDFSchema.ROOT_TAG: md})
                 source_data_list = [
                     SourceData(md, fmt=MetadataFormats.PDF, from_archive=True)
@@ -245,12 +248,11 @@ class ComicboxSources(ComicboxArchive):
         path: str | Path = "",
     ) -> None:
         """Add metadata directly to sources cache."""
-        if source not in self._sources:
-            self._sources[source] = []
-        elif not isinstance(self._sources[source], list):
-            self._sources[source] = list(self._sources[source])
-        sd = SourceData(metadata, Path(path), fmt)
-        self._sources[source].append(sd)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        source_data_list = self._sources.get(source)
+        if not isinstance(source_data_list, list):
+            source_data_list = list(source_data_list or ())
+            self._sources[source] = source_data_list
+        source_data_list.append(SourceData(metadata, Path(path), fmt))
 
         self._invalidate_source(source)
 

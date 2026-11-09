@@ -28,7 +28,7 @@ class DateField(fields.Date):
         self._serialize_to_str = serialize_to_str
 
     @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self,
         value: Any,
         *args: Any,
@@ -51,7 +51,7 @@ class DateField(fields.Date):
         return dt
 
     @override
-    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self,
         value: Any,
         *args: Any,
@@ -84,7 +84,7 @@ class DateTimeField(fields.DateTime):
         return dttm
 
     @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self,
         value: Any,
         *args: Any,
@@ -119,7 +119,7 @@ class DateTimeField(fields.DateTime):
         return dttm
 
     @override
-    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self,
         value: Any,
         *args: Any,

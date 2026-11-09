@@ -61,7 +61,7 @@ class RangedNumberMixin:
 
     def _serialize_post(self, result: Any) -> Any:
         """Zero pad as_string numbers for sorting."""
-        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
             result = str(result).zfill(self.ZERO_FILL)
         return result
 
@@ -95,7 +95,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         pre_value = self._deserialize_pre(value)
         result = super()._deserialize(pre_value, *args, **kwargs)
         return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
@@ -137,7 +137,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self, value: Any, *args: Any, **kwargs: Any
     ) -> Decimal | None:
         pre_value = self._deserialize_pre(value)

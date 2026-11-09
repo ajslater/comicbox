@@ -545,7 +545,7 @@ def _run_with_retries(
             )
             slept = _handle_retry_exception(
                 exc,
-                func_name=func.__name__,  # ty: ignore[unresolved-attribute]
+                func_name=func.__name__,  # ty: ignore[missing-attribute]
                 category=category,
                 attempt=attempt,
                 rate_limit_attempt=rate_limit_attempt,
