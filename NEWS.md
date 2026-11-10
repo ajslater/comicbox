@@ -1,5 +1,11 @@
 # 📰 News
 
+## v5.6.2
+
+### 🧑‍💻 Developer
+
+- Requires mokkari 5.1.
+
 ## v5.6.1
 
 ### 🐛 Fixed
