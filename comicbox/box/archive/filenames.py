@@ -16,30 +16,27 @@ EPOCH_START = datetime(1970, 1, 1, 0, 0, 0, tzinfo=UTC)
 class ComicboxArchiveFilenames(ComicboxArchiveMtime):
     """Calculate page filenames."""
 
-    def _set_page_filenames(self) -> None:
+    def _get_page_filenames(self) -> tuple[str, ...]:
         """Parse the filenames that are comic pages."""
         archive_filenames = self.namelist()
         if self._archive_is_pdf:
             # PDF page names are zero padded page indexes. Embedded files
             # (e.g. an attached ComicInfo.xml) share the namelist but are
             # metadata, not pages.
-            self._page_filenames = tuple(
+            return tuple(
                 filename for filename in archive_filenames if filename.isdigit()
             )
-        else:
-            page_filenames = [
-                filename
-                for filename in archive_filenames
-                if not _IGNORE_RE.search(filename)
-                and self.IMAGE_EXT_RE.search(filename)
-            ]
-            self._page_filenames: tuple[str, ...] | None = tuple(page_filenames)
+        return tuple(
+            filename
+            for filename in archive_filenames
+            if not _IGNORE_RE.search(filename) and self.IMAGE_EXT_RE.search(filename)
+        )
 
     def get_page_filenames(self) -> tuple[str, ...]:
         """Get all page filenames."""
         if self._page_filenames is None:
-            self._set_page_filenames()
-        return self._page_filenames  # pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
+            self._page_filenames = self._get_page_filenames()
+        return self._page_filenames
 
     def get_pagenames_from(
         self, index_from: int | None = None, index_to: int | None = None
