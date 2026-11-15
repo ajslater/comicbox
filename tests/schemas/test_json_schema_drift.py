@@ -1,13 +1,15 @@
 """
-Drift guard: the published comicbox v3.0 JSON Schema must match the model.
+Drift guard: the published comicbox JSON Schemas must match their models.
 
-The JSON Schema files in ``comicbox/schemas/v3.0/`` are hand-maintained
-and serve as the production validator for the COMICBOX_JSON/YAML formats, but nothing
-generates them from the Marshmallow schemas in ``comicbox/formats/comicbox/schema/``.
+The JSON Schema files in ``comicbox/schemas/v3.0/`` and
+``comicbox/schemas/reading-list/v1.0/`` are hand-maintained and serve as the
+production validators for the comicbox-native comic and reading-list formats, but
+nothing generates them from the Marshmallow schemas.
 
 This test walks the Marshmallow schema tree (the source of truth) and the JSON Schema
-in parallel -- following ``$ref``s, ``additionalProperties``, ``patternProperties`` and
-array ``items`` -- and asserts, for every object, that:
+in parallel -- following ``$ref``s relative to the file that holds them,
+``additionalProperties``, ``patternProperties`` and array ``items`` -- and asserts,
+for every object, that:
 
 - its set of property names matches the fields the model dumps (catches
   renamed/added/removed fields and ``$ref``s pointing at the wrong sub-schema), and
@@ -23,19 +25,27 @@ from inspect import isclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import pytest
 from marshmallow import Schema, fields
 from marshmallow.fields import Nested
 from marshmallow_union import Union
 
 from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
+from comicbox.readinglists.schema import ReadingListJsonSchema
 from comicbox.validate.base import SCHEMA_PATH
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from enum import Enum
 
-SCHEMA_DIR = SCHEMA_PATH / "v3.0"
-ROOT_SCHEMA = "comicbox-v3.0.schema.json"
+# (model, root JSON Schema file) pairs.
+SCHEMA_PAIRS: tuple[tuple[type[Schema], Path], ...] = (
+    (ComicboxJsonSchema, SCHEMA_PATH / "v3.0" / "comicbox-v3.0.schema.json"),
+    (
+        ReadingListJsonSchema,
+        SCHEMA_PATH / "reading-list" / "v1.0" / "reading-list-v1.0.schema.json",
+    ),
+)
 
 # Marshmallow base class -> JSON Schema ``type``. Order matters: ``Integer`` is a
 # ``Number`` but maps to ``"integer"``, so it is tested first. Enum/Date/DateTime
@@ -62,40 +72,45 @@ def _expected_type(field: fields.Field) -> str | None:
     return None  # Constant and anything unrecognized: don't assert a type.
 
 
-def _load(filename: str) -> dict:
-    return json.loads((SCHEMA_DIR / Path(filename).name).read_text())
+def _load(path: Path) -> dict:
+    return json.loads(path.read_text())
 
 
-def _resolve(node: dict) -> dict:
-    """Follow local ``$ref``s to the target schema object."""
-    seen: set[str] = set()
-    while "$ref" in node:
-        ref = node["$ref"]
-        if ref in seen:
-            msg = f"Cyclic $ref detected: {ref}"
-            raise AssertionError(msg)
-        seen.add(ref)
-        node = _load(ref)
-    return node
-
-
-def _item_schema(node: dict) -> dict:
+def _resolve(node: dict, base: Path) -> tuple[dict, Path]:
     """
-    Return the subschema describing a node's values.
+    Follow ``$ref``s to the target schema object and the file that holds it.
+
+    A ``$ref`` is relative to the file it appears in, as the runtime validator
+    resolves it, so a reading-list file can point into ``v3.0``.
+    """
+    seen: set[Path] = set()
+    while "$ref" in node:
+        path = (base.parent / node["$ref"]).resolve()
+        if path in seen:
+            msg = f"Cyclic $ref detected: {path}"
+            raise AssertionError(msg)
+        seen.add(path)
+        node, base = _load(path), path
+    return node, base
+
+
+def _item_schema(node: dict, base: Path) -> tuple[dict, Path]:
+    """
+    Return the subschema describing a node's values, and the file that holds it.
 
     Object maps describe their values with ``additionalProperties`` or
     ``patternProperties``; arrays with ``items``; plain objects describe
     themselves via ``properties``.
     """
-    node = _resolve(node)
+    node, base = _resolve(node, base)
     if node.get("type") == "array":
-        return _resolve(node["items"])
+        return _resolve(node["items"], base)
     additional = node.get("additionalProperties")
     if isinstance(additional, dict):
-        return _resolve(additional)
+        return _resolve(additional, base)
     if pattern := node.get("patternProperties"):
-        return _resolve(next(iter(pattern.values())))
-    return node
+        return _resolve(next(iter(pattern.values())), base)
+    return node, base
 
 
 def _schema_class(field: fields.Field) -> type[Schema] | None:
@@ -143,13 +158,13 @@ def _check_enum(
 
 
 def _check_array_items(
-    field: fields.Field, node: dict, path: str, failures: list[str]
+    field: fields.Field, node: dict, base: Path, path: str, failures: list[str]
 ) -> None:
     """Assert an array property's ``items`` type matches the field's inner element."""
     if not isinstance(field, fields.List):
         return
     expected = _expected_type(field.inner)
-    declared = _resolve(node.get("items", {})).get("type")
+    declared = _resolve(node.get("items", {}), base)[0].get("type")
     if expected and declared and declared != expected:
         failures.append(
             f"{path}[]: model item type {expected!r} != schema type {declared!r}"
@@ -157,7 +172,7 @@ def _check_array_items(
 
 
 def _check_map_values(
-    field: fields.Field, node: dict, path: str, failures: list[str]
+    field: fields.Field, node: dict, base: Path, path: str, failures: list[str]
 ) -> None:
     """
     Assert a plain map's scalar value type matches the field's value.
@@ -170,7 +185,7 @@ def _check_map_values(
     additional = node.get("additionalProperties")
     if not (expected and expected != "object" and isinstance(additional, dict)):
         return
-    declared = _resolve(additional).get("type")
+    declared = _resolve(additional, base)[0].get("type")
     if declared and declared != expected:
         failures.append(
             f"{path}{{}}: model value type {expected!r} != schema type {declared!r}"
@@ -178,18 +193,20 @@ def _check_map_values(
 
 
 def _check_type(
-    field: fields.Field, prop: dict, path: str, failures: list[str]
+    field: fields.Field, prop: dict, base: Path, path: str, failures: list[str]
 ) -> None:
     """Assert a property's declared JSON type matches the field, including elements."""
-    node = _resolve(prop)
+    node, base = _resolve(prop, base)
     _check_scalar_type(field, node, path, failures)
     _check_enum(field, node, path, failures)
-    _check_array_items(field, node, path, failures)
-    _check_map_values(field, node, path, failures)
+    _check_array_items(field, node, base, path, failures)
+    _check_map_values(field, node, base, path, failures)
 
 
-def _walk(schema: Schema, node: dict, path: str, failures: list[str]) -> None:
-    node = _resolve(node)
+def _walk(
+    schema: Schema, node: dict, base: Path, path: str, failures: list[str]
+) -> None:
+    node, base = _resolve(node, base)
     properties = node.get("properties", {})
     model_keys = {field.data_key or name for name, field in schema.fields.items()}
     json_keys = set(properties)
@@ -201,15 +218,21 @@ def _walk(schema: Schema, node: dict, path: str, failures: list[str]) -> None:
         key = field.data_key or name
         if key not in properties:
             continue
-        _check_type(field, properties[key], f"{path}.{key}", failures)
+        _check_type(field, properties[key], base, f"{path}.{key}", failures)
         if sub_cls := _schema_class(field):
-            _walk(sub_cls(), _item_schema(properties[key]), f"{path}.{key}", failures)
+            item, item_base = _item_schema(properties[key], base)
+            _walk(sub_cls(), item, item_base, f"{path}.{key}", failures)
 
 
-def test_json_schema_matches_model() -> None:
-    """Every object in the v3.0 JSON Schema must match its Marshmallow fields."""
+@pytest.mark.parametrize(
+    ("schema_class", "root_file"),
+    SCHEMA_PAIRS,
+    ids=[root_file.name for _, root_file in SCHEMA_PAIRS],
+)
+def test_json_schema_matches_model(schema_class: type[Schema], root_file: Path) -> None:
+    """Every object in a published JSON Schema must match its Marshmallow fields."""
     failures: list[str] = []
-    _walk(ComicboxJsonSchema(), _load(ROOT_SCHEMA), "<root>", failures)
-    assert not failures, "v3.0 JSON Schema drifted from the model:\n" + "\n".join(
+    _walk(schema_class(), _load(root_file), root_file, "<root>", failures)
+    assert not failures, f"{root_file.name} drifted from the model:\n" + "\n".join(
         failures
     )

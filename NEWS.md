@@ -1,6 +1,11 @@
 # 📰 News
 
-## v5.6.2
+## v5.7.0
+
+### ✨ Added
+
+- Reading lists: the `comicbox.readinglists` API reads and writes reading orders
+  as comicbox YAML or JSON, with a published JSON Schema.
 
 ### 🧑‍💻 Developer
 

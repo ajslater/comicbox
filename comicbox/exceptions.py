@@ -114,3 +114,20 @@ class OnlineConfigurationError(ComicboxError):
 
 class OnlineLookupAbortedError(ComicboxError):
     """Raised when the selector callback returns ('abort', None)."""
+
+
+class ReadingListError(ComicboxError):
+    """A reading list could not be read, converted, combined or written."""
+
+
+class ReadingListFormatError(ReadingListError):
+    """A document is not a reading list in any format comicbox reads."""
+
+
+class SmartListError(ReadingListFormatError):
+    """
+    A ComicRack smart list.
+
+    Its ``<Matchers>`` are rules that select comics from a library, not a
+    list of issues, so there is nothing to read.
+    """
