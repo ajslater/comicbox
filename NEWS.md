@@ -26,6 +26,7 @@
 ### 🐛 Fixed
 
 - ComicInfo keeps every story arc's number when another arc has none.
+- Online summaries no longer show HTML entities such as `&amp;`.
 
 ### 🧑‍💻 Developer
 

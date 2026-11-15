@@ -13,6 +13,7 @@ choice; downstream tools can render however they like.
 from __future__ import annotations
 
 import re
+from html import unescape
 
 import nh3
 
@@ -32,7 +33,8 @@ def strip_html(text: str | None) -> str | None:
 
     Block-level tags collapse to single newlines so the result reads
     like text rather than running together. Inline tags drop entirely.
-    Runs of three+ newlines collapse to two (paragraph spacing).
+    Runs of three+ newlines collapse to two (paragraph spacing). The
+    result is text, not HTML: ``&amp;`` is ``&``.
 
     Returns None for None input, "" for empty input.
     """
@@ -42,5 +44,7 @@ def strip_html(text: str | None) -> str | None:
         return ""
     # Convert block-level tag positions to newlines before nh3 strips them.
     pre = _BLOCK_RE.sub("\n", text)
-    cleaned = nh3.clean(pre, tags=set())
+    # nh3 returns HTML: it escapes what it keeps, so "&" comes back "&amp;".
+    # Unescape after cleaning, so markup spelled as entities stays text.
+    cleaned = unescape(nh3.clean(pre, tags=set()))
     return _MULTI_NEWLINE_RE.sub("\n\n", cleaned).strip()
