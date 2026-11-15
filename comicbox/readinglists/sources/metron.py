@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import requests
-    from mokkari.session import Session
 
     from comicbox.readinglists.serialize import ReadingListResult
     from comicbox.readinglists.sources import FetchContext
@@ -87,10 +86,9 @@ def check_token(session: FetchContext) -> None:
     _configured(session)
 
 
-def _api(session: FetchContext) -> Session:
-    """Get the shared mokkari Session, or raise before any request."""
-    credentials = _configured(session)
-    return MetronOnlineSource(credentials, session.settings.online).session()
+def _source(session: FetchContext) -> MetronOnlineSource:
+    """Get the token's Metron source, or raise before any request."""
+    return MetronOnlineSource(_configured(session), session.settings.online)
 
 
 class _PageCounter:
@@ -158,17 +156,17 @@ def _describe(exc: Exception) -> str:
 @contextmanager
 def _calling(
     session: FetchContext, what: str, on_page: _PageCounter | None = None
-) -> Generator[Session]:
+) -> Generator[MetronOnlineSource]:
     """
     Call Metron with the session's cancel and progress hooks set.
 
     Every mokkari failure becomes one ``ReadingListFetchError`` naming
     ``what``; a cancel passes through as ``OnlineLookupAbortedError``.
     """
-    api = _api(session)
+    source = _source(session)
     try:
         with fetch_hooks(abort=session.cancelled.is_set, on_page=on_page):
-            yield api
+            yield source
     except _MOKKARI_ERRORS as exc:
         reason = f"{what}: {_describe(exc)}"
         raise ReadingListFetchError(reason) from exc
@@ -192,8 +190,8 @@ def search(
         params["username"] = username
     if modified_since is not None:
         params["modified_gt"] = modified_since.isoformat()
-    with _calling(session, "Metron reading-list search") as api:
-        rows = api.reading_lists_list(params)
+    with _calling(session, "Metron reading-list search") as source:
+        rows = source.session().reading_lists_list(params)
     return [summary_from_metron(row) for row in rows]
 
 
@@ -206,11 +204,19 @@ def fetch_list(
     """Fetch a reading list, or None when it is unchanged since then."""
     kind, key = SourceKind.METRON_LIST.value, str(list_id)
     counter = _PageCounter(session, kind, key, _ITEMS_PAGE)
-    with _calling(session, f"Metron reading list {list_id}", counter) as api:
+    with _calling(session, f"Metron reading list {list_id}", counter) as source:
+        api = source.session()
         header = api.reading_list(list_id, if_modified_since=if_modified_since)
         if header is None:
             return None
-        items = api.reading_list_items(list_id)
+        if if_modified_since is None:
+            items = api.reading_list_items(list_id)
+        else:
+            # Changed since then, so the cached header and items are older
+            # still: fetch both anew, and leave the cache holding them.
+            with source.refreshing_session() as fresh:
+                header = fresh.reading_list(list_id) or header
+                items = fresh.reading_list_items(list_id)
     return reading_list_from_metron(header, items)
 
 
@@ -223,9 +229,15 @@ def fetch_arc(
     """Fetch a story arc as a list, or None when it is unchanged since then."""
     kind, key = SourceKind.METRON_ARC.value, str(arc_id)
     counter = _PageCounter(session, kind, key, _ARC_ISSUES_PAGE)
-    with _calling(session, f"Metron arc {arc_id}", counter) as api:
+    with _calling(session, f"Metron arc {arc_id}", counter) as source:
+        api = source.session()
         arc = api.arc(arc_id, if_modified_since=if_modified_since)
         if arc is None:
             return None
-        issues = api.arc_issues_list(arc_id)
+        if if_modified_since is None:
+            issues = api.arc_issues_list(arc_id)
+        else:
+            with source.refreshing_session() as fresh:
+                arc = fresh.arc(arc_id) or arc
+                issues = fresh.arc_issues_list(arc_id)
     return reading_list_from_metron_arc(arc, issues)

@@ -86,6 +86,42 @@ def _three_pages() -> dict[str, Reply]:
     }
 
 
+def _unrouted(request: requests.PreparedRequest) -> Reply:
+    reason = f"a request no fake answers: {request.url}"
+    raise AssertionError(reason)
+
+
+@pytest.fixture(autouse=True)
+def route_new_sessions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[Callable[[requests.PreparedRequest], Reply]], None]:
+    """
+    Mount a fake transport on every mokkari session built here.
+
+    A request no test routed fails the test instead of reaching Metron.
+    The returned setter routes the sessions built after it.
+    """
+    from comicbox.formats.metron_api import paced_session
+
+    router: list[Callable[[requests.PreparedRequest], Reply]] = [_unrouted]
+    build = paced_session.build_paced_session
+
+    def routed(request: requests.PreparedRequest) -> Reply:
+        return router[0](request)
+
+    def build_routed(gate: Any, **kwargs: Any) -> Any:
+        built = build(gate, **kwargs)
+        install(built, routed)
+        return built
+
+    monkeypatch.setattr(paced_session, "build_paced_session", build_routed)
+
+    def route(replies: Callable[[requests.PreparedRequest], Reply]) -> None:
+        router[0] = replies
+
+    return route
+
+
 @pytest.fixture
 def events() -> list[Event]:
     return []
@@ -508,3 +544,132 @@ def test_a_connection_failure_is_one_fetch_error(session: ReadingListSession) ->
         session.fetch_metron_list(1)
 
     assert "\n" not in str(e.value)
+
+
+# ------------------------------------------------- a changed list (E1)
+
+
+class _Changing:
+    """
+    A Metron whose list and arc gain an issue at a known time.
+
+    It honours If-Modified-Since, as Metron does, so a conditional fetch of
+    the old version gets a 304 and one of the new version does not.
+    """
+
+    _BEFORE = "2024-05-01T12:00:00-04:00"
+    _AFTER = "2024-06-01T12:00:00-04:00"
+
+    def __init__(self) -> None:
+        self.changed = False
+        self.paths: list[tuple[str, bool]] = []
+
+    @property
+    def modified(self) -> str:
+        return self._AFTER if self.changed else self._BEFORE
+
+    def _issues(self) -> list[int]:
+        return [1, 2, 3] if self.changed else [1, 2]
+
+    def _unchanged_since(self, request: requests.PreparedRequest) -> bool:
+        from email.utils import parsedate_to_datetime
+
+        since = request.headers.get("If-Modified-Since")
+        if not isinstance(since, str):
+            return False
+        return datetime.fromisoformat(self.modified) <= parsedate_to_datetime(since)
+
+    def __call__(self, request: requests.PreparedRequest) -> Reply:
+        path = urlsplit(request.url or "").path.removeprefix("/api")
+        self.paths.append((path, "If-Modified-Since" in request.headers))
+        if path in {"/reading_list/1/", "/arc/5/"} and self._unchanged_since(request):
+            return Reply(status_code=304)
+        match path:
+            case "/reading_list/1/":
+                return Reply(reading_list_detail(modified=self.modified))
+            case "/reading_list/1/items/":
+                rows = [reading_list_item(n, n) for n in self._issues()]
+                return Reply(issue_page(rows))
+            case "/arc/5/":
+                return Reply(arc_detail(modified=self.modified))
+            case "/arc/5/issue_list/":
+                return Reply(issue_page([issue_row(n) for n in self._issues()]))
+            case _:
+                return _NOT_FOUND
+
+
+_SINCE = datetime(2024, 5, 2, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("fetch", "header_path", "items_path"),
+    [
+        (
+            lambda rl, since: rl.fetch_metron_list(1, if_modified_since=since),
+            "/reading_list/1/",
+            "/reading_list/1/items/",
+        ),
+        (
+            lambda rl, since: rl.fetch_metron_arc(5, if_modified_since=since),
+            "/arc/5/",
+            "/arc/5/issue_list/",
+        ),
+    ],
+    ids=["list", "arc"],
+)
+def test_a_changed_list_comes_with_its_new_items(
+    session: ReadingListSession,
+    route_new_sessions: Callable[[Any], None],
+    fetch: Callable[[ReadingListSession, datetime | None], Any],
+    header_path: str,
+    items_path: str,
+) -> None:
+    """
+    A list found changed never pairs its new header with cached items.
+
+    The first fetch warms the cache. After the change, a conditional fetch
+    gets the new header and all three issues from Metron; a plain fetch
+    after that is served whole from the cache, so the cache was left fresh.
+    """
+    metron = _Changing()
+    route_new_sessions(metron)
+    install(_shared_source(session).session(), metron)
+    assert _keys(fetch(session, None).reading_list) == ["1", "2"]
+    assert fetch(session, _SINCE) is None  # Unchanged: a 304, no items.
+    metron.changed = True
+    metron.paths.clear()
+
+    changed = fetch(session, _SINCE)
+
+    assert changed is not None
+    assert _keys(changed.reading_list) == ["1", "2", "3"]
+    revision = changed.reading_list["sources"][0]["revision"]
+    assert revision == "2024-06-01T12:00:00-04:00"
+    assert metron.paths == [
+        (header_path, True),
+        (header_path, False),
+        (items_path, False),
+    ]
+    metron.paths.clear()
+    cached = fetch(session, None)
+    assert metron.paths == []
+    assert _keys(cached.reading_list) == ["1", "2", "3"]
+    assert cached.reading_list["sources"][0]["revision"] == revision
+
+
+def test_a_changed_list_shares_the_gate(
+    session: ReadingListSession, route_new_sessions: Callable[[Any], None]
+) -> None:
+    """The refetch queues at the token's gate and leaves nothing in flight."""
+    metron = _Changing()
+    route_new_sessions(metron)
+    install(_shared_source(session).session(), metron)
+    session.fetch_metron_list(1)
+    metron.changed = True
+    gate = _gate(session)
+    sends = gate.stats().sends
+
+    session.fetch_metron_list(1, if_modified_since=_SINCE)
+
+    assert gate.stats().sends == sends + 3
+    assert gate._in_flight == 0
