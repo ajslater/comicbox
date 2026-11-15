@@ -8,7 +8,7 @@ War``) that markup would swallow or misread.
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.style import Style
@@ -49,6 +49,10 @@ from comicbox.readinglists.schema import (
 )
 from comicbox.readinglists.serialize import ReadingListResult
 from comicbox.readinglists.transform import entry_issue_name
+
+if TYPE_CHECKING:
+    from comicbox.readinglists.formats.metron_api import MetronListSummary
+    from comicbox.readinglists.sources.catalog import CatalogEntry
 
 _PLAIN = Style()
 _TITLE = Style(bold=True)
@@ -159,6 +163,11 @@ def print_messages(out: Console, messages: Sequence[str], label: str) -> None:
         out.print(Text.assemble((f"{label}: ", _WARN), (message, _PLAIN)))
 
 
+def print_note(out: Console, message: str) -> None:
+    """Print a line about what is going on, dimmed."""
+    out.print(_text(message, _DIM))
+
+
 def print_error(out: Console, path: Path | str | None, error: BaseException) -> None:
     """Print a failure in one line, naming its file once."""
     message = str(error)
@@ -241,3 +250,33 @@ def print_combine_report(
         print_messages(out, (message,), "id")
     for index in result.name_joins:
         print_messages(out, (_entry_label(reading_list, index),), "joined by name only")
+
+
+def _results_table(columns: Sequence[str]) -> Table:
+    table = Table(box=None, pad_edge=False)
+    for column in columns:
+        table.add_column(Text(column, style=_LABEL))
+    return table
+
+
+def print_metron_lists(out: Console, lists: "Sequence[MetronListSummary]") -> None:
+    """Tabulate Metron search results; ``fetch metron:ID`` takes the ID."""
+    table = _results_table(("ID", "Name", "Type", "Curator", "User", "Modified"))
+    for found in lists:
+        table.add_row(
+            _text(found.id),
+            _text(f"{found.name} (private)" if found.private else found.name),
+            _text(found.list_type),
+            _text(found.curator),
+            _text(found.username, _DIM),
+            _text(found.modified.date(), _DIM),
+        )
+    out.print(table)
+
+
+def print_catalog_entries(out: Console, entries: "Sequence[CatalogEntry]") -> None:
+    """Tabulate catalog search results; ``fetch catalog:PATH`` takes the path."""
+    table = _results_table(("Curator", "Path"))
+    for entry in entries:
+        table.add_row(_text(entry.curator, _DIM), _text(entry.path))
+    out.print(table)

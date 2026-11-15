@@ -3,8 +3,9 @@
 
 Its own parser with real subcommands, not the main parser: that parser's
 positionals are always comic archives and its option dests are tested
-against the config template. Exits 0 on success, 1 when a reading-list or
-file error stops it or any file fails, and 2 for a usage error.
+against the config template. Exits 0 on success, 1 when a reading-list,
+file or network error stops it or any file fails, 2 for a usage error and
+130 when a fetch is cancelled with Ctrl-C.
 
 stdout carries only what was asked for, a list or a table; warnings,
 losses, reports and log lines go to stderr. Nothing is written over an
@@ -13,15 +14,26 @@ input, and nothing over an existing file without ``--overwrite``.
 
 import os
 import re
-from argparse import ArgumentParser, Namespace
+import sys
+import threading
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
+from urllib.parse import urlsplit
 
-from comicbox.exceptions import ReadingListError
+from rich_argparse import RichHelpFormatter
+
+from comicbox.cli.parser import add_online_auth_group, add_online_cache_group
+from comicbox.events import (
+    Event,
+    ReadingListFetchProgress,
+    ReadingListFetchStarted,
+)
+from comicbox.exceptions import OnlineLookupAbortedError, ReadingListError
 from comicbox.readinglists.arcs import reading_lists_from_comics
 from comicbox.readinglists.combine import combine
 from comicbox.readinglists.compare import compare
@@ -33,10 +45,13 @@ from comicbox.readinglists.registry import (
 )
 from comicbox.readinglists.render import (
     console,
+    print_catalog_entries,
     print_combine_report,
     print_comparison,
     print_error,
     print_messages,
+    print_metron_lists,
+    print_note,
     print_reading_list,
     print_status,
 )
@@ -49,9 +64,19 @@ from comicbox.readinglists.serialize import (
     lost_fields,
     resolve_format,
 )
+from comicbox.readinglists.session import ReadingListSession
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+    from comicbox.config.settings import ComicboxSettings
+
+_T = TypeVar("_T")
 
 PROG = "comicbox readinglist"
 _DEFAULT_FORMAT = ReadingListFormats.YAML
@@ -340,6 +365,164 @@ def _from_arcs(run: _Run) -> None:
         run.write(reading_list, fmt, destination)
 
 
+# Online actions.
+
+# The parsed dests that are settings. No other dest may reach the config.
+_SETTING_DESTS = ("auth", "cache", "cache_dir", "cache_ttl", "general.config")
+_URL_SCHEMES = frozenset({"http", "https"})
+_URL_KIND = "url"
+_METRON_KINDS = frozenset({"metron", "metron-arc"})
+_CATALOG_KIND = "catalog"
+_SEARCH_WHERE = ("metron", _CATALOG_KIND)
+_JOIN_POLL_SECONDS = 0.1
+EXIT_CANCELLED = 130
+
+
+@dataclass(frozen=True, slots=True)
+class FetchSpec:
+    """What ``fetch`` was asked for: a source kind and its id, path or URL."""
+
+    kind: str
+    target: str
+
+    @override
+    def __str__(self) -> str:
+        """Spell it as it was given."""
+        return self.target if self.kind == _URL_KIND else f"{self.kind}:{self.target}"
+
+
+def fetch_spec(text: str) -> FetchSpec:
+    """Parse ``metron:ID``, ``metron-arc:ID``, ``catalog:PATH`` or a URL."""
+    if urlsplit(text).scheme.lower() in _URL_SCHEMES:
+        return FetchSpec(_URL_KIND, text)
+    kind, colon, target = text.partition(":")
+    kind = kind.lower()
+    if colon and kind in _METRON_KINDS and target.isdigit():
+        return FetchSpec(kind, target)
+    if colon and kind == _CATALOG_KIND and target.strip():
+        return FetchSpec(kind, target)
+    reason = f"{text!r}: give metron:ID, metron-arc:ID, catalog:PATH or an http(s) URL"
+    raise ArgumentTypeError(reason)
+
+
+_Fetcher = Callable[[ReadingListSession, str], ReadingListResult | None]
+_FETCHERS: MappingProxyType[str, _Fetcher] = MappingProxyType(
+    {
+        "metron": lambda session, target: session.fetch_metron_list(int(target)),
+        "metron-arc": lambda session, target: session.fetch_metron_arc(int(target)),
+        _CATALOG_KIND: lambda session, target: session.fetch_catalog(target),
+        _URL_KIND: lambda session, target: session.fetch_url(target),
+    }
+)
+
+
+def _settings(args: Namespace) -> "ComicboxSettings":
+    """Build settings from the setting dests alone, as the doctor does."""
+    from comicbox.config import get_config
+
+    dests = {dest: getattr(args, dest, None) for dest in _SETTING_DESTS}
+    return get_config(Namespace(comicbox=Namespace(**dests)))
+
+
+class _Progress:
+    """Say on stderr what a fetch is doing, unless told to be quiet."""
+
+    def __init__(self, err: "Console", *, quiet: bool) -> None:
+        self._err = err
+        self._quiet = quiet
+
+    def __call__(self, event: Event) -> None:
+        """Print a fetch's start and each part that arrives."""
+        if self._quiet:
+            return
+        if isinstance(event, ReadingListFetchStarted):
+            print_note(self._err, f"Fetching {event.source} {event.key}...")
+        elif isinstance(event, ReadingListFetchProgress) and event.index is not None:
+            total = f" of {event.total:,}" if event.total is not None else ""
+            print_note(self._err, f"  {event.index:,}{total} entries")
+
+
+def open_session(run: _Run) -> ReadingListSession:
+    """Open a session on the command's settings, reporting progress."""
+    from comicbox.version import set_user_agent_context
+
+    set_user_agent_context("cli", client="readinglist")
+    progress = _Progress(run.err, quiet=run.args.quiet > 0)
+    return ReadingListSession(config=_settings(run.args), on_event=progress)
+
+
+def _cancellable(run: _Run, session: ReadingListSession, call: Callable[[], _T]) -> _T:
+    """
+    Run ``call`` on a worker so the first Ctrl-C cancels it cleanly.
+
+    The cancel stops the fetch before its next request, which can wait out
+    one rate-limit window. A second Ctrl-C quits at once.
+    """
+    outcome: list[Any] = []
+
+    def work() -> None:
+        try:
+            outcome.append((True, call()))
+        except BaseException as exc:
+            outcome.append((False, exc))
+
+    worker = threading.Thread(target=work, name="readinglist-fetch", daemon=True)
+    worker.start()
+    try:
+        while worker.is_alive():
+            worker.join(_JOIN_POLL_SECONDS)
+    except KeyboardInterrupt:
+        session.cancel()
+        print_note(
+            run.err, "Cancelling before the next request; Ctrl-C again quits now."
+        )
+        while worker.is_alive():
+            worker.join(_JOIN_POLL_SECONDS)
+    ok, value = outcome[0]
+    if not ok:
+        raise value
+    return value
+
+
+def _fetch(run: _Run) -> None:
+    spec: FetchSpec = run.args.spec
+    fmt = get_format(run.args.to)
+    output: Path | None = run.args.output
+    if output and run.refuse(
+        destination_problems([output], (), overwrite=run.args.overwrite)
+    ):
+        return
+    with open_session(run) as session:
+        fetcher = _FETCHERS[spec.kind]
+        result = _cancellable(run, session, lambda: fetcher(session, spec.target))
+    if result is None:
+        # Only a conditional fetch returns nothing, and the CLI makes none.
+        run.fail(None, ReadingListError(f"{spec}: nothing was fetched"))
+        return
+    print_messages(run.err, result.warnings, f"{spec}: warning")
+    run.write(result.reading_list, fmt, output)
+
+
+def _search(run: _Run) -> None:
+    where: str = run.args.where
+    query = " ".join(run.args.query)
+    with open_session(run) as session:
+        if where == _CATALOG_KIND:
+            entries = _cancellable(run, session, lambda: session.search_catalog(query))
+            if entries:
+                print_catalog_entries(run.out, entries)
+            found = len(entries)
+        else:
+            lists = _cancellable(
+                run, session, lambda: session.search_metron(name=query)
+            )
+            if lists:
+                print_metron_lists(run.out, lists)
+            found = len(lists)
+    if not found:
+        print_note(run.err, f"No {where} lists match {query!r}.")
+
+
 _ACTIONS: MappingProxyType[str, Callable[[_Run], None]] = MappingProxyType(
     {
         "print": _print,
@@ -348,6 +531,8 @@ _ACTIONS: MappingProxyType[str, Callable[[_Run], None]] = MappingProxyType(
         "combine": _combine,
         "compare": _compare,
         "from-arcs": _from_arcs,
+        "search": _search,
+        "fetch": _fetch,
     }
 )
 
@@ -366,6 +551,56 @@ def _add_write_options(parser: ArgumentParser, output: str, help_text: str) -> N
         action="store_true",
         help="Replace files that exist. An input is never written over.",
     )
+
+
+def _add_online_options(parser: ArgumentParser) -> None:
+    """Add the config file, auth and cache options the main parser has."""
+    parser.add_argument(
+        "-c",
+        "--config",
+        metavar="PATH",
+        dest="general.config",
+        help="A config file to read beside the usual ones.",
+    )
+    add_online_auth_group(parser)
+    add_online_cache_group(parser)
+
+
+def _add_online_actions(actions: Any) -> None:
+    sub = actions.add_parser(
+        "search",
+        help="Search Metron's reading lists or the DieselTech catalog.",
+        description=(
+            "Search Metron's reading lists by name (needs a Metron API token),"
+            " or the paths of the DieselTech catalog on GitHub."
+        ),
+        formatter_class=RichHelpFormatter,
+    )
+    sub.add_argument(
+        "where", choices=_SEARCH_WHERE, metavar="metron|catalog", help="Where to look."
+    )
+    sub.add_argument(
+        "query", nargs="+", metavar="QUERY", help="Words the name or path holds."
+    )
+    _add_online_options(sub)
+    sub = actions.add_parser(
+        "fetch",
+        help="Fetch a list from Metron, the catalog or a URL.",
+        description=(
+            "Fetch metron:ID (a Metron reading list), metron-arc:ID (a Metron"
+            " story arc), catalog:PATH (a DieselTech list) or an http(s) URL,"
+            " and write it, to stdout without -o. Metron needs an API token."
+        ),
+        formatter_class=RichHelpFormatter,
+    )
+    _add_write_options(sub, "FILE", "Write here, not to stdout.")
+    sub.add_argument(
+        "spec",
+        type=fetch_spec,
+        metavar="WHAT",
+        help="metron:ID, metron-arc:ID, catalog:PATH or an http(s) URL.",
+    )
+    _add_online_options(sub)
 
 
 def build_parser() -> ArgumentParser:
@@ -401,6 +636,7 @@ def build_parser() -> ArgumentParser:
     )
     _add_write_options(sub, "DIR", "Write here, not the current directory.")
     sub.add_argument("directory", type=Path, metavar="DIR")
+    _add_online_actions(actions)
     return parser
 
 
@@ -417,4 +653,7 @@ def main(params: Sequence[str]) -> int:
     except (OSError, ReadingListError) as exc:
         run.fail(None, exc)
         return 1
+    except (OnlineLookupAbortedError, KeyboardInterrupt):
+        print_note(run.err, "Cancelled.")
+        return EXIT_CANCELLED
     return run.exit_code

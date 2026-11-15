@@ -65,17 +65,110 @@ comicbox rl from-arcs -o lists/ ~/Comics/Marvel
 ```
 
 `--to` takes a format token from the table above; the default is `yaml`.
-`combine` writes to stdout without `-o`. stdout only ever holds the list or
-table asked for: warnings, what a format loses, the combine report and log lines
-go to stderr. A command exits 1 when any file fails.
+`combine` and `fetch` write to stdout without `-o`. stdout only ever holds the
+list or table asked for: warnings, what a format loses, the combine report,
+fetch progress and log lines go to stderr. A command exits 1 when any file or
+fetch fails, and 130 when a fetch is cancelled.
 
 Nothing is written over an existing file unless `--overwrite` is given to
-`convert`, `combine` or `from-arcs`, and nothing is ever written over an input.
-`convert` checks every destination before it writes any, so two inputs that
-would make one file, or a file that would replace an input, write nothing.
+`convert`, `combine`, `from-arcs` or `fetch`, and nothing is ever written over
+an input. `convert` checks every destination before it writes any, so two inputs
+that would make one file, or a file that would replace an input, write nothing.
 
 A comic file named `readinglist` or `rl` has to be given to comicbox as
 `./readinglist` or `./rl`.
+
+## Online sources
+
+Lists can be fetched from Metron, from the DieselTech catalog of ComicRack lists
+on GitHub, and from any URL:
+
+```sh
+# Search Metron's reading lists by name, then fetch one by its id.
+comicbox rl search metron civil war
+comicbox rl fetch metron:123 -o civil-war.yaml
+
+# A Metron story arc, as an unordered list.
+comicbox rl fetch metron-arc:456
+
+# Search the catalog's paths, then fetch one by its path.
+comicbox rl search catalog civil war official
+comicbox rl fetch "catalog:Marvel/Events/Official/[Marvel] (2006-02) Civil War (Official).cbl"
+
+# A list anywhere on the web, in any format comicbox reads.
+comicbox rl fetch --to json-cbl -o civil-war.json https://example.org/civil-war.cbl
+```
+
+| Source              | `fetch` takes   | Needs              |
+| ------------------- | --------------- | ------------------ |
+| Metron reading list | `metron:ID`     | a Metron API token |
+| Metron story arc    | `metron-arc:ID` | a Metron API token |
+| DieselTech catalog  | `catalog:PATH`  | nothing            |
+| A URL               | `http(s)://...` | nothing            |
+
+A fetched list goes through the same read as a file, so its warnings say what it
+dropped, and its source records where it came from: the Metron id, the catalog
+path and blob sha, or the URL and its ETag.
+
+### Metron
+
+Give the token with `--auth metron:TOKEN`, `online.auth.metron.key` in the
+config, or `COMICBOX_ONLINE__AUTH__METRON__KEY` in the environment, as for
+tagging. Reading lists share tagging's rate limit and response cache for the
+token, so a fetch and a tagging run queue behind one another, and fetching a
+list again within the cache lifetime makes no request.
+
+- **A reading list** keeps Metron's order, its curator (`cbro`, `cmro`, `mg` and
+  so on), the lists before and after it, and each issue's Metron, Comic Vine and
+  Grand Comics Database ids. A private list is marked `private`.
+- **A story arc** has no order of its own, so it is an unordered story list.
+  Metron lists an arc's issues with their Metron ids only. When the arc names
+  its Comic Vine arc, the list points at it too.
+
+Metron sends a list's issues 100 to a page, the page size in Metron's server
+source (not yet checked against a live response), at no fewer than 20 requests a
+minute. A 3,000-issue list is 30 pages, about a minute and a half when nothing
+else is using the token, and longer during a tagging run. Each page prints its
+progress. Ctrl-C stops the fetch before its next request, which can take up to a
+minute when the rate limit is spent; a second Ctrl-C quits at once.
+
+### The DieselTech catalog
+
+[DieselTech/CBL-ReadingLists](https://github.com/DieselTech/CBL-ReadingLists)
+holds about 1,700 ComicRack lists and no index, so comicbox builds one from a
+single call to GitHub's API and caches it in the online cache directory for four
+hours. After that it sends GitHub the index's ETag and downloads the index again
+only if it changed. GitHub allows 60 API calls an hour without a login; list
+downloads are not counted. `--cache off` keeps no index and `--cache refresh`
+checks GitHub now.
+
+Each list's curator comes from its file name, such as `(WEB-CBRO)`, `(MG)` or
+`(LoCG)`, or from a folder named after its site. Paths there change: comicbox
+remembers each list's blob sha, and when a path is gone it fetches the list with
+the same sha instead.
+
+### URLs
+
+Any http or https URL, redirects included, in any format above. The format is
+detected from the content.
+
+### Settings
+
+```yaml
+readinglists:
+    catalog_repo: DieselTech/CBL-ReadingLists # A fork or mirror works too.
+    catalog_ref: main # A branch, tag or commit.
+    catalog_ttl: 4h # How long the catalog index is kept.
+    max_download_bytes: 16777216 # The largest list or index fetched.
+```
+
+### Whose lists these are
+
+Reading lists are their curators' work, and the DieselTech repository has no
+license. Comicbox fetches lists only when asked and ships none. Every fetched
+list records its curator on its source, and `convert` and `combine` carry it
+through, so a list you write out still says whose it was. Share a link to a
+list, not a copy of it.
 
 ## Combining
 
@@ -160,3 +253,26 @@ text = dumps(result.reading_list, "json-cbl")
 produced; the library returns warnings rather than logging them. The value
 passed around is the mapping under `reading_list`. The
 [Reading List 1.0 schema](schema/reading-list-v1.0/index.md) describes it.
+
+`ReadingListSession` fetches. It takes the same `OnlineCredentials` as
+`OnlineSession`, or reads them from the config, and reports progress as
+`ReadingListFetchStarted`, `ReadingListFetchProgress` and
+`ReadingListFetchFinished` events:
+
+```python
+from comicbox.readinglists import ReadingListSession
+
+with ReadingListSession(on_event=print) as session:
+    for found in session.search_metron(name="civil war"):
+        print(found.id, found.name, found.curator)
+    result = session.fetch_metron_list(123)
+    for entry in session.search_catalog("civil war official"):
+        catalog_list = session.fetch_catalog(entry.path, sha=entry.sha)
+```
+
+A list fetched from Metron has no `fmt`: it was built from records, not read
+from a document. `fetch_metron_list` and `fetch_metron_arc` take
+`if_modified_since` and return `None`, having fetched no items, when the list
+has not changed. `cancel()`, from any thread, stops a fetch before its next
+request with `OnlineLookupAbortedError`. A fetch that fails raises
+`ReadingListFetchError`.

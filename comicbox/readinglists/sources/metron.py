@@ -53,8 +53,9 @@ _MOKKARI_ERRORS = (
     RateLimitError,
 )
 _UNCONFIGURED = (
-    "Metron needs an API token: set online.auth.metron.key in the config"
-    " or COMICBOX_ONLINE__AUTH__METRON__KEY in the environment."
+    "Metron needs an API token: pass --auth metron:TOKEN, or set"
+    " online.auth.metron.key in the config or COMICBOX_ONLINE__AUTH__METRON__KEY"
+    " in the environment."
 )
 # The last path segment of each paginated endpoint whose pages count.
 _ITEMS_PAGE = "items"
@@ -73,11 +74,22 @@ def _credentials(session: FetchContext) -> OnlineSourceCredentials:
     )
 
 
-def _api(session: FetchContext) -> Session:
-    """Get the shared mokkari Session, or raise before any request."""
+def _configured(session: FetchContext) -> OnlineSourceCredentials:
+    """Get the credentials, or raise if there is no API token."""
     credentials = _credentials(session)
     if not credentials.key:
         raise ReadingListFetchError(_UNCONFIGURED)
+    return credentials
+
+
+def check_token(session: FetchContext) -> None:
+    """Raise unless a Metron API token is set, before a fetch begins."""
+    _configured(session)
+
+
+def _api(session: FetchContext) -> Session:
+    """Get the shared mokkari Session, or raise before any request."""
+    credentials = _configured(session)
     return MetronOnlineSource(credentials, session.settings.online).session()
 
 

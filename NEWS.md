@@ -18,6 +18,10 @@
   on GitHub, with each list's curator read from its name or folder. The index is
   cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
   configurable, so a fork works. A renamed list is still found by its sha.
+- `comicbox rl search metron|catalog QUERY` and
+  `comicbox rl fetch metron:ID | metron-arc:ID | catalog:PATH | URL`, with
+  progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over a
+  file without `--overwrite`.
 
 ### 🐛 Fixed
 

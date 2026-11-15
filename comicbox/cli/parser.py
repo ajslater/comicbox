@@ -534,7 +534,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_auth_group(parser: ArgumentParser) -> None:
+def add_online_auth_group(parser: ArgumentParser) -> None:
+    """Add ``--auth``; the reading-list CLI shares it."""
     group = parser.add_argument_group("online: auth")
     group.add_argument(
         "-a",
@@ -555,7 +556,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_cache_group(parser: ArgumentParser) -> None:
+def add_online_cache_group(parser: ArgumentParser) -> None:
+    """Add the online cache options; the reading-list CLI shares them."""
     group = parser.add_argument_group("online: cache")
     group.add_argument(
         "--cache",
@@ -652,8 +654,8 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     _add_print_group(parser)
     _add_convert_group(parser)
     _add_online_lookup_group(parser)
-    _add_online_auth_group(parser)
-    _add_online_cache_group(parser)
+    add_online_auth_group(parser)
+    add_online_cache_group(parser)
     _add_online_tuning_group(parser)
     _add_target_group(parser)
     parser.add_argument(

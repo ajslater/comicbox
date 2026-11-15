@@ -458,12 +458,15 @@ def test_a_cancelled_session_sends_nothing(session: ReadingListSession) -> None:
 def test_no_token_raises_before_any_request(
     call: Callable[[ReadingListSession], Any],
 ) -> None:
+    """Nothing is built or sent, and no fetch is said to have begun."""
+    events: list[Event] = []
     with (
-        ReadingListSession() as rl,
+        ReadingListSession(on_event=events.append) as rl,
         pytest.raises(ReadingListFetchError, match="Metron needs an API token"),
     ):
         call(rl)
     assert metron._session_cache == {}
+    assert events == []
 
 
 def test_the_config_token_is_used_without_credentials() -> None:

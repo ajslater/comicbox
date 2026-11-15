@@ -223,6 +223,7 @@ class ReadingListSession:
         """
         from comicbox.readinglists.sources import metron
 
+        metron.check_token(self)
         with self.fetching(SourceKind.METRON_LIST.value, str(list_id)):
             return metron.fetch_list(self, list_id, if_modified_since=if_modified_since)
 
@@ -237,6 +238,7 @@ class ReadingListSession:
         """
         from comicbox.readinglists.sources import metron
 
+        metron.check_token(self)
         with self.fetching(SourceKind.METRON_ARC.value, str(arc_id)):
             return metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)
 
