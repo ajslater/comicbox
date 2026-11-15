@@ -8,6 +8,7 @@ War``) that markup would swallow or misread.
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
@@ -53,6 +54,7 @@ from comicbox.readinglists.transform import entry_issue_name
 
 if TYPE_CHECKING:
     from comicbox.readinglists.formats.metron_api import MetronListSummary
+    from comicbox.readinglists.match import ArcChange, MatchResult
     from comicbox.readinglists.sources.catalog import CatalogEntry
 
 _PLAIN = Style()
@@ -295,3 +297,73 @@ def print_catalog_entries(out: Console, entries: "Sequence[CatalogEntry]") -> No
     for entry in entries:
         table.add_row(_text(entry.curator, _DIM), _text(entry.path))
     out.print(table)
+
+
+def _shown_path(path: Path, directory: Path) -> str:
+    """Show a comic's path under the directory searched, or whole when not."""
+    try:
+        return str(path.relative_to(directory))
+    except ValueError:
+        return str(path)
+
+
+def print_matches(
+    out: Console,
+    reading_list: Mapping[str, Any],
+    result: "MatchResult",
+    directory: Path,
+) -> None:
+    """Tabulate a list's entries with the comics that are them, or missing."""
+    found = {match.position: match for match in result.found}
+    table = _results_table(("#", "Series", "Year/Vol", "Issue", "Comic", "By"))
+    for position, entry in enumerate(reading_list.get(ENTRIES_KEY) or ()):
+        cells = _entry_cells(position + 1, entry)[:4]
+        if match := found.get(position):
+            paths = "\n".join(_shown_path(path, directory) for path in match.paths)
+            cells += [_text(paths), _text(match.by.value, _DIM)]
+        else:
+            cells += [_text("missing", _WARN), _text("")]
+        table.add_row(*cells)
+    out.print(table)
+
+
+_ARC_VERBS = MappingProxyType(
+    {
+        # (action, done): what the line says.
+        ("add", False): "would add",
+        ("add", True): "added",
+        ("renumber", False): "would renumber",
+        ("renumber", True): "renumbered",
+    }
+)
+
+
+def _arc_text(name: str, number: int | None) -> str:
+    return f"{name!r}" if number is None else f"{name!r} #{number}"
+
+
+def print_arc_change(
+    out: Console, change: "ArcChange", *, done: bool, suffix: str = ""
+) -> None:
+    """Print what tagging one comic with an arc did, or would do."""
+    arc = _arc_text(change.arc, change.number)
+    if change.action.value == "tagged":
+        detail = f"already has {arc}; left alone"
+        out.print(
+            Text.assemble(
+                (printable(str(change.path)), _DIM), (f": {printable(detail)}", _DIM)
+            )
+        )
+        return
+    verb = _ARC_VERBS[change.action.value, done]
+    detail = f"{verb} {arc}"
+    if change.action.value == "renumber":
+        detail += f", was #{change.current}"
+    mark = Text("✓ ", style=_OK) if done else Text("· ", style=_DIM)
+    out.print(
+        Text.assemble(
+            mark,
+            (printable(str(change.path)), _PLAIN),
+            (printable(f" {detail}{suffix}"), _DIM),
+        )
+    )

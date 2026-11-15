@@ -22,6 +22,9 @@
   `comicbox rl fetch metron:ID | metron-arc:ID | catalog:PATH | URL`, with
   progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over a
   file without `--overwrite`.
+- `comicbox rl match FILE DIR` shows which of a list's issues a directory of
+  comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
+  the list as a story arc: a dry run unless given `--apply`.
 
 ### 🐛 Fixed
 

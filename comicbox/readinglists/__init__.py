@@ -32,6 +32,7 @@ from comicbox.readinglists.identity import (
     EntryKey,
     ParsedIssue,
     entry_keys,
+    name_variants,
     normalize_series,
     parse_issue,
 )
@@ -140,6 +141,7 @@ __all__ = (
     "load",
     "loads",
     "lost_fields",
+    "name_variants",
     "normalize_series",
     "parse_issue",
     "reading_lists_from_comics",

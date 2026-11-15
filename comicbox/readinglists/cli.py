@@ -28,7 +28,11 @@ from urllib.parse import urlsplit
 from confuse import ConfigError
 from rich_argparse import RichHelpFormatter
 
-from comicbox.cli.parser import add_online_auth_group, add_online_cache_group
+from comicbox.cli.parser import (
+    CSVAction,
+    add_online_auth_group,
+    add_online_cache_group,
+)
 from comicbox.events import (
     Event,
     ReadingListFetchProgress,
@@ -39,10 +43,17 @@ from comicbox.exceptions import (
     OnlineLookupAbortedError,
     ReadingListError,
 )
-from comicbox.readinglists.arcs import reading_lists_from_comics
+from comicbox.readinglists.arcs import arc_patch, reading_lists_from_comics
 from comicbox.readinglists.combine import combine
 from comicbox.readinglists.compare import compare
 from comicbox.readinglists.identity import entry_keys
+from comicbox.readinglists.match import (
+    ArcAction,
+    ArcChange,
+    match_comics,
+    plan_arcs,
+    read_comics,
+)
 from comicbox.readinglists.registry import (
     ReadingListFormats,
     as_text,
@@ -50,10 +61,12 @@ from comicbox.readinglists.registry import (
 )
 from comicbox.readinglists.render import (
     console,
+    print_arc_change,
     print_catalog_entries,
     print_combine_report,
     print_comparison,
     print_error,
+    print_matches,
     print_messages,
     print_metron_lists,
     print_note,
@@ -326,20 +339,12 @@ def _compare(run: _Run) -> None:
         run.no_keys((run.args.a, run.args.b), (a.reading_list, b.reading_list))
 
 
-def _read_comics(run: _Run, directory: Path) -> list[dict]:
+def _read_comics(run: _Run, directory: Path) -> dict[Path, dict[str, Any]]:
     """Read every comic's tags under a directory, in path order."""
     from comicbox.config import get_config
-    from comicbox.process import iter_process_files
-    from comicbox.run import iter_recurse
 
     config = get_config(Namespace(comicbox=Namespace()))
-    tags: dict[Path, dict] = {}
-    for path, (result, error) in iter_process_files(iter_recurse(directory), config):
-        if error is not None:
-            run.fail(path, error)
-        elif result["tags"]:
-            tags[path] = result["tags"]
-    return [tags[path] for path in sorted(tags)]
+    return read_comics(directory, config, run.fail)
 
 
 def _list_filename(name: str, taken: set[str]) -> str:
@@ -370,7 +375,9 @@ def _from_arcs(run: _Run) -> None:
                 + fmt.value.suffix
             ),
         )
-        for reading_list in reading_lists_from_comics(_read_comics(run, directory))
+        for reading_list in reading_lists_from_comics(
+            _read_comics(run, directory).values()
+        )
     ]
     destinations = [destination for _, destination in plan]
     if run.refuse(
@@ -475,12 +482,22 @@ def open_session(run: _Run) -> ReadingListSession:
     return ReadingListSession(config=_settings(run.args), on_event=progress)
 
 
-def _cancellable(run: _Run, session: ReadingListSession, call: Callable[[], _T]) -> _T:
+_FETCH_CANCELLING = "Cancelling before the next request; Ctrl-C again quits now."
+_WRITE_CANCELLING = "Stopping after the writes under way; Ctrl-C again quits now."
+
+
+def _cancellable(
+    run: _Run,
+    cancel: Callable[[], None],
+    call: Callable[[], _T],
+    cancelling: str = _FETCH_CANCELLING,
+) -> _T:
     """
     Run ``call`` on a worker so the first Ctrl-C cancels it cleanly.
 
-    The cancel stops the fetch before its next request, which can wait out
-    one rate-limit window. A second Ctrl-C quits at once.
+    The first Ctrl-C calls ``cancel`` and says ``cancelling``; the work
+    stops at its next safe point, which for a fetch can wait out one
+    rate-limit window. A second Ctrl-C quits at once.
     """
     outcome: list[Any] = []
 
@@ -490,19 +507,22 @@ def _cancellable(run: _Run, session: ReadingListSession, call: Callable[[], _T])
         except BaseException as exc:
             outcome.append((False, exc))
 
-    worker = threading.Thread(target=work, name="readinglist-fetch", daemon=True)
-    worker.start()
+    worker = threading.Thread(target=work, name="readinglist-work", daemon=True)
     try:
+        # Started inside the try: a Ctrl-C the moment the work begins must
+        # still cancel it, not leave it running.
+        worker.start()
         while worker.is_alive():
             worker.join(_JOIN_POLL_SECONDS)
     except KeyboardInterrupt:
         run.cancelled = True
-        session.cancel()
-        print_note(
-            run.err, "Cancelling before the next request; Ctrl-C again quits now."
-        )
+        cancel()
+        print_note(run.err, cancelling)
         while worker.is_alive():
             worker.join(_JOIN_POLL_SECONDS)
+    if not outcome:
+        # Interrupted before the work could start: nothing was done.
+        raise KeyboardInterrupt
     ok, value = outcome[0]
     if not ok:
         raise value
@@ -519,7 +539,9 @@ def _fetch(run: _Run) -> None:
         return
     with open_session(run) as session:
         fetcher = _FETCHERS[spec.kind]
-        result = _cancellable(run, session, lambda: fetcher(session, spec.target))
+        result = _cancellable(
+            run, session.cancel, lambda: fetcher(session, spec.target)
+        )
     if result is None:
         # Only a conditional fetch returns nothing, and the CLI makes none.
         run.fail(None, ReadingListError(f"{spec}: nothing was fetched"))
@@ -533,19 +555,142 @@ def _search(run: _Run) -> None:
     query = " ".join(run.args.query)
     with open_session(run) as session:
         if where == _CATALOG_KIND:
-            entries = _cancellable(run, session, lambda: session.search_catalog(query))
+            entries = _cancellable(
+                run, session.cancel, lambda: session.search_catalog(query)
+            )
             if entries:
                 print_catalog_entries(run.out, entries)
             found = len(entries)
         else:
             lists = _cancellable(
-                run, session, lambda: session.search_metron(name=query)
+                run, session.cancel, lambda: session.search_metron(name=query)
             )
             if lists:
                 print_metron_lists(run.out, lists)
             found = len(lists)
     if not found:
         print_note(run.err, f"No {where} lists match {query!r}.")
+
+
+# Directory actions.
+
+
+def _comics(run: _Run) -> dict[Path, dict[str, Any]] | None:
+    """Read the comics under the command's directory, or say why not."""
+    directory: Path = run.args.directory
+    if not directory.is_dir():
+        run.fail(directory, ReadingListError("not a directory"))
+        return None
+    comics = _read_comics(run, directory)
+    if not comics:
+        print_note(run.err, f"No tagged comics in {directory}.")
+    return comics
+
+
+def _match(run: _Run) -> None:
+    if (loaded := run.load(run.args.file)) is None:
+        return
+    if (comics := _comics(run)) is None:
+        return
+    reading_list = loaded.reading_list
+    result = match_comics(reading_list, comics)
+    print_matches(run.out, reading_list, result, run.args.directory)
+    total = len(reading_list.get(ENTRIES_KEY) or ())
+    print_note(
+        run.err,
+        f"{len(result.found)} of {total} entries found in {len(comics)} comics;"
+        f" {len(result.missing)} missing.",
+    )
+    run.no_keys((run.args.file,), (reading_list,))
+
+
+def _write_formats(run: _Run) -> "tuple[frozenset[str], ComicboxSettings] | None":
+    """Resolve ``-w`` as the main CLI does; refuse it when none is known."""
+    from comicbox.config import get_config
+
+    dests = {"write.formats": run.args.formats}
+    settings = get_config(Namespace(comicbox=Namespace(**dests)))
+    if not (formats := frozenset(fmt.name for fmt in settings.write.formats)):
+        reason = "-w names no format comicbox writes, such as cix, mi or json"
+        run.fail(None, ReadingListError(reason))
+        return None
+    return formats, settings
+
+
+def _report_write(run: _Run, change: ArcChange, written: Any) -> None:
+    """Say what one write did, or why it did not."""
+    if written.error is not None:
+        run.fail(change.path, written.error)
+    elif written.cancelled:
+        print_status(run.out, change.path, ok=False, detail="not written: cancelled")
+    elif written.written:
+        final = written.final_path
+        moved = f" as {final.name}" if final and final != change.path else ""
+        print_arc_change(run.out, change, done=True, suffix=moved)
+    else:
+        print_status(run.out, change.path, ok=False, detail="not written")
+        run.failed = True
+
+
+def _apply_arcs(
+    run: _Run,
+    changes: Sequence[ArcChange],
+    formats: frozenset[str],
+    settings: "ComicboxSettings",
+) -> None:
+    """Write the changes; one comic that fails does not stop the rest."""
+    from comicbox.write import BulkWriteItem, bulk_write
+
+    cancel = threading.Event()
+    by_path = {change.path: change for change in changes}
+    items = [
+        BulkWriteItem(
+            change.path, arc_patch(change.arc, change.number), formats=formats
+        )
+        for change in changes
+    ]
+
+    def write_all() -> None:
+        for written in bulk_write(items, cancel=cancel, base_config=settings):
+            _report_write(run, by_path[written.path], written)
+
+    _cancellable(run, cancel.set, write_all, _WRITE_CANCELLING)
+    if run.cancelled:
+        raise KeyboardInterrupt
+
+
+def _plan_arcs(run: _Run) -> tuple[ArcChange, ...] | None:
+    """Plan each matched comic's arc, or say why there is no plan."""
+    if (loaded := run.load(run.args.file)) is None:
+        return None
+    reading_list = loaded.reading_list
+    if not (name := reading_list.get(NAME_KEY)):
+        reason = "the list has no name to tag its arc with"
+        run.fail(run.args.file, ReadingListError(reason))
+        return None
+    if (comics := _comics(run)) is None:
+        return None
+    result = match_comics(reading_list, comics)
+    return plan_arcs(reading_list, comics, result, name)
+
+
+def _write_arcs(run: _Run) -> None:
+    if (resolved := _write_formats(run)) is None:
+        return
+    if (changes := _plan_arcs(run)) is None:
+        return
+    todo = [change for change in changes if change.action is not ArcAction.TAGGED]
+    for change in changes:
+        if change.action is ArcAction.TAGGED or not run.args.apply:
+            print_arc_change(run.out, change, done=False)
+    if not run.args.apply:
+        print_note(
+            run.err,
+            f"Dry run: {len(todo)} of {len(changes)} matched comics would change;"
+            " --apply writes them.",
+        )
+        return
+    _apply_arcs(run, todo, *resolved)
 
 
 _ACTIONS: MappingProxyType[str, Callable[[_Run], None]] = MappingProxyType(
@@ -558,6 +703,8 @@ _ACTIONS: MappingProxyType[str, Callable[[_Run], None]] = MappingProxyType(
         "from-arcs": _from_arcs,
         "search": _search,
         "fetch": _fetch,
+        "match": _match,
+        "write-arcs": _write_arcs,
     }
 )
 
@@ -628,6 +775,45 @@ def _add_online_actions(actions: Any) -> None:
     _add_online_options(sub)
 
 
+def _add_directory_actions(actions: Any) -> None:
+    sub = actions.add_parser(
+        "match",
+        help="Say which of a list's issues the comics in DIR are, and which are missing.",
+    )
+    sub.add_argument("file", type=Path, metavar="FILE", help="The reading list.")
+    sub.add_argument(
+        "directory", type=Path, metavar="DIR", help="Comics, searched deeply."
+    )
+    sub = actions.add_parser(
+        "write-arcs",
+        help="Tag the comics in DIR a list matches with its story arc; a dry run without --apply.",
+        description=(
+            "Tag each comic in DIR that a list matches with the list's name as a"
+            " story arc, numbered by its place in an ordered list. Without --apply"
+            " nothing is written: each comic's change is shown. A comic that already"
+            " has the arc with that number is left alone."
+        ),
+    )
+    sub.add_argument(
+        "-w",
+        "--write",
+        action=CSVAction,
+        required=True,
+        metavar="FORMATS",
+        dest="formats",
+        help="The tag formats to write, as comicbox -w takes them: cix, mi, json...",
+    )
+    sub.add_argument(
+        "--apply",
+        action="store_true",
+        help="Write the arcs. Without it, only show what would change.",
+    )
+    sub.add_argument("file", type=Path, metavar="FILE", help="The reading list.")
+    sub.add_argument(
+        "directory", type=Path, metavar="DIR", help="Comics, searched deeply."
+    )
+
+
 def build_parser() -> ArgumentParser:
     """Build the ``comicbox readinglist`` parser."""
     parser = ArgumentParser(prog=PROG, description=_DESCRIPTION)
@@ -662,6 +848,7 @@ def build_parser() -> ArgumentParser:
     _add_write_options(sub, "DIR", "Write here, not the current directory.")
     sub.add_argument("directory", type=Path, metavar="DIR")
     _add_online_actions(actions)
+    _add_directory_actions(actions)
     return parser
 
 

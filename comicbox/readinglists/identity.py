@@ -209,6 +209,72 @@ def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
     return (NAME_KEY_KIND, name, discriminator, *issue)
 
 
+# A trailing parenthetical: "Batman (2016)", "Saga (Image)".
+_TRAILING_PARENS_RE = re.compile(r"\s*\([^()]*\)\s*$")
+_LEADING_ARTICLE_RE = re.compile(r"^(?:the|an|a)\s+", re.IGNORECASE)
+# Collected-edition words that end a series name, normalized.
+_REPRINT_SUFFIXES = (
+    "trade paperback",
+    "deluxe edition",
+    "hardcover",
+    "omnibus",
+    "tpb",
+    "hc",
+)
+
+
+def _without_reprint_suffix(normalized: str) -> str:
+    for suffix in _REPRINT_SUFFIXES:
+        if normalized.endswith(f" {suffix}"):
+            return normalized.removesuffix(f" {suffix}")
+    return normalized
+
+
+def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
+    """
+    List the series names to try for an entry, normalized, in order.
+
+    The name as given; its ``Name (Volume)`` form, or the name without a
+    trailing parenthetical when it has one; the name without a leading
+    article; and the name without a reprint suffix such as TPB or Omnibus.
+    For matching a list against comics only: ``entry_keys`` stays strict, so
+    ``combine`` never joins on a variant.
+    """
+    raw = str((entry.get(SERIES_KEY) or {}).get(NAME_KEY) or "").strip()
+    if not raw:
+        return ()
+    normalized = [normalize_series(name) for name in _spelled_variants(raw, entry)]
+    normalized += [_without_reprint_suffix(name) for name in normalized]
+    return tuple(dict.fromkeys(name for name in normalized if name))
+
+
+def _spelled_variants(raw: str, entry: Mapping[str, Any]) -> list[str]:
+    """Spell the name as given, with or without its volume, and its article."""
+    names = [raw]
+    if _TRAILING_PARENS_RE.search(raw):
+        names.append(_TRAILING_PARENS_RE.sub("", raw))
+    elif (discriminator := _discriminator(entry)) is not None:
+        names.append(f"{raw} ({discriminator})")
+    if _LEADING_ARTICLE_RE.match(raw):
+        names.append(_LEADING_ARTICLE_RE.sub("", raw))
+    return names
+
+
+def variant_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
+    """
+    Build the name keys of an entry's variants, its own name key first.
+
+    Each keeps the entry's start year or volume and issue, so an entry with
+    no name key has no variants either: it still matches by id alone.
+    """
+    if (name_key := _name_key(entry)) is None:
+        return ()
+    _, _, discriminator, *issue = name_key
+    return tuple(
+        (NAME_KEY_KIND, name, discriminator, *issue) for name in name_variants(entry)
+    )
+
+
 def entry_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
     """
     List the keys that identify an entry's issue, strongest first.

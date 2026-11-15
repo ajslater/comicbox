@@ -62,6 +62,14 @@ comicbox rl compare cbro.cbl locg.cbl
 
 # Write one list per story arc the comics in a directory are tagged with.
 comicbox rl from-arcs -o lists/ ~/Comics/Marvel
+
+# Show which of a list's issues a directory has, and which are missing.
+comicbox rl match civil-war.yaml ~/Comics/Marvel
+
+# Show how tagging those comics with the list's arc would change them,
+# then do it, writing ComicInfo.xml.
+comicbox rl write-arcs -w cix civil-war.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix civil-war.yaml ~/Comics/Marvel
 ```
 
 `--to` takes a format token from the table above; the default is `yaml`.
@@ -243,6 +251,32 @@ its own number. Each list remembers the arc's Metron and ComicVine ids, so the
 full arc can be fetched later. `arc_patch` is the reverse: the tag that adds a
 comic to a list.
 
+## Matching a list against your comics
+
+`match` reads every comic under a directory and finds each of a list's issues
+among them, trying in turn:
+
+1. An issue id from the same database.
+2. The series name, start year or volume, and issue number.
+3. Variants of the series name: the name with or without its volume in
+   parentheses (`Batman (2016)`), without a leading article
+   (`The Amazing Spider-Man`), and without a reprint suffix such as TPB or
+   Omnibus.
+
+The cover year breaks a tie between comics of one key, and two files of one
+issue are both found. An entry with no id and no start year or volume matches
+nothing, as in `combine`. `match` prints each entry with the comics that are it,
+and how they matched, or `missing`; the count goes to stderr.
+
+`write-arcs` tags each matched comic with the list's name as a story arc,
+numbered by its place when the list is ordered. It needs `-w` with the tag
+formats to write, as `comicbox -w` takes them, and writes nothing without
+`--apply`: by default it shows each comic's change. A comic that already has the
+arc with that number is left alone, and one with another number is renumbered. A
+comic that cannot be written is reported, and the rest are still written; Ctrl-C
+stops before the writes not yet started. CBR, CBT and CB7 files are converted to
+CBZ when written, as with any comicbox write.
+
 ## Python API
 
 Everything is in `comicbox.readinglists`:
@@ -258,7 +292,9 @@ text = dumps(result.reading_list, "json-cbl")
 ```
 
 `load` and `loads` return the list, its format and the warnings the read
-produced; the library returns warnings rather than logging them. The value
+produced; the library returns warnings rather than logging them.
+`name_variants(entry)` gives the series names `match` tries, normalized, so a
+caller matching a list against its own database tries the same ones. The value
 passed around is the mapping under `reading_list`. The
 [Reading List 1.0 schema](schema/reading-list-v1.0/index.md) describes it.
 
