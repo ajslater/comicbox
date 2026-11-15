@@ -105,8 +105,10 @@ list and a report. It is pure: no files, no network.
   `compare` is for.
 - It does not fix bad ids. It reports them and keeps the primary's.
 
-The same lists in the same order always give the same result, and combining a
-list with itself returns it unchanged.
+The same lists in the same order always give the same result. Combining a list
+with itself returns it unchanged when every entry has a key; an entry without
+one matches nothing, not even its own copy, so it comes out twice. `combine` and
+`compare` say how many entries of each input have no key.
 
 ## Comparing
 
@@ -120,7 +122,10 @@ gives a verdict:
 | subset    | One holds most of the other, as tags do a curated list.             |
 | unrelated | Little in common.                                                   |
 
-The thresholds were set from pairs of real lists of the same events.
+"Most" is three quarters, and orders agree when 90% of the shared issues are in
+the same order; both were set from pairs of real lists of the same events. When
+either list is marked `ordered: false` its order means nothing, so the verdict
+rests on the shared issues alone and the order agreement shows as `n/a`.
 
 ## Story arcs
 

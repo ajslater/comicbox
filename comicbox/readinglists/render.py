@@ -184,6 +184,10 @@ def print_status(out: Console, path: Path | str, ok: bool, detail: str) -> None:
     out.print(Text.assemble(mark, (str(path), _PLAIN), (f" {detail}", _DIM)))
 
 
+def _order_text(order_agreement: float | None) -> str:
+    return "n/a" if order_agreement is None else f"{order_agreement:.2f}"
+
+
 def print_comparison(out: Console, comparison: Comparison) -> None:
     """Print the verdict and the numbers behind it."""
     a_in_b, b_in_a = comparison.contains
@@ -195,7 +199,7 @@ def print_comparison(out: Console, comparison: Comparison) -> None:
         ("Overlap", f"{comparison.overlap:.2f}"),
         ("A in B", f"{a_in_b:.2f}"),
         ("B in A", f"{b_in_a:.2f}"),
-        ("Order agreement", f"{comparison.order_agreement:.2f}"),
+        ("Order agreement", _order_text(comparison.order_agreement)),
     )
     for label, value in rows:
         table.add_row(

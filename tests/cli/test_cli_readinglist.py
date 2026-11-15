@@ -245,3 +245,15 @@ def test_main_help_names_reading_lists(capsys: pytest.CaptureFixture[str]) -> No
     assert code == 0
     assert "comicbox rl ACTION" in out
     assert "./readinglist" in out
+
+
+def test_compare_an_unordered_list(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    unordered = tmp_path / "tags.yaml"
+    text = CIVIL_WAR.read_text().replace("ordered: true", "ordered: false")
+    unordered.write_text(text)
+    code, out, _ = _run(capsys, "rl", "compare", str(CIVIL_WAR), str(unordered))
+    assert code == 0
+    assert "Verdict same" in out
+    assert "Order agreement n/a" in out

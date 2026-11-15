@@ -177,3 +177,15 @@ def test_arc_patch_adds_an_arc_and_keeps_the_others(tmp_path: Path) -> None:
         arcs = cb.get_internal_metadata()["comicbox"]["arcs"]
     assert arcs["Civil War"] == {"number": 1}
     assert arcs["Road to Civil War"] == {"number": 9}
+
+
+def test_copies_of_one_issue_are_one_entry() -> None:
+    """Two files of one issue neither repeat it nor unorder the list."""
+    comics = [
+        _comic("1", {"Civil War": {"number": 1}}),
+        _comic("2", {"Civil War": {"number": 2}}),
+        _comic("1", {"Civil War": {"number": 1}}),
+    ]
+    (reading_list,) = reading_lists_from_comics(comics)
+    assert _issues(reading_list) == ["1", "2"]
+    assert reading_list["ordered"] is True

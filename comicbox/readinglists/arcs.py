@@ -23,7 +23,7 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.identifiers import ID_KEY_KEY
-from comicbox.readinglists.identity import entry_sort_key
+from comicbox.readinglists.identity import EntryKey, entry_keys, entry_sort_key
 from comicbox.readinglists.schema import (
     DATE_KEY,
     ENTRIES_KEY,
@@ -105,17 +105,26 @@ def entry_from_comic(metadata: Mapping[str, Any]) -> dict[str, Any]:
 class _ArcMembers:
     """The comics tagged with one arc, gathered for a list."""
 
-    __slots__ = ("arc_ids", "members", "name")
+    __slots__ = ("arc_ids", "keys", "members", "name")
 
     def __init__(self, name: str) -> None:
         """Keep the first spelling of the name seen."""
         self.name = name
         self.members: list[tuple[int | None, dict[str, Any]]] = []
         self.arc_ids: dict[str, list[str]] = {}
+        self.keys: set[EntryKey] = set()
 
     def add(self, entry: dict[str, Any], arc: Mapping[str, Any]) -> None:
-        """Add a comic's entry and remember the ids its arc tag carries."""
-        self.members.append((arc.get(NUMBER_KEY), entry))
+        """
+        Add a comic's entry and remember the ids its arc tag carries.
+
+        Copies of one issue, files that share an entry key, are one entry:
+        the first one seen.
+        """
+        keys = set(entry_keys(entry))
+        if not keys & self.keys:
+            self.members.append((arc.get(NUMBER_KEY), entry))
+            self.keys |= keys
         for source, identifier in (arc.get(IDENTIFIERS_KEY) or {}).items():
             if source in _ARC_POINTER_KINDS and (
                 key := (identifier or {}).get(ID_KEY_KEY)
@@ -162,8 +171,8 @@ def reading_lists_from_comics(
     Build one list per arc that a set of comics is tagged with.
 
     Arc names group case-insensitively and keep the first spelling seen.
-    Entries go by arc number, then cover date, series and issue. Lists come
-    back sorted by name.
+    Copies of one issue are one entry. Entries go by arc number, then cover
+    date, series and issue. Lists come back sorted by name.
     """
     arcs: dict[str, _ArcMembers] = {}
     for metadata in comics:

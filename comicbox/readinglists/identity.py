@@ -6,6 +6,8 @@ matcher and codex's database matcher all use it, so they agree on what
 counts as the same issue.
 """
 
+import re
+import unicodedata
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -14,9 +16,6 @@ from typing import Any
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.formats.base.fields.fields import IssueField
-from comicbox.formats.base.online.signals import (
-    normalize_series as _normalize_series,
-)
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DAY_KEY,
@@ -41,8 +40,10 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
 )
 
-# The online matcher's series rule, so every matcher compares names alike.
-normalize_series = _normalize_series
+# The online matcher's volume suffix rule: "Vol. 2", "(Volume 3)".
+_VOLUME_SUFFIX_RE = re.compile(
+    r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
+)
 
 # The first element of every key says which kind it is.
 ID_KEY_KIND = "id"
@@ -70,6 +71,25 @@ class ParsedIssue:
     suffix: str
 
 
+def normalize_series(name: str) -> str:
+    """
+    Normalize a series name for comparing.
+
+    Accents are dropped (``Pokémon`` is ``pokemon``), case is folded, a
+    volume suffix is stripped as the online matcher strips it, and every run
+    of characters that are not letters or digits, in any script, becomes one
+    space, so ``ワンピース`` keeps a name. ASCII names normalize as the
+    online matcher's rule does.
+    """
+    decomposed = unicodedata.normalize("NFKD", name)
+    folded = "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    ).casefold()
+    folded = _VOLUME_SUFFIX_RE.sub(" ", folded)
+    spaced = "".join(char if char.isalnum() else " " for char in folded)
+    return " ".join(spaced.split())
+
+
 def _to_decimal(text: str) -> Decimal | None:
     if not text.strip("."):
         return None
@@ -84,11 +104,15 @@ def parse_issue(text: Any) -> ParsedIssue:
     Normalize an issue name and split it into its number and suffix.
 
     The comicbox rules: ``#004AU`` is ``4AU``, number 4 and suffix ``AU``;
-    ``½`` is ``.5``. ``3`` and ``3.0`` have equal numbers.
+    ``½`` is ``.5``. ``3`` and ``3.0`` have equal numbers. ``-1`` is a real
+    issue number, so a leading minus sign belongs to the number.
     """
     name = IssueField.parse_issue(str(text).strip()) if text is not None else ""
-    number, suffix = IssueField.split_issue(name)
-    return ParsedIssue(name, _to_decimal(number), suffix.strip())
+    negative = name.startswith("-")
+    number_text, suffix = IssueField.split_issue(name[1:] if negative else name)
+    if (number := _to_decimal(number_text)) is None:
+        return ParsedIssue(name, None, name.strip() if negative else suffix.strip())
+    return ParsedIssue(name, -number if negative else number, suffix.strip())
 
 
 def _issue_parts(entry: Mapping[str, Any]) -> tuple[Decimal | None, str] | None:

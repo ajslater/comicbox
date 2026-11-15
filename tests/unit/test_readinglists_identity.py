@@ -5,7 +5,13 @@ from typing import Any
 
 import pytest
 
-from comicbox.readinglists import ParsedIssue, entry_keys, parse_issue
+from comicbox.formats.base.online import signals
+from comicbox.readinglists import (
+    ParsedIssue,
+    entry_keys,
+    normalize_series,
+    parse_issue,
+)
 from tests.unit.test_parse_issue import ISSUES
 
 _SUFFIXES = {
@@ -163,3 +169,64 @@ def test_volume_number_alone_does_not_meet_a_start_year() -> None:
     }
     assert _name_keys(volume_only)
     assert _name_keys(metron_style) != _name_keys(volume_only)
+
+
+@pytest.mark.parametrize(
+    ("name", "normalized"),
+    [
+        ("Pokémon", "pokemon"),
+        ("ワンピース", "ワンヒース"),
+        ("Æon Flux", "æon flux"),
+        ("Batman Vol. 2", "batman"),
+        ("The Amazing Spider-Man (Volume 3)", "the amazing spider man"),
+    ],
+)
+def test_normalize_series_reads_every_script(name: str, normalized: str) -> None:
+    assert normalize_series(name) == normalized
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Civil War",
+        "X-Men: Legacy",
+        "The Amazing Spider-Man Vol. 2",
+        "Batman (Volume 3)",
+        "100 Bullets!",
+        "  spaced   out  ",
+        "Civil_War",
+        "",
+    ],
+)
+def test_ascii_names_normalize_as_the_online_matcher_does(name: str) -> None:
+    assert normalize_series(name) == signals.normalize_series(name)
+
+
+def test_a_non_latin_series_has_a_name_key() -> None:
+    entry = {
+        "series": {"name": "ワンピース", "start_year": 1997},
+        "issue": {"name": "1"},
+    }
+    assert _name_keys(entry)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("-1", ParsedIssue("-1", Decimal(-1), "")),
+        ("-01", ParsedIssue("-01", Decimal(-1), "")),
+        ("-1A", ParsedIssue("-1A", Decimal(-1), "A")),
+        ("-", ParsedIssue("-", None, "-")),
+    ],
+)
+def test_minus_one_is_a_number(text: str, expected: ParsedIssue) -> None:
+    assert parse_issue(text) == expected
+
+
+def test_minus_one_by_name_or_number_is_one_key() -> None:
+    assert _name_keys(_entry(issue={"name": "-1"})) == _name_keys(
+        _entry(issue={"number": Decimal(-1)})
+    )
+    assert _name_keys(_entry(issue={"name": "-1"})) != _name_keys(
+        _entry(issue={"name": "1"})
+    )

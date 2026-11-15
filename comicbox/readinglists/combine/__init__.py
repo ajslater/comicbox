@@ -5,12 +5,15 @@ Pure: no files, no network. The inputs are in rank order, the first being
 primary. Guarantees:
 
 - The same inputs in the same order give the same output.
-- Combining a list with itself returns it unchanged.
+- Combining a list with itself returns it unchanged, when every entry has
+  a key.
 - Adding an input never reorders the backbone's own entries.
 - A caller that wants to keep an existing order passes it first.
 
-An entry with no key, no issue id and no series, year or volume and
-number, cannot be matched, so it is never joined with another.
+An entry with no key, no usable issue id and no series name with a start
+year or volume, cannot be matched, so it is never joined with another, not
+even with itself in a copy of its list: combining such a list with itself
+gives that entry twice.
 """
 
 from collections.abc import Mapping, Sequence
