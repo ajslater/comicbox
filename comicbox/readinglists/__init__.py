@@ -35,6 +35,7 @@ from comicbox.readinglists.identity import (
     name_variants,
     normalize_series,
     parse_issue,
+    series_year,
 )
 from comicbox.readinglists.registry import (
     ReadingListFormats,
@@ -145,4 +146,5 @@ __all__ = (
     "normalize_series",
     "parse_issue",
     "reading_lists_from_comics",
+    "series_year",
 )

@@ -219,6 +219,30 @@ def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
     return (NAME_KEY_KIND, name, discriminator, *issue)
 
 
+# A volume number this big is a year, as a CBL's Volume="2006" is.
+_YEAR_LIKE_VOLUME = 1900
+
+
+def series_year(entry: Mapping[str, Any]) -> int | None:
+    """
+    Get the year an entry's name key tells its volume by, when it is one.
+
+    The start year, or a volume number of 1900 or more. None for an entry
+    with no name key, or whose volume number is small: volume 2 cannot be
+    compared with a year. A cover-year join never brings together two
+    rows whose series years differ.
+    """
+    if _name_key(entry) is None:
+        return None
+    series = entry.get(SERIES_KEY) or {}
+    if (start_year := series.get(SERIES_START_YEAR_KEY)) is not None:
+        return start_year
+    number = (entry.get(VOLUME_KEY) or {}).get(NUMBER_KEY)
+    if isinstance(number, int) and number >= _YEAR_LIKE_VOLUME:
+        return number
+    return None
+
+
 def _cover_year(entry: Mapping[str, Any]) -> int | None:
     """Get the cover year: ``date.year``, or the year of ``date.cover_date``."""
     entry_date_ = entry.get(DATE_KEY) or {}
@@ -236,7 +260,7 @@ def _name_year_key(entry: Mapping[str, Any]) -> EntryKey | None:
     For every entry with a series name, an issue and a cover year, so a row
     with a year and no volume, as a CBL often has, meets a row that has a
     start year. Two volumes whose issues share a number and a cover year
-    share this key too.
+    share this key too: ``series_year`` tells them apart where it can.
     """
     if (named := _series_issue(entry)) is None:
         return None

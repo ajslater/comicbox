@@ -216,9 +216,12 @@ list and a report. It is pure: no files, no network.
 - It does not guess past the cover year. An entry with no id and no start year
   or volume matches on its series, issue and cover year, so a CBL row with a
   `Year` and no `Volume` matches its own copy and a row that has the start year.
-  Two volumes of one title are told apart only when their issues' cover years
-  differ. An entry with no cover year either matches nothing, because a series
-  name and number alone match every volume of a long-running title.
+  A cover-year join never brings together rows whose start years differ, a
+  volume number of 1900 or more counting as a start year, even through a third
+  row that has only the cover year: two volumes whose issues share a number and
+  a cover year stay apart. An entry with no cover year either matches nothing,
+  because a series name and number alone match every volume of a long-running
+  title.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -273,13 +276,14 @@ among them, in two passes:
    one series, the cover year picks the series.
 
 A comic is never matched to an entry when both carry an id from one database and
-the ids differ, or both have cover years more than a year apart. An entry with
-no id, start year, volume or cover year matches nothing, as in `combine`.
-`match` prints each entry with each comic that is it on a row of its own, and
-how it matched (`id`, `name`, `name-year` or `variant`), or `missing`; a comic
-with a tag file comicbox could not read is marked. The count goes to stderr.
-Linked directories are not searched, as with comicbox's `--recurse`, and a
-directory that cannot be read is a warning: the command then exits 1.
+the ids differ, or both have cover years more than a year apart, nor on the
+cover year alone when both have start years and they differ. An entry with no
+id, start year, volume or cover year matches nothing, as in `combine`. `match`
+prints each entry with each comic that is it on a row of its own, and how it
+matched (`id`, `name`, `name-year` or `variant`), or `missing`; a comic with a
+tag file comicbox could not read is marked. The count goes to stderr. Linked
+directories are not searched, as with comicbox's `--recurse`, and a directory
+that cannot be read is a warning: the command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also

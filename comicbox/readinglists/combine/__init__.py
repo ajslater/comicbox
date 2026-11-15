@@ -14,7 +14,8 @@ An entry with no key, no usable issue id and no series name and issue
 with a start year, volume or cover year, cannot be matched, so it is never
 joined with another, not even with itself in a copy of its list: combining
 such a list with itself gives that entry twice. A join on the series, issue
-and cover year alone, the weakest key, is reported with the name joins.
+and cover year alone, the weakest key, is reported with the name joins, and
+never brings together rows whose series years differ.
 """
 
 from collections import Counter, defaultdict

@@ -41,6 +41,7 @@ def _entry(
     number: str = "1",
     *,
     start_year: int | None = None,
+    volume: int | None = None,
     year: int | None = None,
     cover: date | None = None,
     **ids: str,
@@ -49,6 +50,8 @@ def _entry(
     if start_year is not None:
         series["start_year"] = start_year
     entry: dict[str, Any] = {"series": series, "issue": {"name": number}}
+    if volume is not None:
+        entry["volume"] = {"number": volume}
     when: dict[str, Any] = {}
     if year is not None:
         when["year"] = year
@@ -153,6 +156,72 @@ def test_a_cover_year_link_never_takes_a_row_a_name_link_wanted() -> None:
     assert [(1, 0)] in sources
 
 
+# ----------------------------------------- two volumes, one cover year
+
+
+def _groups(*inputs: dict[str, Any]) -> list[set[int]]:
+    """Combine one-row lists; list the inputs each combined entry came from."""
+    result = combine(list(inputs))
+    return [{origin.input_index for origin in origins} for origins in result.provenance]
+
+
+_V2011 = _entry(start_year=2011, cover=date(2016, 8, 1))
+_V2016 = _entry(start_year=2016, cover=date(2016, 8, 1))
+_YEAR_ONLY = _entry(year=2016)
+
+
+def test_two_volumes_with_one_cover_year_stay_apart() -> None:
+    """Avengers #1 of 2011 and of 2016, both dated 2016, joined as one."""
+    assert _groups(_list(_V2011), _list(_V2016)) == [{0}, {1}]
+    assert compare(_list(_V2011), _list(_V2016)).verdict is not Verdict.SAME
+
+
+@pytest.mark.parametrize(
+    "order",
+    [(0, 1, 2), (0, 2, 1), (2, 0, 1), (2, 1, 0)],
+)
+def test_two_volumes_never_meet_through_a_cover_year_row(
+    order: tuple[int, ...],
+) -> None:
+    """Refused on the group, not the pair: each joins the year-only row."""
+    rows = (_V2011, _V2016, _YEAR_ONLY)
+    inputs = [_list(rows[index]) for index in order]
+    position = {row: order.index(row) for row in range(3)}
+
+    groups = _groups(*inputs)
+
+    assert len(groups) == 2
+    assert not any({position[0], position[1]} <= group for group in groups)
+    assert any(position[2] in group and len(group) == 2 for group in groups)
+
+
+def test_an_id_still_joins_rows_whose_series_years_differ() -> None:
+    """Only a cover-year link is held to one series year; an id is evidence."""
+    one = _entry(start_year=2011, year=2016, comicvine="7")
+    other = _entry(start_year=2016, year=2016, comicvine="7")
+    assert _groups(_list(one), _list(other)) == [{0, 1}]
+
+
+@pytest.mark.parametrize("volume", [_V2011, _V2016])
+def test_a_row_with_no_start_year_joins_either_volume(volume: dict[str, Any]) -> None:
+    assert _groups(_list(_YEAR_ONLY), _list(volume)) == [{0, 1}]
+
+
+@pytest.mark.parametrize(
+    ("row", "joins"),
+    [
+        # Volume 2 is not a year, so it cannot be compared with one.
+        (_entry(volume=2, year=2016), True),
+        # Volume 2011 is a year, as a CBL's Volume is: another volume.
+        (_entry(volume=2011, year=2016), False),
+        (_entry(volume=2016, year=2016), True),
+    ],
+)
+def test_a_volume_number_is_a_year_from_1900(row: dict[str, Any], joins: bool) -> None:
+    groups = _groups(_list(row), _list(_V2016))
+    assert (groups == [{0, 1}]) is joins
+
+
 # ----------------------------------------------------------------- match
 
 
@@ -178,6 +247,18 @@ def test_a_stronger_key_names_how_the_comic_was_found() -> None:
     entry = _entry(start_year=2016, year=2016)
     (found,) = match_comics(_list(entry), comics).found
     assert found.comics[0].by is FoundBy.NAME
+
+
+def test_a_cover_year_match_never_finds_another_volume() -> None:
+    comics = {
+        Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
+        Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+    }
+    entry = _entry(start_year=2011, year=2016)
+
+    (found,) = match_comics(_list(entry), comics).found
+
+    assert found.paths == (Path("v2011.cbz"),)
 
 
 def test_the_vetoes_apply_to_a_cover_year_match() -> None:

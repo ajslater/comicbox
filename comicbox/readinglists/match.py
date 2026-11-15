@@ -7,7 +7,8 @@ passes. First every entry takes each comic it shares a strict key with
 issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
 among the comics no entry took strictly. Either way a comic is refused when
 it carries an id from a database the entry has a different id from, or a
-cover year more than a year off the entry's. An entry with no key matches
+cover year more than a year off the entry's; found by the cover year alone,
+also when its series year differs from the entry's. An entry with no key matches
 nothing. The matching is pure; reading the directory is separate.
 """
 
@@ -30,6 +31,7 @@ from comicbox.readinglists.identity import (
     EntryKey,
     entry_date,
     entry_keys,
+    series_year,
     variant_keys,
 )
 from comicbox.readinglists.schema import ENTRIES_KEY, NUMBER_KEY
@@ -95,15 +97,28 @@ def _year(entry: Mapping[str, Any]) -> int | None:
 
 @dataclass(frozen=True, slots=True)
 class _Facts:
-    """What vetoes a match: an entry's or comic's issue ids and cover year."""
+    """
+    What vetoes a match: an entry's or comic's issue ids and cover year.
+
+    And its series year, which vetoes a match on the cover-year key alone.
+    """
 
     ids: Mapping[str, str]
     year: int | None
+    series_year: int | None
 
     @classmethod
     def of(cls, entry: Mapping[str, Any], keys: Sequence[EntryKey]) -> "_Facts":
         ids = {key[1]: key[2] for key in keys if key[0] == ID_KEY_KIND}
-        return cls(ids, _year(entry))
+        return cls(ids, _year(entry), series_year(entry))
+
+    def other_volume(self, other: "_Facts") -> bool:
+        """Tell whether both sides name a series year, and not the same one."""
+        return (
+            self.series_year is not None
+            and other.series_year is not None
+            and self.series_year != other.series_year
+        )
 
     def contradicts(self, other: "_Facts") -> bool:
         """Tell whether two sides cannot be one issue, whatever their keys."""
@@ -147,8 +162,13 @@ class _Index:
         for key in keys:
             by = _FOUND_BY_KIND.get(key[0], FoundBy.NAME)
             for path in self.strict.get(key, ()):
-                if path not in found and not facts.contradicts(self.facts[path]):
-                    found[path] = by
+                comic = self.facts[path]
+                if path in found or facts.contradicts(comic):
+                    continue
+                # The cover year joins rows lacking a series year, not volumes.
+                if by is FoundBy.NAME_YEAR and facts.other_volume(comic):
+                    continue
+                found[path] = by
         return tuple(FoundComic(path, found[path]) for path in sorted(found))
 
     def find_variant(

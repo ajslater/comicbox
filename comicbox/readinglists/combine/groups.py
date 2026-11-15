@@ -15,7 +15,10 @@ volume, then names with a cover year, and within one strength by input
 rank and row. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
-afterwards.
+afterwards. A cover-year link is also refused when the group it would
+make holds two series years (``series_year``): two volumes whose issues
+share a number and a cover year stay apart, even through a third row that
+has only the cover year.
 """
 
 from collections import Counter
@@ -30,6 +33,7 @@ from comicbox.readinglists.identity import (
     NAME_YEAR_KEY_KIND,
     EntryKey,
     entry_keys,
+    series_year,
 )
 
 Node = tuple[int, int]
@@ -80,13 +84,22 @@ class Grouping:
 
 
 class _Groups:
-    """Disjoint sets of nodes, each holding at most one row per input."""
+    """
+    Disjoint sets of nodes, each holding at most one row per input.
 
-    __slots__ = ("_inputs", "_parent")
+    Each group also knows the series years of its rows, so a cover-year
+    link can be refused for the whole group, not only the pair it names.
+    """
 
-    def __init__(self, nodes: Sequence[Node]) -> None:
-        self._parent: dict[Node, Node] = {node: node for node in nodes}
-        self._inputs: dict[Node, set[int]] = {node: {node[0]} for node in nodes}
+    __slots__ = ("_inputs", "_parent", "_years")
+
+    def __init__(self, years: Mapping[Node, int | None]) -> None:
+        self._parent: dict[Node, Node] = {node: node for node in years}
+        self._inputs: dict[Node, set[int]] = {node: {node[0]} for node in years}
+        self._years: dict[Node, frozenset[int]] = {
+            node: frozenset() if year is None else frozenset({year})
+            for node, year in years.items()
+        }
 
     def find(self, node: Node) -> Node:
         """Return the node's root, compressing the path to it."""
@@ -97,14 +110,24 @@ class _Groups:
             node, self._parent[node] = self._parent[node], root
         return root
 
-    def link(self, one: Node, other: Node) -> None:
-        """Join two nodes' groups, unless both hold a row of one input."""
+    def link(self, one: Node, other: Node, *, one_year: bool = False) -> None:
+        """
+        Join two nodes' groups, unless both hold a row of one input.
+
+        With ``one_year``, as for a cover-year link, also unless the joined
+        group would hold two series years.
+        """
         roots = sorted((self.find(one), self.find(other)))
         root, child = roots
         if root == child or self._inputs[root] & self._inputs[child]:
             return
+        years = self._years[root] | self._years[child]
+        if one_year and len(years) > 1:
+            return
         self._parent[child] = root
         self._inputs[root] |= self._inputs.pop(child)
+        self._years[root] = years
+        del self._years[child]
 
     def groups(self) -> list[list[Node]]:
         """List the groups, each in node order, by their first node."""
@@ -151,8 +174,13 @@ class _Grouper:
     """Group the rows of ranked inputs and report what disagreed."""
 
     def __init__(self, inputs: Sequence[Sequence[Mapping[str, Any]]]) -> None:
-        """Qualify every row's keys."""
+        """Qualify every row's keys, and note its series year."""
         self._qualified = [_qualify(entries) for entries in inputs]
+        self._years = {
+            (input_index, row): series_year(entry)
+            for input_index, entries in enumerate(inputs)
+            for row, entry in enumerate(entries)
+        }
         self._conflicts: list[GroupIdConflict] = []
 
     def _nodes(self) -> Iterator[Node]:
@@ -172,9 +200,9 @@ class _Grouper:
         for node in nodes:
             for qkey in self._keys(node):
                 holders.setdefault(qkey, []).append(node)
-        groups = _Groups(nodes)
-        for _, one, other in _links(holders):
-            groups.link(one, other)
+        groups = _Groups({node: self._years[node] for node in nodes})
+        for strength, one, other in _links(holders):
+            groups.link(one, other, one_year=strength == _NAME_YEAR_STRENGTH)
         return groups.groups()
 
     def _record_disagreements(self, group: int, members: Sequence[Node]) -> None:
