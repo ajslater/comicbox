@@ -10,6 +10,10 @@
   build lists from story arc tags. They never write over an existing file
   without `--overwrite`.
 
+### 🐛 Fixed
+
+- ComicInfo keeps every story arc's number when another arc has none.
+
 ### 🧑‍💻 Developer
 
 - Requires mokkari 5.1.
