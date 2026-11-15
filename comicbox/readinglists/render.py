@@ -261,6 +261,10 @@ def print_combine_report(
         print_messages(out, (message,), "id")
     for index in result.name_joins:
         print_messages(out, (_entry_label(reading_list, index),), "joined by name only")
+    for shared in result.shared_ids:
+        positions = ", ".join(f"#{position + 1}" for position in shared.entries)
+        message = f"{shared.source} {shared.key} is on entries {positions}"
+        print_messages(out, (message,), "shared id")
 
 
 def _results_table(columns: Sequence[str]) -> Table:

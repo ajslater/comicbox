@@ -194,8 +194,10 @@ list and a report. It is pure: no files, no network.
 - **Unions the ids.** Each entry gets every database's id from every list;
   everything else comes from the first list that has it.
 - **Reports what disagreed.** Order disagreements, two different ids from one
-  database for one issue (one of the lists is wrong), and every join made on a
-  name alone, the kind most likely to be wrong.
+  database for one issue (one of the lists is wrong), every join made on a name
+  alone, the kind most likely to be wrong, and an id left on two entries: when
+  one list gives an issue twice with a different id each time, its rows cannot
+  both join another list's one row.
 - **Lines up repeated issues.** A list may read an issue twice; the first time
   lines up with the first time in another list, the second with the second.
 

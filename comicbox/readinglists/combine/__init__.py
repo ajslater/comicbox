@@ -16,8 +16,9 @@ even with itself in a copy of its list: combining such a list with itself
 gives that entry twice.
 """
 
+from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from comicbox.exceptions import ReadingListError
@@ -28,7 +29,12 @@ from comicbox.readinglists.combine.fields import (
 )
 from comicbox.readinglists.combine.groups import Grouping, group_rows
 from comicbox.readinglists.combine.order import GroupOrderConflict, order_groups
-from comicbox.readinglists.identity import entry_date, entry_sort_key
+from comicbox.readinglists.identity import (
+    ID_KEY_KIND,
+    entry_date,
+    entry_keys,
+    entry_sort_key,
+)
 from comicbox.readinglists.schema import ENTRIES_KEY
 from comicbox.readinglists.serialize import load_model
 
@@ -69,6 +75,22 @@ class IdConflict:
 
 
 @dataclass(frozen=True, slots=True)
+class SharedId:
+    """
+    A database id the combined list holds on more than one entry.
+
+    No input repeats it, so it names one issue, but the rows that carry it
+    could not all be joined: one input gave the issue twice, with a
+    different id each time, and a row of one input joins at most one row of
+    another. That is bad data worth showing. ``entries`` are the positions.
+    """
+
+    source: str
+    key: str
+    entries: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class CombineResult:
     """
     The combined list and what combining found.
@@ -76,7 +98,8 @@ class CombineResult:
     ``provenance`` is parallel to the list's entries: the rows each came
     from, in rank order. ``only_in`` is indexed by input: the entries no
     other input has. ``name_joins`` are the entries some row joined on a
-    series name alone, the joins most likely to be wrong.
+    series name alone, the joins most likely to be wrong. ``shared_ids``
+    are the ids left on more than one entry that no input repeats.
     """
 
     reading_list: dict[str, Any]
@@ -85,6 +108,32 @@ class CombineResult:
     order_conflicts: tuple[OrderConflict, ...]
     id_conflicts: tuple[IdConflict, ...]
     name_joins: tuple[int, ...]
+    shared_ids: tuple[SharedId, ...] = ()
+
+
+def _ids(entry: Mapping[str, Any]) -> set[tuple[str, str]]:
+    """Read the database ids that name an entry, as identity does."""
+    return {(key[1], key[2]) for key in entry_keys(entry) if key[0] == ID_KEY_KIND}
+
+
+def _shared_ids(
+    inputs: Sequence[Sequence[Mapping[str, Any]]],
+    entries: Sequence[Mapping[str, Any]],
+) -> tuple[SharedId, ...]:
+    """Find the ids on more than one combined entry that no input repeats."""
+    repeated: set[tuple[str, str]] = set()
+    for rows in inputs:
+        counts = Counter(id_key for row in rows for id_key in _ids(row))
+        repeated |= {id_key for id_key, count in counts.items() if count > 1}
+    positions: defaultdict[tuple[str, str], list[int]] = defaultdict(list)
+    for position, entry in enumerate(entries):
+        for id_key in _ids(entry):
+            positions[id_key].append(position)
+    return tuple(
+        SharedId(source, key, tuple(found))
+        for (source, key), found in sorted(positions.items())
+        if len(found) > 1 and (source, key) not in repeated
+    )
 
 
 def _only_in(
@@ -170,4 +219,6 @@ def combine(reading_lists: Sequence[Mapping[str, Any]]) -> CombineResult:
     reading_list = merge_header(lists, backbone)
     if order:
         reading_list[ENTRIES_KEY] = [entries[group] for group in order]
-    return _result(reading_list, grouping, order, order_conflicts, len(lists))
+    result = _result(reading_list, grouping, order, order_conflicts, len(lists))
+    shared = _shared_ids(inputs, reading_list.get(ENTRIES_KEY) or [])
+    return replace(result, shared_ids=shared)

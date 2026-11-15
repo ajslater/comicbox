@@ -22,6 +22,7 @@ from comicbox.readinglists.combine import (
     EntryOrigin,
     IdConflict,
     OrderConflict,
+    SharedId,
     combine,
 )
 from comicbox.readinglists.compare import Comparison, Verdict, compare
@@ -124,6 +125,7 @@ __all__ = (
     "ReadingListFormats",
     "ReadingListResult",
     "ReadingListSession",
+    "SharedId",
     "SmartListError",
     "SourceKind",
     "Verdict",

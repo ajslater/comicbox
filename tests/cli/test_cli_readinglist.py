@@ -597,3 +597,28 @@ def test_validate_reports_deep_nesting_in_one_line(
     assert code == 1
     assert "✗" in out
     assert "Traceback" not in out + err
+
+
+def test_combine_reports_an_id_left_on_two_entries(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    a = tmp_path / "a.yaml"
+    a.write_text(
+        "reading_list:\n  name: A\n  entries:\n"
+        "    - series: {name: X}\n      issue: {name: '1'}\n"
+        "      identifiers: {comicvine: {key: cv1}, grandcomicsdatabase: {key: g1}}\n"
+    )
+    b = tmp_path / "b.yaml"
+    b.write_text(
+        "reading_list:\n  name: B\n  entries:\n"
+        "    - series: {name: X}\n      issue: {name: '1'}\n"
+        "      identifiers: {grandcomicsdatabase: {key: g1}}\n"
+        "    - series: {name: X}\n      issue: {name: '1'}\n"
+        "      identifiers: {comicvine: {key: cv1}}\n"
+    )
+
+    code, _, err = _run(capsys, "rl", "combine", str(a), str(b))
+
+    assert code == 0
+    assert "shared id: " in err
+    assert "is on entries #1, #2" in err

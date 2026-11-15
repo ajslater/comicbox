@@ -308,8 +308,11 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
     for _ in range(rng.randint(2, 4)):
         rows = []
         for issue in rng.sample(pool, rng.randint(6, 18)):
-            row = _random_row(rng, issue)
-            rows.extend([row, row] if rng.random() < 0.1 else [row])
+            rows.append(_random_row(rng, issue))
+            if rng.random() < 0.15:
+                # The issue again, with its ids drawn afresh: B=[X{gcd},
+                # X{cv}] beside A=[X{cv, gcd}] leaves one id on two entries.
+                rows.append(_random_row(rng, issue))
         inputs.append(_list(rows))
     return inputs
 
@@ -338,7 +341,12 @@ def _id_counts(entries: list[dict[str, Any]]) -> Counter[tuple[str, str]]:
 
 
 @pytest.mark.parametrize("seed", range(40))
-def test_no_id_lands_on_two_entries_unless_an_input_repeats_it(seed: int) -> None:
+def test_no_id_lands_on_two_entries_unreported(seed: int) -> None:
+    """
+    An id on two entries is repeated by an input, or reported as shared.
+
+    And every shared id reported is on two entries and repeated by none.
+    """
     inputs = _random_inputs(seed)
     result = combine(inputs)
     repeated = {
@@ -347,10 +355,48 @@ def test_no_id_lands_on_two_entries_unless_an_input_repeats_it(seed: int) -> Non
         for id_key, count in _id_counts(reading_list[ENTRIES_KEY]).items()
         if count > 1
     }
-    for id_key, count in _id_counts(result.reading_list[ENTRIES_KEY]).items():
-        assert count == 1 or id_key in repeated, id_key
+    shared = {(item.source, item.key): item.entries for item in result.shared_ids}
+    entries = result.reading_list[ENTRIES_KEY]
+    for id_key, count in _id_counts(entries).items():
+        assert count == 1 or id_key in repeated or id_key in shared, id_key
+    for id_key, positions in shared.items():
+        assert id_key not in repeated
+        assert len(positions) > 1
+        source, key = id_key
+        for position in positions:
+            assert entries[position]["identifiers"][source]["key"] == key
     for members in result.provenance:
         assert len({origin.input_index for origin in members}) == len(members)
+
+
+def test_the_generator_makes_shared_ids() -> None:
+    """The restated test is only worth having if some seed shares an id."""
+    assert any(combine(_random_inputs(seed)).shared_ids for seed in range(40))
+
+
+def test_an_id_left_on_two_entries_is_reported() -> None:
+    """A=[X{cv, gcd}], B=[X{gcd}, X{cv}]: B's rows cannot both join A's one."""
+    a = _list([_entry(1, year=None, comicvine="cv1", grandcomicsdatabase="g1")])
+    b = _list(
+        [
+            _entry(1, year=None, grandcomicsdatabase="g1"),
+            _entry(1, year=None, comicvine="cv1"),
+        ]
+    )
+
+    result = combine([a, b])
+
+    (shared,) = result.shared_ids
+    assert shared.entries == (0, 1)
+    assert (shared.source, shared.key) in {
+        ("comicvine", "cv1"),
+        ("grandcomicsdatabase", "g1"),
+    }
+
+
+def test_an_id_an_input_repeats_is_not_reported() -> None:
+    a = _list(_numbers(1, 1, year=None, comicvine="cv1"))
+    assert combine([a]).shared_ids == ()
 
 
 def test_new_entries_with_nothing_in_common_go_after_the_primary() -> None:
