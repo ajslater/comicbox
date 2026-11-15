@@ -23,6 +23,9 @@ _HANDLED_EXCEPTIONS = (
     ConfigError,
 )
 
+# `comicbox readinglist ...` and its short form `comicbox rl ...`.
+_READING_LIST_COMMANDS = frozenset({"readinglist", "rl"})
+
 
 def get_args(params: Sequence[str] | None = None) -> Namespace:
     """
@@ -55,6 +58,12 @@ def main(params: Sequence[str] | None = None) -> None:
         from comicbox import doctor
 
         sys.exit(doctor.main(argv[2:]))
+    if len(argv) > 1 and argv[1] in _READING_LIST_COMMANDS:
+        # Its own parser and actions. Imported here so a normal run never
+        # loads the reading-list package.
+        from comicbox.readinglists import cli as readinglist_cli
+
+        sys.exit(readinglist_cli.main(argv[2:]))
     cns = get_args(params)
     args = Namespace(comicbox=cns)
 

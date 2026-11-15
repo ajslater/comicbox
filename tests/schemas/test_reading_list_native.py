@@ -59,9 +59,9 @@ def test_yaml_dump_key_order() -> None:
     assert "\n    - series:\n" in text
 
 
-def test_json_dump_validates_against_published_schema() -> None:
-    """What comicbox writes as JSON passes the JSON Schema it publishes."""
-    spec = ReadingListFormats.JSON.value.validator_spec
+@pytest.mark.parametrize("fmt", NATIVE_FORMATS, ids=lambda fmt: fmt.name)
+def test_dump_validates_against_published_schema(fmt: ReadingListFormats) -> None:
+    """What comicbox writes passes the JSON Schema it publishes, dates and all."""
+    spec = fmt.value.validator_spec
     assert spec is not None
-    text = dumps(load(CIVIL_WAR_PATH).reading_list, ReadingListFormats.JSON)
-    build_validator(spec).validate(text)
+    build_validator(spec).validate(dumps(load(CIVIL_WAR_PATH).reading_list, fmt))

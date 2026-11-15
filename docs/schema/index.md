@@ -236,3 +236,22 @@ Specifying metadata on the command line like this is additive.
 | Comicbox CLI  | -m --metadata     |
 | Archive       | comicbox-cli.yaml |
 | Import/Export | comicbox-cli.yaml |
+
+## Reading List Schemas
+
+Reading lists have schemas of their own; the
+[Reading Lists](../reading-lists.md) page describes the formats.
+
+### Comicbox Reading List 1.0
+
+Comicbox's own reading-list model, written as YAML or JSON. An entry reuses the
+Comicbox 3.0 series, volume, date and identifiers objects
+([field reference](reading-list-v1.0/index.md)).
+
+[Reading List 1.0 JSON Schema](https://github.com/ajslater/comicbox/blob/main/schemas/reading-list/v1.0/reading-list-v1.0.schema.json)
+
+### json-cbl 1.0
+
+The [json-cbl](https://github.com/ComicReadingLists/json-cbl-standard) reading
+list format, vendored byte for byte from its upstream at commit `dea268c`
+([field reference](json-cbl-v1.0.schema.md)).

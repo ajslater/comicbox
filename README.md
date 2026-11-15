@@ -236,6 +236,20 @@ comicbox --import ComicInfo.xml -w cix "My Overtagged Comic.cbz"
 You can also drop individual keys with `-D`/`--delete-keys` using dotted glom
 paths, e.g. `-D series,reprints.0.series`.
 
+### Reading Lists
+
+`comicbox readinglist`, or `comicbox rl`, reads, converts, combines and compares
+reading lists: ComicRack `.cbl`, json-cbl, and comicbox YAML and JSON.
+
+```sh
+comicbox rl print "Civil War.cbl"
+comicbox rl convert --to json-cbl "Civil War.cbl"
+comicbox rl combine -o civil-war.yaml cbro.cbl locg.cbl
+```
+
+See [Reading Lists](https://comicbox.readthedocs.io/reading-lists/) for the
+formats, what combining does, and the Python API.
+
 ## 🛠 API
 
 Comicbox is primarily a library. The

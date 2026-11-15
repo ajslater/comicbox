@@ -75,14 +75,25 @@ def _close_shared_online_sessions() -> None:
             module.close_shared_sessions()
 
 
+# Derived from the file-type enum so a newly supported archive can't be
+# left out of a recursive walk. Hardcoding the set is what dropped .cb7.
+_RECURSE_SUFFIXES = frozenset(
+    {"." + file_type.value.lower() for file_type in FileTypeEnum}
+)
+
+
+def iter_recurse(path: Path) -> Iterator[Path]:
+    """Yield every comic archive under a directory, in sorted order."""
+    for full_path in sorted(path.rglob("*")):
+        if not full_path.is_file():
+            continue
+        if full_path.suffix.lower() not in _RECURSE_SUFFIXES:
+            continue
+        yield full_path
+
+
 class Runner:
     """Main runner."""
-
-    # Derived from the file-type enum so a newly supported archive can't be
-    # left out of a recursive walk. Hardcoding the set is what dropped .cb7.
-    _RECURSE_SUFFIXES = frozenset(
-        {"." + file_type.value.lower() for file_type in FileTypeEnum}
-    )
 
     def __init__(self, config: Namespace | Mapping | ComicboxSettings | None) -> None:
         """Initialize actions and config."""
@@ -114,13 +125,9 @@ class Runner:
         self._series_cluster_sizes: Counter[str] = Counter()
         init_logging(self._config.general.loglevel)
 
-    def _iter_recurse(self, path: Path) -> Iterator[Path]:
-        for full_path in sorted(path.rglob("*")):
-            if not full_path.is_file():
-                continue
-            if full_path.suffix.lower() not in self._RECURSE_SUFFIXES:
-                continue
-            yield full_path
+    @staticmethod
+    def _iter_recurse(path: Path) -> Iterator[Path]:
+        return iter_recurse(path)
 
     def _expand_paths(self) -> list[Path]:
         """Flatten config.paths, expanding directories under --recurse."""
