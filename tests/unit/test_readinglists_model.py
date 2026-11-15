@@ -18,6 +18,12 @@ from comicbox.readinglists import (
     get_format,
     loads,
 )
+from comicbox.readinglists.formats.cbl.schema import (
+    CblBookSchema,
+    CblBooksSchema,
+    CblDatabaseSchema,
+    CblSubSchema,
+)
 from comicbox.readinglists.schema import (
     EntrySchema,
     JsonEntrySchema,
@@ -27,6 +33,7 @@ from comicbox.readinglists.schema import (
     SourceSchema,
 )
 
+NATIVE_FORMATS = (ReadingListFormats.YAML, ReadingListFormats.JSON)
 _CW1 = {
     "series": {"name": "Civil War", "start_year": 2006},
     "issue": {"name": "1"},
@@ -44,6 +51,10 @@ def _reading_list(**header: Any) -> dict[str, Any]:
 @pytest.mark.parametrize(
     "schema_class",
     [
+        CblBookSchema,
+        CblBooksSchema,
+        CblDatabaseSchema,
+        CblSubSchema,
         EntrySchema,
         JsonEntrySchema,
         ListRefSchema,
@@ -59,7 +70,7 @@ def test_tag_order_is_the_field_set(schema_class: type[Schema]) -> None:
     assert set(tag_order) == set(schema_class().fields)
 
 
-@pytest.mark.parametrize("fmt", list(ReadingListFormats), ids=lambda fmt: fmt.name)
+@pytest.mark.parametrize("fmt", NATIVE_FORMATS, ids=lambda fmt: fmt.name)
 def test_dump_keeps_order_and_repeats(fmt: ReadingListFormats) -> None:
     """Entries and sources are never sorted or de-duplicated."""
     sources = [{"kind": "url", "url": "https://b.example"}, {"kind": "file"}] * 2
@@ -70,7 +81,7 @@ def test_dump_keeps_order_and_repeats(fmt: ReadingListFormats) -> None:
     assert result["sources"] == sources
 
 
-@pytest.mark.parametrize("fmt", list(ReadingListFormats), ids=lambda fmt: fmt.name)
+@pytest.mark.parametrize("fmt", NATIVE_FORMATS, ids=lambda fmt: fmt.name)
 def test_false_flags_survive(fmt: ReadingListFormats) -> None:
     result = loads(dumps(_reading_list(ordered=False, private=False), fmt))
     assert result.reading_list["ordered"] is False

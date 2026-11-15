@@ -17,6 +17,7 @@ from tests.const import TEST_FILES_DIR
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
 CIVIL_WAR_PATH = READING_LISTS_DIR / "civil-war.yaml"
+NATIVE_FORMATS = (ReadingListFormats.YAML, ReadingListFormats.JSON)
 
 
 def test_yaml_fixture_loads() -> None:
@@ -29,7 +30,7 @@ def test_yaml_fixture_loads() -> None:
     assert reading_list[ENTRIES_KEY][0]["date"]["cover_date"] == date(2006, 7, 1)
 
 
-@pytest.mark.parametrize("fmt", list(ReadingListFormats), ids=lambda fmt: fmt.name)
+@pytest.mark.parametrize("fmt", NATIVE_FORMATS, ids=lambda fmt: fmt.name)
 def test_round_trip(fmt: ReadingListFormats) -> None:
     """YAML loads, dumps to each native format and loads back equal."""
     reading_list = load(CIVIL_WAR_PATH).reading_list

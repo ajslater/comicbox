@@ -18,6 +18,8 @@ from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
 from comicbox.exceptions import ReadingListFormatError
+from comicbox.readinglists.formats.cbl import CBL_REGISTRATION
+from comicbox.readinglists.formats.cbl.schema import READING_LIST_TAG
 from comicbox.readinglists.formats.native import (
     JSON_REGISTRATION,
     YAML_REGISTRATION,
@@ -30,6 +32,7 @@ class ReadingListFormats(Enum):
 
     YAML = YAML_REGISTRATION
     JSON = JSON_REGISTRATION
+    CBL = CBL_REGISTRATION
 
 
 def _build_token_map() -> MappingProxyType[str, ReadingListFormats]:
@@ -67,7 +70,9 @@ _XML_ROOT_RE = re.compile(
     re.DOTALL,
 )
 # XML root element -> format.
-_XML_ROOTS: MappingProxyType[str, ReadingListFormats] = MappingProxyType({})
+_XML_ROOTS: MappingProxyType[str, ReadingListFormats] = MappingProxyType(
+    {READING_LIST_TAG: ReadingListFormats.CBL}
+)
 # Keys a JSON or YAML document's top level must hold, checked in order.
 _JSON_SIGNATURES: tuple[tuple[frozenset[str], ReadingListFormats], ...] = (
     (frozenset({READING_LIST_KEY}), ReadingListFormats.JSON),

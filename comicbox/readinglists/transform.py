@@ -7,8 +7,9 @@ list of nested rows, so each format converts with builder functions, and
 the result is a reading list.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 from xml.parsers.expat import ExpatError
 
@@ -18,13 +19,20 @@ from comicbox.empty import is_empty
 from comicbox.exceptions import ReadingListFormatError
 from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.schemas.cache import get_schema
-from comicbox.readinglists.schema import ENTRIES_KEY, ReadingListYamlSchema
+from comicbox.readinglists.schema import (
+    ENTRIES_KEY,
+    ORDERED_KEY,
+    PRIVATE_KEY,
+    ReadingListYamlSchema,
+)
 
 # What the render modules raise for text they cannot parse: simplejson's
 # JSONDecodeError is a ValueError, ruamel's errors are YAMLErrors and
 # xmltodict lets expat's through.
 _PARSE_ERRORS = (ValueError, YAMLError, ExpatError)
 _ENTRIES_PREFIX = f"{ENTRIES_KEY}."
+# Flags whose default a format loses nothing by dropping.
+_FLAG_DEFAULTS = MappingProxyType({ORDERED_KEY: True, PRIVATE_KEY: False})
 
 
 def _get_path(data: Any, keys: tuple[str, ...]) -> Any:
@@ -36,9 +44,16 @@ def _get_path(data: Any, keys: tuple[str, ...]) -> Any:
     return data
 
 
-def _is_used(value: Any) -> bool:
-    """Whether a value carries anything. A false flag is the default."""
-    return value is not False and not is_empty(value)
+def skipped_entries(positions: Iterable[int]) -> str:
+    """Name the entries a write has to leave out, by position."""
+    return f"{ENTRIES_KEY}[{', '.join(str(position) for position in positions)}]"
+
+
+def _is_used(keypath: str, value: Any) -> bool:
+    """Whether a value carries anything: not empty, and not a flag's default."""
+    if keypath in _FLAG_DEFAULTS and value == _FLAG_DEFAULTS[keypath]:
+        return False
+    return not is_empty(value)
 
 
 class ReadingListTransform:
@@ -100,8 +115,8 @@ class ReadingListTransform:
         if keypath.startswith(_ENTRIES_PREFIX):
             keys = tuple(keypath.removeprefix(_ENTRIES_PREFIX).split("."))
             entries = reading_list.get(ENTRIES_KEY) or ()
-            return any(_is_used(_get_path(entry, keys)) for entry in entries)
-        return _is_used(_get_path(reading_list, tuple(keypath.split("."))))
+            return any(_is_used(keypath, _get_path(entry, keys)) for entry in entries)
+        return _is_used(keypath, _get_path(reading_list, tuple(keypath.split("."))))
 
     def losses(self, reading_list: Mapping[str, Any]) -> tuple[str, ...]:
         """List the model keypaths writing this list in this format would drop."""
