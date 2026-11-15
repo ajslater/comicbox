@@ -175,7 +175,9 @@ class ReadingListSession:
         kind = SourceKind.URL.value
         with self.fetching(kind, url):
             max_bytes = self._settings.readinglists.max_download_bytes
-            data, revision = fetch(self.http(), url, max_bytes)
+            data, revision = fetch(
+                self.http(), url, max_bytes, cancelled=self._cancelled.is_set
+            )
             self.check_cancelled()
             source = {
                 SOURCE_KIND_KEY: kind,

@@ -278,7 +278,9 @@ def _fetch_tree(
         headers["If-None-Match"] = cached.etag
     max_bytes = context.settings.readinglists.max_download_bytes
     try:
-        fetched = download(context.http(), url, max_bytes, headers)
+        fetched = download(
+            context.http(), url, max_bytes, headers, cancelled=context.cancelled.is_set
+        )
     except HttpStatusError as exc:
         if exc.status == HTTPStatus.NOT_FOUND:
             reason = f"GitHub has no repository {repo} with a ref {ref}."
@@ -347,7 +349,9 @@ def _download(
         repo=catalog.repo, ref=quote(catalog.ref, safe="/"), path=quote(entry.path)
     )
     max_bytes = context.settings.readinglists.max_download_bytes
-    data = download(context.http(), url, max_bytes).body
+    data = download(
+        context.http(), url, max_bytes, cancelled=context.cancelled.is_set
+    ).body
     source = {
         SOURCE_KIND_KEY: SourceKind.CATALOG.value,
         SOURCE_KEY_KEY: entry.path,

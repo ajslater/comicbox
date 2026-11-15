@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import threading
+import time
+import tracemalloc
+import zlib
 from typing import TYPE_CHECKING
 
 import httpx
@@ -19,6 +23,7 @@ from comicbox.readinglists import (
     ReadingListSession,
 )
 from comicbox.readinglists.session import ReadingListSession as SessionClass
+from comicbox.readinglists.sources import url as url_source
 from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
@@ -208,3 +213,113 @@ def test_close_closes_the_client() -> None:
     client = session.http()
     session.close()
     assert client.is_closed
+
+
+# ------------------------------------------- bounded downloads (R2-E E2)
+
+_LIST = (READING_LISTS_DIR / "civil-war.yaml").read_bytes()
+
+
+def _compress(data: bytes, wbits: int) -> bytes:
+    packer = zlib.compressobj(9, zlib.DEFLATED, wbits)
+    return packer.compress(data) + packer.flush()
+
+
+def _zeros_gzip(size: int) -> bytes:
+    """Gzip ``size`` zero bytes without ever holding them."""
+    packer = zlib.compressobj(9, zlib.DEFLATED, zlib.MAX_WBITS | 16)
+    block = bytes(1 << 20)
+    parts = [packer.compress(block) for _ in range(size >> 20)]
+    return b"".join(parts) + packer.flush()
+
+
+class _Streamed:
+    """Answer with a streamed body, as a real server does; keep the requests."""
+
+    def __init__(self, body: bytes | Iterator[bytes], encoding: str | None = None):
+        self._body = body
+        self._encoding = encoding
+        self.seen: list[httpx.Request] = []
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        self.seen.append(request)
+        chunks = iter([self._body]) if isinstance(self._body, bytes) else self._body
+        headers = {"Content-Encoding": self._encoding} if self._encoding else {}
+        return httpx.Response(200, content=chunks, headers=headers)
+
+
+@pytest.mark.parametrize(
+    ("encoding", "wbits"),
+    [("gzip", zlib.MAX_WBITS | 16), ("deflate", zlib.MAX_WBITS), ("deflate", -15)],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+def test_a_compressed_list_is_inflated(encoding: str, wbits: int) -> None:
+    answer = _Streamed(_compress(_LIST, wbits), encoding)
+    with _session_with(answer, 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/civil-war.yaml")
+
+    assert result.reading_list["name"] == "Civil War"
+    (request,) = answer.seen
+    assert request.headers["Accept-Encoding"] == "gzip, deflate"
+
+
+def test_a_gzip_bomb_fails_without_being_held() -> None:
+    """64 MiB of zeros in 64 KiB: the cap fires before it is inflated."""
+    bomb = _zeros_gzip(64 << 20)
+    assert len(bomb) < 1 << 17
+    tracemalloc.start()
+    try:
+        with (
+            _session_with(_Streamed(bomb, "gzip"), 1 << 20) as session,
+            pytest.raises(ReadingListFetchError, match="download limit"),
+        ):
+            session.fetch_url(f"{_BASE}/bomb.yaml")
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 16 << 20
+
+
+@pytest.mark.parametrize("encoding", ["br", "zstd", "compress", "gzip, br"])
+def test_other_encodings_are_refused(encoding: str) -> None:
+    with (
+        _session_with(_Streamed(b"anything", encoding), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match="encoding, which comicbox"),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+def test_a_corrupt_gzip_body_is_one_error() -> None:
+    corrupt = _compress(_LIST, zlib.MAX_WBITS | 16)[:20] + b"\xff" * 40
+    with (
+        _session_with(_Streamed(corrupt, "gzip"), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match="gzip body is corrupt"),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+def _drip(seconds: float = 10.0) -> Iterator[bytes]:
+    """Send a byte every 50 ms, as a server stalling a client does."""
+    for _ in range(int(seconds / 0.05)):
+        time.sleep(0.05)
+        yield b"x"
+
+
+def test_a_dripping_download_is_cancelled_promptly() -> None:
+    with _session_with(_Streamed(_drip()), 1 << 20) as session:
+        threading.Timer(0.2, session.cancel).start()
+        started = time.monotonic()
+        with pytest.raises(OnlineLookupAbortedError):
+            session.fetch_url(f"{_BASE}/drip.yaml")
+    assert time.monotonic() - started < 2
+
+
+def test_a_dripping_download_stops_at_the_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(url_source, "DEADLINE_SECONDS", 0.3)
+    with _session_with(_Streamed(_drip()), 1 << 20) as session:
+        started = time.monotonic()
+        with pytest.raises(ReadingListFetchError, match="took longer than"):
+            session.fetch_url(f"{_BASE}/drip.yaml")
+    assert time.monotonic() - started < 2
