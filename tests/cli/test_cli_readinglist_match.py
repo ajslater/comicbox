@@ -163,6 +163,31 @@ def test_each_comic_of_an_entry_is_a_row(
     assert rows[first + 1] == "cw1.cbz name"
 
 
+def test_a_cover_year_match_is_its_own_kind(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """No id, start year or volume on either side: series, issue and year."""
+    listed = tmp_path / "batman.yaml"
+    listed.write_text(
+        "reading_list:\n  name: Batman\n  entries:\n"
+        "    - series: {name: Batman}\n      issue: {name: '1'}\n"
+        "      date: {year: 2016}\n"
+        "    - series: {name: Batman}\n      issue: {name: '2'}\n"
+    )
+    comics = tmp_path / "comics"
+    make_comic(
+        comics / "batman.cbz", series="Batman", number="1", cover_date="2016-08-01"
+    )
+
+    code, out, err = _run(capsys, "match", str(listed), str(comics))
+
+    assert code == 0
+    rows = [" ".join(line.split()) for line in out.splitlines()]
+    assert "1 Batman 1 batman.cbz name-year" in rows
+    # Only the entry with no year is counted as having no key.
+    assert "1 entry has no key and matches nothing" in err
+
+
 def test_match_output_that_is_not_a_terminal_is_not_wrapped(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:

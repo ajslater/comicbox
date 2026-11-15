@@ -10,10 +10,11 @@ primary. Guarantees:
 - Adding an input never reorders the backbone's own entries.
 - A caller that wants to keep an existing order passes it first.
 
-An entry with no key, no usable issue id and no series name with a start
-year or volume, cannot be matched, so it is never joined with another, not
-even with itself in a copy of its list: combining such a list with itself
-gives that entry twice.
+An entry with no key, no usable issue id and no series name and issue
+with a start year, volume or cover year, cannot be matched, so it is never
+joined with another, not even with itself in a copy of its list: combining
+such a list with itself gives that entry twice. A join on the series, issue
+and cover year alone, the weakest key, is reported with the name joins.
 """
 
 from collections import Counter, defaultdict
@@ -98,8 +99,9 @@ class CombineResult:
     ``provenance`` is parallel to the list's entries: the rows each came
     from, in rank order. ``only_in`` is indexed by input: the entries no
     other input has. ``name_joins`` are the entries some row joined on a
-    series name alone, the joins most likely to be wrong. ``shared_ids``
-    are the ids left on more than one entry that no input repeats.
+    series name alone, with a start year, volume or cover year: the joins
+    most likely to be wrong. ``shared_ids`` are the ids left on more than
+    one entry that no input repeats.
     """
 
     reading_list: dict[str, Any]

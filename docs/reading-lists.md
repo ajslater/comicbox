@@ -193,8 +193,10 @@ list and a report. It is pure: no files, no network.
 
 - **Matches issues by id, then by name.** Two rows are the same issue when they
   share an issue id from the same database, or the same series name, start year
-  (or volume), issue number and suffix. Matches chain: a ComicVine id joining A
-  and B and a Metron id joining B and C put all three together.
+  (or volume), issue number and suffix, or, weakest of all, the same series
+  name, cover year, issue number and suffix. Stronger matches are made first.
+  Matches chain: a ComicVine id joining A and B and a Metron id joining B and C
+  put all three together.
 - **Keeps the primary order.** The first ordered list is the backbone and none
   of its entries ever moves. An issue only another list has goes after the
   nearest entry the two lists agree on. A list marked `ordered: false`, such as
@@ -211,9 +213,12 @@ list and a report. It is pure: no files, no network.
 
 **What it does not do:**
 
-- It does not guess. An entry with no id and no start year or volume never
-  matches anything, because a series name and number alone match every volume of
-  a long-running title.
+- It does not guess past the cover year. An entry with no id and no start year
+  or volume matches on its series, issue and cover year, so a CBL row with a
+  `Year` and no `Volume` matches its own copy and a row that has the start year.
+  Two volumes of one title are told apart only when their issues' cover years
+  differ. An entry with no cover year either matches nothing, because a series
+  name and number alone match every volume of a long-running title.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -257,8 +262,8 @@ comic to a list.
 among them, in two passes:
 
 1. Every comic that shares a key with an entry: an issue id from the same
-   database, or the series name, start year or volume, and issue number. Every
-   copy of an issue is found.
+   database, the series name, start year or volume, and issue number, or the
+   series name, cover year and issue number. Every copy of an issue is found.
 2. For each entry the first pass did not find, variants of its series name,
    among the comics no entry found in the first pass: the name without a
    trailing year or volume in parentheses (`Batman (2016)`, `X-Men (Vol. 2)`),
@@ -269,12 +274,12 @@ among them, in two passes:
 
 A comic is never matched to an entry when both carry an id from one database and
 the ids differ, or both have cover years more than a year apart. An entry with
-no id and no start year or volume matches nothing, as in `combine`. `match`
-prints each entry with each comic that is it on a row of its own, and how it
-matched (`id`, `name` or `variant`), or `missing`; a comic with a tag file
-comicbox could not read is marked. The count goes to stderr. Linked directories
-are not searched, as with comicbox's `--recurse`, and a directory that cannot be
-read is a warning: the command then exits 1.
+no id, start year, volume or cover year matches nothing, as in `combine`.
+`match` prints each entry with each comic that is it on a row of its own, and
+how it matched (`id`, `name`, `name-year` or `variant`), or `missing`; a comic
+with a tag file comicbox could not read is marked. The count goes to stderr.
+Linked directories are not searched, as with comicbox's `--recurse`, and a
+directory that cannot be read is a warning: the command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also

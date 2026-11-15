@@ -10,10 +10,12 @@ input never share a qualified key.
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
 id joining B and C put all three together. Links are applied strongest
-first, ids in ``ranked_id_sources`` order and then names, and within one
-strength by input rank and row. A link that would put two rows of one input
-in one group is refused, so a name match never takes a row an id match
-wanted, and nothing is cut apart afterwards.
+first, ids in ``ranked_id_sources`` order, then names with a start year or
+volume, then names with a cover year, and within one strength by input
+rank and row. A link that would put two rows of one input in one group is
+refused, so a name match never takes a row an id match wanted, nor a
+cover-year match one a name match wanted, and nothing is cut apart
+afterwards.
 """
 
 from collections import Counter
@@ -23,7 +25,12 @@ from typing import Any
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.identifiers import ID_SOURCE_VALUES
-from comicbox.readinglists.identity import ID_KEY_KIND, EntryKey, entry_keys
+from comicbox.readinglists.identity import (
+    ID_KEY_KIND,
+    NAME_YEAR_KEY_KIND,
+    EntryKey,
+    entry_keys,
+)
 
 Node = tuple[int, int]
 QualifiedKey = tuple[EntryKey, int]
@@ -41,6 +48,7 @@ _BARCODE_SOURCES = frozenset(
 )
 _ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
 _NAME_STRENGTH = (1, 0)
+_NAME_YEAR_STRENGTH = (2, 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,9 +126,11 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
 
 
 def _strength(key: EntryKey) -> tuple[int, int]:
-    """Rank a key: ids before names, better ranked databases first."""
+    """Rank a key: ids, better ranked databases first, then names, then years."""
     if key[0] == ID_KEY_KIND:
         return (0, _ID_SOURCE_RANKS.get(key[1], len(_ID_SOURCE_RANKS)))
+    if key[0] == NAME_YEAR_KEY_KIND:
+        return _NAME_YEAR_STRENGTH
     return _NAME_STRENGTH
 
 
@@ -179,7 +189,7 @@ class _Grouper:
                     )
 
     def _is_name_join(self, members: Sequence[Node]) -> bool:
-        """Whether some member is in the group by a name key alone."""
+        """Whether some member is in the group by a name key alone, of either kind."""
         if len(members) < 2:  # noqa: PLR2004
             return False
         counts = Counter(qkey for member in members for qkey in self._id_keys(member))

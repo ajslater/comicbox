@@ -3,8 +3,8 @@ Match a reading list against the comics in a directory.
 
 Each comic becomes an entry with ``entry_from_comic``. Matching goes in two
 passes. First every entry takes each comic it shares a strict key with
-(``entry_keys``: an issue id, or the series name, year or volume, and
-issue). Then each entry that found none tries its name variants in order,
+(``entry_keys``: an issue id, the series name, start year or volume and
+issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
 among the comics no entry took strictly. Either way a comic is refused when
 it carries an id from a database the entry has a different id from, or a
 cover year more than a year off the entry's. An entry with no key matches
@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from comicbox.constants import ROOT_TAG
@@ -25,6 +26,7 @@ from comicbox.readinglists.arcs import entry_from_comic
 from comicbox.readinglists.combine.fields import is_ordered
 from comicbox.readinglists.identity import (
     ID_KEY_KIND,
+    NAME_YEAR_KEY_KIND,
     EntryKey,
     entry_date,
     entry_keys,
@@ -41,12 +43,19 @@ class FoundBy(StrEnum):
 
     ID = "id"
     NAME = "name"
+    NAME_YEAR = "name-year"
     VARIANT = "variant"
 
     @property
     def strict(self) -> bool:
         """Whether this is an ``entry_keys`` match, not a name variant."""
         return self is not FoundBy.VARIANT
+
+
+# How a key's kind finds a comic; every other strict key is a name.
+_FOUND_BY_KIND = MappingProxyType(
+    {ID_KEY_KIND: FoundBy.ID, NAME_YEAR_KEY_KIND: FoundBy.NAME_YEAR}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,9 +143,9 @@ class _Index:
         keys = entry_keys(entry)
         facts = _Facts.of(entry, keys)
         found: dict[Path, FoundBy] = {}
-        # Ids come first, so a comic found by both is found by id.
+        # The strongest key comes first, so a comic found by two is found by it.
         for key in keys:
-            by = FoundBy.ID if key[0] == ID_KEY_KIND else FoundBy.NAME
+            by = _FOUND_BY_KIND.get(key[0], FoundBy.NAME)
             for path in self.strict.get(key, ()):
                 if path not in found and not facts.contradicts(self.facts[path]):
                     found[path] = by

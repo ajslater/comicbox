@@ -54,6 +54,7 @@ _VOLUME_SUFFIX_RE = re.compile(
 # The first element of every key says which kind it is.
 ID_KEY_KIND = "id"
 NAME_KEY_KIND = "name"
+NAME_YEAR_KEY_KIND = "name-year"
 
 EntryKey = tuple[Any, ...]
 
@@ -191,22 +192,58 @@ def _discriminator(entry: Mapping[str, Any]) -> int | None:
     return volume.get(NUMBER_KEY)
 
 
-def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
-    """
-    Build the key of the series, year or volume, number and suffix.
-
-    None without a series name, an issue, or a start year or volume: a name
-    and number alone match every volume of a long-running title, so such an
-    entry joins by id only.
-    """
+def _series_issue(
+    entry: Mapping[str, Any],
+) -> tuple[str, tuple[Decimal | None, str]] | None:
+    """Get the normalized series name and the issue, or None without both."""
     series = entry.get(SERIES_KEY) or {}
     if not (name := normalize_series(str(series.get(NAME_KEY) or ""))):
         return None
     if (issue := _issue_parts(entry)) is None:
         return None
+    return name, issue
+
+
+def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
+    """
+    Build the key of the series, year or volume, number and suffix.
+
+    None without a series name, an issue, or a start year or volume: a name
+    and number alone match every volume of a long-running title.
+    """
+    if (named := _series_issue(entry)) is None:
+        return None
     if (discriminator := _discriminator(entry)) is None:
         return None
+    name, issue = named
     return (NAME_KEY_KIND, name, discriminator, *issue)
+
+
+def _cover_year(entry: Mapping[str, Any]) -> int | None:
+    """Get the cover year: ``date.year``, or the year of ``date.cover_date``."""
+    entry_date_ = entry.get(DATE_KEY) or {}
+    year = entry_date_.get(YEAR_KEY)
+    if isinstance(year, int) and not isinstance(year, bool):
+        return year
+    cover_date = entry_date_.get(COVER_DATE_KEY)
+    return cover_date.year if isinstance(cover_date, date) else None
+
+
+def _name_year_key(entry: Mapping[str, Any]) -> EntryKey | None:
+    """
+    Build the weakest key: the series, the cover year, number and suffix.
+
+    For every entry with a series name, an issue and a cover year, so a row
+    with a year and no volume, as a CBL often has, meets a row that has a
+    start year. Two volumes whose issues share a number and a cover year
+    share this key too.
+    """
+    if (named := _series_issue(entry)) is None:
+        return None
+    if (year := _cover_year(entry)) is None:
+        return None
+    name, issue = named
+    return (NAME_YEAR_KEY_KIND, name, year, *issue)
 
 
 # A trailing year or volume in parentheses: "Batman (2016)", "X (Vol. 2)",
@@ -285,12 +322,16 @@ def entry_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
     List the keys that identify an entry's issue, strongest first.
 
     ``("id", source, key)`` for each issue id, best ranked source first,
-    then ``("name", series, start year or volume, number, suffix)``. Two
-    entries are the same issue when they share a key.
+    then ``("name", series, start year or volume, number, suffix)``, then
+    the weakest, ``("name-year", series, cover year, number, suffix)``.
+    Two entries are the same issue when they share a key. An entry with
+    none, no id and no series and issue with a start year, volume or cover
+    year, matches nothing.
     """
     keys = list(_id_keys(entry))
-    if name_key := _name_key(entry):
-        keys.append(name_key)
+    keys.extend(
+        key for key in (_name_key(entry), _name_year_key(entry)) if key is not None
+    )
     return tuple(keys)
 
 
