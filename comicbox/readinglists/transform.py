@@ -19,8 +19,10 @@ from comicbox.empty import is_empty
 from comicbox.exceptions import ReadingListFormatError
 from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.base.schemas.error_store import unlogged_drops
 from comicbox.formats.comicbox.schema import ISSUE_SUFFIX_KEY
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
+from comicbox.readinglists.changes import describe_changes
 from comicbox.readinglists.schema import (
     ENTRIES_KEY,
     IDENTIFIERS_KEY,
@@ -113,8 +115,12 @@ class ReadingListTransform:
         """The root tag of this format's documents."""
         return self._schema.ROOT_TAG
 
+    # Keys a format leaves out of its schema on purpose, so dropping them is
+    # not worth a warning.
+    IGNORED_KEYS: frozenset[str] = frozenset()
+
     def parse(self, text: str) -> dict[str, Any]:
-        """Parse text into a document loaded through this format's schema."""
+        """Parse text, then load it through this format's schema."""
         try:
             document = self._schema.opts.render_module.loads(text)
         except _PARSE_ERRORS as exc:
@@ -123,10 +129,17 @@ class ReadingListTransform:
         if not isinstance(document, Mapping) or self.root_tag not in document:
             reason = f"No '{self.root_tag}' root found."
             raise ReadingListFormatError(reason)
-        loaded: dict[str, Any] = self._schema.load(document)  # pyright: ignore[reportAssignmentType]
+        loaded = self.load_document(document)
         if not loaded:
             reason = f"Nothing readable under '{self.root_tag}'."
             raise ReadingListFormatError(reason)
+        return loaded
+
+    def load_document(self, document: Mapping[str, Any]) -> dict[str, Any]:
+        """Load a parsed document through the schema, naming what it drops."""
+        with unlogged_drops():
+            loaded: dict[str, Any] = self._schema.load(document)  # pyright: ignore[reportAssignmentType]
+        self.warnings.extend(describe_changes(document, loaded, "", self.IGNORED_KEYS))
         return loaded
 
     def render(self, document: Mapping[str, Any]) -> str:
@@ -135,7 +148,11 @@ class ReadingListTransform:
 
     def to_reading_list(self, data: Mapping[str, Any]) -> dict[str, Any]:
         """Convert a parsed document to the model's inner mapping."""
-        return dict(data.get(self.root_tag) or {})
+        root = data.get(self.root_tag) or {}
+        if not isinstance(root, Mapping):
+            reason = f"'{self.root_tag}' holds {type(root).__name__}, not a list."
+            raise ReadingListFormatError(reason)
+        return dict(root)
 
     def from_reading_list(self, reading_list: Mapping[str, Any]) -> dict[str, Any]:
         """Convert the model's inner mapping to a document for this format."""

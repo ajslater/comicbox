@@ -222,3 +222,13 @@ def test_exception_hierarchy() -> None:
     assert issubclass(ReadingListError, ComicboxError)
     assert issubclass(ReadingListFormatError, ReadingListError)
     assert issubclass(SmartListError, ReadingListFormatError)
+
+
+def test_entry_dates_have_the_comic_date_fields() -> None:
+    """An entry's date is comicbox's, with whole dates only."""
+    from comicbox.formats.comicbox.schema import DateSchema
+    from comicbox.readinglists.schema import EntryDateSchema, JsonEntryDateSchema
+
+    fields = set(DateSchema().fields)
+    assert set(EntryDateSchema().fields) == fields
+    assert set(JsonEntryDateSchema().fields) == fields

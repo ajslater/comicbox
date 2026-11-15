@@ -85,10 +85,11 @@ _METRON_SOURCE_NAME = "Metron"
 _RELATIONSHIPS = MappingProxyType(
     {"previous": model.PREVIOUS_KEY, "following": model.NEXT_KEY}
 )
-# Model list type -> json-cbl type. Reading needs no map: the model's field
-# already spells "team" and "character" as Metron does. Writing "event" as
-# "universal" is a judgement: the spec's universe-wide crossover is the
-# nearest thing to Metron's event.
+# json-cbl type -> model list type, where Metron spells it otherwise.
+_LIST_TYPES_READ = MappingProxyType({"team": "teams", "character": "characters"})
+# Model list type -> json-cbl type. Writing "event" as "universal" is a
+# judgement: the spec's universe-wide crossover is the nearest thing to
+# Metron's event.
 _LIST_TYPES = MappingProxyType(
     {
         "master": "master",
@@ -149,6 +150,11 @@ _CURATOR_CODES = MappingProxyType(
 )
 
 
+def _read_list_type(value: Any) -> Any:
+    """Spell a json-cbl list type as Metron does."""
+    return _LIST_TYPES_READ.get(value, value) if isinstance(value, str) else value
+
+
 def _curator_code(name: str) -> str:
     """Store a known curator as its code; keep any other name as given."""
     return _CURATOR_CODES.get(_fold(name), name)
@@ -171,6 +177,12 @@ def _start_year(entry: Mapping[str, Any]) -> int | None:
         return start_year
     volume = (entry.get(model.VOLUME_KEY) or {}).get(model.NUMBER_KEY)
     return volume if _in_range(volume) else None
+
+
+def _cover_date(entry: Mapping[str, Any]) -> str:
+    """Write the cover date, or the first day the year and month allow."""
+    when = entry_date(entry)
+    return when.isoformat() if when else ""
 
 
 def _has_cover_date(entry: Mapping[str, Any]) -> bool:
@@ -380,7 +392,7 @@ class _Writer:
             SERIES_NAME_KEY: entry[model.SERIES_KEY][model.NAME_KEY],
             SERIES_START_YEAR_KEY: _start_year(entry),
             ISSUE_NUMBER_KEY: entry_issue_name(entry),
-            ISSUE_COVER_DATE_KEY: entry_date(entry),
+            ISSUE_COVER_DATE_KEY: _cover_date(entry),
             ISSUE_TYPE_KEY: _ISSUE_TYPES_WRITE.get(entry.get(model.ENTRY_TYPE_KEY, "")),
             ID_KEY: cls._ids(entry),
         }
@@ -502,7 +514,7 @@ class JsonCblTransform(ReadingListTransform):
         return {
             model.NAME_KEY: details.get(NAME_KEY),
             model.DESCRIPTION_KEY: details.get(DESCRIPTION_KEY),
-            model.LIST_TYPE_KEY: details.get(TYPE_KEY),
+            model.LIST_TYPE_KEY: _read_list_type(details.get(TYPE_KEY)),
             model.ORDERED_KEY: True,
             model.START_YEAR_KEY: details.get(START_YEAR_KEY),
             model.END_YEAR_KEY: details.get(END_YEAR_KEY),

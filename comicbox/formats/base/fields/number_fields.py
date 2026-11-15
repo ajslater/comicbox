@@ -13,6 +13,7 @@ from comicbox.formats.base.fields.fields import (
     StringField,
     half_replace,
 )
+from comicbox.formats.base.schemas.error_store import drops_logged
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -53,7 +54,7 @@ class RangedNumberMixin(Generic[NumT]):
                 result = max(result, self._min)
             if self._max is not None:
                 result = min(result, self._max)
-            if old_result != result:
+            if old_result != result and drops_logged():
                 logger.warning(f"Coerced {old_result} to {result}")
         return result
 

@@ -10,17 +10,21 @@ The value passed around the API is the inner mapping, the one under
 ``reading_list``. Only serialized documents carry the root key.
 """
 
+import re
 import sys
+from datetime import date, datetime
 from enum import StrEnum
 from types import MappingProxyType
 from typing import Any
 
+from marshmallow import ValidationError
 from marshmallow.fields import Constant, Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
 from comicbox.formats.base.fields.comicbox import SimpleNamedNestedField
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import BooleanField, IntegerField
+from comicbox.formats.base.fields.time_fields import DateField
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.base.schemas.json_schemas import JsonSchema
 from comicbox.formats.base.schemas.yaml import YamlSchema
@@ -33,9 +37,7 @@ from comicbox.formats.comicbox.schema import NUMBER_KEY as _NUMBER_KEY
 from comicbox.formats.comicbox.schema import SERIES_KEY as _SERIES_KEY
 from comicbox.formats.comicbox.schema import TAGS_KEY as _TAGS_KEY
 from comicbox.formats.comicbox.schema import VOLUME_KEY as _VOLUME_KEY
-from comicbox.formats.comicbox.schema import DateSchema
 from comicbox.formats.comicbox.schema.identifiers import IdentifiedSchema
-from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonDateSchema
 from comicbox.formats.comicbox.schema.publishing import (
     IssueSchema,
     SeriesSchema,
@@ -140,6 +142,55 @@ class EntryTypeField(VocabularyField):
     SYNONYMS = MappingProxyType({"tiein": "tie-in", "oneshot": "one-shot"})
 
 
+_FULL_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+class FullDateField(DateField):
+    """
+    A whole date: a date, or an ISO ``YYYY-MM-DD`` string.
+
+    comicbox's ``DateField`` parses liberally and fills missing parts from
+    today, so ``2006-07`` would become the 14th of July on the 14th of any
+    month. A reading list never guesses a day.
+    """
+
+    @override
+    def _deserialize(self, value: Any, *args: Any, **kwargs: Any) -> date:
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str) and _FULL_DATE_RE.match(text := value.strip()):
+            try:
+                return date.fromisoformat(text)
+            except ValueError:
+                pass
+        reason = "Not a whole date: YYYY-MM-DD."
+        raise ValidationError(reason)
+
+
+class _EntryDateFieldsSchema(BaseSubSchema):
+    """The comicbox date's parts, as DateSchema declares them."""
+
+    year = IntegerField()
+    month = IntegerField(minimum=1, maximum=12)
+    day = IntegerField(minimum=1, maximum=31)
+
+
+class EntryDateSchema(_EntryDateFieldsSchema):
+    """An entry's dates: comicbox's, but whole or not at all."""
+
+    cover_date = FullDateField(serialize_to_str=False)
+    store_date = FullDateField(serialize_to_str=False)
+
+
+class JsonEntryDateSchema(_EntryDateFieldsSchema):
+    """An entry's dates, written as strings for JSON."""
+
+    cover_date = FullDateField()
+    store_date = FullDateField()
+
+
 class SourceSchema(BaseSubSchema):
     """One place a list came from."""
 
@@ -192,7 +243,7 @@ class EntrySchema(IdentifiedSchema):
         primitive_type=int,
     )
     issue = Nested(IssueSchema)
-    date = Nested(DateSchema)
+    date = Nested(EntryDateSchema)
     entry_type = EntryTypeField()
     notes = StringField()
 
@@ -200,7 +251,7 @@ class EntrySchema(IdentifiedSchema):
 class JsonEntrySchema(EntrySchema):
     """An entry with its dates serialized as strings for JSON."""
 
-    date = Nested(ComicboxJsonDateSchema)
+    date = Nested(JsonEntryDateSchema)
 
 
 class ReadingListSubSchema(BaseSubSchema):

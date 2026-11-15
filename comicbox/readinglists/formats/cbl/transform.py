@@ -85,6 +85,12 @@ else:
 MIN_START_YEAR = 1900
 MAX_START_YEAR = datetime.now(tz=UTC).year + 1
 
+# ComicRack's Volume and Year for "not known".
+UNKNOWN_NUMBER = -1
+# ComicRack and community files write these; the model has no place for
+# them, so they are left out on purpose and not worth a warning.
+_IGNORED_KEYS = frozenset({"@xmlns:xsd", "@xmlns:xsi", "@Format", "Id", "FileName"})
+
 # <Database Name> values. Local, not identifier aliases: "cv" in the global
 # alias map would change how every tag's free text is parsed.
 _DATABASE_SOURCES = MappingProxyType(
@@ -148,7 +154,19 @@ class CblTransform(ReadingListTransform):
         }
     )
 
+    IGNORED_KEYS = _IGNORED_KEYS
+
     # Read
+
+    @override
+    def load_document(self, document: Mapping[str, Any]) -> dict[str, Any]:
+        """Keep an empty ``<Book />`` in its place, so positions count it."""
+        books = (document.get(self.root_tag) or {}).get(BOOKS_TAG)
+        if isinstance(books, dict) and BOOK_TAG in books:
+            items = books[BOOK_TAG]
+            items = items if isinstance(items, list) else [items]
+            books[BOOK_TAG] = [{} if item is None else item for item in items]
+        return super().load_document(document)
 
     def _database_ids(
         self, position: int, databases: Sequence[Mapping[str, Any]]
@@ -172,24 +190,34 @@ class CblTransform(ReadingListTransform):
                 issue_ids[source] = {ID_KEY_KEY: issue_key}
         return series_ids, issue_ids
 
+    def _read_number(
+        self, position: int, book: Mapping[str, Any], attr: str
+    ) -> int | None:
+        """
+        Read a Volume or Year, or nothing.
+
+        A negative number is no number: -1 is how ComicRack writes unknown,
+        so it goes quietly, and any other is a warning, as is a non-number.
+        """
+        if (text := book.get(attr)) is None:
+            return None
+        number = _int(text)
+        if number is not None and number >= 0:
+            return number
+        if number != UNKNOWN_NUMBER:
+            self.warnings.append(f"Book {position}: {attr[1:]} {text!r} dropped.")
+        return None
+
     def _read_numbers(
         self, position: int, book: Mapping[str, Any], entry: dict[str, Any]
     ) -> None:
         """Read Volume, also as a start year when it is one, and Year."""
-        if (volume_text := book.get(VOLUME_ATTR)) is not None:
-            if (volume := _int(volume_text)) is None:
-                self.warnings.append(
-                    f"Book {position}: Volume {volume_text!r} dropped."
-                )
-            else:
-                entry[VOLUME_KEY] = {NUMBER_KEY: volume}
-                if MIN_START_YEAR <= volume <= MAX_START_YEAR:
-                    entry[SERIES_KEY][SERIES_START_YEAR_KEY] = volume
-        if (year_text := book.get(YEAR_ATTR)) is not None:
-            if (year := _int(year_text)) is None:
-                self.warnings.append(f"Book {position}: Year {year_text!r} dropped.")
-            else:
-                entry[DATE_KEY] = {YEAR_KEY: year}
+        if (volume := self._read_number(position, book, VOLUME_ATTR)) is not None:
+            entry[VOLUME_KEY] = {NUMBER_KEY: volume}
+            if MIN_START_YEAR <= volume <= MAX_START_YEAR:
+                entry[SERIES_KEY][SERIES_START_YEAR_KEY] = volume
+        if (year := self._read_number(position, book, YEAR_ATTR)) is not None:
+            entry[DATE_KEY] = {YEAR_KEY: year}
 
     def _read_book(self, position: int, book: Mapping[str, Any]) -> dict | None:
         """Read one book, or skip it with a warning."""

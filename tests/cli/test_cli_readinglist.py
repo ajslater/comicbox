@@ -257,3 +257,14 @@ def test_compare_an_unordered_list(
     assert code == 0
     assert "Verdict same" in out
     assert "Order agreement n/a" in out
+
+
+def test_validate_prints_what_a_read_drops(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    typo = tmp_path / "typo.yaml"
+    misspelled = "descripton"  # codespell:ignore
+    typo.write_text(CIVIL_WAR.read_text().replace("description:", f"{misspelled}:"))
+    code, out, _ = _run(capsys, "rl", "validate", str(typo))
+    assert code == 0
+    assert f"warning: {misspelled}: 'The superhuman registration act" in out

@@ -91,7 +91,8 @@ class CblBooksSchema(XmlSubSchema):
 
     TAG_ORDER = (BOOK_TAG,)
 
-    Book = XmlListField(Nested(CblBookSchema), sort=False)
+    # Empty books are kept so a warning can name each book's position.
+    Book = XmlListField(Nested(CblBookSchema), sort=False, allow_empty=True)
 
 
 class CblSubSchema(XmlSubHeadSchema):

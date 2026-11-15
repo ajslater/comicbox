@@ -1,7 +1,8 @@
 """For marshmallow schemas that never fail on load, but instead just remove keys."""
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
@@ -25,7 +26,28 @@ else:
 # value.
 _current_path: ContextVar[str | None] = ContextVar("comicbox_schema_path", default=None)
 
+# Whether dropped and coerced fields are logged. A reader that returns what
+# it dropped as data, as reading lists do, turns this off around its own
+# loads. A ContextVar for the same reason as _current_path.
+_log_drops: ContextVar[bool] = ContextVar("comicbox_log_drops", default=True)
 _UNKNOWN_KEY = "UNKNOWN"
+
+
+def drops_logged() -> bool:
+    """Whether this context logs the fields a load drops or coerces."""
+    return _log_drops.get()
+
+
+@contextmanager
+def unlogged_drops() -> Generator[None]:
+    """Stop logging dropped and coerced fields inside the block."""
+    token = _log_drops.set(False)
+    try:
+        yield
+    finally:
+        _log_drops.reset(token)
+
+
 # Offending values go in the warning so the field name is actionable, but a
 # whole embedded page list would drown the log.
 _MAX_VALUE_REPR = 128
@@ -76,7 +98,7 @@ class ClearingErrorStore(ErrorStore):
         tinguishable from absent metadata. Name every field, and what was in
         it, so a silent drop is at least a visible one.
         """
-        if not cleaned_errors:
+        if not cleaned_errors or not drops_logged():
             return
         data = self._data if isinstance(self._data, Mapping) else {}
         reports = []
@@ -220,7 +242,7 @@ class ClearingErrorStoreSchema(Schema):
         error_class: type | None,
         errors: Mapping | list,
     ) -> None:
-        if not errors:
+        if not errors or not drops_logged():
             return
         path = f"{self._path}: " if self._path else ""
         error_name = f"{error_class.__name__} - " if error_class else ""

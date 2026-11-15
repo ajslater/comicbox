@@ -17,7 +17,6 @@ from marshmallow.fields import Nested
 from comicbox.formats.base.fields.collection_fields import ListField
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import DecimalField, IntegerField
-from comicbox.formats.base.fields.time_fields import DateField
 from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
 
 if sys.version_info >= (3, 12):
@@ -162,7 +161,9 @@ class JsonCblIssueSchema(JsonCblSubSchema):
     seriesName = StringField()  # noqa: N815
     seriesStartYear = IntegerField()  # noqa: N815
     issueNumber = StringField()  # noqa: N815
-    issueCoverDate = DateField()  # noqa: N815
+    # Text, so the model decides: a whole date, or a year and month that
+    # name no day. A date field would fill a missing day in from today.
+    issueCoverDate = StringField()  # noqa: N815
     issueType = StringField()  # noqa: N815
     id = ListField(Nested(JsonCblIdSchema), sort=False)
 
