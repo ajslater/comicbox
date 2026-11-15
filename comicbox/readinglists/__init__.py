@@ -77,6 +77,7 @@ from comicbox.readinglists.serialize import (
     lost_fields,
 )
 from comicbox.readinglists.session import ReadingListSession
+from comicbox.readinglists.sources.catalog import Catalog, CatalogEntry
 
 __all__ = (
     "DATE_KEY",
@@ -106,6 +107,8 @@ __all__ = (
     "START_YEAR_KEY",
     "TAGS_KEY",
     "VOLUME_KEY",
+    "Catalog",
+    "CatalogEntry",
     "CombineResult",
     "Comparison",
     "EntryKey",

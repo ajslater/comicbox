@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from comicbox.events import Event, EventHandler
     from comicbox.online_session import OnlineCredentials
     from comicbox.readinglists.formats.metron_api import MetronListSummary
+    from comicbox.readinglists.sources.catalog import Catalog, CatalogEntry
 
 # Read out of sys.modules on close, so a session that never touched Metron
 # never imports it.
@@ -238,3 +239,38 @@ class ReadingListSession:
 
         with self.fetching(SourceKind.METRON_ARC.value, str(arc_id)):
             return metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)
+
+    def catalog(self, *, refresh: bool = False) -> Catalog:
+        """
+        Get the index of the reading-list catalog on GitHub.
+
+        The repository and ref are ``readinglists.catalog_repo`` and
+        ``catalog_ref``. The index is cached under the online cache
+        directory: within ``readinglists.catalog_ttl`` no request is made,
+        and after it the cached index is revalidated. ``refresh`` asks
+        GitHub now.
+        """
+        from comicbox.readinglists.sources.catalog import load_catalog
+
+        self.check_cancelled()
+        return load_catalog(self, refresh=refresh)[0]
+
+    def search_catalog(self, query: str) -> tuple[CatalogEntry, ...]:
+        """Find the catalog's lists whose path holds every word of ``query``."""
+        return self.catalog().search(query)
+
+    def fetch_catalog(self, path: str, *, sha: str | None = None) -> ReadingListResult:
+        """
+        Fetch a list from the catalog by its path.
+
+        Paths change there; when ``path`` is gone and ``sha`` names the
+        blob it had, the list with that sha is fetched in its place. The
+        result's source is of kind ``catalog``, keyed by the path it was
+        found at, with the blob sha as its revision.
+        """
+        from comicbox.readinglists.sources.catalog import fetch_entry
+
+        with self.fetching(SourceKind.CATALOG.value, path):
+            data, source = fetch_entry(self, path, sha)
+            self.check_cancelled()
+            return self.load_fetched(data, source)

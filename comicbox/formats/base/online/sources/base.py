@@ -59,23 +59,28 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
         logger.debug(f"refresh-cache: removed {cache_path}")
 
 
-def resolve_cache_db_path(
-    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
-) -> Path:
+def resolve_cache_dir(cache_dir: Path | None, *, create: bool = True) -> Path:
     """
-    Resolve a source's cache sqlite path.
+    Resolve the online cache directory.
 
     Honours an explicit ``online.cache_dir``; otherwise uses the
     platformdirs user cache path for comicbox. ``create=False`` skips
-    making the parent directory, for read-only callers (a budget
-    readout) that must not have side effects.
+    making it, for read-only callers (a budget readout) that must not
+    have side effects.
     """
     if cache_dir is None:
         cache_dir = user_cache_path("comicbox") / "online"
     cache_dir = Path(cache_dir).expanduser()
     if create:
         cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"{name}_{suffix}.sqlite"
+    return cache_dir
+
+
+def resolve_cache_db_path(
+    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
+) -> Path:
+    """Resolve a source's cache sqlite path in the online cache directory."""
+    return resolve_cache_dir(cache_dir, create=create) / f"{name}_{suffix}.sqlite"
 
 
 class OnlineSource(ABC):

@@ -14,6 +14,10 @@
 - `ReadingListSession` searches and fetches Metron reading lists and story arcs
   with your Metron API token, sharing tagging's rate limit and response cache.
   Long lists report progress page by page and can be cancelled between pages.
+- `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
+  on GitHub, with each list's curator read from its name or folder. The index is
+  cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
+  configurable, so a fork works. A renamed list is still found by its sha.
 
 ### 🐛 Fixed
 

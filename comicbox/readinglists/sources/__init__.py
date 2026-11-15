@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     import threading
     from collections.abc import Mapping
 
+    import httpx
+
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import Event
     from comicbox.online_session import OnlineCredentials
@@ -46,6 +48,14 @@ class FetchContext(Protocol):
 
     def emit(self, event: Event) -> None:
         """Hand an event to the caller's handler, if any."""
+        ...
+
+    def check_cancelled(self) -> None:
+        """Raise if the session was cancelled."""
+        ...
+
+    def http(self) -> httpx.Client:
+        """Get the session's HTTP client."""
         ...
 
 
