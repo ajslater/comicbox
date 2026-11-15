@@ -172,6 +172,11 @@ class CblTransform(ReadingListTransform):
                     " its ids are dropped."
                 )
                 continue
+            if source in series_ids or source in issue_ids:
+                self.warnings.append(
+                    f"Book {position}: a second {quote_value(name)} database;"
+                    " its ids replace the first's."
+                )
             if series_key := database.get(SERIES_ATTR):
                 series_ids[source] = {ID_KEY_KEY: series_key}
             if issue_key := database.get(ISSUE_ATTR):

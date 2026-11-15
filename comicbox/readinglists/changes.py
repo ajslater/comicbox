@@ -84,6 +84,39 @@ def _set_changes(raw: Collection, loaded: Collection, path: str) -> Iterator[str
             yield f"{path}: {_repr(item)} dropped"
 
 
+# How far ahead of the last pairing a survivor is looked for: dropped items
+# are few, and a bound keeps a long list with many of them linear.
+_PAIRING_WINDOW = 16
+
+
+def _matches(raw_item: Any, item: Any) -> bool:
+    """Whether a loaded item plausibly came from a raw one."""
+    if isinstance(raw_item, Mapping) and isinstance(item, Mapping):
+        shared = [key for key in item if key in raw_item]
+        return bool(shared) and any(
+            _same(raw_item[key], item[key])
+            for key in shared
+            if not isinstance(item[key], Mapping | list | tuple | set | frozenset)
+        )
+    if isinstance(raw_item, Mapping) or isinstance(item, Mapping):
+        return False
+    return _same(raw_item, item)
+
+
+def _pair(raw: list, loaded: list) -> list[tuple[int, Any, Any]]:
+    """Pair each surviving item with the raw item it came from, in order."""
+    pairs: list[tuple[int, Any, Any]] = []
+    start = 0
+    for item in loaded:
+        if start >= len(raw):
+            break
+        window = range(start, min(len(raw), start + _PAIRING_WINDOW))
+        index = next((i for i in window if _matches(raw[i], item)), start)
+        pairs.append((index, raw[index], item))
+        start = index + 1
+    return pairs
+
+
 def _list_changes(
     raw: list, loaded: list, path: str, ignore: frozenset[str]
 ) -> Iterator[str]:
@@ -92,11 +125,14 @@ def _list_changes(
         # drops empty values; compare what is left.
         raw = [item for item in raw if not is_empty(item)]
         loaded = [item for item in loaded if not is_empty(item)]
-    if len(raw) != len(loaded):
+    if len(raw) == len(loaded):
+        pairs = [(index, raw[index], item) for index, item in enumerate(loaded)]
+    else:
         yield f"{path}: {len(raw) - len(loaded)} of {len(raw)} items dropped"
-        return
-    for position, (raw_item, item) in enumerate(zip(raw, loaded, strict=True), start=1):
-        yield from describe_changes(raw_item, item, f"{path} #{position}", ignore)
+        # What the survivors lost is still worth naming.
+        pairs = _pair(raw, loaded)
+    for index, raw_item, item in pairs:
+        yield from describe_changes(raw_item, item, f"{path} #{index + 1}", ignore)
 
 
 def _mapping_changes(

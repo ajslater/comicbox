@@ -226,3 +226,98 @@ def test_other_negatives_are_dropped_with_a_warning() -> None:
         "Book 1: Volume '-5' dropped.",
         "Book 1: Year '-2006' dropped.",
     )
+
+
+# ------------------------------------------- drops in survivors (R2-E E5)
+
+
+def test_drops_inside_the_items_a_list_keeps_are_named() -> None:
+    warnings = _yaml(
+        '  sources: [{kind: file, bogus: 1, curator: [a, b]}, "a string"]\n'
+    )
+    assert warnings == (
+        "sources: 1 of 2 items dropped",
+        "sources #1.bogus: 1 dropped",
+        "sources #1.curator: ['a', 'b'] dropped",
+    )
+
+
+def test_a_dropped_item_before_a_survivor_does_not_shift_its_path() -> None:
+    warnings = _yaml('  sources: ["a string", {kind: url, bogus: 1}]\n')
+    assert warnings == (
+        "sources: 1 of 2 items dropped",
+        "sources #2.bogus: 1 dropped",
+    )
+
+
+def test_drops_inside_kept_alternative_names_are_named() -> None:
+    warnings = _yaml(
+        "  entries:\n"
+        "    - series: {name: S, alternative_names: [7, {name: Other, bogus: 2}]}\n"
+        '      issue: {name: "1"}\n'
+    )
+    assert "entries #1.series.alternative_names: 1 of 2 items dropped" in warnings
+    assert "entries #1.series.alternative_names #2.bogus: 2 dropped" in warnings
+
+
+def test_drops_inside_kept_json_cbl_ids_are_named() -> None:
+    document = {
+        "fileDetails": {"version": 1.0, "UUID": "be7545a2-7a69-4bbc-ba0e-a4e2eea68d67"},
+        "listDetails": {"name": "A"},
+        "issueList": [
+            {
+                "seriesName": "S",
+                "seriesStartYear": 2006,
+                "issueNumber": "1",
+                "issueCoverDate": "2006-07-01",
+                "id": [
+                    "junk",
+                    {"name": "comicvine", "series": "1", "issue": "2", "bogus": 3},
+                ],
+            }
+        ],
+    }
+    warnings = loads(json.dumps(document)).warnings
+    assert "issueList #1.id: 1 of 2 items dropped" in warnings
+    assert "issueList #1.id #2.bogus: 3 dropped" in warnings
+
+
+def test_pairing_a_long_list_with_drops_stays_linear() -> None:
+    import time
+
+    items = ", ".join(
+        "x" if position % 2 else f"{{kind: url, key: k{position}, bogus: 1}}"
+        for position in range(4000)
+    )
+    started = time.monotonic()
+    warnings = _yaml(f"  sources: [{items}]\n")
+    assert time.monotonic() - started < 5
+    assert warnings[0] == "sources: 2000 of 4000 items dropped"
+    assert "sources #4.bogus: 1 dropped" not in warnings  # #4 was "x"
+    assert "sources #3.bogus: 1 dropped" in warnings
+
+
+def test_a_second_cbl_database_of_one_name_is_a_warning() -> None:
+    result = loads(
+        "<ReadingList><Name>A</Name><Books>"
+        '<Book Series="S" Number="1" Volume="2006" Year="2006">'
+        '<Database Name="cv" Series="1" Issue="2" />'
+        '<Database Name="cv" Series="3" Issue="4" />'
+        "</Book></Books></ReadingList>"
+    )
+    assert result.warnings == (
+        "Book 1: a second 'cv' database; its ids replace the first's.",
+    )
+    assert result.reading_list["entries"][0]["identifiers"]["comicvine"]["key"] == "4"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "reading_list:\n  name: A\nschema: x\nbogus: 1\n",
+        '{"reading_list": {"name": "A"}, "schema": "x", "bogus": 1}',
+    ],
+    ids=["yaml", "json"],
+)
+def test_root_keys_beside_the_list_are_named(text: str) -> None:
+    assert loads(text).warnings == ("bogus: 1 dropped",)
