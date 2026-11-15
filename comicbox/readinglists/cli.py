@@ -25,6 +25,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import urlsplit
 
+from confuse import ConfigError
 from rich_argparse import RichHelpFormatter
 
 from comicbox.cli.parser import add_online_auth_group, add_online_cache_group
@@ -33,7 +34,11 @@ from comicbox.events import (
     ReadingListFetchProgress,
     ReadingListFetchStarted,
 )
-from comicbox.exceptions import OnlineLookupAbortedError, ReadingListError
+from comicbox.exceptions import (
+    ConfigurationError,
+    OnlineLookupAbortedError,
+    ReadingListError,
+)
 from comicbox.readinglists.arcs import reading_lists_from_comics
 from comicbox.readinglists.combine import combine
 from comicbox.readinglists.compare import compare
@@ -106,6 +111,11 @@ def write_text(path: Path, text: str) -> None:
     try:
         temp.write_text(text, encoding="utf-8")
         temp.replace(path)
+    except OSError as exc:
+        if exc.filename is not None:
+            # Name the destination, not the temporary file beside it.
+            exc.filename = str(path)
+        raise
     finally:
         temp.unlink(missing_ok=True)
 
@@ -125,6 +135,8 @@ class _Destinations:
             return "is one of the inputs"
         if self.counts[key] > 1:
             return f"would be written by {self.counts[key]} inputs"
+        if destination.is_dir():
+            return "is a directory"
         if destination.exists() and not self.overwrite:
             return "exists; --overwrite replaces it"
         if not self.make_parents and not destination.parent.is_dir():
@@ -168,6 +180,8 @@ class _Run:
         self.out: Console = console()
         self.err: Console = console(stderr=True)
         self.failed = False
+        # Set by the user's Ctrl-C, so a spent quota is not taken for one.
+        self.cancelled = False
 
     def fail(self, path: Path | None, error: BaseException) -> None:
         """Report one failure on stderr and carry on."""
@@ -402,7 +416,8 @@ def fetch_spec(text: str) -> FetchSpec:
         return FetchSpec(_URL_KIND, text)
     kind, colon, target = text.partition(":")
     kind = kind.lower()
-    if colon and kind in _METRON_KINDS and target.isdigit():
+    # ASCII digits only: "²" is a digit to isdigit and not to int.
+    if colon and kind in _METRON_KINDS and target.isascii() and target.isdigit():
         return FetchSpec(kind, target)
     if colon and kind == _CATALOG_KIND and target.strip():
         return FetchSpec(kind, target)
@@ -477,6 +492,7 @@ def _cancellable(run: _Run, session: ReadingListSession, call: Callable[[], _T])
         while worker.is_alive():
             worker.join(_JOIN_POLL_SECONDS)
     except KeyboardInterrupt:
+        run.cancelled = True
         session.cancel()
         print_note(
             run.err, "Cancelling before the next request; Ctrl-C again quits now."
@@ -655,10 +671,17 @@ def main(params: Sequence[str]) -> int:
     run = _Run(args)
     try:
         _ACTIONS[args.action](run)
-    except (OSError, ReadingListError) as exc:
+    except (OSError, ReadingListError, ConfigError, ConfigurationError) as exc:
         run.fail(None, exc)
         return 1
-    except (OnlineLookupAbortedError, KeyboardInterrupt):
+    except OnlineLookupAbortedError as exc:
+        if not run.cancelled:
+            # The gate's own abort, such as a spent daily quota.
+            run.fail(None, exc)
+            return 1
+        print_note(run.err, "Cancelled.")
+        return EXIT_CANCELLED
+    except KeyboardInterrupt:
         print_note(run.err, "Cancelled.")
         return EXIT_CANCELLED
     return run.exit_code

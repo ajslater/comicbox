@@ -19,6 +19,7 @@ from comicbox.events import (
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.readinglists import (
     ReadingListFetchError,
+    ReadingListFormatError,
     ReadingListFormats,
     ReadingListSession,
 )
@@ -323,3 +324,53 @@ def test_a_dripping_download_stops_at_the_deadline(
         with pytest.raises(ReadingListFetchError, match="took longer than"):
             session.fetch_url(f"{_BASE}/drip.yaml")
     assert time.monotonic() - started < 2
+
+
+# ------------------------------------------- every failure (R2-E E6)
+
+
+def _redirect_to_javascript(request: httpx.Request) -> httpx.Response:
+    if request.url.path == "/js":
+        return httpx.Response(302, headers={"Location": "javascript:alert(1)"})
+    return _serve(request)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        f"{_BASE}/js",
+        f"{_BASE}/a\nb.yaml",
+        "https://☃.example/list.yaml",
+    ],
+    ids=["javascript-redirect", "newline", "bad-host"],
+)
+def test_an_invalid_url_is_a_fetch_error(url: str) -> None:
+    with ReadingListSession() as session:
+        session._transport = httpx.MockTransport(_redirect_to_javascript)
+        with pytest.raises(ReadingListFetchError, match="Cannot fetch"):
+            session.fetch_url(url)
+
+
+def test_a_download_that_will_not_read_names_its_url(
+    session: ReadingListSession,
+) -> None:
+    session._transport = httpx.MockTransport(
+        lambda _request: httpx.Response(200, content=b"<ReadingList><Name>")
+    )
+    with pytest.raises(
+        ReadingListFormatError, match=rf"^{_BASE}/broken\.cbl: Not valid XML"
+    ):
+        session.fetch_url(f"{_BASE}/broken.cbl")
+
+
+def test_a_cancel_while_the_body_arrives_returns_no_list() -> None:
+    """The server answers in full after the cancel; nothing is returned."""
+    with ReadingListSession() as session:
+
+        def cancel_then_answer(request: httpx.Request) -> httpx.Response:
+            session.cancel()
+            return _serve(request)
+
+        session._transport = httpx.MockTransport(cancel_then_answer)
+        with pytest.raises(OnlineLookupAbortedError):
+            session.fetch_url(f"{_BASE}/civil-war.yaml")

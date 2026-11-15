@@ -233,7 +233,9 @@ def download(
                 else _BoundedBody(response, url, max_bytes, cancelled).read()
             )
             return Download(response.status_code, response.headers, body)
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, httpx.InvalidURL, httpx.StreamError) as exc:
+        # InvalidURL is not an HTTPError: a URL with a newline, a bad host
+        # name, or a redirect to one, such as "javascript:...".
         reason = f"Cannot fetch {url}: {exc}"
         raise ReadingListFetchError(reason) from exc
 

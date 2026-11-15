@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from comicbox.config import get_config
 from comicbox.events import ReadingListFetchFinished, ReadingListFetchStarted
-from comicbox.exceptions import OnlineLookupAbortedError
+from comicbox.exceptions import OnlineLookupAbortedError, ReadingListFormatError
 from comicbox.readinglists.schema import (
     SOURCE_KEY_KEY,
     SOURCE_KIND_KEY,
@@ -156,8 +156,18 @@ class ReadingListSession:
             self.emit(ReadingListFetchFinished(source=kind, key=key))
 
     def load_fetched(self, data: bytes, source: dict[str, Any]) -> ReadingListResult:
-        """Read fetched bytes as a list from ``source``, detecting the format."""
-        result = loads(data)
+        """
+        Read fetched bytes as a list from ``source``, detecting the format.
+
+        A document that will not read names where it came from, as a
+        file's error names its path.
+        """
+        try:
+            result = loads(data)
+        except ReadingListFormatError as exc:
+            where = source.get(SOURCE_URL_KEY) or source.get(SOURCE_KEY_KEY)
+            reason = f"{where}: {exc}"
+            raise type(exc)(reason) from exc
         reading_list = attach_source(result.reading_list, source)
         return ReadingListResult(reading_list, result.fmt, result.warnings)
 
@@ -204,13 +214,15 @@ class ReadingListSession:
         from comicbox.readinglists.sources import metron
 
         self.check_cancelled()
-        return metron.search(
+        found = metron.search(
             self,
             name=name,
             curator=curator,
             username=username,
             modified_since=modified_since,
         )
+        self.check_cancelled()
+        return found
 
     def fetch_metron_list(
         self, list_id: int, *, if_modified_since: datetime | None = None
@@ -227,7 +239,12 @@ class ReadingListSession:
 
         metron.check_token(self)
         with self.fetching(SourceKind.METRON_LIST.value, str(list_id)):
-            return metron.fetch_list(self, list_id, if_modified_since=if_modified_since)
+            result = metron.fetch_list(
+                self, list_id, if_modified_since=if_modified_since
+            )
+            # A cancel during the last request still cancels.
+            self.check_cancelled()
+            return result
 
     def fetch_metron_arc(
         self, arc_id: int, *, if_modified_since: datetime | None = None
@@ -242,7 +259,9 @@ class ReadingListSession:
 
         metron.check_token(self)
         with self.fetching(SourceKind.METRON_ARC.value, str(arc_id)):
-            return metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)
+            result = metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)
+            self.check_cancelled()
+            return result
 
     def catalog(self, *, refresh: bool = False) -> Catalog:
         """
@@ -257,7 +276,9 @@ class ReadingListSession:
         from comicbox.readinglists.sources.catalog import load_catalog
 
         self.check_cancelled()
-        return load_catalog(self, refresh=refresh)[0]
+        catalog = load_catalog(self, refresh=refresh)[0]
+        self.check_cancelled()
+        return catalog
 
     def search_catalog(self, query: str) -> tuple[CatalogEntry, ...]:
         """Find the catalog's lists whose path holds every word of ``query``."""

@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import signal
 import threading
+import time
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,7 @@ from comicbox.readinglists import cli as readinglist_cli
 from comicbox.readinglists import load, loads
 from tests.const import TEST_FILES_DIR
 from tests.util.metron_transport import (
+    BURST_HEADERS,
     Reply,
     install,
     issue_page,
@@ -56,6 +58,8 @@ def _web(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_TREE, headers={"ETag": '"v1"'})
     if url.host == "raw.githubusercontent.com" or str(url) == _URL:
         return httpx.Response(200, content=_CBL)
+    if url.path == "/broken.cbl":
+        return httpx.Response(200, content=b"<ReadingList><Name>")
     return httpx.Response(404)
 
 
@@ -331,3 +335,96 @@ def test_a_second_ctrl_c_quits_at_once(
 
     assert code == readinglist_cli.EXIT_CANCELLED
     assert err.endswith("Cancelled.")
+
+
+# -------------------------------------- one line for every failure (E6)
+
+
+def test_a_non_ascii_digit_is_a_usage_error(capsys: pytest.CaptureFixture[str]) -> None:
+    """'²' is a digit to isdigit, and int() refuses it."""
+    code, _, err = _run(capsys, "fetch", "metron:²")
+
+    assert code == 2
+    assert "Traceback" not in err
+
+
+def test_a_missing_config_file_is_one_line(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    missing = tmp_path / "nonexistent.yaml"
+
+    code, out, err = _run(capsys, "fetch", _URL, "-c", str(missing))
+
+    assert code == 1
+    assert out == ""
+    assert "nonexistent.yaml could not be read" in err
+    assert "Traceback" not in err
+
+
+def test_a_spent_quota_is_an_error_not_a_cancel(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Metron says the day's quota is gone: exit 1 with why, not 130."""
+    spent = {**BURST_HEADERS, "X-RateLimit-Sustained-Remaining": "0"}
+
+    def answer(request: requests.PreparedRequest) -> Reply:
+        if (request.url or "").rstrip("/").endswith("items"):
+            return Reply(issue_page([reading_list_item(1, 1)]))
+        return Reply(reading_list_detail(), headers=spent)
+
+    _metron(answer)
+
+    code, out, err = _run(capsys, "fetch", "--auth", "metron:t", "metron:1")
+
+    assert code == 1
+    assert out == ""
+    assert "daily API request quota exhausted" in err
+    assert "Cancelled." not in err
+
+
+def test_ctrl_c_during_the_last_request_writes_nothing(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """
+    Write nothing when the last page arrives after Ctrl-C.
+
+    The real fetch, not one that waits for the cancel.
+    """
+
+    def answer(request: requests.PreparedRequest) -> Reply:
+        if (request.url or "").rstrip("/").endswith("items"):
+            os.kill(os.getpid(), signal.SIGINT)
+            time.sleep(0.3)
+            return Reply(issue_page([reading_list_item(1, 1)]))
+        return Reply(reading_list_detail())
+
+    _metron(answer)
+    output = tmp_path / "list.yaml"
+
+    code, out, err = _run(
+        capsys, "fetch", "--auth", "metron:t", "-o", str(output), "metron:1"
+    )
+
+    assert code == readinglist_cli.EXIT_CANCELLED
+    assert not output.exists()
+    assert out == ""
+    assert err.endswith("Cancelled.")
+
+
+def test_output_onto_a_directory_names_it(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    code, _, err = _run(capsys, "fetch", "--overwrite", "-o", str(tmp_path), _URL)
+
+    assert code == 1
+    assert f"{tmp_path}: is a directory" in err
+    assert ".tmp" not in err
+
+
+def test_a_download_that_will_not_read_names_its_url(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, _, err = _run(capsys, "fetch", "https://lists.example/broken.cbl")
+
+    assert code == 1
+    assert "https://lists.example/broken.cbl: Not valid XML" in err

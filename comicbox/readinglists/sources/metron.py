@@ -20,6 +20,7 @@ from mokkari.exceptions import (
     RateLimiterError,
     RateLimitError,
 )
+from requests.exceptions import RequestException
 
 from comicbox.config.online.settings import OnlineSourceCredentials
 from comicbox.events import ReadingListFetchProgress
@@ -44,12 +45,15 @@ if TYPE_CHECKING:
     from comicbox.readinglists.sources import FetchContext
 
 _SOURCE_NAME = "metron"
+# mokkari wraps most failures in ApiError, but lets some of requests' own
+# through, such as a broken chunked body or a redirect loop.
 _MOKKARI_ERRORS = (
     ApiError,
     AuthenticationError,
     CacheError,
     RateLimiterError,
     RateLimitError,
+    RequestException,
 )
 _UNCONFIGURED = (
     "Metron needs an API token: pass --auth metron:TOKEN, or set"

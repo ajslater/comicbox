@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from requests import exceptions as requests_exceptions
 
 from comicbox.config.online.settings import OnlineAuthSettings, OnlineSourceCredentials
 from comicbox.events import (
@@ -673,3 +674,45 @@ def test_a_changed_list_shares_the_gate(
 
     assert gate.stats().sends == sends + 3
     assert gate._in_flight == 0
+
+
+# ------------------------------------------- every failure (R2-E E6)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests_exceptions.ChunkedEncodingError("broken chunk"),
+        requests_exceptions.ContentDecodingError("bad gzip"),
+        requests_exceptions.TooManyRedirects("loop"),
+    ],
+    ids=["chunked", "decoding", "redirects"],
+)
+def test_a_transport_error_is_one_fetch_error(
+    session: ReadingListSession, error: Exception
+) -> None:
+    install(_shared_source(session).session(), [Reply(error=error)])
+
+    with pytest.raises(ReadingListFetchError, match=r"^Metron reading list 1: ") as e:
+        session.fetch_metron_list(1)
+
+    assert "\n" not in str(e.value)
+
+
+def test_a_cancel_during_the_last_request_returns_no_list(
+    session: ReadingListSession,
+) -> None:
+    """The last page arrives after the cancel; the list is not returned."""
+    routes = _three_pages()
+    last = routes["/reading_list/1/items/?page=3"]
+
+    def cancel_then_answer(request: requests.PreparedRequest) -> Reply:
+        if (request.url or "").endswith("?page=3"):
+            session.cancel()
+            return last
+        return _routes(routes)(request)
+
+    install(_shared_source(session).session(), cancel_then_answer)
+
+    with pytest.raises(OnlineLookupAbortedError):
+        session.fetch_metron_list(1)
