@@ -64,6 +64,8 @@ ask U7.
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -82,10 +84,13 @@ from mokkari.session import (
     HEADER_SUSTAINED_RESET,
 )
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     import requests
     from mokkari.rate_limit import RateLimitStatus
     from mokkari.session import Session
@@ -135,6 +140,49 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
+# Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
+# mokkari fetches every page of a list inside that one blocking call, and it
+# is synchronous, so its rate-limiter and response hooks run on the calling
+# thread and see these. Both default to None: tagging neither cancels inside
+# a call nor counts pages, and behaves exactly as it did without them.
+_abort_check: ContextVar[Callable[[], bool] | None] = ContextVar(
+    "comicbox_metron_abort_check", default=None
+)
+_page_observer: ContextVar[Callable[[requests.Response], None] | None] = ContextVar(
+    "comicbox_metron_page_observer", default=None
+)
+
+
+@contextmanager
+def fetch_hooks(
+    *,
+    abort: Callable[[], bool] | None = None,
+    on_page: Callable[[requests.Response], None] | None = None,
+) -> Generator[None]:
+    """
+    Watch the mokkari calls made inside the block, on this thread only.
+
+    ``abort`` is asked before each send: when it returns true, the call
+    raises ``OnlineLookupAbortedError``. A cancel therefore waits for at
+    most the one gate wait under way. ``on_page`` sees every raw response,
+    after the gate has; it must not raise, and a raise is logged and
+    dropped like any other observer failure.
+    """
+    abort_token = _abort_check.set(abort)
+    page_token = _page_observer.set(on_page)
+    try:
+        yield
+    finally:
+        _page_observer.reset(page_token)
+        _abort_check.reset(abort_token)
+
+
+def _abort_if_asked() -> None:
+    if (check := _abort_check.get()) is not None and check():
+        reason = "Metron fetch cancelled."
+        raise OnlineLookupAbortedError(reason)
+
+
 class GateRateLimiter:
     """
     Adapts a `RateGate` to mokkari's `RateLimiter` protocol.
@@ -171,9 +219,17 @@ class GateRateLimiter:
         it. mokkari calls `_acquire_rate_limit_slot` BEFORE its
         try/finally, so a raise here is never paired with a `release`.
         """
+        _abort_if_asked()
         started = time.monotonic()
         self._gate.acquire()
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
+        try:
+            # A cancel that came during the wait is honoured before the send.
+            _abort_if_asked()
+        except OnlineLookupAbortedError:
+            # mokkari never releases a slot whose acquire raised.
+            self._gate.release()
+            raise
 
     def on_rate_limited(self, retry_after: float) -> None:
         """
@@ -227,6 +283,8 @@ def install_response_observer(session: Session, gate: RateGate) -> None:
         # so nothing in this hook may raise.
         try:
             _feed_gate(gate, response)
+            if (observer := _page_observer.get()) is not None:
+                observer(response)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"metron: rate-limit observation failed: {exc!r}")
 

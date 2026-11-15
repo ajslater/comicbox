@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 from comicbox.config import get_config
@@ -28,6 +29,8 @@ from comicbox.readinglists.sources import attach_source
 from comicbox.version import set_user_agent_context, user_agent
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+    from datetime import datetime
     from typing import Self
 
     import httpx
@@ -35,6 +38,7 @@ if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import Event, EventHandler
     from comicbox.online_session import OnlineCredentials
+    from comicbox.readinglists.formats.metron_api import MetronListSummary
 
 # Read out of sys.modules on close, so a session that never touched Metron
 # never imports it.
@@ -92,6 +96,11 @@ class ReadingListSession:
         """The settings every fetch uses."""
         return self._settings
 
+    @property
+    def credentials(self) -> OnlineCredentials | None:
+        """The credentials the session was given, if any."""
+        return self._credentials
+
     def cancel(self) -> None:
         """Stop the session: the fetch under way, or the next, raises."""
         self._cancelled.set()
@@ -135,6 +144,16 @@ class ReadingListSession:
             )
         return self._http
 
+    @contextmanager
+    def fetching(self, kind: str, key: str) -> Generator[None]:
+        """Bracket one fetch with its start and finish events."""
+        self.check_cancelled()
+        self.emit(ReadingListFetchStarted(source=kind, key=key))
+        try:
+            yield
+        finally:
+            self.emit(ReadingListFetchFinished(source=kind, key=key))
+
     def load_fetched(self, data: bytes, source: dict[str, Any]) -> ReadingListResult:
         """Read fetched bytes as a list from ``source``, detecting the format."""
         result = loads(data)
@@ -153,9 +172,7 @@ class ReadingListSession:
         from comicbox.readinglists.sources.url import fetch
 
         kind = SourceKind.URL.value
-        self.check_cancelled()
-        self.emit(ReadingListFetchStarted(source=kind, key=url))
-        try:
+        with self.fetching(kind, url):
             max_bytes = self._settings.readinglists.max_download_bytes
             data, revision = fetch(self.http(), url, max_bytes)
             self.check_cancelled()
@@ -166,5 +183,58 @@ class ReadingListSession:
                 SOURCE_REVISION_KEY: revision,
             }
             return self.load_fetched(data, source)
-        finally:
-            self.emit(ReadingListFetchFinished(source=kind, key=url))
+
+    def search_metron(
+        self,
+        *,
+        name: str | None = None,
+        curator: str | None = None,
+        username: str | None = None,
+        modified_since: datetime | None = None,
+    ) -> list[MetronListSummary]:
+        """
+        Search Metron's reading lists: public ones and the token's own.
+
+        ``curator`` is a site Metron credits lists to, such as ``cbro``.
+        Needs a Metron API token.
+        """
+        from comicbox.readinglists.sources import metron
+
+        self.check_cancelled()
+        return metron.search(
+            self,
+            name=name,
+            curator=curator,
+            username=username,
+            modified_since=modified_since,
+        )
+
+    def fetch_metron_list(
+        self, list_id: int, *, if_modified_since: datetime | None = None
+    ) -> ReadingListResult | None:
+        """
+        Fetch a Metron reading list, in its order.
+
+        Returns None, having fetched no items, when the list is unchanged
+        since ``if_modified_since``. Progress events count the items as
+        their pages arrive. Needs a Metron API token. The result has no
+        ``fmt``: it was read from no document.
+        """
+        from comicbox.readinglists.sources import metron
+
+        with self.fetching(SourceKind.METRON_LIST.value, str(list_id)):
+            return metron.fetch_list(self, list_id, if_modified_since=if_modified_since)
+
+    def fetch_metron_arc(
+        self, arc_id: int, *, if_modified_since: datetime | None = None
+    ) -> ReadingListResult | None:
+        """
+        Fetch a Metron story arc as an unordered list.
+
+        Returns None, having fetched no issues, when the arc is unchanged
+        since ``if_modified_since``. Needs a Metron API token.
+        """
+        from comicbox.readinglists.sources import metron
+
+        with self.fetching(SourceKind.METRON_ARC.value, str(arc_id)):
+            return metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)

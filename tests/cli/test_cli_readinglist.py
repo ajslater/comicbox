@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from comicbox import cli, logger
+from comicbox.readinglists import ReadingListFormats, load, loads
 from comicbox.readinglists import cli as readinglist_cli
-from comicbox.readinglists import load, loads
 from tests.const import CIX_CBZ_SOURCE_PATH, TEST_FILES_DIR
 
 if TYPE_CHECKING:
@@ -112,7 +112,7 @@ def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     assert code == 0
     assert "lost: entries.date.cover_date" in err
     result = load(tmp_path / "common.json")
-    assert result.fmt.name == "JSON_CBL"
+    assert result.fmt is ReadingListFormats.JSON_CBL
     assert len(result.reading_list["entries"]) == 3
 
 

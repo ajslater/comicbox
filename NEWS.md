@@ -11,6 +11,9 @@
   without `--overwrite`.
 - `ReadingListSession` fetches reading lists from URLs, with a download size cap
   set by the new `readinglists` config group.
+- `ReadingListSession` searches and fetches Metron reading lists and story arcs
+  with your Metron API token, sharing tagging's rate limit and response cache.
+  Long lists report progress page by page and can be cancelled between pages.
 
 ### 🐛 Fixed
 

@@ -29,7 +29,6 @@ from comicbox.readinglists.identity import entry_keys
 from comicbox.readinglists.registry import (
     ReadingListFormats,
     as_text,
-    detect_format,
     get_format,
 )
 from comicbox.readinglists.render import (
@@ -48,6 +47,7 @@ from comicbox.readinglists.serialize import (
     load,
     loads,
     lost_fields,
+    resolve_format,
 )
 
 if TYPE_CHECKING:
@@ -209,9 +209,7 @@ def _validate_one(run: _Run, path: Path) -> None:
     from comicbox.validate.spec import build_validator, validation_failure_exceptions
 
     text = as_text(path.read_bytes())
-    if (fmt := detect_format(text)) is None:
-        result = loads(text)  # Raises with the reason: syntax, or no list.
-        fmt = result.fmt
+    fmt = resolve_format(text)  # Raises with the reason: syntax, or no list.
     if spec := fmt.value.validator_spec:
         try:
             build_validator(spec).validate(text)

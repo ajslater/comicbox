@@ -26,6 +26,7 @@ from comicbox.readinglists.combine import (
 )
 from comicbox.readinglists.compare import Comparison, Verdict, compare
 from comicbox.readinglists.formats import ReadingListFormat
+from comicbox.readinglists.formats.metron_api import MetronListSummary
 from comicbox.readinglists.identity import (
     EntryKey,
     ParsedIssue,
@@ -110,6 +111,7 @@ __all__ = (
     "EntryKey",
     "EntryOrigin",
     "IdConflict",
+    "MetronListSummary",
     "OrderConflict",
     "ParsedIssue",
     "ReadingListError",

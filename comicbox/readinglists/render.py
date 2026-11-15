@@ -171,7 +171,8 @@ def print_error(out: Console, path: Path | str | None, error: BaseException) -> 
 
 def print_reading_list(out: Console, path: Path, result: ReadingListResult) -> None:
     """Print a list's name, header and entries."""
-    out.print(_text(f"{path} ({result.fmt.value.label})", _DIM))
+    label = f" ({result.fmt.value.label})" if result.fmt else ""
+    out.print(_text(f"{path}{label}", _DIM))
     # The name on a line of its own: as a table title it wraps to the table.
     out.print(_text(result.reading_list.get(NAME_KEY) or "(unnamed)", _TITLE))
     out.print(header_table(result.reading_list))

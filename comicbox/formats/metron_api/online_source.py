@@ -569,6 +569,15 @@ class MetronOnlineSource(OnlineSource):
             self._client = self._get_or_build_shared_session()
         return self._client
 
+    def session(self) -> Session:
+        """
+        Return the shared mokkari Session for this source's API token.
+
+        Reading lists call Metron through it, so their requests queue at
+        the same rate gate and fill the same response cache as tagging.
+        """
+        return self._get_session()
+
     def _session_config_signature(self) -> tuple:
         """Return the per-instance settings a built Session bakes in."""
         cache = self._settings.cache

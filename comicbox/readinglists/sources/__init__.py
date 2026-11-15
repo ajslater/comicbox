@@ -5,11 +5,48 @@ Network libraries are imported inside functions, so importing this package
 stays cheap; only a fetch pays for them.
 """
 
-from collections.abc import Mapping
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol
 
 from comicbox.empty import is_empty
 from comicbox.readinglists.schema import SOURCE_KIND_KEY, SOURCES_KEY, SourceKind
+
+if TYPE_CHECKING:
+    import threading
+    from collections.abc import Mapping
+
+    from comicbox.config.settings import ComicboxSettings
+    from comicbox.events import Event
+    from comicbox.online_session import OnlineCredentials
+
+
+class FetchContext(Protocol):
+    """
+    What a source needs from the session that runs its fetch.
+
+    ``ReadingListSession`` is one. Sources name this rather than the session
+    class, so the session can import them without a cycle.
+    """
+
+    @property
+    def settings(self) -> ComicboxSettings:
+        """The settings every fetch uses."""
+        ...
+
+    @property
+    def credentials(self) -> OnlineCredentials | None:
+        """The credentials the session was given, if any."""
+        ...
+
+    @property
+    def cancelled(self) -> threading.Event:
+        """Set once the session is cancelled."""
+        ...
+
+    def emit(self, event: Event) -> None:
+        """Hand an event to the caller's handler, if any."""
+        ...
 
 
 def attach_source(

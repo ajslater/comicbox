@@ -40,15 +40,17 @@ _PARTIAL_DATE_RE = re.compile(r"^(\d{4})(?:-(\d{1,2}))?$")
 @dataclass(frozen=True, slots=True)
 class ReadingListResult:
     """
-    A reading list read from a document.
+    A reading list read from a document or fetched from a database.
 
-    ``reading_list`` is the model's inner mapping. ``warnings`` name every
-    key or value the read dropped, changed or guessed, each starting with
-    its path; they are returned, not logged.
+    ``reading_list`` is the model's inner mapping. ``fmt`` is the format the
+    document was in, or None for a list built from an online database's
+    records, such as a Metron reading list. ``warnings`` name every key or
+    value the read dropped, changed or guessed, each starting with its
+    path; they are returned, not logged.
     """
 
     reading_list: dict[str, Any]
-    fmt: ReadingListFormats
+    fmt: ReadingListFormats | None
     warnings: tuple[str, ...] = ()
 
 
@@ -150,15 +152,23 @@ def load_model(
     return load_model_with_warnings(reading_list, path)[0]
 
 
-def _loads(
-    text: str, fmt: ReadingListFormats | str | None, path: Path | None
-) -> ReadingListResult:
+def resolve_format(
+    text: str, fmt: ReadingListFormats | str | None = None
+) -> ReadingListFormats:
+    """Name the format given, else detect it, else raise with the reason."""
     resolved = get_format(fmt) if fmt else detect_format(text)
     if resolved is None:
         reason = (
             syntax_error(text) or "Not a reading list in any format comicbox reads."
         )
         raise ReadingListFormatError(reason)
+    return resolved
+
+
+def _loads(
+    text: str, fmt: ReadingListFormats | str | None, path: Path | None
+) -> ReadingListResult:
+    resolved = resolve_format(text, fmt)
     transform = resolved.value.transform_class(path)
     document = transform.parse(text)
     reading_list, warnings = load_model_with_warnings(
