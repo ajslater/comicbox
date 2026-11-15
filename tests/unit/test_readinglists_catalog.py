@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import replace
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlsplit
 
@@ -20,6 +20,7 @@ import pytest
 from comicbox.config.online.settings import CacheMode
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.readinglists import (
+    Catalog,
     CatalogEntry,
     ReadingListFetchError,
     ReadingListSession,
@@ -82,7 +83,9 @@ class _GitHub:
                 content=json.dumps(self.tree).encode(),
                 headers={"ETag": self.etag, **self.api_headers},
             )
-        path = unquote(url.path).split("/", 4)[-1]
+        # The raw path, decoded once: httpx's url.path is decoded already,
+        # and decoding it again would serve "a%20b" for "a b".
+        path = unquote(url.raw_path.decode().partition("?")[0]).split("/", 4)[-1]
         if (data := self.raw.get(path)) is not None:
             return httpx.Response(200, content=data)
         return httpx.Response(404)
@@ -470,3 +473,140 @@ def test_urls_are_only_github_hosts(
         "api.github.com",
         "raw.githubusercontent.com",
     }
+
+
+# ------------------------------------------------------------ R2-E E8
+
+
+def test_a_literal_percent_in_a_path_is_fetched(github: _GitHub) -> None:
+    """The fake decoded twice, so this could not be served before."""
+    odd = "Other/100% Example a%20b.cbl"
+    github = _GitHub(odd)
+    with _session(github) as session:
+        result = session.fetch_catalog(odd)
+
+    assert result.reading_list["sources"][0]["key"] == odd
+    assert github.urls[-1].endswith("/Other/100%25%20Example%20a%2520b.cbl")
+
+
+@pytest.mark.parametrize("query", ["volume 3", "vol 2", "???", "", "  "])
+def test_a_query_of_no_words_finds_nothing(
+    session: ReadingListSession, query: str
+) -> None:
+    assert session.search_catalog(query) == ()
+
+
+def test_search_keeps_volume_words() -> None:
+    volume = "DC/Characters/Batman/Batman Vol 2 (CBRO).cbl"
+    with _session(_GitHub(volume, _PLAIN)) as session:
+        assert [entry.path for entry in session.search_catalog("vol 2")] == [volume]
+
+
+@pytest.mark.parametrize(
+    "fetched",
+    ["2024-01-01T00:00:00", "2999-01-01T00:00:00+00:00"],
+    ids=["naive", "future"],
+)
+def test_a_damaged_cache_time_is_fetched_again(github: _GitHub, fetched: str) -> None:
+    with _session(github) as first:
+        first.catalog()
+        (cache_file,) = _cache_files(first)
+    data = json.loads(cache_file.read_text())
+    data["fetched"] = fetched
+    cache_file.write_text(json.dumps(data))
+
+    with _session(github) as second:
+        assert len(second.catalog().entries) == 2
+        assert len(github.requests) == 2
+        # Damaged, so not revalidated with its ETag: fetched whole.
+        assert "If-None-Match" not in github.requests[1].headers
+
+
+def test_a_failed_cache_write_leaves_no_temporary_file(
+    github: _GitHub, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def full_disk(*_args: object, **_kwargs: object) -> None:
+        reason = "No space left on device"
+        raise OSError(28, reason)
+
+    monkeypatch.setattr(json, "dump", full_disk)
+    with _session(github) as session:
+        assert len(session.catalog().entries) == 2
+        cache_dir = _cache_dir(session)
+    assert list(cache_dir.iterdir()) == []
+
+
+def _cache_dir(session: ReadingListSession) -> Path:
+    from comicbox.formats.base.online.sources.base import resolve_cache_dir
+
+    return resolve_cache_dir(session.settings.online.cache.dir)
+
+
+@pytest.mark.parametrize(
+    "tree",
+    [
+        {"tree": "abc"},
+        {"tree": [{"path": "a.cbl", "type": "blob", "size": 1}]},
+        {"tree": [{"path": "a.cbl", "type": "blob", "sha": "s", "size": "big"}]},
+        {"tree": {"path": "a.cbl"}},
+    ],
+    ids=["string", "no-sha", "size-not-a-number", "mapping"],
+)
+def test_a_malformed_tree_is_a_fetch_error(
+    github: _GitHub, tree: dict[str, Any]
+) -> None:
+    github.tree = {"sha": "root", "truncated": False, **tree}
+    with (
+        _session(github) as session,
+        pytest.raises(ReadingListFetchError, match="not a git tree"),
+    ):
+        session.catalog()
+
+
+def test_an_absurd_rate_limit_reset_is_left_out() -> None:
+    def refuse(_request: httpx.Request) -> httpx.Response:
+        headers = {"x-ratelimit-remaining": "0", "x-ratelimit-reset": "9" * 30}
+        return httpx.Response(403, headers=headers)
+
+    with (
+        _session(refuse) as session,
+        pytest.raises(ReadingListFetchError) as caught,
+    ):
+        session.catalog()
+    assert str(caught.value) == "GitHub's API rate limit for this address is spent."
+
+
+def _shared_sha(*paths: str) -> Catalog:
+    entries = tuple(CatalogEntry(path=path, sha="same", size=1) for path in paths)
+    return Catalog("r/r", "main", None, datetime.now(tz=UTC), entries)
+
+
+@pytest.mark.parametrize(
+    ("paths", "chosen"),
+    [
+        (("A/New/list.cbl", "B/other.cbl"), "A/New/list.cbl"),
+        (("C/list.cbl", "Old/elsewhere.cbl", "D/list.cbl"), None),
+        (("C/list.cbl", "Old/elsewhere.cbl", "Old/list.cbl"), "Old/list.cbl"),
+        (("Old/x.cbl", "Z/y.cbl"), "Old/x.cbl"),
+        (("only/one.cbl",), "only/one.cbl"),
+    ],
+    ids=["by-name", "two-names", "name-then-folder", "by-folder", "one"],
+)
+def test_copies_sharing_a_sha_are_told_apart(
+    paths: tuple[str, ...], chosen: str | None
+) -> None:
+    catalog = _shared_sha(*paths)
+    if chosen is None:
+        with pytest.raises(ReadingListFetchError, match="2 lists share its sha"):
+            catalog.find("Old/list.cbl", sha="same")
+    else:
+        entry = catalog.find("Old/list.cbl", sha="same")
+        assert entry is not None
+        assert entry.path == chosen
+
+
+def test_copies_that_cannot_be_told_apart_are_named() -> None:
+    catalog = _shared_sha("C/a.cbl", "D/b.cbl")
+    with pytest.raises(ReadingListFetchError) as caught:
+        catalog.find("Old/list.cbl", sha="same")
+    assert "C/a.cbl, D/b.cbl" in str(caught.value)

@@ -89,14 +89,32 @@ def normalize_series(name: str) -> str:
     (``ピ`` is not ``ヒ``), are part of the letter and recompose with it.
     ASCII names normalize as the online matcher's rule does.
     """
-    decomposed = unicodedata.normalize("NFKD", name)
+    return _spaced(_VOLUME_SUFFIX_RE.sub(" ", _folded(name)))
+
+
+def _folded(text: str) -> str:
+    """Drop Latin accents and fold case, keeping every other mark."""
+    decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(
         char for char in decomposed if not _DIACRITICS_START <= char <= _DIACRITICS_END
     )
-    folded = unicodedata.normalize("NFC", stripped).casefold()
-    folded = _VOLUME_SUFFIX_RE.sub(" ", folded)
-    spaced = "".join(char if char.isalnum() else " " for char in folded)
+    return unicodedata.normalize("NFC", stripped).casefold()
+
+
+def _spaced(text: str) -> str:
+    """Make every run of characters that are not letters or digits one space."""
+    spaced = "".join(char if char.isalnum() else " " for char in text)
     return " ".join(spaced.split())
+
+
+def fold_text(text: str) -> str:
+    """
+    Fold text for searching, as series names are folded but for volumes.
+
+    A search for ``volume 3`` means those words; ``normalize_series``
+    would strip them.
+    """
+    return _spaced(_folded(text))
 
 
 def _to_decimal(text: str) -> Decimal | None:

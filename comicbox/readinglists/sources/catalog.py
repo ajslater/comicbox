@@ -20,7 +20,7 @@ import os
 import re
 import tempfile
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
@@ -31,7 +31,8 @@ from loguru import logger
 
 from comicbox.config.online.settings import CacheMode
 from comicbox.exceptions import ReadingListFetchError
-from comicbox.readinglists.identity import normalize_series
+from comicbox.readinglists.changes import quote_value
+from comicbox.readinglists.identity import fold_text
 from comicbox.readinglists.schema import (
     SOURCE_CURATOR_KEY,
     SOURCE_KEY_KEY,
@@ -43,7 +44,7 @@ from comicbox.readinglists.schema import (
 from comicbox.readinglists.sources.url import HttpStatusError, download
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
 
     from comicbox.readinglists.sources import FetchContext
 
@@ -56,6 +57,8 @@ _REPO_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
 _SUFFIX = ".cbl"
 _CACHE_VERSION = 1
 _RATE_LIMITED = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.TOO_MANY_REQUESTS})
+# How far ahead of this clock a cache's time may be before it is damaged.
+_CLOCK_SKEW = timedelta(minutes=5)
 
 # The curator marks in the DieselTech tree, pinned from a scan of `main` on
 # 2026-11-14: a trailing ``(MARK)`` on the file name, else a folder that is
@@ -126,20 +129,47 @@ class Catalog:
     entries: tuple[CatalogEntry, ...]
 
     def find(self, path: str, sha: str | None = None) -> CatalogEntry | None:
-        """Find a list by path, else by blob sha, if one is given."""
+        """
+        Find a list by path, else by blob sha, if one is given.
+
+        Copies share a sha. Among them, the one with the old path's file
+        name wins, then the one in its folder; if that leaves more than
+        one, ``ReadingListFetchError`` names them rather than guess.
+        """
         by_path = next((entry for entry in self.entries if entry.path == path), None)
         if by_path is not None or not sha:
             return by_path
-        return next((entry for entry in self.entries if entry.sha == sha), None)
+        candidates = [entry for entry in self.entries if entry.sha == sha]
+        old = PurePosixPath(path)
+        for same in (_same_name(old), _same_folder(old)):
+            if len(candidates) <= 1:
+                break
+            candidates = [entry for entry in candidates if same(entry)] or candidates
+        if len(candidates) > 1:
+            names = ", ".join(entry.path for entry in candidates)
+            reason = (
+                f"{path} is gone, and {len(candidates)} lists share its sha: {names}."
+            )
+            raise ReadingListFetchError(reason)
+        return candidates[0] if candidates else None
 
     def search(self, query: str) -> tuple[CatalogEntry, ...]:
         """Find the lists whose path holds every word of ``query``."""
-        words = normalize_series(query).split()
+        if not (words := fold_text(query).split()):
+            return ()
         return tuple(
             entry
             for entry in self.entries
-            if all(word in normalize_series(entry.path) for word in words)
+            if all(word in fold_text(entry.path) for word in words)
         )
+
+
+def _same_name(old: PurePosixPath) -> Callable[[CatalogEntry], bool]:
+    return lambda entry: PurePosixPath(entry.path).name == old.name
+
+
+def _same_folder(old: PurePosixPath) -> Callable[[CatalogEntry], bool]:
+    return lambda entry: PurePosixPath(entry.path).parent == old.parent
 
 
 def curator(path: str) -> str | None:
@@ -202,11 +232,17 @@ def _read_cache(path: Path | None, repo: str, ref: str) -> Catalog | None:
         data = json.loads(path.read_text(encoding="utf-8"))
         if (data["version"], data["repo"], data["ref"]) != (_CACHE_VERSION, repo, ref):
             return None
+        fetched = datetime.fromisoformat(data["fetched"])
+        # A time with no zone cannot be compared; one in the future would
+        # be reused forever. Either way the file is damaged.
+        if fetched.tzinfo is None or fetched > datetime.now(tz=UTC) + _CLOCK_SKEW:
+            reason = f"fetched at {data['fetched']!r}"
+            raise ValueError(reason)  # noqa: TRY301 - one handler for every damage
         return Catalog(
             repo=repo,
             ref=ref,
             etag=data["etag"],
-            fetched=datetime.fromisoformat(data["fetched"]),
+            fetched=fetched,
             entries=tuple(CatalogEntry(**entry) for entry in data["entries"]),
         )
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -226,15 +262,20 @@ def _write_cache(path: Path | None, catalog: Catalog) -> None:
         "fetched": catalog.fetched.isoformat(),
         "entries": [asdict(entry) for entry in catalog.entries],
     }
+    temp: str | None = None
     try:
         fd, temp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             json.dump(data, stream)
         Path(temp).replace(path)
+        temp = None
     except OSError as exc:
         # The index is already in hand; a cache that cannot be written only
         # costs the next run a request.
         logger.warning(f"reading-list catalog: cannot cache the index: {exc}")
+    finally:
+        if temp is not None:
+            Path(temp).unlink(missing_ok=True)
 
 
 # Fetches.
@@ -260,11 +301,14 @@ def _rate_limit_reason(error: HttpStatusError) -> str | None:
     ):
         return None
     reset = error.headers.get("x-ratelimit-reset", "")
-    when = (
-        f" It resets at {datetime.fromtimestamp(int(reset), tz=UTC).astimezone():%H:%M}."
-        if reset.isdigit()
-        else ""
-    )
+    when = ""
+    if reset.isascii() and reset.isdigit():
+        try:
+            at = datetime.fromtimestamp(int(reset), tz=UTC).astimezone()
+        except (OverflowError, ValueError, OSError):
+            pass  # Too far off to be a time; say nothing of when.
+        else:
+            when = f" It resets at {at:%H:%M}."
     return f"GitHub's API rate limit for this address is spent.{when}"
 
 
@@ -304,9 +348,12 @@ def _fetch_tree(
             f"GitHub truncated the tree of {repo} at {ref}, so it cannot be indexed."
         )
         raise ReadingListFetchError(reason)
-    return Catalog(
-        repo, ref, fetched.headers.get("etag"), now, entries_from_tree(items)
-    )
+    try:
+        entries = entries_from_tree(items)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        reason = f"{url}: not a git tree: {quote_value(exc)}"
+        raise ReadingListFetchError(reason) from exc
+    return Catalog(repo, ref, fetched.headers.get("etag"), now, entries)
 
 
 def load_catalog(
