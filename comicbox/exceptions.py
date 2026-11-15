@@ -131,3 +131,13 @@ class SmartListError(ReadingListFormatError):
     Its ``<Matchers>`` are rules that select comics from a library, not a
     list of issues, so there is nothing to read.
     """
+
+
+class ReadingListFetchError(ReadingListError):
+    """
+    A reading list could not be fetched.
+
+    A network failure, an HTTP error, a refused URL, a download over the
+    size cap, or a missing credential. A cancel, or a spent quota, raises
+    ``OnlineLookupAbortedError`` instead, as tagging does.
+    """

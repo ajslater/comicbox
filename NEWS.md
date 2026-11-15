@@ -9,6 +9,8 @@
   and comicbox YAML or JSON lists, combine and compare lists of one event, and
   build lists from story arc tags. They never write over an existing file
   without `--overwrite`.
+- `ReadingListSession` fetches reading lists from URLs, with a download size cap
+  set by the new `readinglists` config group.
 
 ### 🐛 Fixed
 

@@ -8,6 +8,7 @@ run does not pay for it.
 
 from comicbox.exceptions import (
     ReadingListError,
+    ReadingListFetchError,
     ReadingListFormatError,
     SmartListError,
 )
@@ -74,6 +75,7 @@ from comicbox.readinglists.serialize import (
     loads,
     lost_fields,
 )
+from comicbox.readinglists.session import ReadingListSession
 
 __all__ = (
     "DATE_KEY",
@@ -111,10 +113,12 @@ __all__ = (
     "OrderConflict",
     "ParsedIssue",
     "ReadingListError",
+    "ReadingListFetchError",
     "ReadingListFormat",
     "ReadingListFormatError",
     "ReadingListFormats",
     "ReadingListResult",
+    "ReadingListSession",
     "SmartListError",
     "SourceKind",
     "Verdict",

@@ -27,6 +27,7 @@ from comicbox.config.online import (
     cns_for_overrides,
     runtime_online_inputs,
 )
+from comicbox.config.online.build import parse_ttl
 from comicbox.config.online.template import (
     NON_MAPPING_CONTAINER,
     NON_MAPPING_TYPES,
@@ -43,6 +44,7 @@ from comicbox.config.settings import (
     GeneralSettings,
     MergeMode,
     PrintSettings,
+    ReadingListsSettings,
     ReadSettings,
     WriteSettings,
     parse_enum,
@@ -129,6 +131,14 @@ _TEMPLATE = MappingTemplate(
                     }
                 ),
                 "online": ONLINE_TEMPLATE,
+                "readinglists": MappingTemplate(
+                    {
+                        "catalog_repo": String(),
+                        "catalog_ref": String(),
+                        "catalog_ttl": String(),
+                        "max_download_bytes": Integer(),
+                    }
+                ),
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 "computed": Optional(
                     MappingTemplate(
@@ -224,6 +234,22 @@ def _build_convert_settings(convert_block: Any) -> ConvertSettings:
     )
 
 
+def _build_readinglists_settings(block: Any) -> ReadingListsSettings:
+    defaults = ReadingListsSettings()
+    return ReadingListsSettings(
+        catalog_repo=str(block.catalog_repo).strip() or defaults.catalog_repo,
+        catalog_ref=str(block.catalog_ref).strip() or defaults.catalog_ref,
+        # Its own default and label: an unparsable value must not inherit
+        # the online cache's seven days.
+        catalog_ttl=parse_ttl(
+            block.catalog_ttl,
+            default=defaults.catalog_ttl,
+            label="readinglists.catalog_ttl",
+        ),
+        max_download_bytes=max(1, int(block.max_download_bytes)),
+    )
+
+
 def _build_settings(
     ad: Any,
     args: Namespace | Mapping | None = None,
@@ -253,6 +279,7 @@ def _build_settings(
             page_count=bool(compute_block.page_count),
         ),
         online=online,
+        readinglists=_build_readinglists_settings(inner.readinglists),
         paths=tuple(inner.paths or ()),
         all_write_formats=frozenset(computed.all_write_formats),
         read_filename_formats=frozenset(computed.read_filename_formats),

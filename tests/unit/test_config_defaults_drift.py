@@ -41,7 +41,7 @@ from typing import Any
 
 import yaml
 
-from comicbox.config.online.build import _parse_ttl
+from comicbox.config.online.build import parse_ttl
 from comicbox.config.online.settings import OnlineSettings
 from comicbox.config.settings import (
     ComicboxSettings,
@@ -73,7 +73,10 @@ _DEFAULTS = ComicboxSettings(
 _FIELD_ALIASES = {"read.except": "except_formats"}
 
 # Paths whose YAML text needs decoding before comparison.
-_VALUE_DECODERS = {"online.cache.ttl": _parse_ttl}
+_VALUE_DECODERS = {
+    "online.cache.ttl": parse_ttl,
+    "readinglists.catalog_ttl": parse_ttl,
+}
 
 # YAML keys whose dataclass default deliberately differs. Keep the
 # reason; drop the entry when the divergence goes away.
@@ -289,3 +292,18 @@ def test_no_yaml_key_exceptions_are_not_stale() -> None:
             f"{path}: now has a config_default.yaml key. Delete its "
             f"_NO_YAML_KEY entry so its default gets compared."
         )
+
+
+def test_an_unparsable_catalog_lifetime_keeps_its_own_default() -> None:
+    """The catalog never inherits the online cache's seven days by accident."""
+    from datetime import timedelta
+
+    from comicbox.config.settings import ReadingListsSettings
+
+    default = ReadingListsSettings().catalog_ttl
+    assert default == timedelta(hours=4)
+    assert (
+        parse_ttl("soon", default=default, label="readinglists.catalog_ttl") == default
+    )
+    assert parse_ttl(None, default=default) == default
+    assert parse_ttl("soon") == timedelta(days=7)
