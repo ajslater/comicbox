@@ -242,14 +242,15 @@ class GateRateLimiter:
         """
         _abort_if_asked()
         started = time.monotonic()
-        self._gate.acquire()
+        admitted = self._gate.acquire()
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
         try:
             # A cancel that came during the wait is honoured before the send.
             _abort_if_asked()
         except OnlineLookupAbortedError:
-            # mokkari never releases a slot whose acquire raised.
-            self._gate.release()
+            # Nothing was sent: give the slot back, uncounted. mokkari never
+            # releases a slot whose acquire raised.
+            self._gate.withdraw(admitted)
             raise
 
     def on_rate_limited(self, retry_after: float) -> None:

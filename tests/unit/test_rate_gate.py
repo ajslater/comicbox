@@ -404,3 +404,34 @@ def test_stats_report_sends_and_the_reported_windows(clock: _Clock) -> None:
     assert stats.burst_limit == 4
     assert stats.burst_remaining == 2
     assert stats.sustained_remaining == 4998
+
+
+# ------------------------------------------------------------- withdraw
+
+
+def test_a_withdrawn_admission_gives_its_slot_back(clock: _Clock) -> None:
+    """A send admitted but never made holds no slot, and is not counted."""
+    gate = _gate(clock)
+    _paced(gate)
+    for _ in range(3):
+        _send(gate)
+    admitted = gate.acquire()
+    assert _pending_wait(gate) == pytest.approx(_LIFETIME)
+
+    gate.withdraw(admitted)
+
+    assert _pending_wait(gate) == 0
+    assert gate.stats().sends == 3
+    assert gate._in_flight == 0
+
+
+def test_withdrawing_after_a_cooldown_rebuilt_the_window(clock: _Clock) -> None:
+    gate = _gate(clock)
+    _paced(gate)
+    admitted = gate.acquire()
+    gate.cooldown(None)
+
+    gate.withdraw(admitted)
+
+    assert gate.stats().sends == 0
+    assert gate._in_flight == 0

@@ -58,9 +58,9 @@ class _RecordingGate(RateGate):
         self.cooldowns: list[float | None] = []
 
     @override
-    def acquire(self) -> None:
+    def acquire(self) -> float:
         self.acquires += 1
-        super().acquire()
+        return super().acquire()
 
     @override
     def release(self) -> None:

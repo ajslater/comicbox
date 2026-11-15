@@ -455,9 +455,10 @@ def test_a_cancel_during_the_gate_wait_releases_the_slot(
     gate = _gate(session)
     acquire = gate.acquire
 
-    def acquire_then_cancel() -> None:
-        acquire()
+    def acquire_then_cancel() -> float:
+        admitted = acquire()
         session.cancel()
+        return admitted
 
     monkeypatch.setattr(gate, "acquire", acquire_then_cancel)
 
@@ -466,6 +467,9 @@ def test_a_cancel_during_the_gate_wait_releases_the_slot(
 
     assert adapter.urls == []
     assert gate._in_flight == 0
+    # Nothing was sent, so nothing is counted and no slot is held.
+    assert gate.stats().sends == 0
+    assert not gate._slots
 
 
 def test_a_cancelled_session_sends_nothing(session: ReadingListSession) -> None:
