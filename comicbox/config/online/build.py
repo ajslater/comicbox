@@ -15,6 +15,7 @@ instead of going through confuse because:
 
 from __future__ import annotations
 
+import math
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -69,34 +70,48 @@ def _coalesce(*values: Any) -> Any:
     return None
 
 
+def _unparsable_ttl(raw: Any, default: timedelta, label: str) -> timedelta:
+    logger.warning(
+        f"unparsable {label} {raw!r}, defaulting to {_format_ttl(default)} "
+        "(use forms like 7d, 24h, 60m, or 0)"
+    )
+    return default
+
+
+def _ttl_from_seconds(seconds: float, default: timedelta, label: str) -> timedelta:
+    if seconds >= 0 and math.isfinite(seconds):
+        return timedelta(seconds=seconds)
+    return _unparsable_ttl(seconds, default, label)
+
+
 def parse_ttl(
-    raw: str | None,
+    raw: str | float | None,
     *,
     default: timedelta = _DEFAULT_CACHE_TTL,
     label: str = "cache.ttl",
 ) -> timedelta:
     """
-    Parse a simple duration string like '7d', '24h', '60m', '0' → timedelta.
+    Parse a duration like '7d', '24h', '60m' or '0', or a number of seconds.
 
-    A missing or unparsable value falls back to ``default``; the warning
-    names the setting by ``label``, so each caller's lifetime stays its own.
+    A number is accepted as YAML writes it, so ``ttl: 0`` works as the
+    warning below suggests. A missing or unparsable value falls back to
+    ``default``; the warning names the setting by ``label``, so each
+    caller's lifetime stays its own.
     """
     if raw is None:
         return default
-    raw = raw.strip().lower()
-    if not raw or raw == "0":
+    if isinstance(raw, int | float) and not isinstance(raw, bool):
+        return _ttl_from_seconds(raw, default, label)
+    text = str(raw).strip().lower()
+    if not text or text == "0":
         return timedelta(0)
-    suffix = raw[-1]
+    suffix = text[-1]
     try:
         if suffix in _TTL_UNIT_SECONDS:
-            return timedelta(seconds=int(raw[:-1]) * _TTL_UNIT_SECONDS[suffix])
-        return timedelta(seconds=int(raw))
+            return timedelta(seconds=int(text[:-1]) * _TTL_UNIT_SECONDS[suffix])
+        return timedelta(seconds=int(text))
     except ValueError:
-        logger.warning(
-            f"unparsable {label} {raw!r}, defaulting to {_format_ttl(default)} "
-            "(use forms like 7d, 24h, 60m, or 0)"
-        )
-        return default
+        return _unparsable_ttl(text, default, label)
 
 
 def _format_ttl(ttl: timedelta) -> str:

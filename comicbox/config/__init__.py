@@ -23,6 +23,7 @@ from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.online import (
     ONLINE_TEMPLATE,
+    TTL_TEMPLATE,
     build_online_settings,
     cns_for_overrides,
     runtime_online_inputs,
@@ -135,7 +136,7 @@ _TEMPLATE = MappingTemplate(
                     {
                         "catalog_repo": String(),
                         "catalog_ref": String(),
-                        "catalog_ttl": String(),
+                        "catalog_ttl": TTL_TEMPLATE,
                         "max_download_bytes": Integer(),
                     }
                 ),
