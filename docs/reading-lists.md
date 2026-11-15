@@ -277,13 +277,17 @@ among them, in two passes:
 
 A comic is never matched to an entry when both carry an id from one database and
 the ids differ, or both have cover years more than a year apart, nor on the
-cover year alone when both have start years and they differ. An entry with no
-id, start year, volume or cover year matches nothing, as in `combine`. `match`
-prints each entry with each comic that is it on a row of its own, and how it
-matched (`id`, `name`, `name-year` or `variant`), or `missing`; a comic with a
-tag file comicbox could not read is marked. The count goes to stderr. Linked
-directories are not searched, as with comicbox's `--recurse`, and a directory
-that cannot be read is a warning: the command then exits 1.
+cover year alone when both have start years and they differ. An entry found by
+its cover year alone in comics of more than one volume, such as Avengers #1 of
+2016 with no start year against the 2011 and 2016 volumes, is ambiguous: `match`
+marks its comics, and `write-arcs` tags none of them and exits 1. A start year
+on the entry settles it. An entry with no id, start year, volume or cover year
+matches nothing, as in `combine`. `match` prints each entry with each comic that
+is it on a row of its own, and how it matched (`id`, `name`, `name-year` or
+`variant`), or `missing`; a comic with a tag file comicbox could not read is
+marked. The count goes to stderr. Linked directories are not searched, as with
+comicbox's `--recurse`, and a directory that cannot be read is a warning: the
+command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also

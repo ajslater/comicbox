@@ -188,6 +188,80 @@ def test_a_cover_year_match_is_its_own_kind(
     assert "1 entry has no key and matches nothing" in err
 
 
+_AVENGERS = (
+    "reading_list:\n  name: Avengers Firsts\n  entries:\n"
+    "    - series: {name: Avengers}\n      issue: {name: '1'}\n"
+    "      date: {year: 2016}\n"
+)
+
+
+def _volumes(directory: Path, *start_years: int | None) -> list[Path]:
+    """Make Avengers #1 dated 2016 in each volume given; None has no start year."""
+    return [
+        make_comic(
+            directory / f"{index}-avengers-{start_year}.cbz",
+            series="Avengers",
+            number="1",
+            start_year=start_year,
+            cover_date="2016-08-01",
+        )
+        for index, start_year in enumerate(start_years)
+    ]
+
+
+def test_an_entry_that_fits_two_volumes_is_listed_and_never_tagged(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    listed = tmp_path / "avengers.yaml"
+    listed.write_text(_AVENGERS)
+    comics = tmp_path / "comics"
+    paths = _volumes(comics, 2011, 2016)
+    before = digests(comics)
+
+    _, matched, _ = _run(capsys, "match", str(listed), str(comics))
+    _, dry, dry_err = _write(capsys, str(listed), str(comics))
+    code, out, err = _write(capsys, str(listed), str(comics), apply=True)
+
+    assert _flat(matched).count("(ambiguous: the 2011 and 2016 volumes)") == 2
+    reason = (
+        "not written: entry #1 fits the 2011 and 2016 volumes alike;"
+        " a start year on the entry settles it"
+    )
+    for text in (dry, out):
+        assert all(f"{path} {reason}" in _flat(text) for path in paths)
+    assert code == 1
+    assert digests(comics) == before
+    assert "2 comics not written, for an entry that fits more than one volume." in err
+    assert "Dry run: 0 of 0 matched comics would change" in dry_err
+
+
+@pytest.mark.parametrize(
+    "start_years",
+    [
+        # Copies of one volume.
+        (2016, 2016),
+        # A comic with no start year beside comics of one volume.
+        (2016, None),
+    ],
+)
+def test_comics_of_one_volume_are_tagged(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    start_years: tuple[int | None, ...],
+) -> None:
+    listed = tmp_path / "avengers.yaml"
+    listed.write_text(_AVENGERS)
+    comics = tmp_path / "comics"
+    paths = _volumes(comics, *start_years)
+
+    _, matched, _ = _run(capsys, "match", str(listed), str(comics))
+    code, out, _ = _write(capsys, str(listed), str(comics), apply=True)
+
+    assert "ambiguous" not in matched
+    assert code == 0
+    assert all(f"{path} added 'Avengers Firsts' #1" in _flat(out) for path in paths)
+
+
 def test_match_output_that_is_not_a_terminal_is_not_wrapped(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:

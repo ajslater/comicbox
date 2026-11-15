@@ -70,10 +70,22 @@ class FoundComic:
 
 @dataclass(frozen=True, slots=True)
 class Found:
-    """The comics that are entry ``position`` (from 0), in path order."""
+    """
+    The comics that are entry ``position`` (from 0), in path order.
+
+    ``volumes`` holds the series years of the comics when the entry was
+    found by its cover-year key alone and they hold more than one: the
+    entry fits comics of several volumes, and ``match`` does not choose.
+    """
 
     position: int
     comics: tuple[FoundComic, ...]
+    volumes: tuple[int, ...] = ()
+
+    @property
+    def ambiguous(self) -> bool:
+        """Whether the entry fits comics of more than one volume."""
+        return bool(self.volumes)
 
     @property
     def paths(self) -> tuple[Path, ...]:
@@ -171,6 +183,22 @@ class _Index:
                 found[path] = by
         return tuple(FoundComic(path, found[path]) for path in sorted(found))
 
+    def volumes(self, comics: Sequence[FoundComic]) -> tuple[int, ...]:
+        """
+        Name the volumes an entry found by its cover year alone fits, if several.
+
+        A comic with no series year names none, so copies of one volume, or
+        such a comic beside them, are no choice to make.
+        """
+        if not comics or any(comic.by is not FoundBy.NAME_YEAR for comic in comics):
+            return ()
+        years = {
+            year
+            for comic in comics
+            if (year := self.facts[comic.path].series_year) is not None
+        }
+        return tuple(sorted(years)) if len(years) > 1 else ()
+
     def find_variant(
         self, entry: Mapping[str, Any], taken: Collection[Path]
     ) -> tuple[FoundComic, ...]:
@@ -213,7 +241,8 @@ def match_comics(
     holds them. Strict matches are settled for the whole list first, so a
     comic one entry is strictly is never another entry's variant. A comic
     of one issue in several files is found in all, and an issue the list
-    holds twice is found in the same comics both times.
+    holds twice is found in the same comics both times. An entry found by
+    its cover year alone in comics of several volumes is marked so.
     """
     index = _Index(comics)
     entries = tuple(reading_list.get(ENTRIES_KEY) or ())
@@ -223,7 +252,7 @@ def match_comics(
     missing: list[int] = []
     for position, (entry, comics_found) in enumerate(zip(entries, strict, strict=True)):
         if hits := comics_found or index.find_variant(entry, taken):
-            found.append(Found(position, hits))
+            found.append(Found(position, hits, index.volumes(hits)))
         else:
             missing.append(position)
     return MatchResult(tuple(found), tuple(missing))
@@ -296,11 +325,14 @@ def plan_arcs(
 
     The arc is named ``name``; its number is the entry's place in an
     ordered list, the first place for an issue the list reads twice, in
-    every copy of it. Only strict matches are planned, unless ``variants``.
+    every copy of it. Only strict matches are planned, unless ``variants``,
+    and never the comics of an entry that fits several volumes.
     """
     ordered = is_ordered(reading_list)
     numbers: dict[Path, int | None] = {}
     for found in result.found:
+        if found.ambiguous:
+            continue
         for comic in found.comics:
             if variants or comic.by.strict:
                 numbers.setdefault(comic.path, found.position + 1 if ordered else None)

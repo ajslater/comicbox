@@ -8,7 +8,7 @@ once; while they are written it only asks, and the writes under way finish.
 """
 
 import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
@@ -34,6 +34,7 @@ from comicbox.readinglists.match import (
 )
 from comicbox.readinglists.render import (
     arc_text,
+    print_ambiguous,
     print_arc_write,
     print_matches,
     print_note,
@@ -150,6 +151,9 @@ class _Plan:
     result: MatchResult
     writes: tuple[ArcWrite, ...]
     variant_only: tuple[Path, ...]
+    # Comics not written because their entry fits several volumes: each
+    # with the entry's position and the volumes.
+    ambiguous: tuple[tuple[Path, int, tuple[int, ...]], ...]
 
     @property
     def todo(self) -> tuple[ArcWrite, ...]:
@@ -189,15 +193,29 @@ def _plan(
         )
         for path, others in group_files(changes, file_key).items()
     )
+    return _Plan(result, writes, *_left_out(result, changes))
+
+
+def _left_out(
+    result: MatchResult, planned: Collection[Path]
+) -> tuple[tuple[Path, ...], tuple[tuple[Path, int, tuple[int, ...]], ...]]:
+    """List the found comics not planned: by a variant only, and ambiguous."""
     variant_only = sorted(
         {
             comic.path
             for found in result.found
             for comic in found.comics
-            if comic.path not in changes
+            if not comic.by.strict and comic.path not in planned
         }
     )
-    return _Plan(result, writes, tuple(variant_only))
+    ambiguous = tuple(
+        (comic.path, found.position, found.volumes)
+        for found in result.found
+        if found.ambiguous
+        for comic in found.comics
+        if comic.path not in planned
+    )
+    return tuple(variant_only), ambiguous
 
 
 def _held(path: Path, write: ArcWrite, config: "ComicboxSettings") -> str | None:
@@ -295,6 +313,13 @@ def _summary(
             f"{_count(len(plan.refused), 'matched comic')} not written; see above.",
         ),
         (
+            len(plan.ambiguous),
+            (
+                f"{_count(len(plan.ambiguous), 'comic')} not written, for an entry"
+                " that fits more than one volume."
+            ),
+        ),
+        (
             len(plan.variant_only),
             (
                 f"{_count(len(plan.variant_only), 'comic')} found only by a name"
@@ -351,6 +376,8 @@ def _print_plan(run: Run, plan: _Plan, *, applying: bool) -> None:
             print_arc_write(run.out, write, done=False)
     for path in plan.variant_only:
         print_variant_only(run.out, path)
+    for path, position, volumes in plan.ambiguous:
+        print_ambiguous(run.out, path, position, volumes)
 
 
 def _write_arcs(run: Run) -> None:
@@ -359,7 +386,7 @@ def _write_arcs(run: Run) -> None:
     if (library := _library(run, setup.read_config)) is None:
         return
     plan = _plan(run, setup.reading_list, library, setup.formats)
-    if plan.refused:
+    if plan.refused or plan.ambiguous:
         run.failed = True
     applying = run.args.apply and not setup.write_config.general.dry_run
     _print_plan(run, plan, applying=applying)

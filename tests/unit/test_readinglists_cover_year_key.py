@@ -22,7 +22,7 @@ from comicbox.readinglists import (
     entry_keys,
     loads,
 )
-from comicbox.readinglists.match import FoundBy, match_comics
+from comicbox.readinglists.match import FoundBy, match_comics, plan_arcs
 
 _CBL = """<?xml version="1.0" encoding="utf-8"?>
 <ReadingList xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -259,6 +259,67 @@ def test_a_cover_year_match_never_finds_another_volume() -> None:
     (found,) = match_comics(_list(entry), comics).found
 
     assert found.paths == (Path("v2011.cbz"),)
+
+
+def test_an_entry_that_fits_two_volumes_is_ambiguous() -> None:
+    """Avengers #1 dated 2016, no start year: the 2011 and 2016 volumes alike."""
+    comics = {
+        Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
+        Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+    }
+    reading_list = _list(_entry(year=2016))
+
+    result = match_comics(reading_list, comics)
+
+    (found,) = result.found
+    assert found.paths == (Path("v2011.cbz"), Path("v2016.cbz"))
+    assert found.volumes == (2011, 2016)
+    assert found.ambiguous
+    assert plan_arcs(reading_list, comics, result, "Avengers") == ()
+
+
+def test_an_entry_found_by_a_stronger_key_is_not_ambiguous() -> None:
+    """Only an entry found by its cover year alone is: its id names the issue."""
+    comics = {
+        Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
+        Path("v2016.cbz"): _tags(
+            start_year=2016, cover=date(2016, 8, 1), comicvine="7"
+        ),
+    }
+    reading_list = _list(_entry(year=2016, comicvine="7"))
+
+    result = match_comics(reading_list, comics)
+
+    (found,) = result.found
+    assert not found.ambiguous
+    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    assert Path("v2016.cbz") in [change.path for change in changes]
+
+
+@pytest.mark.parametrize(
+    "comics",
+    [
+        # Copies of one volume.
+        {
+            Path("a/v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+            Path("b/v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+        },
+        # A comic with no series year beside comics of one volume.
+        {
+            Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+            Path("year-only.cbz"): _tags(cover=date(2016, 8, 1)),
+        },
+    ],
+)
+def test_comics_of_one_volume_are_not_ambiguous(comics: dict[Path, Any]) -> None:
+    reading_list = _list(_entry(year=2016))
+
+    result = match_comics(reading_list, comics)
+
+    (found,) = result.found
+    assert not found.ambiguous
+    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    assert [change.path for change in changes] == sorted(comics)
 
 
 def test_the_vetoes_apply_to_a_cover_year_match() -> None:
